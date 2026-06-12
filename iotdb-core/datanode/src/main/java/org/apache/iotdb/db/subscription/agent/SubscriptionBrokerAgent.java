@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
@@ -35,11 +36,14 @@ import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletCon
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionCommitManager;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterBinder;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutorManager;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -75,6 +79,10 @@ public class SubscriptionBrokerAgent {
 
   private final Cache<Integer> prefetchingQueueCount =
       new Cache<>(this::getPrefetchingQueueCountInternal);
+
+  private final Map<String, ColumnFilterMatcher> topicNameToColumnFilterMatcher =
+      new ConcurrentHashMap<>();
+  private final ColumnFilterBinder columnFilterBinder = new ColumnFilterBinder();
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
@@ -647,6 +655,56 @@ public class SubscriptionBrokerAgent {
     for (final ConsensusSubscriptionBroker broker : getBrokers(ConsensusSubscriptionBroker.class)) {
       broker.refreshConsensusQueueOrderMode(topicName, orderMode);
     }
+  }
+
+  public void refreshColumnFilter(final String topicName, final TopicConfig topicConfig) {
+    final ColumnFilterMatcher matcher;
+    try {
+      matcher =
+          ColumnFilterMatcher.fromBoundColumnFilter(
+              columnFilterBinder.bind(
+                  topicConfig, DataNodeTableCache.getInstance().getTableSnapshot()));
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "SubscriptionBrokerAgent: failed to refresh column-filter matcher for topic [{}], use empty matcher to fail closed",
+          topicName,
+          e);
+      topicNameToColumnFilterMatcher.put(
+          topicName, ColumnFilterMatcher.ofSelectedColumnNames(Collections.emptySet()));
+      return;
+    }
+    topicNameToColumnFilterMatcher.put(topicName, matcher);
+    LOGGER.info(
+        "SubscriptionBrokerAgent: refreshed column-filter matcher for topic [{}]", topicName);
+  }
+
+  public ColumnFilterMatcher getColumnFilterMatcher(final String topicName) {
+    final ColumnFilterMatcher matcher = topicNameToColumnFilterMatcher.get(topicName);
+    if (Objects.nonNull(matcher)) {
+      return matcher;
+    }
+
+    final TopicConfig topicConfig =
+        SubscriptionAgent.topic().getTopicConfigs(Collections.singleton(topicName)).get(topicName);
+    if (Objects.isNull(topicConfig)) {
+      return ColumnFilterMatcher.matchAll();
+    }
+
+    try {
+      refreshColumnFilter(topicName, topicConfig);
+      return topicNameToColumnFilterMatcher.getOrDefault(topicName, ColumnFilterMatcher.matchAll());
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "SubscriptionBrokerAgent: failed to lazily refresh column-filter matcher for topic [{}]",
+          topicName,
+          e);
+      return ColumnFilterMatcher.ofSelectedColumnNames(Collections.emptySet());
+    }
+  }
+
+  public void dropColumnFilter(final String topicName) {
+    topicNameToColumnFilterMatcher.remove(topicName);
+    LOGGER.info("SubscriptionBrokerAgent: dropped column-filter matcher for topic [{}]", topicName);
   }
 
   public void unbindConsensusPrefetchingQueue(

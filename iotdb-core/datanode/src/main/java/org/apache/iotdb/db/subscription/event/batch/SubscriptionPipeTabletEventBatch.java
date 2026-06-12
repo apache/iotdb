@@ -27,6 +27,8 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
+import org.apache.iotdb.db.subscription.columnfilter.TabletColumnPruner;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -39,6 +41,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -165,6 +168,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   private Pair<String, List<Tablet>> convertToTablets(
       final TabletInsertionEvent tabletInsertionEvent) {
+    final Pair<String, List<Tablet>> result;
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       final List<Tablet> tablets =
           ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablets();
@@ -173,28 +177,51 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
               .reduce(Long::sum)
               .orElse(0L));
-      return new Pair<>(
-          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
-              ? ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
-                  .getTableModelDatabaseName()
-              : null,
-          tablets);
+      result =
+          new Pair<>(
+              ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
+                  ? ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
+                      .getTableModelDatabaseName()
+                  : null,
+              tablets);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
       final Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
       updateEstimatedRawTabletInsertionEventSize(
           PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
-      return new Pair<>(
-          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
-              ? ((PipeRawTabletInsertionEvent) tabletInsertionEvent).getTableModelDatabaseName()
-              : null,
-          Collections.singletonList(tablet));
+      result =
+          new Pair<>(
+              ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
+                  ? ((PipeRawTabletInsertionEvent) tabletInsertionEvent).getTableModelDatabaseName()
+                  : null,
+              Collections.singletonList(tablet));
+    } else {
+      LOGGER.warn(
+          "SubscriptionPipeTabletEventBatch {} only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
+          this,
+          tabletInsertionEvent);
+      return null;
     }
 
-    LOGGER.warn(
-        "SubscriptionPipeTabletEventBatch {} only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
-        this,
-        tabletInsertionEvent);
-    return null;
+    return pruneTablets(result);
+  }
+
+  private Pair<String, List<Tablet>> pruneTablets(final Pair<String, List<Tablet>> tablets) {
+    if (Objects.isNull(tablets) || Objects.isNull(tablets.left) || Objects.isNull(tablets.right)) {
+      return tablets;
+    }
+
+    final ColumnFilterMatcher matcher =
+        SubscriptionAgent.broker().getColumnFilterMatcher(prefetchingQueue.getTopicName());
+
+    final List<Tablet> prunedTablets = new ArrayList<>(tablets.right.size());
+    for (final Tablet tablet : tablets.right) {
+      final Tablet prunedTablet =
+          TabletColumnPruner.pruneTableModelTablet(tablet, tablets.left, matcher);
+      if (Objects.nonNull(prunedTablet)) {
+        prunedTablets.add(prunedTablet);
+      }
+    }
+    return prunedTablets.isEmpty() ? null : new Pair<>(tablets.left, prunedTablets);
   }
 
   /////////////////////////////// estimator ///////////////////////////////

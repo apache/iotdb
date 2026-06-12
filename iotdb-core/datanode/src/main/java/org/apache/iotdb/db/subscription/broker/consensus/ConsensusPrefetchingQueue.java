@@ -39,6 +39,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.metric.ConsensusSubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutor;
@@ -1796,7 +1798,11 @@ public class ConsensusPrefetchingQueue {
 
     final SubscriptionEvent event =
         new SubscriptionEvent(
-            SubscriptionPollResponseType.TABLETS.getType(), payload, commitContext);
+            SubscriptionPollResponseType.TABLETS.getType(),
+            payload,
+            commitContext,
+            SubscriptionAgent.broker().getColumnFilterMatcher(topicName).isTimeSelected(),
+            getTimeSelectedByTable(converter.getDatabaseName(), tablets));
 
     prefetchingQueue.add(event);
 
@@ -1811,6 +1817,25 @@ public class ConsensusPrefetchingQueue {
 
     // After enqueuing the data event, control metadata is handled separately from user data.
     return true;
+  }
+
+  private Map<String, Map<String, Boolean>> getTimeSelectedByTable(
+      final String databaseName, final List<Tablet> tablets) {
+    if (Objects.isNull(databaseName) || Objects.isNull(tablets) || tablets.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    final ColumnFilterMatcher matcher =
+        SubscriptionAgent.broker().getColumnFilterMatcher(topicName);
+    final Map<String, Boolean> tableMap = new HashMap<>();
+    for (final Tablet tablet : tablets) {
+      if (Objects.nonNull(tablet) && Objects.nonNull(tablet.getTableName())) {
+        tableMap.put(
+            tablet.getTableName(), matcher.isTimeSelected(databaseName, tablet.getTableName()));
+      }
+    }
+    return tableMap.isEmpty()
+        ? Collections.emptyMap()
+        : Collections.singletonMap(databaseName, tableMap);
   }
 
   private SubscriptionCommitContext buildWriterCommitContext(final long localSeq) {

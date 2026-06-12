@@ -116,7 +116,7 @@ final class ConsensusSubscriptionTableITSupport {
       final String topicName,
       final String databasePattern,
       final String tablePattern,
-      final String columnPattern)
+      final String columnFilter)
       throws Exception {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
@@ -131,10 +131,25 @@ final class ConsensusSubscriptionTableITSupport {
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
       config.put(TopicConstant.DATABASE_KEY, databasePattern);
       config.put(TopicConstant.TABLE_KEY, tablePattern);
-      if (columnPattern != null) {
-        config.put(TopicConstant.COLUMN_KEY, columnPattern);
+      if (columnFilter != null) {
+        config.put(TopicConstant.COLUMN_FILTER_KEY, columnFilter);
       }
       session.createTopic(topicName, config);
+    }
+  }
+
+  static void alterConsensusTopicColumnFilter(final String topicName, final String columnFilter)
+      throws Exception {
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+      session.open();
+
+      final Properties config = new Properties();
+      config.put(TopicConstant.COLUMN_FILTER_KEY, columnFilter);
+      session.alterTopic(topicName, config);
     }
   }
 
@@ -181,6 +196,49 @@ final class ConsensusSubscriptionTableITSupport {
             String.format(
                 "insert into %s(tag1, s1, time) values ('%s', %d, %d)",
                 tableName, tableName + "_tag", timestamp * valueMultiplier, timestamp));
+        rowKeys.add(rowKey(database, tableName, timestamp));
+      }
+      if (flush) {
+        session.executeNonQueryStatement("flush");
+      }
+    }
+
+    return rowKeys;
+  }
+
+  static Set<String> insertRows(
+      final String database,
+      final String tableName,
+      final long startTimestampInclusive,
+      final int rowCount,
+      final boolean includeS2,
+      final boolean includeS3,
+      final boolean flush)
+      throws Exception {
+    final Set<String> rowKeys = new LinkedHashSet<>();
+
+    try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("use " + database);
+      for (int row = 0; row < rowCount; row++) {
+        final long timestamp = startTimestampInclusive + row;
+        final StringBuilder columns = new StringBuilder("tag1, s1");
+        final StringBuilder values =
+            new StringBuilder(
+                String.format(
+                    Locale.ROOT, "'%s', %d", tableName + "_tag_" + timestamp, timestamp * 10L));
+        if (includeS2) {
+          columns.append(", s2");
+          values.append(String.format(Locale.ROOT, ", %.1f", timestamp + 0.5d));
+        }
+        if (includeS3) {
+          columns.append(", s3");
+          values.append(timestamp % 2 == 0 ? ", true" : ", false");
+        }
+        columns.append(", time");
+        values.append(", ").append(timestamp);
+        session.executeNonQueryStatement(
+            String.format(
+                Locale.ROOT, "insert into %s(%s) values (%s)", tableName, columns, values));
         rowKeys.add(rowKey(database, tableName, timestamp));
       }
       if (flush) {
@@ -424,6 +482,14 @@ final class ConsensusSubscriptionTableITSupport {
 
     String topic(final String suffix) {
       return topic + "_" + suffix;
+    }
+
+    String consumerGroup(final String suffix) {
+      return consumerGroupId + "_" + suffix;
+    }
+
+    String consumer(final String suffix) {
+      return consumerId + "_" + suffix;
     }
   }
 

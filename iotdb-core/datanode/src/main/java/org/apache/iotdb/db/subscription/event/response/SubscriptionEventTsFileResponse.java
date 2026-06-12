@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
@@ -64,6 +65,8 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   private final File tsFile;
   @Nullable private final String databaseName;
   private final SubscriptionCommitContext commitContext;
+  private final ColumnFilterMatcher columnFilterMatcher;
+  private final Map<String, Map<String, Boolean>> timeSelectedByTable;
 
   public SubscriptionEventTsFileResponse(
       final File tsFile,
@@ -74,6 +77,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     this.tsFile = tsFile;
     this.databaseName = databaseName;
     this.commitContext = commitContext;
+    this.columnFilterMatcher =
+        SubscriptionAgent.broker().getColumnFilterMatcher(commitContext.getTopicName());
+    this.timeSelectedByTable = columnFilterMatcher.getTimeSelectedByTable(databaseName);
 
     init();
   }
@@ -123,7 +129,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
         new CachedSubscriptionPollResponse(
             SubscriptionPollResponseType.FILE_INIT.getType(),
             new FileInitPayload(tsFile.getName()),
-            commitContext));
+            commitContext,
+            isTimeSelected(),
+            timeSelectedByTable));
   }
 
   private synchronized Optional<CachedSubscriptionPollResponse> generateNextTsFileResponse(
@@ -174,7 +182,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.FILE_SEAL.getType(),
           new FileSealPayload(tsFile.getName(), tsFile.length(), databaseName),
-          commitContext);
+          commitContext,
+          isTimeSelected(),
+          timeSelectedByTable);
     }
 
     final long bufferSize;
@@ -208,7 +218,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
           new CachedSubscriptionPollResponse(
               SubscriptionPollResponseType.FILE_PIECE.getType(),
               new FilePiecePayload(tsFile.getName(), writingOffset + readLength, readBuffer),
-              commitContext);
+              commitContext,
+              isTimeSelected(),
+              timeSelectedByTable);
 
       // set fixed memory block for response
       response.setMemoryBlock(memoryBlock);
@@ -258,6 +270,10 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
     LOGGER.info(
         "Wait for resource enough for slicing tsfile {} for {} seconds.", tsFile, waitTimeSeconds);
+  }
+
+  private boolean isTimeSelected() {
+    return columnFilterMatcher.isTimeSelected();
   }
 
   /////////////////////////////// stringify ///////////////////////////////

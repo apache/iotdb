@@ -53,7 +53,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
 
 /**
  * Handles setup and teardown of consensus-based subscription queues on DataNode.
@@ -177,7 +176,8 @@ public class ConsensusSubscriptionSetupHandler {
           }
 
           final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
-          final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
+          final ConsensusLogToTabletConverter converter =
+              buildConverter(topicName, topicConfig, actualDbName);
           final SubscriptionWalRetentionPolicy retentionPolicy =
               buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
 
@@ -412,7 +412,8 @@ public class ConsensusSubscriptionSetupHandler {
       }
 
       final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
-      final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
+      final ConsensusLogToTabletConverter converter =
+          buildConverter(topicName, topicConfig, actualDbName);
       final SubscriptionWalRetentionPolicy retentionPolicy =
           buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
 
@@ -487,7 +488,7 @@ public class ConsensusSubscriptionSetupHandler {
   }
 
   private static ConsensusLogToTabletConverter buildConverter(
-      final TopicConfig topicConfig, final String actualDatabaseName) {
+      final String topicName, final TopicConfig topicConfig, final String actualDatabaseName) {
     // Determine tree or table model
     final boolean isTableTopic = topicConfig.isTableTopic();
 
@@ -495,15 +496,11 @@ public class ConsensusSubscriptionSetupHandler {
     TablePattern tablePattern = null;
 
     if (isTableTopic) {
+      SubscriptionAgent.broker().refreshColumnFilter(topicName, topicConfig);
       // Table model: database + table name pattern
-      final String column =
-          topicConfig.getStringOrDefault(
-              TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
       tablePattern = buildTablePattern(topicConfig);
-      final Pattern columnPattern =
-          TopicConstant.COLUMN_DEFAULT_VALUE.equals(column) ? null : Pattern.compile(column);
       return new ConsensusLogToTabletConverter(
-          null, tablePattern, columnPattern, actualDatabaseName);
+          null, tablePattern, topicName, null, actualDatabaseName);
     } else {
       // Tree model: path or pattern
       if (topicConfig.getAttribute().containsKey(TopicConstant.PATTERN_KEY)) {

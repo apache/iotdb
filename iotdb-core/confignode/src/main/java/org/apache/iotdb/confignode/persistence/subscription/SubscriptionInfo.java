@@ -74,8 +74,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -333,7 +331,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       throw new SubscriptionException(exceptionMessage);
     }
 
-    validateConsensusTableColumnPattern(topicConfig);
+    validateColumnFilter(topicConfig);
     validateConsensusTopicRetentionConfig(topicConfig);
 
     final Long ownerLeaseDurationMs =
@@ -374,9 +372,23 @@ public class SubscriptionInfo implements SnapshotProcessor {
     throw new SubscriptionException(exceptionMessage);
   }
 
-  private void validateConsensusTableColumnPattern(final TopicConfig topicConfig)
-      throws SubscriptionException {
-    if (!topicConfig.hasAttribute(TopicConstant.COLUMN_KEY)) {
+  private void validateColumnFilter(final TopicConfig topicConfig) throws SubscriptionException {
+    int columnFilterKeyCount = 0;
+    for (final String key : topicConfig.getAttribute().keySet()) {
+      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(key)) {
+        columnFilterKeyCount++;
+      }
+    }
+    if (columnFilterKeyCount > 1) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create or alter topic, duplicate %s attributes are not allowed",
+              TopicConstant.COLUMN_FILTER_KEY);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
+    if (!topicConfig.hasColumnFilter()) {
       return;
     }
 
@@ -384,31 +396,17 @@ public class SubscriptionInfo implements SnapshotProcessor {
       final String exceptionMessage =
           String.format(
               "Failed to create or alter topic, %s is only supported for table topics",
-              TopicConstant.COLUMN_KEY);
+              TopicConstant.COLUMN_FILTER_KEY);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
 
-    if (!isConsensusBasedTopicConfig(topicConfig)) {
+    if (topicConfig.getColumnFilter().trim().isEmpty()) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, %s is only supported for consensus table topics",
-              TopicConstant.COLUMN_KEY);
+              "Failed to create or alter topic, %s should not be empty",
+              TopicConstant.COLUMN_FILTER_KEY);
       LOGGER.warn(exceptionMessage);
-      throw new SubscriptionException(exceptionMessage);
-    }
-
-    final String columnPattern =
-        topicConfig.getStringOrDefault(
-            TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
-    try {
-      Pattern.compile(columnPattern);
-    } catch (final PatternSyntaxException e) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to create or alter topic, illegal %s=%s, detail: %s",
-              TopicConstant.COLUMN_KEY, columnPattern, e.getMessage());
-      LOGGER.warn(exceptionMessage, e);
       throw new SubscriptionException(exceptionMessage);
     }
   }
@@ -475,21 +473,6 @@ public class SubscriptionInfo implements SnapshotProcessor {
           String.format(
               "Failed to alter topic %s, changing %s is not supported because existing subscription runtimes do not hot-refresh source mode",
               topicName, TopicConstant.MODE_KEY);
-      LOGGER.warn(exceptionMessage);
-      throw new SubscriptionException(exceptionMessage);
-    }
-
-    final String existedColumnPattern =
-        existedConfig.getStringOrDefault(
-            TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
-    final String updatedColumnPattern =
-        updatedConfig.getStringOrDefault(
-            TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
-    if (!Objects.equals(existedColumnPattern, updatedColumnPattern)) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to alter topic %s, changing %s is not supported because existing consensus queues do not hot-refresh converter state",
-              topicName, TopicConstant.COLUMN_KEY);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
