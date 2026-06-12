@@ -319,6 +319,7 @@ enum TAggregationType {
   REGR_INTERCEPT,
   SKEWNESS,
   KURTOSIS
+  PERCENTILE,
 }
 
 struct TShowConfigurationTemplateResp {
