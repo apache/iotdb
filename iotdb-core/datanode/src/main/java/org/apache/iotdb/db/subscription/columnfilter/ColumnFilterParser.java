@@ -33,14 +33,49 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpressio
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
+import org.apache.iotdb.db.relational.grammar.sql.ColumnFilterBaseVisitor;
+import org.apache.iotdb.db.relational.grammar.sql.ColumnFilterLexer;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.DefaultErrorStrategy;
+import org.antlr.v4.runtime.InputMismatchException;
+import org.antlr.v4.runtime.Parser;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.atn.PredictionMode;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
+import java.util.Objects;
+import java.util.regex.Pattern;
 
 public class ColumnFilterParser {
+
+  private static final Pattern SINGLE_FIELD_PATTERN =
+      Pattern.compile("\\s*(?:[A-Za-z_][A-Za-z_0-9]*|\"(?:\"\"|[^\"])*\")\\s*");
+  private static final Pattern FUNCTION_CALL_START_PATTERN =
+      Pattern.compile("\\s*(?:[A-Za-z_][A-Za-z_0-9]*|\"(?:\"\"|[^\"])*\")\\s*\\(.*");
+  private static final Pattern UNQUOTED_COMPARISON_RIGHT_PATTERN =
+      Pattern.compile("(?is).*(?:!=|<>|=)\\s*[A-Za-z_][A-Za-z_0-9]*\\s*");
+
+  private static final BaseErrorListener ERROR_LISTENER =
+      new BaseErrorListener() {
+        @Override
+        public void syntaxError(
+            final Recognizer<?, ?> recognizer,
+            final Object offendingSymbol,
+            final int line,
+            final int charPositionInLine,
+            final String message,
+            final RecognitionException e) {
+          throw new ParsingException(message, e, line, charPositionInLine + 1);
+        }
+      };
 
   public Expression parseAndValidate(final String rawColumnFilter) throws SubscriptionException {
     try {
@@ -55,325 +90,185 @@ public class ColumnFilterParser {
 
   Expression parse(final String rawColumnFilter) {
     if (rawColumnFilter == null || rawColumnFilter.trim().isEmpty()) {
-      throw parsingException("column-filter should not be empty", 0);
+      throw new ParsingException("column-filter should not be empty", null, 1, 1);
     }
-    return new InternalParser(tokenize(rawColumnFilter)).parse();
-  }
+    validateUnsupportedSyntax(rawColumnFilter);
 
-  private static List<Token> tokenize(final String expression) {
-    final List<Token> tokens = new ArrayList<>();
-    int offset = 0;
-    while (offset < expression.length()) {
-      final char ch = expression.charAt(offset);
-      if (Character.isWhitespace(ch)) {
-        offset++;
-        continue;
-      }
+    final ColumnFilterLexer lexer = new ColumnFilterLexer(CharStreams.fromString(rawColumnFilter));
+    final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+    final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser parser =
+        new org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser(tokenStream);
 
-      switch (ch) {
-        case '(':
-          tokens.add(new Token(TokenType.LEFT_PAREN, "(", offset));
-          offset++;
-          continue;
-        case ')':
-          tokens.add(new Token(TokenType.RIGHT_PAREN, ")", offset));
-          offset++;
-          continue;
-        case ',':
-          tokens.add(new Token(TokenType.COMMA, ",", offset));
-          offset++;
-          continue;
-        case '=':
-          tokens.add(new Token(TokenType.EQ, "=", offset));
-          offset++;
-          continue;
-        case '!':
-          if (offset + 1 < expression.length() && expression.charAt(offset + 1) == '=') {
-            tokens.add(new Token(TokenType.NEQ, "!=", offset));
-            offset += 2;
-            continue;
-          }
-          throw parsingException("unexpected character '!'", offset);
-        case '<':
-          if (offset + 1 < expression.length() && expression.charAt(offset + 1) == '>') {
-            tokens.add(new Token(TokenType.NEQ, "<>", offset));
-            offset += 2;
-            continue;
-          }
-          throw parsingException("unsupported comparison operator '<'", offset);
-        case '>':
-          throw parsingException("unsupported comparison operator '>'", offset);
-        case '"':
-          final int start = offset;
-          final StringBuilder builder = new StringBuilder();
-          offset++;
-          while (offset < expression.length()) {
-            final char current = expression.charAt(offset);
-            if (current == '"') {
-              if (offset + 1 < expression.length() && expression.charAt(offset + 1) == '"') {
-                builder.append('"');
-                offset += 2;
-                continue;
-              }
-              offset++;
-              tokens.add(new Token(TokenType.QUOTED, builder.toString(), start));
-              break;
+    lexer.removeErrorListeners();
+    lexer.addErrorListener(ERROR_LISTENER);
+    parser.removeErrorListeners();
+    parser.addErrorListener(ERROR_LISTENER);
+    parser.setErrorHandler(
+        new DefaultErrorStrategy() {
+          @Override
+          public Token recoverInline(final Parser recognizer) throws RecognitionException {
+            if (nextTokensContext == null) {
+              throw new InputMismatchException(recognizer);
             }
-            builder.append(current);
-            offset++;
+            throw new InputMismatchException(recognizer, nextTokensState, nextTokensContext);
           }
-          if (tokens.isEmpty() || tokens.get(tokens.size() - 1).position != start) {
-            throw parsingException("unterminated quoted literal", start);
-          }
+        });
+
+    try {
+      parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
+      return new AstBuilder().visit(parser.columnFilter());
+    } catch (final ParsingException e) {
+      tokenStream.seek(0);
+      parser.reset();
+      parser.getInterpreter().setPredictionMode(PredictionMode.LL);
+      return new AstBuilder().visit(parser.columnFilter());
+    }
+  }
+
+  private static void validateUnsupportedSyntax(final String rawColumnFilter) {
+    final String trimmedColumnFilter = rawColumnFilter.trim();
+    if ((SINGLE_FIELD_PATTERN.matcher(rawColumnFilter).matches()
+            && !"true".equalsIgnoreCase(trimmedColumnFilter)
+            && !"false".equalsIgnoreCase(trimmedColumnFilter))
+        || FUNCTION_CALL_START_PATTERN.matcher(rawColumnFilter).matches()) {
+      throw new ParsingException("expected column predicate operator", null, 1, 1);
+    }
+    if (UNQUOTED_COMPARISON_RIGHT_PATTERN.matcher(rawColumnFilter).matches()) {
+      throw new ParsingException("expected string literal", null, 1, 1);
+    }
+    for (int i = 0; i < rawColumnFilter.length(); i++) {
+      final char ch = rawColumnFilter.charAt(i);
+      if (ch == '<') {
+        if (i + 1 < rawColumnFilter.length() && rawColumnFilter.charAt(i + 1) == '>') {
+          i++;
           continue;
-        default:
-          if (isIdentifierStart(ch)) {
-            final int startPosition = offset;
-            offset++;
-            while (offset < expression.length() && isIdentifierPart(expression.charAt(offset))) {
-              offset++;
-            }
-            final String text = expression.substring(startPosition, offset);
-            tokens.add(new Token(keywordType(text), text, startPosition));
-            continue;
-          }
-          throw parsingException(String.format("unexpected character '%s'", ch), offset);
+        }
+        throw new ParsingException("unsupported comparison operator '<'", null, 1, i + 1);
       }
-    }
-    tokens.add(new Token(TokenType.EOF, "", expression.length()));
-    return tokens;
-  }
-
-  private static boolean isIdentifierStart(final char ch) {
-    return Character.isLetter(ch) || ch == '_';
-  }
-
-  private static boolean isIdentifierPart(final char ch) {
-    return Character.isLetterOrDigit(ch) || ch == '_';
-  }
-
-  private static TokenType keywordType(final String text) {
-    switch (text.toUpperCase(Locale.ROOT)) {
-      case "TRUE":
-        return TokenType.TRUE;
-      case "FALSE":
-        return TokenType.FALSE;
-      case "AND":
-        return TokenType.AND;
-      case "OR":
-        return TokenType.OR;
-      case "NOT":
-        return TokenType.NOT;
-      case "IN":
-        return TokenType.IN;
-      case "LIKE":
-        return TokenType.LIKE;
-      case "REGEXP":
-        return TokenType.REGEXP;
-      case "IS":
-        return TokenType.IS;
-      case "NULL":
-        return TokenType.NULL;
-      case "ESCAPE":
-        return TokenType.ESCAPE;
-      default:
-        return TokenType.IDENTIFIER;
+      if (ch == '>') {
+        throw new ParsingException("unsupported comparison operator '>'", null, 1, i + 1);
+      }
+      if (ch == '+') {
+        throw new ParsingException("unexpected character '+'", null, 1, i + 1);
+      }
     }
   }
 
-  private static ParsingException parsingException(final String message, final int position) {
-    return new ParsingException(message, null, 1, position + 1);
-  }
+  private static class AstBuilder extends ColumnFilterBaseVisitor<Expression> {
 
-  private enum TokenType {
-    IDENTIFIER,
-    QUOTED,
-    TRUE,
-    FALSE,
-    AND,
-    OR,
-    NOT,
-    IN,
-    LIKE,
-    REGEXP,
-    IS,
-    NULL,
-    ESCAPE,
-    EQ,
-    NEQ,
-    LEFT_PAREN,
-    RIGHT_PAREN,
-    COMMA,
-    EOF
-  }
-
-  private static class Token {
-    private final TokenType type;
-    private final String text;
-    private final int position;
-
-    private Token(final TokenType type, final String text, final int position) {
-      this.type = type;
-      this.text = text;
-      this.position = position;
-    }
-  }
-
-  private static class InternalParser {
-
-    private final List<Token> tokens;
-    private int cursor;
-
-    private InternalParser(final List<Token> tokens) {
-      this.tokens = tokens;
+    @Override
+    public Expression visitColumnFilter(
+        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.ColumnFilterContext
+            context) {
+      return visit(context.booleanExpression());
     }
 
-    private Expression parse() {
-      final Expression expression = parseOr();
-      expect(TokenType.EOF);
-      return expression;
+    @Override
+    public Expression visitPredicateExpression(
+        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser
+                .PredicateExpressionContext
+            context) {
+      return visit(context.predicate());
     }
 
-    private Expression parseOr() {
-      Expression result = parseAnd();
-      while (match(TokenType.OR)) {
-        result = LogicalExpression.or(result, parseAnd());
-      }
-      return result;
+    @Override
+    public Expression visitLogicalNot(
+        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.LogicalNotContext
+            context) {
+      return new NotExpression(visit(context.booleanExpression()));
     }
 
-    private Expression parseAnd() {
-      Expression result = parseNot();
-      while (match(TokenType.AND)) {
-        result = LogicalExpression.and(result, parseNot());
-      }
-      return result;
+    @Override
+    public Expression visitLogicalBinary(
+        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.LogicalBinaryContext
+            context) {
+      final Expression left = visit(context.booleanExpression(0));
+      final Expression right = visit(context.booleanExpression(1));
+      return Objects.nonNull(context.AND())
+          ? LogicalExpression.and(left, right)
+          : LogicalExpression.or(left, right);
     }
 
-    private Expression parseNot() {
-      if (match(TokenType.NOT)) {
-        return new NotExpression(parseNot());
+    @Override
+    public Expression visitPredicate(
+        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.PredicateContext
+            context) {
+      if (Objects.nonNull(context.booleanValue())) {
+        return visit(context.booleanValue());
       }
-      return parsePredicate();
-    }
-
-    private Expression parsePredicate() {
-      if (match(TokenType.LEFT_PAREN)) {
-        final Expression expression = parseOr();
-        expect(TokenType.RIGHT_PAREN);
-        return expression;
-      }
-      if (match(TokenType.TRUE)) {
-        return new BooleanLiteral("true");
-      }
-      if (match(TokenType.FALSE)) {
-        return new BooleanLiteral("false");
+      if (Objects.nonNull(context.booleanExpression())) {
+        return visit(context.booleanExpression());
       }
 
-      final Identifier field = parseField();
-      if (match(TokenType.EQ)) {
+      final Identifier field = toIdentifier(context.field());
+      if (Objects.nonNull(context.comparisonOperator())) {
         return new ComparisonExpression(
-            ComparisonExpression.Operator.EQUAL, field, parseStringLiteral());
+            Objects.nonNull(context.comparisonOperator().EQ())
+                ? ComparisonExpression.Operator.EQUAL
+                : ComparisonExpression.Operator.NOT_EQUAL,
+            field,
+            toStringLiteral(context.string(0)));
       }
-      if (match(TokenType.NEQ)) {
-        return new ComparisonExpression(
-            ComparisonExpression.Operator.NOT_EQUAL, field, parseStringLiteral());
-      }
-      if (match(TokenType.NOT)) {
-        if (match(TokenType.IN)) {
-          return new NotExpression(parseInPredicate(field));
+      if (Objects.nonNull(context.IN())) {
+        final List<Expression> values = new ArrayList<>();
+        for (final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.StringContext
+            string : context.string()) {
+          values.add(toStringLiteral(string));
         }
-        if (match(TokenType.LIKE)) {
-          return new NotExpression(parseLikePredicate(field));
-        }
-        if (match(TokenType.REGEXP)) {
-          return new NotExpression(parseRegexpFunction(field));
-        }
-        throw parsingException("expected IN, LIKE, or REGEXP after NOT", previous().position);
+        return maybeNegate(
+            new InPredicate(field, new InListExpression(values)), Objects.nonNull(context.NOT()));
       }
-      if (match(TokenType.IN)) {
-        return parseInPredicate(field);
+      if (Objects.nonNull(context.LIKE())) {
+        final Expression like =
+            context.string().size() > 1
+                ? new LikePredicate(
+                    field, toStringLiteral(context.string(0)), toStringLiteral(context.string(1)))
+                : new LikePredicate(field, toStringLiteral(context.string(0)));
+        return maybeNegate(like, Objects.nonNull(context.NOT()));
       }
-      if (match(TokenType.LIKE)) {
-        return parseLikePredicate(field);
+      if (Objects.nonNull(context.REGEXP())) {
+        final Expression regexp =
+            new FunctionCall(
+                QualifiedName.of("regexp_like"),
+                List.of(field, toStringLiteral(context.string(0))));
+        return maybeNegate(regexp, Objects.nonNull(context.NOT()));
       }
-      if (match(TokenType.REGEXP)) {
-        return parseRegexpFunction(field);
-      }
-      if (match(TokenType.IS)) {
-        final boolean isNot = match(TokenType.NOT);
-        expect(TokenType.NULL);
-        final Expression isNull = new IsNullPredicate(field);
-        return isNot ? new NotExpression(isNull) : isNull;
+      if (Objects.nonNull(context.IS())) {
+        return maybeNegate(new IsNullPredicate(field), Objects.nonNull(context.NOT()));
       }
 
-      throw parsingException("expected column predicate operator", peek().position);
+      throw new IllegalArgumentException("unsupported column-filter predicate");
     }
 
-    private InPredicate parseInPredicate(final Identifier field) {
-      expect(TokenType.LEFT_PAREN);
-      final List<Expression> values = new ArrayList<>();
-      values.add(parseStringLiteral());
-      while (match(TokenType.COMMA)) {
-        values.add(parseStringLiteral());
+    @Override
+    public Expression visitBooleanValue(
+        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.BooleanValueContext
+            context) {
+      return Objects.nonNull(context.TRUE())
+          ? BooleanLiteral.TRUE_LITERAL
+          : BooleanLiteral.FALSE_LITERAL;
+    }
+
+    private static Expression maybeNegate(final Expression expression, final boolean negated) {
+      return negated ? new NotExpression(expression) : expression;
+    }
+
+    private static Identifier toIdentifier(
+        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.FieldContext context) {
+      final TerminalNode quoted = context.QUOTED_IDENTIFIER();
+      if (Objects.nonNull(quoted)) {
+        return new Identifier(unquote(quoted.getText()), true);
       }
-      expect(TokenType.RIGHT_PAREN);
-      return new InPredicate(field, new InListExpression(values));
+      return new Identifier(context.IDENTIFIER().getText());
     }
 
-    private LikePredicate parseLikePredicate(final Identifier field) {
-      final StringLiteral pattern = parseStringLiteral();
-      if (match(TokenType.ESCAPE)) {
-        return new LikePredicate(field, pattern, parseStringLiteral());
-      }
-      return new LikePredicate(field, pattern);
+    private static StringLiteral toStringLiteral(
+        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.StringContext context) {
+      return new StringLiteral(unquote(context.QUOTED_IDENTIFIER().getText()));
     }
 
-    private FunctionCall parseRegexpFunction(final Identifier field) {
-      return new FunctionCall(
-          QualifiedName.of("regexp_like"), Arrays.asList(field, parseStringLiteral()));
-    }
-
-    private Identifier parseField() {
-      if (match(TokenType.IDENTIFIER)) {
-        return new Identifier(previous().text, false);
-      }
-      if (match(TokenType.QUOTED)) {
-        return new Identifier(previous().text, true);
-      }
-      throw parsingException("expected column metadata field", peek().position);
-    }
-
-    private StringLiteral parseStringLiteral() {
-      if (match(TokenType.QUOTED)) {
-        return new StringLiteral(previous().text);
-      }
-      throw parsingException("expected string literal", peek().position);
-    }
-
-    private boolean match(final TokenType type) {
-      if (peek().type != type) {
-        return false;
-      }
-      cursor++;
-      return true;
-    }
-
-    private Token expect(final TokenType type) {
-      if (peek().type == type) {
-        cursor++;
-        return previous();
-      }
-      throw parsingException(
-          String.format("expected %s but found '%s'", type, peek().text), peek().position);
-    }
-
-    private Token peek() {
-      return tokens.get(cursor);
-    }
-
-    private Token previous() {
-      return tokens.get(cursor - 1);
+    private static String unquote(final String text) {
+      return text.substring(1, text.length() - 1).replace("\"\"", "\"");
     }
   }
 }
