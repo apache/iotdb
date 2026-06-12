@@ -1308,7 +1308,8 @@ public class PipeDataNodeThriftRequestTest {
   private static ByteBuffer serializeLegacyTabletBatchBody(
       final List<ByteBuffer> insertNodeBuffers, final List<ByteBuffer> tabletBuffers)
       throws IOException {
-    return serializeLegacyTabletBatchBody(Collections.emptyList(), insertNodeBuffers, tabletBuffers);
+    return serializeLegacyTabletBatchBody(
+        Collections.emptyList(), insertNodeBuffers, tabletBuffers);
   }
 
   private static ByteBuffer serializeLegacyTabletBatchBody(
