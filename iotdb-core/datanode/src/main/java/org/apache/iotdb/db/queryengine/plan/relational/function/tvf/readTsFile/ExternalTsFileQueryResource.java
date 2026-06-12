@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.ExternalTsFileDeviceFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -112,6 +113,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   public void collectDeviceEntries(
       SchemaFilter schemaFilter, Comparator<DeviceEntry> comparator, int partitionCount) {
     checkNotClosed();
+    acquireMemoryForTsFileReaders();
     ExternalTsFileDeviceFilterVisitor deviceFilterVisitor = new ExternalTsFileDeviceFilterVisitor();
     try (DeviceCollector deviceCollector = new DeviceCollector()) {
       createDeviceTaskPartitions(partitionCount);
@@ -137,6 +139,10 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       deviceEntryComparator = comparator;
       collectDeviceTaskPartitions(comparator);
     }
+  }
+
+  private void acquireMemoryForTsFileReaders() {
+    queryContext.reserveMemoryForFrontEndImmediately((long) tsFilePaths.size() * 4 * 1024);
   }
 
   public DeviceTaskRunReader getDeviceTaskRunReader(int partitionIndex) {
@@ -403,7 +409,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
     private final PriorityQueue<DeviceTaskRunCursor> runCursors;
     private DeviceEntry currentDevice;
-    private ExternalTsFileQueryDataSource currentDeviceQueryDataSource;
+    private QueryDataSource currentDeviceQueryDataSource;
     private Map<TsFileResource, DeviceOffset> currentDeviceOffsetMap;
 
     private DeviceTaskRunReader(DeviceTaskPartition partition) throws IOException {
@@ -452,8 +458,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
         unseqResources.add(tsFileResource);
         currentDeviceOffsetMap.put(tsFileResource, deviceOffset);
       }
-      currentDeviceQueryDataSource =
-          new ExternalTsFileQueryDataSource(ExternalTsFileQueryResource.this, unseqResources);
+      currentDeviceQueryDataSource = new QueryDataSource(Collections.emptyList(), unseqResources);
       return true;
     }
 
@@ -461,7 +466,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       return currentDevice;
     }
 
-    public ExternalTsFileQueryDataSource getCurrentDeviceQueryDataSource() {
+    public QueryDataSource getCurrentDeviceQueryDataSource() {
       return currentDeviceQueryDataSource;
     }
 

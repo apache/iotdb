@@ -21,32 +21,16 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.Collections;
-import java.util.List;
 
 public class ExternalTsFileQueryDataSource extends QueryDataSource {
 
   private final ExternalTsFileQueryResource externalTsFileQueryResource;
 
   public ExternalTsFileQueryDataSource(ExternalTsFileQueryResource externalTsFileQueryResource) {
-    this(externalTsFileQueryResource, Collections.emptyList());
-  }
-
-  ExternalTsFileQueryDataSource(
-      ExternalTsFileQueryResource externalTsFileQueryResource,
-      List<TsFileResource> unseqResources) {
-    super(Collections.emptyList(), unseqResources);
+    super(Collections.emptyList(), Collections.emptyList());
     this.externalTsFileQueryResource = externalTsFileQueryResource;
-  }
-
-  @Override
-  public IQueryDataSource clone() {
-    return new ExternalTsFileQueryDataSource(externalTsFileQueryResource, getUnseqResources());
   }
 
   public ExternalTsFileQueryResource getExternalTsFileQueryResource() {
@@ -54,14 +38,12 @@ public class ExternalTsFileQueryDataSource extends QueryDataSource {
   }
 
   @Override
-  public boolean isSeqSatisfied(
-      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug) {
-    return true;
+  public IQueryDataSource clone() {
+    return new ExternalTsFileQueryDataSource(externalTsFileQueryResource);
   }
 
   @Override
-  public boolean isUnSeqSatisfied(
-      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug) {
-    return true;
+  public boolean isEmpty() {
+    return externalTsFileQueryResource.getTsFileResources().isEmpty();
   }
 }

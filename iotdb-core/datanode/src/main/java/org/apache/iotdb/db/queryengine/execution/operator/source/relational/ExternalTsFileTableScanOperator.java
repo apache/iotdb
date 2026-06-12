@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.E
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource.DeviceTaskRunReader;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
@@ -105,7 +106,7 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
     }
   }
 
-  private ExternalTsFileQueryDataSource updateCurrentDeviceQueryDataSource() {
+  private QueryDataSource updateCurrentDeviceQueryDataSource() {
     try {
       if (!deviceTaskReader.nextDevice()) {
         throw new IllegalStateException(
