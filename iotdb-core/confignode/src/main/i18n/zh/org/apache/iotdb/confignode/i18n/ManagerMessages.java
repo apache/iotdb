@@ -137,6 +137,8 @@ public final class ManagerMessages {
       "修改 topic %s 失败，该 topic 不存在";
   public static final String FAILED_TO_ALTER_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS =
       "修改 topic {} 失败，属性：{}。结果状态：{}。";
+  public static final String OWNER_LEASE_DURATION_BELOW_MIN =
+      "创建或修改 topic 失败，owner-lease-duration-ms %s 小于允许的最小值 %s ms。";
   public static final String FAILED_TO_DEEP_COPY_PIPEMETA = "深拷贝 pipeMeta 失败";
   public static final String FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_CONNECTOR =
       "Failed to deregister pipe config region connector metrics, PipeConfigNodeSubtask({}) does not exist";

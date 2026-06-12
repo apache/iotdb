@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
@@ -40,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.ru
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
@@ -333,6 +335,20 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     validateConsensusTableColumnPattern(topicConfig);
     validateConsensusTopicRetentionConfig(topicConfig);
+
+    final Long ownerLeaseDurationMs =
+        topicConfig.getLong(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
+    final long ownerLeaseDurationMsMin =
+        SubscriptionConfig.getInstance().getSubscriptionOwnerLeaseDurationMsMin();
+    if (Objects.nonNull(ownerLeaseDurationMs) && ownerLeaseDurationMs < ownerLeaseDurationMsMin) {
+      final String exceptionMessage =
+          String.format(
+              ManagerMessages.OWNER_LEASE_DURATION_BELOW_MIN,
+              ownerLeaseDurationMs,
+              ownerLeaseDurationMsMin);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
   }
 
   private void validateConsensusProtocolSupport(final TopicConfig topicConfig)

@@ -70,7 +70,9 @@ public class IoTDBSubscriptionTopicOwnerPartitionIT extends AbstractSubscription
         .getCommonConfig()
         .setSubscriptionEnabled(true)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false)
+        // Lower the owner-lease floor so the test can use a short lease and stay fast.
+        .setSubscriptionOwnerLeaseDurationMsMin(1000);
     // 3 ConfigNodes (for failover) + 3 DataNodes (for multi-DataNode data placement).
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }

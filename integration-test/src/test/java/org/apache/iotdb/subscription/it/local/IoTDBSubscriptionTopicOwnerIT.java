@@ -30,9 +30,11 @@ import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullC
 import org.apache.iotdb.session.subscription.model.Topic;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
+import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,12 +49,28 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
-public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
+public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionIT {
 
   @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSubscriptionEnabled(true)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        // Lower the owner-lease floor so the drain test can use a short lease and stay fast.
+        .setSubscriptionOwnerLeaseDurationMsMin(1000);
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Override
+  @After
+  public void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test

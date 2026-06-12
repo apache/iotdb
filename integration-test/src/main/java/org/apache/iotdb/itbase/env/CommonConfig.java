@@ -156,6 +156,8 @@ public interface CommonConfig {
 
   CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
 
+  CommonConfig setSubscriptionOwnerLeaseDurationMsMin(long subscriptionOwnerLeaseDurationMsMin);
+
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
 
   CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs);
