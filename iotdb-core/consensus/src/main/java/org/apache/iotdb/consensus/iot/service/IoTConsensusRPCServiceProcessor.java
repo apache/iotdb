@@ -343,7 +343,15 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       status.setMessage(message);
       return new TTriggerSnapshotLoadRes(status);
     }
-    impl.loadSnapshot(req.snapshotId);
+    if (!impl.loadSnapshot(req.snapshotId)) {
+      String message =
+          String.format(
+              "Failed to load snapshot %s for consensus group %s", req.snapshotId, groupId);
+      LOGGER.error(message);
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(message);
+      return new TTriggerSnapshotLoadRes(status);
+    }
     KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION);
     return new TTriggerSnapshotLoadRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }

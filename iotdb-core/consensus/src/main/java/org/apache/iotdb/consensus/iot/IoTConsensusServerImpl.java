@@ -511,14 +511,17 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void loadSnapshot(String snapshotId) {
-    // TODO: (xingtanzjr) throw exception if the snapshot load failed
-    recvFolderManager
-        .getFolders()
-        .forEach(
-            dir -> {
-              stateMachine.loadSnapshot(getSnapshotPath(dir, snapshotId));
-            });
+  public boolean loadSnapshot(String snapshotId) {
+    // Load the snapshot from every receive folder. If any of them fails, report the failure so the
+    // AddPeer coordinator does not activate this peer with incomplete data (which would silently
+    // lose data on this replica).
+    boolean success = true;
+    for (String dir : recvFolderManager.getFolders()) {
+      if (!stateMachine.loadSnapshot(getSnapshotPath(dir, snapshotId))) {
+        success = false;
+      }
+    }
+    return success;
   }
 
   private File getSnapshotPath(String curStorageDir, String snapshotRelativePath) {

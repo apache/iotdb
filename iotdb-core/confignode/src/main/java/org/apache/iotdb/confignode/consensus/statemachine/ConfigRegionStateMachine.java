@@ -246,7 +246,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   }
 
   @Override
-  public void loadSnapshot(final File latestSnapshotRootDir) {
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
     try {
       executor.loadSnapshot(latestSnapshotRootDir);
       // We recompute the snapshot for pipe listener when loading snapshot
@@ -254,12 +254,14 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       PipeConfigNodeAgent.runtime()
           .listener()
           .tryListenToSnapshots(ConfigNodeSnapshotParser.getSnapshots());
+      return true;
     } catch (final IOException e) {
       if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
         LOGGER.warn(
             ConfigNodeMessages.CONFIG_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_WHEN_STARTUP,
             e);
       }
+      return false;
     }
   }
 

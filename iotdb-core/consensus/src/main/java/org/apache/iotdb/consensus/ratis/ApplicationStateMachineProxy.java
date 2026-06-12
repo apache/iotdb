@@ -268,7 +268,9 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     // require the application statemachine to load the latest snapshot
-    applicationStateMachine.loadSnapshot(latestSnapshotDir);
+    if (!applicationStateMachine.loadSnapshot(latestSnapshotDir)) {
+      logger.error("{}: failed to load snapshot from {}", this, latestSnapshotDir);
+    }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
     updateLastAppliedTermIndex(snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
   }
