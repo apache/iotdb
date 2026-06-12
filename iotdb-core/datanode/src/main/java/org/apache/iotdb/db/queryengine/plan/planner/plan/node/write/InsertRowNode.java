@@ -169,7 +169,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public TSDataType[] getDataTypes() {
     if (isNeedInferType) {
       TSDataType[] predictedDataTypes =
-          new TSDataType[dataTypes == null ? (values == null ? 0 : values.length) : dataTypes.length];
+          new TSDataType
+              [dataTypes == null ? (values == null ? 0 : values.length) : dataTypes.length];
       for (int i = 0; i < predictedDataTypes.length; i++) {
         predictedDataTypes[i] =
             TypeInferenceUtils.getPredictedDataType(
@@ -714,7 +715,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       final TSDataType dataType = getDataTypeIfPresent(i);
       // serialize null value
       if (values[i] == null) {
-        WALWriteUtils.write(dataType == null ? TYPE_NULL_WITHOUT_TYPE : TYPE_NULL_WITH_TYPE, buffer);
+        WALWriteUtils.write(
+            dataType == null ? TYPE_NULL_WITHOUT_TYPE : TYPE_NULL_WITH_TYPE, buffer);
         if (dataType != null) {
           WALWriteUtils.write(dataType, buffer);
         }
