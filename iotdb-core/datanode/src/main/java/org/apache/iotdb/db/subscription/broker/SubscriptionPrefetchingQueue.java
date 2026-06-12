@@ -117,7 +117,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private volatile TsFileInsertionEvent currentTsFileInsertionEvent;
   private volatile RetryableEvent<TabletInsertionEvent> currentTabletInsertionEvent;
   private volatile SubscriptionTsFileToTabletIterator currentToTabletIterator;
-  private volatile PipeTerminateEvent currentTerminateEvent;
+  private PipeTerminateEvent currentTerminateEvent;
 
   public SubscriptionPrefetchingQueue(
       final String brokerId,
@@ -346,8 +346,7 @@ public abstract class SubscriptionPrefetchingQueue {
       }
       reportStateIfNeeded();
       // TODO: more refined behavior (prefetch/serialize/...) control
-      if (Objects.nonNull(currentTerminateEvent)) {
-        tryCommitCurrentTerminateEvent();
+      if (tryCommitCurrentTerminateEventIfPresent()) {
         remapInFlightEventsSnapshot(
             committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
         return true;
@@ -711,12 +710,21 @@ public abstract class SubscriptionPrefetchingQueue {
     return batches.onEvent(this::prefetchEvent);
   }
 
+  private synchronized boolean tryCommitCurrentTerminateEventIfPresent() {
+    if (Objects.isNull(currentTerminateEvent)) {
+      return false;
+    }
+    tryCommitCurrentTerminateEvent();
+    return true;
+  }
+
   private synchronized boolean tryCommitCurrentTerminateEvent() {
     try {
       batches.emitAll(this::prefetchEvent);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Subscription: SubscriptionPrefetchingQueue {} failed to emit remaining events before committing PipeTerminateEvent {}.",
+          "Subscription: SubscriptionPrefetchingQueue {} failed to emit remaining events before "
+              + "committing PipeTerminateEvent {}.",
           this,
           currentTerminateEvent,
           e);

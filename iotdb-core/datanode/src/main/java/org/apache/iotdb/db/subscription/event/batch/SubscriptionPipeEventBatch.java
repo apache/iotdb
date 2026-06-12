@@ -76,20 +76,6 @@ public abstract class SubscriptionPipeEventBatch {
     return false;
   }
 
-  protected synchronized boolean emit(final Consumer<SubscriptionEvent> consumer) throws Exception {
-    if (enrichedEvents.isEmpty()) {
-      return false;
-    }
-    if (Objects.isNull(events)) {
-      events = generateSubscriptionEvents();
-    }
-    if (Objects.nonNull(events)) {
-      events.forEach(consumer);
-      return true;
-    }
-    return false;
-  }
-
   /**
    * @return {@code true} if there are subscription events consumed.
    */
@@ -106,6 +92,20 @@ public abstract class SubscriptionPipeEventBatch {
           "SubscriptionPipeEventBatch {} ignore EnrichedEvent {} when batching.", this, event);
     }
     return onEvent(consumer);
+  }
+
+  protected synchronized boolean emit(final Consumer<SubscriptionEvent> consumer) throws Exception {
+    if (enrichedEvents.isEmpty()) {
+      return false;
+    }
+    if (Objects.isNull(events)) {
+      events = generateSubscriptionEvents();
+    }
+    if (Objects.nonNull(events)) {
+      events.forEach(consumer);
+      return true;
+    }
+    return false;
   }
 
   /////////////////////////////// utility ///////////////////////////////
