@@ -747,7 +747,7 @@ failure_detector_phi_acceptable_pause_in_ms=10000
 # Whether to enable topology probing between DataNodes
 # effectiveMode: hot_reload
 # Datatype: Boolean
-# enable_topology_probing=false
+enable_topology_probing=false
 
 # Base interval in ms for topology probing between DataNodes
 # effectiveMode: restart

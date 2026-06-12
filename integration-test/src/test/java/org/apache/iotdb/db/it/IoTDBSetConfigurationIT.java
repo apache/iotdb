@@ -88,6 +88,27 @@ public class IoTDBSetConfigurationIT {
                         "enable_cross_space_compaction=false")));
   }
 
+  /**
+   * Regression test for V2-995: {@code enable_topology_probing} is declared {@code effectiveMode:
+   * hot_reload}, so {@code set configuration} must accept it (instead of rejecting it as "immutable
+   * or undefined") and persist it to the config file. This used to fail because the item was left
+   * commented out in the template, hiding it from the default-value map.
+   */
+  @Test
+  public void testSetHotReloadTopologyProbing() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"enable_topology_probing\"=\"true\"");
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+    Assert.assertTrue(
+        EnvFactory.getEnv().getConfigNodeWrapperList().stream()
+            .allMatch(
+                nodeWrapper ->
+                    checkConfigFileContains(nodeWrapper, "enable_topology_probing=true")));
+  }
+
   @Test
   public void testSetClusterName() throws Exception {
     // set cluster name on cn and dn

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -26,13 +27,18 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 
 public class ConfigurationFileUtilsTest {
 
@@ -87,6 +93,71 @@ public class ConfigurationFileUtilsTest {
           "The format of configuration item [" + key + "] is incorrect",
           value.effectiveMode == ConfigurationFileUtils.EffectiveModeType.UNKNOWN);
     }
+  }
+
+  /**
+   * Regression guard for V2-995: a configuration item declared {@code effectiveMode: hot_reload}
+   * must have its {@code key=value} line left uncommented in the template. {@code
+   * getConfigurationItemsFromTemplate} only parses uncommented lines, so a commented hot_reload
+   * item never enters {@code configuration2DefaultValue}; {@code filterInvalidConfigItems} then
+   * treats it as undefined and {@code set configuration} rejects it with "immutable or undefined",
+   * silently disabling the advertised hot-reload entry point.
+   */
+  @Test
+  public void checkHotReloadItemsAreUncommentedInTemplate() throws IOException {
+    // Keys whose value line appears uncommented at least once. Some keys (e.g. dn_data_dirs) list a
+    // commented Windows-path variant next to an uncommented Unix-path variant; only the uncommented
+    // one is parsed, so such keys are fine and must not be flagged.
+    Set<String> uncommentedKeys = new HashSet<>();
+    // Keys with a commented value line whose enclosing block declares effectiveMode: hot_reload.
+    Set<String> commentedHotReloadKeys = new HashSet<>();
+    try (InputStream inputStream =
+            ConfigurationFileUtilsTest.class
+                .getClassLoader()
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
+        BufferedReader reader =
+            new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
+      String line;
+      ConfigurationFileUtils.EffectiveModeType currentMode = null;
+      while ((line = reader.readLine()) != null) {
+        line = line.trim();
+        if (line.isEmpty()) {
+          // Blank line separates configuration blocks; reset the accumulated effectiveMode.
+          currentMode = null;
+          continue;
+        }
+        if (line.startsWith("# effectiveMode:")) {
+          currentMode =
+              ConfigurationFileUtils.EffectiveModeType.getEffectiveMode(
+                  line.substring("# effectiveMode:".length()).trim());
+          continue;
+        }
+        // Detect the (possibly commented) "key=value" line that closes a block.
+        String stripped = line.startsWith("#") ? line.substring(1).trim() : line;
+        int equalsIndex = stripped.indexOf('=');
+        boolean isValueLine =
+            equalsIndex > 0 && stripped.substring(0, equalsIndex).trim().matches("[a-zA-Z0-9_.]+");
+        if (!isValueLine) {
+          continue;
+        }
+        String key = stripped.substring(0, equalsIndex).trim();
+        if (line.startsWith("#")) {
+          if (currentMode == ConfigurationFileUtils.EffectiveModeType.HOT_RELOAD) {
+            commentedHotReloadKeys.add(key);
+          }
+        } else {
+          uncommentedKeys.add(key);
+        }
+        // A value line ends the current block's effectiveMode scope.
+        currentMode = null;
+      }
+    }
+    commentedHotReloadKeys.removeAll(uncommentedKeys);
+    Assert.assertTrue(
+        "hot_reload configuration items must be uncommented in the template so that "
+            + "'set configuration' can hot-reload them; commented hot_reload items found: "
+            + commentedHotReloadKeys,
+        commentedHotReloadKeys.isEmpty());
   }
 
   private void generateFile(File file, String content) throws IOException {
