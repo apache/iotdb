@@ -165,7 +165,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -1938,7 +1938,12 @@ public class DataNodeTableOperatorGenerator
         addOperatorContext(
             context, node.getPlanNodeId(), ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(
-        operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
+        operatorContext,
+        operator,
+        node.getQueryId(),
+        node.isVerbose(),
+        node.getTimeout(),
+        node.getOutputFormat());
   }
 
   @Override

@@ -168,6 +168,8 @@ public interface CommonConfig {
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
 
+  CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize);
+
   CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs);
 
   CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(

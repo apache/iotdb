@@ -347,17 +347,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     final ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     final ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     final Collection<Field> fields = scope.getRelationType().getAllFields();
-    final QualifiedName qualifiedName = analysis.getRelationName(table);
-
-    if (!qualifiedName.getPrefix().isPresent()) {
-      throw new IllegalStateException(
-          DataNodeQueryMessages.TABLE + table.getName() + " has no prefix!");
-    }
-
-    final QualifiedObjectName qualifiedObjectName =
-        new QualifiedObjectName(
-            qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
-            qualifiedName.getSuffix());
+    final QualifiedObjectName qualifiedObjectName = getQualifiedObjectName(table, analysis);
 
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
@@ -413,6 +403,19 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
               tagAndAttributeIndexMap);
     }
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
+  }
+
+  public static QualifiedObjectName getQualifiedObjectName(Table table, Analysis analysis) {
+    final QualifiedName qualifiedName = analysis.getRelationName(table);
+    if (!qualifiedName.getPrefix().isPresent()) {
+      throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
+    }
+
+    final QualifiedObjectName qualifiedObjectName =
+        new QualifiedObjectName(
+            qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
+            qualifiedName.getSuffix());
+    return qualifiedObjectName;
   }
 
   @Override

@@ -36,10 +36,13 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.BloomFilter;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +74,14 @@ public class TimeSeriesMetadataCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
   private static final boolean CACHE_ENABLE = memoryConfig.isMetaDataCacheEnable();
+  private static final TimeseriesMetadata NULL_EXISTS_CACHE_PLACE_HOLDER =
+      new TimeseriesMetadata(
+          (byte) 0,
+          0,
+          "",
+          TSDataType.INT32,
+          Statistics.getStatsByType(TSDataType.INT32),
+          new PublicBAOS());
 
   private final Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
@@ -79,6 +90,9 @@ public class TimeSeriesMetadataCache {
   private final Map<String, WeakReference<String>> devices =
       Collections.synchronizedMap(new WeakHashMap<>());
   private static final String SEPARATOR = "$";
+
+  private final AtomicLong evictedExistingEntryCount = new AtomicLong(0);
+  private final AtomicLong evictedNonExistingEntryCount = new AtomicLong(0);
 
   static {
     CACHE_MEMORY_BLOCK =
@@ -100,8 +114,20 @@ public class TimeSeriesMetadataCache {
             .weigher(
                 (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
                     (key, value) ->
-                        (int) (key.getRetainedSizeInBytes() + value.getRetainedSizeInBytes()))
+                        (int)
+                            (key.getRetainedSizeInBytes()
+                                + (value == NULL_EXISTS_CACHE_PLACE_HOLDER
+                                    ? 0
+                                    : value.getRetainedSizeInBytes())))
             .recordStats()
+            .evictionListener(
+                (k, v, c) -> {
+                  if (v == NULL_EXISTS_CACHE_PLACE_HOLDER) {
+                    evictedNonExistingEntryCount.incrementAndGet();
+                  } else {
+                    evictedExistingEntryCount.incrementAndGet();
+                  }
+                })
             .build();
     // add metrics
     MetricService.getInstance().addMetricSet(new TimeSeriesMetadataCacheMetrics(this));
@@ -242,10 +268,15 @@ public class TimeSeriesMetadataCache {
                 timeseriesMetadata = metadata.getStatistics().getCount() == 0 ? null : metadata;
               }
             }
+            if (timeseriesMetadata == null
+                && !ignoreNotExists
+                && memoryConfig.isMayCacheNonExistSeries()) {
+              lruCache.put(key, NULL_EXISTS_CACHE_PLACE_HOLDER);
+            }
           }
         }
       }
-      if (timeseriesMetadata == null) {
+      if (timeseriesMetadata == null || timeseriesMetadata == NULL_EXISTS_CACHE_PLACE_HOLDER) {
         if (debug) {
           DEBUG_LOGGER.info(StorageEngineMessages.FILE_NO_SUCH_TIME_SERIES, key);
         }
@@ -311,8 +342,16 @@ public class TimeSeriesMetadataCache {
 
   /** clear LRUCache. */
   public void clear() {
+    logger.info(
+        "Evicted non-existing/existing series count: {}/{}({}), total request: {}",
+        evictedNonExistingEntryCount.get(),
+        evictedExistingEntryCount.get(),
+        ((double) evictedNonExistingEntryCount.get()) / evictedExistingEntryCount.get(),
+        lruCache.stats().requestCount());
     lruCache.invalidateAll();
     lruCache.cleanUp();
+    evictedNonExistingEntryCount.set(0);
+    evictedExistingEntryCount.set(0);
   }
 
   public void remove(TimeSeriesMetadataCacheKey key) {

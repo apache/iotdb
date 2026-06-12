@@ -67,7 +67,9 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
 
     for (int i = 0; i < length; ++i) {
       // Skip this to avoid instance creation/gc for writing performance
-      if (measurements[i] == null || measurementMap.containsKey(measurements[i])) {
+      if (measurements[i] == null
+          || schemas[i] == null
+          || measurementMap.containsKey(measurements[i])) {
         continue;
       }
       diff += putEntry(measurements[i], schemas[i], null);

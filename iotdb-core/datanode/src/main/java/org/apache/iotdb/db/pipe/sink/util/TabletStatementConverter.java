@@ -86,6 +86,27 @@ public class TabletStatementConverter {
       final boolean readDatabaseName,
       final TabletStringInternPool tabletStringInternPool)
       throws IllegalPathException {
+    return deserializeStatementFromTabletFormat(
+        byteBuffer, readDatabaseName, tabletStringInternPool, true);
+  }
+
+  public static InsertTabletStatement deserializeLegacyStatementFromTabletFormat(
+      final ByteBuffer byteBuffer) throws IllegalPathException {
+    return deserializeLegacyStatementFromTabletFormat(byteBuffer, null);
+  }
+
+  public static InsertTabletStatement deserializeLegacyStatementFromTabletFormat(
+      final ByteBuffer byteBuffer, final TabletStringInternPool tabletStringInternPool)
+      throws IllegalPathException {
+    return deserializeStatementFromTabletFormat(byteBuffer, false, tabletStringInternPool, false);
+  }
+
+  private static InsertTabletStatement deserializeStatementFromTabletFormat(
+      final ByteBuffer byteBuffer,
+      final boolean readDatabaseName,
+      final TabletStringInternPool tabletStringInternPool,
+      final boolean readColumnCategory)
+      throws IllegalPathException {
     final InsertTabletStatement statement = new InsertTabletStatement();
 
     // Calculate memory size during deserialization, use INSTANCE_SIZE constant
@@ -132,9 +153,11 @@ public class TabletStatementConverter {
         final Pair<String, TSDataType> pair = readMeasurement(byteBuffer, tabletStringInternPool);
         measurement[i] = pair.getLeft();
         dataTypes[i] = pair.getRight();
-        columnCategories[i] =
-            TsTableColumnCategory.fromTsFileColumnCategory(
-                ColumnCategory.values()[byteBuffer.get()]);
+        if (readColumnCategory) {
+          columnCategories[i] =
+              TsTableColumnCategory.fromTsFileColumnCategory(
+                  ColumnCategory.values()[byteBuffer.get()]);
+        }
 
         // Calculate memory for each measurement string
         if (measurement[i] != null) {
@@ -395,7 +418,7 @@ public class TabletStatementConverter {
     for (int i = 0; i < columns; i++) {
       final boolean isValueColumnsNotNull =
           BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
-      if (isValueColumnsNotNull && types[i] == null) {
+      if (types[i] == null) {
         continue;
       }
 
