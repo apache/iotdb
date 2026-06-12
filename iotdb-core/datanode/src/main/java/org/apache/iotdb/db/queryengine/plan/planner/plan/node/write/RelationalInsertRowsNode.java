@@ -205,28 +205,38 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       InsertRowNode insertRowNode,
       TRegionReplicaSet dataRegionReplicaSet,
       List<WritePlanNode> writePlanNodeList) {
-    for (int j = 0; j < insertRowNode.getDataTypes().length; j++) {
-      if (insertRowNode.getDataTypes()[j] == TSDataType.OBJECT) {
-        Object[] values = insertRowNode.getValues();
-        if (values[j] == null) {
-          continue;
-        }
-        byte[] binary = ((Binary) values[j]).getValues();
-        ByteBuffer buffer = ByteBuffer.wrap(binary);
-        boolean isEoF = buffer.get() == 1;
-        long offset = buffer.getLong();
-        byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
-        IObjectPath relativePath =
-            IObjectPath.Factory.FACTORY.create(
-                dataRegionReplicaSet.getRegionId().getId(),
-                insertRowNode.getTime(),
-                insertRowNode.getDeviceID(),
-                insertRowNode.getMeasurements()[j]);
-        ObjectNode objectNode = new ObjectNode(isEoF, offset, content, relativePath);
-        objectNode.setDataRegionReplicaSet(dataRegionReplicaSet);
-        writePlanNodeList.add(objectNode);
-        values[j] = null;
+    for (int i = 0; i < insertRowNode.getDataTypes().length; i++) {
+      if (insertRowNode.getDataTypes()[i] != TSDataType.OBJECT) {
+        continue;
       }
+      final Object[] values = insertRowNode.getValues();
+      if (values[i] == null) {
+        continue;
+      }
+      final byte[] binary = ((Binary) values[i]).getValues();
+      if (binary == null || binary.length == 0) {
+        continue;
+      }
+      if (binary.length < Byte.BYTES + Long.BYTES) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Malformed OBJECT binary for measurement %s, length is %d",
+                insertRowNode.getMeasurements()[i], binary.length));
+      }
+      final ByteBuffer buffer = ByteBuffer.wrap(binary);
+      final boolean isEOF = buffer.get() == 1;
+      final long offset = buffer.getLong();
+      final byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
+      final IObjectPath relativePath =
+          IObjectPath.Factory.FACTORY.create(
+              dataRegionReplicaSet.getRegionId().getId(),
+              insertRowNode.getTime(),
+              insertRowNode.getDeviceID(),
+              insertRowNode.getMeasurements()[i]);
+      final ObjectNode objectNode = new ObjectNode(isEOF, offset, content, relativePath);
+      objectNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+      writePlanNodeList.add(objectNode);
+      values[i] = null;
     }
   }
 
