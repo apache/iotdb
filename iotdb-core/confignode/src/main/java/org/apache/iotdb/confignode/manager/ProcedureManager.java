@@ -786,6 +786,29 @@ public class ProcedureManager {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  /**
+   * Collect the ids of all DataNodes that an in-progress {@link RemoveDataNodesProcedure} is
+   * removing.
+   *
+   * <p>A DataNode being removed must not receive any newly allocated Region replica: doing so would
+   * leave a replica stranded on a node that is about to disappear, blocking the removal from ever
+   * completing. We cannot rely on the node's {@link NodeStatus} here, because a DataNode that was
+   * killed (e.g. {@code kill -9}) before removal is reported as {@link NodeStatus#Unknown} by the
+   * failure detector rather than {@link NodeStatus#Removing}, so a status filter alone would still
+   * let it through. The authoritative source is therefore the running procedure itself, which holds
+   * the removing DataNode list and survives leader switches via procedure persistence.
+   *
+   * @return the set of DataNode ids currently being removed (empty if no removal is in progress)
+   */
+  public Set<Integer> getRemovingDataNodeIds() {
+    return getExecutor().getProcedures().values().stream()
+        .filter(procedure -> procedure instanceof RemoveDataNodesProcedure)
+        .filter(procedure -> !procedure.isFinished())
+        .flatMap(procedure -> ((RemoveDataNodesProcedure) procedure).getRemovedDataNodes().stream())
+        .map(TDataNodeLocation::getDataNodeId)
+        .collect(Collectors.toSet());
+  }
+
   // region region operation related check
 
   /**
