@@ -343,19 +343,18 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
       SessionDataSet.DataIterator it = ds.iterator();
       int idx = 0;
       while (it.next()) {
+        long actualTs = it.getLong(1);
         // CRITICAL FIX: Handle async object loading.
         // If the object file hasn't fully arrived/linked yet, it returns null.
-        // We skip this row. This will intentionally trigger a "Timestamp mismatch"
-        // on the next iteration, which throws an AssertionError and safely triggers the retry loop.
         org.apache.tsfile.utils.Binary blob = it.getBlob(2);
         if (blob == null || blob.getValues() == null) {
-          continue;
+          Assert.fail("Object payload is not readable at time " + actualTs + ".");
         }
 
         Assert.assertTrue("Receiver has more rows than expected.", idx < expectedTimesAsc.size());
 
         long expectedTs = expectedTimesAsc.get(idx);
-        Assert.assertEquals("Timestamp mismatch.", expectedTs, it.getLong(1));
+        Assert.assertEquals("Timestamp mismatch.", expectedTs, actualTs);
 
         byte[] expectedPayload = ("Payload_" + expectedTs).getBytes();
         byte[] actualPayload = blob.getValues();
