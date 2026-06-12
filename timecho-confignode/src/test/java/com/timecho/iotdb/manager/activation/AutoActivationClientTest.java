@@ -22,6 +22,8 @@ package com.timecho.iotdb.manager.activation;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+
 public class AutoActivationClientTest {
 
   @Test
@@ -33,5 +35,48 @@ public class AutoActivationClientTest {
         "version=1,api_key=\"secret\",timestamp=1700000000000,"
             + "signature=\"9deo/gyI2fofSj+6vnv3NnN+rF+OcZ1FCXSO/X8oHIk=\"",
         authorization);
+  }
+
+  @Test
+  public void testParseResponseRejectsNonObjectJson() {
+    try {
+      AutoActivationClient.parseResponse(503, "\"service busy\"");
+      Assert.fail("Expected IOException");
+    } catch (IOException e) {
+      Assert.assertTrue(e.getMessage().contains("non-object JSON response"));
+      Assert.assertTrue(e.getMessage().contains("statusCode=503"));
+      Assert.assertTrue(e.getMessage().contains("\"service busy\""));
+    }
+  }
+
+  @Test
+  public void testParseResponseRejectsInvalidJson() {
+    try {
+      AutoActivationClient.parseResponse(403, "<html>Forbidden</html>");
+      Assert.fail("Expected IOException");
+    } catch (IOException e) {
+      Assert.assertTrue(e.getMessage().contains("invalid JSON response"));
+      Assert.assertTrue(e.getMessage().contains("statusCode=403"));
+      Assert.assertTrue(e.getMessage().contains("<html>Forbidden</html>"));
+    }
+  }
+
+  @Test
+  public void testSanitizeResponseBodyForLogRedactsLicense() {
+    String responseBody =
+        "{\"code\":0,\"data\":{\"license\":\"secret-license\",\"nested\":{\"signature\":\"abc\"}}}";
+
+    String sanitized = AutoActivationClient.sanitizeResponseBodyForLog(responseBody);
+
+    Assert.assertTrue(sanitized.contains("\"license\":\"[REDACTED]\""));
+    Assert.assertTrue(sanitized.contains("\"signature\":\"[REDACTED]\""));
+    Assert.assertFalse(sanitized.contains("secret-license"));
+    Assert.assertFalse(sanitized.contains("abc"));
+  }
+
+  @Test
+  public void testSanitizeResponseBodyForLogKeepsPrimitiveResponse() {
+    Assert.assertEquals(
+        "\"service busy\"", AutoActivationClient.sanitizeResponseBodyForLog("\"service busy\""));
   }
 }
