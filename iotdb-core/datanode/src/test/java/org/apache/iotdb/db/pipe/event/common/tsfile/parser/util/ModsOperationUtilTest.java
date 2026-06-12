@@ -409,6 +409,38 @@ public class ModsOperationUtilTest {
   }
 
   @Test
+  public void testBuildObjectColumnDeletionEntriesForObjectOnlyFullTableDeletion() {
+    final TableDeletionEntry tableDeletionEntry =
+        new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(0, 100));
+    final Set<String> objectMeasurements = new LinkedHashSet<>(Arrays.asList("file"));
+
+    final TableDeletionEntry generatedEntry =
+        (TableDeletionEntry)
+            ModsOperationUtil.buildObjectColumnDeletionEntries(
+                tableDeletionEntry, objectMeasurements, true);
+
+    assertTrue(generatedEntry.getPredicate().getMeasurementNames().isEmpty());
+    assertEquals(0, generatedEntry.getTimeRange().getMin());
+    assertEquals(100, generatedEntry.getTimeRange().getMax());
+  }
+
+  @Test
+  public void testBuildObjectColumnDeletionEntriesForMixedFullTableDeletion() {
+    final TableDeletionEntry tableDeletionEntry =
+        new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(0, 100));
+    final Set<String> objectMeasurements = new LinkedHashSet<>(Arrays.asList("file"));
+
+    final TableDeletionEntry generatedEntry =
+        (TableDeletionEntry)
+            ModsOperationUtil.buildObjectColumnDeletionEntries(
+                tableDeletionEntry, objectMeasurements, false);
+
+    assertEquals(Arrays.asList("file"), generatedEntry.getPredicate().getMeasurementNames());
+    assertEquals(0, generatedEntry.getTimeRange().getMin());
+    assertEquals(100, generatedEntry.getTimeRange().getMax());
+  }
+
+  @Test
   public void testBuildObjectColumnDeletionEntriesForSpecifiedMeasurements() {
     final TableDeletionEntry tableDeletionEntry =
         new TableDeletionEntry(

@@ -240,13 +240,14 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
                 "DELETE FROM %s WHERE time >= %d AND time <= %d", TABLE_NAME, delStart, delEnd));
         TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
-        if (modsEnable) {
-          waitForSenderDeletionVisibleOnAllDataNodes(delStart, delEnd);
-        }
+        // OBJECT payload compensation still derives from deletion mods when source mods are
+        // disabled.
+        waitForSenderDeletionVisibleOnAllDataNodes(delStart, delEnd);
 
         for (long t = HISTORY_INSERT_START; t < HISTORY_INSERT_START + HISTORY_INSERT_ROWS; t++) {
           boolean inDeleteRange = (t >= delStart && t <= delEnd);
-          if (!modsEnable || !inDeleteRange) {
+          // Deleted OBJECT payload files cannot be read back even when source mods are disabled.
+          if (!inDeleteRange) {
             expectedTimestamps.add(t);
           }
         }
@@ -341,7 +342,7 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
 
     try (SessionDataSet ds = session.executeQueryStatement(sql)) {
       SessionDataSet.DataIterator it = ds.iterator();
-      int idx = 0;
+      Map<Long, byte[]> actualPayloadsByTime = new LinkedHashMap<>();
       while (it.next()) {
         long actualTs = it.getLong(1);
         // CRITICAL FIX: Handle async object loading.
@@ -351,19 +352,29 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
           Assert.fail("Object payload is not readable at time " + actualTs + ".");
         }
 
-        Assert.assertTrue("Receiver has more rows than expected.", idx < expectedTimesAsc.size());
+        Assert.assertFalse(
+            "Duplicate timestamp on receiver: " + actualTs,
+            actualPayloadsByTime.containsKey(actualTs));
+        actualPayloadsByTime.put(actualTs, blob.getValues());
+      }
 
-        long expectedTs = expectedTimesAsc.get(idx);
-        Assert.assertEquals("Timestamp mismatch.", expectedTs, actualTs);
+      Assert.assertEquals(
+          "Total row count mismatch. Actual timestamps: " + actualPayloadsByTime.keySet(),
+          expectedTimesAsc.size(),
+          actualPayloadsByTime.size());
 
+      for (long expectedTs : expectedTimesAsc) {
+        Assert.assertTrue(
+            "Missing timestamp "
+                + expectedTs
+                + " on receiver. Actual timestamps: "
+                + actualPayloadsByTime.keySet(),
+            actualPayloadsByTime.containsKey(expectedTs));
         byte[] expectedPayload = ("Payload_" + expectedTs).getBytes();
-        byte[] actualPayload = blob.getValues();
+        byte[] actualPayload = actualPayloadsByTime.get(expectedTs);
         Assert.assertArrayEquals(
             "Object payload mismatch at time " + expectedTs, expectedPayload, actualPayload);
-
-        idx++;
       }
-      Assert.assertEquals("Total row count mismatch.", expectedTimesAsc.size(), idx);
     } catch (Exception e) {
       if (expectedTimesAsc.isEmpty()
           && e.getMessage() != null
@@ -500,11 +511,11 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
 
     private boolean loadReadyTsFiles(ITableSession session, File dir) throws Exception {
       boolean loadedAny = false;
-      File[] files = dir.listFiles();
-      if (files == null) return false;
+      List<File> files = new ArrayList<>();
+      findTsFiles(dir, files);
+      files.sort(Comparator.comparing(File::getAbsolutePath));
 
       for (File f : files) {
-        if (!f.isFile() || !f.getName().endsWith(".tsfile")) continue;
         String absPath = f.getAbsolutePath();
 
         if (!loadedFiles.contains(absPath)) {
@@ -515,6 +526,20 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
         }
       }
       return loadedAny;
+    }
+
+    private void findTsFiles(File dir, List<File> tsFiles) {
+      File[] files = dir.listFiles();
+      if (files == null) {
+        return;
+      }
+      for (File file : files) {
+        if (file.isDirectory()) {
+          findTsFiles(file, tsFiles);
+        } else if (file.isFile() && file.getName().endsWith(".tsfile")) {
+          tsFiles.add(file);
+        }
+      }
     }
   }
 

@@ -948,11 +948,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
    */
   private TsFileInsertionEventParser initEventParser(final boolean objectPathsOnly) {
     try {
-      // Object path extraction must honor the event's mod-transfer setting. If mods are disabled,
-      // link every object referenced by the exported TsFile instead of mutating this event into a
-      // modded one.
+      final boolean collectObjectColumnModEntries = isTableModelEvent();
       eventParser.compareAndSet(
-          null, createParserProvider().provide(isWithMod, objectPathsOnly, false));
+          null,
+          createParserProvider()
+              .provide(isWithMod, objectPathsOnly, collectObjectColumnModEntries));
       return eventParser.get();
     } catch (final Exception e) {
       close();

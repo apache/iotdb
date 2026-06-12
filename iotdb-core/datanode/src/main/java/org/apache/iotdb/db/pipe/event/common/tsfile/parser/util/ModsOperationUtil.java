@@ -82,6 +82,13 @@ public class ModsOperationUtil {
 
   public static ModEntry buildObjectColumnDeletionEntries(
       final TableDeletionEntry tableDeletionEntry, final Set<String> objectMeasurementNames) {
+    return buildObjectColumnDeletionEntries(tableDeletionEntry, objectMeasurementNames, false);
+  }
+
+  public static ModEntry buildObjectColumnDeletionEntries(
+      final TableDeletionEntry tableDeletionEntry,
+      final Set<String> objectMeasurementNames,
+      final boolean deleteAllColumnsWhenAllValueColumnsAreObjects) {
     if (tableDeletionEntry == null
         || objectMeasurementNames == null
         || objectMeasurementNames.isEmpty()) {
@@ -91,7 +98,10 @@ public class ModsOperationUtil {
     final DeletionPredicate predicate = tableDeletionEntry.getPredicate();
     final List<String> targetMeasurements;
     if (predicate.getMeasurementNames().isEmpty()) {
-      targetMeasurements = new ArrayList<>(objectMeasurementNames);
+      targetMeasurements =
+          deleteAllColumnsWhenAllValueColumnsAreObjects
+              ? Collections.emptyList()
+              : new ArrayList<>(objectMeasurementNames);
     } else {
       targetMeasurements =
           predicate.getMeasurementNames().stream()
@@ -99,7 +109,7 @@ public class ModsOperationUtil {
               .collect(Collectors.toList());
     }
 
-    if (targetMeasurements.isEmpty()) {
+    if (!predicate.getMeasurementNames().isEmpty() && targetMeasurements.isEmpty()) {
       return null;
     }
 

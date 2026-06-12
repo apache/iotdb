@@ -42,8 +42,12 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
@@ -65,6 +69,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   private final List<ModEntry> originalModEntries;
 
   private final Map<String, Set<String>> tableObjectMeasurements = new HashMap<>();
+  private final Map<String, Boolean> tableOnlyHasObjectValueMeasurements = new HashMap<>();
 
   private final long startTime;
   private final long endTime;
@@ -109,12 +114,23 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     this.collectObjectColumnModEntries = collectObjectColumnModEntries;
     this.isWithMod = isWithMod;
     try {
-      final boolean loadModificationsFromTsFile =
-          this.isWithMod || this.collectObjectColumnModEntries;
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
       if (this.collectObjectColumnModEntries) {
-        originalModEntries = ModsOperationUtil.readAllModificationsFromTsFile(tsFile);
+        recordTableObjectMeasurements(tsFileSequenceReader.getTableSchemaMap());
+      }
+      final boolean shouldCollectObjectColumnModEntries =
+          this.collectObjectColumnModEntries && !tableObjectMeasurements.isEmpty();
+      final boolean loadModificationsFromTsFile =
+          this.isWithMod || shouldCollectObjectColumnModEntries;
+      if (shouldCollectObjectColumnModEntries) {
+        final List<ModEntry> loadedOriginalModEntries =
+            ModsOperationUtil.readAllModificationsFromTsFile(tsFile);
+        originalModEntries = loadedOriginalModEntries;
         currentModifications =
-            ModsOperationUtil.buildModificationsPatternTreeMap(originalModEntries);
+            ModsOperationUtil.buildModificationsPatternTreeMap(
+                this.isWithMod
+                    ? loadedOriginalModEntries
+                    : generateObjectColumnModEntries(loadedOriginalModEntries, new ArrayList<>()));
       } else {
         originalModEntries = Collections.emptyList();
         currentModifications =
@@ -150,7 +166,6 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       this.tablePattern = pattern;
 
       this.entity = entity;
-      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
     } catch (final Exception e) {
       close();
       throw e;
@@ -183,8 +198,53 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         false);
   }
 
+  private void recordTableObjectMeasurements(final Map<String, TableSchema> tableSchemaMap) {
+    if (tableSchemaMap == null || tableSchemaMap.isEmpty()) {
+      return;
+    }
+    for (final Map.Entry<String, TableSchema> entry : tableSchemaMap.entrySet()) {
+      if (entry.getValue() == null || entry.getValue().getColumnSchemas() == null) {
+        continue;
+      }
+      final List<String> objectMeasurements = new ArrayList<>();
+      boolean hasValueMeasurement = false;
+      boolean onlyHasObjectValueMeasurements = true;
+      final List<IMeasurementSchema> columnSchemas = entry.getValue().getColumnSchemas();
+      final List<ColumnCategory> columnTypes = entry.getValue().getColumnTypes();
+      for (int columnIndex = 0; columnIndex < columnSchemas.size(); columnIndex++) {
+        final IMeasurementSchema schema = columnSchemas.get(columnIndex);
+        final boolean isValueMeasurement =
+            columnTypes == null
+                || columnIndex >= columnTypes.size()
+                || !ColumnCategory.TAG.equals(columnTypes.get(columnIndex));
+        if (isValueMeasurement) {
+          hasValueMeasurement = true;
+        }
+        if (schema != null
+            && schema.getType() == TSDataType.OBJECT
+            && schema.getMeasurementName() != null
+            && !schema.getMeasurementName().isEmpty()) {
+          objectMeasurements.add(schema.getMeasurementName());
+        } else if (isValueMeasurement) {
+          onlyHasObjectValueMeasurements = false;
+        }
+      }
+      recordTableObjectMeasurements(
+          entry.getKey(),
+          objectMeasurements,
+          hasValueMeasurement && onlyHasObjectValueMeasurements);
+    }
+  }
+
   private void recordTableObjectMeasurements(
       final String tableName, final List<String> objectMeasurements) {
+    recordTableObjectMeasurements(tableName, objectMeasurements, false);
+  }
+
+  private void recordTableObjectMeasurements(
+      final String tableName,
+      final List<String> objectMeasurements,
+      final boolean onlyHasObjectValueMeasurements) {
     if (tableName == null
         || tableName.isEmpty()
         || objectMeasurements == null
@@ -194,16 +254,24 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     tableObjectMeasurements
         .computeIfAbsent(tableName, ignored -> new LinkedHashSet<>())
         .addAll(objectMeasurements);
+    tableOnlyHasObjectValueMeasurements.merge(
+        tableName, onlyHasObjectValueMeasurements, Boolean::logicalOr);
   }
 
   private List<ModEntry> generateObjectColumnModEntries(List<ModEntry> generatedEntries) {
+    return generateObjectColumnModEntries(originalModEntries, generatedEntries);
+  }
+
+  private List<ModEntry> generateObjectColumnModEntries(
+      final List<ModEntry> sourceModEntries, List<ModEntry> generatedEntries) {
     if (!collectObjectColumnModEntries
-        || originalModEntries.isEmpty()
+        || sourceModEntries == null
+        || sourceModEntries.isEmpty()
         || tableObjectMeasurements.isEmpty()) {
       return Collections.emptyList();
     }
 
-    for (final ModEntry modEntry : originalModEntries) {
+    for (final ModEntry modEntry : sourceModEntries) {
       if (!(modEntry instanceof TableDeletionEntry)) {
         continue;
       }
@@ -217,7 +285,10 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
       ModEntry entry =
           ModsOperationUtil.buildObjectColumnDeletionEntries(
-              tableDeletionEntry, objectMeasurements);
+              tableDeletionEntry,
+              objectMeasurements,
+              Boolean.TRUE.equals(
+                  tableOnlyHasObjectValueMeasurements.get(tableDeletionEntry.getTableName())));
       if (entry != null) {
         generatedEntries.add(entry);
       }
