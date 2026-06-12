@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import org.bouncycastle.jcajce.provider.digest.SM3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -48,6 +50,8 @@ public class AutoActivationClient {
   private static final String LICENSE_SERVER_URL = "https://license.timecho.com";
   private static final String AUTHORIZATION_VERSION = "1";
   private static final char[] HEX_ARRAY = "0123456789abcdef".toCharArray();
+  private static final int MAX_RESPONSE_BODY_LOG_LENGTH = 1024;
+  private static final String REDACTED_LOG_VALUE = "[REDACTED]";
   private static final String API_KEY_FILE_PROPERTY = "timechodb.auto.activation.api-key-file";
   private static final String API_KEY_FILE_ENV = "TIMECHODB_AUTO_ACTIVATION_API_KEY_FILE";
   private static final long INITIAL_DELAY_MS = 15_000L;
@@ -110,11 +114,107 @@ public class AutoActivationClient {
     int statusCode = connection.getResponseCode();
     String responseBody =
         readAll(statusCode >= 400 ? connection.getErrorStream() : connection.getInputStream());
-    JsonObject response = GSON.fromJson(responseBody, JsonObject.class);
-    if (statusCode >= 400 || response == null || response.get("code").getAsInt() != 0) {
-      throw new IOException("auto activation request failed: " + responseBody);
+    LOGGER.info(
+        "auto activation request response: path={}, statusCode={}, responseBody={}",
+        path,
+        statusCode,
+        sanitizeResponseBodyForLog(responseBody));
+    return parseResponse(statusCode, responseBody);
+  }
+
+  static JsonObject parseResponse(int statusCode, String responseBody) throws IOException {
+    JsonElement responseElement;
+    try {
+      responseElement = GSON.fromJson(responseBody, JsonElement.class);
+    } catch (RuntimeException e) {
+      throw new IOException(
+          "auto activation request returned invalid JSON response: statusCode="
+              + statusCode
+              + ", responseBody="
+              + abbreviateResponseBody(responseBody),
+          e);
+    }
+    if (responseElement == null || !responseElement.isJsonObject()) {
+      throw new IOException(
+          "auto activation request returned non-object JSON response: statusCode="
+              + statusCode
+              + ", responseBody="
+              + abbreviateResponseBody(responseBody));
+    }
+    JsonObject response = responseElement.getAsJsonObject();
+    if (statusCode >= 400 || !isSuccessResponse(response)) {
+      throw new IOException(
+          "auto activation request failed: statusCode="
+              + statusCode
+              + ", responseBody="
+              + abbreviateResponseBody(responseBody));
     }
     return response;
+  }
+
+  private static boolean isSuccessResponse(JsonObject response) {
+    JsonElement code = response.get("code");
+    if (code == null || code.isJsonNull()) {
+      return false;
+    }
+    try {
+      return code.getAsInt() == 0;
+    } catch (RuntimeException e) {
+      return false;
+    }
+  }
+
+  private static String abbreviateResponseBody(String responseBody) {
+    if (responseBody == null) {
+      return "";
+    }
+    if (responseBody.length() <= MAX_RESPONSE_BODY_LOG_LENGTH) {
+      return responseBody;
+    }
+    return responseBody.substring(0, MAX_RESPONSE_BODY_LOG_LENGTH) + "...";
+  }
+
+  static String sanitizeResponseBodyForLog(String responseBody) {
+    if (responseBody == null || responseBody.isEmpty()) {
+      return "";
+    }
+    try {
+      JsonElement responseElement = GSON.fromJson(responseBody, JsonElement.class);
+      redactSensitiveFields(responseElement);
+      return abbreviateResponseBody(GSON.toJson(responseElement));
+    } catch (RuntimeException e) {
+      return abbreviateResponseBody(responseBody);
+    }
+  }
+
+  private static void redactSensitiveFields(JsonElement element) {
+    if (element == null || element.isJsonNull()) {
+      return;
+    }
+    if (element.isJsonObject()) {
+      for (Map.Entry<String, JsonElement> entry : element.getAsJsonObject().entrySet()) {
+        if (isSensitiveResponseField(entry.getKey())) {
+          entry.setValue(new JsonPrimitive(REDACTED_LOG_VALUE));
+        } else {
+          redactSensitiveFields(entry.getValue());
+        }
+      }
+      return;
+    }
+    if (element.isJsonArray()) {
+      for (JsonElement child : element.getAsJsonArray()) {
+        redactSensitiveFields(child);
+      }
+    }
+  }
+
+  private static boolean isSensitiveResponseField(String fieldName) {
+    return "license".equalsIgnoreCase(fieldName)
+        || "apiKey".equalsIgnoreCase(fieldName)
+        || "api_key".equalsIgnoreCase(fieldName)
+        || "apiKeyId".equalsIgnoreCase(fieldName)
+        || "api_key_id".equalsIgnoreCase(fieldName)
+        || "signature".equalsIgnoreCase(fieldName);
   }
 
   static String buildAuthorizationHeader(String apiKey, String timestamp, String requestBody)
