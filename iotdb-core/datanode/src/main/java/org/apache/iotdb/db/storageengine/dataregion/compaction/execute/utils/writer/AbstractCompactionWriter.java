@@ -77,7 +77,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   @SuppressWarnings("squid:S1170")
   private final long checkPoint = (targetChunkPointNum >= 10 ? targetChunkPointNum : 10) / 10;
 
-  private long lastCheckIndex = 0;
+  private long[] lastCheckIndexArray = new long[subTaskNum];
 
   // if unsealed chunk size is lower then this, then deserialize next chunk no matter it is
   // overlapped or not
@@ -122,7 +122,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   public void startMeasurement(String measurement, IChunkWriter chunkWriter, int subTaskId) {
-    lastCheckIndex = 0;
+    lastCheckIndexArray[subTaskId] = 0;
     lastTimeSet[subTaskId] = false;
     chunkWriters[subTaskId] = chunkWriter;
     measurementId[subTaskId] = measurement;
@@ -320,12 +320,12 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected void checkChunkSizeAndMayOpenANewChunk(
       CompactionTsFileWriter fileWriter, IChunkWriter chunkWriter, int subTaskId)
       throws IOException {
-    if (chunkPointNumArray[subTaskId] >= (lastCheckIndex + 1) * checkPoint) {
+    if (chunkPointNumArray[subTaskId] >= (lastCheckIndexArray[subTaskId] + 1) * checkPoint) {
       // if chunk point num reaches the check point, then check if the chunk size over threshold
-      lastCheckIndex = chunkPointNumArray[subTaskId] / checkPoint;
+      lastCheckIndexArray[subTaskId] = chunkPointNumArray[subTaskId] / checkPoint;
       if (chunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, false)) {
         sealChunk(fileWriter, chunkWriter, subTaskId);
-        lastCheckIndex = 0;
+        lastCheckIndexArray[subTaskId] = 0;
       }
     }
   }
