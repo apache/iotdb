@@ -68,13 +68,19 @@ public class IoTDBCustomizedClusterIT {
             // This query is fanned out to every DataNode and the results are compared across
             // replicas. Right after a restart the last cache on each coordinator is reloaded
             // lazily, so the cross-replica comparison may transiently observe an inconsistent
-            // result (e.g. different row order) until the cluster converges. ORDER BY TIMESERIES
-            // makes the row order deterministic across coordinators (the root cause of the observed
-            // flakiness), and the retry tolerates the brief convergence window without masking a
-            // genuine, persistent inconsistency.
+            // result until the cluster converges. ORDER BY TIMESERIES makes the row order
+            // deterministic across coordinators (the root cause of the observed flakiness), and the
+            // retry tolerates the brief convergence window (e.g. a replica that has not finished
+            // recovering yet) without masking a genuine, persistent inconsistency.
+            //
+            // ignoreExceptions() is required: a mismatch surfaces as InconsistentDataException
+            // (a RuntimeException) thrown from getString(), and untilAsserted() only retries on
+            // AssertionError by default, so without it the retry would not actually cover this
+            // failure.
             Awaitility.await()
                 .atMost(60, TimeUnit.SECONDS)
                 .pollInterval(2, TimeUnit.SECONDS)
+                .ignoreExceptions()
                 .untilAsserted(
                     () -> {
                       try (ResultSet resultSet =
