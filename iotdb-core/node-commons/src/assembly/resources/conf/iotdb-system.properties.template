@@ -587,7 +587,7 @@ enable_rest_service=false
 # Datatype: int
 rest_service_port=18080
 
-# Whether to display rest service interface information through swagger. eg: http://ip:port/swagger.json
+# Whether to display rest service interface information through OpenAPI. eg: http://ip:port/openapi.json
 # effectiveMode: restart
 # Datatype: boolean
 enable_swagger=false
