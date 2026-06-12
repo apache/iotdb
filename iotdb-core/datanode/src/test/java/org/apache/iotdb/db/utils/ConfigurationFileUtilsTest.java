@@ -96,21 +96,23 @@ public class ConfigurationFileUtilsTest {
   }
 
   /**
-   * Regression guard for V2-995: a configuration item declared {@code effectiveMode: hot_reload}
-   * must have its {@code key=value} line left uncommented in the template. {@code
-   * getConfigurationItemsFromTemplate} only parses uncommented lines, so a commented hot_reload
-   * item never enters {@code configuration2DefaultValue}; {@code filterInvalidConfigItems} then
-   * treats it as undefined and {@code set configuration} rejects it with "immutable or undefined",
-   * silently disabling the advertised hot-reload entry point.
+   * Regression guard for V2-995: a configuration item whose {@code effectiveMode} allows {@code set
+   * configuration} (i.e. anything except {@code FIRST_START}) must have its {@code key=value} line
+   * left uncommented in the template. {@code getConfigurationItemsFromTemplate} only parses
+   * uncommented lines, so a commented item never enters {@code configuration2DefaultValue}; {@code
+   * filterInvalidConfigItems} then treats it as undefined and {@code set configuration} rejects it
+   * with "immutable or undefined" — silently disabling the advertised dynamic-config entry point.
+   * This was the root cause for {@code enable_topology_probing} (hot_reload) and the two {@code
+   * topology_probing_*} items (restart).
    */
   @Test
-  public void checkHotReloadItemsAreUncommentedInTemplate() throws IOException {
+  public void checkSettableItemsAreUncommentedInTemplate() throws IOException {
     // Keys whose value line appears uncommented at least once. Some keys (e.g. dn_data_dirs) list a
     // commented Windows-path variant next to an uncommented Unix-path variant; only the uncommented
     // one is parsed, so such keys are fine and must not be flagged.
     Set<String> uncommentedKeys = new HashSet<>();
-    // Keys with a commented value line whose enclosing block declares effectiveMode: hot_reload.
-    Set<String> commentedHotReloadKeys = new HashSet<>();
+    // Keys with a commented value line whose enclosing block declares a settable effectiveMode.
+    Set<String> commentedSettableKeys = new HashSet<>();
     try (InputStream inputStream =
             ConfigurationFileUtilsTest.class
                 .getClassLoader()
@@ -142,8 +144,10 @@ public class ConfigurationFileUtilsTest {
         }
         String key = stripped.substring(0, equalsIndex).trim();
         if (line.startsWith("#")) {
-          if (currentMode == ConfigurationFileUtils.EffectiveModeType.HOT_RELOAD) {
-            commentedHotReloadKeys.add(key);
+          // FIRST_START items are intentionally rejected by 'set configuration'; UNKNOWN items have
+          // no declared mode. Only flag items that 'set configuration' is supposed to accept.
+          if (isSettableByConfiguration(currentMode)) {
+            commentedSettableKeys.add(key);
           }
         } else {
           uncommentedKeys.add(key);
@@ -152,12 +156,19 @@ public class ConfigurationFileUtilsTest {
         currentMode = null;
       }
     }
-    commentedHotReloadKeys.removeAll(uncommentedKeys);
+    commentedSettableKeys.removeAll(uncommentedKeys);
     Assert.assertTrue(
-        "hot_reload configuration items must be uncommented in the template so that "
-            + "'set configuration' can hot-reload them; commented hot_reload items found: "
-            + commentedHotReloadKeys,
-        commentedHotReloadKeys.isEmpty());
+        "configuration items settable via 'set configuration' must be uncommented in the template "
+            + "so the command can reach them instead of rejecting them as undefined; "
+            + "commented settable items found: "
+            + commentedSettableKeys,
+        commentedSettableKeys.isEmpty());
+  }
+
+  private static boolean isSettableByConfiguration(ConfigurationFileUtils.EffectiveModeType mode) {
+    return mode == ConfigurationFileUtils.EffectiveModeType.HOT_RELOAD
+        || mode == ConfigurationFileUtils.EffectiveModeType.RESTART
+        || mode == ConfigurationFileUtils.EffectiveModeType.FIRST_START_OR_SET_CONFIGURATION;
   }
 
   private void generateFile(File file, String content) throws IOException {

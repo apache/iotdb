@@ -89,16 +89,20 @@ public class IoTDBSetConfigurationIT {
   }
 
   /**
-   * Regression test for V2-995: {@code enable_topology_probing} is declared {@code effectiveMode:
-   * hot_reload}, so {@code set configuration} must accept it (instead of rejecting it as "immutable
-   * or undefined") and persist it to the config file. This used to fail because the item was left
-   * commented out in the template, hiding it from the default-value map.
+   * Regression test for V2-995: the topology-probing config items were left commented out in the
+   * template, so {@code getConfigurationItemsFromTemplate} never recorded them as known defaults
+   * and {@code set configuration} rejected them as "immutable or undefined". After uncommenting
+   * them, {@code set configuration} must accept and persist them: {@code enable_topology_probing}
+   * (hot_reload) and {@code topology_probing_base_interval_in_ms} / {@code
+   * topology_probing_timeout_ratio} (restart).
    */
   @Test
-  public void testSetHotReloadTopologyProbing() {
+  public void testSetTopologyProbingConfiguration() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("set configuration \"enable_topology_probing\"=\"true\"");
+      statement.execute("set configuration \"topology_probing_base_interval_in_ms\"=\"3000\"");
+      statement.execute("set configuration \"topology_probing_timeout_ratio\"=\"0.4\"");
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
@@ -106,7 +110,11 @@ public class IoTDBSetConfigurationIT {
         EnvFactory.getEnv().getConfigNodeWrapperList().stream()
             .allMatch(
                 nodeWrapper ->
-                    checkConfigFileContains(nodeWrapper, "enable_topology_probing=true")));
+                    checkConfigFileContains(
+                        nodeWrapper,
+                        "enable_topology_probing=true",
+                        "topology_probing_base_interval_in_ms=3000",
+                        "topology_probing_timeout_ratio=0.4")));
   }
 
   @Test
