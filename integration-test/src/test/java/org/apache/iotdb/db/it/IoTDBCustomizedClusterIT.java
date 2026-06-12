@@ -25,6 +25,7 @@ import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -73,14 +74,15 @@ public class IoTDBCustomizedClusterIT {
             // retry tolerates the brief convergence window (e.g. a replica that has not finished
             // recovering yet) without masking a genuine, persistent inconsistency.
             //
-            // ignoreExceptions() is required: a mismatch surfaces as InconsistentDataException
-            // (a RuntimeException) thrown from getString(), and untilAsserted() only retries on
-            // AssertionError by default, so without it the retry would not actually cover this
-            // failure.
+            // ignoreExceptionsMatching(InconsistentDataException) is required: a mismatch surfaces
+            // as InconsistentDataException (a RuntimeException) thrown from getString(), and
+            // untilAsserted() only retries on AssertionError by default, so without it the retry
+            // would not actually cover this failure. We match only InconsistentDataException so a
+            // genuine error (e.g. a real SQLException) still fails fast instead of being retried.
             Awaitility.await()
                 .atMost(60, TimeUnit.SECONDS)
                 .pollInterval(2, TimeUnit.SECONDS)
-                .ignoreExceptions()
+                .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
                 .untilAsserted(
                     () -> {
                       try (ResultSet resultSet =
