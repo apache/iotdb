@@ -181,7 +181,7 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
         new AlignedPageReader(
             timePageHeader,
             timePageData,
-            defaultTimeDecoder,
+            getTimeDecoder(timeChunkHeader.getEncodingType()),
             valuePageHeaderList,
             valuePageDataArray,
             valueDataTypeList,

@@ -23,7 +23,7 @@
 
 ## Dependencies
 
-* JDK >= 1.8
+* JDK >= 17
 * Maven >= 3.6
 
 ## How to package only jdbc project

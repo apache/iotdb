@@ -431,7 +431,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       String errorMsg =
           TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
               + ": Error occurred while parsing SQL to physical plan: "
-              + "line 1:22 token recognition error at: '` = 1) from root.vehicle.d1'";
+              + "line 1:21 no viable alternative at input 'select bottom_k(s1,``k'";
       try (Connection connection = EnvFactory.getEnv().getConnection();
           Statement statement = connection.createStatement()) {
         // UDF attribute should be STRING_LITERAL

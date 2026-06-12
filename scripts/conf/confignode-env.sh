@@ -201,53 +201,37 @@ fi
 java_ver_output=`"$JAVA" -version 2>&1`
 jvmver=`echo "$java_ver_output" | grep '[openjdk|java] version' | awk -F'"' 'NR==1 {print $2}' | cut -d\- -f1`
 JVM_VERSION=${jvmver%_*}
-JVM_PATCH_VERSION=${jvmver#*_}
-if [ "$JVM_VERSION" \< "1.8" ] ; then
-    echo "IoTDB requires Java 8u92 or later."
-    exit 1;
-fi
-
-if [ "$JVM_VERSION" \< "1.8" ] && [ "$JVM_PATCH_VERSION" -lt 92 ] ; then
-    echo "IoTDB requires Java 8u92 or later."
-    exit 1;
-fi
-
 version_arr=(${JVM_VERSION//./ })
+if [ "${version_arr[0]}" = "1" ] ; then
+    MAJOR_VERSION=${version_arr[1]}
+else
+    MAJOR_VERSION=${version_arr[0]}
+fi
+
+if [ "$MAJOR_VERSION" -lt 17 ] ; then
+    echo "IoTDB requires Java 17 or later."
+    exit 1;
+fi
 
 illegal_access_params=""
 #GC log path has to be defined here because it needs to access CONFIGNODE_HOME
-if [ "${version_arr[0]}" = "1" ] ; then
-    # Java 8
-    MAJOR_VERSION=${version_arr[1]}
-    echo "$CONFIGNODE_JMX_OPTS" | grep -q "^-[X]loggc"
-    if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
-        # only add -Xlog:gc if it's not mentioned in jvm-server.options file
-        mkdir -p ${CONFIGNODE_HOME}/logs
-        if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-            CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Xloggc:${CONFIGNODE_HOME}/logs/gc.log  -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M"
-        fi
+# See description of https://bugs.openjdk.java.net/browse/JDK-8046148 for details about the syntax
+# The following is the equivalent to -XX:+PrintGCDetails -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
+echo "$CONFIGNODE_JMX_OPTS" | grep -q "^-[X]log:gc"
+if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
+    # only add -Xlog:gc if it's not mentioned in jvm-server.options file
+    mkdir -p ${CONFIGNODE_HOME}/logs
+    if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+        CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Xlog:gc=info,heap*=info,age*=info,safepoint=info,promotion*=info:file=${CONFIGNODE_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
     fi
-else
-    #JDK 11 and others
-    MAJOR_VERSION=${version_arr[0]}
-    # See description of https://bugs.openjdk.java.net/browse/JDK-8046148 for details about the syntax
-    # The following is the equivalent to -XX:+PrintGCDetails -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
-    echo "$CONFIGNODE_JMX_OPTS" | grep -q "^-[X]log:gc"
-    if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
-        # only add -Xlog:gc if it's not mentioned in jvm-server.options file
-        mkdir -p ${CONFIGNODE_HOME}/logs
-        if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-            CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Xlog:gc=info,heap*=info,age*=info,safepoint=info,promotion*=info:file=${CONFIGNODE_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
-        fi
-    fi
-    # Add argLine for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.util.concurrent=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.lang=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.util=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.nio=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.io=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.net=ALL-UNNAMED"
 fi
+# Add argLine for Java 17 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.util.concurrent=ALL-UNNAMED"
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.lang=ALL-UNNAMED"
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.util=ALL-UNNAMED"
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.nio=ALL-UNNAMED"
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.io=ALL-UNNAMED"
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.net=ALL-UNNAMED"
 
 
 calculate_memory_sizes
@@ -333,4 +317,3 @@ fi
 
 echo "ConfigNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
 echo "If you want to change this configuration, please check conf/confignode-env.sh."
-

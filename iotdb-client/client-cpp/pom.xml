@@ -377,15 +377,11 @@
                 <build.tests>OFF</build.tests>
             </properties>
         </profile>
-        <!--
-          Spotless <clangFormat> needs Spotless 2.44+; root POM downgrades to
-          2.27.1 on JDK8 and cannot parse cpp config. Only register C++ rules
-          when JDK 11+.
-        -->
+        <!-- Spotless <clangFormat> needs Spotless 2.44+; only register C++ rules on the repository baseline, JDK 17+. -->
         <profile>
             <id>spotless-cpp</id>
             <activation>
-                <jdk>[11,)</jdk>
+                <jdk>[17,)</jdk>
             </activation>
             <build>
                 <plugins>

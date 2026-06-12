@@ -39,7 +39,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -132,6 +132,7 @@ public class QueryDataSetHandler {
       for (int i = 0; i < datasetHeader.getRespColumns().size(); i++) {
         targetDataSet.addColumnNamesItem(datasetHeader.getRespColumns().get(i));
         targetDataSet.addValuesItem(new ArrayList<>());
+        targetDataSet.addDataTypesItem(datasetHeader.getRespDataTypes().get(i).name());
         targetDataSetIndexToSourceDataSetIndex[i] = i;
       }
     }

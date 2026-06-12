@@ -23,8 +23,8 @@ import org.apache.iotdb.rest.protocol.PingApiService;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 public class PingApiServiceImpl extends PingApiService {
 
