@@ -66,8 +66,7 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2BatchIT
         KillNode.CONFIG_NODE);
   }
 
-  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
-  //  @Test
+  @Test
   public void testCnCrashDuringDoAddPeer() throws Exception {
     successTest(
         1,
@@ -127,8 +126,7 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2BatchIT
         KillNode.CONFIG_NODE);
   }
 
-  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
-  //  @Test
+  @Test
   public void cnCrashDuringRemoveRegionLocationCacheTest() throws Exception {
     successTest(
         1,
@@ -140,8 +138,7 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2BatchIT
         KillNode.CONFIG_NODE);
   }
 
-  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
-  //  @Test
+  @Test
   public void cnCrashTest() throws Exception {
     ConcurrentHashMap.KeySetView<String, Boolean> killConfigNodeKeywords = noKillPoints();
     killConfigNodeKeywords.addAll(
