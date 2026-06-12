@@ -19,13 +19,19 @@
 
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
@@ -234,10 +240,13 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
                 "DELETE FROM %s WHERE time >= %d AND time <= %d", TABLE_NAME, delStart, delEnd));
         TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
-        // Compute expected historical rows: if deleted AND mods are enabled, drop them.
+        if (modsEnable) {
+          waitForSenderDeletionVisibleOnAllDataNodes(delStart, delEnd);
+        }
+
         for (long t = HISTORY_INSERT_START; t < HISTORY_INSERT_START + HISTORY_INSERT_ROWS; t++) {
           boolean inDeleteRange = (t >= delStart && t <= delEnd);
-          if (!inDeleteRange) {
+          if (!modsEnable || !inDeleteRange) {
             expectedTimestamps.add(t);
           }
         }
@@ -428,9 +437,57 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
       sb.append(String.format(", 'source.database-name'='%s'", TEST_DATABASE));
     }
     sb.append(", 'source.mods.enable'='").append(modsEnable).append("'");
-    sb.append(", 'source.history.enable'='").append(true).append("'");
-    sb.append(", 'source.realtime.enable'='").append(true).append("'");
+    sb.append(", 'source.history.enable'='").append(historyEnable).append("'");
+    sb.append(", 'source.realtime.enable'='").append(realtimeEnable).append("'");
     return sb.toString();
+  }
+
+  private void waitForSenderDeletionVisibleOnAllDataNodes(long delStart, long delEnd)
+      throws Exception {
+    for (DataNodeWrapper dataNodeWrapper : senderEnv.getDataNodeWrapperList()) {
+      File databaseDir =
+          Paths.get(dataNodeWrapper.getDataNodeDir(), "data", "sequence", TEST_DATABASE).toFile();
+      if (!hasTsFile(databaseDir)) {
+        continue;
+      }
+      long deadline = System.currentTimeMillis() + 60_000L;
+      while (System.currentTimeMillis() < deadline) {
+        if (hasDeletionMod(databaseDir, delStart, delEnd)) {
+          break;
+        }
+        Thread.sleep(500);
+      }
+      Assert.assertTrue(
+          String.format(
+              "Deletion mod [%d, %d] is not visible on DataNode %s.",
+              delStart, delEnd, dataNodeWrapper.getId()),
+          hasDeletionMod(databaseDir, delStart, delEnd));
+    }
+  }
+
+  private boolean hasTsFile(File databaseDir) {
+    return !FileUtils.listFilesRecursively(
+            databaseDir, file -> file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX))
+        .isEmpty();
+  }
+
+  private boolean hasDeletionMod(File databaseDir, long delStart, long delEnd) throws IOException {
+    List<File> modFiles =
+        FileUtils.listFilesRecursively(
+            databaseDir, file -> file.getName().endsWith(ModificationFile.FILE_SUFFIX));
+    for (File modFile : modFiles) {
+      try (ModificationFile modificationFile = new ModificationFile(modFile, false)) {
+        for (ModEntry modEntry : modificationFile.getAllMods()) {
+          if (modEntry instanceof TableDeletionEntry
+              && TABLE_NAME.equals(((TableDeletionEntry) modEntry).getTableName())
+              && modEntry.getStartTime() <= delStart
+              && modEntry.getEndTime() >= delEnd) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   private String buildLocalSinkClause() {
