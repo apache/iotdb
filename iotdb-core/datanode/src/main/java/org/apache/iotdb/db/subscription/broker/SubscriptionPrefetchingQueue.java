@@ -117,6 +117,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private volatile TsFileInsertionEvent currentTsFileInsertionEvent;
   private volatile RetryableEvent<TabletInsertionEvent> currentTabletInsertionEvent;
   private volatile SubscriptionTsFileToTabletIterator currentToTabletIterator;
+  private volatile PipeTerminateEvent currentTerminateEvent;
 
   public SubscriptionPrefetchingQueue(
       final String brokerId,
@@ -174,6 +175,10 @@ public abstract class SubscriptionPrefetchingQueue {
       ((EnrichedEvent) currentTabletInsertionEvent.innerEvent)
           .clearReferenceCount(this.getClass().getName());
       currentTabletInsertionEvent = null;
+    }
+    if (Objects.nonNull(currentTerminateEvent)) {
+      currentTerminateEvent.clearReferenceCount(this.getClass().getName());
+      currentTerminateEvent = null;
     }
   }
 
@@ -467,6 +472,10 @@ public abstract class SubscriptionPrefetchingQueue {
    * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
    */
   private synchronized void tryPrefetch() {
+    if (Objects.nonNull(currentTerminateEvent) && !tryCommitCurrentTerminateEvent()) {
+      return;
+    }
+
     while (!inputPendingQueue.isEmpty() || Objects.nonNull(currentTabletInsertionEvent)) {
       if (Objects.nonNull(currentTabletInsertionEvent)) {
         final RetryableState state = onRetryableTabletInsertionEvent(currentTabletInsertionEvent);
@@ -497,16 +506,10 @@ public abstract class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof PipeTerminateEvent) {
-        final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
-        // add mark completed hook
-        terminateEvent.addOnCommittedHook(this::markCompleted);
-        // commit directly
-        ((PipeTerminateEvent) event)
-            .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
-            this,
-            terminateEvent);
+        currentTerminateEvent = (PipeTerminateEvent) event;
+        if (!tryCommitCurrentTerminateEvent()) {
+          return;
+        }
         continue;
       }
 
@@ -549,6 +552,11 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   private synchronized void tryPrefetchV2() {
+    if (Objects.nonNull(currentTerminateEvent)) {
+      tryCommitCurrentTerminateEvent();
+      return;
+    }
+
     if (!prefetchingQueue.isEmpty()) {
       return;
     }
@@ -613,16 +621,8 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     if (event instanceof PipeTerminateEvent) {
-      final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
-      // add mark completed hook
-      terminateEvent.addOnCommittedHook(this::markCompleted);
-      // commit directly
-      ((PipeTerminateEvent) event)
-          .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
-      LOGGER.info(
-          "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
-          this,
-          terminateEvent);
+      currentTerminateEvent = (PipeTerminateEvent) event;
+      tryCommitCurrentTerminateEvent();
       return;
     }
 
@@ -729,6 +729,34 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   protected boolean onEvent() {
     return batches.onEvent(this::prefetchEvent);
+  }
+
+  private boolean tryCommitCurrentTerminateEvent() {
+    try {
+      batches.emitAll(this::prefetchEvent);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Subscription: SubscriptionPrefetchingQueue {} failed to emit remaining events before committing PipeTerminateEvent {}.",
+          this,
+          currentTerminateEvent,
+          e);
+      return false;
+    }
+
+    if (!prefetchingQueue.isEmpty() || !inFlightEvents.isEmpty()) {
+      return false;
+    }
+
+    // Add mark completed hook only when all subscription events have been consumed.
+    currentTerminateEvent.addOnCommittedHook(this::markCompleted);
+    currentTerminateEvent.decreaseReferenceCount(
+        SubscriptionPrefetchingQueue.class.getName(), true);
+    LOGGER.info(
+        "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
+        this,
+        currentTerminateEvent);
+    currentTerminateEvent = null;
+    return true;
   }
 
   /////////////////////////////// commit ///////////////////////////////
