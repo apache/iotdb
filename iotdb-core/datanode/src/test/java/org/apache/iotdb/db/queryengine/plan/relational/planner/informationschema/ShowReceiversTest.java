@@ -105,6 +105,7 @@ public class ShowReceiversTest {
 
   @Test
   public void testSelectReceiverColumns() {
+    // Optimizer column-prune for InformationSchemaTableScanNode is not supported now.
     final LogicalQueryPlan logicalQueryPlan =
         planTester.createPlan(
             "select receiver_node_type, sender_address, connection_count, pipe_ids "
@@ -118,7 +119,10 @@ public class ShowReceiversTest {
                         EQUAL,
                         new SymbolReference(PROTOCOL_TABLE_MODEL),
                         new StringLiteral("thrift")),
-                    infoSchemaTableScan(
-                        "information_schema.receivers", Optional.empty(), RECEIVERS_COLUMNS)))));
+                    project(
+                        infoSchemaTableScan(
+                            "information_schema.receivers",
+                            Optional.empty(),
+                            RECEIVERS_COLUMNS))))));
   }
 }

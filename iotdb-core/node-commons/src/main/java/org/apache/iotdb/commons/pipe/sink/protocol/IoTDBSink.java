@@ -590,6 +590,10 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     PIPE_END_POINT_RATE_LIMITER_MAP.clear();
   }
 
+  public void discardReceiverRuntimeSessions() {
+    // Do nothing by default.
+  }
+
   public TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
     // Explanation for +3: version 1 byte, type 2 bytes
     totalUncompressedSize.addAndGet(req.body.array().length + 3);

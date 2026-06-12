@@ -419,6 +419,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     return executor;
   }
 
+  public void discardReceiverRuntimeSessions() {
+    for (final TEndPoint endPoint : new HashSet<>(endPointSet)) {
+      endPoint2Client.clear(endPoint);
+    }
+  }
+
   public void close() {
     isClosed = true;
     synchronized (IoTDBDataNodeAsyncClientManager.class) {

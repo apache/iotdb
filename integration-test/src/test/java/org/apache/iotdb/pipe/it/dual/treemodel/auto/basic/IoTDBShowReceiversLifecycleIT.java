@@ -17,19 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.single;
+package org.apache.iotdb.pipe.it.dual.treemodel.auto.basic;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.awaitility.Awaitility;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -40,43 +43,27 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class})
-public class IoTDBShowReceiversLifecycleIT {
-
-  private static BaseEnv env;
-
-  @BeforeClass
-  public static void setUp() {
-    env = EnvFactory.getEnv();
-    env.getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false)
-        .setPipeAutoSplitFullEnabled(false);
-    env.initClusterEnvironment();
-  }
-
-  @AfterClass
-  public static void tearDown() {
-    env.cleanClusterEnvironment();
-  }
+@Category({MultiClusterIT2DualTreeAutoBasic.class})
+public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAutoIT {
 
   @Test
-  public void testShowReceiversPipeIdsDisappearAfterDropPipe() {
+  public void testShowReceiversPipeIdsDisappearAfterDropPipe() throws Exception {
     final String database = "root.show_receivers_lifecycle";
     final String pipeName = "show_receivers_lifecycle_pipe";
 
-    createWriteBackPipe(database, pipeName);
+    createThriftPipe(database, pipeName);
 
     assertShowReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
     assertShowReceivers(
         "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
 
-    TestUtils.executeNonQueries(env, Collections.singletonList("drop pipe " + pipeName), null);
+    TestUtils.executeNonQueries(
+        senderEnv, Collections.singletonList("drop pipe " + pipeName), null);
 
     assertShowReceiversDoesNotContainPipe("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
     assertShowReceiversDoesNotContainPipe(
@@ -84,37 +71,61 @@ public class IoTDBShowReceiversLifecycleIT {
   }
 
   @Test
-  public void testShowReceiversPipeIdsDisappearAfterStopPipe() {
+  public void testShowReceiversPipeIdsDisappearAfterStopPipe() throws Exception {
     final String database = "root.show_receivers_lifecycle_stop";
     final String pipeName = "show_receivers_lifecycle_stop_pipe";
 
-    createWriteBackPipe(database, pipeName);
+    createThriftPipe(database, pipeName);
 
     assertShowReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
     assertShowReceivers(
         "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
 
-    TestUtils.executeNonQueries(env, Collections.singletonList("stop pipe " + pipeName), null);
+    TestUtils.executeNonQueries(
+        senderEnv, Collections.singletonList("stop pipe " + pipeName), null);
 
     assertShowReceiversDoesNotContainPipe("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
     assertShowReceiversDoesNotContainPipe(
         "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
   }
 
-  private void createWriteBackPipe(final String database, final String pipeName) {
+  private void createThriftPipe(final String database, final String pipeName) throws Exception {
     TestUtils.executeNonQueries(
-        env,
+        senderEnv,
         Arrays.asList(
             "create database " + database,
             "create timeseries " + database + ".d1.s1 with datatype=INT32, encoding=PLAIN",
-            "create pipe "
-                + pipeName
-                + " with source ('pattern'='"
-                + database
-                + "') with sink ('sink'='write-back-sink')",
-            "insert into " + database + ".d1(time, s1) values (1, 1)",
-            "flush"),
+            "insert into " + database + ".d1(time, s1) values (1, 1)"),
         null);
+    awaitUntilFlush(senderEnv);
+
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    final Map<String, String> processorAttributes = new HashMap<>();
+    final Map<String, String> sinkAttributes = new HashMap<>();
+
+    sourceAttributes.put("source.pattern", database + ".**");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
+
+    sinkAttributes.put("sink", "iotdb-thrift-sink");
+    sinkAttributes.put("sink.batch.enable", "false");
+    sinkAttributes.put("sink.ip", receiverDataNode.getIp());
+    sinkAttributes.put("sink.port", Integer.toString(receiverDataNode.getPort()));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq(pipeName, sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      status = client.startPipe(pipeName);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    }
   }
 
   private void assertShowReceivers(
@@ -130,7 +141,7 @@ public class IoTDBShowReceiversLifecycleIT {
   private boolean hasExpectedReceiver(
       final String sql, final String sqlDialect, final String pipeName) throws SQLException {
     try (final Connection connection =
-            env.getConnection(
+            receiverEnv.getConnection(
                 SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
@@ -144,7 +155,7 @@ public class IoTDBShowReceiversLifecycleIT {
             && resultSet.getInt(6) >= 1
             && resultSet.getInt(7) >= 1
             && resultSet.getString(8).contains(pipeName + "@")
-            && "root".equals(resultSet.getString(9))
+            && SessionConfig.DEFAULT_USER.equals(resultSet.getString(9))
             && resultSet.getString(10) != null
             && !resultSet.getString(10).isEmpty()
             && resultSet.getString(11) != null
@@ -169,7 +180,7 @@ public class IoTDBShowReceiversLifecycleIT {
   private boolean containsPipe(final String sql, final String sqlDialect, final String pipeName)
       throws SQLException {
     try (final Connection connection =
-            env.getConnection(
+            receiverEnv.getConnection(
                 SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
