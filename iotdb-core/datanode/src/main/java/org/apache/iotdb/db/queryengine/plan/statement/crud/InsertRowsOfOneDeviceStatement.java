@@ -36,6 +36,7 @@ import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -140,10 +141,49 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
       insertRowStatement.updateAfterSchemaValidation(context);
-      if (!this.hasFailedMeasurements() && insertRowStatement.hasFailedMeasurements()) {
-        this.failedMeasurementIndex2Info = insertRowStatement.failedMeasurementIndex2Info;
-      }
     }
+  }
+
+  @Override
+  public boolean hasFailedMeasurements() {
+    return insertRowStatementList != null
+        && insertRowStatementList.stream().anyMatch(InsertBaseStatement::hasFailedMeasurements);
+  }
+
+  @Override
+  public int getFailedMeasurementNumber() {
+    return insertRowStatementList == null
+        ? 0
+        : insertRowStatementList.stream()
+            .mapToInt(InsertBaseStatement::getFailedMeasurementNumber)
+            .sum();
+  }
+
+  @Override
+  public List<String> getFailedMeasurements() {
+    return insertRowStatementList == null
+        ? Collections.emptyList()
+        : insertRowStatementList.stream()
+            .flatMap(statement -> statement.getFailedMeasurements().stream())
+            .collect(Collectors.toList());
+  }
+
+  @Override
+  public List<Exception> getFailedExceptions() {
+    return insertRowStatementList == null
+        ? Collections.emptyList()
+        : insertRowStatementList.stream()
+            .flatMap(statement -> statement.getFailedExceptions().stream())
+            .collect(Collectors.toList());
+  }
+
+  @Override
+  public List<String> getFailedMessages() {
+    return insertRowStatementList == null
+        ? Collections.emptyList()
+        : insertRowStatementList.stream()
+            .flatMap(statement -> statement.getFailedMessages().stream())
+            .collect(Collectors.toList());
   }
 
   @Override

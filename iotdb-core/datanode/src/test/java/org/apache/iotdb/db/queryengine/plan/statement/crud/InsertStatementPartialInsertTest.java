@@ -287,6 +287,58 @@ public class InsertStatementPartialInsertTest {
     Assert.assertEquals("s1", result.get(statement.getDevicePath()).get(0).left);
   }
 
+  @Test
+  public void testInsertRowsStatementAggregatesFailedMeasurements() throws Exception {
+    final InsertRowStatement statement1 = createInsertRowStatement();
+    final InsertRowStatement statement2 = createInsertRowStatement();
+    statement1.markFailedMeasurement(0, new RuntimeException("failed1"));
+    statement2.markFailedMeasurement(1, new RuntimeException("failed2"));
+
+    final InsertRowsStatement rowsStatement = new InsertRowsStatement();
+    rowsStatement.setInsertRowStatementList(Arrays.asList(statement1, statement2));
+
+    Assert.assertTrue(rowsStatement.hasFailedMeasurements());
+    Assert.assertEquals(2, rowsStatement.getFailedMeasurementNumber());
+    Assert.assertEquals(Arrays.asList("s1", "s2"), rowsStatement.getFailedMeasurements());
+    Assert.assertEquals(Arrays.asList("failed1", "failed2"), rowsStatement.getFailedMessages());
+  }
+
+  @Test
+  public void testInsertRowsOfOneDeviceStatementAggregatesFailedMeasurements() throws Exception {
+    final InsertRowStatement statement1 = createInsertRowStatement();
+    final InsertRowStatement statement2 = createInsertRowStatement();
+    statement1.markFailedMeasurement(0, new RuntimeException("failed1"));
+    statement2.markFailedMeasurement(1, new RuntimeException("failed2"));
+
+    final InsertRowsOfOneDeviceStatement rowsOfOneDeviceStatement =
+        new InsertRowsOfOneDeviceStatement();
+    rowsOfOneDeviceStatement.setInsertRowStatementList(Arrays.asList(statement1, statement2));
+
+    Assert.assertTrue(rowsOfOneDeviceStatement.hasFailedMeasurements());
+    Assert.assertEquals(2, rowsOfOneDeviceStatement.getFailedMeasurementNumber());
+    Assert.assertEquals(
+        Arrays.asList("s1", "s2"), rowsOfOneDeviceStatement.getFailedMeasurements());
+    Assert.assertEquals(
+        Arrays.asList("failed1", "failed2"), rowsOfOneDeviceStatement.getFailedMessages());
+  }
+
+  @Test
+  public void testInsertMultiTabletsStatementAggregatesFailedMeasurements() throws Exception {
+    final InsertTabletStatement statement1 = createInsertTabletStatement();
+    final InsertTabletStatement statement2 = createInsertTabletStatement();
+    statement1.markFailedMeasurement(0, new RuntimeException("failed1"));
+    statement2.markFailedMeasurement(1, new RuntimeException("failed2"));
+
+    final InsertMultiTabletsStatement multiTabletsStatement = new InsertMultiTabletsStatement();
+    multiTabletsStatement.setInsertTabletStatementList(Arrays.asList(statement1, statement2));
+
+    Assert.assertTrue(multiTabletsStatement.hasFailedMeasurements());
+    Assert.assertEquals(2, multiTabletsStatement.getFailedMeasurementNumber());
+    Assert.assertEquals(Arrays.asList("s1", "s2"), multiTabletsStatement.getFailedMeasurements());
+    Assert.assertEquals(
+        Arrays.asList("failed1", "failed2"), multiTabletsStatement.getFailedMessages());
+  }
+
   private static InsertRowStatement createInsertRowStatement() throws Exception {
     final InsertRowStatement statement = new InsertRowStatement();
     statement.setDevicePath(new PartialPath("root.sg.d1"));
