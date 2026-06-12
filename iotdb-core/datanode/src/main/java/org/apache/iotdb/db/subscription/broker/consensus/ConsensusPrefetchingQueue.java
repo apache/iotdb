@@ -223,7 +223,9 @@ public class ConsensusPrefetchingQueue {
   /**
    * Source-level dedup frontier for entries that have already been materialized into queue state.
    * The same request may first arrive through pendingEntries and later become visible from WAL; the
-   * second path must not materialize it again.
+   * second path must not materialize it again. This frontier is advanced by writer-local sequence
+   * because a realtime request may not always carry complete physical-time metadata while its WAL
+   * counterpart does.
    */
   private final Map<Integer, WriterProgress> materializedProgressByWriter =
       new ConcurrentHashMap<>();
@@ -918,7 +920,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   private boolean shouldTrackMaterializedProgress(final IndexedConsensusRequest request) {
-    return hasComparableWriterProgress(request);
+    return getMaterializedWriterNodeId(request) >= 0 && request.getProgressLocalSeq() >= 0;
   }
 
   private boolean shouldSkipForMaterializedProgress(final IndexedConsensusRequest request) {
@@ -926,9 +928,9 @@ public class ConsensusPrefetchingQueue {
       return false;
     }
     final WriterProgress materializedProgress =
-        materializedProgressByWriter.get(request.getNodeId());
+        materializedProgressByWriter.get(getMaterializedWriterNodeId(request));
     return Objects.nonNull(materializedProgress)
-        && compareWriterProgress(toWriterProgress(request), materializedProgress) <= 0;
+        && request.getProgressLocalSeq() <= materializedProgress.getLocalSeq();
   }
 
   private void markMaterializedProgress(final IndexedConsensusRequest request) {
@@ -936,10 +938,16 @@ public class ConsensusPrefetchingQueue {
       return;
     }
     materializedProgressByWriter.merge(
-        request.getNodeId(),
+        getMaterializedWriterNodeId(request),
         toWriterProgress(request),
         (existing, candidate) ->
-            compareWriterProgress(candidate, existing) > 0 ? candidate : existing);
+            candidate.getLocalSeq() > existing.getLocalSeq() ? candidate : existing);
+  }
+
+  private int getMaterializedWriterNodeId(final IndexedConsensusRequest request) {
+    return request.getNodeId() >= 0
+        ? request.getNodeId()
+        : IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   }
 
   private int compareWriterProgress(

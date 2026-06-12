@@ -53,7 +53,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
-import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
@@ -615,6 +615,12 @@ public class WALNode implements IWALNode {
     /** iterator of insertNodes */
     private ListIterator<IndexedConsensusRequest> itr = null;
 
+    private long currentRequestPhysicalTime = 0L;
+
+    private int currentRequestNodeId = -1;
+
+    private long currentRequestLocalSeq = -1L;
+
     /** last broken wal file's version id */
     private long brokenFileId = -1;
 
@@ -668,8 +674,17 @@ public class WALNode implements IWALNode {
       Runnable tryToCollectInsertNodeAndBumpIndex =
           () -> {
             if (!tmpNodes.get().isEmpty()) {
-              insertNodes.add(new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get()));
+              insertNodes.add(
+                  new IndexedConsensusRequest(
+                          nextSearchIndex,
+                          currentRequestLocalSeq >= 0 ? currentRequestLocalSeq : nextSearchIndex,
+                          tmpNodes.get())
+                      .setPhysicalTime(currentRequestPhysicalTime)
+                      .setNodeId(currentRequestNodeId));
               tmpNodes.set(new ArrayList<>());
+              currentRequestPhysicalTime = 0L;
+              currentRequestNodeId = -1;
+              currentRequestLocalSeq = -1L;
               nextSearchIndex++;
               if (notFirstFile.get()) {
                 hasCollectedSufficientData.set(true);
@@ -685,10 +700,10 @@ public class WALNode implements IWALNode {
           tryToCollectInsertNodeAndBumpIndex.run();
           continue;
         }
-        try (WALByteBufReader walByteBufReader =
-            new WALByteBufReader(filesToSearch[currentFileIndex])) {
-          while (walByteBufReader.hasNext()) {
-            ByteBuffer buffer = walByteBufReader.next();
+        try (ProgressWALReader progressWALReader =
+            new ProgressWALReader(filesToSearch[currentFileIndex])) {
+          while (progressWALReader.hasNext()) {
+            ByteBuffer buffer = progressWALReader.next();
             WALEntryType type = WALEntryType.valueOf(buffer.get());
             if (type.needSearch()) {
               // see WALInfoEntry#serialize, entry type + memtable id + plan node type
@@ -703,6 +718,7 @@ public class WALNode implements IWALNode {
               } else if (currentWalEntryIndex < nextSearchIndex) {
                 // WAL entry is outdated, do nothing, continue to see next WAL entry
               } else if (currentWalEntryIndex == nextSearchIndex) {
+                captureCurrentRequestMetadataIfNeeded(progressWALReader, tmpNodes.get());
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
@@ -734,6 +750,7 @@ public class WALNode implements IWALNode {
                       currentWalEntryIndex);
                   nextSearchIndex = currentWalEntryIndex;
                 }
+                captureCurrentRequestMetadataIfNeeded(progressWALReader, tmpNodes.get());
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
@@ -786,6 +803,15 @@ public class WALNode implements IWALNode {
         return true;
       }
       return false;
+    }
+
+    private void captureCurrentRequestMetadataIfNeeded(
+        ProgressWALReader progressWALReader, List<IConsensusRequest> tmpNodes) {
+      if (tmpNodes.isEmpty()) {
+        currentRequestPhysicalTime = progressWALReader.getCurrentEntryPhysicalTime();
+        currentRequestNodeId = progressWALReader.getCurrentEntryNodeId();
+        currentRequestLocalSeq = progressWALReader.getCurrentEntryLocalSeq();
+      }
     }
 
     @Override

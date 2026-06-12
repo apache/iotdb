@@ -263,6 +263,7 @@ public class ConsensusReqReaderTest {
     final IndexedConsensusRequest request = iterator.next();
 
     Assert.assertEquals(1L, request.getSearchIndex());
+    Assert.assertEquals(1L, request.getProgressLocalSeq());
     Assert.assertEquals(123456789L, request.getPhysicalTime());
     Assert.assertEquals(7, request.getNodeId());
   }
