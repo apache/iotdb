@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
@@ -93,6 +94,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         .getConfig()
         .getCommonConfig()
         .setPipeMetaSyncerSyncIntervalMinutes(1)
+        .setSubscriptionPrefetchTsFileBatchMaxDelayInMs(600_000)
+        .setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(64 * 1024 * 1024)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
   }
@@ -376,6 +379,89 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
+  }
+
+  @Test
+  public void testTsFileSnapshotDrainsPendingBatchBeforeTermination() throws Exception {
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(receiverEnv, "test1", "test1");
+
+    // Insert historical data and create a closed TsFile before snapshot subscription starts.
+    TableModelUtils.insertData("test1", "test1", 0, 10, senderEnv);
+
+    final String topicName = "topic_drain_tsfile_batch_before_termination";
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+      config.put(TopicConstant.DATABASE_KEY, "test1");
+      config.put(TopicConstant.TABLE_KEY, "test1");
+      // Force TsFile parsing so the snapshot data is buffered in SubscriptionPipeTsFileEventBatch.
+      config.put(TopicConstant.START_TIME_KEY, 1);
+      session.createTopic(topicName, config);
+    }
+    assertTopicCount(1);
+
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final AtomicReference<Throwable> consumerFailure = new AtomicReference<>();
+    final Thread thread =
+        new Thread(
+            () -> {
+              try (final ISubscriptionTablePullConsumer consumer =
+                      new SubscriptionTablePullConsumerBuilder()
+                          .host(host)
+                          .port(port)
+                          .consumerId("c_drain")
+                          .consumerGroupId("cg_drain")
+                          .autoCommit(false)
+                          .build();
+                  final ITableSession session = receiverEnv.getTableSessionConnection()) {
+                consumer.open();
+                consumer.subscribe(topicName);
+                while (!isClosed.get()) {
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  insertData(messages, session);
+                  consumer.commitSync(messages);
+                }
+              } catch (final Throwable e) {
+                consumerFailure.set(e);
+              } finally {
+                LOGGER.info("draining consumer exiting...");
+              }
+            },
+            String.format("%s - draining consumer", testName.getDisplayName()));
+    thread.start();
+
+    try {
+      final Consumer<String> handleFailure =
+          o -> {
+            TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+            TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          };
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertNull(consumerFailure.get());
+
+            try (final SyncConfigNodeIServiceClient client =
+                (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+              final TShowSubscriptionResp showSubscriptionResp =
+                  client.showSubscription(new TShowSubscriptionReq());
+              Assert.assertEquals(
+                  RpcUtils.SUCCESS_STATUS.getCode(), showSubscriptionResp.status.getCode());
+              Assert.assertNotNull(showSubscriptionResp.subscriptionInfoList);
+              Assert.assertEquals(0, showSubscriptionResp.subscriptionInfoList.size());
+            }
+
+            TableModelUtils.assertData("test1", "test1", 1, 10, receiverEnv, handleFailure);
+          });
     } finally {
       isClosed.set(true);
       thread.join();
