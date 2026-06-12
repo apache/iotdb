@@ -41,6 +41,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.nio.file.FileStore;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -60,7 +62,8 @@ public class SystemMetrics implements IMetricSet {
 
   static final String SYSTEM = "system";
   private final com.sun.management.OperatingSystemMXBean osMxBean;
-  private Set<FileStore> fileStores = new HashSet<>();
+  private volatile Set<FileStore> fileStores = new HashSet<>();
+  private volatile List<String> diskDirs = Collections.emptyList();
   private static final String FAILED_TO_STATISTIC = "Failed to statistic the size of {}, because";
 
   public SystemMetrics() {
@@ -72,6 +75,7 @@ public class SystemMetrics implements IMetricSet {
         .getMetricConfig()
         .getMetricLevel()
         .equals(MetricLevel.OFF)) {
+      this.diskDirs = new ArrayList<>(diskDirs);
       this.fileStores = getFileStores(diskDirs);
     }
   }
@@ -334,39 +338,62 @@ public class SystemMetrics implements IMetricSet {
   }
 
   public long getSystemDiskTotalSpace() {
-    long sysTotalSpace = 0L;
-    for (FileStore fileStore : fileStores) {
-      try {
-        sysTotalSpace += fileStore.getTotalSpace();
-      } catch (IOException e) {
-        logger.error(FAILED_TO_STATISTIC, fileStore, e);
-      }
-    }
-    return sysTotalSpace;
+    return collectDiskSpace(FileStore::getTotalSpace);
   }
 
   public long getSystemDiskFreeSpace() {
-    long sysFreeSpace = 0L;
-    for (FileStore fileStore : fileStores) {
-      try {
-        sysFreeSpace += fileStore.getUnallocatedSpace();
-      } catch (IOException e) {
-        logger.error(FAILED_TO_STATISTIC, fileStore, e);
-      }
-    }
-    return sysFreeSpace;
+    return collectDiskSpace(FileStore::getUnallocatedSpace);
   }
 
   public long getSystemDiskAvailableSpace() {
-    long sysAvailableSpace = 0L;
-    for (FileStore fileStore : fileStores) {
-      try {
-        sysAvailableSpace += fileStore.getUsableSpace();
-      } catch (IOException e) {
-        logger.error(FAILED_TO_STATISTIC, fileStore, e);
+    return collectDiskSpace(FileStore::getUsableSpace);
+  }
+
+  /**
+   * Sum up a disk-space metric across all cached {@link FileStore}s.
+   *
+   * <p>A cached {@code FileStore} pins the exact path it was resolved from. That path can be
+   * removed while IoTDB is running (for example an empty data region directory deleted during
+   * region migration), after which every space query against the stale {@code FileStore} throws
+   * {@link java.nio.file.NoSuchFileException}. When that happens we re-resolve the {@code
+   * FileStore}s once: {@link org.apache.iotdb.metrics.utils.FileStoreUtils#getFileStore} walks up
+   * to an existing ancestor directory on the same device, so the metric recovers on the next
+   * sampling instead of flooding the log with errors on every heartbeat.
+   */
+  private long collectDiskSpace(DiskSpaceReader reader) {
+    boolean refreshed = false;
+    while (true) {
+      Set<FileStore> currentFileStores = fileStores;
+      long space = 0L;
+      boolean stale = false;
+      for (FileStore fileStore : currentFileStores) {
+        try {
+          space += reader.read(fileStore);
+        } catch (IOException e) {
+          stale = true;
+          if (refreshed) {
+            // Still failing after re-resolving: log once at warn level (instead of error on every
+            // sampling) and skip this file store to keep the metric best-effort.
+            logger.warn(FAILED_TO_STATISTIC, fileStore, e);
+          }
+        }
       }
+      if (!stale || refreshed) {
+        return space;
+      }
+      refreshFileStores();
+      refreshed = true;
     }
-    return sysAvailableSpace;
+  }
+
+  /** Re-resolve the cached {@link FileStore}s from the configured disk dirs. */
+  private synchronized void refreshFileStores() {
+    this.fileStores = getFileStores(diskDirs);
+  }
+
+  @FunctionalInterface
+  private interface DiskSpaceReader {
+    long read(FileStore fileStore) throws IOException;
   }
 
   public static SystemMetrics getInstance() {
