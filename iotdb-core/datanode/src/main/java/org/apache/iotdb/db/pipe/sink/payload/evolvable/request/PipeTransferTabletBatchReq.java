@@ -154,10 +154,10 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
     // Legacy 1.3.x batch bodies may carry WAL binary requests before insert nodes and tablets.
-    int size = ReadWriteIOUtils.readInt(transferReq.body);
+    int size = readNonNegativeSize(transferReq.body, "binary request count");
     for (int i = 0; i < size; ++i) {
-      final int length = ReadWriteIOUtils.readInt(transferReq.body);
-      if (length < 0 || length > transferReq.body.remaining()) {
+      final int length = readNonNegativeSize(transferReq.body, "binary request body length");
+      if (length > transferReq.body.remaining()) {
         throw new IllegalArgumentException(
             String.format(
                 "Invalid binary request body length %s, remaining body length %s.",
@@ -169,23 +169,58 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
           PipeTransferTabletBinaryReq.toTPipeTransferReq(ByteBuffer.wrap(body)));
     }
 
-    size = ReadWriteIOUtils.readInt(transferReq.body);
+    size = readNonNegativeSize(transferReq.body, "insert node count");
     for (int i = 0; i < size; ++i) {
-      batchReq.insertNodeReqs.add(
-          PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
-              (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null)));
+      final int startPosition = transferReq.body.position();
+      try {
+        batchReq.insertNodeReqs.add(
+            PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
+                (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null)));
+      } catch (final RuntimeException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Failed to deserialize insert node %s/%s in tablet batch at body position %s with remaining body length %s.",
+                i + 1, size, startPosition, transferReq.body.remaining()),
+            e);
+      }
     }
 
-    size = ReadWriteIOUtils.readInt(transferReq.body);
+    size = readNonNegativeSize(transferReq.body, "raw tablet count");
     for (int i = 0; i < size; ++i) {
-      batchReq.tabletReqs.add(
-          PipeTransferTabletRawReq.toTPipeTransferRawReq(transferReq.body, tabletStringInternPool));
+      final int startPosition = transferReq.body.position();
+      try {
+        batchReq.tabletReqs.add(
+            PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                transferReq.body, tabletStringInternPool));
+      } catch (final RuntimeException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Failed to deserialize raw tablet %s/%s in tablet batch at body position %s with remaining body length %s.",
+                i + 1, size, startPosition, transferReq.body.remaining()),
+            e);
+      }
     }
 
     batchReq.version = transferReq.version;
     batchReq.type = transferReq.type;
 
     return batchReq;
+  }
+
+  private static int readNonNegativeSize(final ByteBuffer buffer, final String fieldName) {
+    if (buffer.remaining() < Integer.BYTES) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Insufficient bytes to read %s in tablet batch, remaining body length %s.",
+              fieldName, buffer.remaining()));
+    }
+
+    final int size = ReadWriteIOUtils.readInt(buffer);
+    if (size < 0) {
+      throw new IllegalArgumentException(
+          String.format("Invalid negative %s %s in tablet batch.", fieldName, size));
+    }
+    return size;
   }
 
   /////////////////////////////// TestOnly ///////////////////////////////
