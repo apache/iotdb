@@ -17,37 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it.local;
+package org.apache.iotdb.rpc.subscription.exception;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
+import java.util.Objects;
 
-import org.junit.After;
-import org.junit.Before;
+public class SubscriptionOwnerFencedException extends SubscriptionRuntimeNonCriticalException {
 
-public abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT {
+  public SubscriptionOwnerFencedException(final String message) {
+    super(message);
+  }
 
-  @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
-
-    // enable subscription
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setSubscriptionEnabled(true)
-        .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
-
-    EnvFactory.getEnv().initClusterEnvironment();
+  public SubscriptionOwnerFencedException(final String message, final Throwable cause) {
+    super(message, cause);
   }
 
   @Override
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+  public boolean equals(final Object obj) {
+    return obj instanceof SubscriptionOwnerFencedException
+        && Objects.equals(getMessage(), ((SubscriptionOwnerFencedException) obj).getMessage())
+        && Objects.equals(getTimeStamp(), ((SubscriptionOwnerFencedException) obj).getTimeStamp());
+  }
 
-    super.tearDown();
+  @Override
+  public int hashCode() {
+    return super.hashCode();
   }
 }

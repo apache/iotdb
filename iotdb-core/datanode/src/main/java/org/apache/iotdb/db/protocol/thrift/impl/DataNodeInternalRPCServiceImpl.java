@@ -310,6 +310,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushSubscriptionRuntimeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicOwnerLeaseReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
@@ -1545,6 +1546,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
           .setExceptionMessages(exceptionMessages);
+    }
+  }
+
+  @Override
+  public TSStatus pushTopicOwnerLease(TPushTopicOwnerLeaseReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    try {
+      SubscriptionAgent.topic().handleTopicOwnerLeases(req.getOwnerLeases());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      LOGGER.warn(DataNodeMiscMessages.ERROR_PUSHING_TOPIC_OWNER_LEASE, e);
+      return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode());
     }
   }
 

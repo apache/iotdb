@@ -148,6 +148,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseD
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
@@ -4981,6 +4982,11 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitCreateTopic(CreateTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    public Scope visitAlterTopic(AlterTopic node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 

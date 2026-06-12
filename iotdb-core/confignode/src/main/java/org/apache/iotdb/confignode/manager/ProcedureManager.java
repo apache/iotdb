@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -121,6 +122,7 @@ import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.
 import org.apache.iotdb.confignode.procedure.impl.subscription.runtime.SubscriptionHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.DropTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.runtime.TopicMetaSyncProcedure;
@@ -138,6 +140,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -1758,6 +1761,51 @@ public class ProcedureManager {
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
           .setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus alterTopic(TAlterTopicReq req) {
+    boolean isOwnerLeaseRenewalBlocked = false;
+    try {
+      isOwnerLeaseRenewalBlocked =
+          configManager
+              .getSubscriptionManager()
+              .getSubscriptionCoordinator()
+              .blockOwnerLeaseRenewalIfOwnerTransfer(req);
+      // Owner transfers wait for the previous owner's lease to drain (lease duration + one
+      // heartbeat interval, measured on the ConfigNode clock) inside the call below before the
+      // updated meta is built; epoch fencing on DataNodes guarantees correctness in the meantime.
+      final TopicMeta updatedTopicMeta =
+          configManager
+              .getSubscriptionManager()
+              .getSubscriptionCoordinator()
+              .buildAlteredTopicMetaAfterOwnerLeaseExpired(req);
+      if (updatedTopicMeta == null) {
+        return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    ManagerMessages.FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED,
+                    req.getTopicName()));
+      }
+
+      AlterTopicProcedure procedure = new AlterTopicProcedure(updatedTopicMeta);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+          .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    } finally {
+      if (isOwnerLeaseRenewalBlocked) {
+        configManager
+            .getSubscriptionManager()
+            .getSubscriptionCoordinator()
+            .unblockOwnerLeaseRenewal(req.getTopicName());
+      }
     }
   }
 

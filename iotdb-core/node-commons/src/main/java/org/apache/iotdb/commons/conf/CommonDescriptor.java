@@ -464,6 +464,12 @@ public class CommonDescriptor {
                 "subscription_meta_syncer_sync_interval_minutes",
                 String.valueOf(config.getSubscriptionMetaSyncerSyncIntervalMinutes()))));
 
+    config.setSubscriptionOwnerLeaseDurationMsMin(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_owner_lease_duration_ms_min",
+                String.valueOf(config.getSubscriptionOwnerLeaseDurationMsMin()))));
+
     config.setSubscriptionConsensusBatchMaxDelayInMs(
         Integer.parseInt(
             properties.getProperty(
