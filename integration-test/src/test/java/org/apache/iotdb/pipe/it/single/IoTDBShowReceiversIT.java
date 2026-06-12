@@ -71,6 +71,20 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
   }
 
   @Test
+  public void testShowReceiversAggregatesMultiplePipesFromSameSender() {
+    final String pipeName1 = "show_receivers_aggregate_pipe_1";
+    final String pipeName2 = "show_receivers_aggregate_pipe_2";
+    createTwoWriteBackPipes("root.show_receivers_aggregate", pipeName1, pipeName2);
+
+    assertAggregatedShowReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName1, pipeName2);
+    assertAggregatedShowReceivers(
+        "select * from information_schema.receivers",
+        BaseEnv.TABLE_SQL_DIALECT,
+        pipeName1,
+        pipeName2);
+  }
+
+  @Test
   public void testShowReceiversWithStoppedDataNode() throws Exception {
     Assert.assertTrue(env.getDataNodeWrapperList().size() >= 3);
     createWriteBackPipe("root.show_receivers_ha", "show_receivers_ha_pipe");
@@ -152,6 +166,28 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         null);
   }
 
+  private void createTwoWriteBackPipes(
+      final String database, final String firstPipeName, final String secondPipeName) {
+    TestUtils.executeNonQueries(
+        env,
+        Arrays.asList(
+            "create database " + database,
+            "create timeseries " + database + ".d1.s1 with datatype=INT32, encoding=PLAIN",
+            "create pipe "
+                + firstPipeName
+                + " with source ('pattern'='"
+                + database
+                + "') with sink ('sink'='write-back-sink')",
+            "create pipe "
+                + secondPipeName
+                + " with source ('pattern'='"
+                + database
+                + "') with sink ('sink'='write-back-sink')",
+            "insert into " + database + ".d1(time, s1) values (1, 1)",
+            "flush"),
+        null);
+  }
+
   private void assertShowReceivers(final String sql, final String sqlDialect) {
     assertShowReceivers(sql, sqlDialect, "show_receivers_pipe");
   }
@@ -181,6 +217,22 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
             () ->
                 Assert.assertTrue(
                     hasExpectedReceiver(sql, sqlDialect, pipeName, userName, password)));
+  }
+
+  private void assertAggregatedShowReceivers(
+      final String sql,
+      final String sqlDialect,
+      final String firstPipeName,
+      final String secondPipeName) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(1L, TimeUnit.SECONDS)
+        .pollInterval(1L, TimeUnit.SECONDS)
+        .atMost(60L, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                Assert.assertTrue(
+                    hasAggregatedReceiver(sql, sqlDialect, firstPipeName, secondPipeName)));
   }
 
   private void assertUserCannotSeeReceivers(
@@ -225,6 +277,33 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
             && !resultSet.getString(10).isEmpty()
             && resultSet.getString(11) != null
             && resultSet.getString(12) != null) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  private boolean hasAggregatedReceiver(
+      final String sql,
+      final String sqlDialect,
+      final String firstPipeName,
+      final String secondPipeName)
+      throws SQLException {
+    try (final Connection connection =
+            env.getConnection(
+                SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet = statement.executeQuery(sql)) {
+      while (resultSet.next()) {
+        final String pipeIds = resultSet.getString(8);
+        if ("DataNode".equals(resultSet.getString(1))
+            && "thrift".equals(resultSet.getString(3))
+            && resultSet.getInt(6) >= 1
+            && resultSet.getInt(7) >= 2
+            && pipeIds != null
+            && pipeIds.contains(firstPipeName + "@")
+            && pipeIds.contains(secondPipeName + "@")) {
           return true;
         }
       }

@@ -124,6 +124,48 @@ public class ShowReceiversOperatorTest {
   }
 
   @Test
+  public void testMultiplePipesFromSameSenderAreAggregatedInOutput() {
+    registry.registerOrUpdateSession(
+        "data-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+    registry.registerOrUpdateSession(
+        "data-2",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9002,
+        "root",
+        "cluster-a",
+        "pipe-b",
+        2,
+        200);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(null, new PlanNodeId("show-receivers"));
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(1, tsBlock.getPositionCount());
+    assertEquals("9001,9002", getText(tsBlock, 4));
+    assertEquals(2, tsBlock.getColumn(5).getInt(0));
+    assertEquals(2, tsBlock.getColumn(6).getInt(0));
+    assertTrue(getText(tsBlock, 7).contains("pipe-a@"));
+    assertTrue(getText(tsBlock, 7).contains("pipe-b@"));
+    assertFalse(operator.hasNext());
+  }
+
+  @Test
   public void testLastTransferTimeUsesHandshakeTimeBeforeTransfer() {
     registry.registerOrUpdateSession(
         "data-1",
