@@ -114,6 +114,7 @@ statement
 
     // Subscription Statement
     | createTopicStatement
+    | alterTopicStatement
     | dropTopicStatement
     | showTopicsStatement
     | showSubscriptionsStatement
@@ -590,6 +591,10 @@ showPipePluginsStatement
 // -------------------------------------------- Subscription Statement ---------------------------------------------------------
 createTopicStatement
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
+    ;
+
+alterTopicStatement
+    : ALTER TOPIC topicName=identifier topicAttributesClause
     ;
 
 topicAttributesClause

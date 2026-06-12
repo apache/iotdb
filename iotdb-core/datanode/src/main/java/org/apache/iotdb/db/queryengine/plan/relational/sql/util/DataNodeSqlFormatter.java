@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
@@ -891,6 +892,31 @@ public class DataNodeSqlFormatter extends CommonQuerySqlFormatter
                   .collect(joining(", " + "\n")))
           .append(")\n");
     }
+
+    return null;
+  }
+
+  @Override
+  public Void visitAlterTopic(AlterTopic node, Integer context) {
+    builder.append("ALTER TOPIC ");
+    builder.append(node.getTopicName());
+    builder.append(" \n");
+
+    builder
+        .append("WITH (")
+        .append("\n")
+        .append(
+            node.getTopicAttributes().entrySet().stream()
+                .map(
+                    entry ->
+                        indentString(1)
+                            + "\""
+                            + entry.getKey()
+                            + "\" = \""
+                            + entry.getValue()
+                            + "\"")
+                .collect(joining(", " + "\n")))
+        .append(")\n");
 
     return null;
   }

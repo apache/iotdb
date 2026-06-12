@@ -347,15 +347,22 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           processorBufferedCommitContexts.size());
     }
 
+    final Set<String> subscribedTopicNames =
+        SubscriptionAgent.consumer()
+            .getTopicNamesSubscribedByConsumer(
+                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic().checkTopicOwners(consumerConfig, subscribedTopicNames);
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(ownerStatus);
+    }
+
     LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_CONSUMER_HEARTBEAT_SUCCESS, consumerConfig);
 
     // fetch subscribed topics
     final Map<String, TopicConfig> topics =
-        SubscriptionAgent.topic()
-            .getTopicConfigs(
-                SubscriptionAgent.consumer()
-                    .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+        SubscriptionAgent.topic().getTopicConfigs(subscribedTopicNames);
 
     // fetch available endpoints
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
@@ -426,6 +433,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // subscribe topics
     final Set<String> topicNames = req.getTopicNames();
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic().checkTopicOwners(consumerConfig, topicNames);
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(ownerStatus);
+    }
     subscribe(consumerConfig, topicNames);
 
     LOGGER.info(
@@ -518,6 +530,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (SubscriptionPollRequestType.isValidatedRequestType(requestType)) {
       switch (SubscriptionPollRequestType.valueOf(requestType)) {
         case POLL:
+          final Set<String> pollTopicNames = ((PollPayload) request.getPayload()).getTopicNames();
+          final Set<String> subscribedTopicNames =
+              SubscriptionAgent.consumer()
+                  .getTopicNamesSubscribedByConsumer(
+                      consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+          final Set<String> topicNamesToCheck = new HashSet<>(pollTopicNames);
+          topicNamesToCheck.removeIf(topicName -> !subscribedTopicNames.contains(topicName));
+          final TSStatus ownerStatus =
+              SubscriptionAgent.topic().checkTopicOwners(consumerConfig, topicNamesToCheck);
+          if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(ownerStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollRequest(
                   consumerConfig,
@@ -526,11 +550,31 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                   request.getProgressByTopic());
           break;
         case POLL_FILE:
+          final TSStatus tsFileOwnerStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicOwner(
+                      consumerConfig,
+                      ((PollFilePayload) request.getPayload()).getCommitContext().getTopicName());
+          if (tsFileOwnerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tsFileOwnerStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollTsFileRequest(
                   consumerConfig, (PollFilePayload) request.getPayload());
           break;
         case POLL_TABLETS:
+          final TSStatus tabletsOwnerStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicOwner(
+                      consumerConfig,
+                      ((PollTabletsPayload) request.getPayload())
+                          .getCommitContext()
+                          .getTopicName());
+          if (tabletsOwnerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tabletsOwnerStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollTabletsRequest(
                   consumerConfig, (PollTabletsPayload) request.getPayload());
@@ -709,6 +753,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // commit (ack or nack)
     final List<SubscriptionCommitContext> commitContexts = req.getCommitContexts();
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic()
+            .checkTopicOwners(
+                consumerConfig,
+                commitContexts.stream()
+                    .map(SubscriptionCommitContext::getTopicName)
+                    .collect(Collectors.toSet()));
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeCommitResp.toTPipeSubscribeResp(ownerStatus);
+    }
     final boolean nack = req.isNack();
     final Set<String> subscribedTopicNames =
         SubscriptionAgent.consumer()
@@ -884,6 +938,15 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     final String topicName = req.getTopicName();
     final short seekType = req.getSeekType();
+
+    // Owner fencing: seek mutates the consumption progress, so a stale owner must not be allowed to
+    // move the position after an ownership transfer (otherwise it could corrupt the new owner's
+    // recovery point). This must be guarded just like commit.
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic().checkTopicOwner(consumerConfig, topicName);
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeSeekResp.toTPipeSubscribeResp(ownerStatus);
+    }
 
     if (seekType == SubscriptionSeekReq.SEEK_TO_TOPIC_PROGRESS) {
       SubscriptionAgent.broker()

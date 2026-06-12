@@ -184,6 +184,8 @@ public final class DataNodeMiscMessages {
       "Error occurred when pushing single topic meta";
   public static final String ERROR_PUSHING_MULTI_TOPIC_META =
       "Error occurred when pushing multi topic meta";
+  public static final String ERROR_PUSHING_TOPIC_OWNER_LEASE =
+      "Error occurred when pushing topic owner lease";
   public static final String ERROR_PUSHING_CONSUMER_GROUP_META =
       "Error occurred when pushing consumer group meta";
   public static final String ERROR_PUSHING_SINGLE_CONSUMER_GROUP_META =

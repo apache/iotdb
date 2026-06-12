@@ -75,6 +75,24 @@ public class SubscriptionTreePullConsumerBuilder extends AbstractSubscriptionPul
   }
 
   @Override
+  public SubscriptionTreePullConsumerBuilder ownerId(final String ownerId) {
+    super.ownerId(ownerId);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTreePullConsumerBuilder ownerEpoch(final long ownerEpoch) {
+    super.ownerEpoch(ownerEpoch);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTreePullConsumerBuilder ownerEpoch(final Long ownerEpoch) {
+    super.ownerEpoch(ownerEpoch);
+    return this;
+  }
+
+  @Override
   public SubscriptionTreePullConsumerBuilder heartbeatIntervalMs(final long heartbeatIntervalMs) {
     super.heartbeatIntervalMs(heartbeatIntervalMs);
     return this;

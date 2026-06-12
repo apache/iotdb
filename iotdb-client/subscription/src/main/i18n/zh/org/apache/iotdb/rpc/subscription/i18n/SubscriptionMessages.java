@@ -91,5 +91,25 @@ public final class SubscriptionMessages {
   public static final String CONSUMER_SUBMIT_ENDPOINTS_SYNCER =
       "SubscriptionConsumer {} 提交端点同步器";
 
+  // --- TopicMeta (owner fencing) ---
+  public static final String OWNER_ID_SHOULD_NOT_BE_EMPTY = "订阅 topic 的 owner id 不应为空";
+  public static final String OWNER_EPOCH_SHOULD_NOT_BE_NEGATIVE = "订阅 topic 的 owner epoch 不应为负数";
+  public static final String OWNER_EPOCH_SHOULD_INCREASE_MONOTONICALLY =
+      "订阅 topic 的 owner epoch 应单调递增，当前 epoch 为 %s，传入 epoch 为 %s";
+  public static final String OWNER_LEASE_DURATION_SHOULD_BE_POSITIVE =
+      "订阅 topic 的 owner 租约时长应为正数，topic：%s，owner-lease-duration-ms：%s";
+  public static final String OWNER_EPOCH_SHOULD_NEVER_BE_REUSED =
+      "订阅 topic 的 owner epoch 不应被复用，topic：%s，已授予的最大 owner-epoch：%s，传入 owner-id：%s，传入"
+          + " owner-epoch：%s";
+  public static final String OWNER_SHOULD_NOT_BE_CLEARED_BY_STALE_META =
+      "订阅 topic 的 owner 不应被过期的 topic meta 清除，topic：%s，当前 owner-id：%s，当前 owner-epoch：%s";
+  public static final String OWNER_EPOCH_SHOULD_NOT_ROLL_BACK =
+      "订阅 topic 的 owner epoch 不应回退，topic：%s，当前 owner-id：%s，当前 owner-epoch：%s，传入"
+          + " owner-id：%s，传入 owner-epoch：%s";
+  public static final String OWNER_EPOCH_SHOULD_BE_SET_WHEN_OWNER_ID_SET =
+      "当设置 %s 时，订阅 topic 的 owner epoch 也应被设置";
+  public static final String OWNER_LEASE_DURATION_SHOULD_BE_POSITIVE_WHEN_SET =
+      "当设置 %s 时，订阅 topic 的 owner 租约时长应为正数";
+
   private SubscriptionMessages() {}
 }

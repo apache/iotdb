@@ -91,5 +91,30 @@ public final class SubscriptionMessages {
   public static final String CONSUMER_SUBMIT_ENDPOINTS_SYNCER =
       "SubscriptionConsumer {} submit endpoints syncer";
 
+  // --- TopicMeta (owner fencing) ---
+  public static final String OWNER_ID_SHOULD_NOT_BE_EMPTY =
+      "Subscription topic owner id should not be empty";
+  public static final String OWNER_EPOCH_SHOULD_NOT_BE_NEGATIVE =
+      "Subscription topic owner epoch should not be negative";
+  public static final String OWNER_EPOCH_SHOULD_INCREASE_MONOTONICALLY =
+      "Subscription topic owner epoch should increase monotonically, current epoch is %s, incoming"
+          + " epoch is %s";
+  public static final String OWNER_LEASE_DURATION_SHOULD_BE_POSITIVE =
+      "Subscription topic owner lease duration should be positive, topic: %s,"
+          + " owner-lease-duration-ms: %s";
+  public static final String OWNER_EPOCH_SHOULD_NEVER_BE_REUSED =
+      "Subscription topic owner epoch should never be reused, topic: %s, max granted owner-epoch:"
+          + " %s, incoming owner-id: %s, incoming owner-epoch: %s";
+  public static final String OWNER_SHOULD_NOT_BE_CLEARED_BY_STALE_META =
+      "Subscription topic owner should not be cleared by stale topic meta, topic: %s, current"
+          + " owner-id: %s, current owner-epoch: %s";
+  public static final String OWNER_EPOCH_SHOULD_NOT_ROLL_BACK =
+      "Subscription topic owner epoch should not roll back, topic: %s, current owner-id: %s, current"
+          + " owner-epoch: %s, incoming owner-id: %s, incoming owner-epoch: %s";
+  public static final String OWNER_EPOCH_SHOULD_BE_SET_WHEN_OWNER_ID_SET =
+      "Subscription topic owner epoch should be set when %s is set";
+  public static final String OWNER_LEASE_DURATION_SHOULD_BE_POSITIVE_WHEN_SET =
+      "Subscription topic owner lease duration should be positive when %s is set";
+
   private SubscriptionMessages() {}
 }

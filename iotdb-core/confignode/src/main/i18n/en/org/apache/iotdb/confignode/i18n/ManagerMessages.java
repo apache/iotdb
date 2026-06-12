@@ -140,6 +140,12 @@ public final class ManagerMessages {
       "Failed to create subtask for pipe %s, creation time %d";
   public static final String FAILED_TO_CREATE_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS =
       "Failed to create topic {} with attributes {}. Result status: {}.";
+  public static final String FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED =
+      "Failed to alter topic %s, the topic is not existed";
+  public static final String FAILED_TO_ALTER_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS =
+      "Failed to alter topic {} with attributes {}. Result status: {}.";
+  public static final String OWNER_LEASE_DURATION_BELOW_MIN =
+      "Failed to create or alter topic, owner-lease-duration-ms %s is below the minimum allowed %s ms.";
   public static final String FAILED_TO_DEEP_COPY_PIPEMETA = "failed to deep copy pipeMeta";
   public static final String FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_CONNECTOR =
       "Failed to deregister pipe config region connector metrics, PipeConfigNodeSubtask({}) does not exist";

@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
@@ -40,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.ru
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
@@ -47,6 +49,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -332,6 +335,20 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     validateConsensusTableColumnPattern(topicConfig);
     validateConsensusTopicRetentionConfig(topicConfig);
+
+    final Long ownerLeaseDurationMs =
+        topicConfig.getLong(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
+    final long ownerLeaseDurationMsMin =
+        SubscriptionConfig.getInstance().getSubscriptionOwnerLeaseDurationMsMin();
+    if (Objects.nonNull(ownerLeaseDurationMs) && ownerLeaseDurationMs < ownerLeaseDurationMsMin) {
+      final String exceptionMessage =
+          String.format(
+              ManagerMessages.OWNER_LEASE_DURATION_BELOW_MIN,
+              ownerLeaseDurationMs,
+              ownerLeaseDurationMsMin);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
   }
 
   private void validateConsensusProtocolSupport(final TopicConfig topicConfig)
@@ -552,6 +569,49 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public TopicMeta deepCopyTopicMetaWithUpdatedAttributes(
+      String topicName, Map<String, String> updatedAttributes) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.containsTopicMeta(topicName)
+          ? topicMetaKeeper.getTopicMeta(topicName).deepCopyWithUpdatedAttributes(updatedAttributes)
+          : null;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  /**
+   * Collect owner-lease entries to push via the dedicated subscription owner heartbeat. Each entry
+   * carries a relative remaining duration (the configured lease duration); the DataNode derives the
+   * local expire time on its own clock. Topics undergoing an owner transfer ({@code
+   * blockedTopicNames}) are skipped so their lease drains. This is read-only on ConfigNode: no
+   * absolute expire timestamp is ever stored or compared across nodes.
+   */
+  public List<TTopicOwnerLeaseEntry> collectTopicOwnerLeaseEntries(
+      final Set<String> blockedTopicNames) {
+    acquireReadLock();
+    try {
+      final List<TTopicOwnerLeaseEntry> entries = new ArrayList<>();
+      for (final TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
+        if (!topicMeta.isOwnerFencingEnabled()
+            || Objects.isNull(topicMeta.getOwnerLeaseDurationMs())
+            || blockedTopicNames.contains(topicMeta.getTopicName())) {
+          continue;
+        }
+        entries.add(
+            new TTopicOwnerLeaseEntry(
+                topicMeta.getTopicName(),
+                topicMeta.getOwnerId(),
+                topicMeta.getOwnerEpoch(),
+                topicMeta.getOwnerLeaseDurationMs()));
+      }
+      return entries;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public DataSet showTopics() {
     acquireReadLock();
     try {
@@ -584,6 +644,14 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private TSStatus alterTopicInternal(final AlterTopicPlan plan) {
+    try {
+      TopicMeta.validateOwnerProgression(
+          topicMetaKeeper.getTopicMeta(plan.getTopicMeta().getTopicName()), plan.getTopicMeta());
+    } catch (final IllegalArgumentException e) {
+      return new TSStatus(TSStatusCode.SUBSCRIPTION_OWNER_EPOCH_CONFLICT.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+
     topicMetaKeeper.removeTopicMeta(plan.getTopicMeta().getTopicName());
     topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

@@ -131,6 +131,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -903,6 +904,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitCreateTopic(CreateTopicStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(
+        context.setAuditLogOperation(AuditLogOperation.DDL), statement::getTopicName);
+  }
+
+  @Override
+  public TSStatus visitAlterTopic(AlterTopicStatement statement, TreeAccessCheckContext context) {
     return checkPipeManagement(
         context.setAuditLogOperation(AuditLogOperation.DDL), statement::getTopicName);
   }

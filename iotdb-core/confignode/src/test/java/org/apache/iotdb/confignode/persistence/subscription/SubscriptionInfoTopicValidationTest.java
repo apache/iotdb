@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
@@ -187,6 +188,33 @@ public class SubscriptionInfoTopicValidationTest {
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
 
     assertCreateRejected(subscriptionInfo, attributes, "only supported for consensus topics");
+  }
+
+  @Test
+  public void testRejectOwnerLeaseDurationBelowMin() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
+    attributes.put(TopicConstant.OWNER_EPOCH_KEY, "1");
+    // Well below the default 1-minute floor.
+    attributes.put(TopicConstant.OWNER_LEASE_DURATION_MS_KEY, "5000");
+
+    assertCreateRejected(subscriptionInfo, attributes, "below the minimum allowed");
+  }
+
+  @Test
+  public void testAcceptOwnerLeaseDurationAtMin() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
+    attributes.put(TopicConstant.OWNER_EPOCH_KEY, "1");
+    attributes.put(
+        TopicConstant.OWNER_LEASE_DURATION_MS_KEY,
+        String.valueOf(SubscriptionConfig.getInstance().getSubscriptionOwnerLeaseDurationMsMin()));
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("owner_topic").setTopicAttributes(attributes)));
   }
 
   private static Map<String, String> newConsensusTableTopicAttributes() {

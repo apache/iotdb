@@ -20,14 +20,19 @@
 package org.apache.iotdb.db.subscription.receiver;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -82,6 +87,77 @@ public class SubscriptionReceiverV1Test {
         invokeCalculateConsumerInactivityTimeoutMs(receiver, createConsumerConfig(5_000L)));
   }
 
+  @Test
+  public void testTopicOwnerFencingStatus() {
+    final String topicName = "topic-" + UUID.randomUUID();
+
+    SubscriptionAgent.topic()
+        .handleSingleTopicMetaChanges(createTopicMeta(topicName, "owner1", 7L));
+    try {
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          SubscriptionAgent.topic()
+              .checkTopicOwner(createConsumerConfig(1_000L, "owner1", 7L), topicName)
+              .getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUBSCRIPTION_OWNER_FENCED.getStatusCode(),
+          SubscriptionAgent.topic()
+              .checkTopicOwner(createConsumerConfig(1_000L, "owner2", 7L), topicName)
+              .getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUBSCRIPTION_OWNER_REQUIRED.getStatusCode(),
+          SubscriptionAgent.topic()
+              .checkTopicOwner(createConsumerConfig(1_000L), topicName)
+              .getCode());
+    } finally {
+      SubscriptionAgent.topic().handleDropTopic(topicName);
+    }
+  }
+
+  @Test
+  public void testOldOwnerFencedAfterNetworkPartitionAndTopicOwnerTransfer() {
+    final String topicName = "topic-" + UUID.randomUUID();
+    final TopicMeta topicMeta = createTopicMeta(topicName, "owner1", 5L);
+    final ConsumerConfig oldOwnerConsumer = createConsumerConfig(1_000L, "owner1", 5L);
+    final ConsumerConfig newOwnerConsumer = createConsumerConfig(1_000L, "owner2", 6L);
+
+    SubscriptionAgent.topic().handleSingleTopicMetaChanges(topicMeta);
+    try {
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          SubscriptionAgent.topic().checkTopicOwner(oldOwnerConsumer, topicName).getCode());
+
+      final TopicMeta transferredTopicMeta = topicMeta.deepCopy();
+      transferredTopicMeta.transferOwner("owner2", 6L);
+      SubscriptionAgent.topic().handleSingleTopicMetaChanges(transferredTopicMeta);
+
+      Assert.assertEquals(
+          TSStatusCode.SUBSCRIPTION_OWNER_FENCED.getStatusCode(),
+          SubscriptionAgent.topic().checkTopicOwner(oldOwnerConsumer, topicName).getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUBSCRIPTION_OWNER_FENCED.getStatusCode(),
+          SubscriptionAgent.topic()
+              .checkTopicOwners(oldOwnerConsumer, Collections.singleton(topicName))
+              .getCode());
+      Assert.assertNotNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(createTopicMeta(topicName, "owner1", 5L)));
+      Assert.assertEquals(
+          TSStatusCode.SUBSCRIPTION_OWNER_FENCED.getStatusCode(),
+          SubscriptionAgent.topic().checkTopicOwner(oldOwnerConsumer, topicName).getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          SubscriptionAgent.topic().checkTopicOwner(newOwnerConsumer, topicName).getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          SubscriptionAgent.topic()
+              .checkTopicOwners(newOwnerConsumer, Collections.singleton(topicName))
+              .getCode());
+    } finally {
+      SubscriptionAgent.topic().handleDropTopic(topicName);
+    }
+  }
+
   private long invokeCalculateConsumerInactivityTimeoutMs(
       final SubscriptionReceiverV1 receiver, final ConsumerConfig consumerConfig) throws Exception {
     final Method method =
@@ -91,11 +167,30 @@ public class SubscriptionReceiverV1Test {
     return (long) method.invoke(receiver, consumerConfig);
   }
 
+  private TopicMeta createTopicMeta(
+      final String topicName, final String ownerId, final long ownerEpoch) {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, ownerId);
+    topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, String.valueOf(ownerEpoch));
+    return new TopicMeta(topicName, 1, topicAttributes);
+  }
+
   private ConsumerConfig createConsumerConfig(final long heartbeatIntervalMs) {
+    return createConsumerConfig(heartbeatIntervalMs, null, null);
+  }
+
+  private ConsumerConfig createConsumerConfig(
+      final long heartbeatIntervalMs, final String ownerId, final Long ownerEpoch) {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put(ConsumerConstant.CONSUMER_ID_KEY, "consumer-" + UUID.randomUUID());
     attributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "group-" + UUID.randomUUID());
     attributes.put(ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY, String.valueOf(heartbeatIntervalMs));
+    if (ownerId != null) {
+      attributes.put(ConsumerConstant.OWNER_ID_KEY, ownerId);
+    }
+    if (ownerEpoch != null) {
+      attributes.put(ConsumerConstant.OWNER_EPOCH_KEY, String.valueOf(ownerEpoch));
+    }
     return new ConsumerConfig(attributes);
   }
 

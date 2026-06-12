@@ -183,6 +183,8 @@ public final class DataNodeMiscMessages {
       "推送单个 Topic 元数据时发生错误";
   public static final String ERROR_PUSHING_MULTI_TOPIC_META =
       "推送多个 Topic 元数据时发生错误";
+  public static final String ERROR_PUSHING_TOPIC_OWNER_LEASE =
+      "推送 Topic owner 租约时发生错误";
   public static final String ERROR_PUSHING_CONSUMER_GROUP_META =
       "推送消费者组元数据时发生错误";
   public static final String ERROR_PUSHING_SINGLE_CONSUMER_GROUP_META =
