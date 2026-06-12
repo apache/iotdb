@@ -35,14 +35,14 @@ public class TopicStatementTest {
   public void testAlterTopicStatement() {
     final Statement statement =
         sqlParser.createStatement(
-            "ALTER TOPIC topic1 WITH ('owner-id'='sn2','owner-epoch'='6')",
+            "ALTER TOPIC topic1 WITH ('owner-id'='owner2','owner-epoch'='6')",
             ZoneId.systemDefault(),
             null);
 
     Assert.assertTrue(statement instanceof AlterTopic);
     final AlterTopic alterTopic = (AlterTopic) statement;
     Assert.assertEquals("topic1", alterTopic.getTopicName());
-    Assert.assertEquals("sn2", alterTopic.getTopicAttributes().get("owner-id"));
+    Assert.assertEquals("owner2", alterTopic.getTopicAttributes().get("owner-id"));
     Assert.assertEquals("6", alterTopic.getTopicAttributes().get("owner-epoch"));
   }
 }

@@ -66,7 +66,7 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
       final Properties properties = new Properties();
       properties.put(TopicConstant.PATH_KEY, "root.topic_owner.**");
       properties.put(TopicConstant.START_TIME_KEY, "0");
-      properties.put(TopicConstant.OWNER_ID_KEY, "sn2");
+      properties.put(TopicConstant.OWNER_ID_KEY, "owner2");
       properties.put(TopicConstant.OWNER_EPOCH_KEY, "6");
       session.createTopic(topicName, properties);
     }
@@ -76,9 +76,9 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
           new SubscriptionTreePullConsumer.Builder()
               .host(host)
               .port(port)
-              .consumerId("stale_sn")
+              .consumerId("stale_owner")
               .consumerGroupId("topic_owner_group")
-              .ownerId("sn1")
+              .ownerId("owner1")
               .ownerEpoch(5L)
               .autoCommit(false)
               .buildPullConsumer()) {
@@ -91,9 +91,9 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
           new SubscriptionTreePullConsumer.Builder()
               .host(host)
               .port(port)
-              .consumerId("current_sn")
+              .consumerId("current_owner")
               .consumerGroupId("topic_owner_group")
-              .ownerId("sn2")
+              .ownerId("owner2")
               .ownerEpoch(6L)
               .autoCommit(false)
               .buildPullConsumer()) {
@@ -136,7 +136,7 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
       final Properties properties = new Properties();
       properties.put(TopicConstant.PATH_KEY, "root.topic_owner.**");
       properties.put(TopicConstant.START_TIME_KEY, "0");
-      properties.put(TopicConstant.OWNER_ID_KEY, "sn1");
+      properties.put(TopicConstant.OWNER_ID_KEY, "owner1");
       properties.put(TopicConstant.OWNER_EPOCH_KEY, "5");
       properties.put(
           TopicConstant.OWNER_LEASE_DURATION_MS_KEY, String.valueOf(ownerLeaseDurationMs));
@@ -149,7 +149,7 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
         // duration. This is the admission gate that prevents cross-DataNode double-active
         // consuming.
         final long alterStartTimeMs = System.currentTimeMillis();
-        session.alterTopicOwner(topicName, "sn2", 6L);
+        session.alterTopicOwner(topicName, "owner2", 6L);
         final long alterElapsedTimeMs = System.currentTimeMillis() - alterStartTimeMs;
         Assert.assertTrue(
             "alterTopicOwner should block at least the lease drain duration, but only took "
@@ -158,7 +158,7 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
             alterElapsedTimeMs >= ownerLeaseDurationMs);
 
         final String topicAttributes = getTopicAttributes(session, topicName);
-        Assert.assertTrue(topicAttributes.contains("owner-id=sn2"));
+        Assert.assertTrue(topicAttributes.contains("owner-id=owner2"));
         Assert.assertTrue(topicAttributes.contains("owner-epoch=6"));
       } finally {
         session.dropTopicIfExists(topicName);

@@ -126,13 +126,13 @@ public class StatementGeneratorTest {
   public void testAlterTopicStatement() {
     final Statement statement =
         StatementGenerator.createStatement(
-            "ALTER TOPIC topic1 WITH ('owner-id'='sn2','owner-epoch'='6')",
+            "ALTER TOPIC topic1 WITH ('owner-id'='owner2','owner-epoch'='6')",
             ZonedDateTime.now().getOffset());
 
     Assert.assertTrue(statement instanceof AlterTopicStatement);
     final AlterTopicStatement alterTopicStatement = (AlterTopicStatement) statement;
     Assert.assertEquals("topic1", alterTopicStatement.getTopicName());
-    Assert.assertEquals("sn2", alterTopicStatement.getTopicAttributes().get("owner-id"));
+    Assert.assertEquals("owner2", alterTopicStatement.getTopicAttributes().get("owner-id"));
     Assert.assertEquals("6", alterTopicStatement.getTopicAttributes().get("owner-epoch"));
   }
 

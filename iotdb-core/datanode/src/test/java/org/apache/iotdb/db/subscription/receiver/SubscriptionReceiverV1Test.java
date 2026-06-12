@@ -91,17 +91,18 @@ public class SubscriptionReceiverV1Test {
   public void testTopicOwnerFencingStatus() {
     final String topicName = "topic-" + UUID.randomUUID();
 
-    SubscriptionAgent.topic().handleSingleTopicMetaChanges(createTopicMeta(topicName, "sn1", 7L));
+    SubscriptionAgent.topic()
+        .handleSingleTopicMetaChanges(createTopicMeta(topicName, "owner1", 7L));
     try {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           SubscriptionAgent.topic()
-              .checkTopicOwner(createConsumerConfig(1_000L, "sn1", 7L), topicName)
+              .checkTopicOwner(createConsumerConfig(1_000L, "owner1", 7L), topicName)
               .getCode());
       Assert.assertEquals(
           TSStatusCode.SUBSCRIPTION_OWNER_FENCED.getStatusCode(),
           SubscriptionAgent.topic()
-              .checkTopicOwner(createConsumerConfig(1_000L, "sn2", 7L), topicName)
+              .checkTopicOwner(createConsumerConfig(1_000L, "owner2", 7L), topicName)
               .getCode());
       Assert.assertEquals(
           TSStatusCode.SUBSCRIPTION_OWNER_REQUIRED.getStatusCode(),
@@ -116,41 +117,41 @@ public class SubscriptionReceiverV1Test {
   @Test
   public void testOldOwnerFencedAfterNetworkPartitionAndTopicOwnerTransfer() {
     final String topicName = "topic-" + UUID.randomUUID();
-    final TopicMeta topicMeta = createTopicMeta(topicName, "sn1", 5L);
-    final ConsumerConfig oldSnConsumer = createConsumerConfig(1_000L, "sn1", 5L);
-    final ConsumerConfig newSnConsumer = createConsumerConfig(1_000L, "sn2", 6L);
+    final TopicMeta topicMeta = createTopicMeta(topicName, "owner1", 5L);
+    final ConsumerConfig oldOwnerConsumer = createConsumerConfig(1_000L, "owner1", 5L);
+    final ConsumerConfig newOwnerConsumer = createConsumerConfig(1_000L, "owner2", 6L);
 
     SubscriptionAgent.topic().handleSingleTopicMetaChanges(topicMeta);
     try {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          SubscriptionAgent.topic().checkTopicOwner(oldSnConsumer, topicName).getCode());
+          SubscriptionAgent.topic().checkTopicOwner(oldOwnerConsumer, topicName).getCode());
 
       final TopicMeta transferredTopicMeta = topicMeta.deepCopy();
-      transferredTopicMeta.transferOwner("sn2", 6L);
+      transferredTopicMeta.transferOwner("owner2", 6L);
       SubscriptionAgent.topic().handleSingleTopicMetaChanges(transferredTopicMeta);
 
       Assert.assertEquals(
           TSStatusCode.SUBSCRIPTION_OWNER_FENCED.getStatusCode(),
-          SubscriptionAgent.topic().checkTopicOwner(oldSnConsumer, topicName).getCode());
+          SubscriptionAgent.topic().checkTopicOwner(oldOwnerConsumer, topicName).getCode());
       Assert.assertEquals(
           TSStatusCode.SUBSCRIPTION_OWNER_FENCED.getStatusCode(),
           SubscriptionAgent.topic()
-              .checkTopicOwners(oldSnConsumer, Collections.singleton(topicName))
+              .checkTopicOwners(oldOwnerConsumer, Collections.singleton(topicName))
               .getCode());
       Assert.assertNotNull(
           SubscriptionAgent.topic()
-              .handleSingleTopicMetaChanges(createTopicMeta(topicName, "sn1", 5L)));
+              .handleSingleTopicMetaChanges(createTopicMeta(topicName, "owner1", 5L)));
       Assert.assertEquals(
           TSStatusCode.SUBSCRIPTION_OWNER_FENCED.getStatusCode(),
-          SubscriptionAgent.topic().checkTopicOwner(oldSnConsumer, topicName).getCode());
+          SubscriptionAgent.topic().checkTopicOwner(oldOwnerConsumer, topicName).getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          SubscriptionAgent.topic().checkTopicOwner(newSnConsumer, topicName).getCode());
+          SubscriptionAgent.topic().checkTopicOwner(newOwnerConsumer, topicName).getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           SubscriptionAgent.topic()
-              .checkTopicOwners(newSnConsumer, Collections.singleton(topicName))
+              .checkTopicOwners(newOwnerConsumer, Collections.singleton(topicName))
               .getCode());
     } finally {
       SubscriptionAgent.topic().handleDropTopic(topicName);

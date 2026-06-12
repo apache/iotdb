@@ -41,9 +41,9 @@ import org.junit.runner.RunWith;
 import java.util.Properties;
 
 /**
- * Owner-fencing correctness under SN/DN/CN partition topologies, simulated at the node-process
- * level via the IT framework (shutdown/start of ConfigNodes and DataNodes; ConfigNode failover via
- * leader shutdown). Runs on a 3 ConfigNode + 3 DataNode cluster.
+ * Owner-fencing correctness under owner/DataNode/ConfigNode partition topologies, simulated at the
+ * node-process level via the IT framework (shutdown/start of ConfigNodes and DataNodes; ConfigNode
+ * failover via leader shutdown). Runs on a 3 ConfigNode + 3 DataNode cluster.
  *
  * <p>Covers:
  *
@@ -88,7 +88,7 @@ public class IoTDBSubscriptionTopicOwnerPartitionIT extends AbstractSubscription
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     final String topicName = "topic_owner_multi_dn";
 
-    createOwnedTopic(host, port, topicName, "sn2", 6L);
+    createOwnedTopic(host, port, topicName, "owner2", 6L);
     try {
       // Spread data across multiple devices (and thus, with multiple data regions, multiple
       // DataNodes) before consuming.
@@ -96,11 +96,12 @@ public class IoTDBSubscriptionTopicOwnerPartitionIT extends AbstractSubscription
 
       // A stale owner (epoch 5 < current 6) must be fenced regardless of which DataNode serves the
       // request.
-      assertSubscribeFenced(host, port, topicName, "stale_multi_dn", "sn1", 5L);
+      assertSubscribeFenced(host, port, topicName, "stale_multi_dn", "owner1", 5L);
 
       // The current owner can subscribe.
       try (final SubscriptionTreePullConsumer currentOwnerConsumer =
-          ownerConsumer(host, port, "current_multi_dn", "topic_owner_multi_dn_group", "sn2", 6L)) {
+          ownerConsumer(
+              host, port, "current_multi_dn", "topic_owner_multi_dn_group", "owner2", 6L)) {
         currentOwnerConsumer.open();
         currentOwnerConsumer.subscribe(topicName);
         currentOwnerConsumer.unsubscribe(topicName);
@@ -122,14 +123,14 @@ public class IoTDBSubscriptionTopicOwnerPartitionIT extends AbstractSubscription
       final Properties properties = new Properties();
       properties.put(TopicConstant.PATH_KEY, HEAD_PATH + ".**");
       properties.put(TopicConstant.START_TIME_KEY, "0");
-      properties.put(TopicConstant.OWNER_ID_KEY, "sn1");
+      properties.put(TopicConstant.OWNER_ID_KEY, "owner1");
       properties.put(TopicConstant.OWNER_EPOCH_KEY, "5");
       properties.put(
           TopicConstant.OWNER_LEASE_DURATION_MS_KEY, String.valueOf(ownerLeaseDurationMs));
       session.createTopic(topicName, properties);
 
-      // Transfer to sn2/epoch 6 (this persists owner + epoch via ConfigNode consensus).
-      session.alterTopicOwner(topicName, "sn2", 6L);
+      // Transfer to owner2/epoch 6 (this persists owner + epoch via ConfigNode consensus).
+      session.alterTopicOwner(topicName, "owner2", 6L);
       Assert.assertTrue(getTopicAttributes(session, topicName).contains("owner-epoch=6"));
     }
 
@@ -145,11 +146,11 @@ public class IoTDBSubscriptionTopicOwnerPartitionIT extends AbstractSubscription
             try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
               session.open();
               final String attributes = getTopicAttributes(session, topicName);
-              Assert.assertTrue(attributes.contains("owner-id=sn2"));
+              Assert.assertTrue(attributes.contains("owner-id=owner2"));
               Assert.assertTrue(attributes.contains("owner-epoch=6"));
             }
           });
-      assertSubscribeFenced(host, port, topicName, "stale_after_failover", "sn1", 5L);
+      assertSubscribeFenced(host, port, topicName, "stale_after_failover", "owner1", 5L);
     } finally {
       EnvFactory.getEnv().startConfigNode(leaderIndex);
       dropTopic(host, port, topicName);
@@ -162,7 +163,7 @@ public class IoTDBSubscriptionTopicOwnerPartitionIT extends AbstractSubscription
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     final String topicName = "topic_owner_dn_restart";
 
-    createOwnedTopic(host, port, topicName, "sn2", 6L);
+    createOwnedTopic(host, port, topicName, "owner2", 6L);
     try {
       // Restart a DataNode: it loses in-memory owner metadata and must re-sync it on restart.
       EnvFactory.getEnv().shutdownDataNode(1);
@@ -170,7 +171,8 @@ public class IoTDBSubscriptionTopicOwnerPartitionIT extends AbstractSubscription
 
       // After the DataNode comes back and re-syncs owner metadata, the stale owner stays fenced.
       IoTDBSubscriptionITConstant.AWAIT.untilAsserted(
-          () -> assertSubscribeFenced(host, port, topicName, "stale_after_dn_restart", "sn1", 5L));
+          () ->
+              assertSubscribeFenced(host, port, topicName, "stale_after_dn_restart", "owner1", 5L));
     } finally {
       dropTopic(host, port, topicName);
     }

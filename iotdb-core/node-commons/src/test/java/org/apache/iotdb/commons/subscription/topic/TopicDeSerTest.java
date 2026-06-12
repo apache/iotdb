@@ -61,17 +61,17 @@ public class TopicDeSerTest {
   @Test
   public void testTopicOwnerDeSer() throws IOException {
     Map<String, String> topicAttributes = new HashMap<>();
-    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
     topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
 
     TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
 
     Assert.assertTrue(topicMeta.isOwnerFencingEnabled());
-    Assert.assertEquals("sn1", topicMeta.getOwnerId());
+    Assert.assertEquals("owner1", topicMeta.getOwnerId());
     Assert.assertEquals(5L, topicMeta.getOwnerEpoch());
-    Assert.assertTrue(topicMeta.matchesOwner("sn1", 5L));
-    Assert.assertFalse(topicMeta.matchesOwner("sn2", 5L));
-    Assert.assertFalse(topicMeta.matchesOwner("sn1", 4L));
+    Assert.assertTrue(topicMeta.matchesOwner("owner1", 5L));
+    Assert.assertFalse(topicMeta.matchesOwner("owner2", 5L));
+    Assert.assertFalse(topicMeta.matchesOwner("owner1", 4L));
 
     TopicMeta topicMeta1 = TopicMeta.deserialize(topicMeta.serialize());
     TopicMeta topicMeta2 = topicMeta1.deepCopy();
@@ -84,10 +84,10 @@ public class TopicDeSerTest {
     Assert.assertEquals(
         topicMeta.getOwnerLeaseExpireTimeMs(), topicMeta2.getOwnerLeaseExpireTimeMs());
 
-    topicMeta.transferOwner("sn2", 6L, 100L);
-    Assert.assertEquals("sn2", topicMeta.getOwnerId());
+    topicMeta.transferOwner("owner2", 6L, 100L);
+    Assert.assertEquals("owner2", topicMeta.getOwnerId());
     Assert.assertEquals(6L, topicMeta.getOwnerEpoch());
-    Assert.assertEquals("sn2", topicMeta.getConfig().getString(TopicConstant.OWNER_ID_KEY));
+    Assert.assertEquals("owner2", topicMeta.getConfig().getString(TopicConstant.OWNER_ID_KEY));
     Assert.assertEquals(
         6L, topicMeta.getConfig().getLong(TopicConstant.OWNER_EPOCH_KEY).longValue());
     Assert.assertEquals(
@@ -108,39 +108,39 @@ public class TopicDeSerTest {
   public void testDeepCopyWithUpdatedAttributesTransfersOwnerAndPreservesExistingConfig() {
     final Map<String, String> topicAttributes = new HashMap<>();
     topicAttributes.put(TopicConstant.PATH_KEY, "root.sg.**");
-    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
     topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
     final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
     topicMeta.addSubscribedConsumerGroup("group1");
 
     final Map<String, String> updatedAttributes = new HashMap<>();
-    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "sn2");
+    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "owner2");
     updatedAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "6");
     final TopicMeta updatedTopicMeta = topicMeta.deepCopyWithUpdatedAttributes(updatedAttributes);
 
     Assert.assertEquals(
         "root.sg.**", updatedTopicMeta.getConfig().getString(TopicConstant.PATH_KEY));
-    Assert.assertEquals("sn2", updatedTopicMeta.getOwnerId());
+    Assert.assertEquals("owner2", updatedTopicMeta.getOwnerId());
     Assert.assertEquals(6L, updatedTopicMeta.getOwnerEpoch());
     Assert.assertTrue(updatedTopicMeta.isSubscribedByConsumerGroup("group1"));
-    Assert.assertEquals("sn1", topicMeta.getOwnerId());
+    Assert.assertEquals("owner1", topicMeta.getOwnerId());
     Assert.assertEquals(5L, topicMeta.getOwnerEpoch());
   }
 
   @Test
   public void testDeepCopyWithUpdatedAttributesTransfersOwnerAndClearsExistingLease() {
     final Map<String, String> topicAttributes = new HashMap<>();
-    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
     topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
     topicAttributes.put(TopicConstant.OWNER_LEASE_DURATION_MS_KEY, "60000");
     final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
 
     final Map<String, String> updatedAttributes = new HashMap<>();
-    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "sn2");
+    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "owner2");
     updatedAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "6");
     final TopicMeta updatedTopicMeta = topicMeta.deepCopyWithUpdatedAttributes(updatedAttributes);
 
-    Assert.assertEquals("sn2", updatedTopicMeta.getOwnerId());
+    Assert.assertEquals("owner2", updatedTopicMeta.getOwnerId());
     Assert.assertEquals(6L, updatedTopicMeta.getOwnerEpoch());
     Assert.assertNull(updatedTopicMeta.getOwnerLeaseDurationMs());
     Assert.assertNull(updatedTopicMeta.getOwnerLeaseExpireTimeMs());
@@ -151,7 +151,7 @@ public class TopicDeSerTest {
   @Test
   public void testOwnerLeaseExpireIsDataNodeLocalRuntimeOnly() throws IOException {
     final Map<String, String> topicAttributes = new HashMap<>();
-    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
     topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
     topicAttributes.put(TopicConstant.OWNER_LEASE_DURATION_MS_KEY, "60000");
     final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
@@ -159,13 +159,13 @@ public class TopicDeSerTest {
     // Construction (ConfigNode side) never derives an absolute expiry; that is established only by
     // the DataNode-local owner-lease heartbeat.
     Assert.assertNull(topicMeta.getOwnerLeaseExpireTimeMs());
-    Assert.assertTrue(topicMeta.matchesOwner("sn1", 5L));
+    Assert.assertTrue(topicMeta.matchesOwner("owner1", 5L));
 
     // Apply a heartbeat with a relative remaining duration; expiry is now set locally and the owner
     // still matches before the lease drains.
-    topicMeta.applyOwnerLeaseFromHeartbeat("sn1", 5L, 60000L);
+    topicMeta.applyOwnerLeaseFromHeartbeat("owner1", 5L, 60000L);
     Assert.assertNotNull(topicMeta.getOwnerLeaseExpireTimeMs());
-    Assert.assertTrue(topicMeta.matchesOwner("sn1", 5L));
+    Assert.assertTrue(topicMeta.matchesOwner("owner1", 5L));
 
     // The locally-derived expiry is runtime-only: it is not a topic attribute, does not affect
     // equality, and does not survive serialization.
@@ -174,20 +174,20 @@ public class TopicDeSerTest {
     Assert.assertEquals(topicMeta, roundTrip);
 
     // A stale/mismatched heartbeat is ignored.
-    topicMeta.applyOwnerLeaseFromHeartbeat("sn2", 5L, 60000L);
-    topicMeta.applyOwnerLeaseFromHeartbeat("sn1", 4L, 60000L);
-    Assert.assertTrue(topicMeta.matchesOwner("sn1", 5L));
+    topicMeta.applyOwnerLeaseFromHeartbeat("owner2", 5L, 60000L);
+    topicMeta.applyOwnerLeaseFromHeartbeat("owner1", 4L, 60000L);
+    Assert.assertTrue(topicMeta.matchesOwner("owner1", 5L));
 
     // An elapsed lease causes the current owner to stop matching (DataNode fencing).
-    topicMeta.applyOwnerLeaseFromHeartbeat("sn1", 5L, -1L);
-    Assert.assertFalse(topicMeta.matchesOwner("sn1", 5L));
+    topicMeta.applyOwnerLeaseFromHeartbeat("owner1", 5L, -1L);
+    Assert.assertFalse(topicMeta.matchesOwner("owner1", 5L));
   }
 
   @Test
   public void testOwnerLeaseDurationGeneratesExpireTime() {
     final long ownerLeaseDurationMs = 60000;
     final Map<String, String> topicAttributes = new HashMap<>();
-    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
     topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
     topicAttributes.put(
         TopicConstant.OWNER_LEASE_DURATION_MS_KEY, String.valueOf(ownerLeaseDurationMs));
@@ -232,7 +232,7 @@ public class TopicDeSerTest {
   @Test
   public void testOwnerEpochNeverReusedAcrossClearAndSerialization() throws IOException {
     final Map<String, String> topicAttributes = new HashMap<>();
-    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
     topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "6");
     final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
     Assert.assertEquals(6L, topicMeta.getMaxOwnerEpoch());
@@ -249,7 +249,7 @@ public class TopicDeSerTest {
 
     // Re-enabling with an epoch <= the historical max (reuse) is rejected.
     final Map<String, String> reuse = new HashMap<>();
-    reuse.put(TopicConstant.OWNER_ID_KEY, "sn2");
+    reuse.put(TopicConstant.OWNER_ID_KEY, "owner2");
     reuse.put(TopicConstant.OWNER_EPOCH_KEY, "6");
     final TopicMeta reuseMeta = deserialized.deepCopyWithUpdatedAttributes(reuse);
     Assert.assertThrows(
@@ -258,7 +258,7 @@ public class TopicDeSerTest {
 
     // Re-enabling with an epoch strictly greater than the historical max is allowed.
     final Map<String, String> next = new HashMap<>();
-    next.put(TopicConstant.OWNER_ID_KEY, "sn2");
+    next.put(TopicConstant.OWNER_ID_KEY, "owner2");
     next.put(TopicConstant.OWNER_EPOCH_KEY, "7");
     final TopicMeta nextMeta = deserialized.deepCopyWithUpdatedAttributes(next);
     TopicMeta.validateOwnerProgression(deserialized, nextMeta);
