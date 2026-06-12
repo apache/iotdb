@@ -55,4 +55,10 @@ public class IoTDBIoTConsensusV2Batch3C3DBasicIT extends IoTDBIoTConsensusV23C3D
   public void testDeleteTimeSeriesReplicaConsistency() throws Exception {
     super.testDeleteTimeSeriesReplicaConsistency();
   }
+
+  @Override
+  @Test
+  public void testObjectReplicaConsistency() throws Exception {
+    super.testObjectReplicaConsistency();
+  }
 }

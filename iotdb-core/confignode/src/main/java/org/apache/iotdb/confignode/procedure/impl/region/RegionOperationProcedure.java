@@ -41,6 +41,19 @@ public abstract class RegionOperationProcedure<TState>
     return regionId;
   }
 
+  /**
+   * Get the name of the current state of this region operation procedure. {@link
+   * #getCurrentState()} is {@code protected} on {@link StateMachineProcedure}, so this public
+   * wrapper lets callers (e.g. SHOW MIGRATIONS) read the state name uniformly across all region
+   * operation types.
+   *
+   * @return the current state name, or {@code "UNKNOWN"} if the state is not yet available
+   */
+  public String getCurrentStateName() {
+    TState state = getCurrentState();
+    return state != null ? state.toString() : "UNKNOWN";
+  }
+
   @Override
   public String toString() {
     return super.toString() + ", regionId=" + regionId;

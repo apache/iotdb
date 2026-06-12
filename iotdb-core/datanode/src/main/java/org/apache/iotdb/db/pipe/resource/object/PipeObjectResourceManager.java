@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 
 /**
  * Manages the lifecycle, physical directories, and reference counting of object resources
@@ -103,6 +104,15 @@ public class PipeObjectResourceManager {
       final Iterator<String> pathIterator,
       final String pipeName)
       throws IOException {
+    return linkObjectFiles(tsFileResource, pathIterator, pipeName, null);
+  }
+
+  public int linkObjectFiles(
+      final TsFileResource tsFileResource,
+      final Iterator<String> pathIterator,
+      final String pipeName,
+      final BooleanSupplier shouldStopLinking)
+      throws IOException {
 
     validatePipeName(pipeName);
     validateTsFileResource(tsFileResource);
@@ -119,6 +129,9 @@ public class PipeObjectResourceManager {
       final PipeObjectResource resource = getOrCreateObjectResource(tsFileResource, pipeName);
 
       while (pathIterator.hasNext()) {
+        if (shouldStopLinking != null && shouldStopLinking.getAsBoolean()) {
+          break;
+        }
         final String relativePath = pathIterator.next();
         if (relativePath != null && !relativePath.trim().isEmpty()) {
           resource.linkObjectFile(relativePath);

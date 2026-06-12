@@ -586,11 +586,9 @@ public class LoadCache {
   public Map<Integer, TNodeActivateInfo> getNodeSimplifiedActivateStatus() {
     Map<Integer, TNodeActivateInfo> result = new HashMap<>();
     for (Map.Entry<Integer, ActivationStatusCache> entry : activationStatusCacheMap.entrySet()) {
-      ObligationStatus status = entry.getValue().getActivateStatus();
-      if (entry.getValue().isFake() || entry.getValue().tooOld()) {
-        status = ObligationStatus.UNKNOWN;
-      }
-      result.put(entry.getKey(), new TNodeActivateInfo(status.toSimpleString()));
+      result.put(
+          entry.getKey(),
+          new TNodeActivateInfo(getVisibleActivationStatus(entry.getValue()).toSimpleString()));
     }
     return result;
   }
@@ -599,14 +597,15 @@ public class LoadCache {
     return activationStatusCacheMap.entrySet().stream()
         .collect(
             Collectors.toMap(
-                Map.Entry::getKey,
-                e -> {
-                  ObligationStatus status = e.getValue().getActivateStatus();
-                  if (e.getValue().isFake() || e.getValue().tooOld()) {
-                    status = ObligationStatus.UNKNOWN;
-                  }
-                  return status.toString();
-                }));
+                Map.Entry::getKey, e -> getVisibleActivationStatus(e.getValue()).toString()));
+  }
+
+  private ObligationStatus getVisibleActivationStatus(ActivationStatusCache cache) {
+    ObligationStatus status = cache.getActivateStatus();
+    if (cache.tooOld() || (cache.isFake() && ObligationStatus.UNKNOWN.equals(status))) {
+      return ObligationStatus.UNKNOWN;
+    }
+    return status;
   }
 
   /**
@@ -669,6 +668,23 @@ public class LoadCache {
     return Optional.ofNullable((DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId))
         .map(DataNodeHeartbeatCache::getFreeDiskSpace)
         .orElse(0d);
+  }
+
+  /**
+   * Get the latest sampled disk usage rate (occupied disk space percentage, in [0, 1]) of every
+   * DataNode.
+   *
+   * @return a map from DataNodeId to its latest disk usage rate
+   */
+  public Map<Integer, Double> getDataNodeDiskUsageRateMap() {
+    Map<Integer, Double> diskUsageRateMap = new TreeMap<>();
+    nodeCacheMap.forEach(
+        (nodeId, nodeCache) -> {
+          if (nodeCache instanceof DataNodeHeartbeatCache) {
+            diskUsageRateMap.put(nodeId, ((DataNodeHeartbeatCache) nodeCache).getDiskUsageRate());
+          }
+        });
+    return diskUsageRateMap;
   }
 
   /**

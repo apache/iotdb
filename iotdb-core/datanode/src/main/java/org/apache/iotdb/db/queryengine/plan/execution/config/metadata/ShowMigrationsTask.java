@@ -72,38 +72,53 @@ public class ShowMigrationsTask implements IConfigTask {
       for (final TMigrationInfo migrationInfo : showMigrationsResp.getMigrationInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
         builder.getColumnBuilder(0).writeLong(migrationInfo.getProcedureId());
-        builder.getColumnBuilder(1).writeInt(migrationInfo.getRegionId());
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(
+                BytesUtils.valueOf(
+                    migrationInfo.isSetOperationType() ? migrationInfo.getOperationType() : ""));
+        builder.getColumnBuilder(2).writeInt(migrationInfo.getRegionId());
         if (migrationInfo.getRegionType().ordinal() == TConsensusGroupType.SchemaRegion.ordinal()) {
           builder
-              .getColumnBuilder(2)
+              .getColumnBuilder(3)
               .writeBinary(BytesUtils.valueOf(String.valueOf(TConsensusGroupType.SchemaRegion)));
         } else if (migrationInfo.getRegionType().ordinal()
             == TConsensusGroupType.DataRegion.ordinal()) {
           builder
-              .getColumnBuilder(2)
+              .getColumnBuilder(3)
               .writeBinary(BytesUtils.valueOf(String.valueOf(TConsensusGroupType.DataRegion)));
         }
-        builder.getColumnBuilder(3).writeInt(migrationInfo.getFromNodeId());
-        builder.getColumnBuilder(4).writeInt(migrationInfo.getToNodeId());
-        builder
-            .getColumnBuilder(5)
-            .writeBinary(BytesUtils.valueOf(migrationInfo.getCurrentState()));
+        // FROM/TO may be unset for operations that only have one side (EXTEND has no source, REMOVE
+        // has no destination); render the absent side as a blank cell.
+        if (migrationInfo.isSetFromNodeId()) {
+          builder.getColumnBuilder(4).writeInt(migrationInfo.getFromNodeId());
+        } else {
+          builder.getColumnBuilder(4).appendNull();
+        }
+        if (migrationInfo.isSetToNodeId()) {
+          builder.getColumnBuilder(5).writeInt(migrationInfo.getToNodeId());
+        } else {
+          builder.getColumnBuilder(5).appendNull();
+        }
         builder
             .getColumnBuilder(6)
-            .writeBinary(BytesUtils.valueOf(migrationInfo.getProcedureStatus()));
+            .writeBinary(BytesUtils.valueOf(migrationInfo.getCurrentState()));
         builder
             .getColumnBuilder(7)
-            .writeBinary(
-                BytesUtils.valueOf(
-                    DateTimeUtils.convertLongToDate(migrationInfo.getSubmittedTime())));
+            .writeBinary(BytesUtils.valueOf(migrationInfo.getProcedureStatus()));
         builder
             .getColumnBuilder(8)
             .writeBinary(
                 BytesUtils.valueOf(
-                    DateTimeUtils.convertLongToDate(migrationInfo.getLastUpdateTime())));
-        builder.getColumnBuilder(9).writeBinary(BytesUtils.valueOf(migrationInfo.getDuration()));
+                    DateTimeUtils.convertLongToDate(migrationInfo.getSubmittedTime())));
         builder
-            .getColumnBuilder(10)
+            .getColumnBuilder(9)
+            .writeBinary(
+                BytesUtils.valueOf(
+                    DateTimeUtils.convertLongToDate(migrationInfo.getLastUpdateTime())));
+        builder.getColumnBuilder(10).writeBinary(BytesUtils.valueOf(migrationInfo.getDuration()));
+        builder
+            .getColumnBuilder(11)
             .writeBinary(
                 BytesUtils.valueOf(
                     migrationInfo.isSetProgress() ? migrationInfo.getProgress() : ""));

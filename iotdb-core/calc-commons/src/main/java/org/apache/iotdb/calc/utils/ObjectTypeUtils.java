@@ -132,27 +132,21 @@ public class ObjectTypeUtils {
         ObjectTypeUtils.parseObjectBinaryToSizeIObjectPathPair(originValue);
     IObjectPath objectPath = pair.getRight();
     try {
-      Path path;
-      if (objectPath instanceof PlainObjectPath) {
-        path = Paths.get(objectPath.toString());
-      } else {
-        path = ((Base32ObjectPath) objectPath).getPath();
-      }
-      int regionId = Integer.parseInt(path.getName(0).toString());
+      final Path path = objectPath.getPath();
+      final int regionId = Integer.parseInt(path.getName(0).toString());
       if (regionId == newRegionId) {
         return originValue;
       }
-      IObjectPath newObjectPath;
+
+      final IObjectPath newObjectPath;
+      final String[] subPath = new String[path.getNameCount() - 1];
+      for (int i = 1; i < path.getNameCount(); i++) {
+        subPath[i - 1] = path.getName(i).toString();
+      }
       if (objectPath instanceof PlainObjectPath) {
-        String newPath = objectPath.toString().replaceFirst(regionId + "", newRegionId + "");
-        newObjectPath = new PlainObjectPath(newPath);
+        newObjectPath = new PlainObjectPath(Paths.get(String.valueOf(newRegionId), subPath));
       } else {
-        String[] subPath = new String[path.getNameCount() - 1];
-        for (int i = 1; i < path.getNameCount(); i++) {
-          subPath[i - 1] = path.getName(i).toString();
-        }
-        Path newPath = Paths.get(newRegionId + "", subPath);
-        newObjectPath = new Base32ObjectPath(newPath);
+        newObjectPath = new Base32ObjectPath(Paths.get(String.valueOf(newRegionId), subPath));
       }
       return ObjectTypeUtils.generateObjectBinary(pair.getLeft(), newObjectPath);
     } catch (NumberFormatException e) {

@@ -31,6 +31,9 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.LicenseException;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -47,8 +50,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.commons.external.io.monitor.FileAlterationListenerAdaptor;
+import com.timecho.iotdb.commons.external.io.monitor.FileAlterationMonitor;
+import com.timecho.iotdb.commons.external.io.monitor.FileAlterationObserver;
 import com.timecho.iotdb.confignode.procedure.consensus.request.write.auth.EnableSeparationOfAdminPowersPlan;
 import com.timecho.iotdb.i18n.TimechoConfigNodeMessages;
+import com.timecho.iotdb.manager.activation.AutoActivationClient;
+import com.timecho.iotdb.manager.activation.AutoActivationResult;
 import com.timecho.iotdb.manager.load.TimechoLoadManager;
 import com.timecho.iotdb.manager.node.TimechoNodeManager;
 import com.timecho.iotdb.manager.regulate.RegulateManager;
@@ -57,11 +65,20 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.ConfigManager
@@ -72,6 +89,12 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
   private TimechoNodeManager timechoNodeManager;
   private TimechoLoadManager timechoLoadManager;
   protected RegulateManager regulateManager;
+  private ScheduledExecutorService apiKeyFileAutoActivationExecutor;
+  private ScheduledFuture<?> apiKeyFileAutoActivationFuture;
+  private final AtomicBoolean apiKeyFileAutoActivationRunning = new AtomicBoolean(false);
+  private final AtomicInteger apiKeyFileAutoActivationAttempts = new AtomicInteger(0);
+  private String apiKeyFileAutoActivationTraceId;
+  private ApiKeyFileMonitor apiKeyFileMonitor;
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -122,6 +145,233 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
     return regulateManager;
   }
 
+  public synchronized void startApiKeyFileAutoActivationIfConfigured() {
+    String apiKeyFilePath = AutoActivationClient.getConfiguredApiKeyFile().trim();
+    if (apiKeyFilePath.isEmpty()) {
+      LOGGER.info(
+          "[api_key file auto activation] disabled because {} is not configured",
+          "timechodb.auto.activation.api-key-file");
+      return;
+    }
+    if (apiKeyFileAutoActivationExecutor != null
+        && !apiKeyFileAutoActivationExecutor.isShutdown()) {
+      LOGGER.info("[api_key file auto activation] scheduler is already running");
+      return;
+    }
+
+    File apiKeyFile = new File(apiKeyFilePath);
+    startApiKeyFileMonitor(apiKeyFile);
+    ensureApiKeyFileAutoActivationExecutor();
+
+    long initialDelayMs = Math.max(0, AutoActivationClient.getInitialDelayMs());
+    long retryIntervalMs = Math.max(1000, AutoActivationClient.getRetryIntervalMs());
+    apiKeyFileAutoActivationFuture =
+        ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+            apiKeyFileAutoActivationExecutor,
+            () -> runApiKeyFileAutoActivation(apiKeyFile, "api_key file auto activation"),
+            initialDelayMs,
+            retryIntervalMs,
+            TimeUnit.MILLISECONDS);
+    LOGGER.info(
+        "[api_key file auto activation] watcher started, file={}, initialDelayMs={},"
+            + " retryIntervalMs={}",
+        apiKeyFile.getAbsolutePath(),
+        initialDelayMs,
+        retryIntervalMs);
+  }
+
+  private void startApiKeyFileMonitor(File apiKeyFile) {
+    try {
+      apiKeyFileMonitor = new ApiKeyFileMonitor(apiKeyFile);
+      apiKeyFileMonitor.start();
+    } catch (Exception e) {
+      LOGGER.warn(
+          "[api_key file auto activation] failed to start watcher for {}",
+          apiKeyFile.getAbsolutePath(),
+          e);
+    }
+  }
+
+  private void ensureApiKeyFileAutoActivationExecutor() {
+    if (apiKeyFileAutoActivationExecutor == null || apiKeyFileAutoActivationExecutor.isShutdown()) {
+      apiKeyFileAutoActivationExecutor =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              ThreadName.ACTIVATION_SERVICE.getName());
+    }
+  }
+
+  private void runApiKeyFileAutoActivation(File apiKeyFile, String trigger) {
+    if (!apiKeyFile.isFile()) {
+      return;
+    }
+    if (!apiKeyFileAutoActivationRunning.compareAndSet(false, true)) {
+      return;
+    }
+    try {
+      if (regulateManager.isActivated()) {
+        clearApiKeyFileAutoActivationTrace();
+        return;
+      }
+
+      TSStatus leaderStatus = confirmLeader();
+      if (leaderStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "[{}] skip because current ConfigNode is not leader: {}",
+            trigger,
+            leaderStatus.getMessage());
+        return;
+      }
+
+      String apiKey = readApiKey(apiKeyFile);
+      if (apiKey.isEmpty()) {
+        LOGGER.warn("[{}] api_key file is empty: {}", trigger, apiKeyFile.getAbsolutePath());
+        return;
+      }
+
+      int maxAttempts = AutoActivationClient.getMaxAttempts();
+      int attempt = apiKeyFileAutoActivationAttempts.incrementAndGet();
+      if (maxAttempts > 0 && attempt > maxAttempts) {
+        LOGGER.warn("[{}] reached max attempts {}, stop retrying", trigger, maxAttempts);
+        stopApiKeyFileAutoActivation();
+        return;
+      }
+
+      LOGGER.info("[{}] attempt {}", trigger, attempt);
+      TShowActivationResp resp =
+          autoActivate(apiKey, trigger, getOrCreateApiKeyFileAutoActivationTraceId());
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info("[{}] succeeded", trigger);
+        apiKeyFileAutoActivationAttempts.set(0);
+        clearApiKeyFileAutoActivationTrace();
+      } else {
+        LOGGER.warn("[{}] failed: {}", trigger, resp.getStatus().getMessage());
+      }
+    } catch (Exception e) {
+      LOGGER.warn("[{}] failed", trigger, e);
+    } finally {
+      apiKeyFileAutoActivationRunning.set(false);
+    }
+  }
+
+  private String readApiKey(File apiKeyFile) throws IOException {
+    return new String(Files.readAllBytes(apiKeyFile.toPath()), StandardCharsets.UTF_8).trim();
+  }
+
+  public void triggerApiKeyFileAutoActivationIfReady(String trigger) {
+    String apiKeyFilePath = AutoActivationClient.getConfiguredApiKeyFile().trim();
+    if (apiKeyFilePath.isEmpty()) {
+      return;
+    }
+    File apiKeyFile = new File(apiKeyFilePath);
+    if (!apiKeyFile.isFile()) {
+      return;
+    }
+    try {
+      if (readApiKey(apiKeyFile).isEmpty()) {
+        return;
+      }
+    } catch (IOException e) {
+      LOGGER.warn("[{}] failed to read api_key file: {}", trigger, apiKeyFile.getAbsolutePath(), e);
+      return;
+    }
+    triggerApiKeyFileAutoActivation(apiKeyFile, trigger);
+  }
+
+  private synchronized void stopApiKeyFileAutoActivation() {
+    if (apiKeyFileAutoActivationFuture != null) {
+      apiKeyFileAutoActivationFuture.cancel(false);
+      apiKeyFileAutoActivationFuture = null;
+    }
+    if (apiKeyFileAutoActivationExecutor != null) {
+      apiKeyFileAutoActivationExecutor.shutdownNow();
+      apiKeyFileAutoActivationExecutor = null;
+    }
+    if (apiKeyFileMonitor != null) {
+      apiKeyFileMonitor.stop();
+      apiKeyFileMonitor = null;
+    }
+    clearApiKeyFileAutoActivationTrace();
+  }
+
+  private class ApiKeyFileAlterationListener extends FileAlterationListenerAdaptor {
+
+    private final File apiKeyFile;
+
+    private ApiKeyFileAlterationListener(File apiKeyFile) {
+      this.apiKeyFile = normalizeFile(apiKeyFile);
+    }
+
+    @Override
+    public void onFileCreate(File file) {
+      if (isApiKeyFile(file)) {
+        LOGGER.info(
+            "[api_key file auto activation] file creation detected: {}",
+            apiKeyFile.getAbsolutePath());
+        triggerApiKeyFileAutoActivation(apiKeyFile, "api_key file creation");
+      }
+    }
+
+    @Override
+    public void onFileChange(File file) {
+      if (isApiKeyFile(file)) {
+        LOGGER.info(
+            "[api_key file auto activation] file modification detected: {}",
+            apiKeyFile.getAbsolutePath());
+        triggerApiKeyFileAutoActivation(apiKeyFile, "api_key file modification");
+      }
+    }
+
+    private boolean isApiKeyFile(File file) {
+      return normalizeFile(file).equals(apiKeyFile);
+    }
+  }
+
+  private class ApiKeyFileMonitor {
+
+    private final FileAlterationMonitor monitor;
+
+    private ApiKeyFileMonitor(File apiKeyFile) {
+      monitor = new FileAlterationMonitor(RegulateManager.FILE_MONITOR_INTERVAL);
+      File absoluteApiKeyFile = normalizeFile(apiKeyFile);
+      File parent = absoluteApiKeyFile.getParentFile();
+      if (parent == null) {
+        parent = new File(".").getAbsoluteFile();
+      }
+      FileAlterationObserver observer = new FileAlterationObserver(parent);
+      observer.addListener(new ApiKeyFileAlterationListener(absoluteApiKeyFile));
+      monitor.addObserver(observer);
+    }
+
+    private void start() throws Exception {
+      monitor.start();
+    }
+
+    private void stop() {
+      try {
+        monitor.stop();
+      } catch (Exception e) {
+        LOGGER.warn("[api_key file auto activation] failed to stop watcher", e);
+      }
+    }
+  }
+
+  private File normalizeFile(File file) {
+    try {
+      return file.getCanonicalFile();
+    } catch (IOException e) {
+      return file.getAbsoluteFile();
+    }
+  }
+
+  private void triggerApiKeyFileAutoActivation(File apiKeyFile, String trigger) {
+    ScheduledExecutorService executor;
+    synchronized (this) {
+      ensureApiKeyFileAutoActivationExecutor();
+      executor = apiKeyFileAutoActivationExecutor;
+    }
+    executor.execute(() -> runApiKeyFileAutoActivation(apiKeyFile, trigger));
+  }
+
   @Override
   public TShowClusterResp showCluster() {
     TShowClusterResp result = super.showCluster();
@@ -170,7 +420,70 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
       LOGGER.warn(TimechoConfigNodeMessages.CLI_ACTIVATION_PREFIX, e);
       return new TShowActivationResp(
           new TSStatus(TSStatusCode.LICENSE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+    } finally {
+      clientManager.close();
     }
+  }
+
+  private synchronized String getOrCreateApiKeyFileAutoActivationTraceId() {
+    if (apiKeyFileAutoActivationTraceId == null || apiKeyFileAutoActivationTraceId.isEmpty()) {
+      apiKeyFileAutoActivationTraceId = AutoActivationClient.newTraceId();
+    }
+    return apiKeyFileAutoActivationTraceId;
+  }
+
+  private synchronized void clearApiKeyFileAutoActivationTrace() {
+    apiKeyFileAutoActivationTraceId = null;
+  }
+
+  private TShowActivationResp autoActivate(String apiKey, String trigger, String traceId) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TShowActivationResp(status);
+    }
+    AutoActivationClient autoActivationClient = new AutoActivationClient();
+    IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    List<TConfigNodeLocation> locations = nodeManager.getRegisteredConfigNodes();
+    locations.sort(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId));
+    try {
+      List<String> systemInfoList = collectSystemInfoList(locations, clientManager);
+      AutoActivationResult autoActivationResult =
+          autoActivationClient.requestLicense(
+              apiKey, String.join(",", systemInfoList), isLocalLicenseExpired(), traceId);
+      return cliActivate(Collections.nCopies(locations.size(), autoActivationResult.getLicense()));
+    } catch (Exception e) {
+      LOGGER.warn("[{}] failed", trigger, e);
+      return new TShowActivationResp(
+          new TSStatus(TSStatusCode.LICENSE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+    } finally {
+      clientManager.close();
+    }
+  }
+
+  private List<String> collectSystemInfoList(
+      List<TConfigNodeLocation> locations,
+      IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager)
+      throws LicenseException, TException, ClientManagerException {
+    List<String> systemInfoList = new ArrayList<>();
+    for (TConfigNodeLocation location : locations) {
+      if (location.getConfigNodeId()
+          == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
+        systemInfoList.add(RegulateManager.generateSystemInfoContentWithVersion());
+      } else {
+        try (SyncConfigNodeIServiceClient client =
+            clientManager.borrowClient(location.getInternalEndPoint())) {
+          systemInfoList.add(client.getSystemInfo());
+        }
+      }
+    }
+    return systemInfoList;
+  }
+
+  private boolean isLocalLicenseExpired() {
+    long licenseExpireTimestamp = regulateManager.getLicense().getLicenseExpireTimestamp();
+    return licenseExpireTimestamp > 0 && licenseExpireTimestamp < System.currentTimeMillis();
   }
 
   private void cliActivateCheckNumberCorrect(
@@ -288,6 +601,12 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
   }
 
   @Override
+  public void close() throws IOException {
+    stopApiKeyFileAutoActivation();
+    super.close();
+  }
+
+  @Override
   public TSStatus setConfiguration(TSetConfigurationReq req) {
     // check special configuration
     String isEnableSeparationOfAdminPower =
@@ -402,5 +721,14 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
       resp.setStatus(status);
     }
     return resp;
+  }
+
+  public String getLocalSystemInfo() {
+    try {
+      return RegulateManager.generateSystemInfoContentWithVersion();
+    } catch (LicenseException e) {
+      LOGGER.error("Get local system info failed", e);
+      return null;
+    }
   }
 }

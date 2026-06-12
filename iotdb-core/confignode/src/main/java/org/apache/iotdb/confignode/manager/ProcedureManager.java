@@ -137,6 +137,7 @@ import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
+import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
@@ -2673,54 +2674,118 @@ public class ProcedureManager {
   }
 
   /**
-   * Get all running region migration procedures
+   * Get all running region operations (MIGRATE / EXTEND / REMOVE / RECONSTRUCT REGION).
+   *
+   * <p>Iterates over every unfinished {@link RegionOperationProcedure}. The standalone
+   * AddRegionPeer/RemoveRegionPeer procedures spawned by EXTEND/REMOVE REGION are included, while
+   * those spawned as children of a {@link RegionMigrateProcedure} or {@link
+   * ReconstructRegionProcedure} are skipped (their parent row already represents the operation),
+   * avoiding duplicate rows.
    *
    * @return List of migration info
    */
   public List<TMigrationInfo> getRunningMigrations() {
     return getExecutor().getProcedures().values().parallelStream()
-        .filter(procedure -> procedure instanceof RegionMigrateProcedure)
+        .filter(procedure -> procedure instanceof RegionOperationProcedure)
         .filter(procedure -> !procedure.isFinished())
-        .map(
-            procedure -> {
-              RegionMigrateProcedure migrateProc = (RegionMigrateProcedure) procedure;
-              TMigrationInfo info = new TMigrationInfo();
-              info.setProcedureId(migrateProc.getProcId());
-              info.setRegionId(migrateProc.getRegionId().getId());
-              info.setRegionType(migrateProc.getRegionId().getType());
-              info.setFromNodeId(migrateProc.getOriginalDataNode().getDataNodeId());
-              info.setToNodeId(migrateProc.getDestDataNode().getDataNodeId());
-              RegionTransitionState currentState = migrateProc.getCurrentRegionTransitionState();
-              info.setCurrentState(currentState != null ? currentState.name() : "UNKNOWN");
-              info.setProcedureStatus(migrateProc.getState().name());
-              info.setSubmittedTime(migrateProc.getSubmittedTime());
-              info.setLastUpdateTime(migrateProc.getLastUpdate());
-              // Calculate duration
-              long duration = System.currentTimeMillis() - migrateProc.getSubmittedTime();
-              info.setDuration(CommonDateTimeUtils.convertMillisecondToDurationStr(duration));
-              // Fetch migration progress (e.g. "3/10" files) from coordinator when in add-peer
-              // phase
-              if (currentState == RegionTransitionState.ADD_REGION_PEER
-                  || currentState == RegionTransitionState.CHECK_ADD_REGION_PEER) {
-                try {
-                  Object result =
-                      SyncDataNodeClientPool.getInstance()
-                          .sendSyncRequestToDataNodeWithGivenRetry(
-                              migrateProc.getCoordinatorForAddPeer().getInternalEndPoint(),
-                              migrateProc.getRegionId(),
-                              CnToDnSyncRequestType.GET_REGION_MIGRATION_PROGRESS,
-                              1);
-                  String progress = result instanceof String ? (String) result : null;
-                  if (progress != null && !progress.isEmpty()) {
-                    info.setProgress(progress);
-                  }
-                } catch (Exception ignore) {
-                  // progress remains unset
-                }
-              }
-              return info;
-            })
+        .filter(procedure -> !isChildOfMigrateOrReconstruct(procedure))
+        .map(procedure -> toMigrationInfo((RegionOperationProcedure<?>) procedure))
         .collect(Collectors.toList());
+  }
+
+  /**
+   * Whether the given procedure is a child AddRegionPeer/RemoveRegionPeer of a MIGRATE/RECONSTRUCT
+   * region operation. Such children are represented by their parent row in SHOW MIGRATIONS, so they
+   * are excluded to avoid duplicate listings. Standalone Add/Remove (EXTEND/REMOVE REGION) have no
+   * such parent and are kept.
+   */
+  private boolean isChildOfMigrateOrReconstruct(Procedure<ConfigNodeProcedureEnv> procedure) {
+    if (!(procedure instanceof AddRegionPeerProcedure
+        || procedure instanceof RemoveRegionPeerProcedure)) {
+      return false;
+    }
+    if (!procedure.hasParent()) {
+      return false;
+    }
+    Procedure<ConfigNodeProcedureEnv> parent =
+        getExecutor().getProcedures().get(procedure.getParentProcId());
+    return parent instanceof RegionMigrateProcedure || parent instanceof ReconstructRegionProcedure;
+  }
+
+  /** Build the {@link TMigrationInfo} row for a single region operation procedure. */
+  private TMigrationInfo toMigrationInfo(RegionOperationProcedure<?> procedure) {
+    TMigrationInfo info = new TMigrationInfo();
+    info.setProcedureId(procedure.getProcId());
+    info.setRegionId(procedure.getRegionId().getId());
+    info.setRegionType(procedure.getRegionId().getType());
+    info.setCurrentState(procedure.getCurrentStateName());
+    info.setProcedureStatus(procedure.getState().name());
+    info.setSubmittedTime(procedure.getSubmittedTime());
+    info.setLastUpdateTime(procedure.getLastUpdate());
+    info.setDuration(
+        CommonDateTimeUtils.convertMillisecondToDurationStr(
+            System.currentTimeMillis() - procedure.getSubmittedTime()));
+
+    // operationType + FROM/TO node mapping per operation. The absent side (EXTEND has no source,
+    // REMOVE has no destination) is left unset and rendered as blank on the DataNode side.
+    if (procedure instanceof RegionMigrateProcedure) {
+      RegionMigrateProcedure migrateProc = (RegionMigrateProcedure) procedure;
+      info.setOperationType("MIGRATE");
+      info.setFromNodeId(migrateProc.getOriginalDataNode().getDataNodeId());
+      info.setToNodeId(migrateProc.getDestDataNode().getDataNodeId());
+      // Fetch progress (e.g. "3/10" files) from the add-peer coordinator while adding the peer.
+      RegionTransitionState state = migrateProc.getCurrentRegionTransitionState();
+      if (state == RegionTransitionState.ADD_REGION_PEER
+          || state == RegionTransitionState.CHECK_ADD_REGION_PEER) {
+        fetchProgress(info, migrateProc.getRegionId(), migrateProc.getCoordinatorForAddPeer());
+      }
+    } else if (procedure instanceof AddRegionPeerProcedure) {
+      AddRegionPeerProcedure addProc = (AddRegionPeerProcedure) procedure;
+      info.setOperationType("EXTEND");
+      info.setToNodeId(addProc.getTargetDataNode().getDataNodeId());
+      // Fetch progress from the coordinator while the peer is being added.
+      if (AddRegionPeerState.DO_ADD_REGION_PEER.name().equals(addProc.getCurrentStateName())) {
+        fetchProgress(info, addProc.getRegionId(), addProc.getCoordinator());
+      }
+    } else if (procedure instanceof RemoveRegionPeerProcedure) {
+      RemoveRegionPeerProcedure removeProc = (RemoveRegionPeerProcedure) procedure;
+      info.setOperationType("REMOVE");
+      info.setFromNodeId(removeProc.getTargetDataNode().getDataNodeId());
+    } else if (procedure instanceof ReconstructRegionProcedure) {
+      ReconstructRegionProcedure reconstructProc = (ReconstructRegionProcedure) procedure;
+      info.setOperationType("RECONSTRUCT");
+      int targetNodeId = reconstructProc.getTargetDataNode().getDataNodeId();
+      info.setFromNodeId(targetNodeId);
+      info.setToNodeId(targetNodeId);
+    }
+    return info;
+  }
+
+  /**
+   * Fetch region migration progress (e.g. "3/10" files) from the coordinator DataNode and set it on
+   * the given {@link TMigrationInfo} when available. Any RPC failure is swallowed and leaves the
+   * progress unset.
+   */
+  private void fetchProgress(
+      TMigrationInfo info, TConsensusGroupId regionId, TDataNodeLocation coordinator) {
+    if (coordinator == null) {
+      return;
+    }
+    try {
+      Object result =
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNodeWithGivenRetry(
+                  coordinator.getInternalEndPoint(),
+                  regionId,
+                  CnToDnSyncRequestType.GET_REGION_MIGRATION_PROGRESS,
+                  1);
+      String progress = result instanceof String ? (String) result : null;
+      if (progress != null && !progress.isEmpty()) {
+        info.setProgress(progress);
+      }
+    } catch (Exception ignore) {
+      // progress remains unset
+    }
   }
 
   /**

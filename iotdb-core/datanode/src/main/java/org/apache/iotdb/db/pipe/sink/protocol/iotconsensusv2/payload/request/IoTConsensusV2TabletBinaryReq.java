@@ -48,8 +48,12 @@ public class IoTConsensusV2TabletBinaryReq extends TIoTConsensusV2TransferReq {
   }
 
   public InsertNode convertToInsertNode() {
-    final PlanNode node = WALEntry.deserializeForConsensus(byteBuffer);
+    final PlanNode node = convertToPlanNode();
     return node instanceof InsertNode ? (InsertNode) node : null;
+  }
+
+  public PlanNode convertToPlanNode() {
+    return WALEntry.deserializeForConsensus(byteBuffer.duplicate());
   }
 
   /////////////////////////////// Thrift ///////////////////////////////

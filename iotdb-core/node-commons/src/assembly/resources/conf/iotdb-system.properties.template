@@ -2711,3 +2711,13 @@ enable_encrypt_config_file=false
 # effectiveMode: restart
 # Datatype: boolean
 enable_encrypt_permission_file=false
+
+####################
+### Auto Activation Configuration
+####################
+
+# The file path whose content is the enterprise api_key. If configured, ConfigNode watches this
+# file and uses its content to trigger auto activation when the file exists, is created, or changes.
+# effectiveMode: restart
+# Datatype: string
+timechodb.auto.activation.api-key-file=

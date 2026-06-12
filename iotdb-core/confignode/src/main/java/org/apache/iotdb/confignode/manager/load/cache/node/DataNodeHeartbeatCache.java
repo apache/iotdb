@@ -94,4 +94,14 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
   public double getFreeDiskSpace() {
     return latestLoadSample.get().getFreeDiskSpace();
   }
+
+  /**
+   * Get the disk usage rate (the percentage of occupied disk space, in [0, 1]) sampled through
+   * heartbeat.
+   *
+   * @return the latest sampled disk usage rate, 0 if no load sample has been received yet
+   */
+  public double getDiskUsageRate() {
+    return latestLoadSample.get().getDiskUsageRate();
+  }
 }

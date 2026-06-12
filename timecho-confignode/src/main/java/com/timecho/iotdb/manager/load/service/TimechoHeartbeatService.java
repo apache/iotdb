@@ -83,11 +83,15 @@ public class TimechoHeartbeatService extends HeartbeatService {
     TimechoLoadManager loadManager = timechoConfigManager.getLoadManager();
     loadManager.updateActivationStatusCache();
     if (loadManager.someConfigNodeNotSentHeartbeatYet()) {
-      if (timechoConfigManager.getActivationManager().activeNodeExistForLeader()) {
+      if (regulateManager.isActive()
+          || loadManager.activeNodeLive()
+          || regulateManager.activeNodeExistForLeader()) {
         req.setLicence(lottery.toTLicense());
       }
     } else {
-      if (regulateManager.isActive() || loadManager.activeNodeLive()) {
+      if (regulateManager.isActive()
+          || loadManager.activeNodeLive()
+          || regulateManager.activeNodeExistForLeader()) {
         req.setLicence(lottery.toTLicense());
       } else if (loadManager.activeNodeDisconnect()) {
         // do nothing

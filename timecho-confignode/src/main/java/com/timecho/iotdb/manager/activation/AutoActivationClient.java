@@ -1,0 +1,233 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package com.timecho.iotdb.manager.activation;
+
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import org.bouncycastle.jcajce.provider.digest.SM3;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Properties;
+import java.util.UUID;
+
+public class AutoActivationClient {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AutoActivationClient.class);
+  private static final Gson GSON = new Gson();
+  private static final String LICENSE_SERVER_URL = "https://license.timecho.com";
+  private static final String AUTHORIZATION_VERSION = "1";
+  private static final char[] HEX_ARRAY = "0123456789abcdef".toCharArray();
+  private static final String API_KEY_FILE_PROPERTY = "timechodb.auto.activation.api-key-file";
+  private static final String API_KEY_FILE_ENV = "TIMECHODB_AUTO_ACTIVATION_API_KEY_FILE";
+  private static final long INITIAL_DELAY_MS = 15_000L;
+  private static final long RETRY_INTERVAL_MS = 60_000L;
+  private static final int MAX_ATTEMPTS = 0;
+  private static final int CONNECT_TIMEOUT_MS = 10_000;
+  private static final int READ_TIMEOUT_MS = 30_000;
+
+  public static String getConfiguredApiKeyFile() {
+    return getConfig(API_KEY_FILE_PROPERTY, API_KEY_FILE_ENV, "");
+  }
+
+  public static long getInitialDelayMs() {
+    return INITIAL_DELAY_MS;
+  }
+
+  public static long getRetryIntervalMs() {
+    return RETRY_INTERVAL_MS;
+  }
+
+  public static int getMaxAttempts() {
+    return MAX_ATTEMPTS;
+  }
+
+  public AutoActivationResult requestLicense(
+      String apiKey, String machineCode, boolean renew, String traceId) throws IOException {
+    String actualTraceId = traceId == null || traceId.isEmpty() ? newTraceId() : traceId;
+    String spanId = newSpanId();
+    JsonObject body = new JsonObject();
+    body.addProperty("traceId", actualTraceId);
+    body.addProperty("spanId", spanId);
+    body.addProperty("machineCode", machineCode);
+    body.addProperty("renew", renew);
+    if (renew) {
+      body.addProperty("activationReason", "license_expired");
+    }
+
+    JsonObject response = post("/api/timechodb/auto-activation/request", body, apiKey);
+    JsonObject data = getData(response);
+    String license = getRequiredString(data, "license");
+    return new AutoActivationResult(license);
+  }
+
+  private JsonObject post(String path, JsonObject body, String apiKey) throws IOException {
+    URL url = new URL(LICENSE_SERVER_URL + path);
+    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+    connection.setRequestMethod("POST");
+    connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+    connection.setReadTimeout(READ_TIMEOUT_MS);
+    connection.setDoOutput(true);
+    connection.setRequestProperty("Content-Type", "application/json");
+    String payloadJson = GSON.toJson(body);
+    connection.setRequestProperty(
+        "Authorization",
+        buildAuthorizationHeader(apiKey, String.valueOf(System.currentTimeMillis()), payloadJson));
+    byte[] payload = payloadJson.getBytes(StandardCharsets.UTF_8);
+    try (OutputStream outputStream = connection.getOutputStream()) {
+      outputStream.write(payload);
+    }
+    int statusCode = connection.getResponseCode();
+    String responseBody =
+        readAll(statusCode >= 400 ? connection.getErrorStream() : connection.getInputStream());
+    JsonObject response = GSON.fromJson(responseBody, JsonObject.class);
+    if (statusCode >= 400 || response == null || response.get("code").getAsInt() != 0) {
+      throw new IOException("auto activation request failed: " + responseBody);
+    }
+    return response;
+  }
+
+  static String buildAuthorizationHeader(String apiKey, String timestamp, String requestBody)
+      throws IOException {
+    try {
+      String signature =
+          sm3Base64(AUTHORIZATION_VERSION + timestamp + apiKey + sm3Hex(requestBody));
+      return "version="
+          + AUTHORIZATION_VERSION
+          + ",api_key=\""
+          + quoteHeaderValue(apiKey)
+          + "\",timestamp="
+          + timestamp
+          + ",signature=\""
+          + quoteHeaderValue(signature)
+          + "\"";
+    } catch (Exception e) {
+      throw new IOException("failed to sign auto activation request", e);
+    }
+  }
+
+  private static String sm3Hex(String value) {
+    return toHex(sm3(value));
+  }
+
+  private static String sm3Base64(String value) {
+    return Base64.getEncoder().encodeToString(sm3(value));
+  }
+
+  private static byte[] sm3(String value) {
+    SM3.Digest digest = new SM3.Digest();
+    return digest.digest(value.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static String toHex(byte[] bytes) {
+    char[] hexChars = new char[bytes.length * 2];
+    for (int i = 0; i < bytes.length; i++) {
+      int value = bytes[i] & 0xFF;
+      hexChars[i * 2] = HEX_ARRAY[value >>> 4];
+      hexChars[i * 2 + 1] = HEX_ARRAY[value & 0x0F];
+    }
+    return new String(hexChars);
+  }
+
+  private static String quoteHeaderValue(String value) {
+    return value.replace("\\", "\\\\").replace("\"", "\\\"");
+  }
+
+  public static String newTraceId() {
+    return "TDB-" + UUID.randomUUID();
+  }
+
+  private static String newSpanId() {
+    return "SPAN-" + UUID.randomUUID();
+  }
+
+  private static JsonObject getData(JsonObject response) throws IOException {
+    JsonElement data = response.get("data");
+    if (data == null || !data.isJsonObject()) {
+      throw new IOException("auto activation response misses data: " + response);
+    }
+    return data.getAsJsonObject();
+  }
+
+  private static String getRequiredString(JsonObject object, String field) throws IOException {
+    JsonElement element = object.get(field);
+    String value = element == null || element.isJsonNull() ? null : element.getAsString();
+    if (value == null || value.isEmpty()) {
+      throw new IOException("auto activation response misses " + field + ": " + object);
+    }
+    return value;
+  }
+
+  private static String readAll(InputStream inputStream) throws IOException {
+    if (inputStream == null) {
+      return "";
+    }
+    StringBuilder builder = new StringBuilder();
+    try (BufferedReader reader =
+        new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        builder.append(line);
+      }
+    }
+    return builder.toString();
+  }
+
+  private static String getConfig(String propertyName, String envName, String defaultValue) {
+    String value = System.getProperty(propertyName);
+    if (value == null || value.isEmpty()) {
+      value = System.getenv(envName);
+    }
+    if (value == null || value.isEmpty()) {
+      value = getFileConfig(propertyName);
+    }
+    return value == null || value.trim().isEmpty() ? defaultValue : value.trim();
+  }
+
+  private static String getFileConfig(String propertyName) {
+    try {
+      URL propsUrl = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+      if (propsUrl == null) {
+        return null;
+      }
+      Properties properties = new Properties();
+      try (InputStream inputStream = propsUrl.openStream()) {
+        properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+      }
+      return properties.getProperty(propertyName);
+    } catch (Exception e) {
+      LOGGER.debug("Failed to read auto activation config from system config file", e);
+      return null;
+    }
+  }
+}

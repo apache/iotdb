@@ -50,8 +50,6 @@ import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -67,8 +65,6 @@ import static org.apache.iotdb.calc.utils.ObjectTypeUtils.generateObjectBinary;
 
 public class ObjectNode extends SearchNode implements WALEntryValue {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ObjectNode.class);
-
   private final boolean isEOF;
 
   private final long offset;
@@ -82,6 +78,8 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   private TRegionReplicaSet dataRegionReplicaSet;
 
   private boolean isGeneratedByRemoteConsensusLeader;
+
+  private ProgressIndex progressIndex;
 
   /**
    * Subclass-only constructor for delegation wrappers (e.g. pipe). Base field values are
@@ -188,7 +186,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     if (objectFile.isPresent()) {
       try (RandomAccessFile raf = new RandomAccessFile(objectFile.get(), "r")) {
         raf.seek(offset);
-        raf.read(contents);
+        raf.readFully(contents);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -220,11 +218,13 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return null;
+    return progressIndex;
   }
 
   @Override
-  public void setProgressIndex(ProgressIndex progressIndex) {}
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
+  }
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
@@ -320,11 +320,14 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
           }
         }
       }
-      if (!readSuccess && LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            DataNodeQueryMessages.ERROR_WHEN_READ_OBJECT_FILE, filePath.toString(), ioException);
+      if (!readSuccess) {
+        throw new IOException(
+            String.format(
+                "Failed to read object file %s at offset %d with length %d",
+                filePath, offset, contentLength),
+            ioException);
       }
-      ReadWriteIOUtils.write(readSuccess && isEOF, stream);
+      ReadWriteIOUtils.write(isEOF, stream);
       ReadWriteIOUtils.write(offset, stream);
       filePath.serialize(stream);
       ReadWriteIOUtils.write(contentLength, stream);
@@ -338,13 +341,25 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   private void readContentFromFile(File file, byte[] contents) throws IOException {
     try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
       raf.seek(offset);
-      raf.read(contents);
+      raf.readFully(contents);
     }
   }
 
   public RelationalInsertRowNode genValueInsertRowNode(final TableSchema tableSchema)
       throws IllegalPathException {
     return genValueInsertRowNodeWithTableSchema(tableSchema);
+  }
+
+  public RelationalInsertRowNode genValueInsertRowNode() throws IllegalPathException {
+    return buildInsertRowNode(
+        filePath.getDeviceID(),
+        new String[] {filePath.getMeasurement()},
+        new TSDataType[] {TSDataType.OBJECT},
+        new MeasurementSchema[] {
+          new MeasurementSchema(filePath.getMeasurement(), TSDataType.OBJECT)
+        },
+        new TsTableColumnCategory[] {TsTableColumnCategory.FIELD},
+        new Object[] {generateObjectBinary(offset + contentLength, filePath)});
   }
 
   private RelationalInsertRowNode genValueInsertRowNodeWithTableSchema(
@@ -449,7 +464,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     final RelationalInsertRowNode insertRowNode = new RelationalInsertRowNode(this.getPlanNodeId());
     insertRowNode.setAligned(true);
     insertRowNode.setDeviceID(deviceID);
-    insertRowNode.setTargetPath(new PartialPath(deviceID.getTableName()));
+    insertRowNode.setTargetPath(new PartialPath(deviceID.getTableName(), false));
     insertRowNode.setTime(filePath.getTime());
     insertRowNode.setMeasurements(measurements);
     insertRowNode.setDataTypes(dataTypes);
