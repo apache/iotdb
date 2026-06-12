@@ -162,10 +162,15 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionIT {
 
       try {
         // Transferring to a different owner must wait for the old owner's lease to drain on every
-        // DataNode before the new owner is installed. ConfigNode stops renewing and waits at least
-        // the lease duration (measured on its own clock), so the call blocks for >= the lease
-        // duration. This is the admission gate that prevents cross-DataNode double-active
-        // consuming.
+        // DataNode before the new owner is installed. ConfigNode stops renewing and then waits, on
+        // its own clock, for the lease duration plus one renewal (heartbeat) interval. The extra
+        // heartbeat interval is necessary because a renewal may have been in flight to a DataNode
+        // right before renewal was stopped, extending that DataNode's lease by up to the full
+        // duration starting as late as ~one heartbeat after the block; waiting (duration + one
+        // interval) on the local clock — rather than comparing against a DataNode's absolute
+        // expire time, which would couple the two clocks — guarantees every lease has drained. The
+        // call therefore blocks for at least the lease duration. This is the admission gate that
+        // prevents cross-DataNode double-active consuming.
         final long alterStartTimeMs = System.currentTimeMillis();
         session.alterTopicOwner(topicName, "owner2", 6L);
         final long alterElapsedTimeMs = System.currentTimeMillis() - alterStartTimeMs;
