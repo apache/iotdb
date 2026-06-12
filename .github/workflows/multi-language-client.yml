@@ -40,6 +40,9 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
   MAVEN_ARGS: --batch-mode --no-transfer-progress
 
+permissions:
+  contents: read
+
 jobs:
   # Per-language path filters: a client-cpp-only PR runs cpp, not go/python.
   changes:
