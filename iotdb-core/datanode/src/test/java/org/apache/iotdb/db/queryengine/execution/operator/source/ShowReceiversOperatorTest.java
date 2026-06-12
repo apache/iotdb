@@ -238,6 +238,139 @@ public class ShowReceiversOperatorTest {
     assertFalse(operator.hasNext());
   }
 
+  @Test
+  public void testShowReceiversOutputKeepsDefaultSnapshotOrdering() {
+    registry.registerOrUpdateSession(
+        "data-user-b",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.2",
+        9006,
+        "bob",
+        "cluster-a",
+        "pipe-f",
+        6,
+        600);
+    registry.registerOrUpdateSession(
+        "data-address-a",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9004,
+        "root",
+        "cluster-a",
+        "pipe-d",
+        4,
+        400);
+    registry.registerOrUpdateSession(
+        "config-node-2",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        2,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9002,
+        "root",
+        "cluster-a",
+        "pipe-b",
+        2,
+        200);
+    registry.registerOrUpdateSession(
+        "data-user-a",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.2",
+        9005,
+        "alice",
+        "cluster-a",
+        "pipe-e",
+        5,
+        500);
+    registry.registerOrUpdateSession(
+        "config-node-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+    registry.registerOrUpdateSession(
+        "data-air-gap",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+        "10.0.0.2",
+        9003,
+        "root",
+        "cluster-a",
+        "pipe-c",
+        3,
+        300);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(null, new PlanNodeId("show-receivers"));
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(6, tsBlock.getPositionCount());
+    assertRowKey(
+        tsBlock,
+        0,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        "root");
+    assertRowKey(
+        tsBlock,
+        1,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        2,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        "root");
+    assertRowKey(
+        tsBlock,
+        2,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+        "10.0.0.2",
+        "root");
+    assertRowKey(
+        tsBlock,
+        3,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        "root");
+    assertRowKey(
+        tsBlock,
+        4,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.2",
+        "alice");
+    assertRowKey(
+        tsBlock,
+        5,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.2",
+        "bob");
+    assertFalse(operator.hasNext());
+  }
+
   private void registerUserSession(
       String connectionKey,
       String senderAddress,
@@ -267,5 +400,20 @@ public class ShowReceiversOperatorTest {
 
   private static String getText(final TsBlock tsBlock, final int columnIndex, final int position) {
     return tsBlock.getColumn(columnIndex).getBinary(position).toString();
+  }
+
+  private static void assertRowKey(
+      final TsBlock tsBlock,
+      final int position,
+      final String receiverNodeType,
+      final int receiverNodeId,
+      final String protocol,
+      final String senderAddress,
+      final String userName) {
+    assertEquals(receiverNodeType, getText(tsBlock, 0, position));
+    assertEquals(receiverNodeId, tsBlock.getColumn(1).getInt(position));
+    assertEquals(protocol, getText(tsBlock, 2, position));
+    assertEquals(senderAddress, getText(tsBlock, 3, position));
+    assertEquals(userName, getText(tsBlock, 8, position));
   }
 }

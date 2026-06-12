@@ -192,6 +192,128 @@ public class PipeReceiverRuntimeRegistryTest {
   }
 
   @Test
+  public void testDefaultSnapshotOrderingUsesAllDocumentedKeys() {
+    registry.registerOrUpdateSession(
+        "data-user-b",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.2",
+        9006,
+        "bob",
+        "cluster-a",
+        "pipe-f",
+        6,
+        600);
+    registry.registerOrUpdateSession(
+        "data-address-a",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9004,
+        "root",
+        "cluster-a",
+        "pipe-d",
+        4,
+        400);
+    registry.registerOrUpdateSession(
+        "config-node-2",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        2,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9002,
+        "root",
+        "cluster-a",
+        "pipe-b",
+        2,
+        200);
+    registry.registerOrUpdateSession(
+        "data-user-a",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.2",
+        9005,
+        "alice",
+        "cluster-a",
+        "pipe-e",
+        5,
+        500);
+    registry.registerOrUpdateSession(
+        "config-node-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+    registry.registerOrUpdateSession(
+        "data-air-gap",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+        "10.0.0.2",
+        9003,
+        "root",
+        "cluster-a",
+        "pipe-c",
+        3,
+        300);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(6, snapshots.size());
+    assertSnapshotOrderKey(
+        snapshots.get(0),
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        "root");
+    assertSnapshotOrderKey(
+        snapshots.get(1),
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        2,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        "root");
+    assertSnapshotOrderKey(
+        snapshots.get(2),
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+        "10.0.0.2",
+        "root");
+    assertSnapshotOrderKey(
+        snapshots.get(3),
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        "root");
+    assertSnapshotOrderKey(
+        snapshots.get(4),
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.2",
+        "alice");
+    assertSnapshotOrderKey(
+        snapshots.get(5),
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.2",
+        "bob");
+  }
+
+  @Test
   public void testDeregisterSession() {
     registry.registerOrUpdateSession(
         "data-1",
@@ -692,5 +814,19 @@ public class PipeReceiverRuntimeRegistryTest {
       }
     }
     return null;
+  }
+
+  private static void assertSnapshotOrderKey(
+      PipeReceiverRuntimeSnapshot snapshot,
+      String receiverNodeType,
+      int receiverNodeId,
+      String protocol,
+      String senderAddress,
+      String userName) {
+    assertEquals(receiverNodeType, snapshot.getReceiverNodeType());
+    assertEquals(receiverNodeId, snapshot.getReceiverNodeId());
+    assertEquals(protocol, snapshot.getProtocol());
+    assertEquals(senderAddress, snapshot.getSenderAddress());
+    assertEquals(userName, snapshot.getUserName());
   }
 }
