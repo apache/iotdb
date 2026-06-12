@@ -1330,7 +1330,6 @@ public abstract class TableOperatorGenerator<
                         null,
                         Collections.emptySet(),
                         operatorContext.getMemoryReservationContext())));
-                        Collections.emptySet())));
     return createAggregationOperator(operatorContext, child, aggregatorBuilder.build());
   }
 
