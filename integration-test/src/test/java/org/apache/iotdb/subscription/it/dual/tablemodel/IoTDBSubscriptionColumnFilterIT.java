@@ -423,6 +423,27 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
   }
 
   @Test
+  public void testCreateTopicWithTreeViewColumnFilterUsesViewFieldName() throws Exception {
+    final String database = databaseName("view_topic");
+    final String treeDatabase = database + "_tree";
+    final String viewName = TABLE_NAME + "_view";
+    final String topicName = topicName("view_topic");
+
+    try {
+      createTreeView(senderEnv, database, treeDatabase, viewName);
+      createTopic(
+          topicName,
+          database,
+          viewName,
+          TopicConstant.FORMAT_RECORD_HANDLER_VALUE,
+          "column_name = \"s_view\"");
+    } finally {
+      cleanup(topicName, database);
+      dropTreeDatabase(senderEnv, treeDatabase);
+    }
+  }
+
+  @Test
   public void testLiveTsFileColumnFilter() throws Exception {
     final String database = databaseName("tsfile");
     final String topicName = topicName("tsfile");
@@ -970,6 +991,32 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
     return table;
   }
 
+  private static void createTreeView(
+      final BaseEnv env, final String database, final String treeDatabase, final String viewName)
+      throws Exception {
+    try (final Connection connection = env.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database root." + treeDatabase);
+      statement.execute(
+          "create timeseries root." + treeDatabase + ".d1.s_src with datatype=DOUBLE");
+      statement.execute(
+          "create timeseries root." + treeDatabase + ".d1.s_other with datatype=DOUBLE");
+    }
+
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + database);
+      statement.execute("use " + database);
+      statement.execute(
+          String.format(
+              Locale.ROOT,
+              "create view %s(tag1 string tag, s_view double field from s_src, "
+                  + "s_other double field from s_other) as root.%s.**",
+              viewName,
+              treeDatabase));
+    }
+  }
+
   private void createTopic(
       final String topicName,
       final String database,
@@ -1436,6 +1483,15 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists " + database);
+    } catch (final Exception ignored) {
+      // ignored on cleanup
+    }
+  }
+
+  private static void dropTreeDatabase(final BaseEnv env, final String database) {
+    try (final Connection connection = env.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("delete database root." + database);
     } catch (final Exception ignored) {
       // ignored on cleanup
     }
