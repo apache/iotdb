@@ -32,6 +32,8 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionFactory;
 import org.junit.Assert;
 
 import java.time.Duration;
@@ -44,6 +46,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 final class ConsensusSubscriptionTableITSupport {
@@ -52,6 +55,7 @@ final class ConsensusSubscriptionTableITSupport {
 
   private static final AtomicInteger IDENTIFIER = new AtomicInteger(0);
   private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(1);
+  private static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofMinutes(2);
   private static final int QUIET_ROUNDS_AFTER_DATA = 3;
   private static final int QUIET_ROUNDS_WITHOUT_DATA = 8;
 
@@ -265,28 +269,15 @@ final class ConsensusSubscriptionTableITSupport {
       final Duration pollTimeout)
       throws Exception {
     final ConsumedRecords consumed = new ConsumedRecords();
-    int emptyRounds = 0;
-
-    for (int round = 0; round < maxPollRounds; round++) {
-      final List<SubscriptionMessage> messages = consumer.poll(pollTimeout);
-      if (messages.isEmpty()) {
-        emptyRounds++;
-        if (consumed.getUniqueRowCount() >= expectedUniqueRows
-            && emptyRounds >= QUIET_ROUNDS_AFTER_DATA) {
-          break;
-        }
-        if (consumed.getUniqueRowCount() == 0
-            && expectedUniqueRows == 0
-            && emptyRounds >= QUIET_ROUNDS_WITHOUT_DATA) {
-          break;
-        }
-        continue;
-      }
-
-      emptyRounds = 0;
-      consumed.merge(consumeMessages(messages));
-      consumer.commitSync(messages);
-    }
+    final AtomicInteger emptyRounds = new AtomicInteger(0);
+    awaitDrain(maxPollRounds, pollTimeout)
+        .untilAsserted(
+            () -> {
+              pollAndCommitOnce(consumer, pollTimeout, consumed, emptyRounds);
+              Assert.assertTrue(
+                  atLeastTimeoutMessage(expectedUniqueRows, consumed),
+                  hasDrainedAtLeast(consumed, expectedUniqueRows, emptyRounds.get()));
+            });
 
     return consumed;
   }
@@ -297,22 +288,15 @@ final class ConsensusSubscriptionTableITSupport {
       final int maxPollRounds)
       throws Exception {
     final ConsumedRecords consumed = new ConsumedRecords();
-
-    for (int round = 0; round < maxPollRounds; round++) {
-      final List<SubscriptionMessage> messages = consumer.poll(DEFAULT_POLL_TIMEOUT);
-      if (messages.isEmpty()) {
-        if (consumed.getRowKeys().containsAll(expectedRowKeys)) {
-          break;
-        }
-        continue;
-      }
-
-      consumed.merge(consumeMessages(messages));
-      consumer.commitSync(messages);
-      if (consumed.getRowKeys().containsAll(expectedRowKeys)) {
-        break;
-      }
-    }
+    final AtomicInteger emptyRounds = new AtomicInteger(0);
+    awaitDrain(maxPollRounds, DEFAULT_POLL_TIMEOUT)
+        .untilAsserted(
+            () -> {
+              pollAndCommitOnce(consumer, DEFAULT_POLL_TIMEOUT, consumed, emptyRounds);
+              Assert.assertTrue(
+                  containsTimeoutMessage(expectedRowKeys, consumed),
+                  hasDrainedExpectedKeys(consumed, expectedRowKeys, emptyRounds.get()));
+            });
 
     return consumed;
   }
@@ -335,24 +319,15 @@ final class ConsensusSubscriptionTableITSupport {
       final Duration pollTimeout)
       throws Exception {
     final ConsumedRecords consumed = new ConsumedRecords();
-    int emptyRounds = 0;
-
-    for (int round = 0; round < maxPollRounds; round++) {
-      final PollResult pollResult = consumer.pollWithInfo(topicNames, pollTimeout.toMillis());
-      final List<SubscriptionMessage> messages = pollResult.getMessages();
-      if (messages.isEmpty()) {
-        emptyRounds++;
-        if (consumed.getUniqueRowCount() >= expectedUniqueRows
-            && emptyRounds >= QUIET_ROUNDS_AFTER_DATA) {
-          break;
-        }
-        continue;
-      }
-
-      emptyRounds = 0;
-      consumed.merge(consumeMessages(messages));
-      consumer.commitSync(messages);
-    }
+    final AtomicInteger emptyRounds = new AtomicInteger(0);
+    awaitDrain(maxPollRounds, pollTimeout)
+        .untilAsserted(
+            () -> {
+              pollWithInfoAndCommitOnce(consumer, topicNames, pollTimeout, consumed, emptyRounds);
+              Assert.assertTrue(
+                  atLeastTimeoutMessage(expectedUniqueRows, consumed),
+                  hasDrainedAtLeast(consumed, expectedUniqueRows, emptyRounds.get()));
+            });
 
     return consumed;
   }
@@ -362,7 +337,8 @@ final class ConsensusSubscriptionTableITSupport {
     Assert.assertTrue(
         "Unexpected duplicate row keys: " + consumed.getDuplicateRowKeys(),
         consumed.getDuplicateRowKeys().isEmpty());
-    Assert.assertEquals(expectedRowKeys, consumed.getRowKeys());
+    Assert.assertEquals(
+        rowKeyDiffMessage(expectedRowKeys, consumed), expectedRowKeys, consumed.getRowKeys());
     Assert.assertEquals(expectedRowKeys.size(), consumed.getRowCount());
   }
 
@@ -466,6 +442,110 @@ final class ConsensusSubscriptionTableITSupport {
       }
     }
     return consumed;
+  }
+
+  private static void pollAndCommitOnce(
+      final SubscriptionTablePullConsumer consumer,
+      final Duration pollTimeout,
+      final ConsumedRecords consumed,
+      final AtomicInteger emptyRounds)
+      throws Exception {
+    final List<SubscriptionMessage> messages = consumer.poll(pollTimeout);
+    if (messages.isEmpty()) {
+      emptyRounds.incrementAndGet();
+      return;
+    }
+
+    emptyRounds.set(0);
+    consumed.merge(consumeMessages(messages));
+    consumer.commitSync(messages);
+  }
+
+  private static void pollWithInfoAndCommitOnce(
+      final SubscriptionTablePullConsumer consumer,
+      final Set<String> topicNames,
+      final Duration pollTimeout,
+      final ConsumedRecords consumed,
+      final AtomicInteger emptyRounds)
+      throws Exception {
+    final PollResult pollResult = consumer.pollWithInfo(topicNames, pollTimeout.toMillis());
+    final List<SubscriptionMessage> messages = pollResult.getMessages();
+    if (messages.isEmpty()) {
+      emptyRounds.incrementAndGet();
+      return;
+    }
+
+    emptyRounds.set(0);
+    consumed.merge(consumeMessages(messages));
+    consumer.commitSync(messages);
+  }
+
+  private static ConditionFactory awaitDrain(
+      final int legacyMaxPollRounds, final Duration pollTimeout) {
+    final Duration drainTimeout = drainTimeout(legacyMaxPollRounds, pollTimeout);
+    return Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(1, TimeUnit.MILLISECONDS)
+        .atMost(drainTimeout.toMillis(), TimeUnit.MILLISECONDS);
+  }
+
+  private static Duration drainTimeout(final int legacyMaxPollRounds, final Duration pollTimeout) {
+    final long legacyTimeoutMillis =
+        Math.max(0L, legacyMaxPollRounds) * Math.max(1L, pollTimeout.toMillis());
+    final Duration legacyTimeout = Duration.ofMillis(legacyTimeoutMillis);
+    return legacyTimeout.compareTo(DEFAULT_DRAIN_TIMEOUT) > 0
+        ? legacyTimeout
+        : DEFAULT_DRAIN_TIMEOUT;
+  }
+
+  private static boolean hasDrainedAtLeast(
+      final ConsumedRecords consumed, final int expectedUniqueRows, final int emptyRounds) {
+    if (expectedUniqueRows == 0) {
+      return consumed.getUniqueRowCount() == 0 && emptyRounds >= QUIET_ROUNDS_WITHOUT_DATA;
+    }
+    return consumed.getUniqueRowCount() >= expectedUniqueRows
+        && emptyRounds >= QUIET_ROUNDS_AFTER_DATA;
+  }
+
+  private static boolean hasDrainedExpectedKeys(
+      final ConsumedRecords consumed, final Set<String> expectedRowKeys, final int emptyRounds) {
+    return consumed.getRowKeys().containsAll(expectedRowKeys)
+        && emptyRounds >= QUIET_ROUNDS_AFTER_DATA;
+  }
+
+  private static String atLeastTimeoutMessage(
+      final int expectedUniqueRows, final ConsumedRecords consumed) {
+    return "Expected at least "
+        + expectedUniqueRows
+        + " unique row keys before the subscription drain timeout, but collected "
+        + consumed.getUniqueRowCount()
+        + ". Consumed records: "
+        + consumed;
+  }
+
+  private static String containsTimeoutMessage(
+      final Set<String> expectedRowKeys, final ConsumedRecords consumed) {
+    return "Expected row keys were not fully collected before the subscription drain timeout. "
+        + rowKeyDiffMessage(expectedRowKeys, consumed);
+  }
+
+  private static String rowKeyDiffMessage(
+      final Set<String> expectedRowKeys, final ConsumedRecords consumed) {
+    final Set<String> missingRowKeys = new LinkedHashSet<>(expectedRowKeys);
+    missingRowKeys.removeAll(consumed.getRowKeys());
+    final Set<String> unexpectedRowKeys = new LinkedHashSet<>(consumed.getRowKeys());
+    unexpectedRowKeys.removeAll(expectedRowKeys);
+    return "expected="
+        + expectedRowKeys
+        + ", actual="
+        + consumed.getRowKeys()
+        + ", missing="
+        + missingRowKeys
+        + ", unexpected="
+        + unexpectedRowKeys
+        + ", consumed="
+        + consumed;
   }
 
   static final class TestIdentifiers {

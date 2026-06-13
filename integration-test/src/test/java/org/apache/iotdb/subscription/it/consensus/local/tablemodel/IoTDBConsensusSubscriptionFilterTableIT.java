@@ -272,8 +272,8 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
           ConsensusSubscriptionTableITSupport.insertRows(
               database, table, 300L, 3, true, false, true);
       final ConsensusSubscriptionTableITSupport.ConsumedRecords consumedAfterEmptyWindow =
-          ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(
-              consumer, rowsAfterEmptyWindow.size(), 50);
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilContains(
+              consumer, rowsAfterEmptyWindow, 50);
 
       ConsensusSubscriptionTableITSupport.assertExactRowKeys(
           rowsAfterEmptyWindow, consumedAfterEmptyWindow);
@@ -378,8 +378,8 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
           ConsensusSubscriptionTableITSupport.insertRows(
               database, table, 200L, 5, true, true, true);
       final ConsensusSubscriptionTableITSupport.ConsumedRecords afterAlterConsumed =
-          ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(
-              consumer, afterAlterRows.size(), 60);
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilContains(
+              consumer, afterAlterRows, 60);
 
       ConsensusSubscriptionTableITSupport.assertExactRowKeys(afterAlterRows, afterAlterConsumed);
       Assert.assertEquals(
