@@ -2773,12 +2773,23 @@ public class StatementAnalyzer {
         FunctionCall gapFillColumn = null;
         ImmutableList.Builder<Expression> gapFillGroupingExpressions = ImmutableList.builder();
 
-        checkGroupingSetsCount(node.getGroupBy().get());
-        for (GroupingElement groupingElement : node.getGroupBy().get().getGroupingElements()) {
+        GroupBy groupBy = node.getGroupBy().get();
+        List<Expression> allGroupByExpressions = ImmutableList.of();
+        List<GroupingElement> groupingElements;
+
+        if (groupBy.isAll()) {
+          allGroupByExpressions = inferAllGroupByExpressions(outputExpressions);
+          groupingElements = ImmutableList.of(new SimpleGroupBy(allGroupByExpressions));
+        } else {
+          checkGroupingSetsCount(groupBy);
+          groupingElements = groupBy.getGroupingElements();
+        }
+
+        for (GroupingElement groupingElement : groupingElements) {
           if (groupingElement instanceof SimpleGroupBy) {
             for (Expression column : groupingElement.getExpressions()) {
               // simple GROUP BY expressions allow ordinals or arbitrary expressions
-              if (column instanceof LongLiteral) {
+              if (!groupBy.isAll() && column instanceof LongLiteral) {
                 long ordinal = ((LongLiteral) column).getParsedValue();
                 if (ordinal < 1 || ordinal > outputExpressions.size()) {
                   throw new SemanticException(
@@ -2869,6 +2880,9 @@ public class StatementAnalyzer {
                     "%s is not comparable, and therefore cannot be used in GROUP BY", type));
           }
         }
+        if (groupBy.isAll()) {
+          validateAllGroupByWindowFunctions(allGroupByExpressions, scope, outputExpressions);
+        }
 
         Analysis.GroupingSetAnalysis groupingSets =
             new Analysis.GroupingSetAnalysis(
@@ -2917,6 +2931,37 @@ public class StatementAnalyzer {
       return resolveSelectAlias(identifier, selectAliases)
           .map(alias -> outputExpressions.get(alias.getPosition() - 1))
           .orElse(expression);
+    }
+
+    private List<Expression> inferAllGroupByExpressions(List<Expression> outputExpressions) {
+      ImmutableList.Builder<Expression> groupingExpressions = ImmutableList.builder();
+      for (Expression expression : outputExpressions) {
+        if (extractAggregateFunctions(ImmutableList.of(expression)).isEmpty()
+            && extractWindowFunctions(ImmutableList.of(expression)).isEmpty()) {
+          groupingExpressions.add(expression);
+        }
+      }
+      return groupingExpressions.build();
+    }
+
+    private void validateAllGroupByWindowFunctions(
+        List<Expression> groupingExpressions, Scope scope, List<Expression> outputExpressions) {
+      List<FunctionCall> windowFunctions = extractWindowFunctions(outputExpressions);
+      for (FunctionCall windowFunction : windowFunctions) {
+        Analysis.ResolvedWindow window = analysis.getWindow(windowFunction);
+        ImmutableList.Builder<Expression> expressions = ImmutableList.builder();
+        expressions.addAll(windowFunction.getArguments());
+        expressions.addAll(window.getPartitionBy());
+        getSortItemsFromOrderBy(window.getOrderBy()).stream()
+            .map(SortItem::getSortKey)
+            .forEach(expressions::add);
+        if (window.getFrame().isPresent()) {
+          WindowFrame frame = window.getFrame().get();
+          frame.getStart().getValue().ifPresent(expressions::add);
+          frame.getEnd().flatMap(FrameBound::getValue).ifPresent(expressions::add);
+        }
+        verifySourceAggregations(groupingExpressions, scope, expressions.build(), analysis);
+      }
     }
 
     private boolean isDateBinGapFill(Expression column) {
