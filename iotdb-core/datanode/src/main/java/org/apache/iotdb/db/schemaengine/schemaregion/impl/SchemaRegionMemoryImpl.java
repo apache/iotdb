@@ -556,7 +556,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // currently, this method is only used for cluster-ratis mode
   @Override
-  public void loadSnapshot(final File latestSnapshotRootDir) {
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
     clear();
 
     logger.info(DataNodeSchemaMessages.START_LOADING_SNAPSHOT, schemaRegionId);
@@ -651,6 +651,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - startTime);
       logger.info(DataNodeSchemaMessages.SUCCESSFULLY_LOAD_SNAPSHOT, schemaRegionId);
+      return true;
     } catch (final Exception e) {
       logger.error(
           DataNodeSchemaMessages.FAILED_TO_LOAD_SNAPSHOT, schemaRegionId, e.getMessage(), e);
@@ -662,6 +663,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         logger.error(
             DataNodeSchemaMessages.ERROR_DURING_INIT_SCHEMA_REGION, schemaRegionId, exception);
       }
+      // The snapshot was not loaded (the region fell back to an empty re-initialized state). Report
+      // the failure so callers honoring the loadSnapshot success/failure contract can react.
+      return false;
     }
   }
 
