@@ -1221,6 +1221,18 @@ public final class DataNodePipeMessages {
       "PipeTsFileResource's reference count is decreased to below 0.";
   public static final String PIPE_HARDLINK_DIR_FOUND_DELETING_IT_RESULT =
       "Pipe hardlink dir found, deleting it: {}, result: {}";
+  public static final String PIPE_HARDLINK_DIR_FOUND_MOVED_TO_PERIODICAL_DELETE =
+      "Pipe hardlink dir found, moved it from {} to {} for throttled periodical deletion.";
+  public static final String PIPE_STALE_HARDLINK_DIR_FOUND_REGISTERING_PERIODICAL_DELETE =
+      "Stale pipe hardlink dir found, registering it for throttled periodical deletion: {}";
+  public static final String PIPE_HARDLINK_DIR_PERIODICAL_DELETE_FINISHED =
+      "Finished deleting stale pipe hardlink dir {} by periodical job, result: {}";
+  public static final String PIPE_HARDLINK_DIR_PERIODICAL_DELETE_PROGRESS =
+      "Periodically deleted {} paths from stale pipe hardlink dirs, current dir: {}, current round result: {}";
+  public static final String PIPE_HARDLINK_DIR_PERIODICAL_DELETE_ALL_FINISHED =
+      "Finished deleting all stale pipe hardlink dirs by periodical job.";
+  public static final String PIPE_HARDLINK_DIR_MOVE_FAILED_DELETING_SYNC =
+      "Failed to move pipe hardlink dir {} for periodical deletion, deleting it synchronously.";
   public static final String PIPE_SNAPSHOT_DIR_FOUND_DELETING_IT =
       "Pipe snapshot dir found, deleting it: {},";
   public static final String SHRINK_CALLBACK_IS_NOT_SUPPORTED_IN_PIPEFIXEDMEMORYBLOCK =

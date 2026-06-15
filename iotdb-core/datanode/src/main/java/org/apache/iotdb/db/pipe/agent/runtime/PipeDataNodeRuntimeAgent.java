@@ -81,7 +81,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
   public synchronized void preparePipeResources(
       final ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
     // Clean sender (connector) hardlink file dir and snapshot dir
-    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean();
+    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean(this::registerPeriodicalJob);
 
     // Clean receiver file dir
     PipeDataNodeAgent.receiver().cleanPipeReceiverDirs();
