@@ -2880,9 +2880,6 @@ public class StatementAnalyzer {
                     "%s is not comparable, and therefore cannot be used in GROUP BY", type));
           }
         }
-        if (groupBy.isAll()) {
-          validateAllGroupByWindowFunctions(allGroupByExpressions, scope, outputExpressions);
-        }
 
         Analysis.GroupingSetAnalysis groupingSets =
             new Analysis.GroupingSetAnalysis(
@@ -2942,26 +2939,6 @@ public class StatementAnalyzer {
         }
       }
       return groupingExpressions.build();
-    }
-
-    private void validateAllGroupByWindowFunctions(
-        List<Expression> groupingExpressions, Scope scope, List<Expression> outputExpressions) {
-      List<FunctionCall> windowFunctions = extractWindowFunctions(outputExpressions);
-      for (FunctionCall windowFunction : windowFunctions) {
-        Analysis.ResolvedWindow window = analysis.getWindow(windowFunction);
-        ImmutableList.Builder<Expression> expressions = ImmutableList.builder();
-        expressions.addAll(windowFunction.getArguments());
-        expressions.addAll(window.getPartitionBy());
-        getSortItemsFromOrderBy(window.getOrderBy()).stream()
-            .map(SortItem::getSortKey)
-            .forEach(expressions::add);
-        if (window.getFrame().isPresent()) {
-          WindowFrame frame = window.getFrame().get();
-          frame.getStart().getValue().ifPresent(expressions::add);
-          frame.getEnd().flatMap(FrameBound::getValue).ifPresent(expressions::add);
-        }
-        verifySourceAggregations(groupingExpressions, scope, expressions.build(), analysis);
-      }
     }
 
     private boolean isDateBinGapFill(Expression column) {

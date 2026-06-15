@@ -176,9 +176,45 @@ public class IoTDBGroupByAllTableIT {
         retArray,
         DATABASE_NAME);
 
+    expectedHeader = new String[] {"device_id", "s1"};
+    retArray = new String[] {"d1,20.0,", "d2,20.0,", "d1,30.0,", "d2,40.0,"};
+    tableResultSetEqualTest(
+        "SELECT device_id, s1 FROM table1 GROUP BY ALL ORDER BY rank() OVER (ORDER BY s1), device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
     tableAssertTestFail(
         "SELECT device_id, rank() OVER (ORDER BY s1), avg(s1) FROM table1 GROUP BY ALL",
-        "must be an aggregate expression or appear in GROUP BY clause",
+        "ORDER BY expression 's1' must be an aggregate expression or appear in GROUP BY clause",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT device_id, count(*) OVER (PARTITION BY s1), avg(s1) FROM table1 GROUP BY ALL",
+        "PARTITION BY expression 's1' must be an aggregate expression or appear in GROUP BY clause",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT device_id, avg(s1) FROM table1 GROUP BY ALL ORDER BY rank() OVER (ORDER BY s1)",
+        "ORDER BY expression 's1' must be an aggregate expression or appear in GROUP BY clause",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT sum(count(*) OVER (PARTITION BY device_id)) FROM table1 GROUP BY ALL",
+        "Cannot nest window functions inside aggregation",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testWindowFrameValidation() {
+    tableAssertTestFail(
+        "SELECT device_id, count(*) OVER (PARTITION BY device_id ORDER BY device_id ROWS BETWEEN x PRECEDING AND CURRENT ROW), avg(s1) FROM table1 GROUP BY ALL",
+        "Window frame start must be an aggregate expression or appear in GROUP BY clause",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT device_id, count(*) OVER (PARTITION BY device_id ORDER BY device_id ROWS BETWEEN CURRENT ROW AND x FOLLOWING), avg(s1) FROM table1 GROUP BY ALL",
+        "Window frame end must be an aggregate expression or appear in GROUP BY clause",
         DATABASE_NAME);
   }
 
