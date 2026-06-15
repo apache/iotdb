@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
@@ -41,6 +42,8 @@ import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * The {@link RegionBalancer} provides interfaces to generate optimal Region allocation and
@@ -80,10 +83,21 @@ public class RegionBalancer {
       final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
-    // Some new RegionGroups will have to occupy unknown DataNodes
-    // if the number of online DataNodes is insufficient
+    // Some new RegionGroups will have to occupy unknown DataNodes if the number of online
+    // DataNodes is insufficient (Unknown DataNodes are intentionally kept as candidates).
+    // However, DataNodes that an in-progress RemoveDataNodesProcedure is removing must be
+    // excluded: placing a new replica on a node that is about to disappear would strand that
+    // replica and stall the removal forever. A status filter is not enough here, because a
+    // DataNode killed (e.g. kill -9) before removal is reported as Unknown (not Removing) by the
+    // failure detector, so we additionally drop every DataNode that is currently being removed.
+    final Set<Integer> removingDataNodeIds = getProcedureManager().getRemovingDataNodeIds();
     final List<TDataNodeConfiguration> availableDataNodes =
-        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown);
+        getNodeManager()
+            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown)
+            .stream()
+            .filter(
+                dataNode -> !removingDataNodeIds.contains(dataNode.getLocation().getDataNodeId()))
+            .collect(Collectors.toList());
 
     // Make sure the number of available DataNodes is enough for allocating new RegionGroups
     for (final String database : allotmentMap.keySet()) {
@@ -155,6 +169,10 @@ public class RegionBalancer {
 
   private LoadManager getLoadManager() {
     return configManager.getLoadManager();
+  }
+
+  private ProcedureManager getProcedureManager() {
+    return configManager.getProcedureManager();
   }
 
   public enum RegionGroupAllocatePolicy {
