@@ -776,6 +776,10 @@ public final class DataNodeMiscMessages {
       "异常 {} 在 {} 执行接收子任务时发生";
   public static final String EXCEPTION_CONSTRUCT_TABLET_ITERATOR =
       "异常 {} 在 {} 构造 ToTabletIterator 时发生";
+  public static final String EXCEPTION_EMIT_EVENTS_BEFORE_COMMIT_TERMINATE_EVENT =
+      "订阅：SubscriptionPrefetchingQueue {} 在提交 PipeTerminateEvent {} 前封存剩余事件失败";
+  public static final String COMMIT_TERMINATE_EVENT =
+      "订阅：SubscriptionPrefetchingQueue {} 提交 PipeTerminateEvent {}";
 
   // ---------------------------------------------------------------------------
   // consensus – BaseStateMachine

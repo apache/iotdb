@@ -346,7 +346,8 @@ public abstract class SubscriptionPrefetchingQueue {
       }
       reportStateIfNeeded();
       // TODO: more refined behavior (prefetch/serialize/...) control
-      if (tryCommitCurrentTerminateEventIfPresent()) {
+      if (hasCurrentTerminateEvent()) {
+        tryCommitCurrentTerminateEventIfPresent();
         remapInFlightEventsSnapshot(
             committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
         return true;
@@ -710,12 +711,14 @@ public abstract class SubscriptionPrefetchingQueue {
     return batches.onEvent(this::prefetchEvent);
   }
 
-  private synchronized boolean tryCommitCurrentTerminateEventIfPresent() {
-    if (Objects.isNull(currentTerminateEvent)) {
-      return false;
+  private synchronized boolean hasCurrentTerminateEvent() {
+    return Objects.nonNull(currentTerminateEvent);
+  }
+
+  private synchronized void tryCommitCurrentTerminateEventIfPresent() {
+    if (Objects.nonNull(currentTerminateEvent)) {
+      tryCommitCurrentTerminateEvent();
     }
-    tryCommitCurrentTerminateEvent();
-    return true;
   }
 
   private synchronized boolean tryCommitCurrentTerminateEvent() {
@@ -723,8 +726,7 @@ public abstract class SubscriptionPrefetchingQueue {
       batches.emitAll(this::prefetchEvent);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Subscription: SubscriptionPrefetchingQueue {} failed to emit remaining events before "
-              + "committing PipeTerminateEvent {}.",
+          DataNodeMiscMessages.EXCEPTION_EMIT_EVENTS_BEFORE_COMMIT_TERMINATE_EVENT,
           this,
           currentTerminateEvent,
           e);
@@ -739,10 +741,7 @@ public abstract class SubscriptionPrefetchingQueue {
     currentTerminateEvent.addOnCommittedHook(this::markCompleted);
     currentTerminateEvent.decreaseReferenceCount(
         SubscriptionPrefetchingQueue.class.getName(), true);
-    LOGGER.info(
-        "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
-        this,
-        currentTerminateEvent);
+    LOGGER.info(DataNodeMiscMessages.COMMIT_TERMINATE_EVENT, this, currentTerminateEvent);
     currentTerminateEvent = null;
     return true;
   }
