@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -84,6 +86,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -137,6 +140,7 @@ public class DataRegionTest {
       StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));
     }
     DataNodeSchemaCache.getInstance().cleanUp();
+    DataNodeTTLCache.getInstance().clearAllTTL();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
@@ -1051,6 +1055,48 @@ public class DataRegionTest {
           insertRowsNode.getResults().get(1).getCode());
     } finally {
       dataRegion1.syncDeleteDataFiles();
+    }
+  }
+
+  @Test
+  public void testInsertRowsSkipsRowsRejectedByTTL() throws Exception {
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.ttl_rows");
+    final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    Mockito.when(processor.shouldFlush()).thenReturn(false);
+    Mockito.when(processor.isSequence()).thenReturn(true);
+    dataRegion1.setTsFileProcessorSupplier((timePartitionId, sequence) -> processor);
+    DataNodeTTLCache.getInstance().setTTL("root.ttl_rows", 60_000);
+
+    final long expiredTime = 1L;
+    final long liveTime = CommonDateTimeUtils.currentTime();
+    final List<Integer> indexList = Arrays.asList(0, 1);
+    final List<InsertRowNode> nodes = new ArrayList<>();
+    for (long time : new long[] {expiredTime, liveTime}) {
+      final TSRecord record = new TSRecord(time, "root.ttl_rows");
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, "1"));
+      nodes.add(buildInsertRowNodeByTSRecord(record));
+    }
+    final InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""), indexList, nodes);
+
+    try {
+      dataRegion1.insert(insertRowsNode);
+      Assert.fail("Expected BatchProcessException");
+    } catch (BatchProcessException e) {
+      Assert.assertEquals(1, insertRowsNode.getResults().size());
+      Assert.assertEquals(
+          TSStatusCode.OUT_OF_TTL.getStatusCode(), insertRowsNode.getResults().get(0).getCode());
+      Assert.assertTrue(nodes.get(0).allMeasurementFailed());
+
+      final ArgumentCaptor<InsertRowsNode> capturedNode =
+          ArgumentCaptor.forClass(InsertRowsNode.class);
+      Mockito.verify(processor).insert(capturedNode.capture(), any(long[].class));
+      Assert.assertEquals(1, capturedNode.getValue().getInsertRowNodeList().size());
+      Assert.assertEquals(
+          liveTime, capturedNode.getValue().getInsertRowNodeList().get(0).getTime());
+      Assert.assertEquals(1, capturedNode.getValue().getInsertRowNodeIndexList().get(0).intValue());
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+      DataNodeTTLCache.getInstance().clearAllTTL();
     }
   }
 
