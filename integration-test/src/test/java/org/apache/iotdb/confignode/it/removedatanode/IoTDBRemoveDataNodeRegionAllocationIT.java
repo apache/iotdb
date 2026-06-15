@@ -167,8 +167,21 @@ public class IoTDBRemoveDataNodeRegionAllocationIT {
       throw e;
     }
 
-    // Re-establish a connection after the DataNode was killed.
-    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    // Pick a DataNode that survives the removal; all SQL after the kill must be pinned to it.
+    // EnvFactory.getConnection() (no args) fans every read out to *all* DataNodes, including the
+    // killed one, which would fail with "Connection Error" and surface as InconsistentDataException
+    // rather than the behaviour we want to test.
+    final int killedDataNodePort =
+        EnvFactory.getEnv().dataNodeIdToWrapper(removeDataNodeId).get().getPort();
+    final DataNodeWrapper survivingDataNode =
+        EnvFactory.getEnv().getDataNodeWrapperList().stream()
+            .filter(wrapper -> wrapper.getPort() != killedDataNodePort)
+            .findAny()
+            .orElseThrow(() -> new AssertionError("No surviving DataNode to connect to"));
+
+    // Re-establish a connection (pinned to the surviving DataNode) after the DataNode was killed.
+    try (final Connection connection =
+            makeItCloseQuietly(EnvFactory.getEnv().getConnection(survivingDataNode));
         final Statement statement = makeItCloseQuietly(connection.createStatement());
         final SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -198,7 +211,7 @@ public class IoTDBRemoveDataNodeRegionAllocationIT {
       // database and writing to it. Before the fix, the allocator could still choose the removing
       // (Unknown) DataNode as a replica holder for these new regions.
       try (final Connection probeConnection =
-              makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+              makeItCloseQuietly(EnvFactory.getEnv().getConnection(survivingDataNode));
           final Statement probeStatement = makeItCloseQuietly(probeConnection.createStatement())) {
         for (int i = 0; i < 64; i++) {
           probeStatement.addBatch(
