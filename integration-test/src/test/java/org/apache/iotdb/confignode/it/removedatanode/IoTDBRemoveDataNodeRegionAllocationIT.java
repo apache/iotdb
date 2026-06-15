@@ -112,10 +112,9 @@ public class IoTDBRemoveDataNodeRegionAllocationIT {
     final int dataNodeNum = 4;
     final int dataReplicationFactor = 2;
     final int schemaReplicationFactor = 2;
-    // Place a few DataRegions per DataNode so the node being removed actually owns regions that
-    // have
-    // to be migrated, which keeps the RemoveDataNodesProcedure in progress long enough for us to
-    // race a new allocation against it.
+    // Place a few DataRegions per DataNode so the node being removed actually owns regions
+    // that have to be migrated, which keeps the RemoveDataNodesProcedure in progress long
+    // enough for us to race a new allocation against it.
     final int dataRegionPerDataNode = 2;
 
     EnvFactory.getEnv()
@@ -178,10 +177,9 @@ public class IoTDBRemoveDataNodeRegionAllocationIT {
       // Wait until the killed DataNode is reported Unknown, then submit the removal.
       awaitDataNodeStatus(statement, removeDataNodeId, "Unknown");
 
-      // Snapshot the Region ids that already exist; region migration only moves replicas of these
-      // existing groups (it never mints new Region ids), so any Region id appearing after this
-      // point
-      // belongs to the allocation we are about to force.
+      // Snapshot the Region ids that already exist; region migration only moves replicas of
+      // these existing groups (it never mints new Region ids), so any Region id appearing after
+      // this point belongs to the allocation we are about to force.
       final Set<Integer> preExistingRegionIds = new HashSet<>(getAllRegionMap(statement).keySet());
 
       final String removeDataNodeSQL = generateRemoveString(Set.of(removeDataNodeId));
@@ -197,9 +195,8 @@ public class IoTDBRemoveDataNodeRegionAllocationIT {
           isRemovalInProgress(clientRef, removeDataNodeLocations));
 
       // While the removal is in progress, force a fresh Region allocation by creating a new
-      // database
-      // and writing to it. Before the fix, the allocator could still choose the removing (Unknown)
-      // DataNode as a replica holder for these new regions.
+      // database and writing to it. Before the fix, the allocator could still choose the removing
+      // (Unknown) DataNode as a replica holder for these new regions.
       try (final Connection probeConnection =
               makeItCloseQuietly(EnvFactory.getEnv().getConnection());
           final Statement probeStatement = makeItCloseQuietly(probeConnection.createStatement())) {
