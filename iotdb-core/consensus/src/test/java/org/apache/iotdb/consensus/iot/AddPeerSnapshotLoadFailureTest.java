@@ -43,6 +43,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -93,7 +95,13 @@ public class AddPeerSnapshotLoadFailureTest {
   private final List<IoTConsensus> servers = new ArrayList<>();
   private final List<ControllableStateMachine> stateMachines = new ArrayList<>();
 
-  /** A {@link TestStateMachine} whose snapshot load can be made to fail on demand. */
+  /**
+   * A {@link TestStateMachine} that takes a real (single-file) snapshot and whose snapshot load can
+   * be made to fail on demand. When not forced to fail, {@link #loadSnapshot} mirrors the real
+   * {@code SnapshotLoader} contract by reporting failure when the snapshot root does not exist —
+   * which is exactly what happens for the receive folders that never got a fragment of a snapshot
+   * in a multi-data-dir deployment.
+   */
   private static class ControllableStateMachine extends TestStateMachine {
     private volatile boolean failLoadSnapshot = false;
     private volatile boolean loadSnapshotInvoked = false;
@@ -112,12 +120,23 @@ public class AddPeerSnapshotLoadFailureTest {
       if (failLoadSnapshot) {
         return false;
       }
-      return super.loadSnapshot(latestSnapshotRootDir);
+      // Mirror SnapshotLoader: a receive folder that never received a fragment of this snapshot has
+      // no snapshot root, so loading from it must report failure.
+      return latestSnapshotRootDir.exists();
     }
 
     @Override
     public boolean takeSnapshot(File snapshotDir) {
-      return true;
+      // Write a real (single) snapshot file so the transfer actually moves data and the receiver
+      // materializes the snapshot under a subset of its receive folders.
+      try {
+        Files.write(
+            new File(snapshotDir, "snapshot.data").toPath(),
+            "snapshot".getBytes(StandardCharsets.UTF_8));
+        return true;
+      } catch (IOException e) {
+        return false;
+      }
     }
 
     // TestStateMachine does not implement clearSnapshot (the IStateMachine default throws). The
@@ -228,6 +247,52 @@ public class AddPeerSnapshotLoadFailureTest {
     Assert.assertFalse(
         "Target peer was activated despite a failed snapshot load",
         servers.get(1).getImpl(gid).isActive());
+  }
+
+  /**
+   * A target peer configures one receive folder per local data dir, and snapshot fragments are
+   * spread across those folders by the FolderManager, so a small snapshot only materializes under a
+   * subset of them. A healthy transfer must therefore still succeed even though some receive
+   * folders never received any fragment of the snapshot (regression for the multi-data-dir
+   * false-failure reported on the load-failure-propagation PR).
+   */
+  @Test
+  public void addRemotePeerSucceedsWhenSnapshotSpansSubsetOfRecvDirs() throws Exception {
+    servers.get(0).createLocalPeer(gid, peers.subList(0, 1));
+    servers.get(1).createLocalPeer(gid, peers);
+
+    for (int i = 0; i < 10; i++) {
+      servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
+    }
+
+    // Do NOT force a load failure: this is a healthy transfer. The (small) snapshot lands in only a
+    // subset of the target's receive folders, so the others legitimately have no snapshot root.
+    // Before the fix, loadSnapshot() loaded from every receive folder and treated the missing ones
+    // as failures, turning this healthy multi-data-dir transfer into a spurious failure.
+    servers.get(0).addRemotePeer(gid, peers.get(1));
+
+    Assert.assertTrue(
+        "Target peer's loadSnapshot was never invoked",
+        stateMachines.get(1).isLoadSnapshotInvoked());
+    Assert.assertTrue(
+        "Target peer was not activated after a successful snapshot load",
+        servers.get(1).getImpl(gid).isActive());
+
+    // Sanity-check that the test actually exercised a partial spread: at least one of the target's
+    // receive folders must hold no snapshot at all, otherwise the skipped-folder path is untested.
+    long emptyRecvFolders =
+        peersRecvSnapshotDirs.get(1).stream()
+            .map(dir -> new File(dir, IoTConsensusServerImpl.SNAPSHOT_DIR_NAME))
+            .filter(recvFolder -> isEmptyOrMissing(recvFolder))
+            .count();
+    Assert.assertTrue(
+        "Expected at least one receive folder without the snapshot, but every folder had it",
+        emptyRecvFolders > 0);
+  }
+
+  private static boolean isEmptyOrMissing(File dir) {
+    String[] children = dir.list();
+    return children == null || children.length == 0;
   }
 
   private boolean checkPortAvailable() {

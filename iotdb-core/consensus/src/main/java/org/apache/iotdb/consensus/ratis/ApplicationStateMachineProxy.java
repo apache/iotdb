@@ -98,7 +98,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   }
 
   @Override
-  public void reinitialize() {
+  public void reinitialize() throws IOException {
     setLastAppliedTermIndex(null);
     loadSnapshot(snapshotStorage.findLatestSnapshotDir());
     if (getLifeCycleState() == LifeCycle.State.PAUSED) {
@@ -261,7 +261,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
   }
 
-  private void loadSnapshot(File latestSnapshotDir) {
+  private void loadSnapshot(File latestSnapshotDir) throws IOException {
     snapshotStorage.updateSnapshotCache();
     if (latestSnapshotDir == null) {
       return;
@@ -269,7 +269,12 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
     // require the application statemachine to load the latest snapshot
     if (!applicationStateMachine.loadSnapshot(latestSnapshotDir)) {
-      logger.error("{}: failed to load snapshot from {}", this, latestSnapshotDir);
+      // The application state machine rejected this snapshot. Do not advance lastAppliedTermIndex:
+      // claiming the snapshot as applied would let Ratis proceed as if it were installed and run on
+      // incomplete data (silent data loss). Fail (re)initialization instead so the snapshot install
+      // is treated as failed and can be retried.
+      throw new IOException(
+          String.format("%s: failed to load snapshot from %s", this, latestSnapshotDir));
     }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
     updateLastAppliedTermIndex(snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());

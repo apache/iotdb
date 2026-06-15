@@ -512,16 +512,27 @@ public class IoTConsensusServerImpl {
   }
 
   public boolean loadSnapshot(String snapshotId) {
-    // Load the snapshot from every receive folder. If any of them fails, report the failure so the
-    // AddPeer coordinator does not activate this peer with incomplete data (which would silently
-    // lose data on this replica).
+    // Snapshot fragments are spread across the receive folders by the FolderManager (a DataRegion,
+    // for example, uses one receive folder per local data dir), so a given snapshot only exists
+    // under the folders that actually received fragments. Load from those folders and skip the
+    // others; otherwise the state machine would fail on a folder that never received this snapshot
+    // and turn a healthy multi-data-dir transfer into a spurious failure.
+    boolean snapshotFound = false;
     boolean success = true;
     for (String dir : recvFolderManager.getFolders()) {
-      if (!stateMachine.loadSnapshot(getSnapshotPath(dir, snapshotId))) {
+      File snapshotDir = getSnapshotPath(dir, snapshotId);
+      if (!snapshotDir.exists()) {
+        continue;
+      }
+      snapshotFound = true;
+      if (!stateMachine.loadSnapshot(snapshotDir)) {
         success = false;
       }
     }
-    return success;
+    // If no receive folder contained the snapshot, nothing was loaded. Report the failure so the
+    // AddPeer coordinator does not activate this peer with incomplete data (which would silently
+    // lose data on this replica).
+    return snapshotFound && success;
   }
 
   private File getSnapshotPath(String curStorageDir, String snapshotRelativePath) {
