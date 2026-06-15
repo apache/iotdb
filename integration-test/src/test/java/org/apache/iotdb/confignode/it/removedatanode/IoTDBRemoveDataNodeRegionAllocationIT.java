@@ -111,7 +111,13 @@ public class IoTDBRemoveDataNodeRegionAllocationIT {
     final int configNodeNum = 1;
     final int dataNodeNum = 4;
     final int dataReplicationFactor = 2;
-    final int schemaReplicationFactor = 2;
+    // Schema regions use Ratis, so migrating a schema replica off the killed node needs a majority
+    // of the *old* peers to stay alive. With schemaReplicationFactor=2, killing one of the two
+    // replica holders breaks Ratis quorum, the schema-region migration fails, and the whole
+    // RemoveDataNodesProcedure rolls back without ever finishing. Use 3 (as the proven
+    // IoTDBRemoveUnknownDataNodeIT#successTest does) so one kill still leaves a quorum and the
+    // removal can actually complete.
+    final int schemaReplicationFactor = 3;
     // Place a few DataRegions per DataNode so the node being removed actually owns regions
     // that have to be migrated, which keeps the RemoveDataNodesProcedure in progress long
     // enough for us to race a new allocation against it.
