@@ -60,8 +60,11 @@ import java.util.List;
 @Category({LocalStandaloneIT.class})
 public class IoTDBAutoResizingBufferMemoryIT {
 
-  private static final double AUTO_RESIZING_BUFFER_MEMORY_PROPORTION = 0.0003;
-  private static final String CONFIG_FILE_ENTRY = "auto_resizing_buffer_memory_proportion=3.0E-4";
+  private static final String DATANODE_MEMORY_PROPORTION = "3331:3331:1111:1111:1110:6";
+  private static final int AUTO_RESIZING_BUFFER_MEMORY_PROPORTION_SUM = 10000;
+  private static final int AUTO_RESIZING_BUFFER_FREE_MEMORY_PROPORTION = 6;
+  private static final String CONFIG_FILE_ENTRY =
+      "datanode_memory_proportion=" + DATANODE_MEMORY_PROPORTION;
   private static final int DATANODE_MAX_HEAP_SIZE_IN_MB = 256;
   private static final int AUTO_RESIZING_BUFFER_COUNT_PER_CONNECTION = 2;
   private static final int CONNECTION_COUNT_OVERFLOW_MARGIN = 1;
@@ -74,7 +77,7 @@ public class IoTDBAutoResizingBufferMemoryIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setAutoResizingBufferMemoryProportion(AUTO_RESIZING_BUFFER_MEMORY_PROPORTION);
+        .setDatanodeMemoryProportion(DATANODE_MEMORY_PROPORTION);
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeJVMConfig()
@@ -88,7 +91,7 @@ public class IoTDBAutoResizingBufferMemoryIT {
   }
 
   @Test
-  public void testAutoResizingBufferMemoryProportionConfigTakesEffect() throws Exception {
+  public void testDatanodeMemoryProportionConfigTakesEffect() throws Exception {
     Assert.assertTrue(
         EnvFactory.getEnv().getNodeWrapperList().stream()
             .allMatch(nodeWrapper -> checkConfigFileContains(nodeWrapper, CONFIG_FILE_ENTRY)));
@@ -207,7 +210,12 @@ public class IoTDBAutoResizingBufferMemoryIT {
 
   private static long calculateAutoResizingBufferMemorySizeInBytes() {
     return (long)
-        (DATANODE_MAX_HEAP_SIZE_IN_MB * 1024L * 1024L * AUTO_RESIZING_BUFFER_MEMORY_PROPORTION);
+        (DATANODE_MAX_HEAP_SIZE_IN_MB
+            * 1024L
+            * 1024L
+            * AUTO_RESIZING_BUFFER_FREE_MEMORY_PROPORTION
+            / AUTO_RESIZING_BUFFER_MEMORY_PROPORTION_SUM
+            / 2);
   }
 
   private static int calculateNextPowerOfTwo(long value) {

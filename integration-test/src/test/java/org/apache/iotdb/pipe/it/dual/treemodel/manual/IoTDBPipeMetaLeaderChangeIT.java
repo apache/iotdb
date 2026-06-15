@@ -53,7 +53,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     senderEnv
         .getConfig()
         .getCommonConfig()
-        .setAutoResizingBufferMemoryProportion(0)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -64,7 +64,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     receiverEnv
         .getConfig()
         .getCommonConfig()
-        .setAutoResizingBufferMemoryProportion(0)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment(3, 3, 180);

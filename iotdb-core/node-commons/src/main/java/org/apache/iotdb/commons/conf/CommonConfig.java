@@ -416,8 +416,6 @@ public class CommonConfig {
   private long seriesLimitThreshold = -1;
   private long deviceLimitThreshold = -1;
 
-  private double autoResizingBufferMemoryProportion = 0.05;
-
   private boolean enableBinaryAllocator = true;
 
   private int arenaNum = 4;
@@ -2651,21 +2649,6 @@ public class CommonConfig {
 
   public void setDeviceLimitThreshold(long deviceLimitThreshold) {
     this.deviceLimitThreshold = deviceLimitThreshold;
-  }
-
-  public double getAutoResizingBufferMemoryProportion() {
-    return autoResizingBufferMemoryProportion;
-  }
-
-  public void setAutoResizingBufferMemoryProportion(double autoResizingBufferMemoryProportion) {
-    if (Double.isNaN(autoResizingBufferMemoryProportion)
-        || autoResizingBufferMemoryProportion > 1) {
-      logger.warn(
-          "autoResizingBufferMemoryProportion should be a valid number less than or equal to 1, but was {}",
-          autoResizingBufferMemoryProportion);
-      return;
-    }
-    this.autoResizingBufferMemoryProportion = autoResizingBufferMemoryProportion;
   }
 
   public long getStartUpNanosecond() {
