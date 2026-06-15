@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.memory;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.rpc.AutoResizingBufferMemoryControl;
 import org.apache.iotdb.rpc.AutoResizingBufferMemoryManager;
 
@@ -35,6 +36,7 @@ public class MemoryConfig {
 
   private MemoryConfig() {
     initAutoResizingBufferMemoryControl();
+    MetricService.getInstance().addMetricSet(new AutoResizingBufferMemoryMetrics(this));
   }
 
   public static MemoryManager global() {
@@ -107,5 +109,20 @@ public class MemoryConfig {
       return null;
     }
     return autoResizingBufferMemoryBlock;
+  }
+
+  public synchronized long getAutoResizingBufferMemoryTotalSizeInBytes() {
+    IMemoryBlock memoryBlock = getAutoResizingBufferMemoryBlock();
+    return memoryBlock == null ? 0 : memoryBlock.getTotalMemorySizeInBytes();
+  }
+
+  public synchronized long getAutoResizingBufferMemoryUsedSizeInBytes() {
+    IMemoryBlock memoryBlock = getAutoResizingBufferMemoryBlock();
+    return memoryBlock == null ? 0 : memoryBlock.getUsedMemoryInBytes();
+  }
+
+  public synchronized long getAutoResizingBufferMemoryAvailableSizeInBytes() {
+    IMemoryBlock memoryBlock = getAutoResizingBufferMemoryBlock();
+    return memoryBlock == null ? 0 : memoryBlock.getFreeMemoryInBytes();
   }
 }

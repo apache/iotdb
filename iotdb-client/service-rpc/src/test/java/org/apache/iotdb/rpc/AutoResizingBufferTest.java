@@ -80,6 +80,27 @@ public class AutoResizingBufferTest {
   }
 
   @Test
+  public void testMemoryAllocationMetrics() throws Exception {
+    memoryControl.setLimit(120);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    AutoResizingBuffer buffer = new AutoResizingBuffer(100);
+    Assert.assertEquals(1, AutoResizingBufferMemoryManager.getMemoryAllocationCount());
+    Assert.assertEquals(0, AutoResizingBufferMemoryManager.getMemoryAllocationFailureCount());
+
+    try {
+      buffer.resizeIfNecessary(200);
+      Assert.fail("Expected IOException");
+    } catch (IOException ignored) {
+      Assert.assertEquals(1, AutoResizingBufferMemoryManager.getMemoryAllocationCount());
+      Assert.assertEquals(1, AutoResizingBufferMemoryManager.getMemoryAllocationFailureCount());
+    } finally {
+      buffer.close();
+    }
+  }
+
+  @Test
   public void testElasticFramedTransportReleasesMemoryWhenClosed() throws Exception {
     AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
 

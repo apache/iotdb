@@ -23,6 +23,7 @@ import org.apache.iotdb.rpc.i18n.RpcMessages;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class AutoResizingBufferMemoryManager {
   private static final int MEMORY_ALLOCATE_MAX_RETRIES = 5;
@@ -44,6 +45,8 @@ public final class AutoResizingBufferMemoryManager {
   private static volatile AutoResizingBufferMemoryControl memoryControl = NO_OP_MEMORY_CONTROL;
   private static volatile long memoryAllocateRetryIntervalInMs =
       DEFAULT_MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS;
+  private static final AtomicLong memoryAllocationCount = new AtomicLong();
+  private static final AtomicLong memoryAllocationFailureCount = new AtomicLong();
 
   private AutoResizingBufferMemoryManager() {
     // Utility class.
@@ -56,6 +59,8 @@ public final class AutoResizingBufferMemoryManager {
   static void resetMemoryControl() {
     memoryControl = NO_OP_MEMORY_CONTROL;
     memoryAllocateRetryIntervalInMs = DEFAULT_MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS;
+    memoryAllocationCount.set(0);
+    memoryAllocationFailureCount.set(0);
   }
 
   static void setMemoryAllocateRetryIntervalInMs(long memoryAllocateRetryIntervalInMs) {
@@ -69,6 +74,7 @@ public final class AutoResizingBufferMemoryManager {
     }
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       if (memoryControl.allocate(sizeInBytes)) {
+        memoryAllocationCount.incrementAndGet();
         return;
       }
       try {
@@ -79,6 +85,7 @@ public final class AutoResizingBufferMemoryManager {
             String.format(RpcMessages.AUTO_RESIZING_BUFFER_ALLOCATE_INTERRUPTED, sizeInBytes), e);
       }
     }
+    memoryAllocationFailureCount.incrementAndGet();
     throw new IOException(
         String.format(
             RpcMessages.AUTO_RESIZING_BUFFER_ALLOCATE_FAILED,
@@ -91,5 +98,13 @@ public final class AutoResizingBufferMemoryManager {
       return;
     }
     memoryControl.release(sizeInBytes);
+  }
+
+  public static long getMemoryAllocationCount() {
+    return memoryAllocationCount.get();
+  }
+
+  public static long getMemoryAllocationFailureCount() {
+    return memoryAllocationFailureCount.get();
   }
 }
