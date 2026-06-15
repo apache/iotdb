@@ -119,6 +119,27 @@ public class IoTDBRegionOperationReliabilityITFramework {
         LOGGER.info("Cluster has been restarted");
       };
 
+  /**
+   * Gracefully stop (SIGTERM, not a forcible kill) the ConfigNode that hit the kill point, then
+   * restart it. A graceful stop lets the ConfigNode run its shutdown hooks, which interrupts the
+   * in-flight region-operation procedure worker. This reproduces a leader switch / graceful
+   * shutdown during AddRegionPeer: the interrupted {@code waitTaskFinish()} returns PROCESSING
+   * while the AddRegionPeerTask is still running on the coordinator DataNode. The procedure must
+   * NOT silently end here, otherwise the parent RegionMigrateProcedure would falsely treat AddPeer
+   * as complete and remove the source replica before the destination replica is actually Running.
+   * See AddRegionPeerProcedure#executeFromState DO_ADD_REGION_PEER PROCESSING branch.
+   */
+  public static Consumer<KillPointContext> actionOfGracefullyRestartConfigNode =
+      context -> {
+        Assert.assertTrue(context.getNodeWrapper() instanceof ConfigNodeWrapper);
+        context.getNodeWrapper().stop();
+        LOGGER.info("ConfigNode {} gracefully stopped.", context.getNodeWrapper().getId());
+        Assert.assertFalse(context.getNodeWrapper().isAlive());
+        context.getNodeWrapper().start();
+        LOGGER.info("ConfigNode {} restarted.", context.getNodeWrapper().getId());
+        Assert.assertTrue(context.getNodeWrapper().isAlive());
+      };
+
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
@@ -151,6 +172,28 @@ public class IoTDBRegionOperationReliabilityITFramework {
         killConfigNodeKeywords,
         killDataNodeKeywords,
         actionOfKillNode,
+        true,
+        killNode);
+  }
+
+  public void successTestWithAction(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> killConfigNodeKeywords,
+      KeySetView<String, Boolean> killDataNodeKeywords,
+      Consumer<KillPointContext> actionWhenDetectKeyWords,
+      KillNode killNode)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        killConfigNodeKeywords,
+        killDataNodeKeywords,
+        actionWhenDetectKeyWords,
         true,
         killNode);
   }
