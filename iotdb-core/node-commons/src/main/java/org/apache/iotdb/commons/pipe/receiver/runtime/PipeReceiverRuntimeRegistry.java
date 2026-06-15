@@ -82,19 +82,42 @@ public class PipeReceiverRuntimeRegistry {
             session.senderClusterId = normalize(senderClusterId);
             session.lastHandshakeTime = handshakeTime;
             session.lastTransferTime = Math.max(session.lastTransferTime, handshakeTime);
-            session.pipeId = isBlank(pipeName) ? null : formatPipeId(pipeName, pipeCreationTime);
+            session.pipeIds.clear();
+            session.addPipe(pipeName, pipeCreationTime);
           }
           return session;
         });
   }
 
   public void markTransfer(String connectionKey, long transferTime) {
+    markTransfer(connectionKey, null, Long.MIN_VALUE, transferTime);
+  }
+
+  public void markTransfer(
+      String connectionKey, String pipeName, long pipeCreationTime, long transferTime) {
+    if (isBlank(connectionKey)) {
+      return;
+    }
     final SessionRuntimeInfo session = sessionInfoMap.get(connectionKey);
     if (session == null) {
       return;
     }
     synchronized (session) {
       session.lastTransferTime = Math.max(session.lastTransferTime, transferTime);
+      session.addPipe(pipeName, pipeCreationTime);
+    }
+  }
+
+  public void removePipe(String connectionKey, String pipeName, long pipeCreationTime) {
+    if (isBlank(connectionKey)) {
+      return;
+    }
+    final SessionRuntimeInfo session = sessionInfoMap.get(connectionKey);
+    if (session == null) {
+      return;
+    }
+    synchronized (session) {
+      session.removePipe(pipeName, pipeCreationTime);
     }
   }
 
@@ -122,9 +145,7 @@ public class PipeReceiverRuntimeRegistry {
         }
         aggregatedInfo.senderPorts.add(session.senderPort);
         aggregatedInfo.connectionCount++;
-        if (session.pipeId != null) {
-          aggregatedInfo.pipeIds.add(session.pipeId);
-        }
+        aggregatedInfo.pipeIds.addAll(session.pipeIds);
         aggregatedInfo.senderClusterIds.add(session.senderClusterId);
         aggregatedInfo.lastHandshakeTime =
             Math.max(aggregatedInfo.lastHandshakeTime, session.lastHandshakeTime);
@@ -173,10 +194,22 @@ public class PipeReceiverRuntimeRegistry {
     private String senderClusterId = UNKNOWN;
     private long lastHandshakeTime;
     private long lastTransferTime;
-    private String pipeId;
+    private final TreeSet<String> pipeIds = new TreeSet<>();
 
     private SessionRuntimeInfo(String connectionKey) {
       this.connectionKey = connectionKey;
+    }
+
+    private void addPipe(String pipeName, long pipeCreationTime) {
+      if (!isBlank(pipeName)) {
+        pipeIds.add(formatPipeId(pipeName, pipeCreationTime));
+      }
+    }
+
+    private void removePipe(String pipeName, long pipeCreationTime) {
+      if (!isBlank(pipeName)) {
+        pipeIds.remove(formatPipeId(pipeName, pipeCreationTime));
+      }
     }
 
     @Override

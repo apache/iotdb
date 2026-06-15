@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -109,7 +110,7 @@ import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DAT
 
 @TreeModel
 @TableModel
-public class WriteBackSink implements PipeConnector {
+public class WriteBackSink implements PipeConnector, PipeConnectorWithEventDiscard {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteBackSink.class);
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -300,7 +301,10 @@ public class WriteBackSink implements PipeConnector {
               "Write back PipeInsertNodeTabletInsertionEvent %s error, result status %s",
               pipeInsertNodeTabletInsertionEvent, status));
     }
-    recordReceiverRuntimeTransferIfSuccess(status);
+    recordReceiverRuntimeTransferIfSuccess(
+        status,
+        pipeInsertNodeTabletInsertionEvent.getPipeName(),
+        pipeInsertNodeTabletInsertionEvent.getCreationTime());
   }
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
@@ -346,7 +350,10 @@ public class WriteBackSink implements PipeConnector {
               "Write back PipeRawTabletInsertionEvent %s error, result status %s",
               pipeRawTabletInsertionEvent, status));
     }
-    recordReceiverRuntimeTransferIfSuccess(status);
+    recordReceiverRuntimeTransferIfSuccess(
+        status,
+        pipeRawTabletInsertionEvent.getPipeName(),
+        pipeRawTabletInsertionEvent.getCreationTime());
   }
 
   @Override
@@ -393,7 +400,10 @@ public class WriteBackSink implements PipeConnector {
               "Write back PipeStatementInsertionEvent %s error, result status %s",
               pipeStatementInsertionEvent, status));
     }
-    recordReceiverRuntimeTransferIfSuccess(status);
+    recordReceiverRuntimeTransferIfSuccess(
+        status,
+        pipeStatementInsertionEvent.getPipeName(),
+        pipeStatementInsertionEvent.getCreationTime());
   }
 
   private static void throwWriteBackExceptionIfNecessary(
@@ -442,12 +452,24 @@ public class WriteBackSink implements PipeConnector {
             System.currentTimeMillis());
   }
 
-  private void recordReceiverRuntimeTransferIfSuccess(final TSStatus status) {
+  private void recordReceiverRuntimeTransferIfSuccess(
+      final TSStatus status, final String pipeName, final long pipeCreationTime) {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       PipeReceiverRuntimeRegistry.getInstance()
-          .markTransfer(receiverRuntimeSessionKey.get(), System.currentTimeMillis());
+          .markTransfer(
+              receiverRuntimeSessionKey.get(),
+              pipeName,
+              pipeCreationTime,
+              System.currentTimeMillis());
     }
+  }
+
+  @Override
+  public void discardEventsOfPipe(
+      final String pipeName, final long creationTime, final int regionId) {
+    PipeReceiverRuntimeRegistry.getInstance()
+        .removePipe(receiverRuntimeSessionKey.get(), pipeName, creationTime);
   }
 
   private TSStatus executeStatementForTableModel(
