@@ -29,7 +29,9 @@ import org.apache.thrift.TBaseAsyncProcessor;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TServerEventHandler;
@@ -40,6 +42,7 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.slf4j.Logger;
@@ -74,6 +77,18 @@ public abstract class AbstractThriftServiceThread extends Thread {
   // currently, we can reuse the ProtocolFactory instance.
   private static TCompactProtocol.Factory compactProtocolFactory = new TCompactProtocol.Factory();
   private static TBinaryProtocol.Factory binaryProtocolFactory = new TBinaryProtocol.Factory();
+  private static final ServerContext NOOP_SERVER_CONTEXT =
+      new ServerContext() {
+        @Override
+        public <T> T unwrap(Class<T> iface) {
+          return iface.isInstance(this) ? iface.cast(this) : null;
+        }
+
+        @Override
+        public boolean isWrapperFor(Class<?> iface) {
+          return iface.isInstance(this);
+        }
+      };
 
   private void initProtocolFactory(boolean compress) {
     protocolFactory = getProtocolFactory(compress);
@@ -155,7 +170,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
         default:
           logger.error(ServiceMessages.UNEXPECTED_SERVER_TYPE, serverType);
       }
-      poolServer.setServerEventHandler(serverEventHandler);
+      poolServer.setServerEventHandler(wrapServerEventHandler(serverEventHandler));
     } catch (TTransportException e) {
       catchFailedInitialization(e);
     }
@@ -200,7 +215,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
       TThreadPoolServer.Args poolArgs =
           initSyncedPoolArgs(processor, threadsName, maxWorkerThreads, timeoutSecond);
       poolServer = new TThreadPoolServer(poolArgs);
-      poolServer.setServerEventHandler(serverEventHandler);
+      poolServer.setServerEventHandler(wrapServerEventHandler(serverEventHandler));
     } catch (TTransportException e) {
       catchFailedInitialization(e);
     }
@@ -262,7 +277,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
       TThreadPoolServer.Args poolArgs =
           initSyncedPoolArgs(processor, threadsName, maxWorkerThreads, timeoutSecond);
       poolServer = new TThreadPoolServer(poolArgs);
-      poolServer.setServerEventHandler(serverEventHandler);
+      poolServer.setServerEventHandler(wrapServerEventHandler(serverEventHandler));
     } catch (TTransportException e) {
       catchFailedInitialization(e);
     }
@@ -278,6 +293,36 @@ public abstract class AbstractThriftServiceThread extends Thread {
     poolArgs.protocolFactory(protocolFactory);
     poolArgs.transportFactory(getTTransportFactory());
     return poolArgs;
+  }
+
+  private static TServerEventHandler wrapServerEventHandler(
+      TServerEventHandler serverEventHandler) {
+    if (serverEventHandler == null) {
+      return null;
+    }
+    return new TServerEventHandler() {
+      @Override
+      public void preServe() {
+        serverEventHandler.preServe();
+      }
+
+      @Override
+      public ServerContext createContext(TProtocol input, TProtocol output) {
+        ServerContext serverContext = serverEventHandler.createContext(input, output);
+        return serverContext == null ? NOOP_SERVER_CONTEXT : serverContext;
+      }
+
+      @Override
+      public void deleteContext(ServerContext serverContext, TProtocol input, TProtocol output) {
+        serverEventHandler.deleteContext(serverContext, input, output);
+      }
+
+      @Override
+      public void processContext(
+          ServerContext serverContext, TTransport inputTransport, TTransport outputTransport) {
+        serverEventHandler.processContext(serverContext, inputTransport, outputTransport);
+      }
+    };
   }
 
   private TThreadedSelectorServer.Args initAsyncedSelectorPoolArgs(
