@@ -173,7 +173,16 @@ public class DataNodeShutdownHook extends Thread {
       }
     }
     // Persist progress index before shutdown to accurate recovery after restart
-    PipeDataNodeAgent.task().persistAllProgressIndex();
+    final long shutdownProgressPersistTimeoutInMs =
+        PipeDataNodeAgent.task().getShutdownProgressPersistTimeoutInMs();
+    logger.info(
+        "Persisting pipe progress indexes before shutdown with timeout {} ms.",
+        shutdownProgressPersistTimeoutInMs);
+    if (!PipeDataNodeAgent.task().persistAllProgressIndex(shutdownProgressPersistTimeoutInMs)) {
+      logger.warn(
+          "Pipe progress indexes were not confirmed by ConfigNode during shutdown. "
+              + "\u672c\u6b21 shutdown progress \u672a\u786e\u8ba4\u843d\u5230 ConfigNode.");
+    }
     // Shutdown all consensus pipe's receiver
     PipeDataNodeAgent.receiver().iotConsensusV2().closeReceiverExecutor();
 
