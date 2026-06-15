@@ -133,6 +133,45 @@ public final class DataNodePipeMessages {
           + "ready yet, and meta will be pushed by config node later.";
   public static final String FAILED_TO_PERSIST_PROGRESS_INDEX_TO_CONFIGNODE =
       "持久化 progress index 到 configNode 失败，状态：{}";
+  public static final String SHUTDOWN_PROGRESS_NOT_CONFIRMED =
+      "本次 shutdown progress 未确认落到 ConfigNode。";
+  public static final String START_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+      "开始在 shutdown 期间持久化所有 pipe progress index，pipe 数量 {}，deadline {} ms";
+  public static final String
+      INTERRUPTED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "在 shutdown 期间持久化所有 pipe progress index 时被中断。"
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String
+      TIMED_OUT_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "在 shutdown 期间持久化所有 pipe progress index 超时，耗时 {} ms。"
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String FAILED_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+      "在 shutdown 期间持久化所有 pipe progress index 失败，耗时 {} ms。"
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String COLLECTED_PIPE_METAS_FOR_SHUTDOWN_PROGRESS_PERSIST =
+      "已收集 shutdown progress persist 所需 pipe meta，pipe 数量 {}，pipe meta 数量 {}，"
+          + "pipe meta 大小 {} bytes，耗时 {} ms";
+  public static final String COLLECTED_EMPTY_PIPE_METAS_DURING_SHUTDOWN =
+      "shutdown 期间为 {} 个 pipe 收集到空 pipe meta。";
+  public static final String START_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+      "开始向 ConfigNode pushHeartbeat shutdown pipe meta，dataNode id {}，pipe 数量 {}，"
+          + "pipe meta 数量 {}，pipe meta 大小 {} bytes";
+  public static final String FAILED_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+      "向 ConfigNode pushHeartbeat shutdown pipe meta 失败，状态 {}，耗时 {} ms。"
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String
+      SUCCESSFULLY_FINISHED_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+          "成功向 ConfigNode pushHeartbeat shutdown pipe meta，pipe 数量 {}，pipe meta 数量 {}，"
+              + "pipe meta 大小 {} bytes，耗时 {} ms";
+  public static final String
+      EXCEPTION_OCCURRED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "在 shutdown 期间持久化所有 pipe progress index 时发生异常。"
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String PERSISTING_PIPE_PROGRESS_INDEXES_BEFORE_SHUTDOWN =
+      "shutdown 前正在持久化 pipe progress index，超时时间 {} ms。";
+  public static final String PIPE_PROGRESS_INDEXES_WERE_NOT_CONFIRMED_DURING_SHUTDOWN =
+      "shutdown 期间 pipe progress index 未被 ConfigNode 确认。"
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
   public static final String FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS =
       "注册 pipe plugin {} 失败。将跳过该插件并继续启动。";
   public static final String

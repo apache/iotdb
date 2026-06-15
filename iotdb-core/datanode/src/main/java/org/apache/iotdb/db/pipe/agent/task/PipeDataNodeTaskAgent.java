@@ -131,8 +131,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskAgent.class);
-  private static final String SHUTDOWN_PROGRESS_NOT_CONFIRMED_MESSAGE =
-      "\u672c\u6b21 shutdown progress \u672a\u786e\u8ba4\u843d\u5230 ConfigNode.";
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -644,7 +642,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     persistThread.setDaemon(true);
 
     LOGGER.info(
-        "Start to persist all pipe progress indexes during shutdown, pipe count {}, deadline {} ms",
+        DataNodePipeMessages.START_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN,
         getPipeCount(),
         normalizedTimeoutInMs);
     persistThread.start();
@@ -659,27 +657,22 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      persistThread.interrupt();
-      LOGGER.warn(
-          "Interrupted while persisting all pipe progress indexes during shutdown. "
-              + SHUTDOWN_PROGRESS_NOT_CONFIRMED_MESSAGE,
-          e);
+      LOGGER.info(
+          DataNodePipeMessages
+              .INTERRUPTED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN);
       return false;
     }
 
     if (persistThread.isAlive()) {
-      persistThread.interrupt();
       LOGGER.warn(
-          "Timed out after {} ms while persisting all pipe progress indexes during shutdown. "
-              + SHUTDOWN_PROGRESS_NOT_CONFIRMED_MESSAGE,
+          DataNodePipeMessages.TIMED_OUT_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN,
           System.currentTimeMillis() - startTime);
       return false;
     }
 
     if (!isConfirmed.get()) {
       LOGGER.warn(
-          "Failed to persist all pipe progress indexes during shutdown within {} ms. "
-              + SHUTDOWN_PROGRESS_NOT_CONFIRMED_MESSAGE,
+          DataNodePipeMessages.FAILED_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN,
           System.currentTimeMillis() - startTime);
     }
     return isConfirmed.get();
@@ -702,8 +695,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               .mapToInt(ByteBuffer::remaining)
               .sum();
       LOGGER.info(
-          "Collected pipe metas for shutdown progress persist, pipe count {}, pipe meta count {}, "
-              + "pipe meta size {} bytes, took {} ms",
+          DataNodePipeMessages.COLLECTED_PIPE_METAS_FOR_SHUTDOWN_PROGRESS_PERSIST,
           pipeCount,
           pipeMetaCount,
           pipeMetaSizeInBytes,
@@ -711,10 +703,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
       if (resp.getPipeMetaList().isEmpty()) {
         if (pipeCount != 0) {
-          LOGGER.warn(
-              "Collected empty pipe metas for {} pipes during shutdown. "
-                  + SHUTDOWN_PROGRESS_NOT_CONFIRMED_MESSAGE,
-              pipeCount);
+          LOGGER.info(DataNodePipeMessages.COLLECTED_EMPTY_PIPE_METAS_DURING_SHUTDOWN, pipeCount);
           return false;
         }
         return true;
@@ -723,8 +712,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       try (final ConfigNodeClient configNodeClient =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         LOGGER.info(
-            "Start to pushHeartbeat shutdown pipe meta to ConfigNode, dataNode id {}, pipe count {}, "
-                + "pipe meta count {}, pipe meta size {} bytes",
+            DataNodePipeMessages.START_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE,
             IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
             pipeCount,
             pipeMetaCount,
@@ -737,15 +725,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
           LOGGER.warn(DataNodePipeMessages.FAILED_TO_PERSIST_PROGRESS_INDEX_TO_CONFIGNODE, result);
           LOGGER.warn(
-              "Failed to pushHeartbeat shutdown pipe meta to ConfigNode, status {}, took {} ms. "
-                  + SHUTDOWN_PROGRESS_NOT_CONFIRMED_MESSAGE,
+              DataNodePipeMessages.FAILED_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE,
               result,
               pushCostTime);
           return false;
         } else {
           LOGGER.info(
-              "Successfully finished pushHeartbeat shutdown pipe meta to ConfigNode, pipe count {}, "
-                  + "pipe meta count {}, pipe meta size {} bytes, took {} ms",
+              DataNodePipeMessages
+                  .SUCCESSFULLY_FINISHED_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE,
               pipeCount,
               pipeMetaCount,
               pipeMetaSizeInBytes,
@@ -756,8 +743,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
     } catch (final Exception e) {
       LOGGER.warn(
-          "Exception occurred while persisting all pipe progress indexes during shutdown. "
-              + SHUTDOWN_PROGRESS_NOT_CONFIRMED_MESSAGE,
+          DataNodePipeMessages
+              .EXCEPTION_OCCURRED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN,
           e);
       return false;
     }
