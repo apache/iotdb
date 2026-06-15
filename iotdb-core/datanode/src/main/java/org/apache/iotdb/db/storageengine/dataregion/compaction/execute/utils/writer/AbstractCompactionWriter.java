@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
@@ -449,6 +450,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected void checkChunkSizeAndMayOpenANewChunk(
       CompactionTsFileWriter fileWriter, IChunkWriter chunkWriter, int subTaskId)
       throws IOException {
+    if (chunkWriter instanceof FollowingBatchCompactionAlignedChunkWriter
+        && chunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, false)) {
+      sealChunk(fileWriter, chunkWriter, subTaskId);
+      return;
+    }
     boolean reachesPointCheckPoint =
         chunkPointNumArray[subTaskId] >= (lastCheckIndexArray[subTaskId] + 1) * checkPoint;
     boolean reachesSizeCheckPoint =
