@@ -259,7 +259,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected long estimateWrittenPointTotalSize(TsBlock tsBlock) {
     int pointCount = tsBlock.getPositionCount();
-    long size = 0;
+    long size = (long) Long.BYTES * pointCount;
     Column[] columns = tsBlock.getValueColumns();
     for (Column column : columns) {
       TSDataType dataType = column.getDataType();
@@ -442,8 +442,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
     chunkPointNumArray[subTaskId] += timePageHeader.getStatistics().getCount();
     if (hasVariableLengthTypeArray[subTaskId]) {
-      // Direct-flushed pages are already serialized, so use value page size as checkpoint estimate.
-      writtenPointTotalSizeArray[subTaskId] += writtenValuePageSize;
+      // Direct-flushed pages are already serialized, so use page size as checkpoint estimate.
+      writtenPointTotalSizeArray[subTaskId] +=
+          timePageHeader.getSerializedPageSize() + writtenValuePageSize;
     }
   }
 
