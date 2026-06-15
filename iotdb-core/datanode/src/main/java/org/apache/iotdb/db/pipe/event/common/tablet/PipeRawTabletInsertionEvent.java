@@ -274,30 +274,21 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
-    try {
-      if (pipeName != null
-          && Objects.equals(hasObjectData, Boolean.TRUE)
-          && tsFileResource != null) {
-        // Only increase reference count, do not link files
-        PipeDataNodeResourceManager.object().increaseReference(tsFileResource, pipeName);
-      }
+    PipeDataNodeResourceManager.memory()
+        .forceResize(
+            allocatedMemoryBlock,
+            PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
 
-      PipeDataNodeResourceManager.memory()
-          .forceResize(
-              allocatedMemoryBlock,
-              PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
-      if (Objects.nonNull(pipeName)) {
-        PipeDataNodeSinglePipeMetrics.getInstance()
-            .increaseRawTabletEventCount(pipeName, creationTime);
-      }
-      return true;
-    } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to increase resource reference count for tablet event. Holder Message: {}",
-          holderMessage,
-          e);
-      return false;
+    if (pipeName != null && Objects.equals(hasObjectData, Boolean.TRUE) && tsFileResource != null) {
+      // Only increase reference count, do not link files
+      PipeDataNodeResourceManager.object().increaseReference(tsFileResource, pipeName);
     }
+
+    if (Objects.nonNull(pipeName)) {
+      PipeDataNodeSinglePipeMetrics.getInstance()
+          .increaseRawTabletEventCount(pipeName, creationTime);
+    }
+    return true;
   }
 
   @Override
