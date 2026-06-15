@@ -348,7 +348,9 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
           String.format(
               "Failed to load snapshot %s for consensus group %s", req.snapshotId, groupId);
       LOGGER.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      // Surface a region-migration-specific code (the snapshot load runs as part of the AddPeer
+      // flow) rather than a generic internal error, so the coordinator's failure is meaningful.
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage(message);
       return new TTriggerSnapshotLoadRes(status);
     }
