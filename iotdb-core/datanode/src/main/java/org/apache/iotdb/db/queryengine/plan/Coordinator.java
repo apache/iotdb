@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.slf4j.Logger;
@@ -208,13 +209,19 @@ public class Coordinator {
       long startTime) {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
-    if (statement instanceof IConfigStatement) {
-      queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
+    final Statement configStatement =
+        statement instanceof PipeEnrichedStatement
+                && ((PipeEnrichedStatement) statement).getInnerStatement()
+                    instanceof IConfigStatement
+            ? ((PipeEnrichedStatement) statement).getInnerStatement()
+            : statement;
+    if (configStatement instanceof IConfigStatement) {
+      queryContext.setQueryType(((IConfigStatement) configStatement).getQueryType());
       return new ConfigExecution(
           queryContext,
-          statement.getType(),
+          configStatement.getType(),
           executor,
-          statement.accept(new ConfigTaskVisitor(), queryContext));
+          configStatement.accept(new ConfigTaskVisitor(), queryContext));
     }
     TreeModelPlanner treeModelPlanner =
         new TreeModelPlanner(
