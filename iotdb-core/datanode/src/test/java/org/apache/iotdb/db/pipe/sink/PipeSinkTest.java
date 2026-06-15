@@ -24,6 +24,9 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapshot;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.legacy.IoTDBLegacyPipeSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
@@ -31,6 +34,7 @@ import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncS
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketConnectorServer;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketSink;
+import org.apache.iotdb.db.pipe.sink.protocol.writeback.WriteBackSink;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -106,6 +110,60 @@ public class PipeSinkTest {
                   })));
     } catch (Exception e) {
       Assert.fail();
+    }
+  }
+
+  @Test
+  public void testWriteBackSinkRegistersReceiverRuntime() throws Exception {
+    final PipeReceiverRuntimeRegistry registry = PipeReceiverRuntimeRegistry.getInstance();
+    final int previousDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    registry.clear();
+
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+      final String pipeName = "write_back_receiver_runtime_pipe";
+      final long creationTime = 1L;
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(
+                      PipeSinkConstant.SINK_KEY,
+                      BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName());
+                  put(PipeSinkConstant.SINK_IOTDB_USER_ID, "0");
+                  put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, "root");
+                }
+              });
+
+      try (final WriteBackSink sink = new WriteBackSink()) {
+        sink.validate(new PipeParameterValidator(parameters));
+        sink.customize(
+            parameters,
+            new PipeTaskRuntimeConfiguration(
+                new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, 1)));
+
+        final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+        Assert.assertEquals(1, snapshots.size());
+
+        final PipeReceiverRuntimeSnapshot snapshot = snapshots.get(0);
+        Assert.assertEquals(
+            PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE, snapshot.getReceiverNodeType());
+        Assert.assertEquals(PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT, snapshot.getProtocol());
+        Assert.assertFalse(snapshot.getSenderAddress().isEmpty());
+        Assert.assertFalse(snapshot.getSenderPorts().isEmpty());
+        Assert.assertEquals(1, snapshot.getConnectionCount());
+        Assert.assertEquals(1, snapshot.getPipeCount());
+        Assert.assertTrue(snapshot.getPipeIds().contains(pipeName + "@"));
+        Assert.assertEquals("root", snapshot.getUserName());
+        Assert.assertFalse(snapshot.getSenderClusterId().isEmpty());
+        Assert.assertTrue(snapshot.getLastHandshakeTime() > 0);
+        Assert.assertTrue(snapshot.getLastTransferTime() >= snapshot.getLastHandshakeTime());
+      }
+
+      Assert.assertTrue(registry.snapshot().isEmpty());
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousDataNodeId);
+      registry.clear();
     }
   }
 
