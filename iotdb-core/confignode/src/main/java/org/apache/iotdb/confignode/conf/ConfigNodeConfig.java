@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
@@ -225,7 +226,7 @@ public class ConfigNodeConfig {
   private double topologyProbingTimeoutRatio = 0.5;
 
   /** The policy of cluster RegionGroups' leader distribution. */
-  private String leaderDistributionPolicy = AbstractLeaderBalancer.CFD_POLICY;
+  private String leaderDistributionPolicy = AbstractLeaderBalancer.CFS_POLICY;
 
   /** Whether to enable auto leader balance for Ratis consensus protocol. */
   private boolean enableAutoLeaderBalanceForRatisConsensus = true;
@@ -316,6 +317,16 @@ public class ConfigNodeConfig {
   private int schemaRegionRatisMaxRetryAttempts = 10;
   private long schemaRegionRatisInitialSleepTimeMs = 100;
   private long schemaRegionRatisMaxSleepTimeMs = 10000;
+
+  /**
+   * RatisConsensus protocol, max retry attempts for a configuration change (add/remove peer). Uses
+   * a fixed 2s retry interval; bounding the attempts stops a killed ADDING peer from blocking the
+   * reconfiguration -- and hence a region migration -- forever.
+   */
+  private int configNodeRatisReconfigurationMaxRetryAttempts = 15;
+
+  private int dataRegionRatisReconfigurationMaxRetryAttempts = 15;
+  private int schemaRegionRatisReconfigurationMaxRetryAttempts = 15;
 
   private long configNodeRatisPreserveLogsWhenPurge = 1000;
   private long schemaRegionRatisPreserveLogsWhenPurge = 1000;
@@ -1116,6 +1127,36 @@ public class ConfigNodeConfig {
     this.schemaRegionRatisMaxRetryAttempts = schemaRegionRatisMaxRetryAttempts;
   }
 
+  public int getConfigNodeRatisReconfigurationMaxRetryAttempts() {
+    return configNodeRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public void setConfigNodeRatisReconfigurationMaxRetryAttempts(
+      int configNodeRatisReconfigurationMaxRetryAttempts) {
+    this.configNodeRatisReconfigurationMaxRetryAttempts =
+        configNodeRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public int getDataRegionRatisReconfigurationMaxRetryAttempts() {
+    return dataRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public void setDataRegionRatisReconfigurationMaxRetryAttempts(
+      int dataRegionRatisReconfigurationMaxRetryAttempts) {
+    this.dataRegionRatisReconfigurationMaxRetryAttempts =
+        dataRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public int getSchemaRegionRatisReconfigurationMaxRetryAttempts() {
+    return schemaRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public void setSchemaRegionRatisReconfigurationMaxRetryAttempts(
+      int schemaRegionRatisReconfigurationMaxRetryAttempts) {
+    this.schemaRegionRatisReconfigurationMaxRetryAttempts =
+        schemaRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
   public long getSchemaRegionRatisInitialSleepTimeMs() {
     return schemaRegionRatisInitialSleepTimeMs;
   }
@@ -1240,7 +1281,7 @@ public class ConfigNodeConfig {
             .append(configContent)
             .append(";");
       } catch (Exception e) {
-        LOGGER.warn("Failed to get field {}", configField, e);
+        LOGGER.warn(ConfigNodeMessages.FAILED_TO_GET_FIELD, configField, e);
       }
     }
     return configMessage.toString();

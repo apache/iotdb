@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
@@ -140,7 +141,7 @@ public class LocalSinkChannel implements ISinkChannel {
           return;
         }
         if (!blocked.isDone()) {
-          throw new IllegalStateException("Sink handle is blocked.");
+          throw new IllegalStateException(DataNodeQueryMessages.SINK_HANDLE_IS_BLOCKED);
         }
       }
 
@@ -149,7 +150,7 @@ public class LocalSinkChannel implements ISinkChannel {
           return;
         }
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[StartSendTsBlockOnLocal]");
+          LOGGER.debug(DataNodeQueryMessages.START_SEND_TSBLOCK_ON_LOCAL);
         }
         synchronized (this) {
           blocked = queue.add(tsBlock);
@@ -166,7 +167,7 @@ public class LocalSinkChannel implements ISinkChannel {
     synchronized (queue) {
       synchronized (this) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[StartSetNoMoreTsBlocksOnLocal]");
+          LOGGER.debug(DataNodeQueryMessages.START_SET_NO_MORE_TSBLOCKS_ON_LOCAL);
         }
         if (aborted || closed) {
           return;
@@ -177,14 +178,14 @@ public class LocalSinkChannel implements ISinkChannel {
     }
     checkAndInvokeOnFinished();
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndSetNoMoreTsBlocksOnLocal]");
+      LOGGER.debug(DataNodeQueryMessages.END_SET_NO_MORE_TSBLOCKS_ON_LOCAL);
     }
   }
 
   @Override
   public boolean abort() {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartAbortLocalSinkChannel]");
+      LOGGER.debug(DataNodeQueryMessages.START_ABORT_LOCAL_SINK_CHANNEL);
     }
     synchronized (queue) {
       synchronized (this) {
@@ -201,7 +202,7 @@ public class LocalSinkChannel implements ISinkChannel {
       }
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndAbortLocalSinkChannel]");
+      LOGGER.debug(DataNodeQueryMessages.END_ABORT_LOCAL_SINK_CHANNEL);
     }
     return true;
   }
@@ -209,7 +210,7 @@ public class LocalSinkChannel implements ISinkChannel {
   @Override
   public boolean close() {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartCloseLocalSinkChannel]");
+      LOGGER.debug(DataNodeQueryMessages.START_CLOSE_LOCAL_SINK_CHANNEL);
     }
     synchronized (queue) {
       synchronized (this) {
@@ -225,7 +226,7 @@ public class LocalSinkChannel implements ISinkChannel {
       }
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndCloseLocalSinkChannel]");
+      LOGGER.debug(DataNodeQueryMessages.END_CLOSE_LOCAL_SINK_CHANNEL);
     }
     return true;
   }
@@ -252,7 +253,7 @@ public class LocalSinkChannel implements ISinkChannel {
           throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
         }
       }
-      throw new IllegalStateException("LocalSinkChannel is ABORTED.");
+      throw new IllegalStateException(DataNodeQueryMessages.LOCALSINKCHANNEL_IS_ABORTED);
     }
   }
 

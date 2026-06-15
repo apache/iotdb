@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 
@@ -82,7 +83,7 @@ public abstract class PlanNode implements IConsensusRequest {
    * overridden, the serialization and deserialization methods must be implemented.
    */
   public PlanNodeType getType() {
-    throw new UnsupportedOperationException("This planNode does not support getType().");
+    throw new UnsupportedOperationException(QueryMessages.PLAN_NODE_NOT_SUPPORT_GET_TYPE);
   }
 
   @Override
@@ -98,7 +99,7 @@ public abstract class PlanNode implements IConsensusRequest {
    */
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
     throw new UnsupportedOperationException(
-        String.format("Can't create subNode for %s", this.getClass()));
+        String.format(QueryMessages.PLAN_NODE_CANNOT_CREATE_SUB_NODE, this.getClass()));
   }
 
   public PlanNode cloneWithChildren(List<PlanNode> children) {
@@ -107,8 +108,9 @@ public abstract class PlanNode implements IConsensusRequest {
         || children.size() == allowedChildCount())) {
       throw new IllegalArgumentException(
           String.format(
-              "Child count is not correct for PlanNode. Expected: %d, Value: %d",
-              allowedChildCount(), getChildrenCount(children)));
+              QueryMessages.PLAN_NODE_CHILD_COUNT_INCORRECT,
+              allowedChildCount(),
+              getChildrenCount(children)));
     }
     PlanNode node = clone();
     if (children != null) {
@@ -180,7 +182,7 @@ public abstract class PlanNode implements IConsensusRequest {
 
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
-      LOGGER.error("Unexpected error occurs when serializing writePlanNode.", e);
+      LOGGER.error(QueryMessages.PLAN_NODE_SERIALIZE_ERROR, e);
       throw new SerializationRunTimeException(e);
     }
   }
@@ -208,7 +210,7 @@ public abstract class PlanNode implements IConsensusRequest {
 
   // =========================== Used for Table Model ============================
   public List<Symbol> getOutputSymbols() {
-    throw new UnsupportedOperationException("This planNode does not support getOutputSymbols().");
+    throw new UnsupportedOperationException(QueryMessages.PLAN_NODE_NOT_SUPPORT_GET_OUTPUT_SYMBOLS);
   }
 
   public PlanNode replaceChildren(List<PlanNode> newChildren) {

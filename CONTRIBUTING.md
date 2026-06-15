@@ -55,7 +55,7 @@ You can choose issue types: bug, improvement, new feature, etc.  New issues will
 
 ## Email discussion content (English)
 
-* Joining the mailing list for the first time can introduce youself briefly.  (Hi, I'm xxx ...)
+* Joining the mailing list for the first time can introduce yourself briefly.  (Hi, I'm xxx ...)
 
 * Before developing a new feature, you can send an e-mail to declare the task you want to do.（Hi，I'm working on issue IOTDB-XXX，My plan is ...）
 
@@ -111,21 +111,18 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
 
 - Formatter: `clang-format` only
 - Version: pinned as `clang.format.version` in the root `pom.xml` (currently `17.0.6`, aligned with Apache TsFile); CI installs LLVM/clang-format so the default `clang-format` on the runner matches that version
-- Entrypoint: Maven Spotless; the `clangFormat` configuration is attached under the `spotless-cpp` profile in the C++ modules and activates only on **JDK 11+**, so run `spotless:check` / `spotless:apply` for C++ with JDK 11 or newer (CI does). JDK 8 builds elsewhere in the reactor do not load that Spotless fragment.
+- Entrypoint: Maven Spotless; the `clangFormat` configuration is attached under the `spotless-cpp` profile in the C++ modules and activates on the repository baseline, **JDK 17+**, so run `spotless:check` / `spotless:apply` for C++ with JDK 17 or newer (CI does).
 
 Check only:
 
 `./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:check`
 
-`./mvnw -P with-cpp -pl example/client-cpp-example spotless:check`
 
 Auto-fix:
 
 `./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:apply`
 
-`./mvnw -P with-cpp -pl example/client-cpp-example spotless:apply`
 
-On Windows PowerShell, a comma inside `-pl` can be parsed incorrectly; use the two commands above, or quote the full `-pl` value, for example `./mvnw -P with-cpp "-pl=iotdb-client/client-cpp,example/client-cpp-example" spotless:check`.
 
 Temporarily skip Spotless (not recommended except emergency CI triage):
 
@@ -184,4 +181,3 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
  * Put the file to thrift/target/tools/
 
  * Re-run maven command like `mvn compile`
-

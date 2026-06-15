@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.task;
 
+import org.apache.iotdb.calc.execution.schedule.queue.ID;
+import org.apache.iotdb.calc.execution.schedule.queue.IDIndexedAccessible;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -27,8 +29,6 @@ import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverTaskThread;
 import org.apache.iotdb.db.queryengine.execution.schedule.ExecutionContext;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.ID;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IDIndexedAccessible;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.Priority;
 
@@ -60,6 +60,7 @@ public class DriverTask implements IDIndexedAccessible {
   private final DriverTaskHandle driverTaskHandle;
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
+  private boolean reservedInReadyQueue;
 
   private long estimatedMemorySize;
 
@@ -211,6 +212,18 @@ public class DriverTask implements IDIndexedAccessible {
 
   public void setLastEnterBlockQueueTime(long lastEnterBlockQueueTime) {
     this.lastEnterBlockQueueTime = lastEnterBlockQueueTime;
+  }
+
+  public void markReservedInReadyQueue() {
+    reservedInReadyQueue = true;
+  }
+
+  public boolean releaseReservedInReadyQueue() {
+    if (!reservedInReadyQueue) {
+      return false;
+    }
+    reservedInReadyQueue = false;
+    return true;
   }
 
   /** a comparator of ddl, the less the ddl is, the low order it has. */

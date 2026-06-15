@@ -59,7 +59,7 @@ ddlStatement
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
-    | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
+    | createTopic | alterTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -76,6 +76,8 @@ ddlStatement
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
     // Table View
     | createTableView
+    // for calculation point
+    | createCalcPoint | alterCalcPoint | dropCalcPoint | showCalcPoint
     ;
 
 dmlStatement
@@ -718,6 +720,10 @@ createTopic
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
     ;
 
+alterTopic
+    : ALTER TOPIC topicName=identifier topicAttributesClause
+    ;
+
 topicAttributesClause
     : WITH LR_BRACKET topicAttributeClause (COMMA topicAttributeClause)* RR_BRACKET
     ;
@@ -853,6 +859,39 @@ createTableView
         (RESTRICT)?
         (WITH properties)?
         AS prefixPath
+    ;
+
+createCalcPoint
+    : CREATE CALCULATION POINT fullPath
+        AS expression
+        STRING_LITERAL
+        comment?
+    ;
+
+alterCalcPoint
+    : ALTER CALCULATION POINT fullPath
+       (AS expression)?
+       (STRING_LITERAL)?
+       comment?
+       (DROP COMMENT)?
+    ;
+
+dropCalcPoint
+    : DROP CALCULATION POINTS prefixPath
+    ;
+
+showCalcPoint
+    : SHOW CALCULATION POINTS prefixPath
+      calcPointWhereClause?
+      rowPaginationClause?
+    ;
+
+calcPointWhereClause
+    : WHERE calcPointContainsExpression
+    ;
+
+calcPointContainsExpression
+    : filterKey=identifier operator_contains value=STRING_LITERAL
     ;
 
 viewColumnDefinition
@@ -1488,6 +1527,7 @@ expression
     | leftExpression=expression operator_and rightExpression=expression
     | leftExpression=expression operator_or rightExpression=expression
     ;
+
 
 caseWhenThenExpression
     : CASE caseExpression=expression? whenThenExpression+ (ELSE elseExpression=expression)? END

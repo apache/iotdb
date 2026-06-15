@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.subscription.config;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +31,7 @@ public class SubscriptionConfig {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   public boolean getSubscriptionEnabled() {
-    return false;
+    return COMMON_CONFIG.getSubscriptionEnabled();
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {
@@ -39,6 +40,10 @@ public class SubscriptionConfig {
 
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return COMMON_CONFIG.getSubscriptionSubtaskExecutorMaxThreadNum();
+  }
+
+  public int getSubscriptionConsensusPrefetchExecutorMaxThreadNum() {
+    return COMMON_CONFIG.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
   }
 
   public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
@@ -137,76 +142,162 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
   }
 
+  public long getSubscriptionOwnerLeaseDurationMsMin() {
+    return COMMON_CONFIG.getSubscriptionOwnerLeaseDurationMsMin();
+  }
+
+  // Consensus subscription batching parameters
+  public int getSubscriptionConsensusBatchMaxDelayInMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxDelayInMs();
+  }
+
+  public long getSubscriptionConsensusBatchMaxSizeInBytes() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxSizeInBytes();
+  }
+
+  public int getSubscriptionConsensusBatchMaxTabletCount() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxTabletCount();
+  }
+
+  public int getSubscriptionConsensusBatchMaxWalEntries() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxWalEntries();
+  }
+
+  public int getSubscriptionConsensusCommitPersistInterval() {
+    return COMMON_CONFIG.getSubscriptionConsensusCommitPersistInterval();
+  }
+
+  public boolean isSubscriptionConsensusCommitFsyncEnabled() {
+    return COMMON_CONFIG.isSubscriptionConsensusCommitFsyncEnabled();
+  }
+
+  public long getSubscriptionConsensusConsumerEvictionTimeoutMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusConsumerEvictionTimeoutMs();
+  }
+
+  public boolean isSubscriptionConsensusLagBasedPriority() {
+    return COMMON_CONFIG.isSubscriptionConsensusLagBasedPriority();
+  }
+
+  public int getSubscriptionConsensusPrefetchingQueueCapacity() {
+    return COMMON_CONFIG.getSubscriptionConsensusPrefetchingQueueCapacity();
+  }
+
+  public long getSubscriptionConsensusWatermarkIntervalMs() {
+    if (!COMMON_CONFIG.isSubscriptionConsensusWatermarkEnabled()) {
+      return -1;
+    }
+    return COMMON_CONFIG.getSubscriptionConsensusWatermarkIntervalMs();
+  }
+
+  public long getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info("SubscriptionEnabled: {}", getSubscriptionEnabled());
     LOGGER.info(
-        "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
+        PipeMessages.CONFIG_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE,
+        getSubscriptionCacheMemoryUsagePercentage());
     LOGGER.info(
-        "SubscriptionSubtaskExecutorMaxThreadNum: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_SUBTASK_EXECUTOR_MAX_THREAD_NUM,
         getSubscriptionSubtaskExecutorMaxThreadNum());
+    LOGGER.info(
+        "SubscriptionConsensusPrefetchExecutorMaxThreadNum: {}",
+        getSubscriptionConsensusPrefetchExecutorMaxThreadNum());
 
     LOGGER.info(
-        "SubscriptionPrefetchTabletBatchMaxDelayInMs: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_TABLET_BATCH_MAX_DELAY_IN_MS,
         getSubscriptionPrefetchTabletBatchMaxDelayInMs());
     LOGGER.info(
-        "SubscriptionPrefetchTabletBatchMaxSizeInBytes: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_TABLET_BATCH_MAX_SIZE_IN_BYTES,
         getSubscriptionPrefetchTabletBatchMaxSizeInBytes());
     LOGGER.info(
-        "SubscriptionPrefetchTsFileBatchMaxDelayInMs: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_TSFILE_BATCH_MAX_DELAY_IN_MS,
         getSubscriptionPrefetchTsFileBatchMaxDelayInMs());
     LOGGER.info(
-        "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_TSFILE_BATCH_MAX_SIZE_IN_BYTES,
         getSubscriptionPrefetchTsFileBatchMaxSizeInBytes());
-    LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
-    LOGGER.info("SubscriptionDefaultTimeoutInMs: {}", getSubscriptionDefaultTimeoutInMs());
-    LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info(
-        "SubscriptionRecycleUncommittedEventIntervalMs: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_POLL_MAX_BLOCKING_TIME_MS,
+        getSubscriptionPollMaxBlockingTimeMs());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_DEFAULT_TIMEOUT_IN_MS,
+        getSubscriptionDefaultTimeoutInMs());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_LAUNCH_RETRY_INTERVAL_MS,
+        getSubscriptionLaunchRetryIntervalMs());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS,
         getSubscriptionRecycleUncommittedEventIntervalMs());
-    LOGGER.info("SubscriptionReadFileBufferSize: {}", getSubscriptionReadFileBufferSize());
-    LOGGER.info("SubscriptionReadTabletBufferSize: {}", getSubscriptionReadTabletBufferSize());
     LOGGER.info(
-        "SubscriptionTsFileDeduplicationWindowSeconds: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_READ_FILE_BUFFER_SIZE,
+        getSubscriptionReadFileBufferSize());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_READ_TABLET_BUFFER_SIZE,
+        getSubscriptionReadTabletBufferSize());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_TSFILE_DEDUPLICATION_WINDOW_SECONDS,
         getSubscriptionTsFileDeduplicationWindowSeconds());
     LOGGER.info(
-        "SubscriptionCheckMemoryEnoughIntervalMs: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_CHECK_MEMORY_ENOUGH_INTERVAL_MS,
         getSubscriptionCheckMemoryEnoughIntervalMs());
     LOGGER.info(
-        "SubscriptionEstimatedInsertNodeTabletInsertionEventSize: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_ESTIMATED_INSERT_NODE_TABLET_INSERTION_EVENT_SIZE,
         getSubscriptionEstimatedInsertNodeTabletInsertionEventSize());
     LOGGER.info(
-        "SubscriptionEstimatedRawTabletInsertionEventSize: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_ESTIMATED_RAW_TABLET_INSERTION_EVENT_SIZE,
         getSubscriptionEstimatedRawTabletInsertionEventSize());
     LOGGER.info(
-        "SubscriptionMaxAllowedEventCountInTabletBatch: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_MAX_ALLOWED_EVENT_COUNT_IN_TABLET_BATCH,
         getSubscriptionMaxAllowedEventCountInTabletBatch());
     LOGGER.info(
-        "SubscriptionLogManagerWindowSeconds: {}", getSubscriptionLogManagerWindowSeconds());
+        PipeMessages.CONFIG_SUBSCRIPTION_LOG_MANAGER_WINDOW_SECONDS,
+        getSubscriptionLogManagerWindowSeconds());
     LOGGER.info(
-        "SubscriptionLogManagerBaseIntervalMs: {}", getSubscriptionLogManagerBaseIntervalMs());
+        PipeMessages.CONFIG_SUBSCRIPTION_LOG_MANAGER_BASE_INTERVAL_MS,
+        getSubscriptionLogManagerBaseIntervalMs());
 
-    LOGGER.info("SubscriptionPrefetchEnabled: {}", getSubscriptionPrefetchEnabled());
     LOGGER.info(
-        "SubscriptionPrefetchMemoryThreshold: {}", getSubscriptionPrefetchMemoryThreshold());
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_ENABLED, getSubscriptionPrefetchEnabled());
     LOGGER.info(
-        "SubscriptionPrefetchMissingRateThreshold: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_MEMORY_THRESHOLD,
+        getSubscriptionPrefetchMemoryThreshold());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_MISSING_RATE_THRESHOLD,
         getSubscriptionPrefetchMissingRateThreshold());
     LOGGER.info(
-        "SubscriptionPrefetchEventLocalCountThreshold: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_EVENT_LOCAL_COUNT_THRESHOLD,
         getSubscriptionPrefetchEventLocalCountThreshold());
     LOGGER.info(
-        "SubscriptionPrefetchEventGlobalCountThreshold: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_EVENT_GLOBAL_COUNT_THRESHOLD,
         getSubscriptionPrefetchEventGlobalCountThreshold());
 
     LOGGER.info(
-        "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_META_SYNCER_INITIAL_SYNC_DELAY_MINUTES,
         getSubscriptionMetaSyncerInitialSyncDelayMinutes());
     LOGGER.info(
-        "SubscriptionMetaSyncerSyncIntervalMinutes: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES,
         getSubscriptionMetaSyncerSyncIntervalMinutes());
+
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxDelayInMs: {}", getSubscriptionConsensusBatchMaxDelayInMs());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxSizeInBytes: {}",
+        getSubscriptionConsensusBatchMaxSizeInBytes());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxTabletCount: {}",
+        getSubscriptionConsensusBatchMaxTabletCount());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxWalEntries: {}",
+        getSubscriptionConsensusBatchMaxWalEntries());
+    LOGGER.info(
+        "SubscriptionConsensusIdleSafeTimeBarrierIntervalMs: {}",
+        getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

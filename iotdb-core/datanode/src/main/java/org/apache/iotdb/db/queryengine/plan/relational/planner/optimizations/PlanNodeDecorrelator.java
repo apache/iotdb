@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonEx
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -298,7 +299,8 @@ public class PlanNodeDecorrelator {
 
     @Override
     public Optional<DecorrelationResult> visitTopK(TopKNode node, Void context) {
-      throw new SemanticException("TopK is not supported in correlated subquery for now");
+      throw new SemanticException(
+          DataNodeQueryMessages.TOPK_IS_NOT_SUPPORTED_IN_CORRELATED_SUBQUERY_FOR);
     }
 
     /*@Override

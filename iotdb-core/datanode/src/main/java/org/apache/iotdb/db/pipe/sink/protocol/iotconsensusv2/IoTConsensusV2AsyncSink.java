@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
@@ -38,6 +39,7 @@ import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSink;
 import org.apache.iotdb.consensus.pipe.metric.IoTConsensusV2SyncLagManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
@@ -176,7 +178,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     try {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "IoTConsensusV2-ConsensusGroup-{}: no.{} event-{} added to connector buffer",
+            DataNodePipeMessages.IOTCONSENSUSV2_CONSENSUSGROUP_NO_EVENT_ADDED_TO_CONNECTOR,
             consensusGroupId,
             event.getReplicateIndexForIoTV2(),
             event);
@@ -203,7 +205,9 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
       }
       return result;
     } catch (InterruptedException e) {
-      LOGGER.info("IoTConsensusV2Connector transferBuffer queue offer is interrupted.", e);
+      LOGGER.info(
+          DataNodePipeMessages.IOTCONSENSUSV2CONNECTOR_TRANSFERBUFFER_QUEUE_OFFER_IS_INTERRUPTED,
+          e);
       Thread.currentThread().interrupt();
       return false;
     }
@@ -216,15 +220,20 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
   public synchronized void removeEventFromBuffer(EnrichedEvent event) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "IoTConsensusV2-ConsensusGroup-{}: one event-{} successfully received by the follower, will be removed from queue, queue size = {}, limit size = {}",
+          DataNodePipeMessages.IOTCONSENSUSV2_CONSENSUSGROUP_ONE_EVENT_SUCCESSFULLY_RECEIVED_BY,
           consensusGroupId,
           event,
           transferBuffer.size(),
           IOTDB_CONFIG.getIotConsensusV2PipelineSize());
     }
     if (transferBuffer.isEmpty()) {
-      LOGGER.info(
-          "IoTConsensusV2-ConsensusGroup-{}: try to remove event-{} after iotConsensusV2AsyncConnector being closed. Ignore it.",
+      PipeLogger.log(
+          ignored ->
+              LOGGER.info(
+                  DataNodePipeMessages.IOTCONSENSUSV2_CONSENSUSGROUP_TRY_TO_REMOVE_EVENT_AFTER,
+                  consensusGroupId,
+                  event),
+          "IoTConsensusV2-ConsensusGroup-%s: try to remove event-%s after iotConsensusV2AsyncConnector being closed. Ignore it.",
           consensusGroupId,
           event);
       return;
@@ -237,8 +246,15 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     if (current.equalsInIoTConsensusV2(event)) {
       iterator.remove();
     } else {
-      LOGGER.warn(
-          "IoTConsensusV2-ConsensusGroup-{}: event-{} not found in transferBuffer, skip removing. queue size = {}",
+      PipeLogger.log(
+          ignored ->
+              LOGGER.warn(
+                  DataNodePipeMessages
+                      .IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_NOT_FOUND_IN_TRANSFERBUFFER,
+                  consensusGroupId,
+                  event,
+                  transferBuffer.size()),
+          "IoTConsensusV2-ConsensusGroup-%s: event-%s not found in transferBuffer, skip removing. queue size = %s",
           consensusGroupId,
           event,
           transferBuffer.size());
@@ -354,7 +370,8 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
 
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "IoTConsensusV2AsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.",
+          DataNodePipeMessages
+              .IOTCONSENSUSV2ASYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVEN,
           tsFileInsertionEvent);
       return;
     }
@@ -446,7 +463,9 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
 
     if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
-          "IoTConsensusV2AsyncConnector does not support transferring generic event: {}.", event);
+          DataNodePipeMessages
+              .IOTCONSENSUSV2ASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
+          event);
     }
   }
 
@@ -514,8 +533,14 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
         if (System.currentTimeMillis() - retryStartTime > TimeUnit.SECONDS.toMillis(20)) {
           // just in case that some events are polled and re-added into queue again and again,
           // causing this loop to run forever.
-          LOGGER.warn(
-              "IoTConsensusV2-ConsensusGroup-{}: retryEventQueue is not empty after 20 seconds. retryQueue size: {}",
+          PipeLogger.log(
+              ignored ->
+                  LOGGER.warn(
+                      DataNodePipeMessages
+                          .IOTCONSENSUSV2_CONSENSUSGROUP_RETRYEVENTQUEUE_IS_NOT_EMPTY_AFTER,
+                      consensusGroupId,
+                      retryEventQueue.size()),
+              "IoTConsensusV2-ConsensusGroup-%s: retryEventQueue is not empty after 20 seconds. retryQueue size: %s",
               consensusGroupId,
               retryEventQueue.size());
           return;
@@ -529,8 +554,16 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
             peekedEvent.getRetryInterval() > EnrichedEvent.INITIAL_RETRY_INTERVAL_FOR_IOTV2
                 ? peekedEvent.getRetryInterval()
                 : 0L;
-        LOGGER.info(
-            "IoTConsensusV2-ConsensusGroup-{}: retry with interval {} for index {} {}",
+        PipeLogger.log(
+            ignored ->
+                LOGGER.info(
+                    DataNodePipeMessages
+                        .IOTCONSENSUSV2_CONSENSUSGROUP_RETRY_WITH_INTERVAL_FOR_INDEX,
+                    consensusGroupId,
+                    retryInterval,
+                    peekedEvent.getReplicateIndexForIoTV2(),
+                    peekedEvent),
+            "IoTConsensusV2-ConsensusGroup-%s: retry with interval %s for index %s %s",
             consensusGroupId,
             retryInterval,
             peekedEvent.getReplicateIndexForIoTV2(),
@@ -547,11 +580,14 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
               } else if (peekedEvent instanceof PipeDeleteDataNodeEvent) {
                 retryTransfer((PipeDeleteDataNodeEvent) peekedEvent);
               } else {
-                if (LOGGER.isWarnEnabled()) {
-                  LOGGER.warn(
-                      "IoTConsensusV2AsyncConnector does not support transfer generic event: {}.",
-                      peekedEvent);
-                }
+                PipeLogger.log(
+                    ignored ->
+                        LOGGER.warn(
+                            DataNodePipeMessages
+                                .IOTCONSENSUSV2ASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFER_GENERIC_EVENT,
+                            peekedEvent),
+                    "IoTConsensusV2AsyncConnector does not support transfer generic event: %s.",
+                    peekedEvent);
               }
             },
             retryInterval,
@@ -622,14 +658,28 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
 
     boolean res = retryEventQueue.offer(event);
     if (res) {
-      LOGGER.info(
-          "IoTConsensusV2-ConsensusGroup-{}: Event {} replicate index {} transfer failed, will be added to retry queue.",
+      PipeLogger.log(
+          ignored ->
+              LOGGER.info(
+                  DataNodePipeMessages
+                      .IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_REPLICATE_INDEX_TRANSFER_FAILED_1,
+                  consensusGroupId,
+                  event,
+                  event.getReplicateIndexForIoTV2()),
+          "IoTConsensusV2-ConsensusGroup-%s: Event %s replicate index %s transfer failed, will be added to retry queue.",
           consensusGroupId,
           event,
           event.getReplicateIndexForIoTV2());
     } else {
-      LOGGER.warn(
-          "IoTConsensusV2-ConsensusGroup-{}: Event {} replicate index {} transfer failed, added to retry queue failed, this event will be ignored.",
+      PipeLogger.log(
+          ignored ->
+              LOGGER.warn(
+                  DataNodePipeMessages
+                      .IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_REPLICATE_INDEX_TRANSFER_FAILED,
+                  consensusGroupId,
+                  event,
+                  event.getReplicateIndexForIoTV2()),
+          "IoTConsensusV2-ConsensusGroup-%s: Event %s replicate index %s transfer failed, added to retry queue failed, this event will be ignored.",
           consensusGroupId,
           event,
           event.getReplicateIndexForIoTV2());
@@ -668,14 +718,23 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
   private void logOnClientException(
       final AsyncIoTConsensusV2ServiceClient client, final Exception e) {
     if (client == null) {
-      LOGGER.warn(THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT, e);
+      PipeLogger.log(
+          ignored -> LOGGER.warn(THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT, e),
+          e,
+          THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT);
     } else {
-      LOGGER.warn(
-          String.format(
-              THRIFT_ERROR_FORMATTER_WITH_ENDPOINT,
-              client.getTEndpoint().getIp(),
-              client.getTEndpoint().getPort()),
-          e);
+      PipeLogger.log(
+          ignored ->
+              LOGGER.warn(
+                  String.format(
+                      THRIFT_ERROR_FORMATTER_WITH_ENDPOINT,
+                      client.getTEndpoint().getIp(),
+                      client.getTEndpoint().getPort()),
+                  e),
+          e,
+          THRIFT_ERROR_FORMATTER_WITH_ENDPOINT,
+          client.getTEndpoint().getIp(),
+          client.getTEndpoint().getPort());
     }
   }
 

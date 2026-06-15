@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -49,7 +50,8 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   @Override
   public void stop() {
     JMXService.deregisterMBean(ServiceType.CACHE_HIT_RATIO_DISPLAY_SERVICE.getJmxName());
-    LOGGER.info("{}: stop {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    LOGGER.info(
+        StorageEngineMessages.STOP_SERVICE, IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
   }
 
   @Override

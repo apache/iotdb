@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -99,6 +101,7 @@ public class TElasticFramedTransport extends TTransport {
   protected AutoScalingBufferWriteTransport writeBuffer;
   protected final byte[] i32buf = new byte[4];
   private final boolean copyBinary;
+  private static final String FROM = " from ";
 
   @Override
   public boolean isOpen() {
@@ -161,10 +164,8 @@ public class TElasticFramedTransport extends TTransport {
         throw new TTransportException(
             TTransportException.CORRUPTED_DATA,
             String.format(
-                "You may be sending non-SSL requests"
-                    + "%s to the SSL-enabled Thrift-RPC port, please confirm that you are "
-                    + "using the right configuration",
-                remoteAddress == null ? "" : " from " + remoteAddress));
+                RpcMessages.NON_SSL_TO_SSL_PORT,
+                remoteAddress == null ? "" : FROM + remoteAddress));
       }
       throw e;
     }
@@ -209,23 +210,18 @@ public class TElasticFramedTransport extends TTransport {
     if (underlying instanceof TSocket) {
       remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
     }
-    String remoteInfo = (remoteAddress == null) ? "" : " from " + remoteAddress;
+    String remoteInfo = (remoteAddress == null) ? "" : FROM + remoteAddress;
     close();
 
     error.throwException(size, remoteInfo, thriftMaxFrameSize);
   }
 
   private enum FrameError {
-    HTTP_REQUEST(
-        "Singular frame size (%d) detected, you may be sending HTTP GET/POST%s "
-            + "requests to the Thrift-RPC port, please confirm that you are using the right port"),
-    TLS_REQUEST(
-        "Singular frame size (%d) detected, you may be sending TLS ClientHello "
-            + "requests%s to the Non-SSL Thrift-RPC port, please confirm that you are using "
-            + "the right configuration"),
-    NEGATIVE_FRAME_SIZE("Read a negative frame size (%d)%s!"),
-    FRAME_SIZE_EXCEEDED("Frame size (%d) larger than protect max size (%d)%s!"),
-    STRING_LENGTH_EXCEEDED("String length (%d) larger than protect max size (%d)%s!");
+    HTTP_REQUEST(RpcMessages.FRAME_ERROR_HTTP_REQUEST),
+    TLS_REQUEST(RpcMessages.FRAME_ERROR_TLS_REQUEST),
+    NEGATIVE_FRAME_SIZE(RpcMessages.FRAME_ERROR_NEGATIVE_FRAME_SIZE),
+    FRAME_SIZE_EXCEEDED(RpcMessages.FRAME_ERROR_FRAME_SIZE_EXCEEDED),
+    STRING_LENGTH_EXCEEDED(RpcMessages.FRAME_ERROR_STRING_LENGTH_EXCEEDED);
 
     private final String messageFormat;
 
@@ -289,7 +285,7 @@ public class TElasticFramedTransport extends TTransport {
       if (underlying instanceof TSocket) {
         remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
       }
-      String remoteInfo = (remoteAddress == null) ? "" : " from " + remoteAddress;
+      String remoteInfo = (remoteAddress == null) ? "" : FROM + remoteAddress;
       close();
       FrameError.STRING_LENGTH_EXCEEDED.throwException(numBytes, remoteInfo, thriftMaxFrameSize);
     }

@@ -230,4 +230,15 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
   protected void checkType() {
     // do nothing
   }
+
+  @Override
+  public void close() {
+    super.close();
+    for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
+        whenThenTransformers) {
+      whenThenColumnTransformer.left.close();
+      whenThenColumnTransformer.right.close();
+    }
+    elseTransformer.close();
+  }
 }

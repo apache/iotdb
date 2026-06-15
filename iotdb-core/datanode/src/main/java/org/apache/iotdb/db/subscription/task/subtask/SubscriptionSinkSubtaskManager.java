@@ -21,11 +21,13 @@ package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeRealtimePriorityBlockingQueue;
@@ -117,7 +119,8 @@ public class SubscriptionSinkSubtaskManager {
               "Failed to close sink after failed to initialize sink. " + "Ignore this exception.",
               closeException);
         }
-        throw new PipeException("Failed to construct PipeSink, because of " + e.getMessage(), e);
+        throw new PipeException(
+            DataNodeMiscMessages.FAILED_TO_CONSTRUCT_PIPE_SINK + e.getMessage(), e);
       }
 
       // 2. Fetch topic and consumer group id from connector parameters
@@ -168,7 +171,11 @@ public class SubscriptionSinkSubtaskManager {
 
     final PipeSinkSubtaskLifeCycle lifeCycle =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
-    if (lifeCycle.deregister(pipeName, creationTime, regionId)) {
+
+    final CommitterKey committerKey =
+        PipeEventCommitManager.getInstance().getCommitterKey(pipeName, creationTime, regionId);
+
+    if (lifeCycle.deregister(committerKey)) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
     }
 

@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.MultiplicationResolver;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
@@ -47,6 +48,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -74,6 +76,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isDecimalType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
 import static org.apache.iotdb.calc.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -139,7 +143,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_TWO_NUMERIC_OPERANDS));
         }
         return AdditionResolver.checkConditions(argumentTypes).get();
       case SUBTRACT:
@@ -148,7 +152,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_TWO_NUMERIC_OPERANDS));
         }
         return SubtractionResolver.checkConditions(argumentTypes).get();
       case MULTIPLY:
@@ -157,7 +161,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_TWO_NUMERIC_OPERANDS));
         }
         return MultiplicationResolver.checkConditions(argumentTypes).get();
       case DIVIDE:
@@ -166,7 +170,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_TWO_NUMERIC_OPERANDS));
         }
         return DivisionResolver.checkConditions(argumentTypes).get();
       case MODULUS:
@@ -175,7 +179,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_TWO_NUMERIC_OPERANDS));
         }
         return ModulusResolver.checkConditions(argumentTypes).get();
       case NEGATION:
@@ -184,7 +188,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have one numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_ONE_NUMERIC_OPERANDS));
         }
         return argumentTypes.get(0);
       case EQUAL:
@@ -194,7 +198,8 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two comparable operands."));
+              new IllegalArgumentException(
+                  DataNodeQueryMessages.SHOULD_HAVE_TWO_COMPARABLE_OPERANDS));
         }
         return BOOLEAN;
       default:
@@ -214,7 +219,7 @@ public class TableMetadataImpl implements Metadata {
     if (TableBuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!CommonMetadataUtils.isOneNumericType(argumentTypes)
           && !(argumentTypes.size() == 2
-              && CommonMetadataUtils.isNumericType(argumentTypes.get(0))
+              && isNumericType(argumentTypes.get(0))
               && BOOLEAN.equals(argumentTypes.get(1)))) {
         throw new SemanticException(
             "Scalar function "
@@ -1140,6 +1145,45 @@ public class TableMetadataImpl implements Metadata {
                   functionName));
         }
         break;
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+        if (argumentTypes.size() != 2) {
+          throw new SemanticException(
+              String.format(
+                  "Error size of input expressions. expression: %s, actual size: %s, expected size: [2].",
+                  functionName.toUpperCase(), argumentTypes.size()));
+        }
+        if (!CommonMetadataUtils.isNumericType(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName.toUpperCase()));
+        }
+        if (!CommonMetadataUtils.isNumericType(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName.toUpperCase()));
+        }
+        break;
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format(
+                  "Error size of input expressions. expression: %s, actual size: %s, expected size: [1].",
+                  functionName.toUpperCase(), argumentTypes.size()));
+        }
+        if (!CommonMetadataUtils.isNumericType(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName.toUpperCase()));
+        }
+        break;
       case SqlConstant.MIN:
       case SqlConstant.MAX:
       case SqlConstant.MODE:
@@ -1223,7 +1267,7 @@ public class TableMetadataImpl implements Metadata {
         }
 
         Type valueColumnType = argumentTypes.get(0);
-        if (!CommonMetadataUtils.isNumericType(valueColumnType)) {
+        if (!isNumericType(valueColumnType)) {
           throw new SemanticException(
               String.format(
                   "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
@@ -1231,7 +1275,7 @@ public class TableMetadataImpl implements Metadata {
         }
 
         Type percentageType = argumentTypes.get(argumentSize - 1);
-        if (!CommonMetadataUtils.isDecimalType(percentageType)) {
+        if (!isDecimalType(percentageType)) {
           throw new SemanticException(
               String.format(
                   "Aggregation functions [%s] should have percentage as decimal type",
@@ -1246,7 +1290,26 @@ public class TableMetadataImpl implements Metadata {
                     functionName, weightType.getDisplayName()));
           }
         }
+        break;
+      case SqlConstant.PERCENTILE:
+        if (argumentTypes.size() != 2) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should only have two arguments", functionName));
+        }
 
+        if (!isNumericType(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName));
+        }
+        if (!isDecimalType(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have percentage as decimal type",
+                  functionName));
+        }
         break;
       case SqlConstant.COUNT:
         break;
@@ -1272,6 +1335,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
       case SqlConstant.APPROX_PERCENTILE:
+      case SqlConstant.PERCENTILE:
         return argumentTypes.get(0);
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -1281,6 +1345,13 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
         return DOUBLE;
       case SqlConstant.APPROX_MOST_FREQUENT:
         return STRING;
@@ -1363,11 +1434,13 @@ public class TableMetadataImpl implements Metadata {
             UDFDataTypeTransformer.transformUDFDataTypeToReadType(
                 scalarFunctionAnalysis.getOutputDataType());
         if (returnType == ObjectType.OBJECT) {
-          throw new SemanticException("OBJECT type is not supported as return type");
+          throw new SemanticException(
+              DataNodeQueryMessages.OBJECT_TYPE_IS_NOT_SUPPORTED_AS_RETURN_TYPE);
         }
         return returnType;
       } catch (Exception e) {
-        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+        throw new SemanticException(
+            DataNodeQueryMessages.INVALID_FUNCTION_PARAMETERS + e.getMessage());
       } finally {
         scalarFunction.beforeDestroy();
       }
@@ -1386,17 +1459,19 @@ public class TableMetadataImpl implements Metadata {
             UDFDataTypeTransformer.transformUDFDataTypeToReadType(
                 aggregateFunctionAnalysis.getOutputDataType());
         if (returnType == ObjectType.OBJECT) {
-          throw new SemanticException("OBJECT type is not supported as return type");
+          throw new SemanticException(
+              DataNodeQueryMessages.OBJECT_TYPE_IS_NOT_SUPPORTED_AS_RETURN_TYPE);
         }
         return returnType;
       } catch (Exception e) {
-        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+        throw new SemanticException(
+            DataNodeQueryMessages.INVALID_FUNCTION_PARAMETERS + e.getMessage());
       } finally {
         aggregateFunction.beforeDestroy();
       }
     }
 
-    throw new SemanticException("Unknown function: " + functionName);
+    throw new SemanticException(DataNodeQueryMessages.UNKNOWN_FUNCTION + functionName);
   }
 
   @Override

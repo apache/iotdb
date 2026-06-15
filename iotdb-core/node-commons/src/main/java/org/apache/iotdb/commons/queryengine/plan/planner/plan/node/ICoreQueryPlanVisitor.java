@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
@@ -90,6 +91,10 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
   }
 
   // =============================== Used for Table Model ====================================
+  default R visitTableScan(TableScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   default R visitFilter(FilterNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
@@ -147,6 +152,10 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
   }
 
   default R visitLinearFill(LinearFillNode node, C context) {
+    return visitFill(node, context);
+  }
+
+  default R visitNextFill(NextFillNode node, C context) {
     return visitFill(node, context);
   }
 

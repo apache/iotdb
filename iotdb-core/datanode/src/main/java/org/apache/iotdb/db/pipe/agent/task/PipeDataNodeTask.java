@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +60,7 @@ public class PipeDataNodeTask implements PipeTask {
     processorStage.create();
     sinkStage.create();
     LOGGER.info(
-        "Create pipe DN task {} successfully within {} ms",
+        DataNodePipeMessages.CREATE_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS,
         this,
         System.currentTimeMillis() - startTime);
   }
@@ -71,7 +72,7 @@ public class PipeDataNodeTask implements PipeTask {
     processorStage.drop();
     sinkStage.drop();
     LOGGER.info(
-        "Drop pipe DN task {} successfully within {} ms",
+        DataNodePipeMessages.DROP_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS,
         this,
         System.currentTimeMillis() - startTime);
   }
@@ -83,7 +84,7 @@ public class PipeDataNodeTask implements PipeTask {
     processorStage.start();
     sinkStage.start();
     LOGGER.info(
-        "Start pipe DN task {} successfully within {} ms",
+        DataNodePipeMessages.START_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS,
         this,
         System.currentTimeMillis() - startTime);
   }
@@ -95,7 +96,7 @@ public class PipeDataNodeTask implements PipeTask {
     processorStage.stop();
     sinkStage.stop();
     LOGGER.info(
-        "Stop pipe DN task {} successfully within {} ms",
+        DataNodePipeMessages.STOP_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS,
         this,
         System.currentTimeMillis() - startTime);
   }

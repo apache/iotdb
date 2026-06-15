@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
@@ -227,7 +228,7 @@ public abstract class SubscriptionPrefetchingQueue {
             },
             SubscriptionAgent.receiver().remainingMs());
       } catch (final Exception e) {
-        LOGGER.warn("Exception {} occurred when {} execute receiver subtask", this, e, e);
+        LOGGER.warn(DataNodeMiscMessages.EXCEPTION_EXECUTE_RECEIVER_SUBTASK, this, e, e);
       }
     }
 
@@ -400,7 +401,7 @@ public abstract class SubscriptionPrefetchingQueue {
     if (System.currentTimeMillis() - lastStateReportTimestamp
         > SubscriptionConfig.getInstance().getSubscriptionLogManagerBaseIntervalMs()
             * SubscriptionAgent.broker().getPrefetchingQueueCount()) {
-      LOGGER.info("Subscription: SubscriptionPrefetchingQueue state {}", this);
+      LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_PREFETCHING_QUEUE_STATE, this);
       lastStateReportTimestamp = System.currentTimeMillis();
     }
   }
@@ -670,7 +671,7 @@ public abstract class SubscriptionPrefetchingQueue {
           new SubscriptionTsFileToTabletIterator(
               (PipeTsFileInsertionEvent) event, tabletInsertionEventsIterator);
     } catch (final PipeException e) {
-      LOGGER.warn("Exception {} occurred when {} construct ToTabletIterator", this, e, e);
+      LOGGER.warn(DataNodeMiscMessages.EXCEPTION_CONSTRUCT_TABLET_ITERATOR, this, e, e);
       currentTsFileInsertionEvent = event;
     }
   }
@@ -731,6 +732,41 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   /////////////////////////////// commit ///////////////////////////////
+
+  /**
+   * Refreshes the in-flight lease for an event held by a client-side processor.
+   *
+   * @return {@code true} if the lease was refreshed
+   */
+  public boolean refreshInFlightEventLease(
+      final String consumerId, final SubscriptionCommitContext commitContext) {
+    acquireReadLock();
+    try {
+      return !isClosed() && refreshInFlightEventLeaseInternal(consumerId, commitContext);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private boolean refreshInFlightEventLeaseInternal(
+      final String consumerId, final SubscriptionCommitContext commitContext) {
+    final AtomicBoolean refreshed = new AtomicBoolean(false);
+    inFlightEvents.compute(
+        new Pair<>(consumerId, commitContext),
+        (key, ev) -> {
+          if (Objects.isNull(ev)) {
+            return null;
+          }
+          if (ev.isCommitted()) {
+            ev.cleanUp(false);
+            return null;
+          }
+          ev.recordLastPolledTimestamp();
+          refreshed.set(true);
+          return ev;
+        });
+    return refreshed.get();
+  }
 
   /**
    * @return {@code true} if ack successfully
@@ -848,6 +884,18 @@ public abstract class SubscriptionPrefetchingQueue {
 
           ev.nack(); // now pollable
           nacked.set(true);
+
+          if (ev.isPoisoned()) {
+            LOGGER.error(
+                "Subscription: poison message detected (nackCount={}), force-acking event {} in prefetching queue: {}",
+                ev.getNackCount(),
+                ev,
+                this);
+            ev.ack();
+            ev.recordCommittedTimestamp();
+            ev.cleanUp(false);
+            return null; // remove from inFlightEvents
+          }
 
           // no need to update inFlightEvents and prefetchingQueue
           return ev;
@@ -1017,11 +1065,33 @@ public abstract class SubscriptionPrefetchingQueue {
       (ev) -> {
         if (ev.eagerlyPollable()) {
           ev.nack(); // now pollable (the nack operation here is actually unnecessary)
+          if (ev.isPoisoned()) {
+            LOGGER.error(
+                "Subscription: poison message detected (nackCount={}), force-acking eagerly pollable event {} in prefetching queue: {}",
+                ev.getNackCount(),
+                ev,
+                this);
+            ev.ack();
+            ev.recordCommittedTimestamp();
+            ev.cleanUp(false);
+            return null;
+          }
           prefetchEvent(ev);
           // no need to log warn for eagerly pollable event
           return null; // remove this entry
         } else if (ev.pollable()) {
           ev.nack(); // now pollable
+          if (ev.isPoisoned()) {
+            LOGGER.error(
+                "Subscription: poison message detected (nackCount={}), force-acking pollable event {} in prefetching queue: {}",
+                ev.getNackCount(),
+                ev,
+                this);
+            ev.ack();
+            ev.recordCommittedTimestamp();
+            ev.cleanUp(false);
+            return null;
+          }
           prefetchEvent(ev);
           LOGGER.warn(
               "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",

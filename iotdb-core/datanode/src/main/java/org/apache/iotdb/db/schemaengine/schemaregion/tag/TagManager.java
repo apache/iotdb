@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.tree.SchemaIterator;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -95,33 +96,34 @@ public class TagManager {
       tagLogFile.copyTo(tagLogSnapshotTmp);
       if (tagLogSnapshot.exists() && !FileUtils.deleteFileIfExist(tagLogSnapshot)) {
         logger.warn(
-            "Failed to delete old snapshot {} while creating tagManager snapshot.",
-            tagLogSnapshot.getName());
+            DataNodeSchemaMessages.FAILED_TO_DELETE_OLD_TAG_SNAPSHOT, tagLogSnapshot.getName());
         return false;
       }
       if (!tagLogSnapshotTmp.renameTo(tagLogSnapshot)) {
         logger.warn(
-            "Failed to rename {} to {} while creating tagManager snapshot.",
+            DataNodeSchemaMessages.FAILED_TO_RENAME_TAG_SNAPSHOT,
             tagLogSnapshotTmp.getName(),
             tagLogSnapshot.getName());
         if (!FileUtils.deleteFileIfExist(tagLogSnapshot)) {
-          logger.warn("Failed to delete {} after renaming failure.", tagLogSnapshot.getName());
+          logger.warn(
+              DataNodeSchemaMessages.FAILED_TO_DELETE_AFTER_RENAME_FAILURE,
+              tagLogSnapshot.getName());
         }
         return false;
       }
 
       return true;
     } catch (final IOException e) {
-      logger.error("Failed to create tagManager snapshot due to {}", e.getMessage(), e);
+      logger.error(DataNodeSchemaMessages.FAILED_TO_CREATE_TAG_SNAPSHOT, e.getMessage(), e);
       if (!FileUtils.deleteFileIfExist(tagLogSnapshot)) {
         logger.warn(
-            "Failed to delete {} after creating tagManager snapshot failure.",
+            DataNodeSchemaMessages.FAILED_TO_DELETE_AFTER_TAG_SNAPSHOT_FAILURE,
             tagLogSnapshot.getName());
       }
       return false;
     } finally {
       if (!FileUtils.deleteFileIfExist(tagLogSnapshotTmp)) {
-        logger.warn("Failed to delete {}.", tagLogSnapshotTmp.getName());
+        logger.warn(DataNodeSchemaMessages.FAILED_TO_DELETE_FILE, tagLogSnapshotTmp.getName());
       }
     }
   }
@@ -133,7 +135,7 @@ public class TagManager {
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.TAG_LOG_SNAPSHOT);
     File tagFile = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath, SchemaConstant.TAG_LOG);
     if (tagFile.exists() && !tagFile.delete()) {
-      logger.warn("Failed to delete existing {} when loading snapshot.", tagFile.getName());
+      logger.warn(DataNodeSchemaMessages.FAILED_TO_DELETE_EXISTING_WHEN_LOADING, tagFile.getName());
     }
 
     try {
@@ -142,7 +144,7 @@ public class TagManager {
     } catch (IOException e) {
       if (!tagFile.delete()) {
         logger.warn(
-            "Failed to delete existing {} when copying snapshot failure.", tagFile.getName());
+            DataNodeSchemaMessages.FAILED_TO_DELETE_EXISTING_WHEN_COPY_FAILURE, tagFile.getName());
       }
       throw e;
     }
@@ -476,7 +478,7 @@ public class TagManager {
       String value = entry.getValue();
       if (pair.right.containsKey(key)) {
         throw new MetadataException(
-            String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
+            String.format(DataNodeSchemaMessages.TIMESERIES_ALREADY_HAS_ATTRIBUTE, fullPath, key));
       }
       pair.right.put(key, value);
     }
@@ -504,7 +506,7 @@ public class TagManager {
       String value = entry.getValue();
       if (pair.left.containsKey(key)) {
         throw new MetadataException(
-            String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
+            String.format(DataNodeSchemaMessages.TIMESERIES_ALREADY_HAS_TAG, fullPath, key));
       }
       pair.left.put(key, value);
     }
@@ -539,7 +541,7 @@ public class TagManager {
       } else {
         removeVal = pair.right.remove(key);
         if (removeVal == null) {
-          logger.warn("TimeSeries [{}] does not have tag/attribute [{}]", fullPath, key);
+          logger.warn(DataNodeSchemaMessages.TIMESERIES_NO_TAG_ATTRIBUTE_LOG, fullPath, key);
         }
       }
     }
@@ -606,7 +608,8 @@ public class TagManager {
         pair.right.put(key, value);
       } else {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key),
+            String.format(
+                DataNodeSchemaMessages.TIMESERIES_NO_SPECIFIC_TAG_ATTRIBUTE_FMT, fullPath, key),
             true);
       }
     }
@@ -666,7 +669,7 @@ public class TagManager {
     if (pair.left.containsKey(newKey) || pair.right.containsKey(newKey)) {
       throw new MetadataException(
           String.format(
-              "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, newKey),
+              DataNodeSchemaMessages.TIMESERIES_ALREADY_HAS_TAG_ATTRIBUTE_NAMED, fullPath, newKey),
           true);
     }
 
@@ -710,7 +713,8 @@ public class TagManager {
       tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
     } else {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, oldKey),
+          String.format(
+              DataNodeSchemaMessages.TIMESERIES_NO_SPECIFIC_TAG_ATTRIBUTE_FMT, fullPath, oldKey),
           true);
     }
   }

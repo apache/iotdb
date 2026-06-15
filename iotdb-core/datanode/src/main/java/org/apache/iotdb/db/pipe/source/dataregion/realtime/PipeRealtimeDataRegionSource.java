@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -310,7 +311,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: realtime data region source is initialized with parameters: {}.",
+          DataNodePipeMessages.PIPE_REALTIME_DATA_REGION_SOURCE_IS_INITIALIZED,
           pipeName,
           dataRegionId,
           parameters);
@@ -480,7 +481,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     enrichedEvent.setReplicateIndexForIoTV2(assignReplicateIndexForRealtimeEvent());
     LOGGER.debug(
-        "[{}]Set {} for realtime event {}",
+        DataNodePipeMessages.SET_FOR_REALTIME_EVENT,
         pipeName,
         enrichedEvent.getReplicateIndexForIoTV2(),
         realtimeEvent.coreReportMessage());
@@ -503,9 +504,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     } else {
       // This would not happen, but just in case.
       LOGGER.error(
-          "Heartbeat Event {} can not be supplied because "
-              + "the reference count can not be increased",
-          event.getEvent());
+          DataNodePipeMessages.HEARTBEAT_EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE, event.getEvent());
 
       // Do not report exception since the PipeHeartbeatEvent doesn't affect
       // the correction of pipe progress.
@@ -523,9 +522,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       // event and report the exception to PipeRuntimeAgent.
       final String errorMessage =
           String.format(
-              "Event %s can not be supplied because "
-                  + "the reference count can not be increased, "
-                  + "the data represented by this event is lost",
+              DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
               event.getEvent());
       LOGGER.error(errorMessage);
       PipeDataNodeAgent.runtime()
@@ -592,7 +589,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public void setDataRegionTimePartitionIdBound(final Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
-        "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording time partition id bound: {}.",
+        DataNodePipeMessages
+            .PIPEREALTIMEDATAREGIONEXTRACTOR_OBSERVED_DATA_REGION_TIME_PARTITION_GROWT,
         taskID,
         dataRegionId,
         timePartitionIdBound);
@@ -627,7 +625,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       event.skipReportOnCommit();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Pipe {} on data region {} skip commit of event {} because it was flushed prematurely.",
+            DataNodePipeMessages.PIPE_ON_DATA_REGION_SKIP_COMMIT_OF,
             pipeName,
             dataRegionId,
             event.coreReportMessage());

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
@@ -64,10 +65,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue.TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.LOCAL_EXECUTION_PLANNER;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceExecution.createFragmentInstanceExecution;
-import static org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue.TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG;
 import static org.apache.iotdb.rpc.TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR;
 
 @SuppressWarnings("squid:S6548")
@@ -146,23 +147,30 @@ public class FragmentInstanceManager {
                 FragmentInstanceStateMachine stateMachine =
                     new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
-                int dataNodeFINum = instance.getDataNodeFINum();
-                DataNodeQueryContext dataNodeQueryContext =
-                    getOrCreateDataNodeQueryContext(instanceId.getQueryId(), dataNodeFINum);
-
+                boolean[] contextCreated = new boolean[] {false};
+                DataNodeQueryContext[] dataNodeQueryContexts = new DataNodeQueryContext[1];
                 FragmentInstanceContext context =
                     instanceContext.computeIfAbsent(
                         instanceId,
-                        fragmentInstanceId ->
-                            createFragmentInstanceContext(
-                                fragmentInstanceId,
-                                stateMachine,
-                                instance.getSessionInfo(),
-                                dataRegion,
-                                instance.getGlobalTimePredicate(),
-                                dataNodeQueryContextMap,
-                                instance.isDebug(),
-                                instance.isVerbose()));
+                        fragmentInstanceId -> {
+                          contextCreated[0] = true;
+                          // Only ensure the DataNodeQueryContext when we actually create the
+                          // FragmentInstanceContext, so the repeated-dispatch path (which rejects
+                          // without creating a context) does not leak a context entry.
+                          dataNodeQueryContexts[0] =
+                              getOrCreateDataNodeQueryContext(
+                                  instanceId.getQueryId(), instance.getDataNodeFINum());
+                          return createFragmentInstanceContext(
+                              fragmentInstanceId,
+                              stateMachine,
+                              instance.getSessionInfo(),
+                              dataRegion,
+                              instance.getGlobalTimePredicate(),
+                              dataNodeQueryContextMap,
+                              instance.isDebug(),
+                              instance.isVerbose());
+                        });
+                rejectIfRepeatedDispatch(contextCreated[0], instanceId);
                 context.setHighestPriority(instance.isHighestPriority());
 
                 try {
@@ -171,7 +179,7 @@ public class FragmentInstanceManager {
                           instance.getFragment().getPlanNodeTree(),
                           instance.getFragment().getTypeProvider(),
                           context,
-                          dataNodeQueryContext);
+                          dataNodeQueryContexts[0]);
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
@@ -209,12 +217,13 @@ public class FragmentInstanceManager {
                   } else if (t instanceof UDFTypeMismatchException) {
                     stateMachine.failed(new SemanticException(t.getMessage()));
                   } else if (t instanceof UDFException) {
-                    logger.warn("Exception happened when executing UDTF: ", t);
+                    logger.warn(DataNodeQueryMessages.EXCEPTION_HAPPENED_WHEN_EXECUTING_UDTF, t);
                     stateMachine.failed(
                         new IoTDBRuntimeException(
                             t.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true));
                   } else {
-                    logger.warn("error when create FragmentInstanceExecution.", t);
+                    logger.warn(
+                        DataNodeQueryMessages.ERROR_WHEN_CREATE_FRAGMENTINSTANCEEXECUTION, t);
                     stateMachine.failed(t);
                   }
                   clearFIRelatedResources(instanceId);
@@ -244,6 +253,30 @@ public class FragmentInstanceManager {
     }
   }
 
+  /**
+   * If {@code instanceContext.computeIfAbsent} returned an existing {@link FragmentInstanceContext}
+   * for this {@code instanceId} (i.e. {@code contextCreated} is false), the same FragmentInstance
+   * has been dispatched before (e.g. an RPC retry in {@code
+   * FragmentInstanceDispatcherImpl#dispatchRemote}). The previous execution may have already
+   * released its resources (dataRegion == null), so reusing this cached context would run a fresh
+   * driver against a released context and trigger an NPE. Reject the duplicated dispatch with
+   * REPEATED_RPC_CALL instead of reusing it.
+   *
+   * <p>This must be called before the planning try block on purpose, so it propagates up
+   * (RegionReadExecutor carries the status code) without touching the first execution's cached
+   * resources.
+   */
+  private static void rejectIfRepeatedDispatch(
+      boolean contextCreated, FragmentInstanceId instanceId) {
+    if (!contextCreated) {
+      throw new IoTDBRuntimeException(
+          String.format(
+              "Repeated RPC call detected for FragmentInstance %s, reject the duplicated dispatch.",
+              instanceId.getFullId()),
+          TSStatusCode.REPEATED_RPC_CALL.getStatusCode());
+    }
+  }
+
   private void clearFIRelatedResources(FragmentInstanceId instanceId) {
     // close and remove all the handles of the fragment instance
     exchangeManager.forceDeregisterFragmentInstance(instanceId.toThrift());
@@ -268,16 +301,20 @@ public class FragmentInstanceManager {
               FragmentInstanceStateMachine stateMachine =
                   new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
+              boolean[] contextCreated = new boolean[] {false};
               FragmentInstanceContext context =
                   instanceContext.computeIfAbsent(
                       instanceId,
-                      fragmentInstanceId ->
-                          createFragmentInstanceContext(
-                              fragmentInstanceId,
-                              stateMachine,
-                              instance.getSessionInfo(),
-                              instance.isDebug(),
-                              instance.isVerbose()));
+                      fragmentInstanceId -> {
+                        contextCreated[0] = true;
+                        return createFragmentInstanceContext(
+                            fragmentInstanceId,
+                            stateMachine,
+                            instance.getSessionInfo(),
+                            instance.isDebug(),
+                            instance.isVerbose());
+                      });
+              rejectIfRepeatedDispatch(contextCreated[0], instanceId);
               context.setHighestPriority(instance.isHighestPriority());
 
               try {
@@ -316,7 +353,7 @@ public class FragmentInstanceManager {
                 } else if (t instanceof IoTDBRuntimeException) {
                   stateMachine.failed(t);
                 } else {
-                  logger.warn("Execute error caused by ", t);
+                  logger.warn(DataNodeQueryMessages.EXECUTE_ERROR_CAUSED_BY, t);
                   stateMachine.failed(t);
                 }
                 clearFIRelatedResources(instanceId);
@@ -351,7 +388,7 @@ public class FragmentInstanceManager {
 
   /** Cancels a FragmentInstance. */
   public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId, boolean hasThrowable) {
-    logger.debug("[CancelFI]");
+    logger.debug(DataNodeQueryMessages.CANCEL_FI);
     requireNonNull(instanceId, "taskId is null");
 
     FragmentInstanceContext context = instanceContext.remove(instanceId);

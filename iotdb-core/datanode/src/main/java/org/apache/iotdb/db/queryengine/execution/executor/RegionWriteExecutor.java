@@ -42,6 +42,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -208,7 +209,7 @@ public class RegionWriteExecutor {
             status.getMessage(),
             status);
       } catch (final ConsensusException e) {
-        LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+        LOGGER.warn(DataNodeQueryMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS, e);
         TSStatus status = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
         if (e instanceof ConsensusGroupNotExistException) {
           status.setCode(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
@@ -289,7 +290,7 @@ public class RegionWriteExecutor {
             status.message,
             status);
       } catch (ConsensusException e) {
-        LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+        LOGGER.warn(DataNodeQueryMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS, e);
         final TSStatus status = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.toString());
         if (e instanceof ConsensusGroupNotExistException) {
           status.setCode(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.buffer.INodeBuffer;
@@ -415,8 +416,7 @@ public class MemoryManager implements IMemoryManager {
     synchronized (cacheEntry) {
       if (cacheEntry.hasVolatileDescendant()) {
         throw new IllegalStateException(
-            String.format(
-                "There should not exist descendant under this node %s", node.getFullPath()));
+            String.format(DataNodeSchemaMessages.DESCENDANT_SHOULD_NOT_EXIST, node.getFullPath()));
       }
       if (cacheEntry.isVolatile()) {
         addAncestorsToCache(node);

@@ -582,6 +582,21 @@ struct TPushTopicMetaRespExceptionMessage {
   3: required i64 timeStamp
 }
 
+// Dedicated subscription owner-lease heartbeat (CN -> DN), decoupled from the node heartbeat.
+// Carries a relative remaining duration; the DataNode derives the local expire time on its own
+// clock (leaseExpireAt = localNow + leaseRemainingMs), so no absolute timestamp is compared across
+// ConfigNode and DataNode clocks.
+struct TTopicOwnerLeaseEntry {
+  1: required string topicName
+  2: required string ownerId
+  3: required i64 ownerEpoch
+  4: required i64 leaseRemainingMs
+}
+
+struct TPushTopicOwnerLeaseReq {
+  1: required list<TTopicOwnerLeaseEntry> ownerLeases
+}
+
 struct TPushConsumerGroupMetaReq {
   1: required list<binary> consumerGroupMetas
 }
@@ -600,6 +615,33 @@ struct TPushConsumerGroupMetaRespExceptionMessage {
   1: required string consumerGroupId
   2: required string message
   3: required i64 timeStamp
+}
+
+struct TPullCommitProgressReq {
+}
+
+struct TPullCommitProgressResp {
+  1: required common.TSStatus status
+  2: optional map<string, binary> commitRegionProgress
+}
+
+struct TSyncSubscriptionProgressReq {
+  1: required string consumerGroupId
+  2: required string topicName
+  3: required string regionId
+  4: required i64 physicalTime
+  5: required i32 writerNodeId
+  6: required i64 localSeq
+}
+struct TSubscriptionRuntimeStateEntry {
+  1: required common.TConsensusGroupId regionId
+  2: required i64 runtimeVersion
+  3: required i32 preferredWriterNodeId
+  4: required bool active
+  5: required list<i32> activeWriterNodeIds
+}
+struct TPushSubscriptionRuntimeReq {
+  1: required list<TSubscriptionRuntimeStateEntry> runtimeStates
 }
 
 struct TConstructViewSchemaBlackListReq {
@@ -1214,6 +1256,12 @@ service IDataNodeRPCService {
   TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req)
 
  /**
+  * Renew topic owner leases on DataNodes via the dedicated subscription owner heartbeat
+  * (independent from the node heartbeat). Carries relative remaining durations.
+  */
+  common.TSStatus pushTopicOwnerLease(TPushTopicOwnerLeaseReq req)
+
+ /**
   * Send consumerGroupMetas to DataNodes, for synchronization
   */
   TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req)
@@ -1222,6 +1270,20 @@ service IDataNodeRPCService {
   * Send one consumer group meta to DataNodes.
   */
   TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(TPushSingleConsumerGroupMetaReq req)
+
+ /**
+  * Pull commit progress from DataNode for subscription consensus persistence
+  */
+  TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req)
+
+ /**
+  * Sync subscription committed progress from Leader to Follower (fire-and-forget)
+  */
+  common.TSStatus syncSubscriptionProgress(TSyncSubscriptionProgressReq req)
+ /**
+  * Push subscription runtime state to DataNodes.
+  */
+  common.TSStatus pushSubscriptionRuntime(TPushSubscriptionRuntimeReq req)
 
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds

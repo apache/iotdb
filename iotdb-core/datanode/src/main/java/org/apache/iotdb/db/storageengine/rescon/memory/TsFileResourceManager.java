@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 
@@ -94,7 +95,7 @@ public class TsFileResourceManager {
     if (TimeIndexLevel.valueOf(resource.getTimeIndexType()) == TimeIndexLevel.FILE_TIME_INDEX) {
       return;
     }
-    logger.debug("Force degrade tsfile resource {}", resource.getTsFilePath());
+    logger.debug(StorageEngineMessages.FORCE_DEGRADE_TSFILE_RESOURCE, resource.getTsFilePath());
     synchronized (this) {
       if (!sealedTsFileResources.remove(resource)) {
         resource.degradeTimeIndex();
@@ -122,12 +123,12 @@ public class TsFileResourceManager {
       if (tsFileResource == null
           || TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
               == TimeIndexLevel.FILE_TIME_INDEX) {
-        logger.debug("Can't degrade time index any more because all time index are file level.");
+        logger.debug(StorageEngineMessages.CANNOT_DEGRADE_TIME_INDEX_ALL_FILE_LEVEL);
         sealedTsFileResources.add(tsFileResource);
         return;
       }
       long memoryReduce = tsFileResource.degradeTimeIndex();
-      logger.debug("Degrade tsfile resource {}", tsFileResource.getTsFilePath());
+      logger.debug(StorageEngineMessages.DEGRADE_TSFILE_RESOURCE, tsFileResource.getTsFilePath());
       degradedTimeIndexNum++;
       releaseTimeIndexMemCost(memoryReduce);
       // add the polled tsFileResource to the priority queue

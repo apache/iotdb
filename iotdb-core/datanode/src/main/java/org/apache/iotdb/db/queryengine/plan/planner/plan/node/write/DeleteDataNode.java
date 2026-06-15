@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -112,7 +113,8 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
       try {
         pathList.add(new MeasurementPath(ReadWriteIOUtils.readString(stream)));
       } catch (IllegalPathException e) {
-        throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTROWNODE, e);
       }
     }
     long deleteStartTime = stream.readLong();
@@ -120,7 +122,7 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
 
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId(""), pathList, deleteStartTime, deleteEndTime);
-    deleteDataNode.setSearchIndex(searchIndex);
+    deleteDataNode.setSearchIndexFromWAL(searchIndex);
     return deleteDataNode;
   }
 
@@ -132,7 +134,8 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
       try {
         pathList.add(new MeasurementPath(ReadWriteIOUtils.readString(buffer)));
       } catch (IllegalPathException e) {
-        throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTROWNODE, e);
       }
     }
     long deleteStartTime = buffer.getLong();
@@ -140,7 +143,7 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
 
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId(""), pathList, deleteStartTime, deleteEndTime);
-    deleteDataNode.setSearchIndex(searchIndex);
+    deleteDataNode.setSearchIndexFromWAL(searchIndex);
     return deleteDataNode;
   }
 
@@ -191,7 +194,8 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
       ReadWriteIOUtils.write(0, outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
-      LOGGER.error("Unexpected error occurs when serializing deleteDataNode.", e);
+      LOGGER.error(
+          DataNodeQueryMessages.UNEXPECTED_ERROR_OCCURS_WHEN_SERIALIZING_DELETEDATANODE, e);
       throw new SerializationRunTimeException(e);
     }
   }
@@ -222,15 +226,19 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
   public int serializedSize() {
     int size = FIXED_SERIALIZED_SIZE;
     for (PartialPath path : pathList) {
-      size += ReadWriteIOUtils.sizeToWrite(path.getFullPath());
+      size += WALWriteUtils.sizeToWrite(path.getFullPath());
     }
     return size;
   }
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    serializeToWAL(buffer, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer, long encodedSearchIndex) {
     buffer.putShort(PlanNodeType.DELETE_DATA.getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(encodedSearchIndex);
     buffer.putInt(pathList.size());
     for (PartialPath path : pathList) {
       WALWriteUtils.write(path.getFullPath(), buffer);
@@ -373,7 +381,7 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
             .collect(Collectors.toList());
     int size = deleteDataNodes.size();
     if (size == 0) {
-      throw new IllegalArgumentException("deleteDataNodes is empty");
+      throw new IllegalArgumentException(DataNodeQueryMessages.DELETEDATANODES_IS_EMPTY);
     }
     DeleteDataNode firstOne = deleteDataNodes.get(0);
     if (size == 1) {
@@ -399,6 +407,9 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
             pathList,
             firstOne.getDeleteStartTime(),
             firstOne.getDeleteEndTime())
-        .setSearchIndex(firstOne.searchIndex);
+        .setSearchIndex(firstOne.searchIndex)
+        .setPhysicalTime(firstOne.getPhysicalTime())
+        .setNodeId(firstOne.getNodeId())
+        .setSyncIndex(firstOne.getSyncIndex());
   }
 }

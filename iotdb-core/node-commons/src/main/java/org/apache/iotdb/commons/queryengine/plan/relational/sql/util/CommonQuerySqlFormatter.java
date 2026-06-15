@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.util;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CommonQueryAstVisitor;
@@ -96,7 +97,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
 
   @Override
   public Void visitNode(Node node, Integer indent) {
-    throw new UnsupportedOperationException("not yet implemented: " + node);
+    throw new UnsupportedOperationException(QueryMessages.NOT_YET_IMPLEMENTED + node);
   }
 
   @Override
@@ -157,7 +158,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                           elements.stream()
                               .map(CommonQuerySqlFormatter::formatExpression)
                               .collect(joining(", "))));
-    } else if (node.getFillMethod() == FillPolicy.PREVIOUS) {
+    } else if (node.getFillMethod() == FillPolicy.PREVIOUS
+        || node.getFillMethod() == FillPolicy.NEXT) {
       node.getTimeBound()
           .ifPresent(timeBound -> builder.append(" TIME_BOUND ").append(timeBound.toString()));
       node.getTimeColumnIndex()
@@ -172,7 +174,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                               .map(CommonQuerySqlFormatter::formatExpression)
                               .collect(joining(", "))));
     } else {
-      throw new IllegalArgumentException("Unknown fill method: " + node.getFillMethod());
+      throw new IllegalArgumentException(
+          String.format(QueryMessages.UNKNOWN_FILL_METHOD, node.getFillMethod()));
     }
     return null;
   }
@@ -252,7 +255,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
         JoinOn on = (JoinOn) criteria;
         builder.append(" ON ").append(formatExpression(on.getExpression()));
       } else if (!(criteria instanceof NaturalJoin)) {
-        throw new UnsupportedOperationException("unknown join criteria: " + criteria);
+        throw new UnsupportedOperationException(
+            String.format(QueryMessages.UNKNOWN_JOIN_CRITERIA, criteria));
       }
     }
 
@@ -341,7 +345,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
   }
 
   protected String formatSimpleTableRelationName(Relation relation) {
-    throw new UnsupportedOperationException("unsupported relation: " + relation);
+    throw new UnsupportedOperationException(
+        String.format(QueryMessages.UNSUPPORTED_RELATION, relation));
   }
 
   protected SqlBuilder append(int indent, String value) {
@@ -665,7 +670,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                   + formatExpression(node.getAfterMatchSkipTo().get().getIdentifier().get());
           break;
         default:
-          throw new IllegalStateException("unexpected skipTo: " + node.getAfterMatchSkipTo().get());
+          throw new IllegalStateException(
+              String.format(QueryMessages.UNEXPECTED_SKIP_TO, node.getAfterMatchSkipTo().get()));
       }
       append(indent + 1, skipTo).append("\n");
     }

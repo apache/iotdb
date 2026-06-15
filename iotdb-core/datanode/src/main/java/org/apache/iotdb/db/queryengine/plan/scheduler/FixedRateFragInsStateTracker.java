@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
@@ -118,10 +119,11 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       // a strange case here is that sometimes the cancelResult is false but the trackTask is
       // definitely cancelled
       if (!cancelResult) {
-        logger.debug("cancel state tracking task failed. {}", trackTask.isCancelled());
+        logger.debug(
+            DataNodeQueryMessages.CANCEL_STATE_TRACKING_TASK_FAILED, trackTask.isCancelled());
       }
     } else {
-      logger.debug("trackTask not started");
+      logger.debug(DataNodeQueryMessages.TRACK_TASK_NOT_STARTED);
     }
   }
 
@@ -137,7 +139,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
             if (needPrintState(
                 metrics.lastState, instanceInfo.getState(), metrics.durationToLastPrintInMS)) {
               if (logger.isDebugEnabled()) {
-                logger.debug("[PrintFIState] state is {}", instanceInfo.getState());
+                logger.debug(DataNodeQueryMessages.PRINT_FI_STATE, instanceInfo.getState());
               }
               metrics.reset(instanceInfo.getState());
             } else {
@@ -163,7 +165,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
           } else {
             // if not reaching max retry count, add retry count, and wait for next fetching schedule
             metrics.addRetryCount();
-            logger.warn("error happened while fetching query state", e);
+            logger.warn(DataNodeQueryMessages.ERROR_HAPPENED_WHILE_FETCHING_QUERY_STATE, e);
           }
         }
       }

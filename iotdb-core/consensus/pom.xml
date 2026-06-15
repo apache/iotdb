@@ -32,8 +32,8 @@
         <consensus.it.skip>${consensus.test.skip}</consensus.it.skip>
         <consensus.test.skip>false</consensus.test.skip>
         <consensus.ut.skip>${consensus.test.skip}</consensus.ut.skip>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
     </properties>
     <dependencies>
         <dependency>
@@ -153,6 +153,10 @@
                     <reuseForks>false</reuseForks>
                     <runOrder>random</runOrder>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

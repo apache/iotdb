@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue;
 
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 
 import java.util.PriorityQueue;
@@ -158,7 +158,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
   }
 
   @Override
-  protected boolean isEmpty() {
+  public boolean isEmpty() {
     if (!highestPriorityLevelQueue.isEmpty()) {
       return false;
     }
@@ -189,6 +189,16 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     // necessary.
     throw new UnsupportedOperationException(
         "MultilevelPriorityQueue does not support access element by get.");
+  }
+
+  @Override
+  protected void markReserved(DriverTask task) {
+    task.markReservedInReadyQueue();
+  }
+
+  @Override
+  protected boolean releaseReserved(DriverTask task) {
+    return task.releaseReservedInReadyQueue();
   }
 
   @Override

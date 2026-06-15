@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDeviceP
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.utils.InsertRowDataUtils;
 import org.apache.iotdb.rest.protocol.v2.model.InsertRecordsRequest;
 import org.apache.iotdb.rest.protocol.v2.model.InsertTabletRequest;
@@ -173,7 +174,8 @@ public class StatementConstructionHandler {
           columns[columnIndex] = binaryValues;
           break;
         default:
-          throw new IllegalArgumentException("Invalid input: " + rawDataType.get(columnIndex));
+          throw new IllegalArgumentException(
+              RestMessages.INVALID_INPUT + rawDataType.get(columnIndex));
       }
     }
 

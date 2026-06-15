@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jakarta.validation.constraints.NotNull;
+
 import javax.annotation.concurrent.NotThreadSafe;
-import javax.validation.constraints.NotNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -60,10 +63,10 @@ public class FakeCRC32Deserializer<T> implements IDeserializer<T> {
     dataInputStream.changeInputStream(inputStream);
     int logLength = dataInputStream.readInt();
     if (logLength <= 0) {
-      LOGGER.error("Read log length {} is negative.", logLength);
+      LOGGER.error(DataNodeSchemaMessages.READ_LOG_LENGTH_NEGATIVE_LOG, logLength);
       throw new IOException(
           new IllegalArgumentException(
-              String.format("Read log length %s is negative.", logLength)));
+              String.format(DataNodeSchemaMessages.READ_LOG_LENGTH_NEGATIVE, logLength)));
     }
 
     byte[] logBuffer = new byte[logLength];

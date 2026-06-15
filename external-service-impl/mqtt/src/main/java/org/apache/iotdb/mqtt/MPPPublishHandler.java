@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.mqtt.i18n.MqttMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
@@ -159,7 +160,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         }
       }
     } catch (Throwable t) {
-      LOG.warn("onPublish execution exception, msg is [{}], error is ", msg, t);
+      LOG.warn(MqttMessages.ON_PUBLISH_EXCEPTION, msg, t);
     } finally {
       // release the payload of the message
       super.onPublish(msg);
@@ -191,7 +192,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
       tsStatus = result.status;
       if (LOG.isDebugEnabled()) {
-        LOG.debug("process result: {}", tsStatus);
+        LOG.debug(MqttMessages.PROCESS_RESULT, tsStatus);
       }
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && tsStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -310,7 +311,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
                     false);
         tsStatus = result.status;
         if (LOG.isDebugEnabled()) {
-          LOG.debug("process result: {}", tsStatus);
+          LOG.debug(MqttMessages.PROCESS_RESULT, tsStatus);
         }
         if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && tsStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {

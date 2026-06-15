@@ -72,6 +72,8 @@ public interface CommonConfig {
 
   CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode);
 
+  CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy);
+
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
   CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase);
@@ -122,6 +124,12 @@ public interface CommonConfig {
 
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
 
+  CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
+
+  CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
+
+  CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
+
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
 
   CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy);
@@ -152,6 +160,10 @@ public interface CommonConfig {
 
   CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
 
+  CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
+
+  CommonConfig setSubscriptionOwnerLeaseDurationMsMin(long subscriptionOwnerLeaseDurationMsMin);
+
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
 
   CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs);
@@ -159,6 +171,8 @@ public interface CommonConfig {
   CommonConfig setWalMode(String walMode);
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
+
+  CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize);
 
   CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs);
 

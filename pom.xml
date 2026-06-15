@@ -50,19 +50,16 @@
         <module>external-service-impl</module>
     </modules>
     <properties>
-        <!-- This was the last version to support Java 8 -->
         <airlift-units.version>1.7</airlift-units.version>
         <airlift.version>206</airlift.version>
         <!--airlift-stats.version>235</airlift-stats.version-->
         <airline.version>0.9</airline.version>
-        <!-- This was the last version to support Java 8 -->
-        <antlr4.version>4.9.3</antlr4.version>
+        <antlr4.version>4.13.2</antlr4.version>
         <!-- By default, the argLine is empty-->
         <argLine/>
         <awaitility.version>4.2.0</awaitility.version>
         <boost.include.dir/>
         <bouncycastle.version>1.84</bouncycastle.version>
-        <!-- This was the last version to support Java 8 -->
         <caffeine.version>2.9.3</caffeine.version>
         <cglib.version>3.3.0</cglib.version>
         <cmake.build.type>Release</cmake.build.type>
@@ -81,11 +78,9 @@
         <felix.version>5.1.9</felix.version>
         <findbugs.jsr305.version>3.0.2</findbugs.jsr305.version>
         <fusesource-mqtt-client.version>1.16</fusesource-mqtt-client.version>
-        <!-- JDK1.8 only support google java format 1.7-->
         <google.java.format.version>1.28.0</google.java.format.version>
         <gson.version>2.13.1</gson.version>
         <guava.version>32.1.2-jre</guava.version>
-        <!-- This was the last version to support Java 8 -->
         <h2.version>2.2.224</h2.version>
         <httpclient.version>4.5.14</httpclient.version>
         <httpcore.version>4.4.16</httpcore.version>
@@ -95,38 +90,31 @@
     -->
         <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
         <jackson.version>2.18.6</jackson.version>
-        <!-- This is the last version to support the javax namespace -->
-        <jakarta.servlet-api.version>4.0.4</jakarta.servlet-api.version>
-        <!-- This is the last version to support the javax namespace -->
-        <jakarta.validation-api.version>2.0.2</jakarta.validation-api.version>
-        <!-- This is the last version to support the javax namespace -->
-        <jakarta.ws.rs-api.version>2.1.6</jakarta.ws.rs-api.version>
+        <jakarta.annotation-api.version>3.0.0</jakarta.annotation-api.version>
+        <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
+        <jakarta.validation-api.version>3.0.2</jakarta.validation-api.version>
+        <jakarta.ws.rs-api.version>3.1.0</jakarta.ws.rs-api.version>
         <java-websocket.version>1.5.4</java-websocket.version>
         <jcip-annotations.version>1.0-1</jcip-annotations.version>
-        <!-- This is the last version to support the javax namespace -->
-        <jersey.version>2.40</jersey.version>
-        <!-- This was the last version to support Java 8 -->
-        <jetty.version>9.4.58.v20250814</jetty.version>
+        <jersey.version>3.1.11</jersey.version>
+        <jetty.version>12.0.36</jetty.version>
         <jline.version>3.26.2</jline.version>
         <jna.version>5.14.0</jna.version>
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
-        <!-- This was the last version to support Java 8 -->
-        <logback.version>1.3.16</logback.version>
+        <logback.version>1.5.34</logback.version>
         <lz4-java.version>1.10.1</lz4-java.version>
         <maven.assembly.version>3.6.0</maven.assembly.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
         <milo.version>0.6.14</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
-        <!-- This was the last version to support Java 8 -->
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.18.0</moquette.version>
-        <netty.version>4.1.126.Final</netty.version>
-        <!-- This was the last version to support Java 8 -->
-        <openapi.generator.version>6.6.0</openapi.generator.version>
+        <netty.version>4.1.134.Final</netty.version>
+        <openapi.generator.version>7.10.0</openapi.generator.version>
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
         <powermock.version>2.0.9</powermock.version>
@@ -151,8 +139,7 @@
         <spotless.skip>false</spotless.skip>
         <spotless.version>2.44.5</spotless.version>
         <clang.format.version>17.0.6</clang.format.version>
-        <!-- This was the last version to support Java 8 -->
-        <swagger.version>1.6.14</swagger.version>
+        <swagger.version>2.2.50</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
         <!--
@@ -164,7 +151,9 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.3.0-260422-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.3.2-260608-SNAPSHOT</tsfile.version>
+        <i18n.locale>en</i18n.locale>
+        <tsfile.locale.opt/>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -290,6 +279,11 @@
                 <groupId>com.google.code.findbugs</groupId>
                 <artifactId>jsr305</artifactId>
                 <version>${findbugs.jsr305.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.annotation</groupId>
+                <artifactId>jakarta.annotation-api</artifactId>
+                <version>${jakarta.annotation-api.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.code.gson</groupId>
@@ -485,29 +479,24 @@
                 <version>${xz.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.swagger</groupId>
-                <artifactId>swagger-annotations</artifactId>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-annotations-jakarta</artifactId>
                 <version>${swagger.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.swagger</groupId>
-                <artifactId>swagger-models</artifactId>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-models-jakarta</artifactId>
                 <version>${swagger.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.swagger</groupId>
-                <artifactId>swagger-jaxrs</artifactId>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-jaxrs2-jakarta</artifactId>
                 <version>${swagger.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>javax.validation</groupId>
-                        <artifactId>validation-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>javax.ws.rs</groupId>
-                        <artifactId>jsr311-api</artifactId>
-                    </exclusion>
-                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-integration-jakarta</artifactId>
+                <version>${swagger.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.fusesource.mqtt-client</groupId>
@@ -575,8 +564,8 @@
                 <version>${jetty.version}</version>
                 <exclusions>
                     <exclusion>
-                        <groupId>javax.servlet</groupId>
-                        <artifactId>javax.servlet-api</artifactId>
+                        <groupId>jakarta.servlet</groupId>
+                        <artifactId>jakarta.servlet-api</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -591,8 +580,8 @@
                 <version>${jersey.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-servlet</artifactId>
+                <groupId>org.eclipse.jetty.ee10</groupId>
+                <artifactId>jetty-ee10-servlet</artifactId>
                 <version>${jetty.version}</version>
             </dependency>
             <dependency>
@@ -661,8 +650,8 @@
                 <version>${jackson.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.fasterxml.jackson.jaxrs</groupId>
-                <artifactId>jackson-jaxrs-json-provider</artifactId>
+                <groupId>com.fasterxml.jackson.jakarta.rs</groupId>
+                <artifactId>jackson-jakarta-rs-json-provider</artifactId>
                 <version>${jackson.version}</version>
             </dependency>
             <dependency>
@@ -696,10 +685,11 @@
                 <version>2.18.0</version>
             </dependency>
             <!-- Conflict:
-        jackson-json-provider (pulls in 2.15.2),
+        jackson-jakarta-rs-json-provider (pulls in 2.15.2),
         jackson-databind (pulls in 2.15.2),
         jackson-databind-jsd310 (pulls in 2.15.2),
-        swagger-jaxrs (pulls in 2.14.2)
+        swagger-jaxrs2-jakarta (pulls in 2.15.2),
+        swagger-integration-jakarta (pulls in 2.15.2)
       -->
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
@@ -832,7 +822,7 @@
                                 <style>GOOGLE</style>
                             </googleJavaFormat>
                             <importOrder>
-                                <order>org.apache.iotdb,,javax,java,\#</order>
+                                <order>org.apache.iotdb,,jakarta,javax,java,\#</order>
                             </importOrder>
                             <removeUnusedImports/>
                         </java>
@@ -947,6 +937,20 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>3.4.0</version>
+                    <executions>
+                        <execution>
+                            <id>add-i18n-source</id>
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>add-source</goal>
+                            </goals>
+                            <configuration>
+                                <sources>
+                                    <source>src/main/i18n/${i18n.locale}</source>
+                                </sources>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.felix</groupId>
@@ -1039,7 +1043,7 @@
             </plugin>
             <!--
         Strange things usually happen if you run with a too low Java version.
-        This plugin not only checks the minimum java version of 1.8, but also
+        This plugin not only checks the minimum java version of 17, but also
         checks all dependencies (and transitive dependencies) for reported CVEs.
       -->
             <plugin>
@@ -1111,7 +1115,7 @@
                             <fail>true</fail>
                             <rules>
                                 <requireJavaVersion>
-                                    <version>1.8.0</version>
+                                    <version>[17,)</version>
                                 </requireJavaVersion>
                                 <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies">
                                     <excludeCoordinates>
@@ -1138,15 +1142,6 @@
                                         <exclude>
                                             <groupId>org.apache.spark</groupId>
                                             <artifactId>spark-core_2.11</artifactId>
-                                            <version>2.4.8</version>
-                                        </exclude>
-                                        <!--
-                      We can't update to a fixed version as we're stuck with this version
-                      as it was the last to support the javax namespace.
-                    -->
-                                        <exclude>
-                                            <groupId>org.glassfish.jersey.core</groupId>
-                                            <artifactId>jersey-common</artifactId>
                                             <version>2.4.8</version>
                                         </exclude>
                                         <!--
@@ -1282,48 +1277,6 @@
                             </resourceBundles>
                             <!-- Content in this directory will be appended to generated resources -->
                             <appendedResourcesDirectory>${basedir}/src/remote-resources</appendedResourcesDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Separates the unit tests from the integration tests. -->
-            <!-- TODO: Integration-Tests should be executed by the failsafe plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>unit-tests</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                        <phase>test</phase>
-                        <configuration>
-                            <includes>
-                                <!-- Include unit tests within integration-test phase. -->
-                                <include>src/test/**/*Test.java</include>
-                            </includes>
-                            <excludes>
-                                <!-- Exclude integration tests within (unit) test phase. -->
-                                <exclude>src/test/**/*IT.java</exclude>
-                            </excludes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>integration-tests</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <includes>
-                                <!-- Include integration tests within integration-test phase. -->
-                                <include>src/test/**/*IT.java</include>
-                            </includes>
-                            <excludes>
-                                <!-- Exclude unit tests within (unit) test phase. -->
-                                <exclude>src/test/**/*Test.java</exclude>
-                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
@@ -1498,14 +1451,14 @@
             </properties>
         </profile>
         <profile>
-            <id>.java-9-and-above</id>
+            <id>.java-17-and-above</id>
             <activation>
-                <jdk>[9,)</jdk>
+                <jdk>[17,)</jdk>
             </activation>
             <properties>
-                <maven.compiler.release>8</maven.compiler.release>
+                <maven.compiler.release>17</maven.compiler.release>
                 <!--
-                    Add argLine for Java 9 and above, due to
+                    Add argLine for Java 17 and above, due to
                     [JEP 260: Encapsulate Most Internal APIs],
                     [JEP 396: Strongly Encapsulate JDK Internals by Default],
                     [JEP 403: Strongly Encapsulate JDK Internals]
@@ -1525,14 +1478,14 @@
                       ]]></argLine>
             </properties>
         </profile>
-        <!-- Current version of spotless cannot support JDK11 below -->
+        <!-- Current version of spotless cannot support JDK17 below -->
         <profile>
             <id>.java-17-below</id>
             <activation>
                 <jdk>(,17)</jdk>
             </activation>
             <properties>
-                <!-- This was the last version to support Java 8, Just for run -->
+                <!-- Keep old Spotless disabled when running below the minimum supported JDK. -->
                 <spotless.version>2.27.1</spotless.version>
                 <!-- To avoid format conflicts -->
                 <spotless.skip>true</spotless.skip>
@@ -1612,7 +1565,7 @@
                                 </goals>
                                 <phase>generate-sources</phase>
                                 <configuration>
-                                    <generator>java</generator>
+                                    <generator>java:generated_annotations=suppress</generator>
                                 </configuration>
                             </execution>
                             <execution>
@@ -2005,6 +1958,13 @@
             <id>enforce</id>
             <properties>
                 <enforcer.skip>false</enforcer.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>with-zh-locale</id>
+            <properties>
+                <i18n.locale>zh</i18n.locale>
+                <tsfile.locale.opt>-Dtsfile.locale=zh</tsfile.locale.opt>
             </properties>
         </profile>
     </profiles>

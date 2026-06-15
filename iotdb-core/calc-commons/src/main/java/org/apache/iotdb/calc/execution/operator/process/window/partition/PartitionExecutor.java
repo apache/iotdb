@@ -28,6 +28,7 @@ import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.R
 import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.RowComparator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -58,6 +59,7 @@ public final class PartitionExecutor {
   private final List<Frame> frames;
 
   private final boolean needPeerGroup;
+  private boolean windowFunctionsInitialized;
 
   public PartitionExecutor(
       List<TsBlock> tsBlocks,
@@ -113,6 +115,7 @@ public final class PartitionExecutor {
     sortedColumns = partition.getSortedColumnList(sortChannels);
 
     currentPosition = partitionStart;
+    windowFunctionsInitialized = false;
     needPeerGroup =
         windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup)
             || frameInfoList.stream()
@@ -142,7 +145,7 @@ public final class PartitionExecutor {
                     peerGroupEnd - partitionStart - 1);
             break;
           default:
-            throw new UnsupportedOperationException("Unreachable!");
+            throw new UnsupportedOperationException(CalcMessages.UNREACHABLE);
         }
       }
       frames.add(frame);
@@ -211,9 +214,16 @@ public final class PartitionExecutor {
     }
   }
 
-  public void resetWindowFunctions() {
+  private void resetWindowFunctions() {
     for (WindowFunction windowFunction : windowFunctions) {
       windowFunction.reset();
+    }
+  }
+
+  public void initializeWindowFunctions() {
+    if (!windowFunctionsInitialized) {
+      resetWindowFunctions();
+      windowFunctionsInitialized = true;
     }
   }
 }

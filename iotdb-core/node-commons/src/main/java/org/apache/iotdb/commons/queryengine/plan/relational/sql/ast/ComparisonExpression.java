@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -74,7 +76,7 @@ public class ComparisonExpression extends Expression {
         case IS_DISTINCT_FROM:
           return IS_DISTINCT_FROM;
       }
-      throw new IllegalArgumentException("Unsupported comparison: " + this);
+      throw new IllegalArgumentException(String.format(QueryMessages.UNSUPPORTED_COMPARISON, this));
     }
 
     public Operator negate() {
@@ -95,7 +97,7 @@ public class ComparisonExpression extends Expression {
           // Cannot negate
           break;
       }
-      throw new IllegalArgumentException("Unsupported comparison: " + this);
+      throw new IllegalArgumentException(String.format(QueryMessages.UNSUPPORTED_COMPARISON, this));
     }
   }
 

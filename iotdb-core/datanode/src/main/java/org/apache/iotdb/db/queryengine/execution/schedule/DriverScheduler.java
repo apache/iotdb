@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -30,6 +32,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
@@ -37,8 +40,6 @@ import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
@@ -346,16 +347,18 @@ public class DriverScheduler implements IDriverScheduler, IService {
             return;
           case READY:
             task.setStatus(DriverTaskStatus.ABORTED);
-            readyQueue.remove(task.getDriverTaskId());
+            if (readyQueue.remove(task.getDriverTaskId()) == null) {
+              readyQueue.decreaseReservedSize(task);
+            }
             break;
           case BLOCKED:
             task.setStatus(DriverTaskStatus.ABORTED);
             blockedTasks.remove(task);
-            readyQueue.decreaseReservedSize();
+            readyQueue.decreaseReservedSize(task);
             break;
           case RUNNING:
             task.setStatus(DriverTaskStatus.ABORTED);
-            readyQueue.decreaseReservedSize();
+            readyQueue.decreaseReservedSize(task);
             break;
           case FINISHED:
             break;
@@ -389,7 +392,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           try {
             task.getDriver().failed(task.getAbortCause().get());
           } catch (Exception e) {
-            logger.error("Clear DriverTask failed", e);
+            logger.error(DataNodeQueryMessages.CLEAR_DRIVERTASK_FAILED, e);
           }
         }
         if (task.getStatus() == DriverTaskStatus.ABORTED) {
@@ -400,7 +403,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
                     task.getDriverTaskId().getFragmentId().getId(),
                     task.getDriverTaskId().getFragmentInstanceId().getInstanceId()));
           } catch (Exception e) {
-            logger.error("Clear DriverTask failed", e);
+            logger.error(DataNodeQueryMessages.CLEAR_DRIVERTASK_FAILED, e);
           }
         }
       } finally {
@@ -419,6 +422,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   public long getReadyQueueTaskCount() {
     return readyQueue.size();
+  }
+
+  public long getReadyQueueReservedTaskCount() {
+    return readyQueue.getReservedSize();
   }
 
   public long getBlockQueueTaskCount() {
@@ -496,6 +503,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
       task.lock();
       try {
         if (task.getStatus() != DriverTaskStatus.READY) {
+          readyQueue.decreaseReservedSize(task);
           return false;
         }
 
@@ -552,7 +560,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.FINISHED);
-        readyQueue.decreaseReservedSize();
+        readyQueue.decreaseReservedSize(task);
       } finally {
         task.unlock();
       }

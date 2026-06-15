@@ -173,16 +173,16 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
 
       switch (seriesDataType) {
         case INT32:
-          updateIntValue(groupIds[i], Math.abs(argument.getInt(i)));
+          updateIntValue(groupIds[i], argument.getInt(i));
           break;
         case INT64:
-          updateLongValue(groupIds[i], Math.abs(argument.getLong(i)));
+          updateLongValue(groupIds[i], argument.getLong(i));
           break;
         case FLOAT:
-          updateFloatValue(groupIds[i], Math.abs(argument.getFloat(i)));
+          updateFloatValue(groupIds[i], argument.getFloat(i));
           break;
         case DOUBLE:
-          updateDoubleValue(groupIds[i], Math.abs(argument.getDouble(i)));
+          updateDoubleValue(groupIds[i], argument.getDouble(i));
           break;
         case TEXT:
         case STRING:
@@ -300,7 +300,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         if (!valueColumn.isNull(i)) {
-          updateIntValue(groupIds[i], Math.abs(valueColumn.getInt(i)));
+          updateIntValue(groupIds[i], valueColumn.getInt(i));
         }
       }
     } else {
@@ -309,15 +309,15 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!valueColumn.isNull(position)) {
-          updateIntValue(groupIds[position], Math.abs(valueColumn.getInt(position)));
+          updateIntValue(groupIds[position], valueColumn.getInt(position));
         }
       }
     }
   }
 
   protected void updateIntValue(int groupId, int value) {
-    int max = intValues.get(groupId);
-    if (value >= max) {
+    int candidate = intValues.get(groupId);
+    if (!inits.get(groupId) || compareExtreme(value, candidate) >= 0) {
       inits.set(groupId, true);
       intValues.set(groupId, value);
     }
@@ -329,7 +329,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         if (!valueColumn.isNull(i)) {
-          updateLongValue(groupIds[i], Math.abs(valueColumn.getLong(i)));
+          updateLongValue(groupIds[i], valueColumn.getLong(i));
         }
       }
     } else {
@@ -338,15 +338,15 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!valueColumn.isNull(position)) {
-          updateLongValue(groupIds[position], Math.abs(valueColumn.getLong(position)));
+          updateLongValue(groupIds[position], valueColumn.getLong(position));
         }
       }
     }
   }
 
   protected void updateLongValue(int groupId, long value) {
-    long max = longValues.get(groupId);
-    if (value >= max) {
+    long candidate = longValues.get(groupId);
+    if (!inits.get(groupId) || compareExtreme(value, candidate) >= 0) {
       inits.set(groupId, true);
       longValues.set(groupId, value);
     }
@@ -358,7 +358,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         if (!valueColumn.isNull(i)) {
-          updateFloatValue(groupIds[i], Math.abs(valueColumn.getFloat(i)));
+          updateFloatValue(groupIds[i], valueColumn.getFloat(i));
         }
       }
     } else {
@@ -367,15 +367,15 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!valueColumn.isNull(position)) {
-          updateFloatValue(groupIds[position], Math.abs(valueColumn.getFloat(position)));
+          updateFloatValue(groupIds[position], valueColumn.getFloat(position));
         }
       }
     }
   }
 
   protected void updateFloatValue(int groupId, float value) {
-    float max = floatValues.get(groupId);
-    if (value >= max) {
+    float candidate = floatValues.get(groupId);
+    if (!inits.get(groupId) || compareExtreme(value, candidate) >= 0) {
       inits.set(groupId, true);
       floatValues.set(groupId, value);
     }
@@ -387,7 +387,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         if (!valueColumn.isNull(i)) {
-          updateDoubleValue(groupIds[i], Math.abs(valueColumn.getDouble(i)));
+          updateDoubleValue(groupIds[i], valueColumn.getDouble(i));
         }
       }
     } else {
@@ -396,17 +396,47 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!valueColumn.isNull(position)) {
-          updateDoubleValue(groupIds[position], Math.abs(valueColumn.getDouble(position)));
+          updateDoubleValue(groupIds[position], valueColumn.getDouble(position));
         }
       }
     }
   }
 
   protected void updateDoubleValue(int groupId, double value) {
-    double max = doubleValues.get(groupId);
-    if (value >= max) {
+    double candidate = doubleValues.get(groupId);
+    if (!inits.get(groupId) || compareExtreme(value, candidate) >= 0) {
       inits.set(groupId, true);
       doubleValues.set(groupId, value);
     }
+  }
+
+  private int compareExtreme(int left, int right) {
+    int absComparison = Long.compare(Math.abs((long) left), Math.abs((long) right));
+    return absComparison == 0 ? Integer.compare(left, right) : absComparison;
+  }
+
+  private int compareExtreme(long left, long right) {
+    int absComparison = compareAbs(left, right);
+    return absComparison == 0 ? Long.compare(left, right) : absComparison;
+  }
+
+  private int compareAbs(long left, long right) {
+    if (left == Long.MIN_VALUE) {
+      return right == Long.MIN_VALUE ? 0 : 1;
+    }
+    if (right == Long.MIN_VALUE) {
+      return -1;
+    }
+    return Long.compare(Math.abs(left), Math.abs(right));
+  }
+
+  private int compareExtreme(float left, float right) {
+    int absComparison = Float.compare(Math.abs(left), Math.abs(right));
+    return absComparison == 0 ? Float.compare(left, right) : absComparison;
+  }
+
+  private int compareExtreme(double left, double right) {
+    int absComparison = Double.compare(Math.abs(left), Math.abs(right));
+    return absComparison == 0 ? Double.compare(left, right) : absComparison;
   }
 }

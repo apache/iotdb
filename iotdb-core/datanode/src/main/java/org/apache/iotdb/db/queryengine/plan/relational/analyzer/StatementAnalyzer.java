@@ -22,10 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AliasedRelation;
@@ -119,7 +121,9 @@ import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
@@ -135,7 +139,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ar
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TranslationMap;
@@ -145,6 +148,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseD
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
@@ -273,6 +277,7 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isTimestampType;
 import static org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction.TIMECOL_PARAMETER_NAME;
+import static org.apache.iotdb.commons.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression.getQualifiedName;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join.Type.INNER;
@@ -290,8 +295,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Expressio
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowFunctions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter.evaluateConstantExpression;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -303,6 +308,7 @@ public class StatementAnalyzer {
   private final Analysis analysis;
 
   private boolean hasFillInParentScope = false;
+  private boolean hasDiffFunctionInParentScope = false;
   private final MPPQueryContext queryContext;
 
   private final AccessControl accessControl;
@@ -363,6 +369,68 @@ public class StatementAnalyzer {
     MERGE,
   }
 
+  private static final class SelectAnalysis {
+    private final List<Expression> outputExpressions;
+    private final List<SelectAlias> aliases;
+
+    private SelectAnalysis(List<Expression> outputExpressions, List<SelectAlias> aliases) {
+      this.outputExpressions =
+          ImmutableList.copyOf(requireNonNull(outputExpressions, "outputExpressions is null"));
+      this.aliases = ImmutableList.copyOf(requireNonNull(aliases, "aliases is null"));
+    }
+
+    private List<Expression> getOutputExpressions() {
+      return outputExpressions;
+    }
+
+    private List<SelectAlias> getAliases() {
+      return aliases;
+    }
+  }
+
+  private static final class SelectAlias {
+    private final String canonicalName;
+    private final int position;
+
+    private SelectAlias(String canonicalName, int position) {
+      this.canonicalName = requireNonNull(canonicalName, "canonicalName is null");
+      this.position = position;
+    }
+
+    private String getCanonicalName() {
+      return canonicalName;
+    }
+
+    private int getPosition() {
+      return position;
+    }
+  }
+
+  private static boolean resolvesToInputColumn(Scope scope, Identifier identifier) {
+    return scope
+        .tryResolveField(identifier, QualifiedName.of(identifier.getValue()))
+        .filter(ResolvedField::isLocal)
+        .isPresent();
+  }
+
+  private static Optional<SelectAlias> resolveSelectAlias(
+      Identifier identifier, List<SelectAlias> aliases) {
+    List<SelectAlias> matches =
+        aliases.stream()
+            .filter(alias -> alias.getCanonicalName().equals(identifier.getCanonicalValue()))
+            .collect(toImmutableList());
+    if (matches.size() > 1) {
+      throw new SemanticException(
+          String.format(
+              "Column alias '%s' is ambiguous at positions %s",
+              identifier.getValue(),
+              matches.stream()
+                  .map(alias -> Integer.toString(alias.getPosition()))
+                  .collect(Collectors.joining(", "))));
+    }
+    return matches.stream().findFirst();
+  }
+
   /**
    * Visitor context represents local query scope (if exists). The invariant is that the local query
    * scopes hierarchy should always have outer query scope (if provided) as ancestor.
@@ -416,27 +484,32 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitNode(Node node, Optional<Scope> context) {
-      throw new IllegalStateException("Unsupported node type: " + node.getClass().getName());
+      throw new IllegalStateException(
+          DataNodeQueryMessages.UNSUPPORTED_NODE_TYPE + node.getClass().getName());
     }
 
     @Override
     public Scope visitCreateDB(CreateDB node, Optional<Scope> context) {
-      throw new SemanticException("Create Database statement is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.CREATE_DATABASE_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
     public Scope visitAlterDB(AlterDB node, Optional<Scope> context) {
-      throw new SemanticException("Alter Database statement is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.ALTER_DATABASE_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
     public Scope visitDropDB(DropDB node, Optional<Scope> context) {
-      throw new SemanticException("Drop Database statement is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.DROP_DATABASE_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
     public Scope visitShowDB(ShowDB node, Optional<Scope> context) {
-      throw new SemanticException("Show Database statement is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.SHOW_DATABASE_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
@@ -458,7 +531,7 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitShowTables(ShowTables node, Optional<Scope> context) {
-      throw new SemanticException("Show Tables statement is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.SHOW_TABLES_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
@@ -468,7 +541,8 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitDescribeTable(DescribeTable node, Optional<Scope> context) {
-      throw new SemanticException("Describe Table statement is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.DESCRIBE_TABLE_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
@@ -489,22 +563,23 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitAddColumn(AddColumn node, Optional<Scope> context) {
-      throw new SemanticException("Add Column statement is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.ADD_COLUMN_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
     public Scope visitCreateIndex(CreateIndex node, Optional<Scope> context) {
-      throw new SemanticException("Create Index statement is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.CREATE_INDEX_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
     public Scope visitDropIndex(DropIndex node, Optional<Scope> context) {
-      throw new SemanticException("Drop Index statement is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.DROP_INDEX_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
     public Scope visitShowIndex(ShowIndex node, Optional<Scope> context) {
-      throw new SemanticException("Show Index statement is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.SHOW_INDEX_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
@@ -550,7 +625,8 @@ public class StatementAnalyzer {
                                   .getColumnSchema(((SymbolReference) parsedColumn).getName())
                                   .getColumnCategory()
                               != TsTableColumnCategory.ATTRIBUTE) {
-                        throw new SemanticException("Update can only specify attribute columns.");
+                        throw new SemanticException(
+                            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
                       }
                       if (attributeNames.contains(parsedColumn)) {
                         throw new SemanticException(
@@ -618,17 +694,19 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitDropFunction(DropFunction node, Optional<Scope> context) {
-      throw new SemanticException("Drop Function statement is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
     public Scope visitShowFunctions(ShowFunctions node, Optional<Scope> context) {
-      throw new SemanticException("Show Function statement is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
     public Scope visitUse(Use node, Optional<Scope> scope) {
-      throw new SemanticException("USE statement is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.USE_STATEMENT_IS_NOT_SUPPORTED_YET);
     }
 
     private boolean containsAnyFieldColumn(
@@ -700,7 +778,8 @@ public class StatementAnalyzer {
         }
       }
       if (actualTimeColumnName == null) {
-        throw new SemanticException("Target table schema misses a TIME category column");
+        throw new SemanticException(
+            DataNodeQueryMessages.TARGET_TABLE_SCHEMA_MISSES_A_TIME_CATEGORY_COLUMN);
       }
 
       LinkedHashSet<String> insertColumns;
@@ -728,12 +807,12 @@ public class StatementAnalyzer {
 
       // insert columns should contain time
       if (!insertColumns.contains(actualTimeColumnName)) {
-        throw new SemanticException("time column can not be null");
+        throw new SemanticException(DataNodeQueryMessages.TIME_COLUMN_CAN_NOT_BE_NULL);
       }
       // insert columns should contain at least one field column
       Map<String, ColumnSchema> columnSchemaMap = tableSchema.get().getColumnSchemaMap();
       if (!containsAnyFieldColumn(insertColumns, columnSchemaMap)) {
-        throw new SemanticException("No Field column present");
+        throw new SemanticException(DataNodeQueryMessages.NO_FIELD_COLUMN_PRESENT);
       }
 
       // set Insert in analysis
@@ -849,6 +928,7 @@ public class StatementAnalyzer {
     @Override
     public Scope visitExplain(Explain node, Optional<Scope> context) {
       queryContext.setExplainType(ExplainType.EXPLAIN);
+      queryContext.setExplainOutputFormat(node.getOutputFormat());
       analysis.setFinishQueryAfterAnalyze();
       return visitQuery((Query) node.getStatement(), context);
     }
@@ -865,14 +945,19 @@ public class StatementAnalyzer {
     public Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
       queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
       queryContext.setVerbose(node.isVerbose());
+      queryContext.setExplainOutputFormat(node.getOutputFormat());
       return visitQuery((Query) node.getStatement(), context);
     }
 
     @Override
     public Scope visitQuery(Query node, Optional<Scope> context) {
+      boolean originalHasFillInParentScope = hasFillInParentScope;
+      boolean originalHasDiffFunctionInParentScope = hasDiffFunctionInParentScope;
       analysis.setQuery(true);
       Scope withScope = analyzeWith(node, context);
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
+      hasDiffFunctionInParentScope =
+          containsDiffFunctionInQuery(node) || hasDiffFunctionInParentScope;
       Scope queryBodyScope = process(node.getQueryBody(), withScope);
 
       if (node.getFill().isPresent()) {
@@ -882,12 +967,14 @@ public class StatementAnalyzer {
       List<Expression> orderByExpressions = emptyList();
       if (node.getOrderBy().isPresent()) {
         orderByExpressions =
-            analyzeOrderBy(node, getSortItemsFromOrderBy(node.getOrderBy()), queryBodyScope);
+            analyzeOrderBy(
+                node, getSortItemsFromOrderBy(node.getOrderBy()), queryBodyScope, emptyList());
 
         if ((queryBodyScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
             && !node.getOffset().isPresent()
-            && !hasFillInParentScope) {
+            && !hasFillInParentScope
+            && !hasDiffFunctionInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(node.getOrderBy().get());
           warningCollector.add(
@@ -903,7 +990,8 @@ public class StatementAnalyzer {
       if (node.getLimit().isPresent()) {
         boolean requiresOrderBy = analyzeLimit(node.getLimit().get(), queryBodyScope);
         if (requiresOrderBy && !node.getOrderBy().isPresent()) {
-          throw new SemanticException("FETCH FIRST WITH TIES clause requires ORDER BY");
+          throw new SemanticException(
+              DataNodeQueryMessages.FETCH_FIRST_WITH_TIES_CLAUSE_REQUIRES_ORDER_BY);
         }
       }
 
@@ -922,6 +1010,8 @@ public class StatementAnalyzer {
               .build();
 
       analysis.setScope(node, queryScope);
+      hasFillInParentScope = originalHasFillInParentScope;
+      hasDiffFunctionInParentScope = originalHasDiffFunctionInParentScope;
       return queryScope;
     }
 
@@ -956,7 +1046,7 @@ public class StatementAnalyzer {
 
         boolean isRecursive = false;
         if (with.isRecursive()) {
-          throw new SemanticException("recursive cte is not supported yet.");
+          throw new SemanticException(DataNodeQueryMessages.RECURSIVE_CTE_IS_NOT_SUPPORTED_YET);
         }
 
         if (!isRecursive) {
@@ -982,14 +1072,15 @@ public class StatementAnalyzer {
     private boolean tryProcessRecursiveQuery(
         WithQuery withQuery, String name, Scope.Builder withScopeBuilder) {
       if (!withQuery.getColumnNames().isPresent()) {
-        throw new SemanticException("missing column aliases in recursive WITH query");
+        throw new SemanticException(
+            DataNodeQueryMessages.MISSING_COLUMN_ALIASES_IN_RECURSIVE_WITH_QUERY);
       }
       preOrder(withQuery.getQuery())
           .filter(child -> child instanceof With && ((With) child).isRecursive())
           .findFirst()
           .ifPresent(
               child -> {
-                throw new SemanticException("nested recursive WITH query");
+                throw new SemanticException(DataNodeQueryMessages.NESTED_RECURSIVE_WITH_QUERY);
               });
       // if RECURSIVE is specified, all queries in the WITH list are considered potentially
       // recursive
@@ -1144,18 +1235,24 @@ public class StatementAnalyzer {
           statementAnalyzerFactory.createStatementAnalyzer(
               analysis, queryContext, sessionContext, warningCollector, CorrelationSupport.ALLOWED);
       analyzer.hasFillInParentScope = hasFillInParentScope;
+      analyzer.hasDiffFunctionInParentScope = hasDiffFunctionInParentScope;
       Scope queryScope =
           analyzer.analyze(
               node.getQuery(),
-              scope.orElseThrow(() -> new NoSuchElementException("No value present")));
+              scope.orElseThrow(
+                  () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT)));
       return createAndAssignScope(node, scope, queryScope.getRelationType());
     }
 
     @Override
     public Scope visitQuerySpecification(QuerySpecification node, Optional<Scope> scope) {
+      boolean originalHasFillInParentScope = hasFillInParentScope;
+      boolean originalHasDiffFunctionInParentScope = hasDiffFunctionInParentScope;
       // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER BY expressions
       // to pass down to analyzeFrom
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
+      hasDiffFunctionInParentScope =
+          containsDiffFunctionInQuerySpecification(node) || hasDiffFunctionInParentScope;
 
       Scope sourceScope = analyzeFrom(node, scope);
       analyzeWindowDefinitions(node, sourceScope);
@@ -1163,9 +1260,10 @@ public class StatementAnalyzer {
 
       node.getWhere().ifPresent(where -> analyzeWhere(node, sourceScope, where));
 
-      List<Expression> outputExpressions = analyzeSelect(node, sourceScope);
+      SelectAnalysis selectAnalysis = analyzeSelect(node, sourceScope);
+      List<Expression> outputExpressions = selectAnalysis.getOutputExpressions();
       Analysis.GroupingSetAnalysis groupByAnalysis =
-          analyzeGroupBy(node, sourceScope, outputExpressions);
+          analyzeGroupBy(node, sourceScope, outputExpressions, selectAnalysis.getAliases());
       analyzeHaving(node, sourceScope);
 
       Scope outputScope = computeAndAssignOutputScope(node, scope, sourceScope);
@@ -1183,12 +1281,15 @@ public class StatementAnalyzer {
         OrderBy orderBy = node.getOrderBy().get();
         orderByScope = Optional.of(computeAndAssignOrderByScope(orderBy, sourceScope, outputScope));
 
-        orderByExpressions = analyzeOrderBy(node, orderBy.getSortItems(), orderByScope.get());
+        orderByExpressions =
+            analyzeOrderBy(
+                node, orderBy.getSortItems(), orderByScope.get(), selectAnalysis.getAliases());
 
         if ((sourceScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
             && !node.getOffset().isPresent()
-            && !hasFillInParentScope) {
+            && !hasFillInParentScope
+            && !hasDiffFunctionInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(orderBy);
           warningCollector.add(
@@ -1204,7 +1305,8 @@ public class StatementAnalyzer {
       if (node.getLimit().isPresent()) {
         boolean requiresOrderBy = analyzeLimit(node.getLimit().get(), outputScope);
         if (requiresOrderBy && !node.getOrderBy().isPresent()) {
-          throw new SemanticException("FETCH FIRST WITH TIES clause requires ORDER BY");
+          throw new SemanticException(
+              DataNodeQueryMessages.FETCH_FIRST_WITH_TIES_CLAUSE_REQUIRES_ORDER_BY);
         }
       }
 
@@ -1246,9 +1348,12 @@ public class StatementAnalyzer {
             orderByExpressions,
             outputExpressions,
             sourceScope,
-            orderByScope.orElseThrow(() -> new NoSuchElementException("No value present")));
+            orderByScope.orElseThrow(
+                () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT)));
       }
 
+      hasFillInParentScope = originalHasFillInParentScope;
+      hasDiffFunctionInParentScope = originalHasDiffFunctionInParentScope;
       return outputScope;
     }
 
@@ -1299,6 +1404,37 @@ public class StatementAnalyzer {
       }
 
       return windowFunctions;
+    }
+
+    // cover case: (query1) UNION (query2) order by ...
+    private boolean containsDiffFunctionInQuery(Query node) {
+      return getSortItemsFromOrderBy(node.getOrderBy()).stream()
+          .map(SortItem::getSortKey)
+          .anyMatch(expression -> containsDiffFunction(expression));
+    }
+
+    private boolean containsDiffFunctionInQuerySpecification(QuerySpecification node) {
+      for (SelectItem selectItem : node.getSelect().getSelectItems()) {
+        if (selectItem instanceof AllColumns) {
+          Optional<Expression> target = ((AllColumns) selectItem).getTarget();
+          if (target.isPresent() && containsDiffFunction(target.get())) {
+            return true;
+          }
+        } else if (selectItem instanceof SingleColumn
+            && containsDiffFunction(((SingleColumn) selectItem).getExpression())) {
+          return true;
+        }
+      }
+
+      if (node.getWhere().isPresent() && containsDiffFunction(node.getWhere().get())) {
+        return true;
+      }
+      if (node.getHaving().isPresent() && containsDiffFunction(node.getHaving().get())) {
+        return true;
+      }
+      return getSortItemsFromOrderBy(node.getOrderBy()).stream()
+          .map(SortItem::getSortKey)
+          .anyMatch(expression -> containsDiffFunction(expression));
     }
 
     private void resolveFunctionCallAndMeasureWindows(QuerySpecification querySpecification) {
@@ -1476,7 +1612,8 @@ public class StatementAnalyzer {
         ExpandColumnsVisitor visitor = new ExpandColumnsVisitor(null);
         List<Expression> expandedExpressions = visitor.process(predicate, scope);
         if (expandedExpressions.isEmpty()) {
-          throw new IllegalStateException("There is at least one result of expanded");
+          throw new IllegalStateException(
+              DataNodeQueryMessages.THERE_IS_AT_LEAST_ONE_RESULT_OF_EXPANDED);
         }
         if (expandedExpressions.size() >= 2) {
           predicate = new LogicalExpression(LogicalExpression.Operator.AND, expandedExpressions);
@@ -1502,15 +1639,18 @@ public class StatementAnalyzer {
       analysis.setWhere(node, predicate);
     }
 
-    private List<Expression> analyzeSelect(QuerySpecification node, Scope scope) {
+    private SelectAnalysis analyzeSelect(QuerySpecification node, Scope scope) {
       ImmutableList.Builder<Expression> outputExpressionBuilder = ImmutableList.builder();
       ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder =
           ImmutableList.builder();
+      ImmutableList.Builder<SelectAlias> selectAliasBuilder = ImmutableList.builder();
 
+      int outputPosition = 1;
       for (SelectItem item : node.getSelect().getSelectItems()) {
         if (item instanceof AllColumns) {
-          analyzeSelectAllColumns(
-              (AllColumns) item, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+          outputPosition +=
+              analyzeSelectAllColumns(
+                  (AllColumns) item, node, scope, outputExpressionBuilder, selectExpressionBuilder);
         } else if (item instanceof SingleColumn) {
           SingleColumn singleColumn = (SingleColumn) item;
           Expression selectExpression = singleColumn.getExpression();
@@ -1519,17 +1659,24 @@ public class StatementAnalyzer {
                 new ExpandColumnsVisitor(singleColumn.getAlias().orElse(null));
             List<Expression> expandedExpressions = visitor.process(selectExpression, scope);
             if (expandedExpressions.isEmpty()) {
-              throw new IllegalStateException("There is at least one result of expanded");
+              throw new IllegalStateException(
+                  DataNodeQueryMessages.THERE_IS_AT_LEAST_ONE_RESULT_OF_EXPANDED);
             }
             singleColumn.setExpandedExpressions(expandedExpressions);
             singleColumn.setAccordingColumnName(visitor.getAccordingColumnNames());
             for (Expression expression : expandedExpressions) {
               analyzeSelectSingleColumn(
                   expression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+              outputPosition++;
             }
           } else {
             analyzeSelectSingleColumn(
                 selectExpression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+            if (singleColumn.getAlias().isPresent()) {
+              Identifier alias = singleColumn.getAlias().get();
+              selectAliasBuilder.add(new SelectAlias(alias.getCanonicalValue(), outputPosition));
+            }
+            outputPosition++;
           }
         } else {
           throw new IllegalArgumentException(
@@ -1542,7 +1689,7 @@ public class StatementAnalyzer {
         analysis.setContainsSelectDistinct();
       }
 
-      return outputExpressionBuilder.build();
+      return new SelectAnalysis(outputExpressionBuilder.build(), selectAliasBuilder.build());
     }
 
     /**
@@ -1608,7 +1755,8 @@ public class StatementAnalyzer {
         if (node.getChildren().isEmpty()) {
           return Collections.singletonList(node);
         }
-        throw new UnsupportedOperationException("UnSupported Expression: " + node);
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_EXPRESSION_2 + node);
       }
 
       @Override
@@ -1622,9 +1770,10 @@ public class StatementAnalyzer {
         List<Field> fields = filterInaccessibleFields(requestedFields);
         if (fields.isEmpty()) {
           if (!requestedFields.isEmpty()) {
-            throw new SemanticException("Relation not found or not allowed");
+            throw new SemanticException(DataNodeQueryMessages.RELATION_NOT_FOUND_OR_NOT_ALLOWED);
           }
-          throw new SemanticException("COLUMNS not allowed for relation that has no columns");
+          throw new SemanticException(
+              DataNodeQueryMessages.COLUMNS_NOT_ALLOWED_FOR_RELATION_THAT_HAS_NO);
         }
 
         ImmutableList.Builder<Expression> matchedColumns = ImmutableList.builder();
@@ -1633,7 +1782,7 @@ public class StatementAnalyzer {
           for (Field field : fields) {
             String columnName = field.getName().orElse(null);
             if (columnName == null) {
-              throw new SemanticException("Unknown ColumnName: " + field);
+              throw new SemanticException(DataNodeQueryMessages.UNKNOWN_COLUMNNAME + field);
             }
             matchedColumns.add(new Identifier(columnName));
             outputColumnNames.add(alias == null ? columnName : alias.getValue());
@@ -1643,14 +1792,15 @@ public class StatementAnalyzer {
           try {
             pattern = Pattern.compile(node.getPattern());
           } catch (PatternSyntaxException e) {
-            throw new SemanticException(String.format("Invalid regex '%s'", node.getPattern()));
+            throw new SemanticException(
+                String.format(DataNodeQueryMessages.INVALID_REGEX, node.getPattern()));
           }
           Matcher matcher = pattern.matcher("");
 
           for (Field field : fields) {
             String columnName = field.getName().orElse(null);
             if (columnName == null) {
-              throw new SemanticException("Unknown ColumnName: " + field);
+              throw new SemanticException(DataNodeQueryMessages.UNKNOWN_COLUMNNAME + field);
             }
             matcher.reset(columnName);
             if (matcher.matches()) {
@@ -1853,7 +2003,8 @@ public class StatementAnalyzer {
         if (expandedExpressions == null) {
           return Collections.singletonList(node);
         }
-        throw new SemanticException("Columns are not supported in DereferenceExpression");
+        throw new SemanticException(
+            DataNodeQueryMessages.COLUMNS_ARE_NOT_SUPPORTED_IN_DEREFERENCEEXPRESSION);
       }
 
       @Override
@@ -2340,7 +2491,7 @@ public class StatementAnalyzer {
       }
     }
 
-    private void analyzeSelectAllColumns(
+    private int analyzeSelectAllColumns(
         AllColumns allColumns,
         QuerySpecification node,
         Scope scope,
@@ -2365,22 +2516,28 @@ public class StatementAnalyzer {
             RelationType relationType =
                 identifierChainBasis
                     .getRelationType()
-                    .orElseThrow(() -> new NoSuchElementException("No value present"));
+                    .orElseThrow(
+                        () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT));
             List<Field> requestedFields =
                 relationType.resolveVisibleFieldsWithRelationPrefix(Optional.of(prefix));
             List<Field> fields = filterInaccessibleFields(requestedFields);
             if (fields.isEmpty()) {
               if (!requestedFields.isEmpty()) {
-                throw new SemanticException("Relation not found or not allowed");
+                throw new SemanticException(
+                    DataNodeQueryMessages.RELATION_NOT_FOUND_OR_NOT_ALLOWED);
               }
-              throw new SemanticException("SELECT * not allowed from relation that has no columns");
+              throw new SemanticException(
+                  DataNodeQueryMessages.SELECT_NOT_ALLOWED_FROM_RELATION_THAT_HAS_NO);
             }
             boolean local =
                 scope.isLocalScope(
                     identifierChainBasis
                         .getScope()
-                        .orElseThrow(() -> new NoSuchElementException("No value present")));
-            analyzeAllColumnsFromTable(
+                        .orElseThrow(
+                            () ->
+                                new NoSuchElementException(
+                                    DataNodeQueryMessages.NO_VALUE_PRESENT)));
+            return analyzeAllColumnsFromTable(
                 fields,
                 allColumns,
                 node,
@@ -2389,7 +2546,6 @@ public class StatementAnalyzer {
                 selectExpressionBuilder,
                 relationType,
                 local);
-            return;
           }
         }
         // identifierChainBasis.get().getBasisType == FIELD or target expression isn't a
@@ -2402,22 +2558,24 @@ public class StatementAnalyzer {
       } else {
         // analyze AllColumns without target expression ('*')
         if (!allColumns.getAliases().isEmpty()) {
-          throw new SemanticException("Column aliases not supported");
+          throw new SemanticException(DataNodeQueryMessages.COLUMN_ALIASES_NOT_SUPPORTED);
         }
 
         List<Field> requestedFields = (List<Field>) scope.getRelationType().getVisibleFields();
         List<Field> fields = filterInaccessibleFields(requestedFields);
         if (fields.isEmpty()) {
           if (!node.getFrom().isPresent()) {
-            throw new SemanticException("SELECT * not allowed in queries without FROM clause");
+            throw new SemanticException(
+                DataNodeQueryMessages.SELECT_NOT_ALLOWED_IN_QUERIES_WITHOUT_FROM_CLAUSE);
           }
           if (!requestedFields.isEmpty()) {
-            throw new SemanticException("Relation not found or not allowed");
+            throw new SemanticException(DataNodeQueryMessages.RELATION_NOT_FOUND_OR_NOT_ALLOWED);
           }
-          throw new SemanticException("SELECT * not allowed from relation that has no columns");
+          throw new SemanticException(
+              DataNodeQueryMessages.SELECT_NOT_ALLOWED_FROM_RELATION_THAT_HAS_NO);
         }
 
-        analyzeAllColumnsFromTable(
+        return analyzeAllColumnsFromTable(
             fields,
             allColumns,
             node,
@@ -2470,7 +2628,7 @@ public class StatementAnalyzer {
       return fields.stream().filter(accessibleFields.build()::contains).collect(toImmutableList());
     }
 
-    private void analyzeAllColumnsFromTable(
+    private int analyzeAllColumnsFromTable(
         List<Field> fields,
         AllColumns allColumns,
         QuerySpecification node,
@@ -2531,6 +2689,7 @@ public class StatementAnalyzer {
         }
       }
       analysis.setSelectAllResultFields(allColumns, itemOutputFieldBuilder.build());
+      return fields.size();
     }
 
     //    private void analyzeAllFieldsFromRowTypeExpression(
@@ -2601,7 +2760,10 @@ public class StatementAnalyzer {
     }
 
     private Analysis.GroupingSetAnalysis analyzeGroupBy(
-        QuerySpecification node, Scope scope, List<Expression> outputExpressions) {
+        QuerySpecification node,
+        Scope scope,
+        List<Expression> outputExpressions,
+        List<SelectAlias> selectAliases) {
       if (node.getGroupBy().isPresent()) {
         ImmutableList.Builder<List<Set<FieldId>>> cubes = ImmutableList.builder();
         ImmutableList.Builder<List<Set<FieldId>>> rollups = ImmutableList.builder();
@@ -2626,6 +2788,7 @@ public class StatementAnalyzer {
                 column = outputExpressions.get(toIntExact(ordinal - 1));
                 verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
               } else {
+                column = resolveGroupBySelectAlias(column, scope, outputExpressions, selectAliases);
                 verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
                 analyzeExpression(column, scope);
               }
@@ -2640,7 +2803,8 @@ public class StatementAnalyzer {
 
               if (isDateBinGapFill(column)) {
                 if (gapFillColumn != null) {
-                  throw new SemanticException("multiple date_bin_gapfill calls not allowed");
+                  throw new SemanticException(
+                      DataNodeQueryMessages.MULTIPLE_DATE_BIN_GAPFILL_CALLS_NOT_ALLOWED);
                 }
                 gapFillColumn = (FunctionCall) column;
               } else {
@@ -2651,13 +2815,18 @@ public class StatementAnalyzer {
             }
           } else if (groupingElement instanceof GroupingSets) {
             GroupingSets element = (GroupingSets) groupingElement;
+            Map<NodeRef<Expression>, Expression> resolvedGroupingColumns = new HashMap<>();
             for (Expression column : groupingElement.getExpressions()) {
+              Expression originalColumn = column;
+              column = resolveGroupBySelectAlias(column, scope, outputExpressions, selectAliases);
+              verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
               analyzeExpression(column, scope);
               if (!analysis.getColumnReferences().contains(NodeRef.of(column))) {
                 throw new SemanticException(
                     String.format("GROUP BY expression must be a column reference: %s", column));
               }
 
+              resolvedGroupingColumns.put(NodeRef.of(originalColumn), column);
               groupingExpressions.add(column);
             }
 
@@ -2666,6 +2835,11 @@ public class StatementAnalyzer {
                     .map(
                         set ->
                             set.stream()
+                                .map(
+                                    expression ->
+                                        requireNonNull(
+                                            resolvedGroupingColumns.get(NodeRef.of(expression)),
+                                            "resolved grouping expression is null"))
                                 .map(NodeRef::of)
                                 .map(analysis.getColumnReferenceFields()::get)
                                 .map(ResolvedField::getFieldId)
@@ -2724,6 +2898,25 @@ public class StatementAnalyzer {
       }
 
       return result;
+    }
+
+    private Expression resolveGroupBySelectAlias(
+        Expression expression,
+        Scope scope,
+        List<Expression> outputExpressions,
+        List<SelectAlias> selectAliases) {
+      if (!(expression instanceof Identifier)) {
+        return expression;
+      }
+
+      Identifier identifier = (Identifier) expression;
+      if (resolvesToInputColumn(scope, identifier)) {
+        return expression;
+      }
+
+      return resolveSelectAlias(identifier, selectAliases)
+          .map(alias -> outputExpressions.get(alias.getPosition() - 1))
+          .orElse(expression);
     }
 
     private boolean isDateBinGapFill(Expression column) {
@@ -2894,7 +3087,9 @@ public class StatementAnalyzer {
                         new Analysis.SourceColumn(
                             originTable.get(),
                             originColumn.orElseThrow(
-                                () -> new NoSuchElementException("No value present")))));
+                                () ->
+                                    new NoSuchElementException(
+                                        DataNodeQueryMessages.NO_VALUE_PRESENT)))));
               } else {
                 analysis.addSourceColumns(
                     newField, analysis.getExpressionSourceColumns(expression));
@@ -2952,7 +3147,9 @@ public class StatementAnalyzer {
                     new Analysis.SourceColumn(
                         originTable.get(),
                         originColumn.orElseThrow(
-                            () -> new NoSuchElementException("No value present")))));
+                            () ->
+                                new NoSuchElementException(
+                                    DataNodeQueryMessages.NO_VALUE_PRESENT)))));
           } else {
             analysis.addSourceColumns(newField, analysis.getExpressionSourceColumns(expression));
           }
@@ -3452,7 +3649,8 @@ public class StatementAnalyzer {
       // pattern recognition output must have at least 1 column
       List<Field> outputFields = outputFieldsBuilder.build();
       if (outputFields.isEmpty()) {
-        throw new SemanticException("pattern recognition output table has no columns");
+        throw new SemanticException(
+            DataNodeQueryMessages.PATTERN_RECOGNITION_OUTPUT_TABLE_HAS_NO_COLUMNS);
       }
 
       return createAndAssignScope(relation, scope, outputFields);
@@ -3762,7 +3960,7 @@ public class StatementAnalyzer {
 
     private void joinConditionCheck(JoinCriteria criteria) {
       if (criteria instanceof NaturalJoin) {
-        throw new SemanticException("Natural join not supported");
+        throw new SemanticException(DataNodeQueryMessages.NATURAL_JOIN_NOT_SUPPORTED);
       }
     }
 
@@ -3886,6 +4084,28 @@ public class StatementAnalyzer {
         fillAnalysis =
             new Analysis.PreviousFillAnalysis(
                 node.getTimeBound().orElse(null), timeColumn, groupingKeys);
+      } else if (node.getFillMethod() == FillPolicy.NEXT) {
+        FieldReference timeColumn = null;
+        List<FieldReference> groupingKeys = null;
+        if (node.getTimeBound().isPresent() || node.getFillGroupingElements().isPresent()) {
+          timeColumn = getHelperColumn(node, scope, FillPolicy.NEXT);
+          ExpressionAnalyzer.analyzeExpression(
+              metadata,
+              queryContext,
+              sessionContext,
+              statementAnalyzerFactory,
+              accessControl,
+              scope,
+              analysis,
+              timeColumn,
+              WarningCollector.NOOP,
+              correlationSupport);
+
+          groupingKeys = analyzeFillGroup(node, scope, FillPolicy.NEXT);
+        }
+        fillAnalysis =
+            new Analysis.NextFillAnalysis(
+                node.getTimeBound().orElse(null), timeColumn, groupingKeys);
       } else if (node.getFillMethod() == FillPolicy.CONSTANT) {
         Literal literal = node.getFillValue().get();
         ExpressionAnalyzer.analyzeExpression(
@@ -3916,7 +4136,8 @@ public class StatementAnalyzer {
         List<FieldReference> groupingKeys = analyzeFillGroup(node, scope, FillPolicy.LINEAR);
         fillAnalysis = new Analysis.LinearFillAnalysis(helperColumn, groupingKeys);
       } else {
-        throw new IllegalArgumentException("Unknown fill method: " + node.getFillMethod());
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.UNKNOWN_FILL_METHOD + node.getFillMethod());
       }
 
       analysis.setFill(node, fillAnalysis);
@@ -4015,7 +4236,7 @@ public class StatementAnalyzer {
     }
 
     private List<Expression> analyzeOrderBy(
-        Node node, List<SortItem> sortItems, Scope orderByScope) {
+        Node node, List<SortItem> sortItems, Scope orderByScope, List<SelectAlias> selectAliases) {
       ImmutableList.Builder<Expression> orderByFieldsBuilder = ImmutableList.builder();
 
       for (SortItem item : sortItems) {
@@ -4031,6 +4252,11 @@ public class StatementAnalyzer {
           }
 
           expression = new FieldReference(toIntExact(ordinal - 1));
+        } else {
+          Optional<SelectAlias> selectAlias = resolveOrderBySelectAlias(expression, selectAliases);
+          if (selectAlias.isPresent()) {
+            expression = new FieldReference(selectAlias.get().getPosition() - 1);
+          }
         }
 
         ExpressionAnalysis expressionAnalysis =
@@ -4059,6 +4285,15 @@ public class StatementAnalyzer {
       }
 
       return orderByFieldsBuilder.build();
+    }
+
+    private Optional<SelectAlias> resolveOrderBySelectAlias(
+        Expression expression, List<SelectAlias> selectAliases) {
+      if (!(expression instanceof Identifier)) {
+        return Optional.empty();
+      }
+
+      return resolveSelectAlias((Identifier) expression, selectAliases);
     }
 
     private void analyzeOffset(Offset node, Scope scope) {
@@ -4202,7 +4437,8 @@ public class StatementAnalyzer {
           verifyOrderByAggregations(
               distinctGroupingColumns,
               sourceScope,
-              orderByScope.orElseThrow(() -> new NoSuchElementException("No value present")),
+              orderByScope.orElseThrow(
+                  () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT)),
               orderByExpressions,
               analysis);
         }
@@ -4314,7 +4550,8 @@ public class StatementAnalyzer {
                     .findFirst()
                     .ifPresent(
                         reference -> {
-                          throw new SemanticException("recursive reference in INTERSECT ALL");
+                          throw new SemanticException(
+                              DataNodeQueryMessages.RECURSIVE_REFERENCE_IN_INTERSECT_ALL);
                         });
               });
 
@@ -4416,7 +4653,10 @@ public class StatementAnalyzer {
                 canonicalizationAwareKey(
                     dereferenceExpression
                         .getField()
-                        .orElseThrow(() -> new NoSuchElementException("No value present"))));
+                        .orElseThrow(
+                            () ->
+                                new NoSuchElementException(
+                                    DataNodeQueryMessages.NO_VALUE_PRESENT))));
           }
         } else if (item instanceof AllColumns) {
           AllColumns allColumns = (AllColumns) item;
@@ -4442,7 +4682,8 @@ public class StatementAnalyzer {
       for (final Property property : properties) {
         final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
         if (!TABLE_ALLOWED_PROPERTIES.contains(key)) {
-          throw new SemanticException("Table property " + key + " is currently not allowed.");
+          throw new SemanticException(
+              DataNodeQueryMessages.TABLE_PROPERTY_2 + key + " is currently not allowed.");
         }
         if (!propertyNames.add(key)) {
           throw new SemanticException(
@@ -4617,7 +4858,7 @@ public class StatementAnalyzer {
       final String tableName = node.getTableName();
 
       if (Objects.isNull(database)) {
-        throw new SemanticException("The database must be set.");
+        throw new SemanticException(DataNodeQueryMessages.THE_DATABASE_MUST_BE_SET);
       }
 
       if (!metadata.tableExists(new QualifiedObjectName(database, tableName))) {
@@ -4745,6 +4986,11 @@ public class StatementAnalyzer {
     }
 
     @Override
+    public Scope visitAlterTopic(AlterTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
     public Scope visitDropTopic(DropTopic node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
@@ -4791,7 +5037,7 @@ public class StatementAnalyzer {
 
       // At most one table argument can be passed to a table function now
       if (argumentsAnalysis.getTableArgumentAnalyses().size() > 1) {
-        throw new SemanticException("At most one table argument can be passed to a table function");
+        throw new SemanticException(DataNodeQueryMessages.AT_MOST_ONE_TABLE_ARGUMENT_CAN_BE_PASSED);
       }
 
       // validate the required input columns
@@ -4869,7 +5115,7 @@ public class StatementAnalyzer {
                             UDFDataTypeTransformer.transformUDFDataTypeToReadType(f.getType());
                         if (type == ObjectType.OBJECT) {
                           throw new SemanticException(
-                              "OBJECT type is not supported as return type");
+                              DataNodeQueryMessages.OBJECT_TYPE_IS_NOT_SUPPORTED_AS_RETURN_TYPE);
                         }
                         return Field.newUnqualified(f.getName(), type, TsTableColumnCategory.FIELD);
                       })
@@ -4893,7 +5139,8 @@ public class StatementAnalyzer {
         Scope argumentScope = analysis.getScope(argument.getRelation());
         if (argument.isPassThroughColumns()) {
           argumentScope.getRelationType().getAllFields().forEach(fields::add);
-        } else if (argument.getPartitionBy().isPresent()) {
+        } else if (!TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)
+            && argument.getPartitionBy().isPresent()) {
           argument.getPartitionBy().get().stream()
               .map(expression -> validateAndGetInputField(expression, argumentScope))
               .forEach(fields::add);
@@ -4985,7 +5232,8 @@ public class StatementAnalyzer {
                 String.format("Unexpected argument name: %s", argument.getName().get().getValue()));
           }
           if (!uniqueArgumentNames.add(argumentName)) {
-            throw new SemanticException(String.format("Duplicate argument name: %s", argumentName));
+            throw new SemanticException(
+                String.format(DataNodeQueryMessages.DUPLICATE_ARGUMENT_NAME, argumentName));
           }
           ParameterSpecification parameterSpecification =
               argumentSpecificationsByName.remove(argumentName);
@@ -5022,7 +5270,147 @@ public class StatementAnalyzer {
               analyzeDefault(parameterSpecification, errorLocation));
         }
       }
+      tryAppendM4ModeArgument(functionName, arguments, parameterSpecifications, passedArguments);
       return new ArgumentsAnalysis(passedArguments.buildOrThrow(), tableArgumentAnalyses.build());
+    }
+
+    private void tryAppendM4ModeArgument(
+        String functionName,
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        ImmutableMap.Builder<String, Argument> passedArguments) {
+      if (!TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)) {
+        return;
+      }
+
+      TableFunctionArgument sizeArgument =
+          findTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.SIZE_PARAMETER_NAME);
+      if (!(sizeArgument.getValue() instanceof Expression)) {
+        throw new SemanticException(
+            String.format(
+                "Invalid argument %s. Expected scalar argument",
+                M4TableFunction.SIZE_PARAMETER_NAME));
+      }
+
+      boolean isTimeWindow = sizeArgument.getValue() instanceof TimeDurationLiteral;
+      Optional<TableFunctionArgument> slideArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.SLIDE_PARAMETER_NAME);
+      if (slideArgument.isPresent()) {
+        if (!(slideArgument.get().getValue() instanceof Expression)) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid argument %s. Expected scalar argument",
+                  M4TableFunction.SLIDE_PARAMETER_NAME));
+        }
+        boolean isTimeSlide = slideArgument.get().getValue() instanceof TimeDurationLiteral;
+        if (isTimeWindow != isTimeSlide) {
+          throw new SemanticException(
+              "The SLIDE argument must have the same window mode as the SIZE argument.");
+        }
+      }
+      if (!isTimeWindow
+          && containsTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.ORIGIN_PARAMETER_NAME)) {
+        throw new SemanticException("The ORIGIN argument is only supported in time window mode.");
+      }
+      validateM4OrderBySortOrder(arguments, parameterSpecifications);
+      passedArguments.put(
+          M4TableFunction.WINDOW_MODE_PARAMETER_NAME,
+          new ScalarArgument(org.apache.iotdb.udf.api.type.Type.BOOLEAN, isTimeWindow));
+    }
+
+    private void validateM4OrderBySortOrder(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications) {
+      Optional<TableFunctionArgument> dataArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.DATA_PARAMETER_NAME);
+      if (!dataArgument.isPresent()
+          || !(dataArgument.get().getValue() instanceof TableFunctionTableArgument)) {
+        return;
+      }
+
+      Optional<OrderBy> orderBy =
+          ((TableFunctionTableArgument) dataArgument.get().getValue()).getOrderBy();
+      if (!orderBy.isPresent()) {
+        return;
+      }
+
+      for (SortItem sortItem : orderBy.get().getSortItems()) {
+        if (sortItem.getOrdering() != SortItem.Ordering.ASCENDING) {
+          throw new SemanticException(
+              "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+        }
+      }
+    }
+
+    private boolean containsTableFunctionArgument(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        String argumentName) {
+      return findOptionalTableFunctionArgument(arguments, parameterSpecifications, argumentName)
+          .isPresent();
+    }
+
+    private Optional<TableFunctionArgument> findOptionalTableFunctionArgument(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        String argumentName) {
+      boolean argumentsPassedByName =
+          arguments.stream().allMatch(argument -> argument.getName().isPresent());
+      if (argumentsPassedByName) {
+        return arguments.stream()
+            .filter(
+                argument ->
+                    argumentName.equalsIgnoreCase(argument.getName().get().getCanonicalValue()))
+            .findFirst();
+      }
+
+      for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
+        if (argumentName.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
+          if (i >= arguments.size()) {
+            return Optional.empty();
+          }
+          return Optional.of(arguments.get(i));
+        }
+      }
+      return Optional.empty();
+    }
+
+    private TableFunctionArgument findTableFunctionArgument(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        String argumentName) {
+      if (arguments.isEmpty()) {
+        throw new IllegalStateException("Arguments should never be empty when resolving M4 mode");
+      }
+
+      boolean argumentsPassedByName =
+          arguments.stream().allMatch(argument -> argument.getName().isPresent());
+      if (argumentsPassedByName) {
+        return arguments.stream()
+            .filter(
+                argument ->
+                    argumentName.equalsIgnoreCase(argument.getName().get().getCanonicalValue()))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        String.format("Missing required argument: %s", argumentName)));
+      }
+
+      for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
+        if (argumentName.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
+          if (i >= arguments.size()) {
+            throw new IllegalStateException(
+                String.format("Missing required argument: %s", argumentName));
+          }
+          return arguments.get(i);
+        }
+      }
+      throw new IllegalStateException(String.format("Unknown argument: %s", argumentName));
     }
 
     // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
@@ -5077,7 +5465,8 @@ public class StatementAnalyzer {
         List<TableFunctionArgument> arguments, String timeColumn) {
       if (timeColumn == null || timeColumn.isEmpty()) {
         throw new SemanticException(
-            String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+            String.format(
+                QueryMessages.PARAM_SHOULD_NOT_BE_NULL_OR_EMPTY_DOT, TIMECOL_PARAMETER_NAME));
       }
       for (TableFunctionArgument argument : arguments) {
         if (argument.getValue() instanceof TableFunctionTableArgument) {
@@ -5261,7 +5650,8 @@ public class StatementAnalyzer {
         Expression expression, ScalarParameterSpecification argumentSpecification) {
       if (expression instanceof TimeDurationLiteral) {
         if (((TimeDurationLiteral) expression).getValue().monthDuration != 0) {
-          throw new SemanticException("Setting monthly intervals is not supported.");
+          throw new SemanticException(
+              DataNodeQueryMessages.SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED);
         }
       }
 
@@ -5356,7 +5746,11 @@ public class StatementAnalyzer {
   }
 
   static void verifyNoAggregateWindowOrGroupingFunctions(Expression predicate, String clause) {
-    List<FunctionCall> aggregates = extractAggregateFunctions(ImmutableList.of(predicate));
+    List<FunctionCall> aggregates =
+        ImmutableList.<FunctionCall>builder()
+            .addAll(extractAggregateFunctions(ImmutableList.of(predicate)))
+            .addAll(extractWindowFunctions(ImmutableList.of(predicate)))
+            .build();
 
     if (!aggregates.isEmpty()) {
       throw new SemanticException(

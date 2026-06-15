@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
@@ -119,7 +120,8 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   @Override
   public void addStatistics(Statistics[] statistics) {
     // UDAF not support calculate from statistics now
-    throw new UnsupportedOperationException("UDAF not support calculate from statistics now");
+    throw new UnsupportedOperationException(
+        CalcMessages.UDAF_NOT_SUPPORT_CALCULATE_FROM_STATISTICS);
   }
 
   @Override
@@ -130,7 +132,8 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   @Override
   public void removeInput(Column[] arguments) {
     if (!analysis.isRemovable()) {
-      throw new UnsupportedOperationException("This Accumulator does not support removing inputs!");
+      throw new UnsupportedOperationException(
+          CalcMessages.THIS_ACCUMULATOR_DOES_NOT_SUPPORT_REMOVING_INPUTS);
     }
     RecordIterator iterator =
         new RecordIterator(

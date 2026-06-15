@@ -25,8 +25,11 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
@@ -67,7 +70,7 @@ public class ConfigNodeDescriptor {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } catch (Exception e) {
-      LOGGER.error("Failed to update config file", e);
+      LOGGER.error(ConfigNodeMessages.FAILED_TO_UPDATE_CONFIG_FILE, e);
     }
   }
 
@@ -113,7 +116,7 @@ public class ConfigNodeDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
-      LOGGER.warn("get url failed", e);
+      LOGGER.warn(ConfigNodeMessages.GET_URL_FAILED, e);
       return null;
     }
   }
@@ -123,11 +126,12 @@ public class ConfigNodeDescriptor {
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
-        LOGGER.info("start reading ConfigNode conf file: {}", url);
+        LOGGER.info(ConfigNodeMessages.START_READING_CONFIGNODE_CONF_FILE, url);
         trimProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         loadProperties(trimProperties);
       } catch (IOException | BadNodeUrlException e) {
-        LOGGER.error("Couldn't load ConfigNode conf file, reject ConfigNode startup.", e);
+        LOGGER.error(
+            ConfigNodeMessages.COULDN_T_LOAD_CONFIGNODE_CONF_FILE_REJECT_CONFIGNODE_STARTUP, e);
         System.exit(-1);
       } finally {
         conf.updatePath();
@@ -141,7 +145,7 @@ public class ConfigNodeDescriptor {
       }
     } else {
       LOGGER.warn(
-          "Couldn't load the configuration {} from any of the known sources.",
+          ConfigNodeMessages.COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN,
           CommonConfig.SYSTEM_CONFIG_NAME);
     }
   }
@@ -166,10 +170,7 @@ public class ConfigNodeDescriptor {
     String seedConfigNode = properties.getProperty(IoTDBConstant.CN_SEED_CONFIG_NODE, null);
     if (seedConfigNode == null) {
       seedConfigNode = properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
-      LOGGER.warn(
-          "The parameter cn_target_config_node_list has been abandoned, "
-              + "only the first ConfigNode address will be used to join in the cluster. "
-              + "Please use cn_seed_config_node instead.");
+      LOGGER.warn(ConfigNodeMessages.THE_PARAMETER_CN_TARGET_CONFIG_NODE_LIST_HAS_BEEN_ABANDONED);
     }
     if (seedConfigNode != null) {
       conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(seedConfigNode).get(0));
@@ -317,9 +318,7 @@ public class ConfigNodeDescriptor {
       conf.setFailureDetector(failureDetector);
     } else {
       throw new IOException(
-          String.format(
-              "Unknown failure_detector: %s, " + "please set to \"fixed\" or \"phi_accrual\"",
-              failureDetector));
+          String.format(ConfigNodeMessages.UNKNOWN_FAILURE_DETECTOR, failureDetector));
     }
 
     conf.setFailureDetectorFixedThresholdInMs(
@@ -372,15 +371,13 @@ public class ConfigNodeDescriptor {
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());
     if (AbstractLeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
-        || AbstractLeaderBalancer.CFD_POLICY.equals(leaderDistributionPolicy)
+        || AbstractLeaderBalancer.CFS_POLICY.equals(leaderDistributionPolicy)
         || AbstractLeaderBalancer.HASH_POLICY.equals(leaderDistributionPolicy)) {
       conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
       throw new IOException(
           String.format(
-              "Unknown leader_distribution_policy: %s, "
-                  + "please set to \"GREEDY\" or \"CFD\" or \"HASH\"",
-              leaderDistributionPolicy));
+              ConfigNodeMessages.UNKNOWN_LEADER_DISTRIBUTION_POLICY, leaderDistributionPolicy));
     }
 
     conf.setEnableAutoLeaderBalanceForRatisConsensus(
@@ -403,8 +400,7 @@ public class ConfigNodeDescriptor {
     } else {
       throw new IOException(
           String.format(
-              "Unknown route_priority_policy: %s, please set to \"LEADER\" or \"GREEDY\"",
-              routePriorityPolicy));
+              ConfigNodeMessages.UNKNOWN_ROUTE_PRIORITY_POLICY_PLEASE_SET_TO, routePriorityPolicy));
     }
 
     String readConsistencyLevel =
@@ -414,7 +410,7 @@ public class ConfigNodeDescriptor {
     } else {
       throw new IOException(
           String.format(
-              "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+              ConfigNodeMessages.UNKNOWN_READ_CONSISTENCY_LEVEL_PLEASE_SET_TO,
               readConsistencyLevel));
     }
 
@@ -635,6 +631,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "config_node_ratis_max_retry_attempts",
                 String.valueOf(conf.getConfigNodeRatisMaxRetryAttempts()))));
+    conf.setConfigNodeRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "config_node_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getConfigNodeRatisReconfigurationMaxRetryAttempts()))));
     conf.setConfigNodeRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -651,6 +652,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "data_region_ratis_max_retry_attempts",
                 String.valueOf(conf.getDataRegionRatisMaxRetryAttempts()))));
+    conf.setDataRegionRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_region_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getDataRegionRatisReconfigurationMaxRetryAttempts()))));
     conf.setDataRegionRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -667,6 +673,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_region_ratis_max_retry_attempts",
                 String.valueOf(conf.getSchemaRegionRatisMaxRetryAttempts()))));
+    conf.setSchemaRegionRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_region_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getSchemaRegionRatisReconfigurationMaxRetryAttempts()))));
     conf.setSchemaRegionRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -770,8 +781,7 @@ public class ConfigNodeDescriptor {
                 "continuous_query_submit_thread_count", String.valueOf(conf.getCqSubmitThread())));
     if (cqSubmitThread <= 0) {
       LOGGER.warn(
-          "continuous_query_submit_thread should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
+          ConfigNodeMessages.CONTINUOUS_QUERY_SUBMIT_THREAD_SHOULD_BE_GREATER_THAN_0,
           cqSubmitThread,
           conf.getCqSubmitThread());
       cqSubmitThread = conf.getCqSubmitThread();
@@ -785,8 +795,7 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getCqMinEveryIntervalInMs())));
     if (cqMinEveryIntervalInMs <= 0) {
       LOGGER.warn(
-          "continuous_query_min_every_interval_in_ms should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
+          ConfigNodeMessages.CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER,
           cqMinEveryIntervalInMs,
           conf.getCqMinEveryIntervalInMs());
       cqMinEveryIntervalInMs = conf.getCqMinEveryIntervalInMs();
@@ -811,17 +820,26 @@ public class ConfigNodeDescriptor {
                       Collections.singletonList(conf.getSeedConfigNode().getIp()))))
           && conf.getInternalPort() == conf.getSeedConfigNode().getPort();
     } catch (UnknownHostException e) {
-      LOGGER.warn("Unknown host when checking seed configNode IP {}", conf.getInternalAddress(), e);
+      LOGGER.warn(
+          ConfigNodeMessages.UNKNOWN_HOST_WHEN_CHECKING_SEED_CONFIGNODE_IP,
+          conf.getInternalAddress(),
+          e);
       return false;
     }
   }
 
-  public void loadHotModifiedProps(TrimProperties properties) {
+  public void loadHotModifiedProps(TrimProperties properties) throws IOException {
     ConfigurationFileUtils.updateAppliedProperties(properties, true);
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
     Optional.ofNullable(properties.getProperty("enable_topology_probing"))
         .ifPresent(v -> conf.setEnableTopologyProbing(Boolean.parseBoolean(v)));
+    loadPipeHotModifiedProp(properties);
+  }
+
+  private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
+    PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
+    PipePeriodicalLogReducer.update();
   }
 
   public static ConfigNodeDescriptor getInstance() {

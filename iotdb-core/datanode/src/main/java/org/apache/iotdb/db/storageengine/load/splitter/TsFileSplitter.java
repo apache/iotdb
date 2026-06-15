@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 
@@ -166,6 +167,12 @@ public class TsFileSplitter {
     isAligned =
         ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
             == TsFileConstant.TIME_COLUMN_MASK);
+    if (isAligned) {
+      pageIndex2Times = new HashMap<>();
+      pageIndex2ChunkData = new HashMap<>();
+      isTimeChunkNeedDecode = true;
+    }
+
     IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
     // When loading TsFile with Chunk in data zone but no matched ChunkMetadata
     // at the end of file, this Chunk needs to be skipped.
@@ -359,9 +366,6 @@ public class TsFileSplitter {
     pageIndex2TimesList.add(pageIndex2Times);
     pageIndex2ChunkDataList.add(pageIndex2ChunkData);
     isTimeChunkNeedDecodeList.add(isTimeChunkNeedDecode);
-    pageIndex2Times = new HashMap<>();
-    pageIndex2ChunkData = new HashMap<>();
-    isTimeChunkNeedDecode = true;
   }
 
   private void switchToTimeChunkContextOfCurrentMeasurement(
@@ -385,7 +389,7 @@ public class TsFileSplitter {
   private boolean checkMagic(TsFileSequenceReader reader) throws IOException {
     String magic = reader.readHeadMagic();
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
-      logger.error("the file's MAGIC STRING is incorrect, file path: {}", reader.getFileName());
+      logger.error(StorageEngineMessages.FILE_MAGIC_STRING_INCORRECT, reader.getFileName());
       return false;
     }
 
@@ -395,7 +399,7 @@ public class TsFileSplitter {
         logger.info(
             "try to load TsFile V3 into current version (V4), file path: {}", reader.getFileName());
       } else {
-        logger.error("the file's Version Number is too old, file path: {}", reader.getFileName());
+        logger.error(StorageEngineMessages.FILE_VERSION_TOO_OLD, reader.getFileName());
         return false;
       }
     } else if (versionNumber > TSFileConfig.VERSION_NUMBER) {
@@ -405,7 +409,7 @@ public class TsFileSplitter {
     }
 
     if (!reader.readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
-      logger.error("the file is not closed correctly, file path: {}", reader.getFileName());
+      logger.error(StorageEngineMessages.FILE_NOT_CLOSED_CORRECTLY, reader.getFileName());
       return false;
     }
     return true;

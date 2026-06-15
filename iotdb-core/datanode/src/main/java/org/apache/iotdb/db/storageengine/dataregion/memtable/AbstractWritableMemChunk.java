@@ -37,6 +37,9 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -210,8 +213,9 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
     /*
      * Concurrency background:
      *
-     * A query may start earlier and record the current row count (rows) of the TVList as its visible range.
-     *  After that, new unseq writes may arrive and immediately trigger a flush, which will sort the TVList.
+     * A query may start earlier and record the current row count (rows) of the TVList as its
+     * visible range. After that, new unseq writes may arrive and immediately trigger a flush, which
+     * will sort the TVList.
      *
      * During sorting, the underlying indices array of the TVList may be reordered.
      * If the query continues to use the previously recorded rows as its upper bound,
@@ -223,6 +227,9 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
      * To avoid this issue, when there are active queries on the working TVList, we must
      * clone the times and indices before sorting, so that the flush sort does not mutate
      * the data structures that concurrent queries rely on.
+     *
+     * Flushing-memtable queries may also reuse workingListForFlush instead of the original working
+     * TVList for the same reason.
      */
     boolean needCloneTimesAndIndicesInWorkingTVList;
     workingList.lockQueryList();
@@ -232,7 +239,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
       workingList.unlockQueryList();
     }
     workingListForFlush =
-        needCloneTimesAndIndicesInWorkingTVList ? workingList.cloneForFlushSort() : workingList;
+        initWorkingListForFlushIfNecessary(workingList, needCloneTimesAndIndicesInWorkingTVList);
     workingListForFlush.sort();
   }
 
@@ -274,4 +281,27 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract void setEncryptParameter(EncryptParameter encryptParameter);
+
+  protected static byte[] serializeSchemaToWALBytes(IMeasurementSchema schema) {
+    try {
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream(schema.serializedSize());
+      schema.serializeTo(outputStream);
+      return outputStream.toByteArray();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  protected static int getSerializedSchemaSize(IMeasurementSchema schema) {
+    return serializeSchemaToWALBytes(schema).length;
+  }
+
+  public synchronized TVList initWorkingListForFlushIfNecessary(
+      TVList workingList, boolean needCloneTimesAndIndicesInWorkingTVList) {
+    if (workingListForFlush == null) {
+      workingListForFlush =
+          needCloneTimesAndIndicesInWorkingTVList ? workingList.cloneForFlushSort() : workingList;
+    }
+    return workingListForFlush;
+  }
 }

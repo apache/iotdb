@@ -25,12 +25,15 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecog
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.CommonQuerySqlFormatter;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
@@ -133,7 +136,13 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
 
   @Override
   public Void visitShowDB(ShowDB node, Integer indent) {
-    builder.append("SHOW DATABASE");
+    builder.append("SHOW DATABASES");
+    return null;
+  }
+
+  @Override
+  public Void visitCountDB(CountDB node, Integer indent) {
+    builder.append("COUNT DATABASES");
     return null;
   }
 
@@ -260,7 +269,8 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
                   if (element != null) {
                     return elementIndent + formatColumnDefinition(element);
                   }
-                  throw new UnsupportedOperationException("unknown table element: " + element);
+                  throw new UnsupportedOperationException(
+                      DataNodeQueryMessages.UNKNOWN_TABLE_ELEMENT + element);
                 })
             .collect(joining(",\n"));
     builder.append(columnList);
@@ -294,7 +304,8 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
                   if (element != null) {
                     return elementIndent + formatColumnDefinition(element);
                   }
-                  throw new UnsupportedOperationException("unknown table element: " + element);
+                  throw new UnsupportedOperationException(
+                      DataNodeQueryMessages.UNKNOWN_TABLE_ELEMENT + element);
                 })
             .collect(joining(",\n"));
     builder.append(columnList);
@@ -348,7 +359,7 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
     builder.append("ALTER ");
     switch (type) {
       case TABLE:
-        builder.append("TABLE ");
+        builder.append(DataNodeQueryMessages.TABLE_2);
       case MATERIALIZED_VIEW:
         builder.append("MATERIALIZED VIEW ");
       case TREE_VIEW:
@@ -757,6 +768,31 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
                   .collect(joining(", " + "\n")))
           .append(")\n");
     }
+
+    return null;
+  }
+
+  @Override
+  public Void visitAlterTopic(AlterTopic node, Integer context) {
+    builder.append("ALTER TOPIC ");
+    builder.append(node.getTopicName());
+    builder.append(" \n");
+
+    builder
+        .append("WITH (")
+        .append("\n")
+        .append(
+            node.getTopicAttributes().entrySet().stream()
+                .map(
+                    entry ->
+                        indentString(1)
+                            + "\""
+                            + entry.getKey()
+                            + "\" = \""
+                            + entry.getValue()
+                            + "\"")
+                .collect(joining(", " + "\n")))
+        .append(")\n");
 
     return null;
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
@@ -37,7 +38,7 @@ public class Util {
   public static final String MS_PRECISION = "ms";
 
   private Util() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(LibraryUdfMessages.UTILITY_CLASS);
   }
 
   /**
@@ -74,7 +75,7 @@ public class Util {
           throw new NoNumberException();
       }
     } catch (IOException e) {
-      throw new IOException("Fail to get data type in row " + row.getTime(), e);
+      throw new IOException(LibraryUdfMessages.FAIL_TO_GET_DATA_TYPE_IN_ROW + row.getTime(), e);
     }
     return ans;
   }

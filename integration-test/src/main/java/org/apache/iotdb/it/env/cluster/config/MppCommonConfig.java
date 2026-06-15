@@ -204,6 +204,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy) {
+    setProperty("region_group_allocate_policy", regionGroupAllocatePolicy);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     setProperty("schema_region_group_extension_policy", schemaRegionGroupExtensionPolicy);
     return this;
@@ -382,6 +388,27 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "config_node_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "schema_region_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "data_region_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
     return this;
@@ -472,6 +499,21 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
+      long subscriptionOwnerLeaseDurationMsMin) {
+    setProperty(
+        "subscription_owner_lease_duration_ms_min",
+        String.valueOf(subscriptionOwnerLeaseDurationMsMin));
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     setProperty("pipe_air_gap_receiver_enabled", String.valueOf(isPipeAirGapReceiverEnabled));
     return this;
@@ -493,6 +535,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
     setProperty("tag_attribute_total_size", String.valueOf(tagAttributeTotalSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    setProperty(
+        "single_measurement_check_cache_size", String.valueOf(singleMeasurementCheckCacheSize));
     return this;
   }
 
@@ -532,7 +581,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes) {
     setProperty(
-        "pipe_connector_request_slice_threshold_bytes",
+        "pipe_sink_request_slice_threshold_bytes",
         String.valueOf(pipeConnectorRequestSliceThresholdBytes));
 
     return this;
