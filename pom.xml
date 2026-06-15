@@ -27,6 +27,16 @@
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
+        <repository>
+            <id>apache-iotdb-1191</id>
+            <url>https://repository.apache.org/content/repositories/orgapacheiotdb-1191/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
     </repositories>
     <parent>
         <groupId>org.apache</groupId>
@@ -88,7 +98,7 @@
       This is the version of the thrift binary, that we release separately from here:
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
-        <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
+        <iotdb-tools-thrift.version>0.23.0.0</iotdb-tools-thrift.version>
         <jackson.version>2.18.6</jackson.version>
         <jakarta.annotation-api.version>3.0.0</jakarta.annotation-api.version>
         <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
@@ -142,13 +152,7 @@
         <swagger.version>2.2.50</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
-        <!--
-      Thrift 0.17.0 was the last version that could be used in Java 8 applications,
-      However Thrift 0.17.0 has an invalid entry in the META-INF/MANIFEST.mf file.
-      All versions between 0.17.0 and 0.14.1 have know vulnerabilities, so for now
-      we'll stay at 0.14.1.
-    -->
-        <thrift.version>0.14.1</thrift.version>
+        <thrift.version>0.23.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
         <tsfile.version>2.3.2-260608-SNAPSHOT</tsfile.version>
