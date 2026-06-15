@@ -19,14 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.CommonQuerySqlFormatter;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
@@ -37,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateLogicalView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -86,11 +91,12 @@ import com.google.common.base.Joiner;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import static java.util.stream.Collectors.joining;
 
-public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
+public class DataNodeSqlFormatter extends CommonQuerySqlFormatter
     implements AstVisitor<Void, Integer> {
 
   public static String formatDataNodeSql(Node root) {
@@ -99,8 +105,39 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
     return builder.toString();
   }
 
-  private DataNodeSqlFormatter(StringBuilder builder) {
+  public static String formatQualifiedViewSql(Query query, Analysis analysis) {
+    StringBuilder builder = new StringBuilder();
+    new QualifiedViewSqlFormatter(builder, analysis).process(query, 0);
+    return builder.toString();
+  }
+
+  protected DataNodeSqlFormatter(StringBuilder builder) {
     super(builder);
+  }
+
+  private static final class QualifiedViewSqlFormatter extends DataNodeSqlFormatter {
+    private final Analysis analysis;
+
+    private QualifiedViewSqlFormatter(StringBuilder builder, Analysis analysis) {
+      super(builder);
+      this.analysis = analysis;
+    }
+
+    @Override
+    public Void visitTable(Table node, Integer indent) {
+      if (node.getName().getOriginalParts().size() == 1) {
+        Optional<QualifiedObjectName> resolvedName = analysis.getResolvedTableName(node);
+        if (resolvedName.isPresent()) {
+          builder.append(
+              formatName(
+                  QualifiedName.of(
+                      resolvedName.get().getDatabaseName(), resolvedName.get().getObjectName())));
+          return null;
+        }
+      }
+      builder.append(formatName(node.getName()));
+      return null;
+    }
   }
 
   @Override
@@ -343,6 +380,44 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
     builder.append(formatPropertiesMultiLine(node.getProperties()));
     builder.append(" AS ").append(node.getPrefixPath().toString());
 
+    return null;
+  }
+
+  @Override
+  public Void visitCreateLogicalView(CreateLogicalView node, Integer indent) {
+    builder.append("CREATE ");
+    if (node.isReplace()) {
+      builder.append("OR REPLACE ");
+    }
+    builder.append("VIEW ");
+    String tableName = CommonQuerySqlFormatter.formatName(node.getName());
+    builder.append(tableName);
+
+    if (!node.getElements().isEmpty()) {
+      builder.append(" (\n");
+      String elementIndent = indentString(indent + 1);
+      String columnList =
+          node.getElements().stream()
+              .map(
+                  element -> {
+                    if (element != null) {
+                      return elementIndent + formatColumnDefinition(element);
+                    }
+                    throw new UnsupportedOperationException(
+                        DataNodeQueryMessages.UNKNOWN_TABLE_ELEMENT + element);
+                  })
+              .collect(joining(",\n"));
+      builder.append(columnList);
+      builder.append("\n").append(")");
+    }
+
+    if (Objects.nonNull(node.getComment())) {
+      builder.append(" COMMENT '").append(node.getComment()).append("'");
+    }
+
+    builder.append(formatPropertiesMultiLine(node.getProperties()));
+    builder.append(" AS ");
+    builder.append(formatDataNodeSql(node.getQuery()));
     return null;
   }
 

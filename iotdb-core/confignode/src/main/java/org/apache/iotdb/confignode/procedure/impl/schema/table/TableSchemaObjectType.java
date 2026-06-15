@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.TableType;
 public enum TableSchemaObjectType {
   TABLE(Boolean.FALSE),
   VIEW(Boolean.TRUE),
+  SQL_LOGICAL_VIEW(Boolean.TRUE),
   WRITABLE_VIEW(null);
 
   private final Boolean clusterSchemaViewFlag;
@@ -42,6 +43,8 @@ public enum TableSchemaObjectType {
         return TableType.BASE_TABLE;
       case VIEW:
         return TableType.VIEW_FROM_TREE;
+      case SQL_LOGICAL_VIEW:
+        return TableType.VIEW;
       case WRITABLE_VIEW:
         return TableType.WRITABLE_VIEW;
       default:

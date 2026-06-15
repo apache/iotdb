@@ -135,9 +135,13 @@ public class TsTable {
   }
 
   public int getType() {
-    return TreeViewSchema.isTreeViewTable(this)
-        ? TableType.VIEW_FROM_TREE.ordinal()
-        : TableType.BASE_TABLE.ordinal();
+    if (SqlViewSchema.isSqlViewTable(this)) {
+      return TableType.VIEW.ordinal();
+    }
+    if (TreeViewSchema.isTreeViewTable(this)) {
+      return TableType.VIEW_FROM_TREE.ordinal();
+    }
+    return TableType.BASE_TABLE.ordinal();
   }
 
   /**

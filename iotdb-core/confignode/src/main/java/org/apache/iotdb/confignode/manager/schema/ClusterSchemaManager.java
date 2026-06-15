@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -1812,14 +1813,17 @@ public class ClusterSchemaManager {
       final String database, final TsTable table, final TableType tableType) {
     switch (Objects.requireNonNull(tableType, "tableType cannot be null")) {
       case BASE_TABLE:
-        if (TreeViewSchema.isTreeViewTable(table)) {
+        if (TreeViewSchema.isTreeViewTable(table) || SqlViewSchema.isSqlViewTable(table)) {
           return Optional.of(
               new Pair<>(
                   RpcUtils.getStatus(
                       TSStatusCode.SEMANTIC_ERROR,
                       String.format(
-                          "Table '%s.%s' is a tree view table, does not support alter table",
-                          database, table.getTableName())),
+                          TreeViewSchema.isTreeViewTable(table)
+                              ? "Table '%s.%s' is a tree view table, does not support alter table"
+                              : "Table '%s.%s' is a view table, does not support alter table",
+                          database,
+                          table.getTableName())),
                   null));
         }
         return Optional.empty();
@@ -1831,6 +1835,18 @@ public class ClusterSchemaManager {
                       TSStatusCode.SEMANTIC_ERROR,
                       String.format(
                           "Table '%s.%s' is a base table, does not support alter view",
+                          database, table.getTableName())),
+                  null));
+        }
+        return Optional.empty();
+      case VIEW:
+        if (!SqlViewSchema.isSqlViewTable(table)) {
+          return Optional.of(
+              new Pair<>(
+                  RpcUtils.getStatus(
+                      TSStatusCode.SEMANTIC_ERROR,
+                      String.format(
+                          "Table '%s.%s' is not a SQL logical view",
                           database, table.getTableName())),
                   null));
         }

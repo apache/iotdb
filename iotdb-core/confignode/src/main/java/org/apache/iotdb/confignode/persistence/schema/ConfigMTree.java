@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -744,8 +745,9 @@ public class ConfigMTree {
   }
 
   private boolean isViewTypeEquals(final TsTable table1, final TsTable table2) {
-    return TreeViewSchema.isTreeViewTable(table1) && TreeViewSchema.isTreeViewTable(table2)
-        || table1 instanceof WritableView && table2 instanceof WritableView;
+    return (TreeViewSchema.isTreeViewTable(table1) && TreeViewSchema.isTreeViewTable(table2))
+        || (table1 instanceof WritableView && table2 instanceof WritableView)
+        || (SqlViewSchema.isSqlViewTable(table1) && SqlViewSchema.isSqlViewTable(table2));
   }
 
   public void rollbackCreateTable(final PartialPath database, final String tableName)

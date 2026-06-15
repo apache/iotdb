@@ -37,7 +37,7 @@ public final class ViewTableUtils {
   }
 
   public static boolean isView(final TsTable table) {
-    return isWritableView(table) || isTreeView(table);
+    return isWritableView(table) || isTreeView(table) || SqlViewSchema.isSqlViewTable(table);
   }
 
   public static boolean isBaseTable(final TsTable table) {

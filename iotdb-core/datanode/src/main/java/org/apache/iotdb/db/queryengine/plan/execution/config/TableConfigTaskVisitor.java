@@ -44,8 +44,10 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -158,7 +160,12 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Dr
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.CorrelationSupport;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
@@ -176,6 +183,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateLogicalView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
@@ -258,7 +266,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WritableViewColumnDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.DataNodeSqlFormatter;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
@@ -298,6 +308,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
@@ -646,6 +657,80 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     }
     return new CreateTableViewTask(
         databaseTablePair.getRight(), databaseTablePair.getLeft(), node.isReplace());
+  }
+
+  @Override
+  public IConfigTask visitCreateLogicalView(
+      final CreateLogicalView node, final MPPQueryContext context) {
+    final Pair<String, TsTable> databaseTablePair = buildSqlViewTable(node, context);
+    return new CreateTableViewTask(
+        databaseTablePair.getRight(), databaseTablePair.getLeft(), node.isReplace());
+  }
+
+  private Pair<String, TsTable> buildSqlViewTable(
+      final CreateLogicalView node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.OTHER);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+    context.setDatabase(database);
+    accessControl.checkCanCreateTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
+
+    final String sessionDatabase =
+        context
+            .getSession()
+            .getDatabaseName()
+            .orElseThrow(() -> new SemanticException(DATABASE_NOT_SPECIFIED));
+
+    final Query query = node.getQuery();
+    final StatementAnalyzerFactory statementAnalyzerFactory =
+        new StatementAnalyzerFactory(metadata, new SqlParser(), accessControl, typeManager);
+    final Analysis analysis = new Analysis(node, Collections.emptyMap());
+    analysis.setSqlParser(statementAnalyzerFactory.getSqlParser());
+    analysis.setDatabaseName(sessionDatabase);
+    final StatementAnalyzer statementAnalyzer =
+        statementAnalyzerFactory.createStatementAnalyzer(
+            analysis,
+            context,
+            context.getSession(),
+            WarningCollector.NOOP,
+            CorrelationSupport.ALLOWED);
+    statementAnalyzer.analyze(query);
+
+    final RelationType outputDescriptor = analysis.getOutputDescriptor(query);
+    StatementAnalyzer.validateOutputColumnNames(outputDescriptor);
+
+    final List<Field> outputFields =
+        outputDescriptor.getVisibleFields().stream().collect(Collectors.toList());
+    if (outputFields.isEmpty()) {
+      throw new SemanticException("SQL logical view must have at least one output column");
+    }
+
+    final TsTable table = new TsTable(tableName);
+    table.setProps(convertPropertiesToMap(node.getProperties(), false, false));
+    if (Objects.nonNull(node.getComment())) {
+      table.addProp(TsTable.COMMENT_KEY, node.getComment());
+    }
+
+    for (final Field field : outputFields) {
+      addSqlViewColumnFromField(table, field);
+    }
+
+    SqlViewSchema.setQuerySql(table, DataNodeSqlFormatter.formatQualifiedViewSql(query, analysis));
+    SqlViewSchema.setOwner(table, context.getSession().getUserName());
+    return new Pair<>(database, table);
+  }
+
+  private void addSqlViewColumnFromField(final TsTable table, final Field field) {
+    final String columnName =
+        field
+            .getName()
+            .orElseThrow(() -> new SemanticException("View query output must have named columns"));
+    final TsTableColumnSchema schema =
+        TableHeaderSchemaValidator.generateColumnSchema(
+            field.getColumnCategory(), columnName, getTSDataType(field.getType()), null, null);
+    table.addColumnSchema(schema);
   }
 
   private Pair<String, TsTable> parseTable4CreateTableOrView(
@@ -1182,7 +1267,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     new Analyzer(
             context,
             context.getSession(),
-            new StatementAnalyzerFactory(metadata, null, accessControl, typeManager),
+            new StatementAnalyzerFactory(metadata, new SqlParser(), accessControl, typeManager),
             Collections.emptyList(),
             Collections.emptyMap(),
             StatementRewrite.NOOP,

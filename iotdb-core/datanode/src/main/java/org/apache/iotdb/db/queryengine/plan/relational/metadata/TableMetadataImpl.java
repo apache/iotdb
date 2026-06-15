@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundExc
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.ViewTableUtils;
 import org.apache.iotdb.commons.schema.table.WritableView;
@@ -143,6 +144,9 @@ public class TableMetadataImpl implements Metadata {
     } else {
       final List<ColumnSchema> columnSchemaList = toColumnSchemaList(tableColumns);
       tableSchema = new TableSchema(table.getTableName(), columnSchemaList);
+      if (SqlViewSchema.isSqlViewTable(table)) {
+        tableSchema.setProps(table.getProps());
+      }
     }
     return Optional.of(tableSchema);
   }

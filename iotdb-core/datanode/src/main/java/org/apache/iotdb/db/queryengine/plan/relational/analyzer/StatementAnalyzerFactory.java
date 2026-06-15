@@ -42,7 +42,7 @@ public class StatementAnalyzerFactory {
       final AccessControl accessControl,
       final TypeManager typeManager) {
     this.metadata = requireNonNull(metadata, "plannerContext is null");
-    this.sqlParser = sqlParser;
+    this.sqlParser = sqlParser != null ? sqlParser : new SqlParser();
     this.accessControl = requireNonNull(accessControl, "accessControl is null");
     this.typeManager = requireNonNull(typeManager, "typeManager is null");
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
@@ -87,9 +88,11 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -126,6 +129,8 @@ public class Analysis implements IAnalysis {
   private String updateType;
 
   private final Map<NodeRef<Table>, Query> namedQueries = new LinkedHashMap<>();
+
+  private final Deque<QualifiedObjectName> expandingViews = new ArrayDeque<>();
 
   // WITH clause stored during analyze phase. Required for constant folding and CTE materialization
   // subqueries, which cannot directly access the WITH clause
@@ -328,6 +333,21 @@ public class Analysis implements IAnalysis {
     requireNonNull(query, "query is null");
 
     namedQueries.put(NodeRef.of(tableReference), query);
+  }
+
+  public void pushExpandingView(QualifiedObjectName viewName) {
+    if (expandingViews.contains(viewName)) {
+      throw new SemanticException(String.format("View '%s' is recursive", viewName));
+    }
+    expandingViews.push(viewName);
+  }
+
+  public void popExpandingView() {
+    expandingViews.pop();
+  }
+
+  public boolean isExpandingSqlView() {
+    return !expandingViews.isEmpty();
   }
 
   public void registerExpandableQuery(Query query, Node recursiveReference) {
@@ -695,6 +715,14 @@ public class Analysis implements IAnalysis {
 
   public void registerTable(Table table, Optional<TableSchema> handle, QualifiedObjectName name) {
     tables.put(NodeRef.of(table), new TableEntry(handle, name));
+  }
+
+  public Optional<QualifiedObjectName> getResolvedTableName(Table table) {
+    TableEntry entry = tables.get(NodeRef.of(table));
+    if (entry == null) {
+      return Optional.empty();
+    }
+    return Optional.of(entry.getName());
   }
 
   public ResolvedField getResolvedField(Expression expression) {

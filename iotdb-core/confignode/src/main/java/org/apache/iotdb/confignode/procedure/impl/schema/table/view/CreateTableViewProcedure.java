@@ -22,9 +22,11 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.ViewTableUtils;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -73,7 +75,9 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
 
   @Override
   protected TableSchemaObjectType getTableSchemaObjectType() {
-    return TableSchemaObjectType.VIEW;
+    return SqlViewSchema.isSqlViewTable(table)
+        ? TableSchemaObjectType.SQL_LOGICAL_VIEW
+        : TableSchemaObjectType.VIEW;
   }
 
   @Override
@@ -87,7 +91,8 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
                 .getClusterSchemaManager()
                 .getTableAndStatusIfExists(database, table.getTableName());
         if (oldTableAndStatus.isPresent()) {
-          if (!TreeViewSchema.isTreeViewTable(oldTableAndStatus.get().getLeft())) {
+          final TsTable existingView = oldTableAndStatus.get().getLeft();
+          if (!ViewTableUtils.isView(existingView) || ViewTableUtils.isWritableView(existingView)) {
             setFailure(
                 new ProcedureException(
                     new IoTDBException(
@@ -96,7 +101,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
                         TABLE_ALREADY_EXISTS.getStatusCode())));
             return;
           } else {
-            oldView = oldTableAndStatus.get().getLeft();
+            oldView = existingView;
             oldStatus = oldTableAndStatus.get().getRight();
           }
         }
@@ -112,11 +117,13 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
         setFailure(new ProcedureException(e));
       }
     }
-    final TSStatus status =
-        new TreeDeviceViewFieldDetector(env.getConfigManager(), table, null)
-            .detectMissingFieldTypes();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status)));
+    if (TreeViewSchema.isTreeViewTable(table)) {
+      final TSStatus status =
+          new TreeDeviceViewFieldDetector(env.getConfigManager(), table, null)
+              .detectMissingFieldTypes();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        setFailure(new ProcedureException(new IoTDBException(status)));
+      }
     }
   }
 

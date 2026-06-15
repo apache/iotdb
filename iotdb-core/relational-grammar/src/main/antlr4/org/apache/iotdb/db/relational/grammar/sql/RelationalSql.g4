@@ -67,6 +67,7 @@ statement
 
     // Table View Statement
     | createViewStatement
+    | createLogicalViewStatement
     | alterViewStatement
     | dropViewStatement
     | showCreateViewStatement
@@ -312,6 +313,13 @@ createViewStatement
         (RESTRICT)?
         (WITH properties)?
         AS prefixPath
+    ;
+
+createLogicalViewStatement
+    : CREATE (OR REPLACE)? VIEW qualifiedName
+        comment?
+        (WITH properties)?
+        AS query
     ;
 
 viewColumnDefinition

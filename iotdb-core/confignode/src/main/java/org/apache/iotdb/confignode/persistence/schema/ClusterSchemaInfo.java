@@ -1264,7 +1264,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus preDeleteTable(final PreDeleteTablePlan plan) {
     return executeWithLock(
         () -> {
-          final TableType tableType = getTableType(plan);
+          final TableType tableType = resolveTableType(plan);
           tableModelMTree.preDeleteTable(
               getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName(), tableType);
           executeOriginalIfPresent(
@@ -1303,7 +1303,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus setTableComment(final SetTableCommentPlan plan) {
     return executeWithLock(
         () -> {
-          final TableType tableType = getTableType(plan);
+          final TableType tableType = resolveTableType(plan);
           tableModelMTree.setTableComment(
               getQualifiedDatabasePartialPath(plan.getDatabase()),
               plan.getTableName(),
@@ -1677,6 +1677,29 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       info.setOriginalTableName(((WritableView) table).getSourceTableName());
     }
     return info;
+  }
+
+  private TableType resolveTableType(final Object plan) throws MetadataException {
+    String database = null;
+    String tableName = null;
+    if (plan instanceof PreDeleteTablePlan) {
+      final PreDeleteTablePlan preDeletePlan = (PreDeleteTablePlan) plan;
+      database = preDeletePlan.getDatabase();
+      tableName = preDeletePlan.getTableName();
+    } else if (plan instanceof SetTableCommentPlan) {
+      final SetTableCommentPlan commentPlan = (SetTableCommentPlan) plan;
+      database = commentPlan.getDatabase();
+      tableName = commentPlan.getTableName();
+    }
+    if (database != null && tableName != null) {
+      final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
+          tableModelMTree.getTableAndStatusIfExists(
+              getQualifiedDatabasePartialPath(database), tableName);
+      if (tableAndStatus.isPresent()) {
+        return TableType.values()[tableAndStatus.get().getLeft().getType()];
+      }
+    }
+    return getTableType(plan);
   }
 
   private static TableType getTableType(final Object plan) {

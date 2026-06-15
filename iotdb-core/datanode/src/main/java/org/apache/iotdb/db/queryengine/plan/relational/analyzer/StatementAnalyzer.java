@@ -119,6 +119,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -126,6 +127,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
@@ -157,6 +159,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateLogicalView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
@@ -526,6 +529,13 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitCreateView(final CreateView node, final Optional<Scope> context) {
+      validateProperties(node.getProperties(), context);
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    public Scope visitCreateLogicalView(
+        final CreateLogicalView node, final Optional<Scope> context) {
       validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
@@ -3527,7 +3537,9 @@ public class StatementAnalyzer {
       QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
 
       // access control
-      accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name, queryContext);
+      if (!analysis.isExpandingSqlView()) {
+        accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name, queryContext);
+      }
 
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
@@ -3567,6 +3579,11 @@ public class StatementAnalyzer {
         CommonMetadataUtils.throwTableNotExistsException(
             name.getDatabaseName(), name.getObjectName());
       }
+
+      if (SqlViewSchema.isSqlViewTable(tableSchema.get())) {
+        return createScopeForSqlView(table, name, scope, tableSchema.get());
+      }
+
       analysis.addEmptyColumnReferencesForTable(accessControl, sessionContext.getIdentity(), name);
 
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
@@ -3578,6 +3595,102 @@ public class StatementAnalyzer {
       analysis.registerTable(table, tableSchema, name);
 
       return createAndAssignScope(table, scope, relationType);
+    }
+
+    private Scope createScopeForSqlView(
+        Table table, QualifiedObjectName name, Optional<Scope> scope, TableSchema tableSchema) {
+      Statement statement = analysis.getStatement();
+      if (statement instanceof CreateLogicalView) {
+        CreateLogicalView createLogicalViewStatement = (CreateLogicalView) statement;
+        QualifiedObjectName viewNameFromStatement =
+            createQualifiedObjectName(sessionContext, createLogicalViewStatement.getName());
+        if (viewNameFromStatement.equals(name)) {
+          throw new SemanticException("Statement would create a recursive view");
+        }
+      }
+
+      analysis.pushExpandingView(name);
+      try {
+        Query query = parseViewQuery(SqlViewSchema.getQuerySql(tableSchema), name);
+        RelationType descriptor = analyzeViewQuery(query, table);
+        validateSqlViewOutput(tableSchema, descriptor, name);
+
+        List<Field> viewFields = analyzeTableOutputFields(table, name, tableSchema);
+        analysis.registerNamedQuery(table, query);
+        analysis.registerTable(table, Optional.of(tableSchema), name);
+        return createAndAssignScope(table, scope, viewFields);
+      } finally {
+        analysis.popExpandingView();
+      }
+    }
+
+    private Query parseViewQuery(String viewSql, QualifiedObjectName name) {
+      if (viewSql == null || viewSql.isEmpty()) {
+        throw new SemanticException(
+            String.format("Stored view '%s' has empty query definition", name));
+      }
+
+      InternalClientSession parseSession = new InternalClientSession("view-parse");
+      parseSession.setZoneId(sessionContext.getZoneId());
+
+      try {
+        Statement parsed =
+            statementAnalyzerFactory
+                .getSqlParser()
+                .createStatement(viewSql, sessionContext.getZoneId(), parseSession);
+        if (!(parsed instanceof Query)) {
+          throw new SemanticException(
+              String.format("View definition for '%s' must be a query", name));
+        }
+        return (Query) parsed;
+      } catch (SemanticException e) {
+        throw e;
+      } catch (RuntimeException e) {
+        String errorDetail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        throw new SemanticException(
+            String.format("Failed to parse stored view '%s': %s", name, errorDetail));
+      }
+    }
+
+    private RelationType analyzeViewQuery(Query query, Table table) {
+      try {
+        StatementAnalyzer analyzer =
+            statementAnalyzerFactory.createStatementAnalyzer(
+                analysis,
+                queryContext,
+                sessionContext,
+                warningCollector,
+                CorrelationSupport.ALLOWED);
+        Scope queryScope = analyzer.analyze(query);
+        return queryScope.getRelationType();
+      } catch (RuntimeException e) {
+        throw new SemanticException(
+            String.format(
+                "Failed analyzing stored view '%s': %s", table.getName(), e.getMessage()));
+      }
+    }
+
+    private void validateSqlViewOutput(
+        TableSchema tableSchema, RelationType descriptor, QualifiedObjectName name) {
+      List<Field> analyzedFields =
+          descriptor.getVisibleFields().stream().collect(toImmutableList());
+      List<ColumnSchema> declaredColumns = tableSchema.getColumns();
+      if (declaredColumns.size() != analyzedFields.size()) {
+        throw new SemanticException(
+            String.format(
+                "View '%s' is stale or in invalid state: column count mismatch (declared %d, query returns %d)",
+                name, declaredColumns.size(), analyzedFields.size()));
+      }
+      for (int i = 0; i < declaredColumns.size(); i++) {
+        ColumnSchema declaredColumn = declaredColumns.get(i);
+        Field analyzedField = analyzedFields.get(i);
+        if (!declaredColumn.getType().equals(analyzedField.getType())) {
+          throw new SemanticException(
+              String.format(
+                  "View '%s' is stale or in invalid state: column '%s' type mismatch",
+                  name, declaredColumn.getName()));
+        }
+      }
     }
 
     private Optional<TableSchema> reorderTableSchemaColumns(
@@ -4918,24 +5031,7 @@ public class StatementAnalyzer {
     }
 
     private void validateColumns(Statement node, RelationType descriptor) {
-      // verify that all column names are specified and unique
-      // TODO: collect errors and return them all at once
-      Set<String> names = new HashSet<>();
-      for (Field field : descriptor.getVisibleFields()) {
-        String fieldName =
-            field
-                .getName()
-                .orElseThrow(
-                    () ->
-                        new SemanticException(
-                            String.format(
-                                "Column name not specified at position %s",
-                                descriptor.indexOf(field) + 1)));
-        if (!names.add(fieldName)) {
-          throw new SemanticException(
-              String.format("Column name '%s' specified more than once", fieldName));
-        }
-      }
+      validateOutputColumnNames(descriptor);
     }
 
     private void validateColumnAliases(List<Identifier> columnAliases, int sourceColumnSize) {
@@ -5038,11 +5134,14 @@ public class StatementAnalyzer {
     private void analyzeQueryDevice(
         final AbstractQueryDeviceWithCache node, final Optional<Scope> context) {
       node.parseTable(sessionContext);
-      accessControl.checkCanSelectFromTable(
-          sessionContext.getUserName(),
-          node.getAuthorizationTableName()
-              .orElse(new QualifiedObjectName(node.getDatabase(), node.getTableName())),
-          queryContext);
+      // Privilege has been checked when analyze parent sql before fetching schema
+      if (!(node instanceof ShowDevice) || !((ShowDevice) node).isFetchSchema()) {
+        accessControl.checkCanSelectFromTable(
+            sessionContext.getUserName(),
+            node.getAuthorizationTableName()
+                .orElse(new QualifiedObjectName(node.getDatabase(), node.getTableName())),
+            queryContext);
+      }
 
       TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
@@ -6054,6 +6153,27 @@ public class StatementAnalyzer {
           String.format(
               "%s cannot contain aggregations, window functions or grouping operations: %s",
               clause, aggregates));
+    }
+  }
+
+  public static void validateOutputColumnNames(RelationType descriptor) {
+    // verify that all column names are specified and unique
+    // TODO: collect errors and return them all at once
+    Set<String> names = new HashSet<>();
+    for (Field field : descriptor.getVisibleFields()) {
+      String fieldName =
+          field
+              .getName()
+              .orElseThrow(
+                  () ->
+                      new SemanticException(
+                          String.format(
+                              "Column name not specified at position %s",
+                              descriptor.indexOf(field) + 1)));
+      if (!names.add(fieldName)) {
+        throw new SemanticException(
+            String.format("Column name '%s' specified more than once", fieldName));
+      }
     }
   }
 }

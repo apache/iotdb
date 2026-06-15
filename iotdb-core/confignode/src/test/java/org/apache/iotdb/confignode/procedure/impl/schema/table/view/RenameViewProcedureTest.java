@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.TableSchemaObjectType;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.junit.Assert;
@@ -48,5 +49,31 @@ public class RenameViewProcedureTest {
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(renameViewProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void serializeDeserializeSqlLogicalViewTest() throws IOException {
+    final RenameViewProcedure renameViewProcedure =
+        new RenameViewProcedure(
+            "database1",
+            "sql_view",
+            "0",
+            "new_sql_view",
+            false,
+            TableSchemaObjectType.SQL_LOGICAL_VIEW);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    renameViewProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    Assert.assertEquals(ProcedureType.RENAME_VIEW_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final RenameViewProcedure deserializedProcedure = new RenameViewProcedure(false);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(renameViewProcedure, deserializedProcedure);
+    Assert.assertEquals(
+        TableSchemaObjectType.SQL_LOGICAL_VIEW, deserializedProcedure.getTableSchemaObjectType());
   }
 }

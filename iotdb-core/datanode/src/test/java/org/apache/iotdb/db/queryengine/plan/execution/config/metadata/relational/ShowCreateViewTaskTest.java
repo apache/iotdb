@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
@@ -34,6 +35,32 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class ShowCreateViewTaskTest {
+
+  @Test
+  public void testShowCreateSqlViewOmitsColumnList() {
+    final TsTable table = new TsTable("logical_view");
+    SqlViewSchema.setQuerySql(table, "SELECT time, s1 FROM table1");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+    table.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT32));
+
+    final String sql = ShowCreateViewTask.getShowCreateViewSQL(table);
+
+    Assert.assertEquals("CREATE VIEW \"logical_view\" AS SELECT time, s1 FROM table1", sql);
+    Assert.assertFalse(sql.contains("TIMESTAMP"));
+    Assert.assertFalse(sql.contains("FIELD"));
+  }
+
+  @Test
+  public void testShowCreateSqlViewIncludesComment() {
+    final TsTable table = new TsTable("logical_view");
+    SqlViewSchema.setQuerySql(table, "SELECT time FROM table1");
+    table.addProp(TsTable.COMMENT_KEY, "view comment");
+
+    final String sql = ShowCreateViewTask.getShowCreateViewSQL(table);
+
+    Assert.assertEquals(
+        "CREATE VIEW \"logical_view\" COMMENT 'view comment' AS SELECT time FROM table1", sql);
+  }
 
   @Test
   public void testShowCreateWritableViewQuotesSourceTableName() {

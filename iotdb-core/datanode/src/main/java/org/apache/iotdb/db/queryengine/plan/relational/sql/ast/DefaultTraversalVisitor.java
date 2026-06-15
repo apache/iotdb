@@ -510,6 +510,15 @@ public abstract class DefaultTraversalVisitor<C> implements AstVisitor<Void, C> 
   }
 
   @Override
+  public Void visitCreateLogicalView(final CreateLogicalView node, final C context) {
+    for (final Property property : node.getProperties()) {
+      process(property, context);
+    }
+    process(node.getQuery(), context);
+    return null;
+  }
+
+  @Override
   public Void visitCreateWritableView(final CreateWritableView node, final C context) {
     for (final Property property : node.getProperties()) {
       process(property, context);

@@ -32,11 +32,13 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -112,6 +114,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnPr
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.TableSchemaObjectType;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AlterViewColumnDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
@@ -2340,8 +2343,20 @@ public class ProcedureManager {
       procedure =
           new RenameWritableViewProcedure(req.database, req.tableName, req.queryId, newName, false);
     } else if (isView) {
+      TableSchemaObjectType viewObjectType = TableSchemaObjectType.VIEW;
+      try {
+        final Optional<TsTable> tableOptional =
+            configManager.getClusterSchemaManager().getTableIfExists(req.database, req.tableName);
+        if (tableOptional.isPresent() && SqlViewSchema.isSqlViewTable(tableOptional.get())) {
+          viewObjectType = TableSchemaObjectType.SQL_LOGICAL_VIEW;
+        }
+      } catch (final MetadataException e) {
+        return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode()).setMessage(e.getMessage());
+      }
       procedureType = ProcedureType.RENAME_VIEW_PROCEDURE;
-      procedure = new RenameViewProcedure(req.database, req.tableName, req.queryId, newName, false);
+      procedure =
+          new RenameViewProcedure(
+              req.database, req.tableName, req.queryId, newName, false, viewObjectType);
     } else {
       return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
           .setMessage(ProcedureMessages.THE_RENAMING_FOR_BASE_TABLE_IS_CURRENTLY_UNSUPPORTED);

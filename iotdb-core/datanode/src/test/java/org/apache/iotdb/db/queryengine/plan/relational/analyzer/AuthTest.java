@@ -25,12 +25,14 @@ import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TableModelPrivilege;
@@ -279,6 +281,42 @@ public class AuthTest {
   }
 
   @Test
+  public void testSqlLogicalViewQuerySkipsUnderlyingTableSelectPrivilege() {
+    final String viewName = "auth_view";
+    final ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
+    final QualifiedObjectName viewObjectName = new QualifiedObjectName(DB1, viewName);
+
+    Mockito.doNothing()
+        .when(authChecker)
+        .checkTablePrivilege(eq(user1), eq(viewObjectName), eq(TableModelPrivilege.SELECT), any());
+    Mockito.doThrow(
+            new AccessDeniedException(
+                String.format(
+                    "%s doesn't have %s privilege on TABLE %s.%s",
+                    user1, TableModelPrivilege.SELECT, DB1, TABLE1)))
+        .when(authChecker)
+        .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT), any());
+
+    cacheSqlLogicalView(viewName, userRoot);
+    try {
+      analyzeSQL(
+          String.format("SELECT * FROM %s", viewName),
+          user1,
+          authChecker,
+          DB1,
+          new TableMetadataImpl());
+
+      Mockito.verify(authChecker)
+          .checkTablePrivilege(
+              eq(user1), eq(viewObjectName), eq(TableModelPrivilege.SELECT), any());
+      Mockito.verify(authChecker, Mockito.never())
+          .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT), any());
+    } finally {
+      DataNodeTableCache.getInstance().invalid(DB1);
+    }
+  }
+
+  @Test
   public void testInternalWritableViewDeviceFetchUsesViewSelectPrivilege() {
     final ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
     final QualifiedObjectName writableViewName = new QualifiedObjectName(DB1, "writable_view");
@@ -319,6 +357,16 @@ public class AuthTest {
     DataNodeTableCache.getInstance().commitUpdateTable(DB1, TABLE1, null);
   }
 
+  private void cacheSqlLogicalView(final String viewName, final String owner) {
+    cacheTestTable1();
+    final TsTable view = new TsTable(viewName);
+    view.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    SqlViewSchema.setQuerySql(view, String.format("SELECT tag1 FROM %s.%s", DB1, TABLE1));
+    SqlViewSchema.setOwner(view, owner);
+    DataNodeTableCache.getInstance().preUpdateTable(DB1, view, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(DB1, viewName, null);
+  }
+
   private void analyzeSQL(String sql, String userName, ITableAuthChecker authChecker) {
     analyzeSQL(sql, userName, authChecker, null);
   }
@@ -328,6 +376,15 @@ public class AuthTest {
       String userName,
       ITableAuthChecker authChecker,
       String databaseNameInSessionInfo) {
+    analyzeSQL(sql, userName, authChecker, databaseNameInSessionInfo, TEST_MATADATA);
+  }
+
+  private void analyzeSQL(
+      String sql,
+      String userName,
+      ITableAuthChecker authChecker,
+      String databaseNameInSessionInfo,
+      org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata metadata) {
     IClientSession clientSession = Mockito.mock(IClientSession.class);
     Mockito.when(clientSession.getDatabaseName()).thenReturn(databaseNameInSessionInfo);
     Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
@@ -336,7 +393,7 @@ public class AuthTest {
         new SessionInfo(0, userName, zoneId, databaseNameInSessionInfo, SqlDialect.TABLE);
     StatementAnalyzerFactory statementAnalyzerFactory =
         new StatementAnalyzerFactory(
-            TEST_MATADATA,
+            metadata,
             sqlParser,
             new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()),
             new InternalTypeManager());

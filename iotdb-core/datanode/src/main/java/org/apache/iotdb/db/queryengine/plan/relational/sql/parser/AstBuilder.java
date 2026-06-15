@@ -172,6 +172,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateLogicalView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
@@ -527,7 +528,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitShowViewStatement(final RelationalSqlParser.ShowViewStatementContext ctx) {
     final Set<TableType> tableTypeFilter;
     if (Objects.isNull(ctx.viewType)) {
-      tableTypeFilter = EnumSet.of(TableType.VIEW_FROM_TREE, TableType.WRITABLE_VIEW);
+      tableTypeFilter =
+          EnumSet.of(TableType.VIEW_FROM_TREE, TableType.WRITABLE_VIEW, TableType.VIEW);
     } else if (ctx.viewType.getType() == RelationalSqlParser.TREE) {
       tableTypeFilter = EnumSet.of(TableType.VIEW_FROM_TREE);
     } else if (ctx.viewType.getType() == RelationalSqlParser.WRITABLE) {
@@ -722,6 +724,24 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         parsePrefixPath(ctx.prefixPath()),
         Objects.nonNull(ctx.REPLACE()),
         Objects.nonNull(ctx.RESTRICT()));
+  }
+
+  @Override
+  public Node visitCreateLogicalViewStatement(
+      final RelationalSqlParser.CreateLogicalViewStatementContext ctx) {
+    List<Property> properties = ImmutableList.of();
+    if (ctx.properties() != null) {
+      properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
+    }
+    return new CreateLogicalView(
+        getLocation(ctx),
+        getQualifiedName(ctx.qualifiedName()),
+        ImmutableList.of(),
+        null,
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue(),
+        properties,
+        (Query) visit(ctx.query()),
+        Objects.nonNull(ctx.REPLACE()));
   }
 
   @Override

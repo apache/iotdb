@@ -59,6 +59,7 @@ import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
@@ -3124,12 +3125,17 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       final Pair<String, TsTable> databaseTablePair =
           TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
-      return databaseTablePair.getRight() instanceof WritableView
-          ? createWritableView(
-              databaseTablePair,
-              req.isReplace(),
-              req.isSetViewColumnCommentMap() ? req.getViewColumnCommentMap() : null)
-          : createTreeView(databaseTablePair, req.isReplace());
+      final TsTable table = databaseTablePair.getRight();
+      if (table instanceof WritableView) {
+        return createWritableView(
+            databaseTablePair,
+            req.isReplace(),
+            req.isSetViewColumnCommentMap() ? req.getViewColumnCommentMap() : null);
+      }
+      if (SqlViewSchema.isSqlViewTable(table)) {
+        return procedureManager.createTableView(databaseTablePair.left, table, req.isReplace());
+      }
+      return createTreeView(databaseTablePair, req.isReplace());
     } else {
       return status;
     }

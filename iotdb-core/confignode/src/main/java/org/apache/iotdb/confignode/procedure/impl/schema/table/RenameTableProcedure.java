@@ -190,6 +190,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
       final String originalTableName, final String renamedTableName) {
     switch (getTableSchemaObjectType()) {
       case VIEW:
+      case SQL_LOGICAL_VIEW:
         return new RenameViewPlan(database, originalTableName, renamedTableName);
       case WRITABLE_VIEW:
         return new RenameWritableViewPlan(database, originalTableName, renamedTableName);

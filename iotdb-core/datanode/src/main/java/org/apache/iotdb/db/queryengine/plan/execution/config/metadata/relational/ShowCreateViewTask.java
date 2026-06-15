@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
@@ -81,12 +82,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
         .writeBinary(new Binary(table.getTableName(), TSFileConfig.STRING_CHARSET));
     builder
         .getColumnBuilder(1)
-        .writeBinary(
-            new Binary(
-                ViewTableUtils.isWritableView(table)
-                    ? getShowCreateWritableViewSQL((WritableView) table)
-                    : getShowCreateViewSQL(table),
-                TSFileConfig.STRING_CHARSET));
+        .writeBinary(new Binary(getShowCreateViewSQL(table), TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
 
     final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowCreateViewColumnHeader();
@@ -94,6 +90,32 @@ public class ShowCreateViewTask extends AbstractTableTask {
   }
 
   public static String getShowCreateViewSQL(final TsTable table) {
+    if (SqlViewSchema.isSqlViewTable(table)) {
+      return getShowCreateSqlViewSQL(table);
+    }
+    if (ViewTableUtils.isWritableView(table)) {
+      return getShowCreateWritableViewSQL((WritableView) table);
+    }
+    return getShowCreateTreeViewSQL(table);
+  }
+
+  private static String getShowCreateSqlViewSQL(final TsTable table) {
+    final StringBuilder builder =
+        new StringBuilder("CREATE VIEW ").append(getIdentifier(table.getTableName()));
+
+    if (table.getPropValue(TsTable.COMMENT_KEY).isPresent()) {
+      builder.append(" COMMENT ").append(getString(table.getPropValue(TsTable.COMMENT_KEY).get()));
+    }
+
+    builder.append(" AS ").append(toSingleLineSql(SqlViewSchema.getQuerySql(table)));
+    return builder.toString();
+  }
+
+  private static String toSingleLineSql(final String sql) {
+    return sql.trim().replaceAll("\\s+", " ");
+  }
+
+  private static String getShowCreateTreeViewSQL(final TsTable table) {
     final StringBuilder builder =
         new StringBuilder("CREATE VIEW ").append(getIdentifier(table.getTableName())).append(" (");
 

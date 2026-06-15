@@ -91,6 +91,10 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  default R visitCreateLogicalView(final CreateLogicalView node, final C context) {
+    return visitStatement(node, context);
+  }
+
   default R visitProperty(final Property node, final C context) {
     return visitNode(node, context);
   }

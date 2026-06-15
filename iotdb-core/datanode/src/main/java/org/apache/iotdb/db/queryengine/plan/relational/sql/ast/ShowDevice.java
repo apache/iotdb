@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -50,6 +51,7 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
   private static final String DATABASE_HEADER = "__database";
   private Offset offset;
   private Node limit;
+  private final boolean fetchSchema;
 
   public ShowDevice(
       final NodeLocation location,
@@ -60,10 +62,18 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
     super(location, table, rawExpression);
     this.offset = offset;
     this.limit = limit;
+    this.fetchSchema = false;
   }
 
+  @TestOnly
   public ShowDevice(final String database, final String tableName) {
     super(database, tableName);
+    this.fetchSchema = false;
+  }
+
+  public ShowDevice(final String database, final String tableName, final boolean fetchSchema) {
+    super(database, tableName);
+    this.fetchSchema = fetchSchema;
   }
 
   public Offset getOffset() {
@@ -157,5 +167,9 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
         + ramBytesUsedForCommonFields()
         + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset)
         + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit);
+  }
+
+  public boolean isFetchSchema() {
+    return fetchSchema;
   }
 }

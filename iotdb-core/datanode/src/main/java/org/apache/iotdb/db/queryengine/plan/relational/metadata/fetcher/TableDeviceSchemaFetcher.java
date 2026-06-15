@@ -225,7 +225,7 @@ public class TableDeviceSchemaFetcher {
       deviceEntryMap.put(database, new ArrayList<>());
     }
 
-    final ShowDevice statement = new ShowDevice(database, table);
+    final ShowDevice statement = new ShowDevice(database, table, true);
     authorizationTableName.ifPresent(statement::setAuthorizationTableName);
 
     if (parseFilter4TraverseDevice(

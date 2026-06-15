@@ -237,7 +237,7 @@ public class WritableViewStatementTest {
                 "show writable views", ZonedDateTime.now().getOffset(), clientSession);
 
     assertEquals(
-        EnumSet.of(TableType.VIEW_FROM_TREE, TableType.WRITABLE_VIEW),
+        EnumSet.of(TableType.VIEW_FROM_TREE, TableType.WRITABLE_VIEW, TableType.VIEW),
         showView.getTableTypeFilter().get());
     assertEquals(EnumSet.of(TableType.VIEW_FROM_TREE), showTreeView.getTableTypeFilter().get());
     assertEquals(EnumSet.of(TableType.WRITABLE_VIEW), showWritableView.getTableTypeFilter().get());

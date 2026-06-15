@@ -779,7 +779,7 @@ public class TimechoDBAuditLogBasicIT {
               "test",
               "INSERT INTO table1(time, t1, a1, s1) values(...)",
               "User user1 (ID=10000) requests authority on object table1 with result true"),
-          // Select from table, including fetch device
+          // Select from table
           Arrays.asList(
               "node_1",
               "u_10000",
@@ -792,19 +792,6 @@ public class TimechoDBAuditLogBasicIT {
               "true",
               "test",
               "SELECT * FROM table1",
-              "User user1 (ID=10000) requests authority on object table1 with result true"),
-          Arrays.asList(
-              "node_1",
-              "u_10000",
-              "user1",
-              "127.0.0.1",
-              "OBJECT_AUTHENTICATION",
-              "QUERY",
-              "[SELECT]",
-              "OBJECT",
-              "true",
-              "test",
-              "fetch device for query",
               "User user1 (ID=10000) requests authority on object table1 with result true"),
           // Update table
           Arrays.asList(
@@ -984,7 +971,7 @@ public class TimechoDBAuditLogBasicIT {
               "test",
               "INSERT INTO table1(time, t1, a1, s1) values(...)",
               "User user2 (ID=10001) requests authority on object table1 with result false"),
-          // Select from table1, including fetch device
+          // Select from table1
           Arrays.asList(
               "node_1",
               "u_10001",
@@ -997,19 +984,6 @@ public class TimechoDBAuditLogBasicIT {
               "true",
               "test",
               "SELECT * FROM table1",
-              "User user2 (ID=10001) requests authority on object table1 with result true"),
-          Arrays.asList(
-              "node_1",
-              "u_10001",
-              "user2",
-              "127.0.0.1",
-              "OBJECT_AUTHENTICATION",
-              "QUERY",
-              "[SELECT]",
-              "OBJECT",
-              "true",
-              "test",
-              "fetch device for query",
               "User user2 (ID=10001) requests authority on object table1 with result true"),
           // Update table
           Arrays.asList(
