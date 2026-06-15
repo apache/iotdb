@@ -409,10 +409,10 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
       statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
       statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
-      ResultSet resultSetOld = null;
+      List<List<String>> oldTableDescription = null;
       if (Objects.nonNull(schemaList1)) {
         statement.execute(convert2TableSQL(SchemaConfig.TABLE_0, schemaList1, columnCategories));
-        resultSetOld = statement.executeQuery("desc " + SchemaConfig.TABLE_0);
+        oldTableDescription = getTableDescription(statement, SchemaConfig.TABLE_0);
       }
       statement.execute(
           String.format(
@@ -432,21 +432,27 @@ public class IoTDBLoadTsFileIT {
       }
 
       // Time column's difference shall not affect the old column
-      if (Objects.nonNull(resultSetOld)) {
-        try (final ResultSet resultSet = statement.executeQuery("desc " + SchemaConfig.TABLE_0)) {
-          while (resultSet.next() && resultSetOld.next()) {
-            Assert.assertEquals(resultSet.getString(1), resultSetOld.getString(1));
-            Assert.assertEquals(resultSet.getString(2), resultSetOld.getString(2));
-            Assert.assertEquals(resultSet.getString(3), resultSetOld.getString(3));
-          }
-          if (resultSet.next() || resultSetOld.next()) {
-            Assert.fail("The table schema has changed after load.");
-          }
-        }
+      if (Objects.nonNull(oldTableDescription)) {
+        final List<List<String>> newTableDescription =
+            getTableDescription(statement, SchemaConfig.TABLE_0);
+        Assert.assertEquals(
+            "The table schema has changed after load.", oldTableDescription, newTableDescription);
       }
 
       statement.execute(String.format("drop database %s", SchemaConfig.DATABASE_0));
     }
+  }
+
+  private List<List<String>> getTableDescription(final Statement statement, final String tableName)
+      throws Exception {
+    final List<List<String>> tableDescription = new ArrayList<>();
+    try (final ResultSet resultSet = statement.executeQuery("desc " + tableName)) {
+      while (resultSet.next()) {
+        tableDescription.add(
+            Arrays.asList(resultSet.getString(1), resultSet.getString(2), resultSet.getString(3)));
+      }
+    }
+    return tableDescription;
   }
 
   private List<ColumnCategory> generateTabletColumnCategory(final int fieldNum) {
