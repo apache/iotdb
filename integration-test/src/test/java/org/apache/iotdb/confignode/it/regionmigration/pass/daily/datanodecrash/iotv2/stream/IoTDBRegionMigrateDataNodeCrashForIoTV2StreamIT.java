@@ -28,10 +28,9 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
 import org.junit.Before;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-
-// TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
@@ -54,7 +53,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2StreamIT
         .setIoTConsensusV2Mode(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE);
   }
 
-  //  @Test
+  @Test
   public void coordinatorCrashDuringAddPeerTransition() throws Exception {
     failTest(
         2,
@@ -66,7 +65,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2StreamIT
         KillNode.COORDINATOR_DATANODE);
   }
 
-  //  @Test
+  @Test
   public void coordinatorCrashDuringAddPeerDone() throws Exception {
     failTest(
         2,
@@ -82,9 +81,13 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2StreamIT
 
   // region Original DataNode crash tests
 
-  //  @Test
+  @Test
   public void originalCrashDuringAddPeerDone() throws Exception {
-    failTest(
+    // Once the add-peer phase is done, the new peer already holds the data, so the migration is
+    // designed to tolerate the original (source) DataNode crashing afterwards: it completes
+    // successfully and merely leaves the region files on the dead node to be cleaned up later.
+    // Hence this is a successTest, not a failTest.
+    successTest(
         2,
         2,
         1,
@@ -98,7 +101,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2StreamIT
 
   // region Destination DataNode crash tests
 
-  //  @Test
+  @Test
   public void destinationCrashDuringCreateLocalPeer() throws Exception {
     failTest(
         2,
@@ -110,7 +113,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2StreamIT
         KillNode.DESTINATION_DATANODE);
   }
 
-  //  @Test
+  @Test
   public void destinationCrashDuringAddPeerDone() throws Exception {
     failTest(
         2,
