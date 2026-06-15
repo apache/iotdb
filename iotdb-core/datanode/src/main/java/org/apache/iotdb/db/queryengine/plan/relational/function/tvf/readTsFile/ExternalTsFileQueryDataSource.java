@@ -44,6 +44,6 @@ public class ExternalTsFileQueryDataSource extends QueryDataSource {
 
   @Override
   public boolean isEmpty() {
-    return externalTsFileQueryResource.getTsFileResources().isEmpty();
+    return externalTsFileQueryResource.getSharedTsFileResources().isEmpty();
   }
 }

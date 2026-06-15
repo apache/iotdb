@@ -210,6 +210,40 @@ public class IoTDBReadTsFileTableFunctionIT {
   }
 
   @Test
+  public void testReadMultipleTsFilesWithTagSchemaMerge() throws Exception {
+    File tsFile1 = new File(tmpDir, "tag-schema-merge-1.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(tsFile1)) {
+      generateTable(writer, "table1", Arrays.asList("tag1"), Arrays.asList("s1"), 1, 2);
+    }
+    File tsFile2 = new File(tmpDir, "tag-schema-merge-2.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(tsFile2)) {
+      generateTable(writer, "table1", Arrays.asList("tag1", "tag2"), Arrays.asList("s1"), 3, 4);
+    }
+
+    String[] expectedHeader = new String[] {"time", "tag1", "tag2", "s1"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,tag1_1,null,1,",
+          "1970-01-01T00:00:00.002Z,tag1_1,null,2,",
+          "1970-01-01T00:00:00.003Z,tag1_1,tag2_1,3,",
+          "1970-01-01T00:00:00.004Z,tag1_1,tag2_1,4,",
+          "1970-01-01T00:00:00.001Z,tag1_2,null,1,",
+          "1970-01-01T00:00:00.002Z,tag1_2,null,2,",
+          "1970-01-01T00:00:00.003Z,tag1_2,tag2_2,3,",
+          "1970-01-01T00:00:00.004Z,tag1_2,tag2_2,4,",
+        };
+    tableResultSetEqualTest(
+        "SELECT time, tag1, tag2, s1 FROM read_tsfile(PATHS => '"
+            + toSqlPath(tsFile1)
+            + ","
+            + toSqlPath(tsFile2)
+            + "', TABLE_NAME => 'table1') ORDER BY tag1, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testReadMultipleTsFilesWithConflictingFieldType() throws Exception {
     File tsFile1 = new File(tmpDir, "conflict-1.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile1)) {
@@ -263,6 +297,53 @@ public class IoTDBReadTsFileTableFunctionIT {
     tableAssertTestFail(
         "SELECT * FROM read_tsfile(PATHS => '" + toSqlPath(tsFile) + "')",
         "Cannot infer table name from TsFile because multiple tables are found",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testReadSpecifiedInvalidFileFails() throws IOException {
+    File invalidFile = new File(tmpDir, "invalid-file.txt");
+    Files.write(invalidFile.toPath(), new byte[] {1, 2, 3});
+
+    tableAssertTestFail(
+        "SELECT * FROM read_tsfile(PATHS => '" + toSqlPath(invalidFile) + "')",
+        "not a valid TsFile",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testReadDirectoryOnlyScansValidTsFileSuffixFiles() throws Exception {
+    File scanDir = new File(tmpDir, "scan-dir");
+    File nestedDir = new File(scanDir, "nested");
+    Files.createDirectories(nestedDir.toPath());
+
+    File validTsFile = new File(nestedDir, "valid.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(validTsFile)) {
+      generateTable(writer, "table1", Arrays.asList("tag1"), Arrays.asList("s1"), 1, 2);
+    }
+
+    File invalidTsFile = new File(scanDir, "invalid.tsfile");
+    Files.write(invalidTsFile.toPath(), new byte[] {1, 2, 3});
+
+    File validFileWithoutTsFileSuffix = new File(scanDir, "valid.data");
+    try (TsFileWriter writer = new TsFileWriter(validFileWithoutTsFileSuffix)) {
+      generateTable(writer, "table1", Arrays.asList("tag1"), Arrays.asList("s1"), 3, 4);
+    }
+
+    String[] expectedHeader = new String[] {"time", "tag1", "s1"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,tag1_1,1,",
+          "1970-01-01T00:00:00.002Z,tag1_1,2,",
+          "1970-01-01T00:00:00.001Z,tag1_2,1,",
+          "1970-01-01T00:00:00.002Z,tag1_2,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT time, tag1, s1 FROM read_tsfile(PATHS => '"
+            + toSqlPath(scanDir)
+            + "', TABLE_NAME => 'table1') ORDER BY tag1, time",
+        expectedHeader,
+        retArray,
         DATABASE_NAME);
   }
 
@@ -365,12 +446,24 @@ public class IoTDBReadTsFileTableFunctionIT {
     File[] files = tmpDir.listFiles();
     if (files != null) {
       for (File file : files) {
-        try {
-          Files.delete(file.toPath());
-        } catch (IOException ignored) {
-          // ignore
+        deleteRecursively(file);
+      }
+    }
+  }
+
+  private static void deleteRecursively(File file) {
+    if (file.isDirectory()) {
+      File[] children = file.listFiles();
+      if (children != null) {
+        for (File child : children) {
+          deleteRecursively(child);
         }
       }
+    }
+    try {
+      Files.delete(file.toPath());
+    } catch (IOException ignored) {
+      // ignore
     }
   }
 

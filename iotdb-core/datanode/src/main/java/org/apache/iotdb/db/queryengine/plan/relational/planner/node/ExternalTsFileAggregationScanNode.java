@@ -76,7 +76,8 @@ public class ExternalTsFileAggregationScanNode extends AggregationTableScanNode 
         qualifiedObjectName,
         outputSymbols,
         assignments,
-        Lists.transform(deviceEntryIndexes, externalTsFileQueryResource.getDeviceEntries()::get),
+        Lists.transform(
+            deviceEntryIndexes, externalTsFileQueryResource.getSharedDeviceEntries()::get),
         tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,

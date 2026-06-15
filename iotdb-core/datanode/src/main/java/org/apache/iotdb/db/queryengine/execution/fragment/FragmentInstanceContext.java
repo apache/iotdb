@@ -656,7 +656,7 @@ public class FragmentInstanceContext extends QueryContext {
       }
 
       this.sharedQueryDataSource = new ExternalTsFileQueryDataSource(externalTsFileQueryResource);
-      closedUnseqFileNum = externalTsFileQueryResource.getTsFileResources().size();
+      closedUnseqFileNum = externalTsFileQueryResource.getSharedTsFileResources().size();
       return true;
     } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);
