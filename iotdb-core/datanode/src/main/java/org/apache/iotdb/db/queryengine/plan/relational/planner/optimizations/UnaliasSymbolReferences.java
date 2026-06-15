@@ -418,7 +418,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getQueryId(),
               node.getTimeout(),
               node.getOutputSymbols().get(0),
-              newChildPermittedOutputs),
+              newChildPermittedOutputs,
+              node.getOutputFormat()),
           mapping);
     }
 

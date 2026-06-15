@@ -121,6 +121,7 @@ import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -147,6 +148,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseD
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
@@ -365,6 +367,68 @@ public class StatementAnalyzer {
     DELETE,
     UPDATE,
     MERGE,
+  }
+
+  private static final class SelectAnalysis {
+    private final List<Expression> outputExpressions;
+    private final List<SelectAlias> aliases;
+
+    private SelectAnalysis(List<Expression> outputExpressions, List<SelectAlias> aliases) {
+      this.outputExpressions =
+          ImmutableList.copyOf(requireNonNull(outputExpressions, "outputExpressions is null"));
+      this.aliases = ImmutableList.copyOf(requireNonNull(aliases, "aliases is null"));
+    }
+
+    private List<Expression> getOutputExpressions() {
+      return outputExpressions;
+    }
+
+    private List<SelectAlias> getAliases() {
+      return aliases;
+    }
+  }
+
+  private static final class SelectAlias {
+    private final String canonicalName;
+    private final int position;
+
+    private SelectAlias(String canonicalName, int position) {
+      this.canonicalName = requireNonNull(canonicalName, "canonicalName is null");
+      this.position = position;
+    }
+
+    private String getCanonicalName() {
+      return canonicalName;
+    }
+
+    private int getPosition() {
+      return position;
+    }
+  }
+
+  private static boolean resolvesToInputColumn(Scope scope, Identifier identifier) {
+    return scope
+        .tryResolveField(identifier, QualifiedName.of(identifier.getValue()))
+        .filter(ResolvedField::isLocal)
+        .isPresent();
+  }
+
+  private static Optional<SelectAlias> resolveSelectAlias(
+      Identifier identifier, List<SelectAlias> aliases) {
+    List<SelectAlias> matches =
+        aliases.stream()
+            .filter(alias -> alias.getCanonicalName().equals(identifier.getCanonicalValue()))
+            .collect(toImmutableList());
+    if (matches.size() > 1) {
+      throw new SemanticException(
+          String.format(
+              "Column alias '%s' is ambiguous at positions %s",
+              identifier.getValue(),
+              matches.stream()
+                  .map(alias -> Integer.toString(alias.getPosition()))
+                  .collect(Collectors.joining(", "))));
+    }
+    return matches.stream().findFirst();
   }
 
   /**
@@ -864,6 +928,7 @@ public class StatementAnalyzer {
     @Override
     public Scope visitExplain(Explain node, Optional<Scope> context) {
       queryContext.setExplainType(ExplainType.EXPLAIN);
+      queryContext.setExplainOutputFormat(node.getOutputFormat());
       analysis.setFinishQueryAfterAnalyze();
       return visitQuery((Query) node.getStatement(), context);
     }
@@ -880,6 +945,7 @@ public class StatementAnalyzer {
     public Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
       queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
       queryContext.setVerbose(node.isVerbose());
+      queryContext.setExplainOutputFormat(node.getOutputFormat());
       return visitQuery((Query) node.getStatement(), context);
     }
 
@@ -901,7 +967,8 @@ public class StatementAnalyzer {
       List<Expression> orderByExpressions = emptyList();
       if (node.getOrderBy().isPresent()) {
         orderByExpressions =
-            analyzeOrderBy(node, getSortItemsFromOrderBy(node.getOrderBy()), queryBodyScope);
+            analyzeOrderBy(
+                node, getSortItemsFromOrderBy(node.getOrderBy()), queryBodyScope, emptyList());
 
         if ((queryBodyScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
@@ -1193,9 +1260,10 @@ public class StatementAnalyzer {
 
       node.getWhere().ifPresent(where -> analyzeWhere(node, sourceScope, where));
 
-      List<Expression> outputExpressions = analyzeSelect(node, sourceScope);
+      SelectAnalysis selectAnalysis = analyzeSelect(node, sourceScope);
+      List<Expression> outputExpressions = selectAnalysis.getOutputExpressions();
       Analysis.GroupingSetAnalysis groupByAnalysis =
-          analyzeGroupBy(node, sourceScope, outputExpressions);
+          analyzeGroupBy(node, sourceScope, outputExpressions, selectAnalysis.getAliases());
       analyzeHaving(node, sourceScope);
 
       Scope outputScope = computeAndAssignOutputScope(node, scope, sourceScope);
@@ -1213,7 +1281,9 @@ public class StatementAnalyzer {
         OrderBy orderBy = node.getOrderBy().get();
         orderByScope = Optional.of(computeAndAssignOrderByScope(orderBy, sourceScope, outputScope));
 
-        orderByExpressions = analyzeOrderBy(node, orderBy.getSortItems(), orderByScope.get());
+        orderByExpressions =
+            analyzeOrderBy(
+                node, orderBy.getSortItems(), orderByScope.get(), selectAnalysis.getAliases());
 
         if ((sourceScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
@@ -1569,15 +1639,18 @@ public class StatementAnalyzer {
       analysis.setWhere(node, predicate);
     }
 
-    private List<Expression> analyzeSelect(QuerySpecification node, Scope scope) {
+    private SelectAnalysis analyzeSelect(QuerySpecification node, Scope scope) {
       ImmutableList.Builder<Expression> outputExpressionBuilder = ImmutableList.builder();
       ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder =
           ImmutableList.builder();
+      ImmutableList.Builder<SelectAlias> selectAliasBuilder = ImmutableList.builder();
 
+      int outputPosition = 1;
       for (SelectItem item : node.getSelect().getSelectItems()) {
         if (item instanceof AllColumns) {
-          analyzeSelectAllColumns(
-              (AllColumns) item, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+          outputPosition +=
+              analyzeSelectAllColumns(
+                  (AllColumns) item, node, scope, outputExpressionBuilder, selectExpressionBuilder);
         } else if (item instanceof SingleColumn) {
           SingleColumn singleColumn = (SingleColumn) item;
           Expression selectExpression = singleColumn.getExpression();
@@ -1594,10 +1667,16 @@ public class StatementAnalyzer {
             for (Expression expression : expandedExpressions) {
               analyzeSelectSingleColumn(
                   expression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+              outputPosition++;
             }
           } else {
             analyzeSelectSingleColumn(
                 selectExpression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+            if (singleColumn.getAlias().isPresent()) {
+              Identifier alias = singleColumn.getAlias().get();
+              selectAliasBuilder.add(new SelectAlias(alias.getCanonicalValue(), outputPosition));
+            }
+            outputPosition++;
           }
         } else {
           throw new IllegalArgumentException(
@@ -1610,7 +1689,7 @@ public class StatementAnalyzer {
         analysis.setContainsSelectDistinct();
       }
 
-      return outputExpressionBuilder.build();
+      return new SelectAnalysis(outputExpressionBuilder.build(), selectAliasBuilder.build());
     }
 
     /**
@@ -2412,7 +2491,7 @@ public class StatementAnalyzer {
       }
     }
 
-    private void analyzeSelectAllColumns(
+    private int analyzeSelectAllColumns(
         AllColumns allColumns,
         QuerySpecification node,
         Scope scope,
@@ -2458,7 +2537,7 @@ public class StatementAnalyzer {
                             () ->
                                 new NoSuchElementException(
                                     DataNodeQueryMessages.NO_VALUE_PRESENT)));
-            analyzeAllColumnsFromTable(
+            return analyzeAllColumnsFromTable(
                 fields,
                 allColumns,
                 node,
@@ -2467,7 +2546,6 @@ public class StatementAnalyzer {
                 selectExpressionBuilder,
                 relationType,
                 local);
-            return;
           }
         }
         // identifierChainBasis.get().getBasisType == FIELD or target expression isn't a
@@ -2497,7 +2575,7 @@ public class StatementAnalyzer {
               DataNodeQueryMessages.SELECT_NOT_ALLOWED_FROM_RELATION_THAT_HAS_NO);
         }
 
-        analyzeAllColumnsFromTable(
+        return analyzeAllColumnsFromTable(
             fields,
             allColumns,
             node,
@@ -2550,7 +2628,7 @@ public class StatementAnalyzer {
       return fields.stream().filter(accessibleFields.build()::contains).collect(toImmutableList());
     }
 
-    private void analyzeAllColumnsFromTable(
+    private int analyzeAllColumnsFromTable(
         List<Field> fields,
         AllColumns allColumns,
         QuerySpecification node,
@@ -2611,6 +2689,7 @@ public class StatementAnalyzer {
         }
       }
       analysis.setSelectAllResultFields(allColumns, itemOutputFieldBuilder.build());
+      return fields.size();
     }
 
     //    private void analyzeAllFieldsFromRowTypeExpression(
@@ -2681,7 +2760,10 @@ public class StatementAnalyzer {
     }
 
     private Analysis.GroupingSetAnalysis analyzeGroupBy(
-        QuerySpecification node, Scope scope, List<Expression> outputExpressions) {
+        QuerySpecification node,
+        Scope scope,
+        List<Expression> outputExpressions,
+        List<SelectAlias> selectAliases) {
       if (node.getGroupBy().isPresent()) {
         ImmutableList.Builder<List<Set<FieldId>>> cubes = ImmutableList.builder();
         ImmutableList.Builder<List<Set<FieldId>>> rollups = ImmutableList.builder();
@@ -2706,6 +2788,7 @@ public class StatementAnalyzer {
                 column = outputExpressions.get(toIntExact(ordinal - 1));
                 verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
               } else {
+                column = resolveGroupBySelectAlias(column, scope, outputExpressions, selectAliases);
                 verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
                 analyzeExpression(column, scope);
               }
@@ -2732,13 +2815,18 @@ public class StatementAnalyzer {
             }
           } else if (groupingElement instanceof GroupingSets) {
             GroupingSets element = (GroupingSets) groupingElement;
+            Map<NodeRef<Expression>, Expression> resolvedGroupingColumns = new HashMap<>();
             for (Expression column : groupingElement.getExpressions()) {
+              Expression originalColumn = column;
+              column = resolveGroupBySelectAlias(column, scope, outputExpressions, selectAliases);
+              verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
               analyzeExpression(column, scope);
               if (!analysis.getColumnReferences().contains(NodeRef.of(column))) {
                 throw new SemanticException(
                     String.format("GROUP BY expression must be a column reference: %s", column));
               }
 
+              resolvedGroupingColumns.put(NodeRef.of(originalColumn), column);
               groupingExpressions.add(column);
             }
 
@@ -2747,6 +2835,11 @@ public class StatementAnalyzer {
                     .map(
                         set ->
                             set.stream()
+                                .map(
+                                    expression ->
+                                        requireNonNull(
+                                            resolvedGroupingColumns.get(NodeRef.of(expression)),
+                                            "resolved grouping expression is null"))
                                 .map(NodeRef::of)
                                 .map(analysis.getColumnReferenceFields()::get)
                                 .map(ResolvedField::getFieldId)
@@ -2805,6 +2898,25 @@ public class StatementAnalyzer {
       }
 
       return result;
+    }
+
+    private Expression resolveGroupBySelectAlias(
+        Expression expression,
+        Scope scope,
+        List<Expression> outputExpressions,
+        List<SelectAlias> selectAliases) {
+      if (!(expression instanceof Identifier)) {
+        return expression;
+      }
+
+      Identifier identifier = (Identifier) expression;
+      if (resolvesToInputColumn(scope, identifier)) {
+        return expression;
+      }
+
+      return resolveSelectAlias(identifier, selectAliases)
+          .map(alias -> outputExpressions.get(alias.getPosition() - 1))
+          .orElse(expression);
     }
 
     private boolean isDateBinGapFill(Expression column) {
@@ -4124,7 +4236,7 @@ public class StatementAnalyzer {
     }
 
     private List<Expression> analyzeOrderBy(
-        Node node, List<SortItem> sortItems, Scope orderByScope) {
+        Node node, List<SortItem> sortItems, Scope orderByScope, List<SelectAlias> selectAliases) {
       ImmutableList.Builder<Expression> orderByFieldsBuilder = ImmutableList.builder();
 
       for (SortItem item : sortItems) {
@@ -4140,6 +4252,11 @@ public class StatementAnalyzer {
           }
 
           expression = new FieldReference(toIntExact(ordinal - 1));
+        } else {
+          Optional<SelectAlias> selectAlias = resolveOrderBySelectAlias(expression, selectAliases);
+          if (selectAlias.isPresent()) {
+            expression = new FieldReference(selectAlias.get().getPosition() - 1);
+          }
         }
 
         ExpressionAnalysis expressionAnalysis =
@@ -4168,6 +4285,15 @@ public class StatementAnalyzer {
       }
 
       return orderByFieldsBuilder.build();
+    }
+
+    private Optional<SelectAlias> resolveOrderBySelectAlias(
+        Expression expression, List<SelectAlias> selectAliases) {
+      if (!(expression instanceof Identifier)) {
+        return Optional.empty();
+      }
+
+      return resolveSelectAlias((Identifier) expression, selectAliases);
     }
 
     private void analyzeOffset(Offset node, Scope scope) {
@@ -4860,6 +4986,11 @@ public class StatementAnalyzer {
     }
 
     @Override
+    public Scope visitAlterTopic(AlterTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
     public Scope visitDropTopic(DropTopic node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
@@ -5008,7 +5139,8 @@ public class StatementAnalyzer {
         Scope argumentScope = analysis.getScope(argument.getRelation());
         if (argument.isPassThroughColumns()) {
           argumentScope.getRelationType().getAllFields().forEach(fields::add);
-        } else if (argument.getPartitionBy().isPresent()) {
+        } else if (!TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)
+            && argument.getPartitionBy().isPresent()) {
           argument.getPartitionBy().get().stream()
               .map(expression -> validateAndGetInputField(expression, argumentScope))
               .forEach(fields::add);
@@ -5138,7 +5270,147 @@ public class StatementAnalyzer {
               analyzeDefault(parameterSpecification, errorLocation));
         }
       }
+      tryAppendM4ModeArgument(functionName, arguments, parameterSpecifications, passedArguments);
       return new ArgumentsAnalysis(passedArguments.buildOrThrow(), tableArgumentAnalyses.build());
+    }
+
+    private void tryAppendM4ModeArgument(
+        String functionName,
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        ImmutableMap.Builder<String, Argument> passedArguments) {
+      if (!TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)) {
+        return;
+      }
+
+      TableFunctionArgument sizeArgument =
+          findTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.SIZE_PARAMETER_NAME);
+      if (!(sizeArgument.getValue() instanceof Expression)) {
+        throw new SemanticException(
+            String.format(
+                "Invalid argument %s. Expected scalar argument",
+                M4TableFunction.SIZE_PARAMETER_NAME));
+      }
+
+      boolean isTimeWindow = sizeArgument.getValue() instanceof TimeDurationLiteral;
+      Optional<TableFunctionArgument> slideArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.SLIDE_PARAMETER_NAME);
+      if (slideArgument.isPresent()) {
+        if (!(slideArgument.get().getValue() instanceof Expression)) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid argument %s. Expected scalar argument",
+                  M4TableFunction.SLIDE_PARAMETER_NAME));
+        }
+        boolean isTimeSlide = slideArgument.get().getValue() instanceof TimeDurationLiteral;
+        if (isTimeWindow != isTimeSlide) {
+          throw new SemanticException(
+              "The SLIDE argument must have the same window mode as the SIZE argument.");
+        }
+      }
+      if (!isTimeWindow
+          && containsTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.ORIGIN_PARAMETER_NAME)) {
+        throw new SemanticException("The ORIGIN argument is only supported in time window mode.");
+      }
+      validateM4OrderBySortOrder(arguments, parameterSpecifications);
+      passedArguments.put(
+          M4TableFunction.WINDOW_MODE_PARAMETER_NAME,
+          new ScalarArgument(org.apache.iotdb.udf.api.type.Type.BOOLEAN, isTimeWindow));
+    }
+
+    private void validateM4OrderBySortOrder(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications) {
+      Optional<TableFunctionArgument> dataArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.DATA_PARAMETER_NAME);
+      if (!dataArgument.isPresent()
+          || !(dataArgument.get().getValue() instanceof TableFunctionTableArgument)) {
+        return;
+      }
+
+      Optional<OrderBy> orderBy =
+          ((TableFunctionTableArgument) dataArgument.get().getValue()).getOrderBy();
+      if (!orderBy.isPresent()) {
+        return;
+      }
+
+      for (SortItem sortItem : orderBy.get().getSortItems()) {
+        if (sortItem.getOrdering() != SortItem.Ordering.ASCENDING) {
+          throw new SemanticException(
+              "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+        }
+      }
+    }
+
+    private boolean containsTableFunctionArgument(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        String argumentName) {
+      return findOptionalTableFunctionArgument(arguments, parameterSpecifications, argumentName)
+          .isPresent();
+    }
+
+    private Optional<TableFunctionArgument> findOptionalTableFunctionArgument(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        String argumentName) {
+      boolean argumentsPassedByName =
+          arguments.stream().allMatch(argument -> argument.getName().isPresent());
+      if (argumentsPassedByName) {
+        return arguments.stream()
+            .filter(
+                argument ->
+                    argumentName.equalsIgnoreCase(argument.getName().get().getCanonicalValue()))
+            .findFirst();
+      }
+
+      for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
+        if (argumentName.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
+          if (i >= arguments.size()) {
+            return Optional.empty();
+          }
+          return Optional.of(arguments.get(i));
+        }
+      }
+      return Optional.empty();
+    }
+
+    private TableFunctionArgument findTableFunctionArgument(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        String argumentName) {
+      if (arguments.isEmpty()) {
+        throw new IllegalStateException("Arguments should never be empty when resolving M4 mode");
+      }
+
+      boolean argumentsPassedByName =
+          arguments.stream().allMatch(argument -> argument.getName().isPresent());
+      if (argumentsPassedByName) {
+        return arguments.stream()
+            .filter(
+                argument ->
+                    argumentName.equalsIgnoreCase(argument.getName().get().getCanonicalValue()))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        String.format("Missing required argument: %s", argumentName)));
+      }
+
+      for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
+        if (argumentName.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
+          if (i >= arguments.size()) {
+            throw new IllegalStateException(
+                String.format("Missing required argument: %s", argumentName));
+          }
+          return arguments.get(i);
+        }
+      }
+      throw new IllegalStateException(String.format("Unknown argument: %s", argumentName));
     }
 
     // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
@@ -5474,7 +5746,11 @@ public class StatementAnalyzer {
   }
 
   static void verifyNoAggregateWindowOrGroupingFunctions(Expression predicate, String clause) {
-    List<FunctionCall> aggregates = extractAggregateFunctions(ImmutableList.of(predicate));
+    List<FunctionCall> aggregates =
+        ImmutableList.<FunctionCall>builder()
+            .addAll(extractAggregateFunctions(ImmutableList.of(predicate)))
+            .addAll(extractWindowFunctions(ImmutableList.of(predicate)))
+            .build();
 
     if (!aggregates.isEmpty()) {
       throw new SemanticException(

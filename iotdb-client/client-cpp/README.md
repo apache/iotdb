@@ -547,9 +547,8 @@ mvn -P with-cpp -pl iotdb-client/client-cpp spotless:check
 mvn -P with-cpp -pl iotdb-client/client-cpp spotless:apply
 ```
 
-On JDK 8 the C++ Spotless profile is skipped automatically (Spotless's
-clang-format integration requires Spotless 2.44+, which itself requires
-JDK 11+).
+The C++ Spotless profile is registered on the repository baseline, JDK 17+.
+Use JDK 17 or newer for `spotless:check` / `spotless:apply`.
 
 ## Package layout
 

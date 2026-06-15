@@ -399,6 +399,12 @@ public class CommonConfig {
   private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
   private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
 
+  // Minimum allowed owner-lease-duration-ms accepted when creating/altering a topic owner. The
+  // lease is renewed by an independent ~5s heartbeat, so the duration must stay well above the
+  // heartbeat interval (times the tolerated misses plus propagation) to avoid falsely fencing a
+  // healthy owner; this floor enforces that invariant at admission time. Default: 1 minute.
+  private long subscriptionOwnerLeaseDurationMsMin = 60_000L;
+
   private int subscriptionConsensusBatchMaxDelayInMs = 50;
   private long subscriptionConsensusBatchMaxSizeInBytes = 8 * MB;
   private int subscriptionConsensusBatchMaxTabletCount = 64;
@@ -430,6 +436,8 @@ public class CommonConfig {
 
   // Max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
+
+  private int singleMeasurementCheckCacheSize = 10_000;
 
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
@@ -2759,6 +2767,14 @@ public class CommonConfig {
     this.subscriptionMetaSyncerSyncIntervalMinutes = subscriptionMetaSyncerSyncIntervalMinutes;
   }
 
+  public long getSubscriptionOwnerLeaseDurationMsMin() {
+    return subscriptionOwnerLeaseDurationMsMin;
+  }
+
+  public void setSubscriptionOwnerLeaseDurationMsMin(long subscriptionOwnerLeaseDurationMsMin) {
+    this.subscriptionOwnerLeaseDurationMsMin = subscriptionOwnerLeaseDurationMsMin;
+  }
+
   public String getSchemaEngineMode() {
     return schemaEngineMode;
   }
@@ -2781,6 +2797,14 @@ public class CommonConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getSingleMeasurementCheckCacheSize() {
+    return singleMeasurementCheckCacheSize;
+  }
+
+  public void setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    this.singleMeasurementCheckCacheSize = singleMeasurementCheckCacheSize;
   }
 
   public int getDatabaseLimitThreshold() {

@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -636,7 +637,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // external source pipe tasks are not balanced here since non-leaders
                             // don't know about RegionLeader Map and will be balanced in the meta
                             // sync procedure
-                            LOGGER.info(
+                            PipeLogger.log(
+                                LOGGER::info,
                                 ConfigNodeMessages.PIPE_IS_USING_EXTERNAL_SOURCE_SKIP_REGION,
                                 pipeMeta.getStaticMeta().getPipeName(),
                                 plan.getConsensusGroupId2NewLeaderIdMap());
@@ -905,7 +907,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
             });
 
     if (needRestart.get()) {
-      LOGGER.info(ConfigNodeMessages.PIPEMETASYNCER_IS_TRYING_TO_RESTART_THE_PIPES, pipeToRestart);
+      PipeLogger.log(
+          LOGGER::info,
+          ConfigNodeMessages.PIPEMETASYNCER_IS_TRYING_TO_RESTART_THE_PIPES,
+          pipeToRestart);
     }
     return needRestart.get();
   }

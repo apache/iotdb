@@ -176,6 +176,28 @@ public class IoTDBRegionOperationReliabilityITFramework {
         killNode);
   }
 
+  public void failAndRollbackTest(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> killConfigNodeKeywords,
+      KeySetView<String, Boolean> killDataNodeKeywords,
+      KillNode killNode)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        killConfigNodeKeywords,
+        killDataNodeKeywords,
+        actionOfKillNode,
+        false,
+        killNode,
+        true);
+  }
+
   public void killClusterTest(
       KeySetView<String, Boolean> configNodeKeywords, boolean expectMigrateSuccess)
       throws Exception {
@@ -203,6 +225,31 @@ public class IoTDBRegionOperationReliabilityITFramework {
       Consumer<KillPointContext> actionWhenDetectKeyWords,
       final boolean expectMigrateSuccess,
       KillNode killNode)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        configNodeKeywords,
+        dataNodeKeywords,
+        actionWhenDetectKeyWords,
+        expectMigrateSuccess,
+        killNode,
+        false);
+  }
+
+  private void generalTestWithAllOptions(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> configNodeKeywords,
+      KeySetView<String, Boolean> dataNodeKeywords,
+      Consumer<KillPointContext> actionWhenDetectKeyWords,
+      final boolean expectMigrateSuccess,
+      KillNode killNode,
+      boolean expectRollbackWhenFail)
       throws Exception {
     // prepare env
     EnvFactory.getEnv()
@@ -266,31 +313,58 @@ public class IoTDBRegionOperationReliabilityITFramework {
       statement.execute(buildRegionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
       boolean success = false;
-      Predicate<TShowRegionResp> migrateRegionPredicate =
-          tShowRegionResp -> {
-            Map<Integer, Set<Integer>> newRegionMap =
-                getRegionMap(tShowRegionResp.getRegionInfoList());
-            Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
-            return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
-          };
-      try {
-        awaitUntilSuccess(
-            client,
-            selectedRegion,
-            migrateRegionPredicate,
-            Optional.of(destDataNode),
-            Optional.of(originalDataNode));
-        success = true;
-      } catch (ConditionTimeoutException e) {
-        if (expectMigrateSuccess) {
-          LOGGER.error("Region migrate failed", e);
+      if (expectRollbackWhenFail) {
+        awaitKillPointsTriggered(configNodeKeywords);
+        awaitKillPointsTriggered(dataNodeKeywords);
+        try {
+          awaitUntilSuccess(
+              client,
+              selectedRegion,
+              rollbackPredicate(selectedRegion, regionMap.get(selectedRegion), destDataNode),
+              Optional.empty(),
+              Optional.of(destDataNode));
+        } catch (ConditionTimeoutException e) {
+          LOGGER.error("Region migrate did not roll back", e);
           Assert.fail();
+        }
+      } else {
+        Predicate<TShowRegionResp> migrateRegionPredicate =
+            tShowRegionResp -> {
+              Map<Integer, Set<Integer>> newRegionMap =
+                  getRegionMap(tShowRegionResp.getRegionInfoList());
+              Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
+              return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+            };
+        try {
+          awaitUntilSuccess(
+              client,
+              selectedRegion,
+              migrateRegionPredicate,
+              Optional.of(destDataNode),
+              Optional.of(originalDataNode));
+          success = true;
+        } catch (ConditionTimeoutException e) {
+          if (expectMigrateSuccess) {
+            LOGGER.error("Region migrate failed", e);
+            Assert.fail();
+          }
         }
       }
       if (!expectMigrateSuccess && success) {
         LOGGER.error("Region migrate succeeded unexpectedly");
         Assert.fail();
       }
+
+      // The kill point is detected by a background thread tailing the node log, so the migration
+      // result (observed by awaitUntilSuccess above) can become visible before that thread has read
+      // and processed the kill-point line of the last migration phase (e.g.
+      // RemoveRegionLocationCache). Give that thread a short grace period to catch up before
+      // asserting, otherwise checkKillPointsAllTriggered may fail spuriously with "Some kill points
+      // was not triggered". This is best-effort: the authoritative assertion remains
+      // checkKillPointsAllTriggered, which still fails the test if a kill point genuinely never
+      // triggers (e.g. the badKillPoint test).
+      graceWaitForKillPointsTriggered(configNodeKeywords);
+      graceWaitForKillPointsTriggered(dataNodeKeywords);
 
       // make sure all kill points have been triggered
       checkKillPointsAllTriggered(configNodeKeywords);
@@ -309,6 +383,28 @@ public class IoTDBRegionOperationReliabilityITFramework {
 
       LOGGER.info("test pass");
     }
+  }
+
+  private static Predicate<TShowRegionResp> rollbackPredicate(
+      int selectedRegion, Set<Integer> originalDataNodes, int destDataNode) {
+    return tShowRegionResp -> {
+      List<TRegionInfo> selectedDataRegionInfos =
+          tShowRegionResp.getRegionInfoList().stream()
+              .filter(
+                  regionInfo ->
+                      regionInfo.getConsensusGroupId().getType() == TConsensusGroupType.DataRegion
+                          && regionInfo.getConsensusGroupId().getId() == selectedRegion)
+              .collect(Collectors.toList());
+      Set<Integer> dataNodes =
+          selectedDataRegionInfos.stream()
+              .map(TRegionInfo::getDataNodeId)
+              .collect(Collectors.toSet());
+      return dataNodes.equals(originalDataNodes)
+          && !dataNodes.contains(destDataNode)
+          && selectedDataRegionInfos.stream()
+              .allMatch(
+                  regionInfo -> RegionStatus.Running.getStatus().equals(regionInfo.getStatus()));
+    };
   }
 
   public static Set<Integer> getAllDataNodes(Statement statement) throws Exception {
@@ -425,6 +521,33 @@ public class IoTDBRegionOperationReliabilityITFramework {
     if (!killPoints.isEmpty()) {
       killPoints.forEach(killPoint -> LOGGER.error("Kill point {} not triggered", killPoint));
       Assert.fail("Some kill points was not triggered");
+    }
+  }
+
+  private static void awaitKillPointsTriggered(KeySetView<String, Boolean> killPoints) {
+    if (killPoints.isEmpty()) {
+      return;
+    }
+    Awaitility.await().atMost(2, TimeUnit.MINUTES).until(killPoints::isEmpty);
+  }
+
+  /**
+   * Best-effort wait for all kill points to be triggered. The kill point is detected by a
+   * background thread tailing the node log, so there can be a short lag between the migration
+   * result becoming visible and that thread processing the kill-point line. This gives it a brief
+   * grace period to catch up. Unlike {@link #awaitKillPointsTriggered}, it never throws: the
+   * authoritative check is {@link #checkKillPointsAllTriggered}, so a kill point that genuinely
+   * never triggers (e.g. the badKillPoint test) is still caught there as an AssertionError rather
+   * than masked here.
+   */
+  private static void graceWaitForKillPointsTriggered(KeySetView<String, Boolean> killPoints) {
+    if (killPoints.isEmpty()) {
+      return;
+    }
+    try {
+      Awaitility.await().atMost(1, TimeUnit.MINUTES).until(killPoints::isEmpty);
+    } catch (ConditionTimeoutException ignored) {
+      // Fall through to checkKillPointsAllTriggered, which makes the real assertion.
     }
   }
 
