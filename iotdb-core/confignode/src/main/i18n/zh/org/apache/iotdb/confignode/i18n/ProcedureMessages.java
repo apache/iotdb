@@ -999,7 +999,7 @@ public final class ProcedureMessages {
   public static final String VALIDATE_TABLE_FOR_TABLE_WHEN_SETTING_PROPERTIES =
       "Validate table for table {}.{} when setting properties";
   public static final String WAITTASKFINISH_RETURNS_PROCESSING_WHICH_MEANS_THE_WAITING_HAS_BEEN_INTERRUPTED =
-      "waitTaskFinish() returns PROCESSING, which means the waiting has been interrupted, this procedure will end without rollback";
+      "waitTaskFinish() 返回 PROCESSING，表示等待被中断（ConfigNode 关闭或主节点切换）；AddRegionPeer 任务仍在协调者上运行，该流程将停留在 DO_ADD_REGION_PEER 状态，恢复后继续轮询";
 
     public static final String FAILED_TO_CREATE_DATABASE_THE_TTL_SHOULD_BE_NON_NEGATIVE = "创建数据库失败。TTL 不能为负数。";
   public static final String FAILED_TO_CREATE_DATABASE_THE_DATAREGIONGROUPNUM_SHOULD_BE_POSITIVE = "创建数据库失败。dataRegionGroupNum 应为正数。";
