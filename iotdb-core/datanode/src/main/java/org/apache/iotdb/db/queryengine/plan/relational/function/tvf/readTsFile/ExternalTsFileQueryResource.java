@@ -459,6 +459,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
         currentDeviceOffsetMap.put(tsFileResource, deviceOffset);
       }
       currentDeviceQueryDataSource = new QueryDataSource(Collections.emptyList(), unseqResources);
+      currentDeviceQueryDataSource.setSingleDevice(true);
       return true;
     }
 
