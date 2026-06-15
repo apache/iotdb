@@ -83,6 +83,7 @@ public class ShowReceiversOperatorTest {
             LAST_HANDSHAKE_TIME,
             LAST_TRANSFER_TIME),
         DatasetHeaderFactory.getShowReceiversHeader().getRespColumns());
+    assertTrue(DatasetHeaderFactory.getShowReceiversHeader().isIgnoreTimestamp());
   }
 
   @Test

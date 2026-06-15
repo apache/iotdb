@@ -208,7 +208,7 @@ public class DatasetHeaderFactory {
   }
 
   public static DatasetHeader getShowReceiversHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showReceiversColumnHeaders, false);
+    return new DatasetHeader(ColumnHeaderConstant.showReceiversColumnHeaders, true);
   }
 
   public static DatasetHeader getShowDiskUsageHeader() {
