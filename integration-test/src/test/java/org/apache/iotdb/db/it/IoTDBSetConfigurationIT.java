@@ -236,6 +236,14 @@ public class IoTDBSetConfigurationIT {
             "509: An error occurred when executing getDeviceToDatabase():root.db1 is not a legal path, because it is no longer than default sg level: 3",
             e.getMessage());
       }
+    } finally {
+      // This test leaves default_database_level=-1 baked into the cluster's config file. Because
+      // tests in this class share one cluster and run in random order, a later 'set configuration'
+      // test would otherwise fail its hot-reload while re-validating the leftover illegal value
+      // ("Illegal defaultDatabaseLevel: -1, should >= 1"). Restore a clean cluster before leaving.
+      EnvFactory.getEnv().cleanClusterEnvironment();
+      EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultDatabaseLevel(1);
+      EnvFactory.getEnv().initClusterEnvironment();
     }
   }
 }
