@@ -221,8 +221,20 @@ public class DataPartition extends Partition {
     final List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
     final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         dataBasePartitionMap = dataPartitionMap.get(databaseName);
+    if (dataBasePartitionMap == null) {
+      throw new RuntimeException(
+          "Database "
+              + databaseName
+              + " not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+    }
     final Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
+    if (slotReplicaSetMap == null) {
+      throw new RuntimeException(
+          String.format(
+              "Data partition is empty. device: %s, seriesSlot: %s, database: %s",
+              deviceID, seriesPartitionSlot, databaseName));
+    }
     for (final TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
       final List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
       if (targetRegionList == null || targetRegionList.isEmpty()) {
