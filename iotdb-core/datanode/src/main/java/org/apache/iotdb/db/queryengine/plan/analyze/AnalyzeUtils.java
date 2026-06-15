@@ -70,6 +70,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -267,13 +268,38 @@ public class AnalyzeUtils {
     boolean hasFailedMeasurement = insertStatement.hasFailedMeasurements();
     String partialInsertMessage;
     if (hasFailedMeasurement) {
+      final List<String> failedMeasurements = new ArrayList<>();
+      final List<String> failedMessages = new ArrayList<>();
+      collectDistinctFailedMeasurementMessages(
+          insertStatement.getFailedMeasurements(),
+          insertStatement.getFailedMessages(),
+          failedMeasurements,
+          failedMessages);
       partialInsertMessage =
           String.format(
-              "Fail to insert measurements %s caused by %s",
-              insertStatement.getFailedMeasurements(), insertStatement.getFailedMessages());
+              "Fail to insert measurements %s caused by %s", failedMeasurements, failedMessages);
       LOGGER.warn(partialInsertMessage);
       analysis.setFailStatus(
           RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
+    }
+  }
+
+  private static void collectDistinctFailedMeasurementMessages(
+      List<String> rawFailedMeasurements,
+      List<String> rawFailedMessages,
+      List<String> failedMeasurements,
+      List<String> failedMessages) {
+    final Set<List<String>> distinctFailures = new LinkedHashSet<>();
+    for (int i = 0; i < rawFailedMeasurements.size(); i++) {
+      final String failedMeasurement = rawFailedMeasurements.get(i);
+      final String failedMessage = i < rawFailedMessages.size() ? rawFailedMessages.get(i) : null;
+      final List<String> failureKey = new ArrayList<>(2);
+      failureKey.add(failedMeasurement);
+      failureKey.add(failedMessage);
+      if (distinctFailures.add(failureKey)) {
+        failedMeasurements.add(failedMeasurement);
+        failedMessages.add(failedMessage);
+      }
     }
   }
 
