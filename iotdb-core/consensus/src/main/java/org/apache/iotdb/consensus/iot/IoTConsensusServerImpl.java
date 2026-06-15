@@ -517,13 +517,15 @@ public class IoTConsensusServerImpl {
     // under the folders that actually received fragments. Load from those folders and skip the
     // others; otherwise the state machine would fail on a folder that never received this snapshot
     // and turn a healthy multi-data-dir transfer into a spurious failure.
-    boolean snapshotFound = false;
+    //
+    // Note: an empty region produces a snapshot with zero fragments, so none of the receive folders
+    // contains it. That is a legitimate (no-op) load, not a failure, so an absent snapshot must not
+    // be reported as failure here.
     for (String dir : recvFolderManager.getFolders()) {
       File snapshotDir = getSnapshotPath(dir, snapshotId);
       if (!snapshotDir.exists()) {
         continue;
       }
-      snapshotFound = true;
       if (!stateMachine.loadSnapshot(snapshotDir)) {
         // Stop at the first failure. The snapshot is already broken on this replica, and loading
         // the remaining folders is both pointless and harmful: a load wipes the data dirs before
@@ -531,10 +533,7 @@ public class IoTConsensusServerImpl {
         return false;
       }
     }
-    // If no receive folder contained the snapshot, nothing was loaded. Report the failure so the
-    // AddPeer coordinator does not activate this peer with incomplete data (which would silently
-    // lose data on this replica).
-    return snapshotFound;
+    return true;
   }
 
   private File getSnapshotPath(String curStorageDir, String snapshotRelativePath) {

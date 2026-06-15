@@ -105,9 +105,14 @@ public class AddPeerSnapshotLoadFailureTest {
   private static class ControllableStateMachine extends TestStateMachine {
     private volatile boolean failLoadSnapshot = false;
     private volatile boolean loadSnapshotInvoked = false;
+    private volatile boolean emptySnapshot = false;
 
     void setFailLoadSnapshot(boolean failLoadSnapshot) {
       this.failLoadSnapshot = failLoadSnapshot;
+    }
+
+    void setEmptySnapshot(boolean emptySnapshot) {
+      this.emptySnapshot = emptySnapshot;
     }
 
     boolean isLoadSnapshotInvoked() {
@@ -127,6 +132,11 @@ public class AddPeerSnapshotLoadFailureTest {
 
     @Override
     public boolean takeSnapshot(File snapshotDir) {
+      if (emptySnapshot) {
+        // Mirror an empty region: the snapshot has no fragments to transmit. The receiver then
+        // materializes no snapshot under any receive folder, which must still load successfully.
+        return true;
+      }
       // Write a real (single) snapshot file so the transfer actually moves data and the receiver
       // materializes the snapshot under a subset of its receive folders.
       try {
@@ -293,6 +303,41 @@ public class AddPeerSnapshotLoadFailureTest {
   private static boolean isEmptyOrMissing(File dir) {
     String[] children = dir.list();
     return children == null || children.length == 0;
+  }
+
+  /**
+   * An empty region produces a snapshot with zero fragments, so nothing is transmitted and the
+   * target materializes no snapshot under any receive folder. This must still be treated as a
+   * successful (no-op) load — otherwise migrating an empty region (e.g. while removing a DataNode)
+   * fails. Regression for the multi-data-dir AddPeer false-failure on empty regions.
+   */
+  @Test
+  public void addRemotePeerSucceedsWhenSnapshotIsEmpty() throws Exception {
+    servers.get(0).createLocalPeer(gid, peers.subList(0, 1));
+    servers.get(1).createLocalPeer(gid, peers);
+
+    // No data is written, and the source takes an empty snapshot: zero fragments are transmitted.
+    stateMachines.get(0).setEmptySnapshot(true);
+
+    // Before the fix, loadSnapshot() reported failure when no receive folder contained the
+    // snapshot, so adding a peer for an empty region failed and DataNode removal timed out.
+    servers.get(0).addRemotePeer(gid, peers.get(1));
+
+    Assert.assertTrue(
+        "Target peer was not activated after an empty snapshot load",
+        servers.get(1).getImpl(gid).isActive());
+
+    // Confirm the test really exercised the empty-snapshot path: no receive folder holds a
+    // snapshot.
+    long nonEmptyRecvFolders =
+        peersRecvSnapshotDirs.get(1).stream()
+            .map(dir -> new File(dir, IoTConsensusServerImpl.SNAPSHOT_DIR_NAME))
+            .filter(recvFolder -> !isEmptyOrMissing(recvFolder))
+            .count();
+    Assert.assertEquals(
+        "Expected no receive folder to contain a snapshot for an empty region",
+        0,
+        nonEmptyRecvFolders);
   }
 
   private boolean checkPortAvailable() {
