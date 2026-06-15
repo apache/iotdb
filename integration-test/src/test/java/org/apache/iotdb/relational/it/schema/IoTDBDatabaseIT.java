@@ -142,10 +142,9 @@ public class IoTDBDatabaseIT {
       }
 
       final int[] schemaRegionGroupNum = new int[] {0};
-      // Default min region group numbers come from ConfigNodeConfig (schema = 1, data = 2).
-      final int[] minSchemaRegionGroupNum = new int[] {1};
       final int[] dataRegionGroupNum = new int[] {0};
-      final int[] minDataRegionGroupNum = new int[] {2};
+      final int[] defaultSchemaRegionGroupNum = new int[] {1};
+      final int[] defaultDataRegionGroupNum = new int[] {2};
       // show
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         int cnt = 0;
@@ -165,11 +164,9 @@ public class IoTDBDatabaseIT {
           assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
           assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
           assertEquals(schemaRegionGroupNum[cnt], resultSet.getInt(6));
-          assertEquals(minSchemaRegionGroupNum[cnt], resultSet.getInt(7));
-          assertTrue(resultSet.getInt(8) >= minSchemaRegionGroupNum[cnt]);
-          assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(9));
-          assertEquals(minDataRegionGroupNum[cnt], resultSet.getInt(10));
-          assertTrue(resultSet.getInt(11) >= minDataRegionGroupNum[cnt]);
+          assertTrue(resultSet.getInt(7) >= defaultSchemaRegionGroupNum[cnt]);
+          assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(8));
+          assertTrue(resultSet.getInt(9) >= defaultDataRegionGroupNum[cnt]);
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
@@ -441,10 +438,8 @@ public class IoTDBDatabaseIT {
                   "data_replication_factor,INT32,ATTRIBUTE,",
                   "time_partition_interval,INT64,ATTRIBUTE,",
                   "schema_region_group_num,INT32,ATTRIBUTE,",
-                  "min_schema_region_group_num,INT32,ATTRIBUTE,",
                   "max_schema_region_group_num,INT32,ATTRIBUTE,",
                   "data_region_group_num,INT32,ATTRIBUTE,",
-                  "min_data_region_group_num,INT32,ATTRIBUTE,",
                   "max_data_region_group_num,INT32,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
@@ -664,7 +659,7 @@ public class IoTDBDatabaseIT {
         int cnt = 0;
         while (resultSet.next()) {
           if ("information_schema".equals(resultSet.getString(1))) {
-            for (int columnIndex = 3; columnIndex <= 11; columnIndex++) {
+            for (int columnIndex = 3; columnIndex <= 9; columnIndex++) {
               assertNull(resultSet.getObject(columnIndex));
             }
           } else {
@@ -674,11 +669,9 @@ public class IoTDBDatabaseIT {
             assertEquals(1, resultSet.getInt(4));
             assertEquals(604800000, resultSet.getLong(5));
             assertEquals(0, resultSet.getInt(6));
-            assertEquals(1, resultSet.getInt(7));
-            assertTrue(resultSet.getInt(8) >= resultSet.getInt(7));
-            assertEquals(0, resultSet.getInt(9));
-            assertEquals(2, resultSet.getInt(10));
-            assertTrue(resultSet.getInt(11) >= resultSet.getInt(10));
+            assertTrue(resultSet.getInt(7) >= 1);
+            assertEquals(0, resultSet.getInt(8));
+            assertTrue(resultSet.getInt(9) >= 2);
           }
           cnt++;
         }
@@ -910,9 +903,8 @@ public class IoTDBDatabaseIT {
           Collections.singleton("information_schema,INF,null,null,null,"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.databases"),
-          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,min_schema_region_group_num,max_schema_region_group_num,data_region_group_num,min_data_region_group_num,max_data_region_group_num,",
-          Collections.singleton(
-              "information_schema,INF,null,null,null,null,null,null,null,null,null,"));
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,max_schema_region_group_num,data_region_group_num,max_data_region_group_num,",
+          Collections.singleton("information_schema,INF,null,null,null,null,null,null,null,"));
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
