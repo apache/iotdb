@@ -276,7 +276,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String userName,
       final String password)
       throws SQLException {
-    try (final Connection connection = env.getConnection(userName, password, sqlDialect);
+    try (final Connection connection = getReceiverQueryConnection(userName, password, sqlDialect);
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
@@ -308,7 +308,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String secondPipeName)
       throws SQLException {
     try (final Connection connection =
-            env.getConnection(
+            getReceiverQueryConnection(
                 SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
@@ -330,7 +330,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
 
   private boolean hasProjectedReceiver(final String pipeName) throws SQLException {
     try (final Connection connection =
-            env.getConnection(
+            getReceiverQueryConnection(
                 SessionConfig.DEFAULT_USER,
                 SessionConfig.DEFAULT_PASSWORD,
                 BaseEnv.TABLE_SQL_DIALECT);
@@ -356,11 +356,19 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
   private boolean hasAnyReceiver(
       final String sql, final String sqlDialect, final String userName, final String password)
       throws SQLException {
-    try (final Connection connection = env.getConnection(userName, password, sqlDialect);
+    try (final Connection connection = getReceiverQueryConnection(userName, password, sqlDialect);
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
       return resultSet.next();
     }
+  }
+
+  private Connection getReceiverQueryConnection(
+      final String userName, final String password, final String sqlDialect) throws SQLException {
+    // Receiver runtime rows contain volatile timestamps. A single coordinator still executes the
+    // product cluster-level plan, but avoids the test wrapper comparing independently collected
+    // snapshots from multiple client entry points.
+    return env.getConnection(env.getDataNodeWrapper(0), userName, password, sqlDialect);
   }
 
   private int getDataNodeId(final DataNodeWrapper targetDataNode) throws Exception {
