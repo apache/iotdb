@@ -247,22 +247,26 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public boolean loadSnapshot(final File latestSnapshotRootDir) {
+    // The boolean result must reflect whether the ConfigRegion state-machine data was loaded, so
+    // callers (e.g. the AddPeer flow) can detect a real failure. The pipe-listener recomputation
+    // below is best-effort post-processing: a failure there is logged but must NOT be reported as a
+    // snapshot-load failure, otherwise it would (e.g.) abort ConfigNode (re)initialization on what
+    // is actually a healthy data load.
+    final boolean loadSucceeded = executor.loadSnapshot(latestSnapshotRootDir);
     try {
-      final boolean loadSucceeded = executor.loadSnapshot(latestSnapshotRootDir);
       // We recompute the snapshot for pipe listener when loading snapshot
       // to recover the newest snapshot in cache
       PipeConfigNodeAgent.runtime()
           .listener()
           .tryListenToSnapshots(ConfigNodeSnapshotParser.getSnapshots());
-      return loadSucceeded;
     } catch (final IOException e) {
       if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
         LOGGER.warn(
             ConfigNodeMessages.CONFIG_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_WHEN_STARTUP,
             e);
       }
-      return false;
     }
+    return loadSucceeded;
   }
 
   @Override
