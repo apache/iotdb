@@ -248,13 +248,13 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   @Override
   public boolean loadSnapshot(final File latestSnapshotRootDir) {
     try {
-      executor.loadSnapshot(latestSnapshotRootDir);
+      final boolean loadSucceeded = executor.loadSnapshot(latestSnapshotRootDir);
       // We recompute the snapshot for pipe listener when loading snapshot
       // to recover the newest snapshot in cache
       PipeConfigNodeAgent.runtime()
           .listener()
           .tryListenToSnapshots(ConfigNodeSnapshotParser.getSnapshots());
-      return true;
+      return loadSucceeded;
     } catch (final IOException e) {
       if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
         LOGGER.warn(
