@@ -88,6 +88,35 @@ public class IoTDBSetConfigurationIT {
                         "enable_cross_space_compaction=false")));
   }
 
+  /**
+   * Regression test for V2-995: the topology-probing config items were left commented out in the
+   * template, so {@code getConfigurationItemsFromTemplate} never recorded them as known defaults
+   * and {@code set configuration} rejected them as "immutable or undefined". After uncommenting
+   * them, {@code set configuration} must accept and persist them: {@code enable_topology_probing}
+   * (hot_reload) and {@code topology_probing_base_interval_in_ms} / {@code
+   * topology_probing_timeout_ratio} (restart).
+   */
+  @Test
+  public void testSetTopologyProbingConfiguration() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"enable_topology_probing\"=\"true\"");
+      statement.execute("set configuration \"topology_probing_base_interval_in_ms\"=\"3000\"");
+      statement.execute("set configuration \"topology_probing_timeout_ratio\"=\"0.4\"");
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+    Assert.assertTrue(
+        EnvFactory.getEnv().getConfigNodeWrapperList().stream()
+            .allMatch(
+                nodeWrapper ->
+                    checkConfigFileContains(
+                        nodeWrapper,
+                        "enable_topology_probing=true",
+                        "topology_probing_base_interval_in_ms=3000",
+                        "topology_probing_timeout_ratio=0.4")));
+  }
+
   @Test
   public void testSetClusterName() throws Exception {
     // set cluster name on cn and dn
@@ -207,6 +236,14 @@ public class IoTDBSetConfigurationIT {
             "509: An error occurred when executing getDeviceToDatabase():root.db1 is not a legal path, because it is no longer than default sg level: 3",
             e.getMessage());
       }
+    } finally {
+      // This test leaves default_database_level=-1 baked into the cluster's config file. Because
+      // tests in this class share one cluster and run in random order, a later 'set configuration'
+      // test would otherwise fail its hot-reload while re-validating the leftover illegal value
+      // ("Illegal defaultDatabaseLevel: -1, should >= 1"). Restore a clean cluster before leaving.
+      EnvFactory.getEnv().cleanClusterEnvironment();
+      EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultDatabaseLevel(1);
+      EnvFactory.getEnv().initClusterEnvironment();
     }
   }
 }
