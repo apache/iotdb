@@ -88,6 +88,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
 
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -195,6 +196,16 @@ public class StatementGeneratorTest {
             new SortItem("SenderAddress", Ordering.ASC),
             new SortItem("UserName", Ordering.ASC)),
         ((ShowReceiversStatement) showReceivers).getSortItemList());
+    Assert.assertThrows(
+        ParseCancellationException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show receivers where protocol = 'thrift'", ZonedDateTime.now().getOffset()));
+    Assert.assertThrows(
+        ParseCancellationException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show receivers order by ReceiverNodeId", ZonedDateTime.now().getOffset()));
   }
 
   @Test
