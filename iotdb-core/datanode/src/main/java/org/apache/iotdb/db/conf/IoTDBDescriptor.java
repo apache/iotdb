@@ -3144,6 +3144,9 @@ public class IoTDBDescriptor {
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
     conf.setLoadObjectFileTempDir(
         properties.getProperty(LOAD_OBJECT_FILE_TEMP_DIR_KEY, conf.getLoadObjectFileTempDir()));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
@@ -3281,6 +3284,9 @@ public class IoTDBDescriptor {
     conf.setLoadObjectFileTempDir(
         properties.getProperty(
             LOAD_OBJECT_FILE_TEMP_DIR_KEY, String.valueOf(conf.getLoadObjectFileTempDir())));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(

@@ -46,14 +46,19 @@ public abstract class ActiveLoadScheduledExecutorService {
 
   private static final long MIN_EXECUTION_INTERVAL_SECONDS =
       IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds();
-  private final ScheduledExecutorService scheduledExecutorService;
+  private final ThreadName threadName;
+  private ScheduledExecutorService scheduledExecutorService;
   private Future<?> future;
 
   private final List<Pair<WrappedRunnable, Long>> jobs = new CopyOnWriteArrayList<>();
 
   protected ActiveLoadScheduledExecutorService(final ThreadName threadName) {
-    scheduledExecutorService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(threadName.name());
+    this.threadName = threadName;
+    scheduledExecutorService = newScheduledExecutorService();
+  }
+
+  private ScheduledExecutorService newScheduledExecutorService() {
+    return IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(threadName.name());
   }
 
   public void register(Runnable runnable) {
@@ -74,6 +79,9 @@ public abstract class ActiveLoadScheduledExecutorService {
 
   public synchronized void start() {
     if (future == null) {
+      if (scheduledExecutorService.isShutdown()) {
+        scheduledExecutorService = newScheduledExecutorService();
+      }
       future =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
               scheduledExecutorService,
@@ -96,6 +104,13 @@ public abstract class ActiveLoadScheduledExecutorService {
       future.cancel(false);
       future = null;
       LOGGER.info(StorageEngineMessages.ACTIVE_LOAD_EXECUTOR_STOPPED);
+    }
+    scheduledExecutorService.shutdownNow();
+    try {
+      scheduledExecutorService.awaitTermination(30, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      LOGGER.warn(StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S, threadName.getName());
+      Thread.currentThread().interrupt();
     }
   }
 }
