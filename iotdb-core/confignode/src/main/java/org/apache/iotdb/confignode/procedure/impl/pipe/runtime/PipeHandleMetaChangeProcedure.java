@@ -205,7 +205,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
     }
     PipeHandleMetaChangeProcedure that = (PipeHandleMetaChangeProcedure) o;
     return getProcId() == that.getProcId()
-        && getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
         && needWriteConsensusOnConfigNodes == that.needWriteConsensusOnConfigNodes
         && needPushPipeMetaToDataNodes == that.needPushPipeMetaToDataNodes;

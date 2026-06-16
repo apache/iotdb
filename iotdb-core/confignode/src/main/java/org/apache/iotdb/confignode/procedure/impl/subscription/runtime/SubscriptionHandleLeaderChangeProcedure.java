@@ -266,7 +266,7 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
     final SubscriptionHandleLeaderChangeProcedure that =
         (SubscriptionHandleLeaderChangeProcedure) o;
     return getProcId() == that.getProcId()
-        && getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
         && runtimeVersion == that.runtimeVersion
         && regionGroupToOldAndNewLeaderPairMap.equals(that.regionGroupToOldAndNewLeaderPairMap);

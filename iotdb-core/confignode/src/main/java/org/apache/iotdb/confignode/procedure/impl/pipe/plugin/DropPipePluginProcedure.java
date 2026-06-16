@@ -296,7 +296,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     if (that instanceof DropPipePluginProcedure) {
       final DropPipePluginProcedure thatProcedure = (DropPipePluginProcedure) that;
       return thatProcedure.getProcId() == getProcId()
-          && thatProcedure.getCurrentState().equals(this.getCurrentState())
+          && Objects.equals(thatProcedure.getCurrentState(), this.getCurrentState())
           && thatProcedure.getCycles() == this.getCycles()
           && (thatProcedure.pluginName).equals(pluginName);
     }

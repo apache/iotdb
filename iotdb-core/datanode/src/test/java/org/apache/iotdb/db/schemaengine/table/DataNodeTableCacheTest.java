@@ -46,8 +46,11 @@ import java.lang.reflect.Field;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Semaphore;
 
 public class DataNodeTableCacheTest {
+
+  private static final String DATABASE = "interrupted_fetch_database";
 
   @Test
   public void testInvalidColumnPreservesWritableViewType() {
@@ -425,5 +428,32 @@ public class DataNodeTableCacheTest {
     } catch (final ReflectiveOperationException e) {
       throw new AssertionError(e);
     }
+  }
+
+  @Test
+  public void interruptedFetchDoesNotLeakSemaphorePermit() throws Exception {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    cache.invalid(DATABASE);
+    try {
+      final Semaphore fetchTableSemaphore = getFetchTableSemaphore(cache);
+      final int permitsBeforeFetch = fetchTableSemaphore.availablePermits();
+
+      Thread.currentThread().interrupt();
+      try {
+        Assert.assertFalse(cache.isDatabaseExist(DATABASE));
+      } finally {
+        Thread.interrupted();
+      }
+
+      Assert.assertEquals(permitsBeforeFetch, fetchTableSemaphore.availablePermits());
+    } finally {
+      cache.invalid(DATABASE);
+    }
+  }
+
+  private Semaphore getFetchTableSemaphore(final DataNodeTableCache cache) throws Exception {
+    final Field field = DataNodeTableCache.class.getDeclaredField("fetchTableSemaphore");
+    field.setAccessible(true);
+    return (Semaphore) field.get(cache);
   }
 }

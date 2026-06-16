@@ -71,6 +71,9 @@ public class LockQueue {
   }
 
   public synchronized void waitProcedure(Procedure<?> procedure) {
+    if (hasWaitingProcedure(procedure)) {
+      return;
+    }
     waitingQueue.addLast(procedure);
   }
 
@@ -78,8 +81,20 @@ public class LockQueue {
     if (isLockAvailable(procedure)) {
       return false;
     }
+    if (hasWaitingProcedure(procedure)) {
+      return true;
+    }
     waitingQueue.addLast(procedure);
     return true;
+  }
+
+  public synchronized void waitProcedure(
+      Procedure<?> procedure, ProcedureScheduler procedureScheduler) {
+    if (isLockAvailable(procedure)) {
+      procedureScheduler.addFront(procedure);
+      return;
+    }
+    waitProcedure(procedure);
   }
 
   public synchronized int wakeWaitingProcedures(ProcedureScheduler procedureScheduler) {
@@ -102,5 +117,10 @@ public class LockQueue {
     return maxPermits <= 0
         || lockOwnerProcedureIds.contains(procedure.getProcId())
         || lockOwnerProcedureIds.size() < maxPermits;
+  }
+
+  private boolean hasWaitingProcedure(Procedure<?> procedure) {
+    return waitingQueue.stream()
+        .anyMatch(waitingProcedure -> waitingProcedure.getProcId() == procedure.getProcId());
   }
 }
