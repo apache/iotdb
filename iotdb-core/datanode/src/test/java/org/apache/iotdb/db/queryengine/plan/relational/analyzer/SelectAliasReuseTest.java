@@ -216,6 +216,131 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void lateralColumnAliasInSelectList() {
+    String sql = "SELECT s1 AS x, x + 1 AS y FROM table1";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertIdentifier(getSelectExpression(analyzedQuery, 0), "s1");
+    assertArithmeticIdentifiers(getSelectExpression(analyzedQuery, 1), "s1", null);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
+  public void lateralColumnAliasCanChainAndRepeat() {
+    String chained = "SELECT s1 AS x, x + 1 AS y, y * 2 AS z FROM table1";
+    AnalyzedQuery analyzedChained = analyze(chained);
+    assertArithmeticIdentifiers(getSelectExpression(analyzedChained, 1), "s1", null);
+    assertTrue(
+        ((ArithmeticBinaryExpression) getSelectExpression(analyzedChained, 2)).getLeft()
+            instanceof ArithmeticBinaryExpression);
+    new PlanTester().createPlan(chained);
+
+    String repeated = "SELECT s1 AS x, x + x AS y FROM table1";
+    AnalyzedQuery analyzedRepeated = analyze(repeated);
+    assertArithmeticIdentifiers(getSelectExpression(analyzedRepeated, 1), "s1", "s1");
+    new PlanTester().createPlan(repeated);
+  }
+
+  @Test
+  public void lateralColumnAliasDoesNotSupportForwardOrSelfReference() {
+    assertAnalyzeSemanticException(
+        "SELECT y + 1 AS x, s1 AS y FROM table1", "Column 'y' cannot be resolved");
+
+    assertAnalyzeSemanticException(
+        "SELECT x + 1 AS x FROM table1", "Column 'x' cannot be resolved");
+  }
+
+  @Test
+  public void inputColumnTakesPrecedenceOverLateralColumnAlias() {
+    String sql = "SELECT s1 AS x, x + 1 AS y FROM table_with_x";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertArithmeticIdentifiers(getSelectExpression(analyzedQuery, 1), "x", null);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
+  public void duplicateLateralColumnAliasesAreAmbiguousUnlessInputColumnMatches() {
+    assertAnalyzeSemanticException(
+        "SELECT s1 AS x, s2 AS x, x + 1 AS y FROM table1", "Column alias 'x' is ambiguous");
+
+    String sql = "SELECT s1 AS x, s2 AS x, x + 1 AS y FROM table_with_x";
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertArithmeticIdentifiers(getSelectExpression(analyzedQuery, 2), "x", null);
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
+  public void lateralColumnAliasWorksWithAggregates() {
+    String sql = "SELECT avg(s1) AS a, a + 1 AS b FROM table1";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertTrue(
+        ((ArithmeticBinaryExpression) getSelectExpression(analyzedQuery, 1)).getLeft()
+            instanceof FunctionCall);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
+  public void lateralColumnAliasCopiesAllRowsAggregate() {
+    String sql = "SELECT count(*) AS c, c + 1 AS c2 FROM table1";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertTrue(
+        ((ArithmeticBinaryExpression) getSelectExpression(analyzedQuery, 1)).getLeft()
+            instanceof FunctionCall);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
+  public void lateralColumnAliasRewritesBeforeAggregationValidation() {
+    assertAnalyzeSemanticException(
+        "SELECT s1 AS x, avg(s2) + x AS y FROM table1",
+        "must be an aggregate expression or appear in GROUP BY clause");
+  }
+
+  @Test
+  public void groupByAliasUsesLateralColumnAliasRewrittenExpression() {
+    String sql = "SELECT s1 AS x, x + 1 AS y, COUNT(*) FROM table1 GROUP BY y, x";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    List<Expression> groupByExpressions =
+        analyzedQuery.analysis.getGroupingSets(analyzedQuery.query).getOriginalExpressions();
+    assertTrue(groupByExpressions.get(0) instanceof ArithmeticBinaryExpression);
+    assertArithmeticIdentifiers(groupByExpressions.get(0), "s1", null);
+    assertIdentifier(groupByExpressions.get(1), "s1");
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
+  public void columnsSelectItemDoesNotRegisterLateralColumnAlias() {
+    assertAnalyzeSemanticException(
+        "SELECT COLUMNS('s.*') AS x, x + 1 AS y FROM table1", "Column 'x' cannot be resolved");
+  }
+
+  @Test
+  public void windowFunctionLateralColumnAliasIsExplicitlyRejected() {
+    assertAnalyzeSemanticException(
+        "SELECT row_number() OVER (ORDER BY s1) AS rn, rn + 1 AS rn2 FROM table1",
+        "Lateral column alias 'rn' containing window function is not supported");
+  }
+
+  @Test
+  public void lateralColumnAliasCanBeSelectedDirectly() {
+    String sql = "SELECT s1 AS x, x FROM table1";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertIdentifier(getSelectExpression(analyzedQuery, 1), "s1");
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
   public void duplicateAliasesAreAmbiguous() {
     assertAnalyzeSemanticException(
         "SELECT s1 AS x, s2 AS x FROM table1 ORDER BY x", "Column alias 'x' is ambiguous");
@@ -259,9 +384,6 @@ public class SelectAliasReuseTest {
     assertAnalyzeSemanticException(
         "SELECT AVG(s1) AS avg_s1 FROM table1 HAVING avg_s1 > 1",
         "Column 'avg_s1' cannot be resolved");
-
-    assertAnalyzeSemanticException(
-        "SELECT s1 + 1 AS x, x * 2 AS y FROM table1", "Column 'x' cannot be resolved");
   }
 
   @Test
@@ -316,6 +438,24 @@ public class SelectAliasReuseTest {
       Analysis.GroupingSetAnalysis analysis, String name) {
     assertEquals(1, analysis.getOriginalExpressions().size());
     assertIdentifier(analysis.getOriginalExpressions().get(0), name);
+  }
+
+  private static Expression getSelectExpression(AnalyzedQuery analyzedQuery, int index) {
+    return analyzedQuery
+        .analysis
+        .getSelectExpressions(analyzedQuery.query)
+        .get(index)
+        .getExpression();
+  }
+
+  private static void assertArithmeticIdentifiers(
+      Expression expression, String leftName, String rightName) {
+    assertTrue(expression instanceof ArithmeticBinaryExpression);
+    ArithmeticBinaryExpression arithmeticExpression = (ArithmeticBinaryExpression) expression;
+    assertIdentifier(arithmeticExpression.getLeft(), leftName);
+    if (rightName != null) {
+      assertIdentifier(arithmeticExpression.getRight(), rightName);
+    }
   }
 
   private static void assertIdentifier(Expression expression, String name) {

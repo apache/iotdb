@@ -36,19 +36,28 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Columns;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentDatabase;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentTime;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentUser;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DecimalLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Fill;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupingElement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupingSets;
@@ -73,6 +82,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
@@ -142,6 +152,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TranslationMap;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
@@ -372,11 +384,18 @@ public class StatementAnalyzer {
   private static final class SelectAnalysis {
     private final List<Expression> outputExpressions;
     private final List<SelectAlias> aliases;
+    private final Map<NodeRef<SingleColumn>, Expression> singleColumnExpressions;
 
-    private SelectAnalysis(List<Expression> outputExpressions, List<SelectAlias> aliases) {
+    private SelectAnalysis(
+        List<Expression> outputExpressions,
+        List<SelectAlias> aliases,
+        Map<NodeRef<SingleColumn>, Expression> singleColumnExpressions) {
       this.outputExpressions =
           ImmutableList.copyOf(requireNonNull(outputExpressions, "outputExpressions is null"));
       this.aliases = ImmutableList.copyOf(requireNonNull(aliases, "aliases is null"));
+      this.singleColumnExpressions =
+          ImmutableMap.copyOf(
+              requireNonNull(singleColumnExpressions, "singleColumnExpressions is null"));
     }
 
     private List<Expression> getOutputExpressions() {
@@ -386,15 +405,24 @@ public class StatementAnalyzer {
     private List<SelectAlias> getAliases() {
       return aliases;
     }
+
+    private Optional<Expression> getSingleColumnExpression(SingleColumn column) {
+      return Optional.ofNullable(singleColumnExpressions.get(NodeRef.of(column)));
+    }
   }
 
   private static final class SelectAlias {
     private final String canonicalName;
     private final int position;
+    private final Expression rewrittenExpression;
+    private final boolean containsWindowFunction;
 
-    private SelectAlias(String canonicalName, int position) {
+    private SelectAlias(String canonicalName, int position, Expression rewrittenExpression) {
       this.canonicalName = requireNonNull(canonicalName, "canonicalName is null");
       this.position = position;
+      this.rewrittenExpression = requireNonNull(rewrittenExpression, "rewrittenExpression is null");
+      this.containsWindowFunction =
+          !extractWindowFunctions(ImmutableList.of(rewrittenExpression)).isEmpty();
     }
 
     private String getCanonicalName() {
@@ -403,6 +431,14 @@ public class StatementAnalyzer {
 
     private int getPosition() {
       return position;
+    }
+
+    private Expression getRewrittenExpression() {
+      return rewrittenExpression;
+    }
+
+    private boolean containsWindowFunction() {
+      return containsWindowFunction;
     }
   }
 
@@ -429,6 +465,272 @@ public class StatementAnalyzer {
                   .collect(Collectors.joining(", "))));
     }
     return matches.stream().findFirst();
+  }
+
+  private static Expression rewriteLateralColumnAliases(
+      Expression expression, Scope scope, List<SelectAlias> visibleAliases) {
+    if (visibleAliases.isEmpty()) {
+      return expression;
+    }
+    return ExpressionTreeRewriter.rewriteWith(
+        new LateralColumnAliasRewriter(scope, visibleAliases), expression);
+  }
+
+  private static Expression copyExpression(Expression expression) {
+    return ExpressionTreeRewriter.rewriteWith(new DeepCopyExpressionRewriter(), expression);
+  }
+
+  private static final class LateralColumnAliasRewriter extends ExpressionRewriter<Void> {
+    private final Scope scope;
+    private final List<SelectAlias> visibleAliases;
+
+    private LateralColumnAliasRewriter(Scope scope, List<SelectAlias> visibleAliases) {
+      this.scope = requireNonNull(scope, "scope is null");
+      this.visibleAliases = ImmutableList.copyOf(visibleAliases);
+    }
+
+    @Override
+    public Expression rewriteIdentifier(
+        Identifier node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      if (resolvesToInputColumn(scope, node)) {
+        return node;
+      }
+
+      Optional<SelectAlias> selectAlias = resolveSelectAlias(node, visibleAliases);
+      if (!selectAlias.isPresent()) {
+        return node;
+      }
+
+      if (selectAlias.get().containsWindowFunction()) {
+        throw new SemanticException(
+            String.format(
+                "Lateral column alias '%s' containing window function is not supported",
+                node.getValue()));
+      }
+      return copyExpression(selectAlias.get().getRewrittenExpression());
+    }
+
+    @Override
+    public Expression rewriteDereferenceExpression(
+        DereferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return node;
+    }
+
+    @Override
+    public Expression rewriteSubqueryExpression(
+        SubqueryExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return node;
+    }
+
+    @Override
+    public Expression rewriteFunctionCall(
+        FunctionCall node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      List<Expression> arguments =
+          node.getArguments().stream()
+              .map(argument -> treeRewriter.rewrite(argument, context))
+              .collect(toImmutableList());
+      if (ExpressionTreeRewriter.sameElements(node.getArguments(), arguments)) {
+        return node;
+      }
+
+      if (node.getLocation().isPresent()) {
+        return new FunctionCall(
+            node.getLocation().get(),
+            node.getName(),
+            node.getWindow(),
+            node.getNullTreatment(),
+            node.isDistinct(),
+            node.getProcessingMode(),
+            arguments);
+      }
+
+      if (node.getWindow().isPresent() || node.getNullTreatment().isPresent()) {
+        throw new SemanticException(
+            String.format(
+                "Lateral column alias in window function arguments is not supported: %s", node));
+      }
+      return new FunctionCall(
+          node.getName(), node.isDistinct(), node.getProcessingMode(), arguments);
+    }
+
+    @Override
+    public Expression rewriteQuantifiedComparison(
+        QuantifiedComparisonExpression node,
+        Void context,
+        ExpressionTreeRewriter<Void> treeRewriter) {
+      Expression value = treeRewriter.rewrite(node.getValue(), context);
+      if (value != node.getValue()) {
+        return new QuantifiedComparisonExpression(
+            node.getOperator(), node.getQuantifier(), value, node.getSubquery());
+      }
+      return node;
+    }
+  }
+
+  private static final class DeepCopyExpressionRewriter extends ExpressionRewriter<Void> {
+
+    @Override
+    public Expression rewriteIdentifier(
+        Identifier node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return copyIdentifier(node);
+    }
+
+    @Override
+    public Expression rewriteFieldReference(
+        FieldReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return new FieldReference(node.getFieldIndex());
+    }
+
+    @Override
+    public Expression rewriteAllRows(
+        AllRows node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return node.getLocation().map(AllRows::new).orElseGet(AllRows::new);
+    }
+
+    @Override
+    public Expression rewriteFunctionCall(
+        FunctionCall node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      if (node.getWindow().isPresent()) {
+        throw new SemanticException(
+            String.format(
+                "Lateral column alias containing window function is not supported: %s", node));
+      }
+
+      List<Expression> arguments =
+          node.getArguments().stream()
+              .map(argument -> treeRewriter.rewrite(argument, context))
+              .collect(toImmutableList());
+      return node.getLocation()
+          .map(
+              location ->
+                  new FunctionCall(
+                      location,
+                      node.getName(),
+                      Optional.empty(),
+                      node.getNullTreatment(),
+                      node.isDistinct(),
+                      node.getProcessingMode(),
+                      arguments))
+          .orElseGet(
+              () ->
+                  new FunctionCall(
+                      node.getName(), node.isDistinct(), node.getProcessingMode(), arguments));
+    }
+
+    @Override
+    public Expression rewriteLiteral(
+        Literal node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return copyLiteral(node);
+    }
+
+    @Override
+    public Expression rewriteParameter(
+        Parameter node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return node.getLocation()
+          .map(location -> new Parameter(location, node.getId()))
+          .orElseGet(() -> new Parameter(node.getId()));
+    }
+
+    @Override
+    public Expression rewriteCurrentDatabase(
+        CurrentDatabase node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return node.getLocation().map(CurrentDatabase::new).orElseGet(CurrentDatabase::new);
+    }
+
+    @Override
+    public Expression rewriteCurrentTime(
+        CurrentTime node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return node.getLocation()
+          .map(
+              location ->
+                  node.getPrecision()
+                      .map(precision -> new CurrentTime(location, node.getFunction(), precision))
+                      .orElseGet(() -> new CurrentTime(location, node.getFunction())))
+          .orElseThrow(() -> new IllegalStateException("CurrentTime location is missing"));
+    }
+
+    @Override
+    public Expression rewriteCurrentUser(
+        CurrentUser node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return node.getLocation().map(CurrentUser::new).orElseGet(CurrentUser::new);
+    }
+
+    @Override
+    public Expression rewriteSymbolReference(
+        SymbolReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      return new SymbolReference(node.getName());
+    }
+  }
+
+  private static Identifier copyIdentifier(Identifier node) {
+    return node.getLocation()
+        .map(location -> new Identifier(location, node.getValue(), node.isDelimited()))
+        .orElseGet(() -> new Identifier(node.getValue(), node.isDelimited()));
+  }
+
+  private static Literal copyLiteral(Literal node) {
+    if (node instanceof BinaryLiteral) {
+      BinaryLiteral literal = (BinaryLiteral) node;
+      return node.getLocation()
+          .map(location -> new BinaryLiteral(location, literal.toHexString()))
+          .orElseGet(() -> new BinaryLiteral(literal.getValue()));
+    }
+    if (node instanceof BooleanLiteral) {
+      BooleanLiteral literal = (BooleanLiteral) node;
+      String value = Boolean.toString(literal.getValue());
+      return node.getLocation()
+          .map(location -> new BooleanLiteral(location, value))
+          .orElseGet(() -> new BooleanLiteral(value));
+    }
+    if (node instanceof DecimalLiteral) {
+      DecimalLiteral literal = (DecimalLiteral) node;
+      return node.getLocation()
+          .map(location -> new DecimalLiteral(location, literal.getValue()))
+          .orElseGet(() -> new DecimalLiteral(literal.getValue()));
+    }
+    if (node instanceof DoubleLiteral) {
+      DoubleLiteral literal = (DoubleLiteral) node;
+      String value = Double.toString(literal.getValue());
+      return node.getLocation()
+          .map(location -> new DoubleLiteral(location, value))
+          .orElseGet(() -> new DoubleLiteral(literal.getValue()));
+    }
+    if (node instanceof FloatLiteral) {
+      FloatLiteral literal = (FloatLiteral) node;
+      String value = Float.toString(literal.getValue());
+      return node.getLocation()
+          .map(location -> new FloatLiteral(location, value))
+          .orElseGet(() -> new FloatLiteral(literal.getValue()));
+    }
+    if (node instanceof GenericLiteral) {
+      GenericLiteral literal = (GenericLiteral) node;
+      return node.getLocation()
+          .map(location -> new GenericLiteral(location, literal.getType(), literal.getValue()))
+          .orElseGet(() -> new GenericLiteral(literal.getType(), literal.getValue()));
+    }
+    if (node instanceof LongLiteral) {
+      LongLiteral literal = (LongLiteral) node;
+      return node.getLocation()
+          .map(location -> new LongLiteral(location, literal.getValue()))
+          .orElseGet(() -> new LongLiteral(literal.getValue()));
+    }
+    if (node instanceof NullLiteral) {
+      return node.getLocation().map(NullLiteral::new).orElseGet(NullLiteral::new);
+    }
+    if (node instanceof StringLiteral) {
+      StringLiteral literal = (StringLiteral) node;
+      return node.getLocation()
+          .map(location -> new StringLiteral(location, literal.getValue()))
+          .orElseGet(() -> new StringLiteral(literal.getValue()));
+    }
+    if (node instanceof TimeDurationLiteral) {
+      TimeDurationLiteral literal = (TimeDurationLiteral) node;
+      return node.getLocation()
+          .map(location -> new TimeDurationLiteral(location, literal.getValue()))
+          .orElseGet(() -> new TimeDurationLiteral(literal.getValue()));
+    }
+    throw new UnsupportedOperationException(
+        "Unsupported literal type for lateral column alias: " + node.getClass().getName());
   }
 
   /**
@@ -1266,7 +1568,7 @@ public class StatementAnalyzer {
           analyzeGroupBy(node, sourceScope, outputExpressions, selectAnalysis.getAliases());
       analyzeHaving(node, sourceScope);
 
-      Scope outputScope = computeAndAssignOutputScope(node, scope, sourceScope);
+      Scope outputScope = computeAndAssignOutputScope(node, scope, sourceScope, selectAnalysis);
 
       node.getFill()
           .ifPresent(
@@ -1644,6 +1946,9 @@ public class StatementAnalyzer {
       ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder =
           ImmutableList.builder();
       ImmutableList.Builder<SelectAlias> selectAliasBuilder = ImmutableList.builder();
+      ImmutableMap.Builder<NodeRef<SingleColumn>, Expression> singleColumnExpressionBuilder =
+          ImmutableMap.builder();
+      List<SelectAlias> visibleAliases = new ArrayList<>();
 
       int outputPosition = 1;
       for (SelectItem item : node.getSelect().getSelectItems()) {
@@ -1670,11 +1975,17 @@ public class StatementAnalyzer {
               outputPosition++;
             }
           } else {
+            Expression rewrittenExpression =
+                rewriteLateralColumnAliases(selectExpression, scope, visibleAliases);
             analyzeSelectSingleColumn(
-                selectExpression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+                rewrittenExpression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+            singleColumnExpressionBuilder.put(NodeRef.of(singleColumn), rewrittenExpression);
             if (singleColumn.getAlias().isPresent()) {
               Identifier alias = singleColumn.getAlias().get();
-              selectAliasBuilder.add(new SelectAlias(alias.getCanonicalValue(), outputPosition));
+              SelectAlias selectAlias =
+                  new SelectAlias(alias.getCanonicalValue(), outputPosition, rewrittenExpression);
+              selectAliasBuilder.add(selectAlias);
+              visibleAliases.add(selectAlias);
             }
             outputPosition++;
           }
@@ -1689,7 +2000,10 @@ public class StatementAnalyzer {
         analysis.setContainsSelectDistinct();
       }
 
-      return new SelectAnalysis(outputExpressionBuilder.build(), selectAliasBuilder.build());
+      return new SelectAnalysis(
+          outputExpressionBuilder.build(),
+          selectAliasBuilder.build(),
+          singleColumnExpressionBuilder.build());
     }
 
     /**
@@ -2926,7 +3240,7 @@ public class StatementAnalyzer {
       }
 
       return resolveSelectAlias(identifier, selectAliases)
-          .map(alias -> outputExpressions.get(alias.getPosition() - 1))
+          .map(SelectAlias::getRewrittenExpression)
           .orElse(expression);
     }
 
@@ -3023,7 +3337,10 @@ public class StatementAnalyzer {
     }
 
     private Scope computeAndAssignOutputScope(
-        QuerySpecification node, Optional<Scope> scope, Scope sourceScope) {
+        QuerySpecification node,
+        Optional<Scope> scope,
+        Scope sourceScope,
+        SelectAnalysis selectAnalysis) {
       ImmutableList.Builder<Field> outputFields = ImmutableList.builder();
 
       for (SelectItem item : node.getSelect().getSelectItems()) {
@@ -3054,7 +3371,8 @@ public class StatementAnalyzer {
           }
         } else if (item instanceof SingleColumn) {
           SingleColumn column = (SingleColumn) item;
-          Expression expression = column.getExpression();
+          Expression expression =
+              selectAnalysis.getSingleColumnExpression(column).orElse(column.getExpression());
 
           // process Columns
           List<Expression> expandedExpressions = column.getExpandedExpressions();
