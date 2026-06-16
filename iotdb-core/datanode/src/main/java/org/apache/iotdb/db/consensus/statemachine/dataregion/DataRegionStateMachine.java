@@ -124,7 +124,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public boolean loadSnapshot(File latestSnapshotRootDir) {
     String databaseName = region.getDatabaseName();
     String dataRegionIdString = region.getDataRegionIdString();
     DataRegionId regionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
@@ -141,14 +141,16 @@ public class DataRegionStateMachine extends BaseStateMachine {
                           .loadSnapshotForStateMachine());
       if (newRegion == null) {
         logger.error(DataNodeMiscMessages.FAIL_LOAD_SNAPSHOT, latestSnapshotRootDir);
-        return;
+        return false;
       }
       this.region = newRegion;
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
+      return true;
     } catch (Exception e) {
       logger.error(DataNodeMiscMessages.EXCEPTION_REPLACING_DATA_REGION, e);
+      return false;
     }
   }
 
