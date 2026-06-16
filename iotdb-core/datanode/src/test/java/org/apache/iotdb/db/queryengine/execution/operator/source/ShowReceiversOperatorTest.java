@@ -314,6 +314,33 @@ public class ShowReceiversOperatorTest {
   }
 
   @Test
+  public void testUsePipeUserOnlySeesOwnReceiverSnapshots() {
+    registerUserSession(
+        "data-use-pipe-user", "10.0.0.1", 9001, "use_pipe_user", "cluster-a", "pipe-a", 1, 100);
+    registerUserSession("data-user2", "10.0.0.2", 9002, "user2", "cluster-b", "pipe-b", 2, 200);
+
+    final User usePipeUser = new User("use_pipe_user", "password");
+    usePipeUser.grantSysPrivilege(PrivilegeType.USE_PIPE, false);
+    AuthorityChecker.getAuthorityFetcher()
+        .getAuthorCache()
+        .putUserCache(usePipeUser.getName(), usePipeUser);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(
+            null,
+            new PlanNodeId("show-receivers"),
+            new UserEntity(3L, "use_pipe_user", "127.0.0.1"));
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(1, tsBlock.getPositionCount());
+    assertEquals("10.0.0.1", getText(tsBlock, 3));
+    assertEquals("use_pipe_user", getText(tsBlock, 8));
+    assertFalse(operator.hasNext());
+  }
+
+  @Test
   public void testNullUserEntitySeesAllReceiverSnapshots() {
     registerUserSession("data-user1", "10.0.0.1", 9001, "user1", "cluster-a", "pipe-a", 1, 100);
     registerUserSession("data-user2", "10.0.0.2", 9002, "user2", "cluster-b", "pipe-b", 2, 200);
