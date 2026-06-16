@@ -77,7 +77,8 @@ public class Scheduler {
     this.releaseFlushStrategy = releaseFlushStrategy;
   }
 
-  private void executeFlush(CachedMTreeStore store, int regionId, AtomicInteger remainToFlush) {
+  private void executeFlush(
+      CachedMTreeStore store, int regionId, AtomicInteger remainToFlush, boolean propagateFailure) {
     IMemoryManager memoryManager = store.getMemoryManager();
     ISchemaFile file = store.getSchemaFile();
     LockManager lockManager = store.getLockManager();
@@ -98,6 +99,9 @@ public class Scheduler {
           regionId,
           e.getMessage(),
           e);
+      if (propagateFailure) {
+        throw new RuntimeException(e);
+      }
     } finally {
       long time = System.currentTimeMillis() - startTime;
       if (time > 10_000) {
@@ -158,7 +162,7 @@ public class Scheduler {
                             return;
                           }
                           try {
-                            executeFlush(store, regionId, null);
+                            executeFlush(store, regionId, null, true);
                             executeRelease(store, false);
                           } finally {
                             lockManager.globalReadUnlock();
@@ -235,7 +239,7 @@ public class Scheduler {
             }
             try {
 
-              executeFlush(store, regionId, remainToFlush);
+              executeFlush(store, regionId, remainToFlush, false);
             } finally {
               lockManager.globalReadUnlock();
             }
