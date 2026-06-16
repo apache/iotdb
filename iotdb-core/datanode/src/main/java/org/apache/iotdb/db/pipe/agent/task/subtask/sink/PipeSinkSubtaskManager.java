@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
@@ -70,11 +69,10 @@ public class PipeSinkSubtaskManager {
       final Supplier<? extends PipeSinkSubtaskExecutor> executorSupplier,
       final PipeParameters pipeSinkParameters,
       final PipeTaskSinkRuntimeEnvironment environment) {
+    final String connectorName =
+        PipeSinkConstant.getConnectorOrSinkNameWithDefault(pipeSinkParameters);
     final String connectorKey =
-        pipeSinkParameters
-            .getStringOrDefault(
-                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
-                BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+        connectorName
             // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase
             // for matching in `CONNECTOR_CONSTRUCTORS`
             .toLowerCase();
@@ -93,30 +91,31 @@ public class PipeSinkSubtaskManager {
 
     final int sinkNum;
     boolean realTimeFirst = false;
+    boolean serializeByRegion = false;
     String attributeSortedString = generateAttributeSortedString(pipeSinkParameters);
     final String attributeDisplayString = generateAttributeDisplayString(pipeSinkParameters);
     if (isDataRegionSink) {
+      serializeByRegion = PipeSinkConstant.isSerializeByRegionEnabled(pipeSinkParameters);
       sinkNum =
-          pipeSinkParameters.getIntOrDefault(
-              Arrays.asList(
-                  PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
-                  PipeSinkConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
-              PipeSinkConstant.SINGLE_THREAD_DEFAULT_SINK.contains(
-                      pipeSinkParameters
-                          .getStringOrDefault(
-                              Arrays.asList(
-                                  PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
-                              BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
-                          .toLowerCase())
-                  ? 1
-                  : PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+          serializeByRegion
+              ? 1
+              : pipeSinkParameters.getIntOrDefault(
+                  Arrays.asList(
+                      PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
+                      PipeSinkConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
+                  PipeSinkConstant.SINGLE_THREAD_DEFAULT_SINK.contains(connectorKey)
+                      ? 1
+                      : PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
       realTimeFirst =
           pipeSinkParameters.getBooleanOrDefault(
               Arrays.asList(
                   PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
                   PipeSinkConstant.SINK_REALTIME_FIRST_KEY),
               PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
-      attributeSortedString = "data_" + attributeSortedString;
+      attributeSortedString =
+          serializeByRegion
+              ? "data_region_" + environment.getRegionId() + "_" + attributeSortedString
+              : "data_" + attributeSortedString;
     } else {
       // Do not allow parallel tasks for schema region connectors
       // to avoid the potential disorder of the schema region data transfer
@@ -124,7 +123,11 @@ public class PipeSinkSubtaskManager {
       attributeSortedString = "schema_" + attributeSortedString;
     }
     final String attributeDisplayStringWithPrefix =
-        isDataRegionSink ? "data_" + attributeDisplayString : "schema_" + attributeDisplayString;
+        isDataRegionSink
+            ? serializeByRegion
+                ? "data_region_" + environment.getRegionId() + "_" + attributeDisplayString
+                : "data_" + attributeDisplayString
+            : "schema_" + attributeDisplayString;
     environment.setAttributeSortedString(attributeDisplayStringWithPrefix);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
