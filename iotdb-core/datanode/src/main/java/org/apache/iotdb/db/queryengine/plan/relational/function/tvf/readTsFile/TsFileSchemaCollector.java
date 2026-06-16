@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile;
 
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -47,14 +48,16 @@ import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 
 final class TsFileSchemaCollector {
   private final String specifiedTableName;
+  private final MPPQueryContext mppQueryContext;
   private String tableName;
   private final List<File> tsFiles = new ArrayList<>();
   private MergedTableSchemaBuilder schemaBuilder;
   private TableSchema mergedTableSchema;
 
-  TsFileSchemaCollector(String specifiedTableName) {
+  TsFileSchemaCollector(String specifiedTableName, MPPQueryContext mppQueryContext) {
     this.specifiedTableName =
         specifiedTableName == null ? null : specifiedTableName.toLowerCase(Locale.ENGLISH);
+    this.mppQueryContext = mppQueryContext;
     this.tableName = this.specifiedTableName;
   }
 
@@ -66,6 +69,7 @@ final class TsFileSchemaCollector {
             DataNodeQueryMessages.TSFILE_PATH_DOES_NOT_EXIST + tsFilePath);
       }
       if (Files.isRegularFile(path)) {
+        checkTimeOutIfNeeded();
         TableSchema tableSchema = readTableSchema(specifiedTableName, path.toFile(), true);
         collect(path.toFile(), tableSchema);
         continue;
@@ -99,6 +103,7 @@ final class TsFileSchemaCollector {
           walkedPaths.filter(Files::isRegularFile).filter(this::hasTsFileSuffix).iterator();
       while (iterator.hasNext()) {
         Path filePath = iterator.next();
+        checkTimeOutIfNeeded();
         TableSchema tableSchema = readTableSchema(specifiedTableName, filePath.toFile(), false);
         collect(filePath.toFile(), tableSchema);
       }
@@ -111,6 +116,12 @@ final class TsFileSchemaCollector {
   private boolean hasTsFileSuffix(Path filePath) {
     Path fileName = filePath.getFileName();
     return fileName != null && fileName.toString().endsWith(TsFileConstant.TSFILE_SUFFIX);
+  }
+
+  private void checkTimeOutIfNeeded() {
+    if (mppQueryContext != null) {
+      mppQueryContext.checkTimeOut();
+    }
   }
 
   private void collect(File tsFile, TableSchema tableSchema) {

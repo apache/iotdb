@@ -79,6 +79,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
   private static final long TSFILE_READER_MEMORY_RESERVE_SIZE_IN_BYTES = 4L * 1024;
 
+  private final MPPQueryContext queryContext;
   private final QueryId queryId;
   // This resource outlives the frontend planning phase, whose MPPQueryContext memory manager is
   // released after dispatch. Keep a dedicated manager and release it when this resource closes.
@@ -95,7 +96,8 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
   public ExternalTsFileQueryResource(
       MPPQueryContext queryContext, Path tempRoot, String tableName, List<String> tsFilePaths) {
-    this.queryId = requireNonNull(queryContext, "queryContext is null").getQueryId();
+    this.queryContext = requireNonNull(queryContext, "queryContext is null");
+    this.queryId = queryContext.getQueryId();
     this.externalTsFileResourceMemoryReservationManager =
         new NotThreadSafeMemoryReservationManager(
             queryId, ExternalTsFileQueryResource.class.getName());
@@ -117,6 +119,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     try (DeviceCollector deviceCollector = new DeviceCollector()) {
       createDeviceTaskPartitions(partitionCount);
       while (deviceCollector.hasNextDevice()) {
+        queryContext.checkTimeOut();
         IDeviceID deviceID = deviceCollector.nextDevice();
         if (schemaFilter != null
             && !Boolean.TRUE.equals(schemaFilter.accept(deviceFilterVisitor, deviceID))) {

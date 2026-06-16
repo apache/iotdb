@@ -138,6 +138,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ar
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ReadTsFileTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
@@ -5024,6 +5025,9 @@ public class StatementAnalyzer {
 
       TableFunctionAnalysis functionAnalysis;
       try {
+        if (function instanceof ReadTsFileTableFunction) {
+          ((ReadTsFileTableFunction) function).setMPPQueryContext(queryContext);
+        }
         functionAnalysis = function.analyze(argumentsAnalysis.getPassedArguments());
       } catch (UDFException e) {
         throw new SemanticException(e.getMessage());

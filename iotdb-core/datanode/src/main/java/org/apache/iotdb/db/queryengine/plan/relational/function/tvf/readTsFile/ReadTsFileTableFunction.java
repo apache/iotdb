@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -55,6 +56,12 @@ public class ReadTsFileTableFunction implements TableFunction {
   private static final String TABLE_NAME_PARAMETER_NAME = "TABLE_NAME";
   private static final String PATHS_PARAMETER_NAME = "PATHS";
 
+  private MPPQueryContext mppQueryContext;
+
+  public void setMPPQueryContext(MPPQueryContext mppQueryContext) {
+    this.mppQueryContext = mppQueryContext;
+  }
+
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
@@ -73,7 +80,7 @@ public class ReadTsFileTableFunction implements TableFunction {
         parseTsFilePaths(getRequiredStringArgument(arguments, PATHS_PARAMETER_NAME));
     checkTsFilePathsAreOutsideDataDirs(tsFilePaths);
     TsFileSchemaCollector schemaCollector =
-        new TsFileSchemaCollector(tableName.isEmpty() ? null : tableName);
+        new TsFileSchemaCollector(tableName.isEmpty() ? null : tableName, mppQueryContext);
     schemaCollector.collect(tsFilePaths);
     TableSchema mergedTableSchema = schemaCollector.getMergedTableSchema();
     if (mergedTableSchema == null) {

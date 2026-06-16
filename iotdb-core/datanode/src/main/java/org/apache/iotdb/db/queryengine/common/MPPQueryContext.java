@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -310,6 +311,13 @@ public class MPPQueryContext implements IAuditEntity {
   /** the max executing time of query in ms. Unit: millisecond */
   public void setTimeOut(long timeOut) {
     this.timeOut = timeOut;
+  }
+
+  public void checkTimeOut() {
+    long currentTime = System.currentTimeMillis();
+    if (currentTime - startTime >= timeOut) {
+      throw new QueryTimeoutRuntimeException(startTime, currentTime, timeOut);
+    }
   }
 
   public void setQueryType(QueryType queryType) {

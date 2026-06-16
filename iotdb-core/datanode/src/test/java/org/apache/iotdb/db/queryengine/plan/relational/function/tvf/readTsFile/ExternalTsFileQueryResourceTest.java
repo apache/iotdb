@@ -150,6 +150,8 @@ public class ExternalTsFileQueryResourceTest {
       tsFilePaths.add(new File(root, fileName).getAbsolutePath());
     }
     MPPQueryContext queryContext = new MPPQueryContext(new QueryId(queryId));
+    queryContext.setStartTime(System.currentTimeMillis());
+    queryContext.setTimeOut(Long.MAX_VALUE);
     return new ExternalTsFileQueryResource(
         queryContext, root.toPath().resolve("tmp"), "table1", tsFilePaths);
   }
