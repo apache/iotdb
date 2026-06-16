@@ -269,9 +269,7 @@ public class MPPQueryContext implements IAuditEntity {
                 .resolve(queryId.getId())
                 .resolve(String.valueOf(externalTsFileQueryResources.size())),
             tableName,
-            tsFilePaths,
-            ignored -> {},
-            true);
+            tsFilePaths);
     externalTsFileQueryResources.add(externalTsFileQueryResource);
     return externalTsFileQueryResource;
   }

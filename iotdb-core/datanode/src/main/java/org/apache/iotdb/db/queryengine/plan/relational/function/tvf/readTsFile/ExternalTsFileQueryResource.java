@@ -64,7 +64,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
-import java.util.function.LongConsumer;
 
 import static java.util.Objects.requireNonNull;
 
@@ -89,7 +88,6 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   private final String tableName;
   private final List<String> tsFilePaths;
   private final List<TsFileResource> sharedTsFileResources;
-  private final LongConsumer ioSizeRecorder;
   private final List<DeviceEntry> sharedDeviceEntries = new ArrayList<>();
   private final List<DeviceTaskPartition> deviceTaskPartitions = new ArrayList<>();
   private Comparator<DeviceEntry> deviceEntryComparator;
@@ -97,25 +95,15 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   private volatile boolean closed;
 
   public ExternalTsFileQueryResource(
-      MPPQueryContext queryContext,
-      Path tempRoot,
-      String tableName,
-      List<String> tsFilePaths,
-      LongConsumer ioSizeRecorder,
-      boolean useExactTempRoot) {
+      MPPQueryContext queryContext, Path tempRoot, String tableName, List<String> tsFilePaths) {
     this.queryId = requireNonNull(queryContext, "queryContext is null").getQueryId();
     this.externalTsFileResourceMemoryReservationManager =
         new NotThreadSafeMemoryReservationManager(
             queryId, ExternalTsFileQueryResource.class.getName());
-    this.queryTempRoot =
-        useExactTempRoot
-            ? requireNonNull(tempRoot, "tempRoot is null")
-            : requireNonNull(tempRoot, "tempRoot is null").resolve(this.queryId.getId());
+    this.queryTempRoot = requireNonNull(tempRoot, "tempRoot is null");
     this.tableName = tableName;
-    this.tsFilePaths =
-        Collections.unmodifiableList(new ArrayList<>(requireNonNull(tsFilePaths, "tsFilePaths")));
+    this.tsFilePaths = requireNonNull(tsFilePaths, "tsFilePaths");
     this.sharedTsFileResources = createTsFileResources(this.tsFilePaths);
-    this.ioSizeRecorder = requireNonNull(ioSizeRecorder, "ioSizeRecorder is null");
     for (String tsFilePath : tsFilePaths) {
       FileReaderManager.getInstance().increaseExternalFileReaderReference(tsFilePath);
     }
@@ -124,7 +112,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   public void collectDeviceEntries(
       SchemaFilter schemaFilter, Comparator<DeviceEntry> comparator, int partitionCount) {
     checkNotClosed();
-    deviceEntryComparator = comparator;
+    this.deviceEntryComparator = comparator;
     acquireMemoryForTsFileReaders();
     ExternalTsFileDeviceFilterVisitor deviceFilterVisitor = new ExternalTsFileDeviceFilterVisitor();
     try (DeviceCollector deviceCollector = new DeviceCollector()) {
@@ -235,20 +223,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     for (String tsFilePath : tsFilePaths) {
       TsFileResource resource =
           new TsFileResource(new File(tsFilePath), TsFileResourceStatus.NORMAL);
-      if (resource.resourceFileExists()) {
-        try {
-          resource.deserialize();
-        } catch (IOException e) {
-          throw new RuntimeException(
-              String.format(
-                  DataNodeQueryMessages.FAILED_TO_DESERIALIZE_EXTERNAL_TSFILE_RESOURCE,
-                  tsFilePath,
-                  e.getMessage()),
-              e);
-        }
-      } else {
-        resource.setTimeIndex(new FileTimeIndex(Long.MIN_VALUE, Long.MAX_VALUE));
-      }
+      resource.setTimeIndex(new FileTimeIndex(Long.MIN_VALUE, Long.MAX_VALUE));
       tsFileResources.add(resource);
     }
     return Collections.unmodifiableList(tsFileResources);
@@ -641,9 +616,8 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
         for (int fileIndex = 0; fileIndex < tsFilePaths.size(); fileIndex++) {
           TsFileSequenceReader reader =
               FileReaderManager.getInstance()
-                  .get(tsFilePaths.get(fileIndex), null, true, ioSizeRecorder, true);
-          deviceIteratorMap.put(
-              fileIndex, new LazyTsFileDeviceIterator(reader, tableName, ioSizeRecorder));
+                  .get(tsFilePaths.get(fileIndex), null, true, null, true);
+          deviceIteratorMap.put(fileIndex, new LazyTsFileDeviceIterator(reader, tableName, null));
         }
       } catch (IOException e) {
         close();

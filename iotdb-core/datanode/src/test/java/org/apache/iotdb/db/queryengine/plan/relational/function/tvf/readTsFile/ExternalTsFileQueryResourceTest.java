@@ -151,7 +151,7 @@ public class ExternalTsFileQueryResourceTest {
     }
     MPPQueryContext queryContext = new MPPQueryContext(new QueryId(queryId));
     return new ExternalTsFileQueryResource(
-        queryContext, root.toPath().resolve("tmp"), "table1", tsFilePaths, ignored -> {}, true);
+        queryContext, root.toPath().resolve("tmp"), "table1", tsFilePaths);
   }
 
   private void addDevices(String... deviceNames) {
