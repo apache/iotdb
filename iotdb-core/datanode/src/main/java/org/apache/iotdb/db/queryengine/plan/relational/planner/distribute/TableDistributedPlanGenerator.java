@@ -755,7 +755,7 @@ public class TableDistributedPlanGenerator
     for (DeviceTaskPartition partition : partitions) {
       ExternalTsFileScanNode splitNode =
           new ExternalTsFileScanNode(
-              queryId.genPlanNodeId(),
+              partition.getPlanNodeId(),
               node.getQualifiedObjectName(),
               node.getOutputSymbols(),
               node.getAssignments(),
@@ -813,7 +813,7 @@ public class TableDistributedPlanGenerator
     for (DeviceTaskPartition partition : partitions) {
       ExternalTsFileAggregationScanNode splitNode =
           new ExternalTsFileAggregationScanNode(
-              queryId.genPlanNodeId(),
+              partition.getPlanNodeId(),
               node.getQualifiedObjectName(),
               partialTemplateNode.getOutputSymbols(),
               node.getAssignments(),
@@ -2068,7 +2068,6 @@ public class TableDistributedPlanGenerator
     for (final PlanNode planNode : resultTableScanNodeList) {
       final DeviceTableScanNode scanNode = (DeviceTableScanNode) planNode;
       if (sortPropertyContext.scanOrderDesc) {
-        // TODO(beyyes) move scan order judgement into logical plan optimizer
         scanNode.setScanOrder(Ordering.DESC);
       }
       newOrderingScheme.ifPresent(

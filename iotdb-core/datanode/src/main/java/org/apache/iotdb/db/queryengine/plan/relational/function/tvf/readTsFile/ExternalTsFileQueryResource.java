@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -240,6 +241,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     private static final long MEMORY_RESERVE_BATCH_SIZE_IN_BYTES = 1024 * 1024;
 
     private final int partitionIndex;
+    private final PlanNodeId planNodeId;
     private final List<DeviceTask> pendingDeviceTasks = new ArrayList<>();
     private final List<Integer> deviceEntryIndexes = new ArrayList<>();
     private final List<Path> runFiles = new ArrayList<>();
@@ -248,10 +250,15 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
     DeviceTaskPartition(int partitionIndex) {
       this.partitionIndex = partitionIndex;
+      this.planNodeId = queryId.genPlanNodeId();
     }
 
     public int getPartitionIndex() {
       return partitionIndex;
+    }
+
+    public PlanNodeId getPlanNodeId() {
+      return planNodeId;
     }
 
     public List<Integer> getDeviceEntryIndexes() {
@@ -271,9 +278,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       try {
         runFiles.add(
             writeDeviceTaskRun(
-                queryTempRoot.resolve("child-" + partitionIndex),
-                runFiles.size(),
-                pendingDeviceTasks));
+                queryTempRoot.resolve(planNodeId.getId()), runFiles.size(), pendingDeviceTasks));
       } catch (IOException e) {
         throw new RuntimeException(
             DataNodeQueryMessages.FAILED_TO_FLUSH_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION, e);

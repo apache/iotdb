@@ -66,7 +66,7 @@ public class ExternalTsFileQueryResourceTest {
     resource = newResource("merge_comparator", Arrays.asList("file-0.tsfile", "file-1.tsfile"));
     addDevices("d1", "d2", "d3", "d4", "d5");
     resource.setDeviceEntryComparator(Comparator.comparing(DeviceEntry::getDeviceID));
-    DeviceTaskPartition partition = resource.new DeviceTaskPartition(0);
+    DeviceTaskPartition partition = newPartition();
 
     partition.add(task(2, offset(0, 30, 39)));
     partition.add(task(4, offset(1, 50, 59)));
@@ -86,7 +86,7 @@ public class ExternalTsFileQueryResourceTest {
   public void testDeviceTaskRunReaderReadsRunsInFifoOrderWithoutComparator() throws Exception {
     resource = newResource("fifo", Collections.singletonList("file-0.tsfile"));
     addDevices("d1", "d2", "d3", "d4");
-    DeviceTaskPartition partition = resource.new DeviceTaskPartition(0);
+    DeviceTaskPartition partition = newPartition();
 
     partition.add(task(2, offset(0, 30, 39)));
     partition.flush();
@@ -106,7 +106,7 @@ public class ExternalTsFileQueryResourceTest {
       throws Exception {
     resource = newResource("disk_memory", Collections.singletonList("file-0.tsfile"));
     addDevices("d1", "d2", "d3");
-    DeviceTaskPartition partition = resource.new DeviceTaskPartition(0);
+    DeviceTaskPartition partition = newPartition();
 
     partition.add(task(1, offset(0, 20, 29)));
     partition.flush();
@@ -123,7 +123,7 @@ public class ExternalTsFileQueryResourceTest {
   public void testDeviceTaskRunReaderUsesSharedTsFileResourceAsOffsetMapKey() throws Exception {
     resource = newResource("offset_map", Arrays.asList("file-0.tsfile", "file-1.tsfile"));
     addDevices("d1");
-    DeviceTaskPartition partition = resource.new DeviceTaskPartition(0);
+    DeviceTaskPartition partition = newPartition();
     partition.add(task(0, offset(0, 11, 22), offset(1, 33, 44)));
     partition.finish();
 
@@ -159,6 +159,10 @@ public class ExternalTsFileQueryResourceTest {
   private DeviceTaskRunReader newReader(DeviceTaskPartition partition) {
     resource.getDeviceTaskPartitions().add(partition);
     return resource.getDeviceTaskRunReader(partition.getPartitionIndex());
+  }
+
+  private DeviceTaskPartition newPartition() {
+    return resource.new DeviceTaskPartition(0);
   }
 
   private void addDevices(String... deviceNames) {
