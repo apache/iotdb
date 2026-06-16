@@ -204,6 +204,8 @@ public interface CommonConfig {
 
   CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword);
 
+  CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL);
+
   CommonConfig setEnableInternalSSL(boolean enableInternalSSL);
 
   CommonConfig setKeyStorePath(String keyStorePath);
