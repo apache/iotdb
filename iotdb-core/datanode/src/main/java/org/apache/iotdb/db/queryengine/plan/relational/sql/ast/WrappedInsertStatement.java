@@ -147,7 +147,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     final String databaseName = getDatabase();
     rewriteWritableViewTargetIfNecessary(metadata, databaseName, getInnerTreeStatement());
     metadata.validateInsertNodeMeasurements(
-        databaseName,
+        getDatabase(),
         getInsertNodeMeasurementInfo(),
         context,
         true,
@@ -163,7 +163,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       final boolean allowCreateTable) {
     rewriteWritableViewTargetIfNecessary(metadata, databaseName, insertRowStatement);
     metadata.validateInsertNodeMeasurements(
-        databaseName,
+        AnalyzeUtils.getDatabaseName(insertRowStatement, context),
         toInsertNodeMeasurementInfo(insertRowStatement),
         context,
         allowCreateTable,

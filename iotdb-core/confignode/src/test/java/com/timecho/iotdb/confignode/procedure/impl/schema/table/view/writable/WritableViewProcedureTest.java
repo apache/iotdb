@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -38,6 +39,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterOrDr
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
+import org.apache.iotdb.confignode.procedure.state.schema.AlterTableColumnDataTypeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.service.ConfigNode;
 
@@ -491,6 +493,107 @@ public class WritableViewProcedureTest {
   }
 
   @Test
+  public void alterWritableViewColumnDataTypeShouldUpdateOriginalTableForPreRelease()
+      throws Exception {
+    final TestableAlterWritableViewColumnDataTypeProcedure procedure =
+        new TestableAlterWritableViewColumnDataTypeProcedure(
+            "database1", "view1", "0", "view_value", TSDataType.INT64, false);
+    final WritableView oldView = new WritableView("view1", "database1", "source1", true);
+    oldView.addColumnSchema(new FieldColumnSchema("view_value", TSDataType.INT32));
+    oldView.putViewColumnSourceColumnMapping("view_value", "source_value");
+    procedure.setTable(oldView);
+
+    final TsTable oldSource = new TsTable("source1");
+    oldSource.addColumnSchema(new FieldColumnSchema("source_value", TSDataType.INT32));
+
+    final WritableView updatedView = new WritableView(oldView);
+    updatedView.getColumnSchema("view_value").setDataType(TSDataType.INT64);
+
+    final ConfigNode originalConfigNode = ConfigNode.getInstance();
+    final ConfigNode mockedConfigNode = mock(ConfigNode.class);
+    final ConfigNodeProcedureEnv env = mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = mock(ConfigManager.class);
+    final ClusterSchemaManager clusterSchemaManager = mock(ClusterSchemaManager.class);
+    when(mockedConfigNode.getConfigManager()).thenReturn(configManager);
+    when(env.getConfigManager()).thenReturn(configManager);
+    when(configManager.getClusterSchemaManager()).thenReturn(clusterSchemaManager);
+    when(clusterSchemaManager.getTableAndStatusIfExists("database1", "source1"))
+        .thenReturn(Optional.of(new Pair<>(oldSource, TableNodeStatus.USING)));
+    when(clusterSchemaManager.tableColumnCheckForColumnAltering(
+            eq("database1"),
+            eq("view1"),
+            eq("view_value"),
+            eq(TSDataType.INT64),
+            eq(false),
+            eq(TableType.WRITABLE_VIEW),
+            eq("database1"),
+            eq("source1"),
+            eq("source_value")))
+        .thenReturn(new Pair<>(StatusUtils.OK, updatedView));
+
+    ConfigNode.setInstance(mockedConfigNode);
+    try {
+      procedure.executeFromStateForTest(
+          env, AlterTableColumnDataTypeState.CHECK_AND_INVALIDATE_COLUMN);
+
+      Assert.assertFalse(procedure.isFailed());
+      Assert.assertSame(updatedView, procedure.getTable());
+      Assert.assertEquals(
+          TSDataType.INT32, oldSource.getColumnSchema("source_value").getDataType());
+      Assert.assertEquals(
+          TSDataType.INT64,
+          procedure.getOriginalTable().getColumnSchema("source_value").getDataType());
+    } finally {
+      ConfigNode.setInstance(originalConfigNode);
+    }
+  }
+
+  @Test
+  public void alterWritableViewColumnDataTypePreReleaseShouldRefreshStaleOriginalTableSnapshot()
+      throws Exception {
+    final TestableAlterWritableViewColumnDataTypeProcedure procedure =
+        new TestableAlterWritableViewColumnDataTypeProcedure(
+            "database1", "view1", "0", "view_value", TSDataType.INT64, false);
+    final WritableView view = new WritableView("view1", "database1", "source1", true);
+    view.addColumnSchema(new FieldColumnSchema("view_value", TSDataType.INT64));
+    view.putViewColumnSourceColumnMapping("view_value", "source_value");
+    procedure.setTable(view);
+
+    final TsTable staleOriginal = new TsTable("source1");
+    staleOriginal.addColumnSchema(new FieldColumnSchema("source_value", TSDataType.INT32));
+    final ConfigNode originalConfigNode = ConfigNode.getInstance();
+    final ConfigNode mockedConfigNode = mock(ConfigNode.class);
+    final ConfigNodeProcedureEnv env = mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = mock(ConfigManager.class);
+    final ClusterSchemaManager clusterSchemaManager = mock(ClusterSchemaManager.class);
+    final org.apache.iotdb.confignode.manager.node.NodeManager nodeManager =
+        mock(org.apache.iotdb.confignode.manager.node.NodeManager.class);
+    when(mockedConfigNode.getConfigManager()).thenReturn(configManager);
+    when(env.getConfigManager()).thenReturn(configManager);
+    when(configManager.getClusterSchemaManager()).thenReturn(clusterSchemaManager);
+    when(configManager.getNodeManager()).thenReturn(nodeManager);
+    when(nodeManager.getRegisteredDataNodeLocations()).thenReturn(Collections.emptyMap());
+    when(clusterSchemaManager.getTableAndStatusIfExists("database1", "source1"))
+        .thenReturn(Optional.of(new Pair<>(staleOriginal, TableNodeStatus.USING)));
+
+    ConfigNode.setInstance(mockedConfigNode);
+    try {
+      procedure.executeFromStateForTest(env, AlterTableColumnDataTypeState.PRE_RELEASE);
+
+      Assert.assertFalse(procedure.isFailed());
+      Assert.assertEquals(
+          TSDataType.INT64,
+          procedure.getOriginalTable().getColumnSchema("source_value").getDataType());
+      Assert.assertEquals(
+          TSDataType.INT32, staleOriginal.getColumnSchema("source_value").getDataType());
+    } catch (final InterruptedException e) {
+      throw new AssertionError(e);
+    } finally {
+      ConfigNode.setInstance(originalConfigNode);
+    }
+  }
+
+  @Test
   public void dropWritableViewSerializeDeserializeTest() throws IOException {
     assertSerializeDeserialize(
         new DropWritableViewProcedure("database1", "table1", "0", false),
@@ -776,6 +879,25 @@ public class WritableViewProcedureTest {
       return (String) method.invoke(procedure);
     } catch (final ReflectiveOperationException e) {
       throw new AssertionError(e);
+    }
+  }
+
+  private static class TestableAlterWritableViewColumnDataTypeProcedure
+      extends AlterWritableViewColumnDataTypeProcedure {
+    private TestableAlterWritableViewColumnDataTypeProcedure(
+        final String database,
+        final String tableName,
+        final String queryId,
+        final String columnName,
+        final TSDataType dataType,
+        final boolean isGeneratedByPipe) {
+      super(database, tableName, queryId, columnName, dataType, isGeneratedByPipe);
+    }
+
+    private void executeFromStateForTest(
+        final ConfigNodeProcedureEnv env, final AlterTableColumnDataTypeState state)
+        throws InterruptedException {
+      super.executeFromState(env, state);
     }
   }
 }

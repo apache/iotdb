@@ -71,12 +71,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
@@ -114,6 +116,7 @@ import static org.junit.Assert.fail;
 public class WritableViewWriteRewriteTest {
 
   private static final String DATABASE = "writable_view_db";
+  private static final String SOURCE_DATABASE = "writable_view_source_db";
   private static final String SOURCE_TABLE = "source_table";
   private static final String VIEW_TABLE = "writable_view";
   private static final String SOURCE_TAG = "id1";
@@ -148,6 +151,7 @@ public class WritableViewWriteRewriteTest {
   @After
   public void tearDown() {
     DataNodeTableCache.getInstance().invalid(DATABASE);
+    DataNodeTableCache.getInstance().invalid(SOURCE_DATABASE);
   }
 
   @Test
@@ -797,11 +801,7 @@ public class WritableViewWriteRewriteTest {
 
   @Test
   public void testInsertIntoWritableViewWithMissingSourceTableThrowsClearSemanticException() {
-    resetWritableView(
-        createSourceTable(true, true),
-        createWritableView(null),
-        null,
-        createWritableViewSchema(null));
+    resetWritableView(null, createWritableView(null), null, createWritableViewSchema(null));
 
     final InsertRowStatement insertRowStatement = StatementTestUtils.genInsertRowStatement(true);
     insertRowStatement.setDevicePath(new PartialPath(new String[] {VIEW_TABLE}));
@@ -1000,6 +1000,61 @@ public class WritableViewWriteRewriteTest {
   }
 
   @Test
+  public void testInsertIntoWritableViewValidatesRewrittenSourceDatabase() {
+    resetWritableView(
+        createSourceTable(true, true),
+        createWritableView(null, SOURCE_DATABASE),
+        createSourceTableSchema(true, true),
+        createWritableViewSchema(null, SOURCE_DATABASE));
+
+    final InsertRowStatement insertRowStatement = StatementTestUtils.genInsertRowStatement(true);
+    insertRowStatement.setDatabaseName(DATABASE);
+    insertRowStatement.setDevicePath(new PartialPath(new String[] {VIEW_TABLE}));
+    insertRowStatement.setMeasurements(new String[] {VIEW_TAG, VIEW_ATTR, VIEW_FIELD});
+    insertRowStatement.setColumnCategories(
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.FIELD
+        });
+
+    final MPPQueryContext context =
+        new MPPQueryContext(
+            "", new QueryId("query_cross_database_insert_rewrite"), sessionInfo, null, null);
+    new InsertRow(insertRowStatement, context).validateTableSchema(metadata, context);
+
+    assertEquals(Optional.of(SOURCE_DATABASE), insertRowStatement.getDatabaseName());
+    assertEquals(SOURCE_TABLE, insertRowStatement.getDevicePath().getFullPath());
+    assertArrayEquals(
+        new String[] {SOURCE_TAG, SOURCE_ATTR, SOURCE_FIELD}, insertRowStatement.getMeasurements());
+  }
+
+  @Test
+  public void testInsertRowsIntoWritableViewValidatesRewrittenSourceDatabase() {
+    resetWritableView(
+        createSourceTable(true, true),
+        createWritableView(null, SOURCE_DATABASE),
+        createSourceTableSchema(true, true),
+        createWritableViewSchema(null, SOURCE_DATABASE));
+
+    final InsertRowStatement firstRow = createInsertRowIntoWritableView(0);
+    final InsertRowStatement secondRow = createInsertRowIntoWritableView(1);
+    final InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+    insertRowsStatement.setInsertRowStatementList(Arrays.asList(firstRow, secondRow));
+
+    final MPPQueryContext context =
+        new MPPQueryContext(
+            "", new QueryId("query_cross_database_insert_rows_rewrite"), sessionInfo, null, null);
+    new InsertRows(insertRowsStatement, context).validateTableSchema(metadata, context);
+
+    for (final InsertRowStatement insertRowStatement : Arrays.asList(firstRow, secondRow)) {
+      assertEquals(Optional.of(SOURCE_DATABASE), insertRowStatement.getDatabaseName());
+      assertEquals(SOURCE_TABLE, insertRowStatement.getDevicePath().getFullPath());
+      assertArrayEquals(
+          new String[] {SOURCE_TAG, SOURCE_ATTR, SOURCE_FIELD},
+          insertRowStatement.getMeasurements());
+    }
+  }
+
+  @Test
   public void testShowDevicesOnWritableViewWithLocalOnlyAttributeThrowsSemanticException() {
     resetWritableView(
         createSourceTable(true, true),
@@ -1032,8 +1087,14 @@ public class WritableViewWriteRewriteTest {
       final TableSchema sourceTableSchema,
       final WritableViewSchema writableViewSchema) {
     DataNodeTableCache.getInstance().invalid(DATABASE);
-    DataNodeTableCache.getInstance().preUpdateTable(DATABASE, sourceTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(DATABASE, SOURCE_TABLE, null);
+    final String sourceDatabase = writableView.getSourceTableDatabase();
+    if (!DATABASE.equalsIgnoreCase(sourceDatabase)) {
+      DataNodeTableCache.getInstance().invalid(sourceDatabase);
+    }
+    if (sourceTable != null) {
+      DataNodeTableCache.getInstance().preUpdateTable(sourceDatabase, sourceTable, null);
+      DataNodeTableCache.getInstance().commitUpdateTable(sourceDatabase, SOURCE_TABLE, null);
+    }
     DataNodeTableCache.getInstance().preUpdateTable(DATABASE, writableView, null);
     DataNodeTableCache.getInstance().commitUpdateTable(DATABASE, VIEW_TABLE, null);
     metadata =
@@ -1117,7 +1178,14 @@ public class WritableViewWriteRewriteTest {
 
   private static WritableView createWritableView(
       final org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema extraColumn) {
-    final WritableView writableView = new WritableView(VIEW_TABLE, DATABASE, SOURCE_TABLE, false);
+    return createWritableView(extraColumn, DATABASE);
+  }
+
+  private static WritableView createWritableView(
+      final org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema extraColumn,
+      final String sourceDatabase) {
+    final WritableView writableView =
+        new WritableView(VIEW_TABLE, sourceDatabase, SOURCE_TABLE, false);
     writableView.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
     writableView.addColumnSchema(new TagColumnSchema(VIEW_TAG, TSDataType.STRING));
     writableView.addColumnSchema(new AttributeColumnSchema(VIEW_ATTR, TSDataType.STRING));
@@ -1191,6 +1259,11 @@ public class WritableViewWriteRewriteTest {
   }
 
   private static WritableViewSchema createWritableViewSchema(final ColumnSchema extraColumnSchema) {
+    return createWritableViewSchema(extraColumnSchema, DATABASE);
+  }
+
+  private static WritableViewSchema createWritableViewSchema(
+      final ColumnSchema extraColumnSchema, final String sourceDatabase) {
     final List<ColumnSchema> columns = new ArrayList<>();
     columns.add(
         new ColumnSchema(
@@ -1216,8 +1289,21 @@ public class WritableViewWriteRewriteTest {
     return new WritableViewSchema(
         VIEW_TABLE,
         columns,
-        new QualifiedObjectName(DATABASE, SOURCE_TABLE),
+        new QualifiedObjectName(sourceDatabase, SOURCE_TABLE),
         createWritableViewColumnMap());
+  }
+
+  private static InsertRowStatement createInsertRowIntoWritableView(final int offset) {
+    final InsertRowStatement insertRowStatement =
+        StatementTestUtils.genInsertRowStatement(true, offset);
+    insertRowStatement.setDatabaseName(DATABASE);
+    insertRowStatement.setDevicePath(new PartialPath(new String[] {VIEW_TABLE}));
+    insertRowStatement.setMeasurements(new String[] {VIEW_TAG, VIEW_ATTR, VIEW_FIELD});
+    insertRowStatement.setColumnCategories(
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.FIELD
+        });
+    return insertRowStatement;
   }
 
   private static WritableViewSchema createWritableViewSchemaWithAliasedTime() {
@@ -1370,23 +1456,26 @@ public class WritableViewWriteRewriteTest {
 
     @Override
     public boolean tableExists(final QualifiedObjectName name) {
-      return name.getDatabaseName().equalsIgnoreCase(DATABASE)
-              && ((name.getObjectName().equalsIgnoreCase(SOURCE_TABLE) && sourceTableSchema != null)
-                  || (name.getObjectName().equalsIgnoreCase(VIEW_TABLE)
-                      && writableViewSchema != null))
+      return (sourceTableSchema != null
+              && name.getDatabaseName().equalsIgnoreCase(getSourceDatabase())
+              && name.getObjectName().equalsIgnoreCase(SOURCE_TABLE))
+          || (writableViewSchema != null
+              && name.getDatabaseName().equalsIgnoreCase(DATABASE)
+              && name.getObjectName().equalsIgnoreCase(VIEW_TABLE))
           || super.tableExists(name);
     }
 
     @Override
     public Optional<TableSchema> getTableSchema(
         final SessionInfo session, final QualifiedObjectName name) {
-      if (name.getDatabaseName().equalsIgnoreCase(DATABASE)) {
-        if (name.getObjectName().equalsIgnoreCase(SOURCE_TABLE)) {
-          return Optional.ofNullable(sourceTableSchema);
-        }
-        if (name.getObjectName().equalsIgnoreCase(VIEW_TABLE)) {
-          return Optional.ofNullable(writableViewSchema);
-        }
+      if (name.getDatabaseName().equalsIgnoreCase(getSourceDatabase())
+          && name.getObjectName().equalsIgnoreCase(SOURCE_TABLE)) {
+        return Optional.ofNullable(sourceTableSchema);
+      }
+      if (writableViewSchema != null
+          && name.getDatabaseName().equalsIgnoreCase(DATABASE)
+          && name.getObjectName().equalsIgnoreCase(VIEW_TABLE)) {
+        return Optional.of(writableViewSchema);
       }
       return super.getTableSchema(session, name);
     }
@@ -1412,7 +1501,7 @@ public class WritableViewWriteRewriteTest {
     @Override
     public void validateDeviceSchema(
         final ITableDeviceSchemaValidation schemaValidation, final MPPQueryContext context) {
-      assertEquals(DATABASE, schemaValidation.getDatabase());
+      assertEquals(getSourceDatabase(), schemaValidation.getDatabase());
       assertEquals(SOURCE_TABLE, schemaValidation.getTableName());
       assertEquals(1, schemaValidation.getDeviceIdList().size());
       assertEquals(1, schemaValidation.getAttributeColumnNameList().size());
@@ -1430,12 +1519,12 @@ public class WritableViewWriteRewriteTest {
           dataPartitionMap = new HashMap<>();
 
       for (final DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
-        assertEquals(DATABASE, dataPartitionQueryParam.getDatabaseName());
+        assertEquals(getSourceDatabase(), dataPartitionQueryParam.getDatabaseName());
         assertEquals(SOURCE_TABLE, dataPartitionQueryParam.getDeviceID().getTableName());
         for (final TTimePartitionSlot timePartitionSlot :
             dataPartitionQueryParam.getTimePartitionSlotList()) {
           dataPartitionMap
-              .computeIfAbsent(DATABASE, key -> new HashMap<>())
+              .computeIfAbsent(getSourceDatabase(), key -> new HashMap<>())
               .computeIfAbsent(new TSeriesPartitionSlot(0), key -> new HashMap<>())
               .computeIfAbsent(timePartitionSlot, key -> new ArrayList<>())
               .add(
@@ -1446,6 +1535,12 @@ public class WritableViewWriteRewriteTest {
       }
 
       return new DataPartition(dataPartitionMap, "hash", 1);
+    }
+
+    private String getSourceDatabase() {
+      return writableViewSchema == null
+          ? DATABASE
+          : writableViewSchema.getSourceTableName().getDatabaseName();
     }
 
     @Override

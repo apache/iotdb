@@ -184,6 +184,23 @@ public class TsTableRenameColumnSchemaTest {
   }
 
   @Test
+  public void testWritableViewSourceColumnMapIsReadOnly() {
+    final WritableView writableView =
+        new WritableView("view_table", "source_db", "source_table", true);
+    writableView.putViewColumnSourceColumnMapping("view_col", "source_col");
+
+    try {
+      writableView.getViewColumnToSourceColumnMap().put("another_view_col", "another_source_col");
+      Assert.fail("Expected source column map to be read only");
+    } catch (final UnsupportedOperationException ignored) {
+      // Expected
+    }
+
+    Assert.assertNull(writableView.getMappedSourceColumnName("another_view_col"));
+    Assert.assertEquals("source_col", writableView.getMappedSourceColumnName("view_col"));
+  }
+
+  @Test
   public void testWritableViewRemoveColumnSchemaRemovesSourceMapping() {
     final WritableView writableView =
         new WritableView("view_table", "source_db", "source_table", true);

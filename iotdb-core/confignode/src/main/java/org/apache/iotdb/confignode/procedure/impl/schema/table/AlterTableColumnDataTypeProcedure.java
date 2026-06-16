@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AlterViewColumnDataTypePlan;
@@ -31,6 +33,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterTableColumnDataTypeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.AlterWritableViewColumnDataTypePlan;
@@ -126,6 +129,7 @@ public class AlterTableColumnDataTypeProcedure
 
   @Override
   protected void preRelease(ConfigNodeProcedureEnv env) {
+    updateOriginalTableForPreRelease();
     super.preRelease(env);
     setNextState(AlterTableColumnDataTypeState.ALTER_TABLE_COLUMN_DATA_TYPE);
   }
@@ -152,10 +156,33 @@ public class AlterTableColumnDataTypeProcedure
         return;
       }
       table = result.getRight();
+      updateOriginalTableForPreRelease();
       setNextState(AlterTableColumnDataTypeState.PRE_RELEASE);
     } catch (final MetadataException e) {
       setFailure(new ProcedureException(e));
     }
+  }
+
+  private void updateOriginalTableForPreRelease() {
+    final String originalColumnName = getOriginalColumnName();
+    if (Objects.isNull(originalTable) || Objects.isNull(originalColumnName)) {
+      return;
+    }
+
+    final TsTable updatedOriginalTable = originalTable.clone();
+    final TsTableColumnSchema originalColumnSchema =
+        updatedOriginalTable.getColumnSchema(originalColumnName);
+    if (Objects.isNull(originalColumnSchema)) {
+      return;
+    }
+
+    originalColumnSchema.setDataType(dataType);
+    if (originalColumnSchema instanceof FieldColumnSchema) {
+      final FieldColumnSchema fieldColumnSchema = (FieldColumnSchema) originalColumnSchema;
+      fieldColumnSchema.setEncoding(
+          SchemaUtils.getDataTypeCompatibleEncoding(dataType, fieldColumnSchema.getEncoding()));
+    }
+    originalTable = updatedOriginalTable;
   }
 
   private void alterColumnDataType(final ConfigNodeProcedureEnv env) {

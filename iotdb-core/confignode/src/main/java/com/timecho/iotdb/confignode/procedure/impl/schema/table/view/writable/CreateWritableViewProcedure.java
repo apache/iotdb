@@ -172,7 +172,7 @@ public class CreateWritableViewProcedure extends CreateTableViewProcedure {
         } else {
           applyOriginalTableCommentForCascade(source, explicitViewComment.get());
         }
-        if (Objects.isNull(view.getViewColumnToSourceColumnMap())) {
+        if (!view.hasViewColumnSourceColumnMap()) {
           // `CREATE WRITABLE VIEW ... AS SELECT * ...` reaches ConfigNode without explicit column
           // mappings. Materialize both the mapping and the copied schemas here.
           materializeSelectStarColumns(source, view);

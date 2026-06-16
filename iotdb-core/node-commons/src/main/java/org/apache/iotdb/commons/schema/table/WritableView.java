@@ -30,9 +30,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 public class WritableView extends TsTable {
   public static final String SCHEMA_CASCADE = "schema_cascade";
@@ -46,7 +48,7 @@ public class WritableView extends TsTable {
   private final String sourceTableDatabase;
   private final String sourceTableName;
   private boolean isSchemaCascade;
-  private Map<String, String> viewColumnToSourceColumnMap;
+  private volatile Map<String, String> viewColumnToSourceColumnMap;
 
   public WritableView(
       final String viewName,
@@ -64,10 +66,9 @@ public class WritableView extends TsTable {
     this.sourceTableDatabase = origin.sourceTableDatabase;
     this.sourceTableName = origin.sourceTableName;
     this.isSchemaCascade = origin.isSchemaCascade;
+    final Map<String, String> originColumnMap = origin.viewColumnToSourceColumnMap;
     this.viewColumnToSourceColumnMap =
-        Objects.nonNull(origin.viewColumnToSourceColumnMap)
-            ? new LinkedHashMap<>(origin.viewColumnToSourceColumnMap)
-            : null;
+        Objects.nonNull(originColumnMap) ? new LinkedHashMap<>(originColumnMap) : null;
   }
 
   public static boolean parseSchemaCascade(final String value) {
@@ -90,7 +91,7 @@ public class WritableView extends TsTable {
   }
 
   public void setSchemaCascade(final boolean schemaCascade) {
-    isSchemaCascade = schemaCascade;
+    executeWrite(() -> isSchemaCascade = schemaCascade);
   }
 
   public boolean isSchemaCascade() {
@@ -99,47 +100,80 @@ public class WritableView extends TsTable {
 
   public void setViewColumnToSourceColumnMap(
       final Map<String, String> viewColumnToSourceColumnMap) {
-    this.viewColumnToSourceColumnMap =
-        Objects.nonNull(viewColumnToSourceColumnMap)
-            ? new LinkedHashMap<>(viewColumnToSourceColumnMap)
-            : null;
+    executeWrite(() -> setViewColumnToSourceColumnMapInternal(viewColumnToSourceColumnMap));
   }
 
   public Map<String, String> getViewColumnToSourceColumnMap() {
-    return viewColumnToSourceColumnMap;
+    final Map<String, String> columnMap = viewColumnToSourceColumnMap;
+    return Objects.nonNull(columnMap)
+        ? Collections.unmodifiableMap(new LinkedHashMap<>(columnMap))
+        : null;
+  }
+
+  public boolean hasViewColumnSourceColumnMap() {
+    return Objects.nonNull(viewColumnToSourceColumnMap);
   }
 
   public void putViewColumnSourceColumnMapping(
       final String viewColumnName, final String sourceColumnName) {
-    executeWrite(() -> putViewColumnSourceColumnMappingInternal(viewColumnName, sourceColumnName));
+    executeWrite(
+        () -> {
+          final Map<String, String> updatedColumnMap = copyViewColumnToSourceColumnMapOrEmpty();
+          updatedColumnMap.put(viewColumnName, sourceColumnName);
+          viewColumnToSourceColumnMap = updatedColumnMap;
+        });
+  }
+
+  public void putAllViewColumnSourceColumnMappings(
+      final Map<String, String> viewColumnToSourceColumnMappings) {
+    if (Objects.isNull(viewColumnToSourceColumnMappings)
+        || viewColumnToSourceColumnMappings.isEmpty()) {
+      return;
+    }
+    executeWrite(
+        () -> {
+          final Map<String, String> updatedColumnMap = copyViewColumnToSourceColumnMapOrEmpty();
+          updatedColumnMap.putAll(viewColumnToSourceColumnMappings);
+          viewColumnToSourceColumnMap = updatedColumnMap;
+        });
   }
 
   public void removeViewColumnSourceColumnMapping(final String viewColumnName) {
     executeWrite(
         () -> {
           if (Objects.nonNull(viewColumnToSourceColumnMap)) {
-            viewColumnToSourceColumnMap.remove(viewColumnName);
+            final Map<String, String> updatedColumnMap = copyViewColumnToSourceColumnMapOrEmpty();
+            updatedColumnMap.remove(viewColumnName);
+            viewColumnToSourceColumnMap = updatedColumnMap;
           }
         });
   }
 
   public String getOriginalColumnName(final String columnName) {
     final TsTableColumnSchema columnSchema = getColumnSchema(columnName);
-    if (Objects.isNull(viewColumnToSourceColumnMap)) {
+    final Map<String, String> columnMap = viewColumnToSourceColumnMap;
+    if (Objects.isNull(columnMap)) {
       return Objects.nonNull(columnSchema)
           ? ViewColumnSchemaUtils.getSourceName(columnSchema)
           : columnName;
     }
     return Objects.nonNull(columnSchema)
-        ? viewColumnToSourceColumnMap.getOrDefault(
-            columnName, ViewColumnSchemaUtils.getSourceName(columnSchema))
-        : viewColumnToSourceColumnMap.getOrDefault(columnName, columnName);
+        ? columnMap.getOrDefault(columnName, ViewColumnSchemaUtils.getSourceName(columnSchema))
+        : columnMap.getOrDefault(columnName, columnName);
   }
 
   public String getMappedSourceColumnName(final String columnName) {
-    return Objects.nonNull(viewColumnToSourceColumnMap)
-        ? viewColumnToSourceColumnMap.get(columnName)
-        : null;
+    final Map<String, String> columnMap = viewColumnToSourceColumnMap;
+    return Objects.nonNull(columnMap) ? columnMap.get(columnName) : null;
+  }
+
+  public boolean hasViewColumnSourceColumnMapping(final String columnName) {
+    final Map<String, String> columnMap = viewColumnToSourceColumnMap;
+    return Objects.nonNull(columnMap) && columnMap.containsKey(columnName);
+  }
+
+  public Optional<String> getMappedSourceColumnNameIfPresent(final String columnName) {
+    return Optional.ofNullable(getMappedSourceColumnName(columnName));
   }
 
   @Override
@@ -157,10 +191,10 @@ public class WritableView extends TsTable {
     executeWrite(
         () -> {
           renameColumnSchemaInternal(oldName, newName);
-          if (Objects.nonNull(viewColumnToSourceColumnMap)
-              && viewColumnToSourceColumnMap.containsKey(oldName)
-              && !Objects.equals(oldName, newName)) {
-            viewColumnToSourceColumnMap.put(newName, viewColumnToSourceColumnMap.remove(oldName));
+          if (hasViewColumnSourceColumnMapping(oldName) && !Objects.equals(oldName, newName)) {
+            final Map<String, String> updatedColumnMap = copyViewColumnToSourceColumnMapOrEmpty();
+            updatedColumnMap.put(newName, updatedColumnMap.remove(oldName));
+            viewColumnToSourceColumnMap = updatedColumnMap;
           }
         });
   }
@@ -170,8 +204,10 @@ public class WritableView extends TsTable {
     executeWrite(
         () -> {
           removeColumnSchemaInternal(columnName, true);
-          if (Objects.nonNull(viewColumnToSourceColumnMap)) {
-            viewColumnToSourceColumnMap.remove(columnName);
+          if (hasViewColumnSourceColumnMap()) {
+            final Map<String, String> updatedColumnMap = copyViewColumnToSourceColumnMapOrEmpty();
+            updatedColumnMap.remove(columnName);
+            viewColumnToSourceColumnMap = updatedColumnMap;
           }
         });
   }
@@ -197,7 +233,8 @@ public class WritableView extends TsTable {
     ReadWriteIOUtils.write(sourceTableDatabase, stream);
     ReadWriteIOUtils.write(sourceTableName, stream);
     ReadWriteIOUtils.write(isSchemaCascade, stream);
-    ReadWriteIOUtils.write(viewColumnToSourceColumnMap, stream);
+    final Map<String, String> columnMap = viewColumnToSourceColumnMap;
+    ReadWriteIOUtils.write(columnMap, stream);
 
     ReadWriteIOUtils.write(columnSchemaMap.size(), stream);
     for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
@@ -214,7 +251,7 @@ public class WritableView extends TsTable {
             ReadWriteIOUtils.readString(inputStream),
             ReadWriteIOUtils.readString(inputStream),
             ReadWriteIOUtils.readBool(inputStream));
-    view.setViewColumnToSourceColumnMap(deserializeOrderedMap(inputStream));
+    view.setViewColumnToSourceColumnMapInternal(deserializeOrderedMap(inputStream));
 
     final int columnNum = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < columnNum; i++) {
@@ -231,7 +268,7 @@ public class WritableView extends TsTable {
             ReadWriteIOUtils.readString(byteBuffer),
             ReadWriteIOUtils.readString(byteBuffer),
             ReadWriteIOUtils.readBool(byteBuffer));
-    view.setViewColumnToSourceColumnMap(deserializeOrderedMap(byteBuffer));
+    view.setViewColumnToSourceColumnMapInternal(deserializeOrderedMap(byteBuffer));
 
     final int columnNum = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < columnNum; i++) {
@@ -291,19 +328,23 @@ public class WritableView extends TsTable {
     return orderedMap;
   }
 
-  private void putViewColumnSourceColumnMappingInternal(
-      final String viewColumnName, final String sourceColumnName) {
-    if (Objects.isNull(viewColumnToSourceColumnMap)) {
-      viewColumnToSourceColumnMap = new LinkedHashMap<>();
-    }
-    viewColumnToSourceColumnMap.put(viewColumnName, sourceColumnName);
+  private void setViewColumnToSourceColumnMapInternal(
+      final Map<String, String> viewColumnToSourceColumnMap) {
+    this.viewColumnToSourceColumnMap =
+        Objects.nonNull(viewColumnToSourceColumnMap)
+            ? new LinkedHashMap<>(viewColumnToSourceColumnMap)
+            : null;
+  }
+
+  private Map<String, String> copyViewColumnToSourceColumnMapOrEmpty() {
+    final Map<String, String> columnMap = viewColumnToSourceColumnMap;
+    return Objects.nonNull(columnMap) ? new LinkedHashMap<>(columnMap) : new LinkedHashMap<>();
   }
 
   private void putViewColumnSourceColumnMappingIfAbsent(
       final String viewColumnName, final String sourceColumnName) {
-    if (Objects.isNull(viewColumnToSourceColumnMap)) {
-      viewColumnToSourceColumnMap = new LinkedHashMap<>();
-    }
-    viewColumnToSourceColumnMap.putIfAbsent(viewColumnName, sourceColumnName);
+    final Map<String, String> updatedColumnMap = copyViewColumnToSourceColumnMapOrEmpty();
+    updatedColumnMap.putIfAbsent(viewColumnName, sourceColumnName);
+    viewColumnToSourceColumnMap = updatedColumnMap;
   }
 }

@@ -434,7 +434,7 @@ public class IoTDBWritableViewIT {
                 + "device_id tag, "
                 + "model attribute, "
                 + "temperature int32"
-                + ") with (ttl=100)");
+                + ") with (ttl='INF')");
         statement.execute(
             "create writable view writable_view as select * from source_table "
                 + "with (schema_cascade=true)");
@@ -486,6 +486,14 @@ public class IoTDBWritableViewIT {
                     "model,STRING,ATTRIBUTE,USING,null,model,",
                     "temperature,INT32,FIELD,USING,null,temperature,",
                     "pressure,INT64,FIELD,USING,null,pressure,")));
+
+        statement.execute(
+            "insert into writable_view(time, device_id, model, pressure) "
+                + "values (1, 'd1', 'm1', 3000000000)");
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("select pressure from source_table where device_id = 'd1'"),
+            "pressure,",
+            Collections.singleton("3000000000,"));
 
         statement.execute("alter view writable_view drop column pressure");
 

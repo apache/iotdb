@@ -210,6 +210,20 @@ public class DataNodeTableCacheTest {
           getWritableViewSchema(metadata.getTableSchema(session, viewObjectName));
       Assert.assertFalse(schemaAfterDrop.canUseIdentitySourceFastPath());
       Assert.assertFalse(schemaAfterDrop.getSourceTableSchema().isPresent());
+
+      final Optional<WritableViewInsertRewriteSupport> rewriteSupportAfterDrop =
+          metadata.getWritableViewInsertRewriteSupport(session, viewObjectName);
+      Assert.assertTrue(rewriteSupportAfterDrop.isPresent());
+      try {
+        rewriteSupportAfterDrop.get().resolveExistingSourceColumnName("value");
+        Assert.fail("Expected source table missing exception");
+      } catch (final RuntimeException e) {
+        Assert.assertTrue(
+            e.getMessage(),
+            e.getMessage()
+                .contains(
+                    "The source table 'cache_refresh_source_drop_db.source_table' of writable view 'cache_refresh_source_drop_db.writable_view' does not exist."));
+      }
     } finally {
       cache.invalid(database);
     }
@@ -240,6 +254,43 @@ public class DataNodeTableCacheTest {
       final TsTable tableAfterCommit = cache.getTable(database, tableName, false);
       Assert.assertEquals(
           TSDataType.INT64, tableAfterCommit.getColumnSchema("value").getDataType());
+    } finally {
+      cache.invalid(database);
+    }
+  }
+
+  @Test
+  public void testWritableViewAndSourceCommitUpdatedColumnTypeTogether() {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final String database = "cache_writable_view_alter_type_db";
+    final String sourceName = "source_table";
+    final String viewName = "writable_view";
+
+    cache.invalid(database);
+    try {
+      final TsTable source = new TsTable(sourceName);
+      source.addColumnSchema(new FieldColumnSchema("value", TSDataType.INT32));
+      final WritableView view = new WritableView(viewName, database, sourceName, true);
+      view.addColumnSchema(new FieldColumnSchema("value", TSDataType.INT32));
+      view.putViewColumnSourceColumnMapping("value", "value");
+
+      cache.preUpdateTable(database, database, view, source);
+      Assert.assertTrue(cache.commitUpdateTable(database, database, viewName, sourceName));
+
+      final TsTable updatedSource = source.clone();
+      updatedSource.getColumnSchema("value").setDataType(TSDataType.INT64);
+      final WritableView updatedView = view.clone();
+      updatedView.getColumnSchema("value").setDataType(TSDataType.INT64);
+
+      cache.preUpdateTable(database, database, updatedView, updatedSource);
+      Assert.assertTrue(cache.commitUpdateTable(database, database, viewName, sourceName));
+
+      Assert.assertEquals(
+          TSDataType.INT64,
+          cache.getTable(database, sourceName, false).getColumnSchema("value").getDataType());
+      Assert.assertEquals(
+          TSDataType.INT64,
+          cache.getTable(database, viewName, false).getColumnSchema("value").getDataType());
     } finally {
       cache.invalid(database);
     }
