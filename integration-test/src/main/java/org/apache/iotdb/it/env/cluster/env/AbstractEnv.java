@@ -169,7 +169,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
   protected void initEnvironment(
       final int configNodesNum, final int dataNodesNum, final int testWorkingRetryCount) {
-    this.retryCount = retryCount;
+    this.retryCount = testWorkingRetryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
     this.extraNodeWrappers = new ArrayList<>();
