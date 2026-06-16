@@ -51,9 +51,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedCo
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Window;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowSpecification;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -73,11 +77,13 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractAggregateFunctions;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.isAggregationFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeReferenceExtractor.getReferencesToScope;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeReferenceExtractor.hasReferencesToScope;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeReferenceExtractor.isFieldFromScope;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
+import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 
 /** Checks whether an expression is constant with respect to the group */
 class AggregationAnalyzer {
@@ -288,19 +294,85 @@ class AggregationAnalyzer {
     @Override
     public Boolean visitFunctionCall(FunctionCall node, Void context) {
       if (isAggregationFunction(node.getName().toString())) {
-        List<FunctionCall> aggregateFunctions = extractAggregateFunctions(node.getArguments());
+        if (node.getWindow().isEmpty()) {
+          List<FunctionCall> aggregateFunctions = extractAggregateFunctions(node.getArguments());
+          List<Expression> windowExpressions = extractWindowExpressions(node.getArguments());
 
-        if (!aggregateFunctions.isEmpty()) {
-          throw new SemanticException(
-              String.format(
-                  "Cannot nest aggregations inside aggregation '%s': %s",
-                  node.getName(), aggregateFunctions));
+          if (!aggregateFunctions.isEmpty()) {
+            throw new SemanticException(
+                String.format(
+                    "Cannot nest aggregations inside aggregation '%s': %s",
+                    node.getName(), aggregateFunctions));
+          }
+
+          if (!windowExpressions.isEmpty()) {
+            throw new SemanticException(
+                String.format(
+                    "Cannot nest window functions inside aggregation '%s': %s",
+                    node.getName(), windowExpressions));
+          }
+
+          return true;
         }
+      } else {
+        // Reject FILTER for non-aggregation functions when FunctionCall supports FILTER.
+        // Reject ORDER BY for non-aggregation functions when FunctionCall supports function-level
+        // ORDER BY.
+      }
 
-        return true;
+      if (node.getWindow().isPresent()) {
+        Window window = node.getWindow().get();
+        if (window instanceof WindowSpecification windowSpecification
+            && !process(windowSpecification, context)) {
+          return false;
+        }
       }
 
       return node.getArguments().stream().allMatch(expression -> process(expression, context));
+    }
+
+    @Override
+    public Boolean visitWindowSpecification(WindowSpecification node, Void context) {
+      for (Expression expression : node.getPartitionBy()) {
+        if (!process(expression, context)) {
+          throw new SemanticException(
+              String.format(
+                  "PARTITION BY expression '%s' must be an aggregate expression or appear in GROUP BY clause",
+                  expression));
+        }
+      }
+
+      for (SortItem sortItem : getSortItemsFromOrderBy(node.getOrderBy())) {
+        Expression expression = sortItem.getSortKey();
+        if (!process(expression, context)) {
+          throw new SemanticException(
+              String.format(
+                  "ORDER BY expression '%s' must be an aggregate expression or appear in GROUP BY clause",
+                  expression));
+        }
+      }
+
+      if (node.getFrame().isPresent()) {
+        process(node.getFrame().get(), context);
+      }
+
+      return true;
+    }
+
+    @Override
+    public Boolean visitWindowFrame(WindowFrame node, Void context) {
+      if (node.getStart().getValue().isPresent()
+          && !process(node.getStart().getValue().get(), context)) {
+        throw new SemanticException(
+            "Window frame start must be an aggregate expression or appear in GROUP BY clause");
+      }
+      if (node.getEnd().isPresent()
+          && node.getEnd().get().getValue().isPresent()
+          && !process(node.getEnd().get().getValue().get(), context)) {
+        throw new SemanticException(
+            "Window frame end must be an aggregate expression or appear in GROUP BY clause");
+      }
+      return true;
     }
 
     @Override
