@@ -2062,6 +2062,18 @@ load_active_listening_enable=true
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 load_active_listening_dirs=ext/load/pending
 
+# The directory to be actively listened for tsfile loading from Pipe.
+# Only one directory can be configured.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_pipe_dir=ext\\load\\pipe
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_pipe_dir=ext/load/pipe
+
 # The directory where tsfile are moved if the active listening mode fails to load them.
 # Only one directory can be configured.
 # effectiveMode: hot_reload
