@@ -42,6 +42,7 @@ import org.junit.Test;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -279,7 +280,8 @@ public class IoTDBDataRegionAirGapSinkTest {
   private static class UdpTestingIoTDBDataRegionAirGapSink extends IoTDBDataRegionAirGapSink {
 
     private boolean sendUdp(final int port, final byte[] request) throws Exception {
-      try (final AirGapSocket socket = new AirGapSocket("127.0.0.1", port)) {
+      final AirGapSocket socket = new AirGapSocket("127.0.0.1", port);
+      try (final Socket ignored = socket) {
         socket.connectUdp(1000);
         return sendBytes(socket, request);
       }
