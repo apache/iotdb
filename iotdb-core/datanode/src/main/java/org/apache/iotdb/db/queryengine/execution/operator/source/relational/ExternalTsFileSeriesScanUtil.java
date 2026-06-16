@@ -36,7 +36,6 @@ import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 
 public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
 
@@ -84,8 +83,7 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
         globalTimeFilter,
         resource.isSeq(),
         context.isIgnoreAllNullRows(),
-        Optional.of(
-            new long[] {currentDeviceOffset.getStartOffset(), currentDeviceOffset.getEndOffset()}));
+        new long[] {currentDeviceOffset.getStartOffset(), currentDeviceOffset.getEndOffset()});
   }
 
   @FunctionalInterface

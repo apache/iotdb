@@ -188,6 +188,7 @@ final class TsFileSchemaCollector {
     private IMeasurementSchema timeColumnSchema;
     private final List<IMeasurementSchema> tagColumnSchemas = new ArrayList<>();
     private final Map<String, IMeasurementSchema> fieldColumnSchemaMap = new LinkedHashMap<>();
+    private final Map<String, ColumnCategory> columnCategoryMap = new LinkedHashMap<>();
 
     private MergedTableSchemaBuilder(String tableName, TableSchema tableSchema) {
       this.tableName = tableName.toLowerCase(Locale.ENGLISH);
@@ -202,15 +203,18 @@ final class TsFileSchemaCollector {
       List<ColumnCategory> columnCategories = tableSchema.getColumnTypes();
 
       for (int i = 0; i < columnCategories.size(); i++) {
-        if (columnCategories.get(i) == ColumnCategory.TIME) {
+        ColumnCategory currentCategory = columnCategories.get(i);
+        if (currentCategory == ColumnCategory.TIME) {
           if (currentTimeColumn != null) {
             throw new UDFArgumentNotValidException(
                 "Multiple time columns found when merging table schema for table " + tableName);
           }
           currentTimeColumn = columnSchemas.get(i);
-        } else if (columnCategories.get(i) == ColumnCategory.TAG) {
+        } else if (currentCategory == ColumnCategory.TAG) {
+          checkAndRecordColumnCategory(columnSchemas.get(i), currentCategory);
           currentTagColumns.add(columnSchemas.get(i));
-        } else if (columnCategories.get(i) == ColumnCategory.FIELD) {
+        } else if (currentCategory == ColumnCategory.FIELD) {
+          checkAndRecordColumnCategory(columnSchemas.get(i), currentCategory);
           currentFieldColumns.add(columnSchemas.get(i));
         }
       }
@@ -263,6 +267,20 @@ final class TsFileSchemaCollector {
         }
         fieldColumnSchemaMap.putIfAbsent(fieldName, fieldColumn);
       }
+    }
+
+    private void checkAndRecordColumnCategory(
+        IMeasurementSchema columnSchema, ColumnCategory currentCategory) {
+      String columnName = columnSchema.getMeasurementName().toLowerCase(Locale.ENGLISH);
+      ColumnCategory existingCategory = columnCategoryMap.get(columnName);
+      if (existingCategory != null && existingCategory != currentCategory) {
+        throw new UDFArgumentNotValidException(
+            "Column "
+                + columnSchema.getMeasurementName()
+                + " has conflicting categories when merging table schema for table "
+                + tableName);
+      }
+      columnCategoryMap.putIfAbsent(columnName, currentCategory);
     }
 
     private TableSchema build() {

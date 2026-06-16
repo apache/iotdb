@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
-import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.ExternalTsFileDeviceFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -79,7 +81,9 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   private static final long TSFILE_READER_MEMORY_RESERVE_SIZE_IN_BYTES = 4L * 1024;
 
   private final QueryId queryId;
-  private final MPPQueryContext queryContext;
+  // This resource outlives the frontend planning phase, whose MPPQueryContext memory manager is
+  // released after dispatch. Keep a dedicated manager and release it when this resource closes.
+  private final MemoryReservationManager externalTsFileResourceMemoryReservationManager;
   private final Path queryTempRoot;
   private final String tableName;
   private final List<String> tsFilePaths;
@@ -98,8 +102,10 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       List<String> tsFilePaths,
       LongConsumer ioSizeRecorder,
       boolean useExactTempRoot) {
-    this.queryContext = requireNonNull(queryContext, "queryContext is null");
-    this.queryId = queryContext.getQueryId();
+    this.queryId = requireNonNull(queryContext, "queryContext is null").getQueryId();
+    this.externalTsFileResourceMemoryReservationManager =
+        new ThreadSafeMemoryReservationManager(
+            queryId, ExternalTsFileQueryResource.class.getName());
     this.queryTempRoot =
         useExactTempRoot
             ? requireNonNull(tempRoot, "tempRoot is null")
@@ -146,7 +152,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   }
 
   private void acquireMemoryForTsFileReaders() {
-    queryContext.reserveMemoryForFrontEndImmediately(
+    externalTsFileResourceMemoryReservationManager.reserveMemoryImmediately(
         tsFilePaths.size() * TSFILE_READER_MEMORY_RESERVE_SIZE_IN_BYTES);
   }
 
@@ -158,6 +164,11 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     } catch (IOException e) {
       throw new RuntimeException("Failed to create external TsFile device task run reader", e);
     }
+  }
+
+  @TestOnly
+  public void setDeviceEntryComparator(Comparator<DeviceEntry> deviceEntryComparator) {
+    this.deviceEntryComparator = deviceEntryComparator;
   }
 
   public List<String> getTsFilePaths() {
@@ -193,10 +204,14 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     }
     closed = true;
 
-    releaseFileReaderReferences();
+    try {
+      releaseFileReaderReferences();
 
-    if (Files.exists(queryTempRoot)) {
-      FileUtils.deleteFileOrDirectory(queryTempRoot.toFile(), true);
+      if (Files.exists(queryTempRoot)) {
+        FileUtils.deleteFileOrDirectory(queryTempRoot.toFile(), true);
+      }
+    } finally {
+      externalTsFileResourceMemoryReservationManager.releaseAllReservedMemory();
     }
   }
 
@@ -248,7 +263,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     private long reservedBytes;
     private long unreservedBytes;
 
-    private DeviceTaskPartition(int partitionIndex) {
+    DeviceTaskPartition(int partitionIndex) {
       this.partitionIndex = partitionIndex;
     }
 
@@ -260,12 +275,12 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       return deviceEntryIndexes;
     }
 
-    private void add(DeviceTask deviceTask) {
+    void add(DeviceTask deviceTask) {
       pendingDeviceTasks.add(deviceTask);
       unreservedBytes += deviceTask.ramBytesUsed();
     }
 
-    private void flush() {
+    void flush() {
       if (pendingDeviceTasks.isEmpty()) {
         return;
       }
@@ -315,7 +330,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
     private boolean reserveUnreservedMemory() {
       try {
-        queryContext.reserveMemoryForFrontEndImmediately(unreservedBytes);
+        externalTsFileResourceMemoryReservationManager.reserveMemoryImmediately(unreservedBytes);
       } catch (MemoryNotEnoughException e) {
         return false;
       }
@@ -330,7 +345,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
     private void releaseDeviceTaskMemory() {
       if (reservedBytes != 0) {
-        queryContext.releaseMemoryReservedForFrontEnd(reservedBytes);
+        externalTsFileResourceMemoryReservationManager.releaseMemoryCumulatively(reservedBytes);
         reservedBytes = 0;
       }
       unreservedBytes = 0;
@@ -340,7 +355,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       return !deviceEntryIndexes.isEmpty();
     }
 
-    private void finish() {
+    void finish() {
       if (pendingDeviceTasks.isEmpty()) {
         return;
       }
@@ -420,7 +435,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     private QueryDataSource currentDeviceQueryDataSource;
     private Map<TsFileResource, DeviceOffset> currentDeviceOffsetMap;
 
-    private DeviceTaskRunReader(DeviceTaskPartition partition) throws IOException {
+    DeviceTaskRunReader(DeviceTaskPartition partition) throws IOException {
       Comparator<DeviceEntry> comparator = deviceEntryComparator;
       this.usePriorityQueue = comparator != null;
       this.runCursors =
@@ -699,7 +714,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     }
   }
 
-  private static class DeviceTask implements Accountable {
+  static class DeviceTask implements Accountable {
 
     private static final long INSTANCE_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(DeviceTask.class);
@@ -707,7 +722,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     private final int deviceEntryIndex;
     private final List<DeviceOffset> deviceOffsets;
 
-    private DeviceTask(int deviceEntryIndex, List<DeviceOffset> deviceOffsets) {
+    DeviceTask(int deviceEntryIndex, List<DeviceOffset> deviceOffsets) {
       this.deviceEntryIndex = deviceEntryIndex;
       this.deviceOffsets = deviceOffsets;
     }
@@ -738,7 +753,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     @Override
     public long ramBytesUsed() {
       return INSTANCE_SIZE
-          + MemoryEstimationHelper.ARRAY_LIST_INSTANCE_SIZE
+          + RamUsageEstimator.shallowSizeOfInstance(ArrayList.class)
           + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
           + (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF * deviceOffsets.size()
           + deviceOffsets.size() * DeviceOffset.INSTANCE_SIZE;
@@ -754,7 +769,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     private final long startOffset;
     private final long endOffset;
 
-    private DeviceOffset(int fileIndex, long startOffset, long endOffset) {
+    DeviceOffset(int fileIndex, long startOffset, long endOffset) {
       this.fileIndex = fileIndex;
       this.startOffset = startOffset;
       this.endOffset = endOffset;

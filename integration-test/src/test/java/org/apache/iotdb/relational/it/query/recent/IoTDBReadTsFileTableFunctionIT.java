@@ -287,6 +287,48 @@ public class IoTDBReadTsFileTableFunctionIT {
   }
 
   @Test
+  public void testReadMultipleTsFilesWithConflictingTagAndFieldColumns() throws Exception {
+    File tsFile1 = new File(tmpDir, "tag-field-conflict-1.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(tsFile1)) {
+      generateTable(writer, "table1", Arrays.asList("shared"), Arrays.asList("s1"), 1, 2);
+    }
+    File tsFile2 = new File(tmpDir, "tag-field-conflict-2.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(tsFile2)) {
+      generateTable(writer, "table1", new ArrayList<>(), Arrays.asList("shared"), 3, 4);
+    }
+
+    tableAssertTestFail(
+        "SELECT * FROM read_tsfile(PATHS => '"
+            + toSqlPath(tsFile1)
+            + ","
+            + toSqlPath(tsFile2)
+            + "', TABLE_NAME => 'table1')",
+        "conflicting categories when merging table schema",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testReadMultipleTsFilesWithConflictingFieldAndTagColumns() throws Exception {
+    File tsFile1 = new File(tmpDir, "field-tag-conflict-1.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(tsFile1)) {
+      generateTable(writer, "table1", new ArrayList<>(), Arrays.asList("shared"), 1, 2);
+    }
+    File tsFile2 = new File(tmpDir, "field-tag-conflict-2.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(tsFile2)) {
+      generateTable(writer, "table1", Arrays.asList("shared"), Arrays.asList("s1"), 3, 4);
+    }
+
+    tableAssertTestFail(
+        "SELECT * FROM read_tsfile(PATHS => '"
+            + toSqlPath(tsFile1)
+            + ","
+            + toSqlPath(tsFile2)
+            + "', TABLE_NAME => 'table1')",
+        "conflicting categories when merging table schema",
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testReadTsFileWithoutTableNameWhenMultipleTablesExist() throws Exception {
     File tsFile = new File(tmpDir, "multiple-tables.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile)) {

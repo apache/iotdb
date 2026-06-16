@@ -53,7 +53,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -146,7 +145,7 @@ public class TimeSeriesMetadataCache {
       boolean debug,
       QueryContext queryContext)
       throws IOException {
-    return get(filePath, key, allSensors, ignoreNotExists, debug, queryContext, Optional.empty());
+    return get(filePath, key, allSensors, ignoreNotExists, debug, queryContext, null);
   }
 
   @SuppressWarnings({"squid:S1860", "squid:S6541", "squid:S3776"}) // Suppress synchronize warning
@@ -157,7 +156,7 @@ public class TimeSeriesMetadataCache {
       boolean ignoreNotExists,
       boolean debug,
       QueryContext queryContext,
-      Optional<long[]> deviceMetadataIndexNodeOffset)
+      long[] deviceMetadataIndexNodeOffset)
       throws IOException {
     long startTime = System.nanoTime();
     long loadBloomFilterTime = 0;
@@ -176,7 +175,7 @@ public class TimeSeriesMetadataCache {
         TsFileSequenceReader reader =
             FileReaderManager.getInstance()
                 .get(filePath, key.tsFileID, true, bloomFilterIoSizeRecorder, externalTsFile);
-        if (!deviceMetadataIndexNodeOffset.isPresent()) {
+        if (deviceMetadataIndexNodeOffset == null) {
           BloomFilter bloomFilter = reader.readBloomFilter(bloomFilterIoSizeRecorder);
           queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount().incrementAndGet();
           if (bloomFilter != null
@@ -218,7 +217,7 @@ public class TimeSeriesMetadataCache {
           if (timeseriesMetadata == null) {
             cacheHit = false;
 
-            if (!deviceMetadataIndexNodeOffset.isPresent()) {
+            if (deviceMetadataIndexNodeOffset == null) {
               long loadBloomFilterStartTime = System.nanoTime();
               // bloom filter part
               BloomFilter bloomFilter =

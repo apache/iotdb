@@ -57,7 +57,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -200,7 +199,7 @@ public class FileLoaderUtils {
       Filter globalTimeFilter,
       boolean isSeq,
       boolean ignoreAllNullRows,
-      Optional<long[]> rootMeasurementMetadataIndexNodeOffset)
+      long[] rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -293,7 +292,7 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean ignoreAllNullRows,
-      Optional<long[]> rootMeasurementMetadataIndexNodeOffset)
+      long[] rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
     AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
