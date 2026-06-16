@@ -25,25 +25,35 @@ import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -55,20 +65,36 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_SET;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_UDP_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MAX_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MIN_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_TRANSPORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_UDP_PACKET_SIZE_KEY;
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
 
 @TreeModel
 @TableModel
 public abstract class IoTDBAirGapSink extends IoTDBSink {
 
+  private static final int UDP_ENVELOPE_SIZE = 2 * Integer.BYTES + Long.BYTES;
+  private static final int UDP_SLICE_REQUEST_SERIALIZATION_RESERVED_SIZE = 64;
+
   protected static class AirGapSocket extends Socket {
 
     private final TEndPoint endPoint;
+    private DatagramSocket datagramSocket;
+    private InetAddress datagramAddress;
+    private boolean isUdp;
 
     public AirGapSocket(final String ip, final int port) {
       this.endPoint = new TEndPoint(ip, port);
@@ -78,9 +104,60 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       return endPoint;
     }
 
+    public void connectUdp(final int timeoutMs) throws IOException {
+      datagramAddress = InetAddress.getByName(endPoint.getIp());
+      datagramSocket = new DatagramSocket();
+      datagramSocket.connect(datagramAddress, endPoint.getPort());
+      datagramSocket.setSoTimeout(timeoutMs);
+      isUdp = true;
+    }
+
+    public InetAddress getDatagramAddress() {
+      return datagramAddress;
+    }
+
+    public DatagramSocket getDatagramSocket() {
+      return datagramSocket;
+    }
+
+    public boolean isUdp() {
+      return isUdp;
+    }
+
+    @Override
+    public boolean isConnected() {
+      return isUdp
+          ? datagramSocket != null && datagramSocket.isConnected() && !datagramSocket.isClosed()
+          : super.isConnected();
+    }
+
+    @Override
+    public synchronized void setSoTimeout(final int timeout) throws SocketException {
+      if (isUdp && datagramSocket != null) {
+        datagramSocket.setSoTimeout(timeout);
+      } else {
+        super.setSoTimeout(timeout);
+      }
+    }
+
+    @Override
+    public synchronized void close() throws IOException {
+      if (datagramSocket != null) {
+        datagramSocket.close();
+      }
+      super.close();
+    }
+
     @Override
     public String toString() {
-      return "AirGapSocket{" + "endPoint=" + endPoint + "} (" + super.toString() + ")";
+      return "AirGapSocket{"
+          + "endPoint="
+          + endPoint
+          + ", transport="
+          + (isUdp ? "udp" : "tcp")
+          + "} ("
+          + super.toString()
+          + ")";
     }
   }
 
@@ -98,11 +175,48 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
   private int handshakeTimeoutMs;
 
   private boolean eLanguageEnable;
+  private boolean useUdpTransport;
+  private int udpPacketSizeInBytes;
 
   // The air gap connector does not use clientManager thus we put handshake type here
   protected boolean supportModsIfIsDataNodeReceiver = true;
 
   private final Map<TEndPoint, Long> failLogTimes = new HashMap<>();
+
+  @Override
+  public void validate(final PipeParameterValidator validator) throws Exception {
+    super.validate(validator);
+
+    final PipeParameters parameters = validator.getParameters();
+    final String airGapTransport =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(CONNECTOR_AIR_GAP_TRANSPORT_KEY, SINK_AIR_GAP_TRANSPORT_KEY),
+                CONNECTOR_AIR_GAP_TRANSPORT_DEFAULT_VALUE)
+            .trim()
+            .toLowerCase();
+    validator.validate(
+        arg -> CONNECTOR_AIR_GAP_TRANSPORT_SET.contains(airGapTransport),
+        String.format(
+            "Air gap transport should be one of %s, but got %s.",
+            CONNECTOR_AIR_GAP_TRANSPORT_SET, airGapTransport),
+        airGapTransport);
+
+    final int packetSize =
+        parameters.getIntOrDefault(
+            Arrays.asList(CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY, SINK_AIR_GAP_UDP_PACKET_SIZE_KEY),
+            CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_DEFAULT_VALUE);
+    validator.validate(
+        arg ->
+            packetSize >= CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MIN_VALUE
+                && packetSize <= CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MAX_VALUE,
+        String.format(
+            "UDP packet size should be in the range [%d, %d], but got %d.",
+            CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MIN_VALUE,
+            CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MAX_VALUE,
+            packetSize),
+        packetSize);
+  }
 
   @Override
   public void customize(
@@ -145,6 +259,23 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
                 CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY, SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY),
             CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE);
     LOGGER.info(PipeMessages.AIR_GAP_CUSTOMIZED_E_LANGUAGE, eLanguageEnable);
+
+    useUdpTransport =
+        CONNECTOR_AIR_GAP_TRANSPORT_UDP_VALUE.equals(
+            parameters
+                .getStringOrDefault(
+                    Arrays.asList(CONNECTOR_AIR_GAP_TRANSPORT_KEY, SINK_AIR_GAP_TRANSPORT_KEY),
+                    CONNECTOR_AIR_GAP_TRANSPORT_DEFAULT_VALUE)
+                .trim()
+                .toLowerCase());
+    udpPacketSizeInBytes =
+        parameters.getIntOrDefault(
+            Arrays.asList(CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY, SINK_AIR_GAP_UDP_PACKET_SIZE_KEY),
+            CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_DEFAULT_VALUE);
+    LOGGER.info(
+        "Air gap transport is {}, udp packet size is {} bytes.",
+        useUdpTransport ? "udp" : "tcp",
+        udpPacketSizeInBytes);
   }
 
   @Override
@@ -179,8 +310,12 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       final AirGapSocket socket = new AirGapSocket(ip, port);
 
       try {
-        socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
-        socket.setKeepAlive(true);
+        if (useUdpTransport) {
+          socket.connectUdp(handshakeTimeoutMs);
+        } else {
+          socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
+          socket.setKeepAlive(true);
+        }
         sockets.set(i, socket);
         LOGGER.info(PipeMessages.CONNECTED_TO_TARGET_SERVER, ip, port);
         failLogTimes.remove(nodeUrls.get(i));
@@ -318,6 +453,10 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
           String.format("Socket %s is closed, will try to handshake", socket));
     }
 
+    if (socket.isUdp()) {
+      return sendBytesByUdp(socket, bytes);
+    }
+
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
     bytes = enrichWithLengthAndChecksum(bytes);
     outputStream.write(eLanguageEnable ? enrichWithELanguage(bytes) : bytes);
@@ -326,6 +465,101 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     final byte[] response = new byte[1];
     final int size = socket.getInputStream().read(response);
     return size > 0 && Arrays.equals(AirGapOneByteResponse.OK, response);
+  }
+
+  private boolean sendBytesByUdp(final AirGapSocket socket, final byte[] bytes) throws IOException {
+    for (final byte[] requestBytes : sliceIfNeededForUdp(bytes)) {
+      if (!sendOneDatagram(socket, requestBytes)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean sendOneDatagram(final AirGapSocket socket, final byte[] requestBytes)
+      throws IOException {
+    final byte[] datagramBytes =
+        eLanguageEnable
+            ? enrichWithELanguage(enrichWithLengthAndChecksum(requestBytes))
+            : enrichWithLengthAndChecksum(requestBytes);
+    if (datagramBytes.length > udpPacketSizeInBytes) {
+      throw new IOException(
+          String.format(
+              "Air gap UDP datagram size %d exceeds configured packet size %d.",
+              datagramBytes.length, udpPacketSizeInBytes));
+    }
+
+    final DatagramSocket datagramSocket = socket.getDatagramSocket();
+    datagramSocket.send(
+        new DatagramPacket(
+            datagramBytes,
+            datagramBytes.length,
+            socket.getDatagramAddress(),
+            socket.getEndPoint().getPort()));
+
+    final byte[] response = new byte[1];
+    final DatagramPacket responsePacket = new DatagramPacket(response, response.length);
+    datagramSocket.receive(responsePacket);
+    return responsePacket.getLength() > 0 && Arrays.equals(AirGapOneByteResponse.OK, response);
+  }
+
+  private List<byte[]> sliceIfNeededForUdp(final byte[] requestBytes) throws IOException {
+    final int rawPayloadSizeLimit =
+        udpPacketSizeInBytes
+            - UDP_ENVELOPE_SIZE
+            - (eLanguageEnable
+                ? AirGapELanguageConstant.E_LANGUAGE_PREFIX.length
+                    + AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length
+                : 0);
+    if (requestBytes.length <= rawPayloadSizeLimit) {
+      return Arrays.asList(requestBytes);
+    }
+
+    final int sliceBodySizeLimit =
+        rawPayloadSizeLimit - UDP_SLICE_REQUEST_SERIALIZATION_RESERVED_SIZE;
+    if (sliceBodySizeLimit <= 0) {
+      throw new IOException(
+          String.format(
+              "Air gap UDP packet size %d is too small to transfer sliced requests.",
+              udpPacketSizeInBytes));
+    }
+
+    final TPipeTransferReq request = toTPipeTransferReq(requestBytes);
+    final int sliceOrderId = PipeTransferSliceReqBuilder.nextSliceOrderId();
+    final int sliceCount = PipeTransferSliceReqBuilder.getSliceCount(request, sliceBodySizeLimit);
+
+    final List<byte[]> slicedRequestBytes = new ArrayList<>(sliceCount);
+    for (int i = 0; i < sliceCount; i++) {
+      slicedRequestBytes.add(
+          toTPipeTransferBytes(
+              PipeTransferSliceReqBuilder.buildSliceReq(
+                  request, sliceOrderId, i, sliceCount, sliceBodySizeLimit)));
+    }
+    return slicedRequestBytes;
+  }
+
+  private TPipeTransferReq toTPipeTransferReq(final byte[] requestBytes) {
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(requestBytes);
+    final TPipeTransferReq request = new TPipeTransferReq();
+    request.version = ReadWriteIOUtils.readByte(byteBuffer);
+    request.type = ReadWriteIOUtils.readShort(byteBuffer);
+    request.body = byteBuffer.slice();
+    return request;
+  }
+
+  private byte[] toTPipeTransferBytes(final TPipeTransferReq request) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(request.version, outputStream);
+      ReadWriteIOUtils.write(request.type, outputStream);
+
+      final ByteBuffer bodyBuffer = request.body.duplicate();
+      final byte[] body = new byte[bodyBuffer.remaining()];
+      bodyBuffer.get(body);
+      outputStream.write(body);
+
+      return Arrays.copyOf(byteArrayOutputStream.getBuf(), byteArrayOutputStream.size());
+    }
   }
 
   protected boolean send(final AirGapSocket socket, final byte[] bytes) throws IOException {

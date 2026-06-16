@@ -152,6 +152,26 @@ public class PipeSinkConstant {
       "sink.air-gap.handshake-timeout-ms";
   public static final int CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE = 5000;
 
+  public static final String CONNECTOR_AIR_GAP_TRANSPORT_KEY = "connector.air-gap.transport";
+  public static final String SINK_AIR_GAP_TRANSPORT_KEY = "sink.air-gap.transport";
+  public static final String CONNECTOR_AIR_GAP_TRANSPORT_TCP_VALUE = "tcp";
+  public static final String CONNECTOR_AIR_GAP_TRANSPORT_UDP_VALUE = "udp";
+  public static final String CONNECTOR_AIR_GAP_TRANSPORT_DEFAULT_VALUE =
+      CONNECTOR_AIR_GAP_TRANSPORT_TCP_VALUE;
+  public static final Set<String> CONNECTOR_AIR_GAP_TRANSPORT_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  CONNECTOR_AIR_GAP_TRANSPORT_TCP_VALUE, CONNECTOR_AIR_GAP_TRANSPORT_UDP_VALUE)));
+
+  public static final String CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY =
+      "connector.air-gap.udp.packet-size-bytes";
+  public static final String SINK_AIR_GAP_UDP_PACKET_SIZE_KEY =
+      "sink.air-gap.udp.packet-size-bytes";
+  public static final int CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_DEFAULT_VALUE = 60 * 1024;
+  public static final int CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MIN_VALUE = 1024;
+  public static final int CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MAX_VALUE = 65_507;
+
   public static final String CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY = "connector.version";
   public static final String SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY = "sink.version";
   public static final String CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_DEFAULT_VALUE = "1.1";
