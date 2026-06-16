@@ -483,7 +483,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     public PlanNode visitExternalTsFileScan(
         ExternalTsFileScanNode tableScanNode, RewriteContext context) {
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
-        collectExternalTsFileDeviceTasks(tableScanNode, Collections.emptyList());
         return tableScanNode;
       }
 
@@ -528,9 +527,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      if (tableScanNode instanceof ExternalTsFileScanNode) {
-        collectExternalTsFileDeviceTasks(
-            (ExternalTsFileScanNode) tableScanNode, splitExpression.getMetadataExpressions());
+      if (tableScanNode instanceof ExternalTsFileScanNode externalTsFileScanNode) {
+        externalTsFileScanNode.setSchemaFilter(
+            constructExternalTsFileDeviceFilter(
+                externalTsFileScanNode, splitExpression.getMetadataExpressions()));
       } else if (tableScanNode instanceof DeviceTableScanNode) {
         getDeviceEntriesWithDataPartitions(
             (DeviceTableScanNode) tableScanNode, splitExpression.getMetadataExpressions());
@@ -548,12 +548,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       return tableScanNode;
-    }
-
-    private void collectExternalTsFileDeviceTasks(
-        ExternalTsFileScanNode tableScanNode, List<Expression> metadataExpressions) {
-      tableScanNode.setSchemaFilter(
-          constructExternalTsFileDeviceFilter(tableScanNode, metadataExpressions));
     }
 
     private SchemaFilter constructExternalTsFileDeviceFilter(

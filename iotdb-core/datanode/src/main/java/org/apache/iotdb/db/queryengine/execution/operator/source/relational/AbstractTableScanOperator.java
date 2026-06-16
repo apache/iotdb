@@ -89,11 +89,12 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   public AbstractTableScanOperator(AbstractTableScanOperatorParameter parameter) {
     this.sourceId = parameter.sourceId;
     this.operatorContext = parameter.context;
+    this.operatorContext.recordSpecifiedInfo(
+        DEVICE_NUMBER, Integer.toString(parameter.deviceEntries.size()));
     this.columnSchemas = parameter.columnSchemas;
     this.columnsIndexArray = parameter.columnsIndexArray;
     this.deviceEntries = parameter.deviceEntries;
     this.deviceCount = parameter.deviceEntries.size();
-    this.operatorContext.recordSpecifiedInfo(DEVICE_NUMBER, Integer.toString(this.deviceCount));
     this.scanOrder = parameter.scanOrder;
     this.seriesScanOptions = parameter.seriesScanOptions;
     this.measurementColumnNames = parameter.measurementColumnNames;
@@ -203,7 +204,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
             measurementDataBlock,
             columnsIndexArray,
             columnSchemas,
-            currentDeviceEntry,
+            deviceEntries.get(currentDeviceIndex),
             idColumnIndex -> getNthIdColumnValue(currentDeviceEntry, idColumnIndex));
   }
 

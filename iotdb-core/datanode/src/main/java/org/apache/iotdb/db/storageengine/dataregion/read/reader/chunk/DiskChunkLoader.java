@@ -64,8 +64,7 @@ public class DiskChunkLoader implements IChunkLoader {
                 resource.isClosed()),
             chunkMetaData.getDeleteIntervalList(),
             chunkMetaData.getStatistics(),
-            context,
-            context.isExternalTsFileScan());
+            context);
   }
 
   @Override
@@ -88,8 +87,7 @@ public class DiskChunkLoader implements IChunkLoader {
                       resource.isClosed()),
                   chunkMetaData.getDeleteIntervalList(),
                   chunkMetaData.getStatistics(),
-                  context,
-                  context.isExternalTsFileScan());
+                  context);
       byte chunkType = chunk.getHeader().getChunkType();
       if (chunkType != MetaMarker.CHUNK_HEADER
           && chunkType != MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {

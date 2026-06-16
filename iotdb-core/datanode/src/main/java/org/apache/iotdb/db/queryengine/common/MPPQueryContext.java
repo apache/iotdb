@@ -525,10 +525,6 @@ public class MPPQueryContext implements IAuditEntity {
     this.memoryReservationManager.reserveMemoryImmediately();
   }
 
-  public void reserveMemoryForFrontEndImmediately(final long bytes) {
-    this.memoryReservationManager.reserveMemoryImmediately(bytes);
-  }
-
   public void releaseAllMemoryReservedForFrontEnd() {
     this.memoryReservationManager.releaseAllReservedMemory();
   }

@@ -92,8 +92,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
                       resource.isClosed()),
                   timeChunkMetadata.getDeleteIntervalList(),
                   timeChunkMetadata.getStatistics(),
-                  context,
-                  context.isExternalTsFileScan());
+                  context);
       List<Chunk> valueChunkList = new ArrayList<>();
       for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
         Chunk chunk =
@@ -108,8 +107,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
                             resource.isClosed()),
                         valueChunkMetadata.getDeleteIntervalList(),
                         valueChunkMetadata.getStatistics(),
-                        context,
-                        context.isExternalTsFileScan());
+                        context);
         final TsFileID tsFileID = getTsFileID();
         if (chunk != null
             && tsFileID.regionId > 0

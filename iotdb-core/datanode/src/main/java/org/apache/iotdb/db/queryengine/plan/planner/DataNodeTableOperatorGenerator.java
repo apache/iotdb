@@ -40,7 +40,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -450,8 +449,7 @@ public class DataNodeTableOperatorGenerator
           "PushDownOffset should not be set when isPushLimitToEachDevice is true.");
     }
     CommonTableScanOperatorParameters commonParameter =
-        new CommonTableScanOperatorParameters(
-            node, fieldColumnsRenameMap, true, node.getTagAndAttributeIndexMap());
+        new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, true);
     List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
     List<Symbol> measurementSchemaIndex2Symbols = commonParameter.measurementSchemaIndex2Symbol;
     List<String> measurementColumnNames = commonParameter.measurementColumnNames;
@@ -861,10 +859,9 @@ public class DataNodeTableOperatorGenerator
     int idx;
 
     private CommonTableScanOperatorParameters(
-        TableScanNode node,
+        DeviceTableScanNode node,
         Map<String, String> fieldColumnsRenameMap,
-        boolean keepNonOutputMeasurementColumns,
-        Map<Symbol, Integer> tagAndAttributeColumnsIndexMap) {
+        boolean keepNonOutputMeasurementColumns) {
       outputColumnNames = node.getOutputSymbols();
       int outputColumnCount =
           keepNonOutputMeasurementColumns ? node.getAssignments().size() : outputColumnNames.size();
@@ -872,7 +869,7 @@ public class DataNodeTableOperatorGenerator
       symbolInputs = new ArrayList<>(outputColumnCount);
       columnsIndexArray = new int[outputColumnCount];
       columnSchemaMap = node.getAssignments();
-      this.tagAndAttributeColumnsIndexMap = tagAndAttributeColumnsIndexMap;
+      this.tagAndAttributeColumnsIndexMap = node.getTagAndAttributeIndexMap();
       measurementColumnNames = new ArrayList<>();
       measurementColumnsIndexMap = new HashMap<>();
       measurementSchemas = new ArrayList<>();
@@ -1029,8 +1026,7 @@ public class DataNodeTableOperatorGenerator
           long viewTTL) {
 
     CommonTableScanOperatorParameters commonParameter =
-        new CommonTableScanOperatorParameters(
-            node, fieldColumnsRenameMap, false, node.getTagAndAttributeIndexMap());
+        new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, false);
     List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
     List<String> measurementColumnNames = commonParameter.measurementColumnNames;
     List<ColumnSchema> columnSchemas = commonParameter.columnSchemas;

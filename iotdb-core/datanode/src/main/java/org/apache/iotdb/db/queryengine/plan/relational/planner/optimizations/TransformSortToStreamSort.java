@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
@@ -93,13 +92,9 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       }
       context.setCanTransform(false);
 
-      TableScanNode tableScanNode = context.getTableScanNode();
-      if (tableScanNode == null) {
-        node.setChild(child);
-        return node;
-      }
+      DeviceTableScanNode deviceTableScanNode = context.getTableScanNode();
       Map<Symbol, ColumnSchema> tableColumnSchema =
-          analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
+          analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
 
       OrderingScheme orderingScheme = node.getOrderingScheme();
       int streamSortIndex = -1;
@@ -116,7 +111,10 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       if (streamSortIndex >= 0) {
         boolean orderByAllIdsAndTime =
             isOrderByAllIdsAndTime(
-                tableColumnSchema, tableScanNode.getAssignments(), orderingScheme, streamSortIndex);
+                tableColumnSchema,
+                deviceTableScanNode.getAssignments(),
+                orderingScheme,
+                streamSortIndex);
 
         return new StreamSortNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -209,15 +207,15 @@ public class TransformSortToStreamSort implements PlanOptimizer {
   }
 
   private static class Context {
-    private TableScanNode tableScanNode;
+    private DeviceTableScanNode tableScanNode;
 
     private boolean canTransform = true;
 
-    public TableScanNode getTableScanNode() {
+    public DeviceTableScanNode getTableScanNode() {
       return tableScanNode;
     }
 
-    public void setTableScanNode(TableScanNode tableScanNode) {
+    public void setTableScanNode(DeviceTableScanNode tableScanNode) {
       this.tableScanNode = tableScanNode;
     }
 

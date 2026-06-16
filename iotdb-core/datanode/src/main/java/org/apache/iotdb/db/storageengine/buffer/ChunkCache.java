@@ -131,16 +131,6 @@ public class ChunkCache {
       Statistics chunkStatistic,
       QueryContext queryContext)
       throws IOException {
-    return get(chunkCacheKey, timeRangeList, chunkStatistic, queryContext, false);
-  }
-
-  public Chunk get(
-      ChunkCacheKey chunkCacheKey,
-      List<TimeRange> timeRangeList,
-      Statistics chunkStatistic,
-      QueryContext queryContext,
-      boolean externalTsFile)
-      throws IOException {
     LongConsumer ioSizeRecorder =
         queryContext.getQueryStatistics().getLoadChunkActualIOSize()::addAndGet;
     LongConsumer cacheHitAdder =
@@ -155,7 +145,7 @@ public class ChunkCache {
         ioSizeRecorder,
         cacheHitAdder,
         cacheMissAdder,
-        externalTsFile);
+        queryContext.isExternalTsFileScan());
   }
 
   private Chunk get(
