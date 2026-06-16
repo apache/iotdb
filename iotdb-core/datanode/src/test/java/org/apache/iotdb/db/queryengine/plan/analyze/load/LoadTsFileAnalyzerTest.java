@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
@@ -34,8 +35,11 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
@@ -520,6 +524,51 @@ public class LoadTsFileAnalyzerTest {
     }
   }
 
+  @Test
+  public void testTreeSchemaVerifierShouldThrowMismatchWhenVerifyingDataType() throws Exception {
+    final File tsFile = new File("load-tree-type-mismatch.tsfile");
+    if (tsFile.exists()) {
+      Assert.assertTrue(tsFile.delete());
+    }
+    Assert.assertTrue(tsFile.createNewFile());
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            false,
+            new MPPQueryContext(new QueryId("load_tree_test")))) {
+      final TreeSchemaAutoCreatorAndVerifier verifier =
+          new TreeSchemaAutoCreatorAndVerifier(analyzer);
+      try {
+        final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1");
+        final LoadTsFileTreeSchemaCache schemaCache = getTreeSchemaCache(verifier);
+        schemaCache.addTimeSeries(device, new MeasurementSchema("s1", TSDataType.BOOLEAN));
+        schemaCache.addIsAlignedCache(device, true, true);
+
+        final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+        schemaTree.appendSingleMeasurement(
+            new PartialPath("root.sg.d1.s1"),
+            new MeasurementSchema("s1", TSDataType.INT32),
+            null,
+            null,
+            null,
+            true);
+
+        final InvocationTargetException exception =
+            Assert.assertThrows(
+                InvocationTargetException.class,
+                () -> getVerifyTreeSchemaMethod().invoke(verifier, schemaTree));
+        Assert.assertTrue(exception.getCause() instanceof LoadAnalyzeTypeMismatchException);
+      } finally {
+        verifier.close();
+      }
+    } finally {
+      if (tsFile.exists()) {
+        Assert.assertTrue(tsFile.delete());
+      }
+    }
+  }
+
   private void writeTableTsFileWithMixedDevices(final File tsFile) throws Exception {
     if (tsFile.exists()) {
       Assert.assertTrue(tsFile.delete());
@@ -574,6 +623,14 @@ public class LoadTsFileAnalyzerTest {
     tableSchemaCacheField.set(analyzer, schemaCache);
   }
 
+  private LoadTsFileTreeSchemaCache getTreeSchemaCache(
+      final TreeSchemaAutoCreatorAndVerifier verifier) throws Exception {
+    final Field schemaCacheField =
+        TreeSchemaAutoCreatorAndVerifier.class.getDeclaredField("schemaCache");
+    schemaCacheField.setAccessible(true);
+    return (LoadTsFileTreeSchemaCache) schemaCacheField.get(verifier);
+  }
+
   private void appendCurrentModification(
       final LoadTsFileTableSchemaCache schemaCache, final TableDeletionEntry modification)
       throws Exception {
@@ -609,6 +666,13 @@ public class LoadTsFileAnalyzerTest {
             "verifyTableDataTypeAndGenerateTagColumnMapper",
             org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema.class,
             org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema.class);
+    method.setAccessible(true);
+    return method;
+  }
+
+  private Method getVerifyTreeSchemaMethod() throws NoSuchMethodException {
+    final Method method =
+        TreeSchemaAutoCreatorAndVerifier.class.getDeclaredMethod("verifySchema", ISchemaTree.class);
     method.setAccessible(true);
     return method;
   }
