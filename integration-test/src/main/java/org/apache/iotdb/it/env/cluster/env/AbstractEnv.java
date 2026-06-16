@@ -51,6 +51,7 @@ import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.StreamNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
@@ -102,6 +103,7 @@ public abstract class AbstractEnv implements BaseEnv {
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
   protected List<AINodeWrapper> aiNodeWrapperList = Collections.emptyList();
+  protected List<StreamNodeWrapper> streamNodeWrapperList = Collections.emptyList();
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
@@ -109,6 +111,7 @@ public abstract class AbstractEnv implements BaseEnv {
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
   private List<String> configNodeKillPoints = new ArrayList<>();
   private List<String> dataNodeKillPoints = new ArrayList<>();
+  private List<String> streamNodeKillPoints = new ArrayList<>();
 
   /**
    * This config object stores the properties set by developers during the test. It will be cleared
@@ -177,6 +180,15 @@ public abstract class AbstractEnv implements BaseEnv {
       final int dataNodesNum,
       final int retryCount,
       final boolean addAINode) {
+    initEnvironment(configNodesNum, dataNodesNum, retryCount, addAINode, 0);
+  }
+
+  protected void initEnvironment(
+      final int configNodesNum,
+      final int dataNodesNum,
+      final int retryCount,
+      final boolean addAINode,
+      final int streamNodesNum) {
     this.retryCount = retryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
@@ -263,7 +275,50 @@ public abstract class AbstractEnv implements BaseEnv {
       startAINode(seedConfigNode, this.dataNodeWrapperList.get(0).getPort(), testClassName);
     }
 
+    if (streamNodesNum > 0) {
+      this.streamNodeWrapperList = new ArrayList<>();
+      final List<String> streamNodeEndpoints = new ArrayList<>();
+      final RequestDelegate<Void> streamNodesDelegate =
+          new ParallelRequestDelegate<>(streamNodeEndpoints, NODE_START_TIMEOUT, this);
+
+      for (int i = 0; i < streamNodesNum; i++) {
+        StreamNodeWrapper streamNodeWrapper = newStreamNode();
+        streamNodeEndpoints.add(streamNodeWrapper.getIpAndPortString());
+        this.streamNodeWrapperList.add(streamNodeWrapper);
+        streamNodesDelegate.addRequest(
+            () -> {
+              streamNodeWrapper.start();
+              return null;
+            });
+      }
+
+      try {
+        streamNodesDelegate.requestAll();
+      } catch (final SQLException e) {
+        logger.error("Start streamNodes failed", e);
+        throw new AssertionError();
+      }
+    }
+
     checkClusterStatusWithoutUnknown();
+  }
+
+  private StreamNodeWrapper newStreamNode() {
+    final StreamNodeWrapper streamNodeWrapper =
+        new StreamNodeWrapper(
+            configNodeWrapperList.get(0).getIpAndPortString(),
+            getTestClassName(),
+            testMethodName,
+            EnvUtils.searchAvailablePorts(),
+            index,
+            this instanceof MultiClusterEnv,
+            startTime);
+
+    streamNodeWrapper.createNodeDir();
+    streamNodeWrapper.changeConfig();
+    streamNodeWrapper.createLogDir();
+    streamNodeWrapper.setKillPoints(streamNodeKillPoints);
+    return streamNodeWrapper;
   }
 
   private ConfigNodeWrapper newConfigNode() {
@@ -433,7 +488,8 @@ public abstract class AbstractEnv implements BaseEnv {
         if (showClusterResp.getNodeStatus().size()
             != configNodeWrapperList.size()
                 + dataNodeWrapperList.size()
-                + aiNodeWrapperList.size()) {
+                + aiNodeWrapperList.size()
+                + streamNodeWrapperList.size()) {
           passed = false;
           nodeSizePassed = false;
           actualNodeSize = showClusterResp.getNodeStatusSize();
@@ -466,6 +522,14 @@ public abstract class AbstractEnv implements BaseEnv {
           }
         }
         for (AINodeWrapper nodeWrapper : aiNodeWrapperList) {
+          boolean alive = nodeWrapper.getInstance().isAlive();
+          if (!alive) {
+            processStatusMap.put(nodeWrapper, nodeWrapper.getInstance().waitFor());
+          } else {
+            processStatusMap.put(nodeWrapper, 0);
+          }
+        }
+        for (StreamNodeWrapper nodeWrapper : streamNodeWrapperList) {
           boolean alive = nodeWrapper.getInstance().isAlive();
           if (!alive) {
             processStatusMap.put(nodeWrapper, nodeWrapper.getInstance().waitFor());
@@ -576,6 +640,16 @@ public abstract class AbstractEnv implements BaseEnv {
                   aiNodeWrapper.getPid());
               aiNodeWrapper.stop();
               aiNodeWrapper.start();
+            }
+          }
+          for (StreamNodeWrapper streamNodeWrapper : streamNodeWrapperList) {
+            if (portOccupationMap.containsValue(streamNodeWrapper.getPid())) {
+              logger.info(
+                  "A port is occupied by another StreamNode {}-{}, restart it",
+                  streamNodeWrapper.getIpAndPortString(),
+                  streamNodeWrapper.getPid());
+              streamNodeWrapper.stop();
+              streamNodeWrapper.start();
             }
           }
         } catch (IOException e) {

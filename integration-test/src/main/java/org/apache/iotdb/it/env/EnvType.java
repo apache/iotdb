@@ -25,6 +25,7 @@ public enum EnvType {
   Cluster1,
   MultiCluster,
   AI,
+  STREAM,
   TABLE_SIMPLE,
   TABLE_CLUSTER1;
 

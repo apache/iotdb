@@ -75,6 +75,18 @@ public interface BaseEnv {
    */
   void initClusterEnvironment(int configNodesNum, int dataNodesNum, int testWorkingRetryCount);
 
+  /**
+   * Init a cluster with the specified number of ConfigNodes and DataNodes.
+   *
+   * @param configNodesNum the number of ConfigNodes.
+   * @param dataNodesNum the number of DataNodes.
+   * @param testWorkingRetryCount the retry count when testing the availability of cluster
+   */
+  default void initClusterEnvironment(
+      int configNodesNum, int dataNodesNum, int streamNodesNum, int testWorkingRetryCount) {
+    this.initClusterEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount);
+  }
+
   /** Destroy the cluster and all the configurations. */
   void cleanClusterEnvironment();
 

@@ -45,6 +45,11 @@ public class ClusterConstant {
       "DefaultDataNodeCommonProperties";
   public static final String DATA_REGION_PER_DATANODE = "integrationTest.dataRegionPerDataNode";
 
+  // StreamNode constants
+  public static final String STREAMNODE_INIT_HEAP_SIZE = "StreamNodeInitHeapSize";
+  public static final String STREAMNODE_MAX_HEAP_SIZE = "StreamNodeMaxHeapSize";
+  public static final String STREAMNODE_MAX_DIRECT_MEMORY_SIZE = "StreamNodeMaxDirectMemorySize";
+
   // Cluster Configurations
   public static final String CLUSTER_CONFIGURATIONS = "ClusterConfigurations";
 
@@ -213,6 +218,8 @@ public class ClusterConstant {
   public static final String DATA_NODE_NAME = "DataNode";
 
   public static final String AI_NODE_NAME = "AINode";
+
+  public static final String STREAM_NODE_NAME = "StreamNode";
 
   public static final String LOCK_FILE_PATH =
       System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + "lock-";
