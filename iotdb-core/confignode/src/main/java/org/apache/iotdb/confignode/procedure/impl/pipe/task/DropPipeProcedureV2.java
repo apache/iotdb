@@ -165,7 +165,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     DropPipeProcedureV2 that = (DropPipeProcedureV2) o;
     return getProcId() == that.getProcId()
-        && getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
         && pipeName.equals(that.pipeName);
   }

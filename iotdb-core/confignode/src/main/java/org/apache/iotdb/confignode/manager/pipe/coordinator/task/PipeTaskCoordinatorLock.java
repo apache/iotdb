@@ -43,16 +43,9 @@ public class PipeTaskCoordinatorLock {
   public void lock() {
     LOGGER.debug(
         "PipeTaskCoordinator lock waiting for thread {}", Thread.currentThread().getName());
-    try {
-      semaphore.acquire();
-      LOGGER.debug(
-          "PipeTaskCoordinator lock acquired by thread {}", Thread.currentThread().getName());
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.error(
-          "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}",
-          Thread.currentThread().getName());
-    }
+    semaphore.acquireUninterruptibly();
+    LOGGER.debug(
+        "PipeTaskCoordinator lock acquired by thread {}", Thread.currentThread().getName());
   }
 
   public boolean tryLock() {

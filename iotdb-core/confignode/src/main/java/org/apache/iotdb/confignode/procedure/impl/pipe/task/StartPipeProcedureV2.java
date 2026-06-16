@@ -184,7 +184,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     StartPipeProcedureV2 that = (StartPipeProcedureV2) o;
     return getProcId() == that.getProcId()
-        && getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
         && pipeName.equals(that.pipeName);
   }
