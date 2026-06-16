@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
@@ -221,15 +222,22 @@ public class DataPartition extends Partition {
     final List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
     final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         dataBasePartitionMap = dataPartitionMap.get(databaseName);
+    if (dataBasePartitionMap == null) {
+      throw new RuntimeException(
+          String.format(CommonMessages.DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED, databaseName));
+    }
     final Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
+    if (slotReplicaSetMap == null) {
+      throw new RuntimeException(
+          String.format(
+              CommonMessages.DATA_PARTITION_EMPTY, deviceID, seriesPartitionSlot, databaseName));
+    }
     for (final TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
       final List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
       if (targetRegionList == null || targetRegionList.isEmpty()) {
         throw new RuntimeException(
-            String.format(
-                "targetRegionList is empty. device: %s, timeSlot: %s",
-                deviceID, timePartitionSlot));
+            String.format(CommonMessages.TARGET_REGION_LIST_EMPTY, deviceID, timePartitionSlot));
       } else {
         dataRegionReplicaSets.add(targetRegionList.get(targetRegionList.size() - 1));
       }
@@ -250,9 +258,7 @@ public class DataPartition extends Partition {
         databasePartitionMap = dataPartitionMap.get(databaseName);
     if (databasePartitionMap == null) {
       throw new RuntimeException(
-          "Database "
-              + databaseName
-              + " not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+          String.format(CommonMessages.DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED, databaseName));
     }
     final List<TRegionReplicaSet> regions =
         databasePartitionMap.get(seriesPartitionSlot).get(timePartitionSlot);

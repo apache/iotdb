@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
+import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
@@ -54,6 +56,7 @@ import org.junit.Test;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern.buildUnionPattern;
 
@@ -319,6 +322,35 @@ public class PipeTabletInsertionEventTest {
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
     Assert.assertTrue(isAligned4);
+  }
+
+  @Test
+  public void collectRowWithOverriddenTreeDatabaseForTest() {
+    final PipeRowCollector rowCollector = new PipeRowCollector(null, null, "root.test.sg_0", false);
+    rowCollector.resetDatabaseInfo("root.userResultDB", false, null, "root.userResultDB");
+
+    final MeasurementSchema[] outputSchemas = {new MeasurementSchema("avg", TSDataType.INT32)};
+    rowCollector.collectRow(
+        new PipeResetTabletRow(
+            0,
+            "root.userResultDB.d_0.s_1",
+            false,
+            outputSchemas,
+            new long[] {1L},
+            new TSDataType[] {TSDataType.INT32},
+            new Object[] {new int[] {1}},
+            null,
+            new String[] {"avg"}));
+
+    final List<org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent> events =
+        rowCollector.convertToTabletInsertionEvents(false);
+    Assert.assertEquals(1, events.size());
+
+    final PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) events.get(0);
+    Assert.assertEquals("root.userResultDB", event.getSourceDatabaseNameFromDataRegion());
+    Assert.assertFalse(event.isTableModelEvent());
+    Assert.assertEquals("root.userResultDB", event.getTreeModelDatabaseName());
+    Assert.assertEquals("root.userResultDB.d_0.s_1", event.convertToTablet().getDeviceId());
   }
 
   @Test

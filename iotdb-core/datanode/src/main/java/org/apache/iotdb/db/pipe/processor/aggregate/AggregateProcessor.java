@@ -116,6 +116,7 @@ public class AggregateProcessor implements PipeProcessor {
   private PipeTaskMeta pipeTaskMeta;
   private long outputMaxDelayMilliseconds;
   private long outputMinReportIntervalMilliseconds;
+  private String outputDatabase;
   private String outputDatabaseWithPathSeparator;
 
   private final Map<String, AggregatedResultOperator> outputName2OperatorMap = new HashMap<>();
@@ -226,7 +227,7 @@ public class AggregateProcessor implements PipeProcessor {
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE)
             * 1000;
-    final String outputDatabase =
+    outputDatabase =
         parameters.getStringOrDefault(
             PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
     outputDatabaseWithPathSeparator =
@@ -427,6 +428,8 @@ public class AggregateProcessor implements PipeProcessor {
       final Row row, final RowCollector rowCollector, final AtomicReference<Exception> exception) {
     final Map<String, Pair<Long, ByteBuffer>> resultMap = new HashMap<>();
 
+    resetOutputDatabaseForGeneratedEvent(rowCollector);
+
     final long timestamp = row.getTime();
     for (int index = 0, size = row.size(); index < size; ++index) {
       // Do not calculate null values
@@ -580,6 +583,7 @@ public class AggregateProcessor implements PipeProcessor {
                 synchronized (stateReference) {
                   final PipeRowCollector rowCollector =
                       new PipeRowCollector(pipeTaskMeta, null, dataBaseName, isTableModel);
+                  resetOutputDatabaseForGeneratedEvent(rowCollector);
                   try {
                     collectWindowOutputs(
                         stateReference.get().forceOutput(), timeSeries, rowCollector);
@@ -610,6 +614,13 @@ public class AggregateProcessor implements PipeProcessor {
     }
 
     eventCollector.collect(event);
+  }
+
+  private void resetOutputDatabaseForGeneratedEvent(final RowCollector rowCollector) {
+    if (!outputDatabase.isEmpty() && rowCollector instanceof PipeRowCollector) {
+      ((PipeRowCollector) rowCollector)
+          .resetDatabaseInfo(outputDatabase, Boolean.FALSE, null, outputDatabase);
+    }
   }
 
   /**
