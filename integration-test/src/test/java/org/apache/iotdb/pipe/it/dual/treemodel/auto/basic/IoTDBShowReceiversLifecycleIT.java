@@ -51,6 +51,13 @@ import java.util.concurrent.TimeUnit;
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
 public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAutoIT {
 
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    senderEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
+    receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
+  }
+
   @Test
   public void testShowReceiversPipeIdsDisappearAfterDropPipe() throws Exception {
     final String database = "root.show_receivers_lifecycle";
@@ -121,12 +128,48 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
   }
 
+  @Test
+  public void testShowReceiversShowsAirGapProtocol() throws Exception {
+    final String database = "root.show_receivers_air_gap";
+    final String pipeName = "show_receivers_air_gap_pipe";
+
+    createAirGapPipe(database, pipeName);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select count(s1) from " + database + ".d1",
+        "count(" + database + ".d1.s1),",
+        Collections.singleton("1,"));
+
+    assertShowReceiversContainProtocol(
+        "show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName, "air_gap");
+    assertShowReceiversContainProtocol(
+        "select * from information_schema.receivers",
+        BaseEnv.TABLE_SQL_DIALECT,
+        pipeName,
+        "air_gap");
+  }
+
   private void createThriftPipe(final String database, final String pipeName) throws Exception {
     createThriftPipe(database, pipeName, "data.insert");
   }
 
   private void createThriftPipe(
       final String database, final String pipeName, final String sourceInclusion) throws Exception {
+    createPipe(database, pipeName, sourceInclusion, "iotdb-thrift-sink", false);
+  }
+
+  private void createAirGapPipe(final String database, final String pipeName) throws Exception {
+    createPipe(database, pipeName, "data.insert", "iotdb-air-gap-sink", true);
+  }
+
+  private void createPipe(
+      final String database,
+      final String pipeName,
+      final String sourceInclusion,
+      final String sinkName,
+      final boolean useAirGapPort)
+      throws Exception {
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
@@ -146,10 +189,15 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
     sourceAttributes.put("source.inclusion", sourceInclusion);
     sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
-    sinkAttributes.put("sink", "iotdb-thrift-sink");
+    sinkAttributes.put("sink", sinkName);
     sinkAttributes.put("sink.batch.enable", "false");
     sinkAttributes.put("sink.ip", receiverDataNode.getIp());
-    sinkAttributes.put("sink.port", Integer.toString(receiverDataNode.getPort()));
+    sinkAttributes.put(
+        "sink.port",
+        Integer.toString(
+            useAirGapPort
+                ? receiverDataNode.getPipeAirGapReceiverPort()
+                : receiverDataNode.getPort()));
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -266,5 +314,39 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
       }
     }
     return hasDataNode && hasConfigNode;
+  }
+
+  private void assertShowReceiversContainProtocol(
+      final String sql, final String sqlDialect, final String pipeName, final String protocol) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(1L, TimeUnit.SECONDS)
+        .pollInterval(1L, TimeUnit.SECONDS)
+        .atMost(60L, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                Assert.assertTrue(
+                    hasDataNodeReceiverWithProtocol(sql, sqlDialect, pipeName, protocol)));
+  }
+
+  private boolean hasDataNodeReceiverWithProtocol(
+      final String sql, final String sqlDialect, final String pipeName, final String protocol)
+      throws SQLException {
+    try (final Connection connection =
+            receiverEnv.getConnection(
+                SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet = statement.executeQuery(sql)) {
+      while (resultSet.next()) {
+        final String pipeIds = resultSet.getString(8);
+        if ("DataNode".equals(resultSet.getString(1))
+            && protocol.equals(resultSet.getString(3))
+            && pipeIds != null
+            && pipeIds.contains(pipeName + "@")) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }
