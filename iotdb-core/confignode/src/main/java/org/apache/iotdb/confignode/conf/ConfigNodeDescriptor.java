@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
@@ -629,6 +631,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "config_node_ratis_max_retry_attempts",
                 String.valueOf(conf.getConfigNodeRatisMaxRetryAttempts()))));
+    conf.setConfigNodeRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "config_node_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getConfigNodeRatisReconfigurationMaxRetryAttempts()))));
     conf.setConfigNodeRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -645,6 +652,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "data_region_ratis_max_retry_attempts",
                 String.valueOf(conf.getDataRegionRatisMaxRetryAttempts()))));
+    conf.setDataRegionRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_region_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getDataRegionRatisReconfigurationMaxRetryAttempts()))));
     conf.setDataRegionRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -661,6 +673,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_region_ratis_max_retry_attempts",
                 String.valueOf(conf.getSchemaRegionRatisMaxRetryAttempts()))));
+    conf.setSchemaRegionRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_region_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getSchemaRegionRatisReconfigurationMaxRetryAttempts()))));
     conf.setSchemaRegionRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -811,12 +828,18 @@ public class ConfigNodeDescriptor {
     }
   }
 
-  public void loadHotModifiedProps(TrimProperties properties) {
+  public void loadHotModifiedProps(TrimProperties properties) throws IOException {
     ConfigurationFileUtils.updateAppliedProperties(properties, true);
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
     Optional.ofNullable(properties.getProperty("enable_topology_probing"))
         .ifPresent(v -> conf.setEnableTopologyProbing(Boolean.parseBoolean(v)));
+    loadPipeHotModifiedProp(properties);
+  }
+
+  private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
+    PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
+    PipePeriodicalLogReducer.update();
   }
 
   public static ConfigNodeDescriptor getInstance() {

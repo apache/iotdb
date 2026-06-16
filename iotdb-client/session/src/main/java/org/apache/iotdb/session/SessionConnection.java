@@ -97,6 +97,7 @@ import static org.apache.iotdb.session.Session.TREE;
 public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
+  private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
   protected Session session;
@@ -228,6 +229,9 @@ public class SessionConnection {
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
     openReq.putToConfiguration("sql_dialect", sqlDialect);
+    if (session.useEncryptedPassword) {
+      openReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
+    }
     if (database != null) {
       openReq.putToConfiguration("db", database);
     }

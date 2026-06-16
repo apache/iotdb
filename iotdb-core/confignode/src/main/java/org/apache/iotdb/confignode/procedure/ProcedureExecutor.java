@@ -56,6 +56,8 @@ import static org.apache.iotdb.confignode.procedure.Procedure.NO_PROC_ID;
 
 public class ProcedureExecutor<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureExecutor.class);
+  private static final ThreadLocal<Boolean> PROCEDURE_EXECUTION_CONTEXT =
+      ThreadLocal.withInitial(() -> false);
 
   private final ConcurrentHashMap<Long, CompletedProcedureContainer<Env>> completed =
       new ConcurrentHashMap<>();
@@ -94,6 +96,10 @@ public class ProcedureExecutor<Env> {
   @TestOnly
   public ProcedureExecutor(final Env environment, final IProcedureStore<Env> store) {
     this(environment, store, new SimpleProcedureScheduler());
+  }
+
+  public static boolean isProcedureExecutionThread() {
+    return PROCEDURE_EXECUTION_CONTEXT.get();
   }
 
   public void init(int numThreads) {
@@ -448,7 +454,15 @@ public class ProcedureExecutor<Env> {
 
       updateStoreOnExecution(rootProcStack, proc, subprocs);
 
-      if (!store.isRunning()) {
+      // Stop the in-place re-execution loop once this executor is shutting down (e.g. ConfigNode
+      // leader switch / restart). Checking store.isRunning() alone is not enough: stopExecutor()
+      // calls executor.stop() and executor.join() before store.stop(), so the store is still
+      // running while join() waits for this very worker to finish. Without also checking the
+      // executor's own running flag, a procedure that keeps returning HAS_MORE_STATE for the same
+      // state (e.g. AddRegionPeerProcedure parking at DO_ADD_REGION_PEER after waitTaskFinish() is
+      // interrupted) would re-execute forever here and join() would hang. The persisted state lets
+      // the next leader resume from where it stopped.
+      if (!isRunning() || !store.isRunning()) {
         return;
       }
 
@@ -784,7 +798,12 @@ public class ProcedureExecutor<Env> {
           this.activeProcedure.set(procedure);
           activeExecutorCount.incrementAndGet();
           startTime.set(System.currentTimeMillis());
-          executeProcedure(procedure);
+          PROCEDURE_EXECUTION_CONTEXT.set(true);
+          try {
+            executeProcedure(procedure);
+          } finally {
+            PROCEDURE_EXECUTION_CONTEXT.remove();
+          }
           activeExecutorCount.decrementAndGet();
           LOG.trace(
               "Halt pid={}, activeCount={}", procedure.getProcId(), activeExecutorCount.get());

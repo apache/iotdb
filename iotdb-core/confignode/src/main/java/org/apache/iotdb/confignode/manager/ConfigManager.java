@@ -149,6 +149,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -192,6 +193,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -257,16 +260,21 @@ import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -279,8 +287,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1246,6 +1256,10 @@ public class ConfigManager implements IManager {
           .setMessage(
               "ConsensusManager of target-ConfigNode is not initialized, "
                   + "please make sure the target-ConfigNode has been started successfully.");
+    }
+    // Procedure recovery replays metadata writes before external load warm-up is complete.
+    if (procedureManager.isProcedureExecutionThread()) {
+      return getConsensusManager().confirmLeaderForInternalProcedure();
     }
     return getConsensusManager().confirmLeader();
   }
@@ -2460,6 +2474,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus alterTopic(TAlterTopicReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().alterTopic(req)
+        : status;
+  }
+
+  @Override
   public TSStatus dropTopic(TDropTopicReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -2537,6 +2559,74 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().getAllSubscriptionInfo()
         : new TGetAllSubscriptionInfoResp(status, Collections.emptyList());
+  }
+
+  public TGetCommitProgressResp getCommitProgress(TGetCommitProgressReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TGetCommitProgressResp(status);
+    }
+    final String keyPrefix =
+        req.getConsumerGroupId() + "##" + req.getTopicName() + "##" + req.getRegionId() + "##";
+    final org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper keeper =
+        subscriptionManager
+            .getSubscriptionCoordinator()
+            .getSubscriptionInfo()
+            .getCommitProgressKeeper();
+    final Map<WriterId, WriterProgress> mergedWriterPositions = new LinkedHashMap<>();
+
+    for (final Map.Entry<String, ByteBuffer> entry : keeper.getAllRegionProgress().entrySet()) {
+      if (!entry.getKey().startsWith(keyPrefix)) {
+        continue;
+      }
+      final RegionProgress regionProgress = deserializeRegionProgress(entry.getValue());
+      if (Objects.isNull(regionProgress)) {
+        continue;
+      }
+      for (final Map.Entry<WriterId, WriterProgress> writerEntry :
+          regionProgress.getWriterPositions().entrySet()) {
+        mergedWriterPositions.merge(
+            writerEntry.getKey(),
+            writerEntry.getValue(),
+            (oldProgress, newProgress) ->
+                compareWriterProgress(newProgress, oldProgress) > 0 ? newProgress : oldProgress);
+      }
+    }
+    final TGetCommitProgressResp resp =
+        new TGetCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    if (!mergedWriterPositions.isEmpty()) {
+      resp.setCommittedRegionProgress(
+          serializeRegionProgress(new RegionProgress(mergedWriterPositions)));
+    }
+    return resp;
+  }
+
+  private static RegionProgress deserializeRegionProgress(final ByteBuffer buffer) {
+    if (Objects.isNull(buffer)) {
+      return null;
+    }
+    final ByteBuffer duplicate = buffer.asReadOnlyBuffer();
+    duplicate.rewind();
+    return RegionProgress.deserialize(duplicate);
+  }
+
+  private static ByteBuffer serializeRegionProgress(final RegionProgress regionProgress) {
+    try (final PublicBAOS baos = new PublicBAOS();
+        final DataOutputStream dos = new DataOutputStream(baos)) {
+      regionProgress.serialize(dos);
+      return ByteBuffer.wrap(baos.getBuf(), 0, baos.size()).asReadOnlyBuffer();
+    } catch (final IOException e) {
+      throw new RuntimeException("Failed to serialize region progress " + regionProgress, e);
+    }
+  }
+
+  private static int compareWriterProgress(
+      final WriterProgress leftProgress, final WriterProgress rightProgress) {
+    int cmp = Long.compare(leftProgress.getPhysicalTime(), rightProgress.getPhysicalTime());
+    if (cmp != 0) {
+      return cmp;
+    }
+    return Long.compare(leftProgress.getLocalSeq(), rightProgress.getLocalSeq());
   }
 
   @Override

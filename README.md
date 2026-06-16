@@ -28,7 +28,7 @@
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8+-blue.svg)
+![](https://img.shields.io/badge/java--language-17+-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Central](https://img.shields.io/maven-central/v/org.apache.iotdb/iotdb-parent.svg)](https://central.sonatype.com/artifact/org.apache.iotdb/iotdb-parent)
 [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb)
@@ -89,7 +89,7 @@ This short guide will walk you through the basic process of using IoTDB. For a m
 
 To use IoTDB, you need to have:
 
-1. Java >= 1.8 (1.8 to 25 are verified. Please make sure the environment path has been set accordingly).
+1. Java >= 17 (17 to 25 are verified. Please make sure the environment path has been set accordingly).
 2. Maven >= 3.6 (If you want to compile and install IoTDB from source code).
 3. Set the max open files num as 65535 to avoid the "too many open files" error.
 4. (Optional) Set the somaxconn as 65535 to avoid "connection reset" error when the system is under high load.

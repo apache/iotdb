@@ -24,7 +24,7 @@ import org.apache.iotdb.rest.protocol.v2.model.PrefixPathList;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 
 import java.util.ArrayList;
 import java.util.Collections;

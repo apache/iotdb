@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -95,7 +96,8 @@ public class PipeMetaSyncer {
     isLastPipeSyncSuccessful = false;
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
-      LOGGER.warn(
+      PipeLogger.log(
+          LOGGER::warn,
           ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF_2);
       return;
     }
@@ -109,7 +111,9 @@ public class PipeMetaSyncer {
             == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
       somePipesNeedRestarting = autoRestartWithLock();
       if (somePipesNeedRestarting) {
-        LOGGER.info(ManagerMessages.SOME_PIPES_NEED_RESTARTING_WILL_RESTART_THEM_AFTER_THIS_SYNC);
+        PipeLogger.log(
+            LOGGER::info,
+            ManagerMessages.SOME_PIPES_NEED_RESTARTING_WILL_RESTART_THEM_AFTER_THIS_SYNC);
       }
       pipeAutoRestartRoundCounter.set(0);
     }
@@ -130,19 +134,22 @@ public class PipeMetaSyncer {
         if (handleMetaChangeStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           successfulSync = true;
         } else {
-          LOGGER.warn(
+          PipeLogger.log(
+              LOGGER::warn,
               ManagerMessages.FAILED_TO_HANDLE_PIPE_META_CHANGE_RESULT_STATUS,
               handleMetaChangeStatus);
         }
       }
 
       if (successfulSync) {
-        LOGGER.info(
+        PipeLogger.log(
+            LOGGER::info,
             ManagerMessages.AFTER_THIS_SUCCESSFUL_SYNC_IF_PIPETASKINFO_IS_EMPTY_DURING_THIS);
         isLastPipeSyncSuccessful = true;
       }
     } else {
-      LOGGER.warn(ManagerMessages.FAILED_TO_SYNC_PIPE_META_RESULT_STATUS, metaSyncStatus);
+      PipeLogger.log(
+          LOGGER::warn, ManagerMessages.FAILED_TO_SYNC_PIPE_META_RESULT_STATUS, metaSyncStatus);
     }
   }
 
@@ -158,7 +165,8 @@ public class PipeMetaSyncer {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_AUTO_RESTART_PIPE_TASK);
+      PipeLogger.log(
+          LOGGER::warn, ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_AUTO_RESTART_PIPE_TASK);
       return false;
     }
     try {
@@ -176,7 +184,7 @@ public class PipeMetaSyncer {
           .getRegionMaintainHandler()
           .checkAndRepairConsensusPipes();
     } catch (Exception e) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES, e);
+      PipeLogger.log(LOGGER::warn, e, ManagerMessages.FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES);
     }
   }
 
@@ -184,7 +192,9 @@ public class PipeMetaSyncer {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_HANDLING_SUCCESSFUL_RESTART);
+      PipeLogger.log(
+          LOGGER::warn,
+          ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_HANDLING_SUCCESSFUL_RESTART);
       return false;
     }
     try {

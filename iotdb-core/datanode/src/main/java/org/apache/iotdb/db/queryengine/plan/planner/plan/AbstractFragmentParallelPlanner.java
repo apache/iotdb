@@ -138,7 +138,8 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
     if (!selectRandomDataNode || queryContext.getSession() == null) {
       targetIndex = 0;
     } else {
-      targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
+      targetIndex =
+          (int) Math.floorMod(queryContext.getSession().getSessionId(), availableDataNodes.size());
     }
     return availableDataNodes.get(targetIndex);
   }

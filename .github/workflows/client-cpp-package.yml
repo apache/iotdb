@@ -1,9 +1,26 @@
-# Manual run; Release published; v* tag pushes; rc/** pushes only when C++-related paths change
-# (job should-package). release events use the workflow file from the default branch.
+# Publish-oriented packaging workflow:
+# - manual runs, release:published, v* tags
+# - rc/** pushes only when C++-related paths change (job should-package)
+# release events always use the workflow file from the default branch.
 name: C++ Client package
 
 on:
   workflow_dispatch:
+    inputs:
+      variants:
+        description: "Which packages to build"
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - linux
+          - macos
+          - windows
+          - windows-vs2017
+          - windows-vs2019
+          - windows-vs2022
+          - windows-vs2026
   release:
     types: [published]
   push:
@@ -22,6 +39,7 @@ env:
 
 jobs:
   should-package:
+    # Keep rc branch cost low: skip full matrix when unrelated files change.
     runs-on: ubuntu-latest
     outputs:
       run: ${{ steps.result.outputs.run }}
@@ -34,10 +52,12 @@ jobs:
         with:
           filters: |
             cpp:
-              - 'pom.xml'
-              - 'iotdb-client/**'
-              - 'iotdb-protocol/**'
+              - 'iotdb-client/client-cpp/**'
+              - 'iotdb-client/pom.xml'
+              - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
+              - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
               - '.github/workflows/client-cpp-package.yml'
+              - '.github/scripts/package-client-cpp-*.sh'
       - id: result
         shell: bash
         run: |
@@ -62,68 +82,199 @@ jobs:
           fi
           echo "run=false" >> "$GITHUB_OUTPUT"
 
-  package-linux:
-    name: Package (${{ matrix.name }})
+  resolve-matrix:
+    name: Resolve package matrix
     needs: should-package
     if: needs.should-package.outputs.run == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: linux-x86_64
-            runs-on: ubuntu-22.04
-          - name: linux-aarch64
-            runs-on: ubuntu-22.04-arm
-    runs-on: ${{ matrix.runs-on }}
+    runs-on: ubuntu-latest
+    outputs:
+      run_linux: ${{ steps.filter.outputs.run_linux }}
+      run_macos: ${{ steps.filter.outputs.run_macos }}
+      run_windows: ${{ steps.filter.outputs.run_windows }}
+      windows_matrix: ${{ steps.filter.outputs.windows_matrix }}
     steps:
-      - uses: actions/checkout@v5
-      - name: Set up JDK 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-      - name: Install C++ dependencies (Linux)
+      - id: filter
+        # Resolve workflow_dispatch variants to a compact matrix payload for fromJSON().
         shell: bash
         run: |
-          set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y libboost-all-dev openssl libssl-dev wget
-          . /etc/os-release
-          if [[ "${VERSION_CODENAME}" == "jammy" ]]; then
-            wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
-            chmod +x /tmp/llvm.sh
-            sudo DEBIAN_FRONTEND=noninteractive /tmp/llvm.sh 17
-            # llvm.sh installs clang-17/lldb/lld/clangd but not the clang-format-17 package
-            sudo apt-get install -y clang-format-17
+          set -euo pipefail
+          VARIANT="${{ github.event.inputs.variants || 'all' }}"
+
+          run_linux=false
+          run_macos=false
+          run_windows=false
+          case "$VARIANT" in
+            all)
+              run_linux=true
+              run_macos=true
+              run_windows=true
+              ;;
+            linux) run_linux=true ;;
+            macos) run_macos=true ;;
+            windows) run_windows=true ;;
+            windows-vs2017|windows-vs2019|windows-vs2022|windows-vs2026)
+              run_windows=true
+              ;;
+            *)
+              echo "Unknown variant: $VARIANT" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "run_linux=${run_linux}" >> "$GITHUB_OUTPUT"
+          echo "run_macos=${run_macos}" >> "$GITHUB_OUTPUT"
+          echo "run_windows=${run_windows}" >> "$GITHUB_OUTPUT"
+
+          # Compact JSON (no leading whitespace); required for GITHUB_OUTPUT + fromJSON().
+          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-msvc14.4","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-msvc14.3","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-msvc14.2","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","boost_choco_version":"1.74.0","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-msvc14.1","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"}]'
+
+          write_windows_matrix_output() {
+            local matrix_json="$1"
+            {
+              echo 'windows_matrix<<__MATRIX_EOF__'
+              echo "${matrix_json}"
+              echo '__MATRIX_EOF__'
+            } >> "$GITHUB_OUTPUT"
+          }
+
+          if [[ "$run_windows" == true ]]; then
+            if [[ "$VARIANT" == all || "$VARIANT" == windows ]]; then
+              FILTERED="$WINDOWS_MATRIX"
+            elif [[ "$VARIANT" =~ ^windows-vs ]]; then
+              FILTERED=$(echo "$WINDOWS_MATRIX" | jq -c --arg v "$VARIANT" '[.[] | select(.name == $v)]')
+            else
+              FILTERED='[]'
+            fi
+            if [[ $(echo "$FILTERED" | jq 'length') -eq 0 ]]; then
+              echo "No Windows matrix rows for variant=${VARIANT}" >&2
+              exit 1
+            fi
+            FILTERED=$(echo "$FILTERED" | jq -c '.')
+            write_windows_matrix_output "${FILTERED}"
           else
-            sudo apt-get install -y clang-format-17
+            write_windows_matrix_output '[]'
           fi
-          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100
-          sudo update-alternatives --set clang-format /usr/bin/clang-format-17
-          clang-format --version
+
+  package-linux-glibc228:
+    name: Package (linux-x86_64-glibc2.28)
+    needs: [should-package, resolve-matrix]
+    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
+    # Checkout/cache on host (Node actions need modern glibc); build in manylinux_2_28 via docker run.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-${{ runner.arch }}-m2-${{ hashFiles('**/pom.xml') }}
+          key: linux-glibc228-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-m2-
-      - name: Package client-cpp
+            linux-glibc228-m2-
+      - name: Package client-cpp (glibc 2.28 baseline)
         shell: bash
         run: |
           set -euxo pipefail
-          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
+          chmod +x .github/scripts/package-client-cpp-manylinux228.sh
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -v "${HOME}/.m2:/root/.m2" \
+            -w /workspace \
+            -e GITHUB_WORKSPACE=/workspace \
+            quay.io/pypa/manylinux_2_28_x86_64 \
+            bash .github/scripts/package-client-cpp-manylinux228.sh
+      - name: Restore workspace ownership after container build
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
+      - name: Resolve package zip
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-x86_64-glibc2.28.zip)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one package zip, got: ${packages[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .zip)" >> "$GITHUB_OUTPUT"
+          sha512="${packages[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
-          name: client-cpp-${{ matrix.name }}
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          name: ${{ steps.pkg.outputs.name }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
+          if-no-files-found: error
+
+  package-linux-aarch64-glibc228:
+    name: Package (linux-aarch64-glibc2.28)
+    needs: [should-package, resolve-matrix]
+    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
+    # Checkout/cache on host; build in manylinux_2_28 aarch64 via docker run (glibc 2.28 baseline).
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - uses: actions/checkout@v5
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: linux-aarch64-glibc228-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            linux-aarch64-glibc228-m2-
+      - name: Package client-cpp (glibc 2.28 baseline)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x .github/scripts/package-client-cpp-manylinux228.sh
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -v "${HOME}/.m2:/root/.m2" \
+            -w /workspace \
+            -e GITHUB_WORKSPACE=/workspace \
+            quay.io/pypa/manylinux_2_28_aarch64 \
+            bash .github/scripts/package-client-cpp-manylinux228.sh
+      - name: Restore workspace ownership after container build
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
+      - name: Resolve package zip
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-aarch64-glibc2.28.zip)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one package zip, got: ${packages[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .zip)" >> "$GITHUB_OUTPUT"
+          sha512="${packages[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error
 
   package-macos:
     name: Package (${{ matrix.name }})
-    needs: should-package
-    if: needs.should-package.outputs.run == 'true'
+    needs: [should-package, resolve-matrix]
+    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_macos == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -144,49 +295,91 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          brew install boost openssl llvm@17
+          brew install boost openssl llvm@17 bison
           ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
+          echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
           clang-format --version
+          bison --version
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-${{ runner.arch }}-m2-${{ hashFiles('**/pom.xml') }}
+          key: macos-${{ matrix.name }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-m2-
+            macos-${{ matrix.name }}-m2-
       - name: Package client-cpp
         shell: bash
         env:
           MACOSX_DEPLOYMENT_TARGET: "12.0"
         run: |
           set -euxo pipefail
-          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
+          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+            -Dspotless.skip=true
+      - name: Resolve package zip
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*.zip)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one package zip, got: ${packages[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .zip)" >> "$GITHUB_OUTPUT"
+          sha512="${packages[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
-          name: client-cpp-${{ matrix.name }}
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          name: ${{ steps.pkg.outputs.name }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error
+      - name: Verify packaged examples
+        shell: bash
+        run: |
+          set -euxo pipefail
+          PKG_TARBALL="${{ steps.pkg.outputs.path }}"
+          test -n "${PKG_TARBALL}"
+          PKG_UNPACK="${RUNNER_TEMP}/client-cpp-package"
+          rm -rf "${PKG_UNPACK}"
+          mkdir -p "${PKG_UNPACK}"
+          unzip -q -o "${PKG_TARBALL}" -d "${PKG_UNPACK}"
+          PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
+          test -n "${PKG_ROOT}"
+          EXAMPLE_BUILD="${RUNNER_TEMP}/client-cpp-example-smoke"
+          cmake -S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIOTDB_SDK_ROOT="${PKG_ROOT}"
+          cmake --build "${EXAMPLE_BUILD}" -j"$(sysctl -n hw.ncpu)"
+          ./mvnw -pl distribution -am -DskipTests -Dspotless.skip=true package
+          SERVER_ROOT=$(find "${GITHUB_WORKSPACE}/distribution/target" -path '*/apache-iotdb-*-all-bin/sbin/start-standalone.sh' -print -quit | sed 's#/sbin/start-standalone.sh##')
+          test -n "${SERVER_ROOT}"
+          "${SERVER_ROOT}/sbin/start-standalone.sh"
+          trap '"${SERVER_ROOT}/sbin/stop-standalone.sh" || true' EXIT
+          sleep 30
+          "${EXAMPLE_BUILD}/SessionExample"
+          "${EXAMPLE_BUILD}/AlignedTimeseriesSessionExample"
+          "${EXAMPLE_BUILD}/TableModelSessionExample"
+          "${EXAMPLE_BUILD}/tree_example"
+          "${EXAMPLE_BUILD}/table_example"
 
   package-windows:
     name: Package (${{ matrix.name }})
-    needs: should-package
-    if: needs.should-package.outputs.run == 'true'
+    needs: [should-package, resolve-matrix]
+    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_windows == 'true'
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: windows-vs2022
-            runs-on: windows-2022
-            boost_choco: boost-msvc-14.3
-            cmake_generator: ""
-            iotdb_tools_thrift_version: ""
-          - name: windows-vs2026
-            runs-on: windows-2025-vs2026
-            boost_choco: boost-msvc-14.3
-            cmake_generator: Visual Studio 18 2026
-            iotdb_tools_thrift_version: ""
+        include: ${{ fromJSON(needs.resolve-matrix.outputs.windows_matrix) }}
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@v5
@@ -195,44 +388,160 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - name: Install Visual Studio Build Tools (${{ matrix.name }})
+        if: matrix.vs_choco != ''
+        shell: pwsh
+        run: |
+          $params = '${{ matrix.vs_choco_params }}'
+          if ($params) {
+            choco install ${{ matrix.vs_choco }} -y --package-parameters="$params" --no-progress
+          } else {
+            choco install ${{ matrix.vs_choco }} -y --no-progress
+          }
       - name: Install C++ dependencies (Windows)
         shell: pwsh
         run: |
-          choco install winflexbison3 -y
-          choco install ${{ matrix.boost_choco }} -y
-          $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
-          echo $boost_path >> $env:GITHUB_PATH
-          choco install openssl -y
+          choco install winflexbison3 -y --no-progress
+          $boostArgs = @('install', '${{ matrix.boost_choco }}', '-y', '--no-progress')
+          if ('${{ matrix.boost_choco_version }}' -ne '') {
+            $boostArgs += @("--version=${{ matrix.boost_choco_version }}")
+          }
+          & choco @boostArgs
+          if (-not (Test-Path 'C:\local')) {
+            New-Item -ItemType Directory -Path 'C:\local' -Force | Out-Null
+          }
+          $boostDir = Get-ChildItem -Path 'C:\local\' -Filter 'boost_*' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $boostDir) {
+            throw "Boost not found under C:\local after installing ${{ matrix.boost_choco }}"
+          }
+          echo $boostDir.FullName >> $env:GITHUB_PATH
+          choco install openssl -y --no-progress
           $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
           echo "$sslPath\bin" >> $env:GITHUB_PATH
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
-          choco install llvm --version=17.0.6 --force -y
-          clang-format --version
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          key: windows-${{ matrix.name }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-m2-
+            windows-${{ matrix.name }}-m2-
       - name: Package client-cpp
         shell: bash
         env:
           CMAKE_GENERATOR: ${{ matrix.cmake_generator }}
-          IOTDB_TOOLS_THRIFT_VERSION: ${{ matrix.iotdb_tools_thrift_version }}
+          PACKAGE_CLASSIFIER: ${{ matrix.package_classifier }}
         run: |
           set -euxo pipefail
-          MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests)
+          MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+            -Dspotless.skip=true \
+            "-Dclient.cpp.package.classifier=${PACKAGE_CLASSIFIER}")
           if [ -n "${CMAKE_GENERATOR:-}" ]; then
             MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
           fi
-          if [ -n "${IOTDB_TOOLS_THRIFT_VERSION:-}" ]; then
-            MVN_ARGS+=("-Diotdb-tools-thrift.version=${IOTDB_TOOLS_THRIFT_VERSION}")
-          fi
           "${MVN_ARGS[@]}"
+      - name: Verify Windows SDK is x64
+        # Guard against accidental Win32 generator defaults on legacy VS matrices.
+        shell: pwsh
+        run: |
+          $dll = "iotdb-client/client-cpp/target/install/lib/iotdb_session.dll"
+          if (-not (Test-Path $dll)) {
+            throw "Missing $dll"
+          }
+          $bytes = [System.IO.File]::ReadAllBytes($dll)
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3C)
+          $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          if ($machine -ne 0x8664) {
+            throw "Expected PE32+ x64 (machine=0x8664), got 0x$($machine.ToString('X4'))"
+          }
+          Write-Host "Verified x64 DLL: $dll"
+      - name: Resolve package zip
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-${{ matrix.package_classifier }}.zip)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one package zip, got: ${packages[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .zip)" >> "$GITHUB_OUTPUT"
+          sha512="${packages[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
-          name: client-cpp-${{ matrix.name }}
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          name: ${{ steps.pkg.outputs.name }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error
+      - name: Verify packaged examples
+        shell: bash
+        env:
+          CMAKE_GENERATOR: ${{ matrix.cmake_generator }}
+        run: |
+          set -euxo pipefail
+          PKG_TARBALL="${{ steps.pkg.outputs.path }}"
+          test -n "${PKG_TARBALL}"
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            TEMP_BASE="$(cygpath -u "${RUNNER_TEMP}")"
+          else
+            TEMP_BASE="${RUNNER_TEMP}"
+          fi
+          PKG_UNPACK="${TEMP_BASE}/client-cpp-package"
+          rm -rf "${PKG_UNPACK}"
+          mkdir -p "${PKG_UNPACK}"
+          unzip -q -o "${PKG_TARBALL}" -d "${PKG_UNPACK}"
+          PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
+          test -n "${PKG_ROOT}"
+          EXAMPLE_BUILD="${TEMP_BASE}/client-cpp-example-smoke"
+          CMAKE_ARGS=(-S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" -DIOTDB_SDK_ROOT="${PKG_ROOT}")
+          if [ -n "${CMAKE_GENERATOR:-}" ]; then
+            CMAKE_ARGS+=(-G "${CMAKE_GENERATOR}")
+            # windows-x86_64 SDK; VS2017/2019 default to Win32 without -A x64 (see client-cpp pom).
+            CMAKE_ARGS+=(-A x64)
+          fi
+          cmake "${CMAKE_ARGS[@]}"
+          cmake --build "${EXAMPLE_BUILD}" --config Release
+          ./mvnw -pl distribution -am -DskipTests -Dspotless.skip=true package
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            WORKSPACE_BASE="$(cygpath -u "${GITHUB_WORKSPACE}")"
+          else
+            WORKSPACE_BASE="${GITHUB_WORKSPACE}"
+          fi
+          SERVER_ROOT=$(find "${WORKSPACE_BASE}/distribution/target" -path '*/apache-iotdb-*-all-bin/sbin/windows/start-standalone.bat' -print -quit | sed 's#/sbin/windows/start-standalone.bat##')
+          test -n "${SERVER_ROOT}"
+          START_BAT="$(cygpath -w "${SERVER_ROOT}/sbin/windows/start-standalone.bat")"
+          STOP_BAT="$(cygpath -w "${SERVER_ROOT}/sbin/windows/stop-standalone.bat")"
+          # Git Bash maps cmd /c to a path; use //c. Avoid nested \" quotes — cmd then treats
+          # the quotes as part of the executable name and fails with "not recognized".
+          cmd.exe //c "${START_BAT}"
+          trap "cmd.exe //c \"${STOP_BAT}\" || true" EXIT
+          echo "Waiting for IoTDB RPC on 127.0.0.1:6667..."
+          ready=0
+          for _ in $(seq 1 60); do
+            if powershell.exe -NoProfile -Command \
+              '(Test-NetConnection -ComputerName 127.0.0.1 -Port 6667 -WarningAction SilentlyContinue).TcpTestSucceeded' \
+              | grep -qi True; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "${ready}" -ne 1 ]; then
+            echo "ERROR: IoTDB did not listen on 6667 within 120s"
+            ls -la "${SERVER_ROOT}/logs" 2>/dev/null || true
+            exit 1
+          fi
+          for exe in SessionExample.exe AlignedTimeseriesSessionExample.exe TableModelSessionExample.exe tree_example.exe table_example.exe; do
+            EXE=$(find "${EXAMPLE_BUILD}" -name "${exe}" -print -quit)
+            test -n "${EXE}"
+            "${EXE}"
+          done

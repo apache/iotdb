@@ -275,6 +275,21 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     return this;
   }
@@ -349,6 +364,17 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
+      long subscriptionOwnerLeaseDurationMsMin) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     return this;
   }
@@ -365,6 +391,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
     return this;
   }
 

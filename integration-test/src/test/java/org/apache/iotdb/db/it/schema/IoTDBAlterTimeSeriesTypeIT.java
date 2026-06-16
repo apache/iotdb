@@ -55,7 +55,7 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.NotSupportedException;
+import jakarta.ws.rs.NotSupportedException;
 
 import java.io.File;
 import java.io.IOException;
@@ -98,6 +98,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setPipeMemoryManagementEnabled(false);
     EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
   }
@@ -878,11 +879,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
           session.executeQueryStatement("select count(s1) from " + database + ".load_and_alter");
       RowRecord rec;
       rec = dataSet.next();
-      // Due to the operation of load tsfile execute directly, don't access memtable or generate
-      // InsertNode object, so don't need to check the data type.
-      // When query this measurement point, will only find the data of TSDataType.INT32. So this is
-      // reason what cause we can't find the data of TSDataType.DOUBLE. So result is 9, is not 15.
-      //      assertEquals(15, rec.getFields().get(0).getLongV());
+      // Before alter, DOUBLE TsFiles loaded directly are invisible under the existing INT32 schema.
       assertEquals(9, rec.getFields().get(0).getLongV());
       assertFalse(dataSet.hasNext());
     }

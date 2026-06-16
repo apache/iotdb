@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
@@ -44,6 +45,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFil
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -61,7 +63,6 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeTableStatementDataTypeConve
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
@@ -101,6 +102,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsSta
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
@@ -590,7 +592,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         dataBaseName,
         LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
         shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile,
+        validateTsFile || shouldConvertDataTypeOnTypeMismatch,
         null,
         shouldMarkAsPipeRequest);
   }
@@ -598,16 +600,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus loadTsFileSync(final String dataBaseName, final String fileAbsolutePath)
       throws FileNotFoundException {
     return executeStatementAndClassifyExceptions(
-        buildLoadTsFileStatementForSync(dataBaseName, fileAbsolutePath, validateTsFile.get()));
+        buildLoadTsFileStatementForSync(
+            dataBaseName,
+            fileAbsolutePath,
+            validateTsFile.get(),
+            shouldConvertDataTypeOnTypeMismatch));
   }
 
   static LoadTsFileStatement buildLoadTsFileStatementForSync(
-      final String dataBaseName, final String fileAbsolutePath, final boolean validateTsFile)
+      final String dataBaseName,
+      final String fileAbsolutePath,
+      final boolean validateTsFile,
+      final boolean shouldConvertDataTypeOnTypeMismatch)
       throws FileNotFoundException {
     final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(fileAbsolutePath);
     statement.setDeleteAfterLoad(true);
-    statement.setConvertOnTypeMismatch(true);
-    statement.setVerifySchema(validateTsFile);
+    statement.setConvertOnTypeMismatch(shouldConvertDataTypeOnTypeMismatch);
+    statement.setVerifySchema(validateTsFile || shouldConvertDataTypeOnTypeMismatch);
     statement.setAutoCreateDatabase(
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     statement.setDatabase(dataBaseName);
@@ -618,8 +627,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus loadSchemaSnapShot(
       final Map<String, String> parameters, final List<String> fileAbsolutePaths)
       throws IllegalPathException, IOException {
-    final PartialPath databasePath =
-        PartialPath.getQualifiedDatabasePartialPath(parameters.get(ColumnHeaderConstant.DATABASE));
+    final String databaseName = parameters.get(ColumnHeaderConstant.DATABASE);
+    final PartialPath databasePath = PartialPath.getQualifiedDatabasePartialPath(databaseName);
+
+    if (!PathUtils.isTableModelDatabase(databaseName)) {
+      final TSStatus createDatabaseStatus = createSchemaSnapshotDatabaseIfNecessary(databasePath);
+      if (createDatabaseStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return createDatabaseStatus;
+      }
+    }
+
     final SRStatementGenerator generator =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(fileAbsolutePaths.get(0)),
@@ -634,7 +651,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
     final boolean isTreeModelDataAllowedToBeCaptured =
-        parameters.containsKey(PipeTransferFileSealReqV2.TREE);
+        PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters);
     final TreePattern treePattern =
         TreePattern.parsePatternFromString(
             parameters.get(ColumnHeaderConstant.PATH_PATTERN),
@@ -642,7 +659,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
     final TablePattern tablePattern =
         new TablePattern(
-            parameters.containsKey(PipeTransferFileSealReqV2.TABLE),
+            PipeTransferFileSealReqV2.isTableModelDataAllowedToBeCaptured(parameters),
             parameters.get(PipeTransferFileSealReqV2.DATABASE_PATTERN),
             parameters.get(ColumnHeaderConstant.TABLE_NAME));
 
@@ -688,6 +705,33 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         .filter(Optional::isPresent)
         .forEach(statement -> results.add(executeStatementAndClassifyExceptions(statement.get())));
     return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  private TSStatus createSchemaSnapshotDatabaseIfNecessary(final PartialPath databasePath) {
+    final DatabaseSchemaStatement statement =
+        new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+    statement.setDatabasePath(databasePath);
+
+    final TSStatus status = executeStatementAndClassifyExceptions(statement);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+    if (status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+      return Objects.equals(
+              status.getMessage(),
+              databasePath.getFullPath() + " has already been created as database")
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(status.getMessage());
+    }
+
+    if (status.getCode() == TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(status.getMessage());
+    }
+
+    return status;
   }
 
   private TPipeTransferResp handleTransferSchemaPlan(final PipeTransferPlanNodeReq req) {
@@ -956,14 +1000,26 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       }
     }
 
+    // Execute insert statements through the conversion wrapper first to avoid writing a partial
+    // row/tablet before the type mismatch is converted.
+    if (shouldConvertDataTypeOnTypeMismatch && statement instanceof InsertBaseStatement) {
+      final Optional<TSStatus> convertedStatus =
+          executeInsertStatementWithDataTypeConversion(
+              statement, isTableModelStatement, databaseName);
+      if (convertedStatus.isPresent()) {
+        return convertedStatus.get();
+      }
+    }
+
     // Real execution of the statement
     final TSStatus status =
         isTableModelStatement
             ? executeStatementForTableModel(statement, databaseName)
             : executeStatementForTreeModel(statement);
 
-    // Try to convert data type if the statement is a tree model statement
-    // and the status code is not success
+    // Try to convert data type if the status code is not success. Insert statements normally return
+    // above after the first converted execution. The retry path is kept for load and fallback
+    // cases.
     if (!shouldConvertDataTypeOnTypeMismatch
         || !((statement instanceof InsertBaseStatement
                 && ((InsertBaseStatement) statement).hasFailedMeasurements())
@@ -984,6 +1040,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             .accept(tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, databaseName))
             .orElse(status)
         : statement.accept(treeStatementDataTypeConvertExecutionVisitor, status).orElse(status);
+  }
+
+  private Optional<TSStatus> executeInsertStatementWithDataTypeConversion(
+      final Statement statement, final boolean isTableModelStatement, final String databaseName) {
+    return isTableModelStatement
+        ? statement.accept(
+            tableStatementDataTypeConvertExecutionVisitor,
+            new Pair<>(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), databaseName))
+        : statement.accept(
+            treeStatementDataTypeConvertExecutionVisitor,
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   private boolean shouldUseTableModelVisitorForLoadStatement(
