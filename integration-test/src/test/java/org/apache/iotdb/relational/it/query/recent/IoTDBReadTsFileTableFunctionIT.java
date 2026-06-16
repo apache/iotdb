@@ -290,11 +290,11 @@ public class IoTDBReadTsFileTableFunctionIT {
   public void testReadMultipleTsFilesWithConflictingTagAndFieldColumns() throws Exception {
     File tsFile1 = new File(tmpDir, "tag-field-conflict-1.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile1)) {
-      generateTable(writer, "table1", Arrays.asList("shared"), Arrays.asList("s1"), 1, 2);
+      registerTableSchema(writer, "table1", Arrays.asList("shared"), Arrays.asList("s1"));
     }
     File tsFile2 = new File(tmpDir, "tag-field-conflict-2.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile2)) {
-      generateTable(writer, "table1", new ArrayList<>(), Arrays.asList("shared"), 3, 4);
+      registerTableSchema(writer, "table1", new ArrayList<>(), Arrays.asList("shared"));
     }
 
     tableAssertTestFail(
@@ -311,11 +311,11 @@ public class IoTDBReadTsFileTableFunctionIT {
   public void testReadMultipleTsFilesWithConflictingFieldAndTagColumns() throws Exception {
     File tsFile1 = new File(tmpDir, "field-tag-conflict-1.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile1)) {
-      generateTable(writer, "table1", new ArrayList<>(), Arrays.asList("shared"), 1, 2);
+      registerTableSchema(writer, "table1", new ArrayList<>(), Arrays.asList("shared"));
     }
     File tsFile2 = new File(tmpDir, "field-tag-conflict-2.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile2)) {
-      generateTable(writer, "table1", Arrays.asList("shared"), Arrays.asList("s1"), 3, 4);
+      registerTableSchema(writer, "table1", Arrays.asList("shared"), Arrays.asList("s1"));
     }
 
     tableAssertTestFail(
@@ -466,6 +466,28 @@ public class IoTDBReadTsFileTableFunctionIT {
     if (tablet.getRowSize() != 0) {
       writer.writeTable(tablet);
     }
+  }
+
+  private static void registerTableSchema(
+      TsFileWriter writer, String tableName, List<String> tagColumns, List<String> fieldColumns)
+      throws IOException {
+    List<String> columnNames = new ArrayList<>(tagColumns.size() + fieldColumns.size());
+    List<TSDataType> columnTypes = new ArrayList<>(tagColumns.size() + fieldColumns.size());
+    List<ColumnCategory> columnCategories =
+        new ArrayList<>(tagColumns.size() + fieldColumns.size());
+    for (String tagColumn : tagColumns) {
+      columnNames.add(tagColumn);
+      columnTypes.add(TSDataType.STRING);
+      columnCategories.add(ColumnCategory.TAG);
+    }
+    for (String fieldColumn : fieldColumns) {
+      columnNames.add(fieldColumn);
+      columnTypes.add(TSDataType.INT64);
+      columnCategories.add(ColumnCategory.FIELD);
+    }
+
+    writer.registerTableSchema(
+        new TableSchema(tableName, columnNames, columnTypes, columnCategories));
   }
 
   private static void addFieldValue(
