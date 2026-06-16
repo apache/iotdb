@@ -417,7 +417,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       statement.setTime(this.time);
       statement.setNeedInferType(this.isNeedInferType);
       statement.setDevicePath(entry.getKey());
-      boolean deviceAligned = this.isAligned;
+      boolean deviceAligned = this.measurementIsAligned == null && this.isAligned;
       Object[] copiedValues = new Object[pairList.size()];
       String[] measurements = new String[pairList.size()];
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[pairList.size()];

@@ -382,6 +382,17 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
+  public void queryAlignedMemTableWithNonAlignedPathReturnsNull()
+      throws IOException, QueryProcessException, MetadataException {
+    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
+    memTable.writeAlignedRow(deviceID, alignedFullPath.getSchemaList(), 1, new Object[] {1});
+
+    Assert.assertNull(
+        memTable.query(
+            new QueryContext(false, false), nonAlignedFullPath, Long.MIN_VALUE, null, null));
+  }
+
+  @Test
   public void totalSeriesNumberTest() throws IOException, QueryProcessException, MetadataException {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     int dataNodeId = 0;

@@ -469,6 +469,31 @@ public class IoTDBAliasSeriesInsertIT {
   }
 
   @Test
+  public void testQueryRenamedAlignedSeriesWithNonAlignedSeriesOnAliasDevice() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.renameAlignedMix");
+      statement.execute("CREATE ALIGNED TIMESERIES root.renameAlignedMix.d1(s1 INT32, s2 TEXT)");
+      statement.execute(
+          "ALTER TIMESERIES root.renameAlignedMix.d1.s1 RENAME TO root.renameAlignedMix.d2.s1");
+      statement.execute(
+          "ALTER TIMESERIES root.renameAlignedMix.d1.s2 RENAME TO root.renameAlignedMix.d2.s2");
+      statement.execute("CREATE TIMESERIES root.renameAlignedMix.d2.s3 FLOAT");
+      statement.execute(
+          "INSERT INTO root.renameAlignedMix.d2(timestamp, s1, s2, s3) VALUES (1, 1, \"a\", 1.1)");
+
+      String expectedHeader =
+          "Time,root.renameAlignedMix.d2.s3,root.renameAlignedMix.d2.s1,root.renameAlignedMix.d2.s2,";
+      String[] retArray = new String[] {"1,1.1,1,a,"};
+
+      resultSetEqualTest("SELECT * FROM root.renameAlignedMix.**", expectedHeader, retArray);
+      resultSetEqualTest("SELECT d2.** FROM root.renameAlignedMix", expectedHeader, retArray);
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testInsertIntoRenamedAlignedSeriesUsingSession() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       String deviceId = "root.view.d4";

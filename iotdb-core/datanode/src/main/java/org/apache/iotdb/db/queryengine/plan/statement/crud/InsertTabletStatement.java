@@ -411,7 +411,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       statement.setTimes(this.times);
       statement.setDevicePath(entry.getKey());
       statement.setRowCount(this.rowCount);
-      boolean deviceAligned = this.isAligned;
+      boolean deviceAligned = this.measurementIsAligned == null && this.isAligned;
       Object[] copiedColumns = new Object[pairList.size()];
       String[] measurements = new String[pairList.size()];
       BitMap[] copiedBitMaps = new BitMap[pairList.size()];

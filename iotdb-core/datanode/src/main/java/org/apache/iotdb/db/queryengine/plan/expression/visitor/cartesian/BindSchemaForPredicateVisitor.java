@@ -195,10 +195,11 @@ public class BindSchemaForPredicateVisitor
   }
 
   /**
-   * Check if a MeasurementPath represents an invalid series.
+   * Check if a MeasurementPath should be hidden from direct binding because it is an invalid series
+   * or a transient physical path generated only to resolve an alias series.
    *
    * @param measurementPath the MeasurementPath to check
-   * @return true if it's invalid, false otherwise
+   * @return true if it should be hidden from direct binding, false otherwise
    */
   private static boolean isInvalidSeries(MeasurementPath measurementPath) {
     IMeasurementSchema schema = measurementPath.getMeasurementSchema();
@@ -206,7 +207,8 @@ public class BindSchemaForPredicateVisitor
       return false;
     }
     Map<String, String> props = schema.getProps();
-    return MeasurementPropsUtils.isInvalid(props);
+    return MeasurementPropsUtils.isInvalid(props)
+        || MeasurementPropsUtils.isQueryGeneratedInvalidSeries(props);
   }
 
   /**

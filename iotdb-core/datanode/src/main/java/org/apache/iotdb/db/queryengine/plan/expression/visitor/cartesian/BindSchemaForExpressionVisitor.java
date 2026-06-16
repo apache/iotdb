@@ -192,10 +192,11 @@ public class BindSchemaForExpressionVisitor
   }
 
   /**
-   * Check if a MeasurementPath represents an invalid series.
+   * Check if a MeasurementPath should be hidden from direct binding because it is an invalid series
+   * or a transient physical path generated only to resolve an alias series.
    *
    * @param measurementPath the MeasurementPath to check
-   * @return true if it's invalid, false otherwise
+   * @return true if it should be hidden from direct binding, false otherwise
    */
   public static boolean isInvalidSeries(MeasurementPath measurementPath) {
     IMeasurementSchema schema = measurementPath.getMeasurementSchema();
@@ -203,7 +204,8 @@ public class BindSchemaForExpressionVisitor
       return false;
     }
     Map<String, String> props = schema.getProps();
-    return MeasurementPropsUtils.isInvalid(props);
+    return MeasurementPropsUtils.isInvalid(props)
+        || MeasurementPropsUtils.isQueryGeneratedInvalidSeries(props);
   }
 
   /**
@@ -265,25 +267,26 @@ public class BindSchemaForExpressionVisitor
 
   public static MeasurementPath materializeQueryGeneratedPhysicalPath(
       final MeasurementPath physicalPath, final MeasurementPath aliasPath) {
-    final IMeasurementSchema physicalSchema = physicalPath.getMeasurementSchema();
-    if (!(physicalSchema instanceof MeasurementSchema)) {
+    final IMeasurementSchema aliasSchema = aliasPath.getMeasurementSchema();
+    if (!(aliasSchema instanceof MeasurementSchema)) {
       return physicalPath;
     }
+    final MeasurementSchema aliasMeasurementSchema = (MeasurementSchema) aliasSchema;
 
     final MeasurementSchema queryGeneratedPhysicalSchema =
         new MeasurementSchema(
             physicalPath.getMeasurement(),
-            physicalSchema.getType(),
-            physicalSchema.getEncodingType(),
-            physicalSchema.getCompressor(),
+            aliasMeasurementSchema.getType(),
+            aliasMeasurementSchema.getEncodingType(),
+            aliasMeasurementSchema.getCompressor(),
             MeasurementPropsUtils.buildQueryGeneratedPhysicalSeriesProps(
-                aliasPath.getMeasurementSchema() == null
-                    ? null
-                    : aliasPath.getMeasurementSchema().getProps(),
-                aliasPath));
+                aliasMeasurementSchema.getProps(), aliasPath));
 
     final MeasurementPath materializedPath = physicalPath.clone();
     materializedPath.setMeasurementSchema(queryGeneratedPhysicalSchema);
+    materializedPath.setUnderAlignedEntity(
+        physicalPath.isUnderAlignedEntity()
+            || MeasurementPropsUtils.isOriginalPathAligned(aliasMeasurementSchema.getProps()));
     return materializedPath;
   }
 

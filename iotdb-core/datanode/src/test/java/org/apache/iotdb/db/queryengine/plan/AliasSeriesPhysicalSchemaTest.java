@@ -33,17 +33,23 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Method;
 import java.util.AbstractMap;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
 
 public class AliasSeriesPhysicalSchemaTest {
 
@@ -82,6 +88,107 @@ public class AliasSeriesPhysicalSchemaTest {
   }
 
   @Test
+  public void testSplitInsertRowKeepsNonAliasDeviceNonAlignedWhenAliasSeriesIsAligned()
+      throws Exception {
+    InsertRowStatement statement = new InsertRowStatement();
+    statement.setDevicePath(new PartialPath("root.view.d1"));
+    statement.setMeasurements(new String[] {"s1", "s2", "s3"});
+    statement.setDataTypes(new TSDataType[] {TSDataType.INT32, TSDataType.TEXT, TSDataType.FLOAT});
+    statement.setValues(new Object[] {1, "a", 1.1f});
+    statement.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.TEXT),
+          new MeasurementSchema("s3", TSDataType.FLOAT)
+        });
+    statement.setAligned(false);
+
+    MeasurementSchemaInfo s1AliasInfo =
+        new MeasurementSchemaInfo(
+            "s1",
+            createAliasSchema("s1", TSDataType.INT32, new PartialPath("root.src.d1.s1")),
+            null,
+            null,
+            null);
+    MeasurementSchemaInfo s2AliasInfo =
+        new MeasurementSchemaInfo(
+            "s2",
+            createAliasSchema("s2", TSDataType.TEXT, new PartialPath("root.src.d1.s2")),
+            null,
+            null,
+            null);
+    statement.validateMeasurementSchema(0, s1AliasInfo);
+    statement.validateMeasurementSchema(1, s2AliasInfo);
+    statement.computeMeasurementOfAliasSeries(0, s1AliasInfo, true);
+    statement.computeMeasurementOfAliasSeries(1, s2AliasInfo, true);
+    statement.validateMeasurementSchema(
+        2,
+        new MeasurementSchemaInfo(
+            "s3", new MeasurementSchema("s3", TSDataType.FLOAT), null, null, null));
+
+    Assert.assertTrue(statement.isAligned());
+
+    List<InsertRowStatement> splitList = statement.getSplitList();
+    Assert.assertEquals(2, splitList.size());
+    Assert.assertTrue(findRowSplit(splitList, "root.src.d1").isAligned());
+    Assert.assertFalse(findRowSplit(splitList, "root.view.d1").isAligned());
+  }
+
+  @Test
+  public void testSplitInsertTabletKeepsNonAliasDeviceNonAlignedWhenAliasSeriesIsAligned()
+      throws Exception {
+    InsertTabletStatement statement = new InsertTabletStatement();
+    statement.setDevicePath(new PartialPath("root.view.d1"));
+    statement.setMeasurements(new String[] {"s1", "s2", "s3"});
+    statement.setDataTypes(new TSDataType[] {TSDataType.INT32, TSDataType.TEXT, TSDataType.FLOAT});
+    statement.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.TEXT),
+          new MeasurementSchema("s3", TSDataType.FLOAT)
+        });
+    statement.setTimes(new long[] {1L});
+    statement.setColumns(
+        new Object[] {
+          new int[] {1},
+          new Binary[] {new Binary("a", TSFileConfig.STRING_CHARSET)},
+          new float[] {1.1f}
+        });
+    statement.setRowCount(1);
+    statement.setAligned(false);
+
+    MeasurementSchemaInfo s1AliasInfo =
+        new MeasurementSchemaInfo(
+            "s1",
+            createAliasSchema("s1", TSDataType.INT32, new PartialPath("root.src.d1.s1")),
+            null,
+            null,
+            null);
+    MeasurementSchemaInfo s2AliasInfo =
+        new MeasurementSchemaInfo(
+            "s2",
+            createAliasSchema("s2", TSDataType.TEXT, new PartialPath("root.src.d1.s2")),
+            null,
+            null,
+            null);
+    statement.validateMeasurementSchema(0, s1AliasInfo);
+    statement.validateMeasurementSchema(1, s2AliasInfo);
+    statement.computeMeasurementOfAliasSeries(0, s1AliasInfo, true);
+    statement.computeMeasurementOfAliasSeries(1, s2AliasInfo, true);
+    statement.validateMeasurementSchema(
+        2,
+        new MeasurementSchemaInfo(
+            "s3", new MeasurementSchema("s3", TSDataType.FLOAT), null, null, null));
+
+    Assert.assertTrue(statement.isAligned());
+
+    List<InsertTabletStatement> splitList = statement.getSplitList();
+    Assert.assertEquals(2, splitList.size());
+    Assert.assertTrue(findTabletSplit(splitList, "root.src.d1").isAligned());
+    Assert.assertFalse(findTabletSplit(splitList, "root.view.d1").isAligned());
+  }
+
+  @Test
   public void testAnalyzeVisitorReplaceAliasWithPhysicalPathKeepsQueryGeneratedState()
       throws Exception {
     PartialPath originalPath = new PartialPath("root.sg1.d3.temperature");
@@ -113,9 +220,11 @@ public class AliasSeriesPhysicalSchemaTest {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     schemaTree.appendSingleMeasurementPath(
         new MeasurementPath(aliasPath.getNodes(), createAliasSchema(physicalPath, false)));
-    schemaTree.appendSingleMeasurementPath(
+    MeasurementPath physicalMeasurementPath =
         new MeasurementPath(
-            physicalPath.getNodes(), createInvalidPhysicalSchema(physicalPath, aliasPath)));
+            physicalPath.getNodes(), createInvalidPhysicalSchema(physicalPath, aliasPath));
+    physicalMeasurementPath.setUnderAlignedEntity(true);
+    schemaTree.appendSingleMeasurementPath(physicalMeasurementPath);
 
     List<Expression> boundExpressions =
         ExpressionAnalyzer.bindSchemaForExpression(
@@ -129,9 +238,81 @@ public class AliasSeriesPhysicalSchemaTest {
     TimeSeriesOperand operand = (TimeSeriesOperand) boundExpressions.get(0);
     MeasurementPath selectedPath = (MeasurementPath) operand.getPath();
     Assert.assertEquals("root.sg1.d5.temperature", selectedPath.getFullPath());
+    Assert.assertTrue(selectedPath.isUnderAlignedEntity());
+    Assert.assertEquals(TSDataType.FLOAT, selectedPath.getMeasurementSchema().getType());
     assertQueryGeneratedPhysicalSeriesProps(selectedPath, "root.view.d5.temperature");
     Assert.assertNotNull(operand.getViewPath());
     Assert.assertEquals("root.view.d5.temperature", operand.getViewPath().getFullPath());
+  }
+
+  @Test
+  public void testBindSchemaForExpressionWildcardSkipsQueryGeneratedPhysicalPath()
+      throws Exception {
+    PartialPath physicalPath = new PartialPath("root.sg1.d7.temperature");
+    PartialPath aliasPath = new PartialPath("root.view.d7.temperature");
+
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    MeasurementPath queryGeneratedPhysicalPath =
+        new MeasurementPath(
+            physicalPath.getNodes(), createQueryGeneratedPhysicalSchema(physicalPath, aliasPath));
+    queryGeneratedPhysicalPath.setUnderAlignedEntity(false);
+    schemaTree.appendSingleMeasurementPath(queryGeneratedPhysicalPath);
+    schemaTree.appendSingleMeasurementPath(
+        new MeasurementPath(aliasPath.getNodes(), createAliasSchema(physicalPath, true)));
+
+    List<Expression> boundExpressions =
+        ExpressionAnalyzer.bindSchemaForExpression(
+            new TimeSeriesOperand(new PartialPath("root.**")),
+            schemaTree,
+            new MPPQueryContext(new QueryId("test_query_generated_alias_wildcard_binding")));
+
+    Assert.assertEquals(1, boundExpressions.size());
+    Assert.assertTrue(boundExpressions.get(0) instanceof TimeSeriesOperand);
+
+    TimeSeriesOperand operand = (TimeSeriesOperand) boundExpressions.get(0);
+    MeasurementPath selectedPath = (MeasurementPath) operand.getPath();
+    Assert.assertEquals("root.sg1.d7.temperature", selectedPath.getFullPath());
+    Assert.assertTrue(selectedPath.isUnderAlignedEntity());
+    assertQueryGeneratedPhysicalSeriesProps(selectedPath, "root.view.d7.temperature");
+    Assert.assertNotNull(operand.getViewPath());
+    Assert.assertEquals("root.view.d7.temperature", operand.getViewPath().getFullPath());
+  }
+
+  @Test
+  public void testBindSchemaForPredicateWildcardSkipsQueryGeneratedPhysicalPath() throws Exception {
+    PartialPath physicalPath = new PartialPath("root.sg1.d8.temperature");
+    PartialPath aliasPath = new PartialPath("root.view.d8.temperature");
+
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    MeasurementPath queryGeneratedPhysicalPath =
+        new MeasurementPath(
+            physicalPath.getNodes(), createQueryGeneratedPhysicalSchema(physicalPath, aliasPath));
+    queryGeneratedPhysicalPath.setUnderAlignedEntity(false);
+    schemaTree.appendSingleMeasurementPath(queryGeneratedPhysicalPath);
+    schemaTree.appendSingleMeasurementPath(
+        new MeasurementPath(aliasPath.getNodes(), createAliasSchema(physicalPath, true)));
+
+    List<Expression> boundPredicates =
+        ExpressionAnalyzer.bindSchemaForPredicate(
+            gt(new TimeSeriesOperand(new PartialPath("root.**")), intValue("1")),
+            Collections.emptyList(),
+            schemaTree,
+            true,
+            new MPPQueryContext(new QueryId("test_query_generated_alias_predicate_binding")));
+
+    Assert.assertEquals(1, boundPredicates.size());
+
+    Expression boundPredicate = boundPredicates.get(0);
+    Assert.assertEquals(2, boundPredicate.getExpressions().size());
+    Assert.assertTrue(boundPredicate.getExpressions().get(0) instanceof TimeSeriesOperand);
+
+    TimeSeriesOperand operand = (TimeSeriesOperand) boundPredicate.getExpressions().get(0);
+    MeasurementPath selectedPath = (MeasurementPath) operand.getPath();
+    Assert.assertEquals("root.sg1.d8.temperature", selectedPath.getFullPath());
+    Assert.assertTrue(selectedPath.isUnderAlignedEntity());
+    assertQueryGeneratedPhysicalSeriesProps(selectedPath, "root.view.d8.temperature");
+    Assert.assertNotNull(operand.getViewPath());
+    Assert.assertEquals("root.view.d8.temperature", operand.getViewPath().getFullPath());
   }
 
   @Test
@@ -202,7 +383,7 @@ public class AliasSeriesPhysicalSchemaTest {
   }
 
   private MeasurementSchema createAliasSchema(PartialPath originalPath, boolean isAligned) {
-    MeasurementSchema schema = new MeasurementSchema("temperature", TSDataType.FLOAT);
+    MeasurementSchema schema = createAliasSchema("temperature", TSDataType.FLOAT, originalPath);
     Map<String, String> originalProps = new HashMap<>();
     originalProps.put("encoding_hint", "kept");
     MeasurementPropsUtils.setOriginalPathIsAligned(originalProps, isAligned);
@@ -210,14 +391,35 @@ public class AliasSeriesPhysicalSchemaTest {
     return schema;
   }
 
+  private MeasurementSchema createAliasSchema(
+      String measurement, TSDataType type, PartialPath originalPath) {
+    MeasurementSchema schema = new MeasurementSchema(measurement, type);
+    Map<String, String> originalProps = new HashMap<>();
+    MeasurementPropsUtils.setOriginalPathIsAligned(originalProps, true);
+    schema.setProps(MeasurementPropsUtils.buildAliasSeriesProps(originalProps, originalPath));
+    return schema;
+  }
+
   private MeasurementSchema createInvalidPhysicalSchema(
+      PartialPath physicalPath, PartialPath aliasPath) {
+    MeasurementSchema schema =
+        new MeasurementSchema(physicalPath.getMeasurement(), TSDataType.TEXT);
+    Map<String, String> props = new HashMap<>();
+    props.put("encoding_hint", "kept");
+    MeasurementPropsUtils.setAliasPath(props, aliasPath);
+    MeasurementPropsUtils.setInvalid(props, true);
+    schema.setProps(props);
+    return schema;
+  }
+
+  private MeasurementSchema createQueryGeneratedPhysicalSchema(
       PartialPath physicalPath, PartialPath aliasPath) {
     MeasurementSchema schema =
         new MeasurementSchema(physicalPath.getMeasurement(), TSDataType.FLOAT);
     Map<String, String> props = new HashMap<>();
     props.put("encoding_hint", "kept");
     MeasurementPropsUtils.setAliasPath(props, aliasPath);
-    MeasurementPropsUtils.setInvalid(props, true);
+    MeasurementPropsUtils.setQueryGeneratedInvalidSeries(props, true);
     schema.setProps(props);
     return schema;
   }
@@ -231,5 +433,26 @@ public class AliasSeriesPhysicalSchemaTest {
     Assert.assertNull(MeasurementPropsUtils.getOriginalPath(props));
     Assert.assertEquals(aliasPath, MeasurementPropsUtils.getAliasPathString(props));
     Assert.assertTrue(MeasurementPropsUtils.isQueryGeneratedInvalidSeries(props));
+  }
+
+  private InsertRowStatement findRowSplit(List<InsertRowStatement> splitList, String devicePath) {
+    for (InsertRowStatement statement : splitList) {
+      if (devicePath.equals(statement.getDevicePath().getFullPath())) {
+        return statement;
+      }
+    }
+    Assert.fail("Missing split statement for device " + devicePath);
+    return null;
+  }
+
+  private InsertTabletStatement findTabletSplit(
+      List<InsertTabletStatement> splitList, String devicePath) {
+    for (InsertTabletStatement statement : splitList) {
+      if (devicePath.equals(statement.getDevicePath().getFullPath())) {
+        return statement;
+      }
+    }
+    Assert.fail("Missing split statement for device " + devicePath);
+    return null;
   }
 }
