@@ -158,6 +158,40 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         password);
   }
 
+  @Test
+  public void testNormalUserCanSeeOwnReceiverInTreeAndTableModel() {
+    final String password = "Passwd123456@";
+    final String sinkUser = "show_receiver_sink_user";
+    final String otherUser = "show_receiver_other_user";
+    final String pipeName = "show_receivers_own_user_pipe";
+
+    TestUtils.executeNonQueries(
+        env,
+        Arrays.asList(
+            "create user " + sinkUser + " '" + password + "'",
+            "create user " + otherUser + " '" + password + "'",
+            "grant write on root.** to user " + sinkUser),
+        null);
+    createWriteBackPipeWithSinkUser("root.show_receivers_own_user", pipeName, sinkUser, password);
+
+    assertShowReceiversAsUser(
+        "show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName, sinkUser, password, sinkUser);
+    assertShowReceiversAsUser(
+        "select * from information_schema.receivers",
+        BaseEnv.TABLE_SQL_DIALECT,
+        pipeName,
+        sinkUser,
+        password,
+        sinkUser);
+
+    assertUserCannotSeeReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, otherUser, password);
+    assertUserCannotSeeReceivers(
+        "select * from information_schema.receivers",
+        BaseEnv.TABLE_SQL_DIALECT,
+        otherUser,
+        password);
+  }
+
   private void createWriteBackPipe(final String database, final String pipeName) {
     TestUtils.executeNonQueries(
         env,
@@ -169,6 +203,30 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
                 + " with source ('pattern'='"
                 + database
                 + "') with sink ('sink'='write-back-sink')",
+            "insert into " + database + ".d1(time, s1) values (1, 1)",
+            "flush"),
+        null);
+  }
+
+  private void createWriteBackPipeWithSinkUser(
+      final String database,
+      final String pipeName,
+      final String sinkUser,
+      final String sinkPassword) {
+    TestUtils.executeNonQueries(
+        env,
+        Arrays.asList(
+            "create database " + database,
+            "create timeseries " + database + ".d1.s1 with datatype=INT32, encoding=PLAIN",
+            "create pipe "
+                + pipeName
+                + " with source ('pattern'='"
+                + database
+                + "') with sink ('sink'='write-back-sink', 'user'='"
+                + sinkUser
+                + "', 'password'='"
+                + sinkPassword
+                + "')",
             "insert into " + database + ".d1(time, s1) values (1, 1)",
             "flush"),
         null);
@@ -216,6 +274,16 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String pipeName,
       final String userName,
       final String password) {
+    assertShowReceiversAsUser(sql, sqlDialect, pipeName, userName, password, "root");
+  }
+
+  private void assertShowReceiversAsUser(
+      final String sql,
+      final String sqlDialect,
+      final String pipeName,
+      final String userName,
+      final String password,
+      final String expectedReceiverUserName) {
     Awaitility.await()
         .pollInSameThread()
         .pollDelay(1L, TimeUnit.SECONDS)
@@ -224,7 +292,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         .untilAsserted(
             () ->
                 Assert.assertTrue(
-                    hasExpectedReceiver(sql, sqlDialect, pipeName, userName, password)));
+                    hasExpectedReceiver(
+                        sql, sqlDialect, pipeName, userName, password, expectedReceiverUserName)));
   }
 
   private void assertAggregatedShowReceivers(
@@ -276,6 +345,17 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String userName,
       final String password)
       throws SQLException {
+    return hasExpectedReceiver(sql, sqlDialect, pipeName, userName, password, "root");
+  }
+
+  private boolean hasExpectedReceiver(
+      final String sql,
+      final String sqlDialect,
+      final String pipeName,
+      final String userName,
+      final String password,
+      final String expectedReceiverUserName)
+      throws SQLException {
     try (final Connection connection = getReceiverQueryConnection(userName, password, sqlDialect);
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
@@ -289,7 +369,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
             && resultSet.getInt(6) >= 1
             && resultSet.getInt(7) >= 1
             && resultSet.getString(8).contains(pipeName + "@")
-            && "root".equals(resultSet.getString(9))
+            && expectedReceiverUserName.equals(resultSet.getString(9))
             && resultSet.getString(10) != null
             && !resultSet.getString(10).isEmpty()
             && resultSet.getString(11) != null

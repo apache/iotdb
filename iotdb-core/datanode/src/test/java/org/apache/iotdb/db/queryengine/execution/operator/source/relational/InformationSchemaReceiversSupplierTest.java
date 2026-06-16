@@ -259,6 +259,24 @@ public class InformationSchemaReceiversSupplierTest {
   }
 
   @Test
+  public void testReceiversSupplierNullUserEntitySeesAllReceiverSnapshots() {
+    registerUserSession("data-user1", "10.0.0.1", 9001, "user1", "cluster-a", "pipe-a", 1, 100);
+    registerUserSession("data-user2", "10.0.0.2", 9002, "user2", "cluster-b", "pipe-b", 2, 200);
+
+    final InformationSchemaContentSupplierFactory.IInformationSchemaContentSupplier supplier =
+        InformationSchemaContentSupplierFactory.getSupplier(
+            null, dataTypes(), null, receiversScanNode());
+
+    assertTrue(supplier.hasNext());
+    final TsBlock tsBlock = supplier.next();
+
+    assertEquals(2, tsBlock.getPositionCount());
+    assertEquals("user1", getText(tsBlock, 8, 0));
+    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertFalse(supplier.hasNext());
+  }
+
+  @Test
   public void testReceiversSupplierMatchesShowReceiversOutput() {
     registry.registerOrUpdateSession(
         "data-1",

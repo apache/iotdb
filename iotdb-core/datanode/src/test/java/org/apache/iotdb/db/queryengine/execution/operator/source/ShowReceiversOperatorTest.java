@@ -314,6 +314,23 @@ public class ShowReceiversOperatorTest {
   }
 
   @Test
+  public void testNullUserEntitySeesAllReceiverSnapshots() {
+    registerUserSession("data-user1", "10.0.0.1", 9001, "user1", "cluster-a", "pipe-a", 1, 100);
+    registerUserSession("data-user2", "10.0.0.2", 9002, "user2", "cluster-b", "pipe-b", 2, 200);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(null, new PlanNodeId("show-receivers"), null);
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(2, tsBlock.getPositionCount());
+    assertEquals("user1", getText(tsBlock, 8, 0));
+    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertFalse(operator.hasNext());
+  }
+
+  @Test
   public void testShowReceiversOutputKeepsDefaultSnapshotOrdering() {
     registry.registerOrUpdateSession(
         "data-user-b",
