@@ -695,13 +695,6 @@ region_group_allocate_policy=GCR
 # Datatype: Boolean
 enable_auto_leader_balance_for_ratis_consensus=true
 
-# Whether to enable auto leader balance for IoTConsensus protocol.
-# The ConfigNode-leader will balance the leader of IoTConsensus-RegionGroups by leader_distribution_policy if set true.
-# Notice: Default is true because the IoTConsensus depends on this function to distribute leader.
-# effectiveMode: restart
-# Datatype: Boolean
-enable_auto_leader_balance_for_iot_consensus=true
-
 ####################
 ### Cluster management
 ####################
