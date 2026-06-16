@@ -559,7 +559,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   // currently, this method is only used for cluster-ratis mode
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public boolean loadSnapshot(File latestSnapshotRootDir) {
     clear();
 
     logger.info(DataNodeSchemaMessages.START_LOADING_SNAPSHOT, schemaRegionId);
@@ -604,6 +604,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - startTime);
       logger.info(DataNodeSchemaMessages.SUCCESSFULLY_LOAD_SNAPSHOT, schemaRegionId);
+      return true;
     } catch (IOException | MetadataException e) {
       logger.error(
           DataNodeSchemaMessages.FAILED_TO_LOAD_SNAPSHOT, schemaRegionId, e.getMessage(), e);
@@ -617,6 +618,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
             schemaRegionId,
             metadataException);
       }
+      // The snapshot was not loaded (the region fell back to an empty re-initialized state). Report
+      // the failure so callers honoring the loadSnapshot success/failure contract can react.
+      return false;
     }
   }
 
