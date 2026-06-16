@@ -879,8 +879,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
           session.executeQueryStatement("select count(s1) from " + database + ".load_and_alter");
       RowRecord rec;
       rec = dataSet.next();
-      // Before alter, DOUBLE TsFiles loaded directly are invisible under the existing INT32 schema.
-      assertEquals(9, rec.getFields().get(0).getLongV());
+      // Before alter, DOUBLE TsFiles are converted to INT32 and visible under the existing schema.
+      assertEquals(15, rec.getFields().get(0).getLongV());
       assertFalse(dataSet.hasNext());
     }
 
