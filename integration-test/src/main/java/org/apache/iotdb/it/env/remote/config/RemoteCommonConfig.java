@@ -490,6 +490,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     return this;
   }

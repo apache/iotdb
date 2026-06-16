@@ -623,6 +623,10 @@ public abstract class AbstractEnv implements BaseEnv {
         .getProperty(key, defaultValue);
   }
 
+  private String getClientSSLProtocol() {
+    return getDataNodeCommonConfigProperty("ssl_protocol", SessionConfig.DEFAULT_SSL_PROTOCOL);
+  }
+
   private Properties constructConnectionProperties(
       final String username, final String password, final String sqlDialect) {
     final Properties info = BaseEnv.constructProperties(username, password, sqlDialect);
@@ -632,6 +636,7 @@ public abstract class AbstractEnv implements BaseEnv {
           info, Config.TRUST_STORE, getDataNodeCommonConfigProperty("trust_store_path", ""));
       putIfPresent(
           info, Config.TRUST_STORE_PWD, getDataNodeCommonConfigProperty("trust_store_pwd", ""));
+      putIfPresent(info, Config.SSL_PROTOCOL, getClientSSLProtocol());
     }
     return info;
   }
@@ -647,7 +652,8 @@ public abstract class AbstractEnv implements BaseEnv {
       builder
           .useSSL(true)
           .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
-          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""));
+          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
+          .sslProtocol(getClientSSLProtocol());
     }
     return builder;
   }
@@ -657,7 +663,8 @@ public abstract class AbstractEnv implements BaseEnv {
       builder
           .useSSL(true)
           .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
-          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""));
+          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
+          .sslProtocol(getClientSSLProtocol());
     }
     return builder;
   }
@@ -667,7 +674,8 @@ public abstract class AbstractEnv implements BaseEnv {
       builder
           .useSSL(true)
           .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
-          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""));
+          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
+          .sslProtocol(getClientSSLProtocol());
     }
     return builder;
   }
@@ -677,7 +685,8 @@ public abstract class AbstractEnv implements BaseEnv {
       builder
           .useSSL(true)
           .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
-          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""));
+          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
+          .sslProtocol(getClientSSLProtocol());
     }
     return builder;
   }

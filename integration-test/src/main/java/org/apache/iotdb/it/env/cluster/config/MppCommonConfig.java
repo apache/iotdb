@@ -672,6 +672,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    setProperty("ssl_protocol", sslProtocol);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     setProperty("datanode_memory_proportion", datanodeMemoryProportion);
     return this;

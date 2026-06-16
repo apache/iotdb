@@ -216,6 +216,8 @@ public interface CommonConfig {
 
   CommonConfig setTrustStorePwd(String trustStorePwd);
 
+  CommonConfig setSslProtocol(String sslProtocol);
+
   CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion);
 
   CommonConfig setEnableAuditLog(boolean enableAuditLog);

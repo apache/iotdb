@@ -702,6 +702,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    cnConfig.setSslProtocol(sslProtocol);
+    dnConfig.setSslProtocol(sslProtocol);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     dnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
     cnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);

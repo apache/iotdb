@@ -84,7 +84,8 @@ public class IoTDBClientSSLIT {
         .setKeyStorePath(keyStorePath())
         .setKeyStorePwd(STORE_PASSWORD)
         .setTrustStorePath(trustStorePath())
-        .setTrustStorePwd(STORE_PASSWORD);
+        .setTrustStorePwd(STORE_PASSWORD)
+        .setSslProtocol(SessionConfig.DEFAULT_SSL_PROTOCOL);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
