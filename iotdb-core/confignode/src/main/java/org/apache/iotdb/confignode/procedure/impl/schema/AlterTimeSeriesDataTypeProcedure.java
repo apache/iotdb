@@ -407,7 +407,7 @@ public class AlterTimeSeriesDataTypeProcedure
     }
     final AlterTimeSeriesDataTypeProcedure that = (AlterTimeSeriesDataTypeProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(this.getCurrentState(), that.getCurrentState())
         && this.getCycles() == getCycles()
         && this.isGeneratedByPipe == that.isGeneratedByPipe
         && this.measurementPath.equals(that.measurementPath)
