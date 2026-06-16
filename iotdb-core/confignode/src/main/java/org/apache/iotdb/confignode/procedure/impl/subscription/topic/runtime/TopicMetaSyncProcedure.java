@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -52,7 +53,9 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
   private static final Logger LOGGER = LoggerFactory.getLogger(TopicMetaSyncProcedure.class);
 
   private static final long MIN_EXECUTION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 / 2;
+      TimeUnit.MINUTES.toMillis(
+              SubscriptionConfig.getInstance().getSubscriptionMetaSyncerSyncIntervalMinutes())
+          / 2;
   // No need to serialize this field
   private static final AtomicLong LAST_EXECUTION_TIME = new AtomicLong(0);
 
@@ -129,7 +132,7 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
       throws SubscriptionException, IOException {
     LOGGER.info(ProcedureMessages.TOPICMETASYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
-    Map<Integer, TPushTopicMetaResp> respMap = pushTopicMetaToDataNodes(env);
+    Map<Integer, TPushTopicMetaResp> respMap = pushTopicMetaToDataNodesBestEffort(env);
     if (pushTopicMetaHasException(respMap)) {
       throw new SubscriptionException(
           String.format(ProcedureMessages.FAILED_TO_PUSH_TOPIC_META_TO_DATANODES_DETAILS, respMap));
