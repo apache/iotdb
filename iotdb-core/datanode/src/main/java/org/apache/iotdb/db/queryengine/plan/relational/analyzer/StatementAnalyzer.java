@@ -523,6 +523,16 @@ public class StatementAnalyzer {
     }
 
     @Override
+    public Expression rewriteCast(
+        Cast node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      Expression expression = treeRewriter.rewrite(node.getExpression(), context);
+      if (expression == node.getExpression()) {
+        return node;
+      }
+      return new Cast(expression, node.getType(), node.isSafe(), node.isTypeOnly());
+    }
+
+    @Override
     public Expression rewriteFunctionCall(
         FunctionCall node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
       List<Expression> arguments =

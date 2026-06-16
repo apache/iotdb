@@ -46,6 +46,9 @@ Lateral alias rewriting applies inside the later SELECT item's expression, inclu
 arguments and inline window specifications such as `OVER (PARTITION BY ... ORDER BY ...)`. Named
 `WINDOW` definitions are analyzed outside the SELECT list and do not see SELECT aliases.
 
+The target type in `CAST(value AS type)` is not part of expression name resolution, so type names
+are never treated as lateral column alias references.
+
 If a lateral alias reference expands to an expression containing a window function, the analyzer
 rejects it explicitly.
 
@@ -53,7 +56,7 @@ rejects it explicitly.
 
 `GROUP BY` can reuse SELECT aliases and uses the SELECT output expression after lateral alias
 rewriting. `ORDER BY` keeps the existing table-model behavior where output aliases take precedence
-over source columns.
+over source columns, including aliases whose expressions used lateral alias rewriting.
 
 `WHERE` and `HAVING` do not see SELECT aliases.
 

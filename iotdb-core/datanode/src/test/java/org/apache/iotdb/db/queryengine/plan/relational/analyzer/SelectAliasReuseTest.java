@@ -22,10 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
@@ -319,6 +321,17 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void orderByCanReuseLateralColumnAliasOutput() {
+    String sql = "SELECT s1 AS x, x + 1 AS y FROM table1 ORDER BY y";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertFieldReference(
+        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0), 1);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
   public void columnsSelectItemDoesNotRegisterLateralColumnAlias() {
     assertAnalyzeSemanticException(
         "SELECT COLUMNS('s.*') AS x, x + 1 AS y FROM table1", "Column 'x' cannot be resolved");
@@ -353,6 +366,19 @@ public class SelectAliasReuseTest {
     FunctionCall avg = (FunctionCall) getSelectExpression(analyzedPartitionBy, 1);
     assertIdentifier(analyzedPartitionBy.analysis.getWindow(avg).getPartitionBy().get(0), "s1");
     new PlanTester().createPlan(partitionBySql);
+  }
+
+  @Test
+  public void lateralColumnAliasDoesNotRewriteCastTypeNames() {
+    String sql = "SELECT s1 AS INT64, CAST(s2 AS INT64) AS y FROM table1";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    Expression expression = getSelectExpression(analyzedQuery, 1);
+    assertTrue(expression instanceof Cast);
+    assertTrue(((Cast) expression).getType() instanceof GenericDataType);
+    assertEquals("INT64", ((GenericDataType) ((Cast) expression).getType()).getName().getValue());
+
+    new PlanTester().createPlan(sql);
   }
 
   @Test
