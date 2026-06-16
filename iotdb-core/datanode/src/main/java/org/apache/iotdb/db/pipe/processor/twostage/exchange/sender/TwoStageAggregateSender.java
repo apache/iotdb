@@ -76,7 +76,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
     final boolean endPointsChanged = tryFetchEndPointsIfNecessary();
     tryConstructClients(endPointsChanged);
 
-    final TEndPoint endPoint = endPoints[(int) watermark % endPoints.length];
+    final TEndPoint endPoint = endPoints[(int) Math.floorMod(watermark, endPoints.length)];
     IoTDBSyncClient client = endPointIoTDBSyncClientMap.get(endPoint);
     if (client == null) {
       client = reconstructIoTDBSyncClient(endPoint);

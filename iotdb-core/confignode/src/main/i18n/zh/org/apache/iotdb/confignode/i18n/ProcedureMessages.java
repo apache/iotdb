@@ -445,6 +445,11 @@ public final class ProcedureMessages {
       "Failed to push topic meta to dataNodes, details: %s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =
       "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication";
+
+  public static final String FAILED_TO_REMOVE_DATA_NODE_WOULD_LEAVE_TOO_FEW =
+      "无法移除 %d 个 DataNode：集群当前有 %d 个可用 DataNode，且至少需保留 %d 个（max(schema_replication_factor=%d, data_replication_factor=%d)），以保证每个 Region 仍有足够的副本；但本次请求执行后将只剩 %d 个。";
+  public static final String FAILED_TO_REMOVE_DATA_NODE_SINGLE_REPLICA_HINT =
+      " 单副本下没有其它节点可供迁移 Region，因此必须始终保留至少一个 DataNode。";
   public static final String FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
       "Failed to rollback alter pipe {}, details: {}, metadata will be synchronized later.";
   public static final String FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =
@@ -994,7 +999,7 @@ public final class ProcedureMessages {
   public static final String VALIDATE_TABLE_FOR_TABLE_WHEN_SETTING_PROPERTIES =
       "Validate table for table {}.{} when setting properties";
   public static final String WAITTASKFINISH_RETURNS_PROCESSING_WHICH_MEANS_THE_WAITING_HAS_BEEN_INTERRUPTED =
-      "waitTaskFinish() returns PROCESSING, which means the waiting has been interrupted, this procedure will end without rollback";
+      "waitTaskFinish() 返回 PROCESSING，表示等待被中断（ConfigNode 关闭或主节点切换）；AddRegionPeer 任务仍在协调者上运行，该流程将停留在 DO_ADD_REGION_PEER 状态，恢复后继续轮询";
 
     public static final String FAILED_TO_CREATE_DATABASE_THE_TTL_SHOULD_BE_NON_NEGATIVE = "创建数据库失败。TTL 不能为负数。";
   public static final String FAILED_TO_CREATE_DATABASE_THE_DATAREGIONGROUPNUM_SHOULD_BE_POSITIVE = "创建数据库失败。dataRegionGroupNum 应为正数。";

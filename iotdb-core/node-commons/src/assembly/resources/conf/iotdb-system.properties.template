@@ -512,7 +512,7 @@ cn_max_client_count_for_each_node_in_client_manager=1000
 # 0 means no idle clients will be retained, connections are destroyed immediately upon return.
 # effectiveMode: restart
 # Datatype: int
-# cn_max_idle_client_count_for_each_node_in_client_manager=1000
+cn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
@@ -571,7 +571,7 @@ dn_max_client_count_for_each_node_in_client_manager=1000
 # 0 means no idle clients will be retained, connections are destroyed immediately upon return.
 # effectiveMode: restart
 # Datatype: int
-# dn_max_idle_client_count_for_each_node_in_client_manager=1000
+dn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 ####################
 ### REST Service Configuration
@@ -587,7 +587,7 @@ enable_rest_service=false
 # Datatype: int
 rest_service_port=18080
 
-# Whether to display rest service interface information through swagger. eg: http://ip:port/swagger.json
+# Whether to display rest service interface information through OpenAPI. eg: http://ip:port/openapi.json
 # effectiveMode: restart
 # Datatype: boolean
 enable_swagger=false
@@ -686,7 +686,7 @@ data_region_per_data_node=0
 # 3. PGP (Partite-Graph Placement; based on the PGP paper, with database-aware balance)
 # effectiveMode: restart
 # Datatype: String
-# region_group_allocate_policy=GCR
+region_group_allocate_policy=GCR
 
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
@@ -747,17 +747,17 @@ failure_detector_phi_acceptable_pause_in_ms=10000
 # Whether to enable topology probing between DataNodes
 # effectiveMode: hot_reload
 # Datatype: Boolean
-# enable_topology_probing=false
+enable_topology_probing=false
 
 # Base interval in ms for topology probing between DataNodes
 # effectiveMode: restart
 # Datatype: long
-# topology_probing_base_interval_in_ms=5000
+topology_probing_base_interval_in_ms=5000
 
 # Ratio of probing timeout to probing interval (must be less than 1.0)
 # effectiveMode: restart
 # Datatype: double
-# topology_probing_timeout_ratio=0.5
+topology_probing_timeout_ratio=0.5
 
 # Disk remaining threshold at which DataNode is set to ReadOnly status
 # effectiveMode: restart
@@ -908,6 +908,12 @@ tag_attribute_flush_interval=1000
 # effectiveMode: first_start
 # Datatype: int
 tag_attribute_total_size=700
+
+# The maximum number of single measurement check results cached by PathUtils.
+# Set to 0 to disable this cache.
+# effectiveMode: restart
+# Datatype: int
+single_measurement_check_cache_size=10000
 
 # max measurement num of internal request
 # When creating timeseries with Session.createMultiTimeseries, the user input plan, the timeseries num of
@@ -1073,6 +1079,11 @@ read_consistency_level=strong
 # effectiveMode: restart
 # Datatype: boolean
 meta_data_cache_enable=true
+
+# Whether to cache a placeholder for non-exist series.
+# effectiveMode: restart
+# Datatype: boolean
+may_cache_nonexist_series=true
 
 # Read memory Allocation Ratio: BloomFilterCache : ChunkCache : TimeSeriesMetadataCache : Coordinator : Operators : DataExchange : timeIndex in TsFileResourceList : others.
 # The parameter form is a:b:c:d:e:f:g:h, where a, b, c, d, e, f, g and h are integers. for example: 1:1:1:1:1:1:1:1 , 1:100:200:50:200:200:200:50
@@ -2245,6 +2256,18 @@ load_active_listening_enable=true
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 load_active_listening_dirs=ext/load/pending
+
+# The directory to be actively listened for tsfile loading from Pipe.
+# Only one directory can be configured.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_pipe_dir=ext\\load\\pipe
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_pipe_dir=ext/load/pipe
 
 # The directory where tsfile are moved if the active listening mode fails to load them.
 # Only one directory can be configured.

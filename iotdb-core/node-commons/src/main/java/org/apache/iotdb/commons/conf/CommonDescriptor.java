@@ -276,6 +276,15 @@ public class CommonDescriptor {
             properties.getProperty(
                 "tag_attribute_total_size", String.valueOf(config.getTagAttributeTotalSize()))));
 
+    int singleMeasurementCheckCacheSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "single_measurement_check_cache_size",
+                String.valueOf(config.getSingleMeasurementCheckCacheSize())));
+    if (singleMeasurementCheckCacheSize >= 0) {
+      config.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
+    }
+
     config.setTimePartitionOrigin(
         Long.parseLong(
             properties.getProperty(
@@ -454,6 +463,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_meta_syncer_sync_interval_minutes",
                 String.valueOf(config.getSubscriptionMetaSyncerSyncIntervalMinutes()))));
+
+    config.setSubscriptionOwnerLeaseDurationMsMin(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_owner_lease_duration_ms_min",
+                String.valueOf(config.getSubscriptionOwnerLeaseDurationMsMin()))));
 
     config.setSubscriptionConsensusBatchMaxDelayInMs(
         Integer.parseInt(

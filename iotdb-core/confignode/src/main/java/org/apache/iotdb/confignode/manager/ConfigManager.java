@@ -149,6 +149,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -2469,6 +2470,14 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().createTopic(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus alterTopic(TAlterTopicReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().alterTopic(req)
         : status;
   }
 

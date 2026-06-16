@@ -39,7 +39,18 @@ import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.when;
 
@@ -57,7 +68,10 @@ public class AbstractCliTest {
   }
 
   @After
-  public void tearDown() {}
+  public void tearDown() throws Exception {
+    setStaticField("lineCount", 0);
+    setStaticField("isReachEnd", false);
+  }
 
   @Test
   public void testInit() {
@@ -198,5 +212,72 @@ public class AbstractCliTest {
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(
             ctx, String.format("%s=111", AbstractCli.SET_FETCH_SIZE), connection));
+  }
+
+  @Test
+  public void testJsonExplainResultDetection() throws Exception {
+    assertFalse(isJsonExplainResult(Collections.emptyList()));
+    assertFalse(isJsonExplainResult(Collections.singletonList(Collections.singletonList("Time"))));
+    assertFalse(
+        isJsonExplainResult(
+            Arrays.asList(
+                Arrays.asList("distribution plan", "{}"), Arrays.asList("extra", "value"))));
+    assertFalse(isJsonExplainResult(column("Time", "{}")));
+    assertFalse(isJsonExplainResult(column("distribution plan", "OutputNode-1")));
+
+    assertTrue(isJsonExplainResult(column("distribution plan", "  {\"name\":\"OutputNode-1\"}")));
+    assertTrue(isJsonExplainResult(column("Explain Analyze", "[{\"id\":\"fragment\"}]")));
+    assertTrue(isJsonExplainResult(column("explain analyze", "\n{\"planStatistics\":{}}")));
+  }
+
+  @Test
+  public void testOutputRawJsonKeepsJsonContentUnframed() throws Exception {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    PrintStream printer = new PrintStream(out, true, StandardCharsets.UTF_8.name());
+    CliContext ctx = new CliContext(System.in, printer, System.err, ExitType.EXCEPTION);
+    List<List<String>> lists =
+        Collections.singletonList(
+            Arrays.asList("distribution plan", "{", "  \"name\": \"OutputNode-1\"", "}"));
+
+    setStaticField("lineCount", 0);
+    setStaticField("isReachEnd", true);
+    outputRawJson(ctx, lists, Collections.singletonList(128));
+
+    List<String> lines =
+        Arrays.asList(new String(out.toByteArray(), StandardCharsets.UTF_8).split("\\R"));
+    assertEquals("+-----------------+", lines.get(0));
+    assertEquals("|distribution plan|", lines.get(1));
+    assertEquals("+-----------------+", lines.get(2));
+    assertEquals("{", lines.get(3));
+    assertEquals("  \"name\": \"OutputNode-1\"", lines.get(4));
+    assertEquals("}", lines.get(5));
+    assertEquals("+-----------------+", lines.get(6));
+    assertEquals("Total line number = 3", lines.get(7));
+    assertFalse(lines.get(3).startsWith("|"));
+  }
+
+  private static List<List<String>> column(String header, String value) {
+    return Collections.singletonList(Arrays.asList(header, value));
+  }
+
+  private static boolean isJsonExplainResult(List<List<String>> lists) throws Exception {
+    Method method = AbstractCli.class.getDeclaredMethod("isJsonExplainResult", List.class);
+    method.setAccessible(true);
+    return (boolean) method.invoke(null, lists);
+  }
+
+  private static void outputRawJson(
+      CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) throws Exception {
+    Method method =
+        AbstractCli.class.getDeclaredMethod(
+            "outputRawJson", CliContext.class, List.class, List.class);
+    method.setAccessible(true);
+    method.invoke(null, ctx, lists, maxSizeList);
+  }
+
+  private static void setStaticField(String name, Object value) throws Exception {
+    Field field = AbstractCli.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(null, value);
   }
 }

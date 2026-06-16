@@ -475,7 +475,15 @@ public class ProcedureExecutor<Env> {
 
       updateStoreOnExecution(rootProcStack, proc, subprocs);
 
-      if (!store.isRunning()) {
+      // Stop the in-place re-execution loop once this executor is shutting down (e.g. ConfigNode
+      // leader switch / restart). Checking store.isRunning() alone is not enough: stopExecutor()
+      // calls executor.stop() and executor.join() before store.stop(), so the store is still
+      // running while join() waits for this very worker to finish. Without also checking the
+      // executor's own running flag, a procedure that keeps returning HAS_MORE_STATE for the same
+      // state (e.g. AddRegionPeerProcedure parking at DO_ADD_REGION_PEER after waitTaskFinish() is
+      // interrupted) would re-execute forever here and join() would hang. The persisted state lets
+      // the next leader resume from where it stopped.
+      if (!isRunning() || !store.isRunning()) {
         return;
       }
 

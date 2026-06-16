@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
 import org.slf4j.Logger;
@@ -63,14 +64,16 @@ public class PipeTaskCoordinatorLock {
             Thread.currentThread().getName());
         return true;
       } else {
-        LOGGER.info(
+        PipeLogger.log(
+            LOGGER::info,
             ManagerMessages.PIPETASKCOORDINATOR_LOCK_FAILED_TO_ACQUIRE_BY_THREAD_BECAUSE_OF_TIMEOUT,
             Thread.currentThread().getName());
         return false;
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.error(
+      PipeLogger.log(
+          LOGGER::error,
           ManagerMessages.INTERRUPTED_WHILE_WAITING_FOR_PIPETASKCOORDINATOR_LOCK_CURRENT_THREAD,
           Thread.currentThread().getName());
       return false;

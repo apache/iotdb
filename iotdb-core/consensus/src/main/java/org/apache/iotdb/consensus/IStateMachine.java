@@ -112,8 +112,11 @@ public interface IStateMachine {
    * Load the latest snapshot from given dir.
    *
    * @param latestSnapshotRootDir dir where the latest snapshot sits
+   * @return {@code true} if the snapshot was loaded successfully, {@code false} otherwise. Callers
+   *     (e.g. the IoTConsensus AddPeer flow) rely on this to avoid activating a new peer whose
+   *     snapshot failed to load, which would otherwise silently lose data.
    */
-  void loadSnapshot(File latestSnapshotRootDir);
+  boolean loadSnapshot(File latestSnapshotRootDir);
 
   /**
    * given a snapshot dir, ask statemachine to provide all snapshot files. By default, it will list

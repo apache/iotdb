@@ -135,7 +135,7 @@ public class InsertNodeMeasurementInfo {
   }
 
   public TSDataType getType(int index) {
-    if (dataTypes == null) {
+    if (dataTypes == null || index < 0 || index >= dataTypes.length) {
       return null;
     }
     return dataTypes[index];
@@ -170,6 +170,13 @@ public class InsertNodeMeasurementInfo {
    * <p>The delegate is optional. If absent, this method is a no-op.
    */
   public void toLowerCase() {
+    if (measurements != null) {
+      for (int i = 0; i < measurements.length; i++) {
+        if (measurements[i] != null) {
+          measurements[i] = measurements[i].toLowerCase();
+        }
+      }
+    }
     if (toLowerCaseAction != null) {
       toLowerCaseAction.run();
     }

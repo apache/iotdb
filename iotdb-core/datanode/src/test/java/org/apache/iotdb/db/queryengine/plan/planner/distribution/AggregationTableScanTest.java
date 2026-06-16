@@ -32,6 +32,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ta
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.FakedMemoryReservationManager;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
@@ -161,7 +162,8 @@ public class AggregationTableScanTest {
             isAggTableScan,
             TIME_COL,
             measurementColumnNames,
-            distinct);
+            distinct,
+            new FakedMemoryReservationManager());
 
     String msg =
         String.format(

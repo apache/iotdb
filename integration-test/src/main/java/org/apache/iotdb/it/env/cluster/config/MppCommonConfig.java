@@ -499,6 +499,21 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
+      long subscriptionOwnerLeaseDurationMsMin) {
+    setProperty(
+        "subscription_owner_lease_duration_ms_min",
+        String.valueOf(subscriptionOwnerLeaseDurationMsMin));
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     setProperty("pipe_air_gap_receiver_enabled", String.valueOf(isPipeAirGapReceiverEnabled));
     return this;
@@ -520,6 +535,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
     setProperty("tag_attribute_total_size", String.valueOf(tagAttributeTotalSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    setProperty(
+        "single_measurement_check_cache_size", String.valueOf(singleMeasurementCheckCacheSize));
     return this;
   }
 

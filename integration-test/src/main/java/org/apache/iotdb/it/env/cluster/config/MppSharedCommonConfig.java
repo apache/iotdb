@@ -515,6 +515,21 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
+      long subscriptionOwnerLeaseDurationMsMin) {
+    dnConfig.setSubscriptionOwnerLeaseDurationMsMin(subscriptionOwnerLeaseDurationMsMin);
+    cnConfig.setSubscriptionOwnerLeaseDurationMsMin(subscriptionOwnerLeaseDurationMsMin);
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     dnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
     cnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
@@ -539,6 +554,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
     dnConfig.setTagAttributeTotalSize(tagAttributeTotalSize);
     cnConfig.setTagAttributeTotalSize(tagAttributeTotalSize);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    dnConfig.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
+    cnConfig.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
     return this;
   }
 

@@ -160,6 +160,10 @@ public interface CommonConfig {
 
   CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
 
+  CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
+
+  CommonConfig setSubscriptionOwnerLeaseDurationMsMin(long subscriptionOwnerLeaseDurationMsMin);
+
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
 
   CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs);
@@ -167,6 +171,8 @@ public interface CommonConfig {
   CommonConfig setWalMode(String walMode);
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
+
+  CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize);
 
   CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs);
 
