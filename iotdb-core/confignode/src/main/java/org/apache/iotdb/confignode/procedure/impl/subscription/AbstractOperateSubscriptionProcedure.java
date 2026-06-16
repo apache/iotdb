@@ -350,6 +350,16 @@ public abstract class AbstractOperateSubscriptionProcedure
     return env.pushAllTopicMetaToDataNodes(topicMetaBinaryList);
   }
 
+  protected Map<Integer, TPushTopicMetaResp> pushTopicMetaToDataNodesBestEffort(
+      ConfigNodeProcedureEnv env) throws IOException {
+    final List<ByteBuffer> topicMetaBinaryList = new ArrayList<>();
+    for (TopicMeta topicMeta : subscriptionInfo.get().getAllTopicMeta()) {
+      topicMetaBinaryList.add(topicMeta.serialize());
+    }
+
+    return env.pushAllTopicMetaToDataNodesBestEffort(topicMetaBinaryList);
+  }
+
   public static boolean pushTopicMetaHasException(Map<Integer, TPushTopicMetaResp> respMap) {
     for (TPushTopicMetaResp resp : respMap.values()) {
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -374,6 +384,16 @@ public abstract class AbstractOperateSubscriptionProcedure
     }
 
     return env.pushAllConsumerGroupMetaToDataNodes(consumerGroupMetaBinaryList);
+  }
+
+  protected Map<Integer, TPushConsumerGroupMetaResp> pushConsumerGroupMetaToDataNodesBestEffort(
+      ConfigNodeProcedureEnv env) throws IOException {
+    final List<ByteBuffer> consumerGroupMetaBinaryList = new ArrayList<>();
+    for (ConsumerGroupMeta consumerGroupMeta : subscriptionInfo.get().getAllConsumerGroupMeta()) {
+      consumerGroupMetaBinaryList.add(consumerGroupMeta.serialize());
+    }
+
+    return env.pushAllConsumerGroupMetaToDataNodesBestEffort(consumerGroupMetaBinaryList);
   }
 
   public static boolean pushConsumerGroupMetaHasException(
