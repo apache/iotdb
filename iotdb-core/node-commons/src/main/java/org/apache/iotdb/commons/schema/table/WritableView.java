@@ -111,13 +111,7 @@ public class WritableView extends TsTable {
 
   public void putViewColumnSourceColumnMapping(
       final String viewColumnName, final String sourceColumnName) {
-    executeWrite(
-        () -> {
-          if (Objects.isNull(viewColumnToSourceColumnMap)) {
-            viewColumnToSourceColumnMap = new LinkedHashMap<>();
-          }
-          viewColumnToSourceColumnMap.put(viewColumnName, sourceColumnName);
-        });
+    executeWrite(() -> putViewColumnSourceColumnMappingInternal(viewColumnName, sourceColumnName));
   }
 
   public void removeViewColumnSourceColumnMapping(final String viewColumnName) {
@@ -146,6 +140,16 @@ public class WritableView extends TsTable {
     return Objects.nonNull(viewColumnToSourceColumnMap)
         ? viewColumnToSourceColumnMap.get(columnName)
         : null;
+  }
+
+  @Override
+  public void addColumnSchema(final TsTableColumnSchema columnSchema) {
+    executeWrite(
+        () -> {
+          addColumnSchemaInternal(columnSchema);
+          putViewColumnSourceColumnMappingIfAbsent(
+              columnSchema.getColumnName(), ViewColumnSchemaUtils.getSourceName(columnSchema));
+        });
   }
 
   @Override
@@ -285,5 +289,21 @@ public class WritableView extends TsTable {
           ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
     return orderedMap;
+  }
+
+  private void putViewColumnSourceColumnMappingInternal(
+      final String viewColumnName, final String sourceColumnName) {
+    if (Objects.isNull(viewColumnToSourceColumnMap)) {
+      viewColumnToSourceColumnMap = new LinkedHashMap<>();
+    }
+    viewColumnToSourceColumnMap.put(viewColumnName, sourceColumnName);
+  }
+
+  private void putViewColumnSourceColumnMappingIfAbsent(
+      final String viewColumnName, final String sourceColumnName) {
+    if (Objects.isNull(viewColumnToSourceColumnMap)) {
+      viewColumnToSourceColumnMap = new LinkedHashMap<>();
+    }
+    viewColumnToSourceColumnMap.putIfAbsent(viewColumnName, sourceColumnName);
   }
 }

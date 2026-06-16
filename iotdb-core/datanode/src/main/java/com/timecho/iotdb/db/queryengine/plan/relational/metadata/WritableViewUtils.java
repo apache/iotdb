@@ -52,6 +52,13 @@ public final class WritableViewUtils {
         : viewColumnToSourceColumnMap.get(viewColumnName.toLowerCase(ENGLISH));
   }
 
+  public static String resolveSourceColumnName(
+      final String viewColumnName, final Map<String, String> viewColumnToSourceColumnMap) {
+    final String sourceColumnName =
+        getSourceColumnName(viewColumnName, viewColumnToSourceColumnMap);
+    return Objects.nonNull(sourceColumnName) ? sourceColumnName : viewColumnName;
+  }
+
   public static boolean requiresSourceColumnRewrite(
       final Map<String, String> viewColumnToSourceColumnMap) {
     if (Objects.isNull(viewColumnToSourceColumnMap) || viewColumnToSourceColumnMap.isEmpty()) {
@@ -72,26 +79,38 @@ public final class WritableViewUtils {
       final WritableViewSchema writableViewSchema,
       final Set<String> sourceColumnNames,
       final String viewColumnName) {
-    final String sourceColumnName =
+    final String mappedSourceColumnName =
         getSourceColumnName(viewColumnName, writableViewSchema.getViewColumnToSourceColumnMap());
-    if (Objects.nonNull(sourceColumnName)) {
-      if (!sourceColumnNames.contains(sourceColumnName)) {
+    if (Objects.nonNull(mappedSourceColumnName)) {
+      final String existingSourceColumnName =
+          getExistingColumnName(sourceColumnNames, mappedSourceColumnName);
+      if (Objects.isNull(existingSourceColumnName)) {
         throwColumnNotExistsException(
-            writableViewDatabase, writableViewSchema, viewColumnName, sourceColumnName);
+            writableViewDatabase, writableViewSchema, viewColumnName, mappedSourceColumnName);
       }
-      return sourceColumnName;
+      return existingSourceColumnName;
     }
 
-    final String normalizedViewColumnName = viewColumnName.toLowerCase(ENGLISH);
-    if (sourceColumnNames.contains(viewColumnName)) {
-      return viewColumnName;
-    }
-    if (sourceColumnNames.contains(normalizedViewColumnName)) {
-      return normalizedViewColumnName;
+    final String existingSourceColumnName =
+        getExistingColumnName(sourceColumnNames, viewColumnName);
+    if (Objects.nonNull(existingSourceColumnName)) {
+      return existingSourceColumnName;
     }
 
     throwColumnNotExistsException(writableViewDatabase, writableViewSchema, viewColumnName, null);
     return viewColumnName;
+  }
+
+  private static String getExistingColumnName(
+      final Set<String> sourceColumnNames, final String candidateColumnName) {
+    if (Objects.isNull(candidateColumnName)) {
+      return null;
+    }
+    if (sourceColumnNames.contains(candidateColumnName)) {
+      return candidateColumnName;
+    }
+    final String normalizedColumnName = candidateColumnName.toLowerCase(ENGLISH);
+    return sourceColumnNames.contains(normalizedColumnName) ? normalizedColumnName : null;
   }
 
   public static void throwColumnNotExistsException(

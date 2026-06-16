@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImp
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.WritableViewInsertRewriteSupport;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.WritableViewSchema;
 
+import com.timecho.iotdb.db.queryengine.plan.relational.metadata.WritableViewUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -119,6 +120,57 @@ public class DataNodeTableCacheTest {
           "source_attr", rewriteSupport.get().resolveExistingSourceColumnName("attr"));
       Assert.assertEquals(
           "source_value", rewriteSupport.get().resolveExistingSourceColumnName("value"));
+    } finally {
+      cache.invalid(database);
+    }
+  }
+
+  @Test
+  public void testWritableViewMetadataFallsBackToSameNameAddedColumnWhenMapMissing() {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final String database = "cache_same_name_added_column_db";
+    final String sourceName = "source_table";
+    final String viewName = "writable_view";
+
+    cache.invalid(database);
+    try {
+      final TsTable source = new TsTable(sourceName);
+      source.addColumnSchema(new TagColumnSchema("id1", TSDataType.STRING));
+      source.addColumnSchema(new FieldColumnSchema("m1", TSDataType.INT32));
+      source.addColumnSchema(new FieldColumnSchema("humidity", TSDataType.DOUBLE));
+      cache.preUpdateTable(database, source, null);
+      cache.commitUpdateTable(database, sourceName, null);
+
+      final WritableView view = new WritableView(viewName, database, sourceName, true);
+      view.addColumnSchema(new TagColumnSchema("id_alias", TSDataType.STRING));
+      view.addColumnSchema(new FieldColumnSchema("m_alias", TSDataType.INT32));
+      view.addColumnSchema(new FieldColumnSchema("humidity", TSDataType.DOUBLE));
+      view.putViewColumnSourceColumnMapping("id_alias", "id1");
+      view.putViewColumnSourceColumnMapping("m_alias", "m1");
+      cache.preUpdateTable(database, view, null);
+      cache.commitUpdateTable(database, viewName, null);
+
+      final TableMetadataImpl metadata = new TableMetadataImpl();
+      final SessionInfo session =
+          new SessionInfo(0, "test", ZoneId.systemDefault(), database, SqlDialect.TABLE);
+      final QualifiedObjectName viewObjectName = new QualifiedObjectName(database, viewName);
+      final WritableViewSchema writableViewSchema =
+          getWritableViewSchema(metadata.getTableSchema(session, viewObjectName));
+      final TableSchema sourceTableSchema = writableViewSchema.getSourceTableSchema().get();
+
+      Assert.assertEquals(
+          "humidity",
+          WritableViewUtils.getExistingSourceColumnName(
+              database,
+              writableViewSchema,
+              sourceTableSchema.getColumnSchemaMap().keySet(),
+              "humidity"));
+
+      final Optional<WritableViewInsertRewriteSupport> rewriteSupport =
+          metadata.getWritableViewInsertRewriteSupport(session, viewObjectName);
+      Assert.assertTrue(rewriteSupport.isPresent());
+      Assert.assertEquals(
+          "humidity", rewriteSupport.get().resolveExistingSourceColumnName("humidity"));
     } finally {
       cache.invalid(database);
     }

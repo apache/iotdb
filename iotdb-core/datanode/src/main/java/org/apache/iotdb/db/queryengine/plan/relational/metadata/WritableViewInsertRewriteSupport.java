@@ -143,23 +143,32 @@ public final class WritableViewInsertRewriteSupport {
     final String sourceColumnName =
         WritableViewUtils.getSourceColumnName(viewColumnName, viewColumnToSourceColumnMap);
     if (Objects.nonNull(sourceColumnName)) {
-      if (!sourceColumnExists.test(sourceColumnName)) {
+      final String existingSourceColumnName = getExistingSourceColumnName(sourceColumnName);
+      if (Objects.isNull(existingSourceColumnName)) {
         WritableViewUtils.throwColumnNotExistsException(
             writableViewName, sourceTableName, viewColumnName, sourceColumnName);
       }
-      return sourceColumnName;
+      return existingSourceColumnName;
     }
 
-    if (sourceColumnExists.test(viewColumnName)) {
-      return viewColumnName;
-    }
-    final String normalizedViewColumnName = viewColumnName.toLowerCase(ENGLISH);
-    if (sourceColumnExists.test(normalizedViewColumnName)) {
-      return normalizedViewColumnName;
+    final String existingSourceColumnName = getExistingSourceColumnName(viewColumnName);
+    if (Objects.nonNull(existingSourceColumnName)) {
+      return existingSourceColumnName;
     }
 
     WritableViewUtils.throwColumnNotExistsException(
         writableViewName, sourceTableName, viewColumnName, (String) null);
     return viewColumnName;
+  }
+
+  private String getExistingSourceColumnName(final String sourceColumnName) {
+    if (Objects.isNull(sourceColumnName)) {
+      return null;
+    }
+    if (sourceColumnExists.test(sourceColumnName)) {
+      return sourceColumnName;
+    }
+    final String normalizedSourceColumnName = sourceColumnName.toLowerCase(ENGLISH);
+    return sourceColumnExists.test(normalizedSourceColumnName) ? normalizedSourceColumnName : null;
   }
 }

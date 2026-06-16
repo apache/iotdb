@@ -36,7 +36,6 @@ import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
-import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -1565,7 +1564,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTableName(),
                 plan.getColumnSchemaList());
-            addWritableViewColumnMappings(plan);
           }
           executeOriginalIfPresent(
               plan,
@@ -1861,27 +1859,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                       plan.getOriginalTableName(),
                       plan.getOriginalColumnName()));
         });
-  }
-
-  private void addWritableViewColumnMappings(final AddTableColumnPlan plan)
-      throws MetadataException {
-    if (!(plan instanceof AddWritableViewColumnPlan)) {
-      return;
-    }
-
-    final WritableView writableView = getWritableView(plan.getDatabase(), plan.getTableName());
-    if (Objects.isNull(writableView)) {
-      return;
-    }
-
-    for (final TsTableColumnSchema viewColumnSchema : plan.getColumnSchemaList()) {
-      // View-only adds still carry the source column through the shared column-mapping metadata.
-      final String sourceColumnName =
-          Optional.ofNullable(ViewColumnSchemaUtils.getSourceName(viewColumnSchema))
-              .orElse(viewColumnSchema.getColumnName());
-      writableView.putViewColumnSourceColumnMapping(
-          viewColumnSchema.getColumnName(), sourceColumnName);
-    }
   }
 
   private void rollbackWritableViewColumnMappings(final AbstractTablePlan plan)

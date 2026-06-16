@@ -390,16 +390,16 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
     final Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
-    final Map<String, ColumnSchema> sourceColumnSchemaMap;
+    final Set<String> sourceColumnNames;
     if (isWritableView && !useIdentityWritableViewFastPath) {
       int sourceTagIndex = 0;
       sourceTagIndexMap = new HashMap<>();
       for (final ColumnSchema columnSchema : sourceTableSchema.getTagColumns()) {
         sourceTagIndexMap.put(columnSchema.getName(), sourceTagIndex++);
       }
-      sourceColumnSchemaMap = sourceTableSchema.getColumnSchemaMap();
+      sourceColumnNames = sourceTableSchema.getColumnSchemaMap().keySet();
     } else {
-      sourceColumnSchemaMap = null;
+      sourceColumnNames = null;
     }
     int tagIndex = 0;
     for (final Field field : fields) {
@@ -410,11 +410,11 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
       if (isWritableView && !useIdentityWritableViewFastPath) {
         final String viewColumnName = columnName;
         columnName =
-            WritableViewUtils.getSourceColumnName(viewColumnName, viewColumnToSourceColumnMap);
-        if (columnName == null || sourceColumnSchemaMap.get(columnName) == null) {
-          WritableViewUtils.throwColumnNotExistsException(
-              originalWritableViewName.get(), qualifiedObjectName, viewColumnName, columnName);
-        }
+            WritableViewUtils.getExistingSourceColumnName(
+                originalWritableViewName.get().getDatabaseName(),
+                (WritableViewSchema) tableSchema,
+                sourceColumnNames,
+                viewColumnName);
       }
       symbolToColumnSchema.put(
           symbol, new ColumnSchema(columnName, field.getType(), field.isHidden(), category));

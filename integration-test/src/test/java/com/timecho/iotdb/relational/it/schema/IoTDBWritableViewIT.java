@@ -522,6 +522,60 @@ public class IoTDBWritableViewIT {
   }
 
   @Test
+  public void testWritableViewCascadeAddColumnCanQueryNewColumn() throws Exception {
+    final String database = "writable_view_add_column_query_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("create database " + database);
+        statement.execute("use " + database);
+        statement.execute(
+            "create table factory("
+                + "plant string tag, "
+                + "line string tag, "
+                + "device_id string tag, "
+                + "model string attribute, "
+                + "voltage int32 field, "
+                + "temperature float field, "
+                + "reserved_code string field)");
+        statement.execute(
+            "insert into factory(time, plant, line, device_id, model, voltage, temperature, "
+                + "reserved_code) values "
+                + "(1000, 'north', 'l1', 'd1', 'm1', 220, 36.5, 'r001')");
+        statement.execute(
+            "create writable view factory_view as select "
+                + "plant as area, "
+                + "line, "
+                + "device_id, "
+                + "model, "
+                + "voltage as v, "
+                + "temperature, "
+                + "reserved_code as serial_num "
+                + "from factory with (schema_cascade=true, ttl='INF')");
+
+        statement.execute("alter view factory_view add column humidity double field");
+        statement.execute(
+            "insert into factory_view(time, area, line, device_id, model, v, temperature, "
+                + "serial_num, humidity) values "
+                + "(6000, 'north', 'l6', 'd6', 'm6', 226, 37.6, 'r006', 45.6)");
+        statement.execute("flush");
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("select time, humidity from factory where time = 6000"),
+            "time,humidity,",
+            Collections.singleton("1970-01-01T00:00:06.000Z,45.6,"));
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("select time, humidity from factory_view where time = 6000"),
+            "time,humidity,",
+            Collections.singleton("1970-01-01T00:00:06.000Z,45.6,"));
+      } finally {
+        dropDatabaseQuietly(statement, database);
+      }
+    }
+  }
+
+  @Test
   public void testWritableViewDropTagSkipsSourceCascade() throws Exception {
     final String database = "writable_view_drop_tag_cascade_db";
     try (final Connection connection =

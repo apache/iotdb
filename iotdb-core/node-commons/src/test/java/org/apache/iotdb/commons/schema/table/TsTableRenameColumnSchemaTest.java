@@ -119,35 +119,65 @@ public class TsTableRenameColumnSchemaTest {
   }
 
   @Test
-  public void testWritableViewLocalColumnRenameDoesNotCreateSourceMapping() {
+  public void testWritableViewAddColumnSchemaCreatesSourceMapping() {
     final WritableView writableView =
         new WritableView("view_table", "source_db", "source_table", false);
     final Map<String, String> columnMapping = new HashMap<>();
     columnMapping.put("mapped_view_col", "source_col");
     writableView.setViewColumnToSourceColumnMap(columnMapping);
-    writableView.addColumnSchema(new FieldColumnSchema("local_col", TSDataType.DOUBLE));
+    final FieldColumnSchema localColumn = new FieldColumnSchema("local_col", TSDataType.DOUBLE);
+    writableView.addColumnSchema(localColumn);
 
-    Assert.assertNull(writableView.getMappedSourceColumnName("local_col"));
+    Assert.assertEquals("local_col", writableView.getMappedSourceColumnName("local_col"));
 
     writableView.renameColumnSchema("local_col", "renamed_local_col");
 
     Assert.assertEquals("local_col", writableView.getOriginalColumnName("renamed_local_col"));
-    Assert.assertNull(writableView.getMappedSourceColumnName("renamed_local_col"));
+    Assert.assertEquals("local_col", writableView.getMappedSourceColumnName("renamed_local_col"));
     Assert.assertFalse(writableView.getViewColumnToSourceColumnMap().containsKey("local_col"));
-    Assert.assertFalse(
+    Assert.assertTrue(
         writableView.getViewColumnToSourceColumnMap().containsKey("renamed_local_col"));
   }
 
   @Test
-  public void testWritableViewExplicitSourceMappingCanBeAddedAndRemoved() {
+  public void testWritableViewAddColumnSchemaUsesSourceName() {
+    final WritableView writableView =
+        new WritableView("view_table", "source_db", "source_table", true);
+    final FieldColumnSchema pressureColumn = new FieldColumnSchema("pressure", TSDataType.INT64);
+    ViewColumnSchemaUtils.setSourceName(pressureColumn, "source_pressure");
+
+    writableView.addColumnSchema(pressureColumn);
+
+    Assert.assertEquals("source_pressure", writableView.getMappedSourceColumnName("pressure"));
+    Assert.assertEquals("source_pressure", writableView.getOriginalColumnName("pressure"));
+  }
+
+  @Test
+  public void testWritableViewAddColumnSchemaDoesNotOverwriteExistingSourceMapping() {
+    final WritableView writableView =
+        new WritableView("view_table", "source_db", "source_table", true);
+    final Map<String, String> columnMapping = new HashMap<>();
+    columnMapping.put("pressure", "restored_source_pressure");
+    writableView.setViewColumnToSourceColumnMap(columnMapping);
+    final FieldColumnSchema pressureColumn = new FieldColumnSchema("pressure", TSDataType.INT64);
+    ViewColumnSchemaUtils.setSourceName(pressureColumn, "source_pressure");
+
+    writableView.addColumnSchema(pressureColumn);
+
+    Assert.assertEquals(
+        "restored_source_pressure", writableView.getMappedSourceColumnName("pressure"));
+  }
+
+  @Test
+  public void testWritableViewExplicitSourceMappingCanBeOverwrittenAndRemoved() {
     final WritableView writableView =
         new WritableView("view_table", "source_db", "source_table", true);
     writableView.addColumnSchema(new FieldColumnSchema("pressure", TSDataType.INT64));
 
-    Assert.assertNull(writableView.getMappedSourceColumnName("pressure"));
-
-    writableView.putViewColumnSourceColumnMapping("pressure", "pressure");
     Assert.assertEquals("pressure", writableView.getMappedSourceColumnName("pressure"));
+
+    writableView.putViewColumnSourceColumnMapping("pressure", "source_pressure");
+    Assert.assertEquals("source_pressure", writableView.getMappedSourceColumnName("pressure"));
 
     writableView.removeViewColumnSourceColumnMapping("pressure");
     Assert.assertNull(writableView.getMappedSourceColumnName("pressure"));

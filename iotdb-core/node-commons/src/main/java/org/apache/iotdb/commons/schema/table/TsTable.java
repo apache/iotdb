@@ -239,14 +239,18 @@ public class TsTable {
   public void addColumnSchema(final TsTableColumnSchema columnSchema) {
     executeWrite(
         () -> {
-          columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
-          if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-            tagNums++;
-            tagColumnIndexMap.put(columnSchema.getColumnName(), tagNums - 1);
-          } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
-            fieldNum++;
-          }
+          addColumnSchemaInternal(columnSchema);
         });
+  }
+
+  protected void addColumnSchemaInternal(final TsTableColumnSchema columnSchema) {
+    columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
+    if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
+      tagNums++;
+      tagColumnIndexMap.put(columnSchema.getColumnName(), tagNums - 1);
+    } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
+      fieldNum++;
+    }
   }
 
   public void renameColumnSchema(final String oldName, final String newName) {

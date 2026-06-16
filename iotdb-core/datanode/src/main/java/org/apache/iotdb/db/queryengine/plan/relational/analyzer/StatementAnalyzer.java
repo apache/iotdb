@@ -862,16 +862,14 @@ public class StatementAnalyzer {
         final QualifiedObjectName sourceTableName,
         final Map<String, ColumnSchema> physicalColumnSchemaMap) {
       final String sourceColumnName =
-          WritableViewUtils.getSourceColumnName(insertColumn, viewColumnToSourceColumnMap);
-      final String actualColumnName =
-          Objects.nonNull(sourceColumnName) ? sourceColumnName : insertColumn;
-      final ColumnSchema columnSchema = physicalColumnSchemaMap.get(actualColumnName);
+          WritableViewUtils.resolveSourceColumnName(insertColumn, viewColumnToSourceColumnMap);
+      final ColumnSchema columnSchema = physicalColumnSchemaMap.get(sourceColumnName);
       if (Objects.isNull(columnSchema)) {
         if (Objects.nonNull(writableViewName) && Objects.nonNull(sourceTableName)) {
           WritableViewUtils.throwColumnNotExistsException(
               writableViewName, sourceTableName, insertColumn, sourceColumnName);
         }
-        throw new IllegalStateException("Insert target column does not exist: " + actualColumnName);
+        throw new IllegalStateException("Insert target column does not exist: " + sourceColumnName);
       }
       return columnSchema;
     }
@@ -883,20 +881,24 @@ public class StatementAnalyzer {
       if (viewColumnToSourceColumnMap.isEmpty()) {
         return new LinkedHashSet<>(tableColumns);
       }
-      final Map<String, String> originalColumn2ViewColumnMap =
-          viewColumnToSourceColumnMap.entrySet().stream()
-              .collect(toImmutableMap(Map.Entry::getValue, Map.Entry::getKey));
+      final Map<String, String> originalColumn2ViewColumnMap = new HashMap<>();
+      viewColumnToSourceColumnMap.forEach(
+          (viewColumnName, sourceColumnName) ->
+              originalColumn2ViewColumnMap.put(sourceColumnName, viewColumnName));
       final LinkedHashSet<String> insertColumns = new LinkedHashSet<>();
       for (final ColumnSchema column : physicalColumns) {
         if (column.isHidden()) {
           continue;
         }
-        final String viewColumnName = originalColumn2ViewColumnMap.get(column.getName());
+        String viewColumnName = originalColumn2ViewColumnMap.get(column.getName());
         if (Objects.isNull(viewColumnName)) {
-          throw new SemanticException(
-              String.format(
-                  DataNodeQueryMessages.INSERT_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_REQUIRES_MAPPING,
-                  column.getName()));
+          if (!tableColumns.contains(column.getName().toLowerCase(ENGLISH))) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages.INSERT_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_REQUIRES_MAPPING,
+                    column.getName()));
+          }
+          viewColumnName = column.getName();
         }
         insertColumns.add(viewColumnName.toLowerCase(ENGLISH));
       }

@@ -379,7 +379,6 @@ public class CreateWritableViewProcedure extends CreateTableViewProcedure {
       final WritableView view,
       final String viewColumnName,
       final String sourceColumnName) {
-    view.getViewColumnToSourceColumnMap().put(viewColumnName, sourceColumnName);
     view.addColumnSchema(copySourceColumnSchemaForView(source, sourceColumnName, viewColumnName));
   }
 
