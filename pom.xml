@@ -340,18 +340,6 @@
                         <groupId>io.opentelemetry</groupId>
                         <artifactId>opentelemetry-context</artifactId>
                     </exclusion>
-                    <exclusion>
-                        <groupId>io.opentelemetry</groupId>
-                        <artifactId>opentelemetry-sdk</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>io.opentelemetry</groupId>
-                        <artifactId>opentelemetry-sdk-testing</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>io.opentelemetry.semconv</groupId>
-                        <artifactId>opentelemetry-semconv</artifactId>
-                    </exclusion>
                 </exclusions>
             </dependency>
             <dependency>
