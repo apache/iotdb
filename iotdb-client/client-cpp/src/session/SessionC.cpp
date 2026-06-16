@@ -18,6 +18,7 @@
  */
 
 #include "SessionC.h"
+#include "Date.h"
 #include "Session.h"
 #include "TableSession.h"
 #include "TableSessionBuilder.h"
@@ -184,6 +185,12 @@ static std::vector<char*> toCharPtrVec(const TSDataType_C* types, const void* co
       result[i] = reinterpret_cast<char*>(p);
       break;
     }
+    case TS_TYPE_DATE: {
+      const TSDate_C* src = static_cast<const TSDate_C*>(values[i]);
+      IoTDBDate* p = new IoTDBDate(src->year, src->month, src->day);
+      result[i] = reinterpret_cast<char*>(p);
+      break;
+    }
     case TS_TYPE_TEXT:
     case TS_TYPE_STRING:
     case TS_TYPE_BLOB:
@@ -218,6 +225,9 @@ static void freeCharPtrVec(std::vector<char*>& vec, const TSDataType_C* types, i
       break;
     case TS_TYPE_DOUBLE:
       delete reinterpret_cast<double*>(vec[i]);
+      break;
+    case TS_TYPE_DATE:
+      delete reinterpret_cast<IoTDBDate*>(vec[i]);
       break;
     default:
       delete[] vec[i];
@@ -1469,6 +1479,29 @@ const char* ts_row_record_get_string(CRowRecord* record, int index) {
     return g_stringBuf.c_str();
   }
   return "";
+}
+
+int32_t ts_row_record_get_date_int32(CRowRecord* record, int index) {
+  if (!record || !record->cpp)
+    return 0;
+  if (index < 0 || index >= (int)record->cpp->fields.size())
+    return 0;
+  const Field& f = record->cpp->fields[index];
+  if (f.dataType != TSDataType::DATE || !f.dateV.is_initialized())
+    return 0;
+  return parseDateExpressionToInt(f.dateV.value());
+}
+
+size_t ts_row_record_get_string_byte_length(CRowRecord* record, int index) {
+  if (!record || !record->cpp)
+    return 0;
+  if (index < 0 || index >= (int)record->cpp->fields.size())
+    return 0;
+  const Field& f = record->cpp->fields[index];
+  if (f.stringV.is_initialized()) {
+    return f.stringV.value().size();
+  }
+  return 0;
 }
 
 TSDataType_C ts_row_record_get_data_type(CRowRecord* record, int index) {
