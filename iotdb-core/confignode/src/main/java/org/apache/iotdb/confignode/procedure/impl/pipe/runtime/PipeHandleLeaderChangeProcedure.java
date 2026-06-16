@@ -124,7 +124,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
         LOGGER::info,
         ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMHANDLEONDATANODES);
 
-    pushPipeMetaToDataNodesIgnoreException(env);
+    pushPipeMetaToDataNodesBestEffort(env);
   }
 
   @Override
