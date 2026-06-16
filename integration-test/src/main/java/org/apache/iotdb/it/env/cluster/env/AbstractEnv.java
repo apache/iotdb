@@ -47,11 +47,9 @@ import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
 import org.apache.iotdb.it.env.cluster.config.MppConfigNodeConfig;
 import org.apache.iotdb.it.env.cluster.config.MppDataNodeConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
-import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
-import org.apache.iotdb.it.env.cluster.node.StreamNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
@@ -102,8 +100,7 @@ public abstract class AbstractEnv implements BaseEnv {
   private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
-  protected List<AINodeWrapper> aiNodeWrapperList = Collections.emptyList();
-  protected List<StreamNodeWrapper> streamNodeWrapperList = Collections.emptyList();
+  protected List<AbstractNodeWrapper> extraNodeWrappers = Collections.emptyList();
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
@@ -111,7 +108,7 @@ public abstract class AbstractEnv implements BaseEnv {
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
   private List<String> configNodeKillPoints = new ArrayList<>();
   private List<String> dataNodeKillPoints = new ArrayList<>();
-  private List<String> streamNodeKillPoints = new ArrayList<>();
+  protected List<String> extraNodeKillPoints = new ArrayList<>();
 
   /**
    * This config object stores the properties set by developers during the test. It will be cleared
@@ -172,26 +169,10 @@ public abstract class AbstractEnv implements BaseEnv {
 
   protected void initEnvironment(
       final int configNodesNum, final int dataNodesNum, final int testWorkingRetryCount) {
-    initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount, false);
-  }
-
-  protected void initEnvironment(
-      final int configNodesNum,
-      final int dataNodesNum,
-      final int retryCount,
-      final boolean addAINode) {
-    initEnvironment(configNodesNum, dataNodesNum, retryCount, addAINode, 0);
-  }
-
-  protected void initEnvironment(
-      final int configNodesNum,
-      final int dataNodesNum,
-      final int retryCount,
-      final boolean addAINode,
-      final int streamNodesNum) {
     this.retryCount = retryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
+    this.extraNodeWrappers = new ArrayList<>();
 
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
@@ -270,55 +251,22 @@ public abstract class AbstractEnv implements BaseEnv {
       throw new AssertionError();
     }
 
-    if (addAINode) {
-      this.aiNodeWrapperList = new ArrayList<>();
-      startAINode(seedConfigNode, this.dataNodeWrapperList.get(0).getPort(), testClassName);
-    }
-
-    if (streamNodesNum > 0) {
-      this.streamNodeWrapperList = new ArrayList<>();
-      final List<String> streamNodeEndpoints = new ArrayList<>();
-      final RequestDelegate<Void> streamNodesDelegate =
-          new ParallelRequestDelegate<>(streamNodeEndpoints, NODE_START_TIMEOUT, this);
-
-      for (int i = 0; i < streamNodesNum; i++) {
-        StreamNodeWrapper streamNodeWrapper = newStreamNode();
-        streamNodeEndpoints.add(streamNodeWrapper.getIpAndPortString());
-        this.streamNodeWrapperList.add(streamNodeWrapper);
-        streamNodesDelegate.addRequest(
-            () -> {
-              streamNodeWrapper.start();
-              return null;
-            });
-      }
-
-      try {
-        streamNodesDelegate.requestAll();
-      } catch (final SQLException e) {
-        logger.error("Start streamNodes failed", e);
-        throw new AssertionError();
-      }
-    }
+    initExtraNodes(seedConfigNode, this.dataNodeWrapperList.get(0).getPort());
 
     checkClusterStatusWithoutUnknown();
   }
 
-  private StreamNodeWrapper newStreamNode() {
-    final StreamNodeWrapper streamNodeWrapper =
-        new StreamNodeWrapper(
-            configNodeWrapperList.get(0).getIpAndPortString(),
-            getTestClassName(),
-            testMethodName,
-            EnvUtils.searchAvailablePorts(),
-            index,
-            this instanceof MultiClusterEnv,
-            startTime);
-
-    streamNodeWrapper.createNodeDir();
-    streamNodeWrapper.changeConfig();
-    streamNodeWrapper.createLogDir();
-    streamNodeWrapper.setKillPoints(streamNodeKillPoints);
-    return streamNodeWrapper;
+  /**
+   * Hook for subclasses to create and start extra node types (e.g., AINode, StreamNode) beyond the
+   * core ConfigNode and DataNode. Subclasses should create node wrappers, add them to {@link
+   * #extraNodeWrappers}, and start them.
+   *
+   * @param seedConfigNode the ip:port of the seed ConfigNode
+   * @param dataNodePort the port of the first DataNode (useful for nodes that need it, e.g.,
+   *     AINode)
+   */
+  protected void initExtraNodes(final String seedConfigNode, final int dataNodePort) {
+    // Default: no extra nodes. Subclasses override to add nodes.
   }
 
   private ConfigNodeWrapper newConfigNode() {
@@ -362,39 +310,6 @@ public abstract class AbstractEnv implements BaseEnv {
     dataNodeWrapper.createLogDir();
     dataNodeWrapper.setKillPoints(dataNodeKillPoints);
     return dataNodeWrapper;
-  }
-
-  private void startAINode(
-      final String seedConfigNode, final int clusterIngressPort, final String testClassName) {
-    final String aiNodeEndPoint;
-    final AINodeWrapper aiNodeWrapper =
-        new AINodeWrapper(
-            seedConfigNode,
-            clusterIngressPort,
-            testClassName,
-            testMethodName,
-            index,
-            EnvUtils.searchAvailablePorts(),
-            startTime);
-    aiNodeWrapperList.add(aiNodeWrapper);
-    aiNodeEndPoint = aiNodeWrapper.getIpAndPortString();
-    aiNodeWrapper.createNodeDir();
-    aiNodeWrapper.createLogDir();
-    final RequestDelegate<Void> aiNodesDelegate =
-        new ParallelRequestDelegate<>(
-            Collections.singletonList(aiNodeEndPoint), NODE_START_TIMEOUT, this);
-
-    aiNodesDelegate.addRequest(
-        () -> {
-          aiNodeWrapper.start();
-          return null;
-        });
-
-    try {
-      aiNodesDelegate.requestAll();
-    } catch (final SQLException e) {
-      logger.error("Start aiNodes failed", e);
-    }
   }
 
   public String getTestClassName() {
@@ -488,8 +403,7 @@ public abstract class AbstractEnv implements BaseEnv {
         if (showClusterResp.getNodeStatus().size()
             != configNodeWrapperList.size()
                 + dataNodeWrapperList.size()
-                + aiNodeWrapperList.size()
-                + streamNodeWrapperList.size()) {
+                + extraNodeWrappers.size()) {
           passed = false;
           nodeSizePassed = false;
           actualNodeSize = showClusterResp.getNodeStatusSize();
@@ -521,15 +435,7 @@ public abstract class AbstractEnv implements BaseEnv {
             processStatusMap.put(nodeWrapper, 0);
           }
         }
-        for (AINodeWrapper nodeWrapper : aiNodeWrapperList) {
-          boolean alive = nodeWrapper.getInstance().isAlive();
-          if (!alive) {
-            processStatusMap.put(nodeWrapper, nodeWrapper.getInstance().waitFor());
-          } else {
-            processStatusMap.put(nodeWrapper, 0);
-          }
-        }
-        for (StreamNodeWrapper nodeWrapper : streamNodeWrapperList) {
+        for (AbstractNodeWrapper nodeWrapper : extraNodeWrappers) {
           boolean alive = nodeWrapper.getInstance().isAlive();
           if (!alive) {
             processStatusMap.put(nodeWrapper, nodeWrapper.getInstance().waitFor());
@@ -632,24 +538,14 @@ public abstract class AbstractEnv implements BaseEnv {
               configNodeWrapper.start();
             }
           }
-          for (AINodeWrapper aiNodeWrapper : aiNodeWrapperList) {
-            if (portOccupationMap.containsValue(aiNodeWrapper.getPid())) {
+          for (AbstractNodeWrapper extraNodeWrapper : extraNodeWrappers) {
+            if (portOccupationMap.containsValue(extraNodeWrapper.getPid())) {
               logger.info(
-                  "A port is occupied by another AINode {}-{}, restart it",
-                  aiNodeWrapper.getIpAndPortString(),
-                  aiNodeWrapper.getPid());
-              aiNodeWrapper.stop();
-              aiNodeWrapper.start();
-            }
-          }
-          for (StreamNodeWrapper streamNodeWrapper : streamNodeWrapperList) {
-            if (portOccupationMap.containsValue(streamNodeWrapper.getPid())) {
-              logger.info(
-                  "A port is occupied by another StreamNode {}-{}, restart it",
-                  streamNodeWrapper.getIpAndPortString(),
-                  streamNodeWrapper.getPid());
-              streamNodeWrapper.stop();
-              streamNodeWrapper.start();
+                  "A port is occupied by another node {}-{}, restart it",
+                  extraNodeWrapper.getIpAndPortString(),
+                  extraNodeWrapper.getPid());
+              extraNodeWrapper.stop();
+              extraNodeWrapper.start();
             }
           }
         } catch (IOException e) {
@@ -666,8 +562,8 @@ public abstract class AbstractEnv implements BaseEnv {
   public void cleanClusterEnvironment() {
     final List<AbstractNodeWrapper> allNodeWrappers =
         Stream.concat(
-                dataNodeWrapperList.stream(),
-                Stream.concat(configNodeWrapperList.stream(), aiNodeWrapperList.stream()))
+                Stream.concat(configNodeWrapperList.stream(), dataNodeWrapperList.stream()),
+                extraNodeWrappers.stream())
             .collect(Collectors.toList());
     allNodeWrappers.stream()
         .findAny()
@@ -1119,6 +1015,7 @@ public abstract class AbstractEnv implements BaseEnv {
   public List<AbstractNodeWrapper> getNodeWrapperList() {
     final List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
     result.addAll(dataNodeWrapperList);
+    result.addAll(extraNodeWrappers);
     return result;
   }
 
@@ -1614,6 +1511,11 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void registerDataNodeKillPoints(final List<String> killPoints) {
     this.dataNodeKillPoints = killPoints;
+  }
+
+  @Override
+  public void registerExtraNodeKillPoints(final List<String> killPoints) {
+    this.extraNodeKillPoints = killPoints;
   }
 
   public void clearClientManager() {

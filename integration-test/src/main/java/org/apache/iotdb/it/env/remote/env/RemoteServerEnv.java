@@ -519,4 +519,9 @@ public class RemoteServerEnv implements BaseEnv {
   public void registerDataNodeKillPoints(List<String> killPoints) {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public void registerExtraNodeKillPoints(List<String> killPoints) {
+    throw new UnsupportedOperationException();
+  }
 }
