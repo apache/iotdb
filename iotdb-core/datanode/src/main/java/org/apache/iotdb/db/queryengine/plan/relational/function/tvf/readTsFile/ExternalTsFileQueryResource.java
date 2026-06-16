@@ -283,9 +283,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       if (deviceEntryComparator != null) {
         pendingDeviceTasks.sort(
             (left, right) ->
-                deviceEntryComparator.compare(
-                    sharedDeviceEntries.get(left.deviceEntryIndex),
-                    sharedDeviceEntries.get(right.deviceEntryIndex)));
+                compareDeviceEntryIndexes(left.deviceEntryIndex, right.deviceEntryIndex));
       } else {
         pendingDeviceTasks.sort(
             (left, right) ->
@@ -345,10 +343,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
     private void sortDeviceEntries() {
       if (deviceEntryComparator != null) {
-        deviceEntryIndexes.sort(
-            (left, right) ->
-                deviceEntryComparator.compare(
-                    sharedDeviceEntries.get(left), sharedDeviceEntries.get(right)));
+        deviceEntryIndexes.sort(ExternalTsFileQueryResource.this::compareDeviceEntryIndexes);
       } else {
         deviceEntryIndexes.sort(
             (left, right) ->
@@ -366,6 +361,15 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     private List<DeviceTask> getPendingDeviceTasks() {
       return pendingDeviceTasks;
     }
+  }
+
+  private int compareDeviceEntryIndexes(int leftIndex, int rightIndex) {
+    int result =
+        deviceEntryComparator.compare(
+            sharedDeviceEntries.get(leftIndex), sharedDeviceEntries.get(rightIndex));
+    // Use the stable device entry index as a tie-breaker so list sorting and run-file merging keep
+    // the same deterministic order when the pushed-down comparator is not a total order.
+    return result != 0 ? result : Integer.compare(leftIndex, rightIndex);
   }
 
   private void createDeviceTaskPartitions(int partitionCount) {
@@ -420,8 +424,9 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
           usePriorityQueue
               ? new PriorityQueue<>(
                   (left, right) ->
-                      comparator.compare(
-                          left.getCurrentDeviceEntry(), right.getCurrentDeviceEntry()))
+                      compareDeviceEntryIndexes(
+                          left.getCurrentDeviceTask().deviceEntryIndex,
+                          right.getCurrentDeviceTask().deviceEntryIndex))
               : new ArrayDeque<>();
       for (Path runFile : partition.getRunFiles()) {
         DeviceTaskRunCursor cursor = new DiskDeviceTaskRunCursor(runFile, sharedDeviceEntries);
