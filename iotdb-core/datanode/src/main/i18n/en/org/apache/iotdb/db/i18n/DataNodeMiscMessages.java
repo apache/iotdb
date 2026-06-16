@@ -779,6 +779,11 @@ public final class DataNodeMiscMessages {
       "Exception {} occurred when {} execute receiver subtask";
   public static final String EXCEPTION_CONSTRUCT_TABLET_ITERATOR =
       "Exception {} occurred when {} construct ToTabletIterator";
+  public static final String EXCEPTION_EMIT_EVENTS_BEFORE_COMMIT_TERMINATE_EVENT =
+      "Subscription: SubscriptionPrefetchingQueue {} failed to emit remaining events before "
+          + "committing PipeTerminateEvent {}";
+  public static final String COMMIT_TERMINATE_EVENT =
+      "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}";
 
   // ---------------------------------------------------------------------------
   // consensus – BaseStateMachine

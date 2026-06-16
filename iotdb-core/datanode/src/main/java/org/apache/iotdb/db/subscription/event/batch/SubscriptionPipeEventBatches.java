@@ -142,6 +142,35 @@ public class SubscriptionPipeEventBatches {
     return hasNew.get();
   }
 
+  public boolean emitAll(final Consumer<SubscriptionEvent> consumer) throws Exception {
+    final AtomicBoolean hasNew = new AtomicBoolean(false);
+    Exception exception = null;
+    for (final int regionId : ImmutableList.copyOf(regionIdToBatch.keySet())) {
+      try {
+        segmentLock.lock(regionId);
+        final SubscriptionPipeEventBatch batch = regionIdToBatch.get(regionId);
+        if (Objects.isNull(batch)) {
+          continue;
+        }
+        if (batch.emit(consumer)) {
+          hasNew.set(true);
+          regionIdToBatch.remove(regionId);
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            DataNodeMiscMessages.EXCEPTION_SEALING_EVENTS, regionIdToBatch.get(regionId), e);
+        exception = e;
+      } finally {
+        segmentLock.unlock(regionId);
+      }
+    }
+
+    if (Objects.nonNull(exception)) {
+      throw exception;
+    }
+    return hasNew.get();
+  }
+
   public void cleanUp() {
     regionIdToBatch.values().forEach(batch -> batch.cleanUp(true));
     regionIdToBatch.clear();
