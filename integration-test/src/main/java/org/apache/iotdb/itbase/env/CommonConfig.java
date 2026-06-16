@@ -113,9 +113,6 @@ public interface CommonConfig {
   CommonConfig setEnableAutoLeaderBalanceForRatisConsensus(
       boolean enableAutoLeaderBalanceForRatisConsensus);
 
-  CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus);
-
   CommonConfig setQueryThreadCount(int queryThreadCount);
 
   CommonConfig setWalBufferSize(int walBufferSize);

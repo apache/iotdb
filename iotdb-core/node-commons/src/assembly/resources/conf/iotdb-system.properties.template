@@ -842,13 +842,6 @@ region_group_scalein_policy=CAR
 # Datatype: Boolean
 enable_auto_leader_balance_for_ratis_consensus=true
 
-# Whether to enable auto leader balance for IoTConsensus protocol.
-# The ConfigNode-leader will balance the leader of IoTConsensus-RegionGroups by leader_distribution_policy if set true.
-# Notice: Default is true because the IoTConsensus depends on this function to distribute leader.
-# effectiveMode: restart
-# Datatype: Boolean
-enable_auto_leader_balance_for_iot_consensus=true
-
 # The maximum transit size in byte per second for migration tasks in each DataNode.
 # Takes effect only for IoTConsensus protocol.
 # Values less than or equal to 0 means no limit.

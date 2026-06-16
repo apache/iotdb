@@ -71,7 +71,6 @@ public class IoTDBMultiDBRegionGroupLeaderDistributionIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setEnableAutoLeaderBalanceForIoTConsensus(true)
         .setDataReplicationFactor(TEST_REPLICATION_FACTOR)
         .setDataRegionConsensusProtocolClass(TEST_DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
     EnvFactory.getEnv().initClusterEnvironment(1, TEST_DATA_NODE_NUM);

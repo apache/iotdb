@@ -354,14 +354,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    cnConfig.setEnableAutoLeaderBalanceForIoTConsensus(enableAutoLeaderBalanceForIoTConsensus);
-    dnConfig.setEnableAutoLeaderBalanceForIoTConsensus(enableAutoLeaderBalanceForIoTConsensus);
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     cnConfig.setQueryThreadCount(queryThreadCount);
     dnConfig.setQueryThreadCount(queryThreadCount);

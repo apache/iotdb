@@ -251,9 +251,6 @@ public class ConfigNodeConfig {
   /** Whether to enable auto leader balance for Ratis consensus protocol. */
   private boolean enableAutoLeaderBalanceForRatisConsensus = true;
 
-  /** Whether to enable auto leader balance for IoTConsensus protocol. */
-  private boolean enableAutoLeaderBalanceForIoTConsensus = true;
-
   /** The route priority policy of cluster read/write requests. */
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
 
@@ -800,15 +797,6 @@ public class ConfigNodeConfig {
   public void setEnableAutoLeaderBalanceForRatisConsensus(
       boolean enableAutoLeaderBalanceForRatisConsensus) {
     this.enableAutoLeaderBalanceForRatisConsensus = enableAutoLeaderBalanceForRatisConsensus;
-  }
-
-  public boolean isEnableAutoLeaderBalanceForIoTConsensus() {
-    return enableAutoLeaderBalanceForIoTConsensus;
-  }
-
-  public void setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    this.enableAutoLeaderBalanceForIoTConsensus = enableAutoLeaderBalanceForIoTConsensus;
   }
 
   public String getRoutePriorityPolicy() {

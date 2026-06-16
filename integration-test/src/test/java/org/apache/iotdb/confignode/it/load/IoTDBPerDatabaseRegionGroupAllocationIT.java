@@ -79,9 +79,7 @@ public class IoTDBPerDatabaseRegionGroupAllocationIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setDataReplicationFactor(TEST_REPLICATION_FACTOR)
         .setDataRegionGroupExtensionPolicy("CUSTOM")
-        .setDefaultDataRegionGroupNumPerDatabase(TEST_DATA_REGION_GROUP_NUM_PER_DATABASE)
-        // Avoid auto leader balancing rearranging anything during the test
-        .setEnableAutoLeaderBalanceForIoTConsensus(false);
+        .setDefaultDataRegionGroupNumPerDatabase(TEST_DATA_REGION_GROUP_NUM_PER_DATABASE);
     EnvFactory.getEnv().initClusterEnvironment(1, TEST_DATA_NODE_NUM);
   }
 
@@ -128,6 +126,10 @@ public class IoTDBPerDatabaseRegionGroupAllocationIT {
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(partitionSlotsMap));
         Assert.assertEquals(
+            "Failed to create DataPartitions for "
+                + currentDatabase
+                + ": "
+                + dataPartitionTableResp.getStatus(),
             TSStatusCode.SUCCESS_STATUS.getStatusCode(),
             dataPartitionTableResp.getStatus().getCode());
       }

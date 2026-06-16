@@ -458,12 +458,6 @@ public class ConfigNodeDescriptor {
                 "enable_auto_leader_balance_for_ratis_consensus",
                 String.valueOf(conf.isEnableAutoLeaderBalanceForRatisConsensus()))));
 
-    conf.setEnableAutoLeaderBalanceForIoTConsensus(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_auto_leader_balance_for_iot_consensus",
-                String.valueOf(conf.isEnableAutoLeaderBalanceForIoTConsensus()))));
-
     conf.setEnableSeparationOfPowers(
         Boolean.parseBoolean(
             properties.getProperty(

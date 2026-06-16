@@ -73,7 +73,6 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         .getConfig()
         .getCommonConfig()
         .setEnableAutoLeaderBalanceForRatisConsensus(true)
-        .setEnableAutoLeaderBalanceForIoTConsensus(true)
         .setSchemaRegionConsensusProtocolClass(TEST_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS)
         .setDataRegionConsensusProtocolClass(TEST_DATA_REGION_CONSENSUS_PROTOCOL_CLASS)
         .setSchemaReplicationFactor(TEST_REPLICATION_FACTOR)
