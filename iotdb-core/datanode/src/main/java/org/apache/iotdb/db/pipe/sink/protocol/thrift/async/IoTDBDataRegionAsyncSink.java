@@ -1022,7 +1022,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     private final AtomicLong currentBackoffTimeInMs =
         new AtomicLong(
             Math.min(
-                Math.max(0, PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs()),
+                Math.max(1, PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs()),
                 maxBackoffTimeInMs));
     private final AtomicLong nextAvailableTimeInMs = new AtomicLong(0);
 
