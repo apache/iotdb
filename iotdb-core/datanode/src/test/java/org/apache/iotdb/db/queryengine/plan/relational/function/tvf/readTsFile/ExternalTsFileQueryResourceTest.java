@@ -77,7 +77,7 @@ public class ExternalTsFileQueryResourceTest {
     partition.add(task(1, offset(0, 20, 29)));
     partition.flush();
 
-    try (DeviceTaskRunReader reader = resource.new DeviceTaskRunReader(partition)) {
+    try (DeviceTaskRunReader reader = newReader(partition)) {
       assertDeviceOrder(reader, "d1", "d2", "d3", "d4", "d5");
     }
   }
@@ -96,7 +96,7 @@ public class ExternalTsFileQueryResourceTest {
     partition.add(task(3, offset(0, 40, 49)));
     partition.flush();
 
-    try (DeviceTaskRunReader reader = resource.new DeviceTaskRunReader(partition)) {
+    try (DeviceTaskRunReader reader = newReader(partition)) {
       assertDeviceOrder(reader, "d3", "d1", "d2", "d4");
     }
   }
@@ -114,7 +114,7 @@ public class ExternalTsFileQueryResourceTest {
     partition.add(task(2, offset(0, 30, 39)));
     partition.finish();
 
-    try (DeviceTaskRunReader reader = resource.new DeviceTaskRunReader(partition)) {
+    try (DeviceTaskRunReader reader = newReader(partition)) {
       assertDeviceOrder(reader, "d2", "d1", "d3");
     }
   }
@@ -127,7 +127,7 @@ public class ExternalTsFileQueryResourceTest {
     partition.add(task(0, offset(0, 11, 22), offset(1, 33, 44)));
     partition.finish();
 
-    try (DeviceTaskRunReader reader = resource.new DeviceTaskRunReader(partition)) {
+    try (DeviceTaskRunReader reader = newReader(partition)) {
       assertTrue(reader.nextDevice());
       Map<TsFileResource, DeviceOffset> offsetMap = reader.getCurrentDeviceOffsetMap();
       List<TsFileResource> sharedResources = resource.getSharedTsFileResources();
@@ -154,6 +154,11 @@ public class ExternalTsFileQueryResourceTest {
     queryContext.setTimeOut(Long.MAX_VALUE);
     return new ExternalTsFileQueryResource(
         queryContext, root.toPath().resolve("tmp"), "table1", tsFilePaths);
+  }
+
+  private DeviceTaskRunReader newReader(DeviceTaskPartition partition) {
+    resource.getDeviceTaskPartitions().add(partition);
+    return resource.getDeviceTaskRunReader(partition.getPartitionIndex());
   }
 
   private void addDevices(String... deviceNames) {
