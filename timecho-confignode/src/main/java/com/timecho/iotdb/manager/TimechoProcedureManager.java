@@ -38,7 +38,11 @@ public class TimechoProcedureManager extends ProcedureManager {
       EnableSeparationOfAdminPowersProcedure procedure =
           new EnableSeparationOfAdminPowersProcedure(plan);
       getExecutor().submitProcedure(procedure);
-      return waitingProcedureFinished(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        status.unsetMessage();
+      }
+      return status;
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())
           .setMessage(e.getMessage());

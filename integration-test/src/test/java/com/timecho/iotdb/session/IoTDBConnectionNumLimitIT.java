@@ -10,10 +10,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.iotdb.db.it.auth.IoTDBAuthIT.validateResultSet;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
@@ -29,15 +35,53 @@ public class IoTDBConnectionNumLimitIT {
     // Init 1C1D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
 
-    Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    Connection adminCon = null;
+    try {
+      adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
 
-    Assert.assertThrows(
-        SQLException.class,
-        () -> {
-          EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        });
-    adminCon.close();
-    EnvFactory.getEnv().cleanClusterEnvironment();
+      SQLException exception =
+          Assert.assertThrows(
+              SQLException.class,
+              () -> EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT));
+      Assert.assertTrue(
+          exception.getMessage(),
+          exception.getMessage().contains("There are not enough connection resources available"));
+    } finally {
+      if (adminCon != null) {
+        adminCon.close();
+      }
+      EnvFactory.getEnv().cleanClusterEnvironment();
+    }
+  }
+
+  @Test
+  public void testCliConnectionResourceLimitError() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDnRpcMaxConcurrentClientNum(2);
+
+    // Init 1C1D cluster environment
+    EnvFactory.getEnv().initClusterEnvironment(1, 1);
+
+    Connection adminCon = null;
+    try {
+      adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+
+      CliResult cliResult = executeCliCommand("show cluster");
+      Assert.assertEquals(cliResult.output, 1, cliResult.exitCode);
+      Assert.assertTrue(
+          cliResult.output, cliResult.output.contains("Error: Can't execute sql because"));
+      Assert.assertTrue(
+          cliResult.output,
+          cliResult.output.contains("There are not enough connection resources available"));
+      Assert.assertTrue(
+          cliResult.output,
+          cliResult.output.contains("Connection reset")
+              || cliResult.output.contains("Socket is closed by peer"));
+    } finally {
+      if (adminCon != null) {
+        adminCon.close();
+      }
+      EnvFactory.getEnv().cleanClusterEnvironment();
+    }
   }
 
   @Test
@@ -61,12 +105,19 @@ public class IoTDBConnectionNumLimitIT {
           EnvFactory.getEnv().getConnection("user3", "user31234567890D@", BaseEnv.TREE_SQL_DIALECT);
       adminStmt.execute("ALTER USer user3 SET MAX_SESSION_PER_USER 1");
       Assert.assertTrue(!user3_1.isClosed()); //
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            EnvFactory.getEnv()
-                .getConnection("user3", "user31234567890D@", BaseEnv.TREE_SQL_DIALECT);
-          });
+      SQLException maxSessionExceededException =
+          Assert.assertThrows(
+              SQLException.class,
+              () -> {
+                EnvFactory.getEnv()
+                    .getConnection("user3", "user31234567890D@", BaseEnv.TREE_SQL_DIALECT);
+              });
+      Assert.assertTrue(
+          maxSessionExceededException.getMessage(),
+          maxSessionExceededException
+              .getMessage()
+              .contains(
+                  "The current number of connections for user user3 has reached its maximum limit. Please try again later."));
       adminStmt.execute("ALTER USer user3 SET MAX_SESSION_PER_USER 2");
       Assert.assertTrue(!user3_1.isClosed());
       Assert.assertThrows(
@@ -269,12 +320,19 @@ public class IoTDBConnectionNumLimitIT {
               .getConnection("user3", "user31234567890D@", BaseEnv.TABLE_SQL_DIALECT);
       adminStmt.execute("ALTER USer user3 SET MAX_SESSION_PER_USER 1");
       Assert.assertTrue(!user3_1.isClosed()); //
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            EnvFactory.getEnv()
-                .getConnection("user3", "user31234567890D@", BaseEnv.TABLE_SQL_DIALECT);
-          });
+      SQLException maxSessionExceededException =
+          Assert.assertThrows(
+              SQLException.class,
+              () -> {
+                EnvFactory.getEnv()
+                    .getConnection("user3", "user31234567890D@", BaseEnv.TABLE_SQL_DIALECT);
+              });
+      Assert.assertTrue(
+          maxSessionExceededException.getMessage(),
+          maxSessionExceededException
+              .getMessage()
+              .contains(
+                  "The current number of connections for user user3 has reached its maximum limit. Please try again later."));
       adminStmt.execute("ALTER USer user3 SET MAX_SESSION_PER_USER 2");
       Assert.assertTrue(!user3_1.isClosed());
       Assert.assertThrows(
@@ -842,5 +900,53 @@ public class IoTDBConnectionNumLimitIT {
     user3Conn.close();
 
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  private CliResult executeCliCommand(String sql) throws IOException, InterruptedException {
+    String sbinPath = EnvFactory.getEnv().getSbinPath();
+    String libPath = EnvFactory.getEnv().getLibPath();
+    String homePath =
+        libPath.substring(0, libPath.lastIndexOf(File.separator + "lib" + File.separator + "*"));
+    ProcessBuilder builder =
+        new ProcessBuilder(
+            "bash",
+            sbinPath + File.separator + "start-cli.sh",
+            "-h",
+            EnvFactory.getEnv().getIP(),
+            "-p",
+            EnvFactory.getEnv().getPort(),
+            "-u",
+            "root",
+            "-pw",
+            "TimechoDB@2021",
+            "-sql_dialect",
+            "table",
+            "-e",
+            "\"" + sql + "\"");
+    builder.environment().put("IOTDB_HOME", homePath);
+    builder.redirectErrorStream(true);
+
+    Process process = builder.start();
+    List<String> outputLines = new ArrayList<>();
+    try (BufferedReader reader =
+        new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        outputLines.add(line);
+      }
+    }
+
+    int exitCode = process.waitFor();
+    return new CliResult(exitCode, String.join(System.lineSeparator(), outputLines));
+  }
+
+  private static class CliResult {
+    private final int exitCode;
+    private final String output;
+
+    private CliResult(int exitCode, String output) {
+      this.exitCode = exitCode;
+      this.output = output;
+    }
   }
 }
