@@ -219,6 +219,38 @@ public class ShowReceiversOperatorTest {
   }
 
   @Test
+  public void testShowReceiversWritesUnknownPipeIdsAndTimesForUnboundSession() {
+    registry.registerOrUpdateSession(
+        "data-legacy",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        PipeReceiverRuntimeRegistry.UNKNOWN,
+        null,
+        Long.MIN_VALUE,
+        0);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(null, new PlanNodeId("show-receivers"));
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(1, tsBlock.getPositionCount());
+    assertEquals("9001", getText(tsBlock, 4));
+    assertEquals(1, tsBlock.getColumn(5).getInt(0));
+    assertEquals(0, tsBlock.getColumn(6).getInt(0));
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 7));
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 9));
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 10));
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 11));
+    assertFalse(operator.hasNext());
+  }
+
+  @Test
   public void testNormalUserOnlySeesOwnReceiverSnapshots() {
     registerUserSession("data-user1", "10.0.0.1", 9001, "user1", "cluster-a", "pipe-a", 1, 100);
     registerUserSession("data-user2", "10.0.0.2", 9002, "user2", "cluster-b", "pipe-b", 2, 200);

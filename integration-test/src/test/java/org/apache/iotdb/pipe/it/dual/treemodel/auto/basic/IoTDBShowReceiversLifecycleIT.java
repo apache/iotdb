@@ -89,7 +89,44 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
   }
 
+  @Test
+  public void testShowReceiversIncludesDataNodeAndConfigNodeReceivers() throws Exception {
+    final String database = "root.show_receivers_config_node";
+    final String pipeName = "show_receivers_config_node_pipe";
+
+    createThriftPipe(database, pipeName, "all");
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create timeseries " + database + ".d1.s2 with datatype=BOOLEAN, encoding=PLAIN",
+            "insert into " + database + ".d1(time, s1, s2) values (2, 2, true)",
+            "flush"),
+        null);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries " + database + ".**",
+        "count(timeseries),",
+        Collections.singleton("2,"));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select count(s1) from " + database + ".d1",
+        "count(" + database + ".d1.s1),",
+        Collections.singleton("2,"));
+
+    assertShowReceiversContainDataNodeAndConfigNode(
+        "show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
+    assertShowReceiversContainDataNodeAndConfigNode(
+        "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
+  }
+
   private void createThriftPipe(final String database, final String pipeName) throws Exception {
+    createThriftPipe(database, pipeName, "data.insert");
+  }
+
+  private void createThriftPipe(
+      final String database, final String pipeName, final String sourceInclusion) throws Exception {
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
@@ -106,7 +143,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
     final Map<String, String> sinkAttributes = new HashMap<>();
 
     sourceAttributes.put("source.pattern", database + ".**");
-    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("source.inclusion", sourceInclusion);
     sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
     sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -192,5 +229,42 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
       }
       return false;
     }
+  }
+
+  private void assertShowReceiversContainDataNodeAndConfigNode(
+      final String sql, final String sqlDialect, final String pipeName) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(1L, TimeUnit.SECONDS)
+        .pollInterval(1L, TimeUnit.SECONDS)
+        .atMost(60L, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> Assert.assertTrue(hasDataNodeAndConfigNodeReceivers(sql, sqlDialect, pipeName)));
+  }
+
+  private boolean hasDataNodeAndConfigNodeReceivers(
+      final String sql, final String sqlDialect, final String pipeName) throws SQLException {
+    boolean hasDataNode = false;
+    boolean hasConfigNode = false;
+    try (final Connection connection =
+            receiverEnv.getConnection(
+                SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet = statement.executeQuery(sql)) {
+      while (resultSet.next()) {
+        final String receiverNodeType = resultSet.getString(1);
+        final String protocol = resultSet.getString(3);
+        final String pipeIds = resultSet.getString(8);
+        if (!"thrift".equals(protocol) || pipeIds == null || !pipeIds.contains(pipeName + "@")) {
+          continue;
+        }
+        if ("DataNode".equals(receiverNodeType)) {
+          hasDataNode = true;
+        } else if ("ConfigNode".equals(receiverNodeType)) {
+          hasConfigNode = true;
+        }
+      }
+    }
+    return hasDataNode && hasConfigNode;
   }
 }
