@@ -358,8 +358,6 @@ public interface BaseEnv {
 
   void registerDataNodeKillPoints(List<String> killPoints);
 
-  void registerExtraNodeKillPoints(List<String> killPoints);
-
   static Properties constructProperties(String username, String password, String sqlDialect) {
     Properties info = new Properties();
 

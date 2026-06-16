@@ -1513,11 +1513,6 @@ public abstract class AbstractEnv implements BaseEnv {
     this.dataNodeKillPoints = killPoints;
   }
 
-  @Override
-  public void registerExtraNodeKillPoints(final List<String> killPoints) {
-    this.extraNodeKillPoints = killPoints;
-  }
-
   public void clearClientManager() {
     clientManager.clearAll();
   }
