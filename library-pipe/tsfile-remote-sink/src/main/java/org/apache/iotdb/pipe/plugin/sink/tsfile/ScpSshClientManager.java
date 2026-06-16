@@ -25,7 +25,9 @@ import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
 import org.apache.sshd.client.SshClient;
+import org.apache.sshd.client.future.ConnectFuture;
 import org.apache.sshd.client.session.ClientSession;
+import org.apache.sshd.common.future.CancelOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -191,11 +193,21 @@ class ScpSshClientManager {
 
     @Override
     public ClientSession create(final ScpConnectionKey key) throws Exception {
-      final ClientSession session =
-          getClient().connect(key.user, key.host, key.port).verify(CONNECT_TIMEOUT_MS).getSession();
-      session.addPasswordIdentity(key.password != null ? key.password : "");
-      session.auth().verify(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-      return session;
+      ConnectFuture connectFuture = null;
+      ClientSession session = null;
+      try {
+        connectFuture = getClient().connect(key.user, key.host, key.port);
+        session =
+            connectFuture.verify(CONNECT_TIMEOUT_MS, CancelOption.CANCEL_ON_TIMEOUT).getSession();
+        session.addPasswordIdentity(key.password != null ? key.password : "");
+        session
+            .auth()
+            .verify(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS, CancelOption.CANCEL_ON_TIMEOUT);
+        return session;
+      } catch (final Exception e) {
+        cleanupFailedSessionCreation(key, session, connectFuture);
+        throw e;
+      }
     }
 
     @Override
@@ -272,6 +284,23 @@ class ScpSshClientManager {
   private static void closeSessionQuietly(final ClientSession session) {
     if (session != null) {
       session.close(true);
+    }
+  }
+
+  private static void cleanupFailedSessionCreation(
+      final ScpConnectionKey key, final ClientSession session, final ConnectFuture connectFuture) {
+    if (session != null) {
+      closeSessionQuietly(session);
+      return;
+    }
+    if (connectFuture == null) {
+      return;
+    }
+
+    try {
+      connectFuture.cancel().verify(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    } catch (final Exception cancelException) {
+      LOGGER.debug("Failed to cancel SCP connection attempt for {}", key, cancelException);
     }
   }
 
