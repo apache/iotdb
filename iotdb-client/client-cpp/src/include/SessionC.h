@@ -105,7 +105,6 @@ typedef enum {
 
 typedef enum { TS_COL_TAG = 0, TS_COL_FIELD = 1, TS_COL_ATTRIBUTE = 2 } TSColumnCategory_C;
 
-/** Calendar date for TS_TYPE_DATE typed inserts; pass a pointer via values[]. */
 typedef struct {
   int year;
   int month;
