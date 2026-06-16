@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -32,7 +33,9 @@ public class ExternalTsFileDeviceFilterVisitor extends SchemaFilterVisitor<IDevi
   @Override
   protected Boolean visitNode(final SchemaFilter filter, final IDeviceID deviceID) {
     throw new UnsupportedOperationException(
-        "The schema filter type " + filter.getSchemaFilterType() + " is not supported");
+        String.format(
+            DataNodeQueryMessages.SCHEMA_FILTER_TYPE_IS_NOT_SUPPORTED,
+            filter.getSchemaFilterType()));
   }
 
   @Override
@@ -45,6 +48,7 @@ public class ExternalTsFileDeviceFilterVisitor extends SchemaFilterVisitor<IDevi
   @Override
   public Boolean visitAttributeFilter(final AttributeFilter filter, final IDeviceID deviceID) {
     throw new UnsupportedOperationException(
-        "Attribute filter is not supported for external TsFile device filtering");
+        DataNodeQueryMessages
+            .ATTRIBUTE_FILTER_IS_NOT_SUPPORTED_FOR_EXTERNAL_TSFILE_DEVICE_FILTERING);
   }
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -149,7 +150,8 @@ public class ExternalTsFileAggregationScanNode extends AggregationTableScanNode 
   @Override
   public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
     throw new UnsupportedOperationException(
-        "ExternalTsFileAggregationScanNode device entries must be set by device entry indexes");
+        DataNodeQueryMessages
+            .EXTERNAL_TSFILE_AGGREGATION_SCAN_NODE_DEVICE_ENTRIES_MUST_BE_SET_BY_DEVICE_ENTRY_INDEXES);
   }
 
   public SchemaFilter getSchemaFilter() {
@@ -163,13 +165,13 @@ public class ExternalTsFileAggregationScanNode extends AggregationTableScanNode 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new UnsupportedOperationException(
-        "ExternalTsFileAggregationScanNode cannot be serialized because it reads local external TsFiles");
+        DataNodeQueryMessages.EXTERNAL_TSFILE_AGGREGATION_SCAN_NODE_CANNOT_BE_SERIALIZED);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException(
-        "ExternalTsFileAggregationScanNode cannot be serialized because it reads local external TsFiles");
+        DataNodeQueryMessages.EXTERNAL_TSFILE_AGGREGATION_SCAN_NODE_CANNOT_BE_SERIALIZED);
   }
 
   @Override

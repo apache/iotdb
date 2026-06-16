@@ -24,10 +24,11 @@ import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.ExternalTsFileDeviceFilterVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -104,7 +105,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       boolean useExactTempRoot) {
     this.queryId = requireNonNull(queryContext, "queryContext is null").getQueryId();
     this.externalTsFileResourceMemoryReservationManager =
-        new ThreadSafeMemoryReservationManager(
+        new NotThreadSafeMemoryReservationManager(
             queryId, ExternalTsFileQueryResource.class.getName());
     this.queryTempRoot =
         useExactTempRoot
@@ -162,7 +163,8 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     try {
       return new DeviceTaskRunReader(partition);
     } catch (IOException e) {
-      throw new RuntimeException("Failed to create external TsFile device task run reader", e);
+      throw new RuntimeException(
+          DataNodeQueryMessages.FAILED_TO_CREATE_EXTERNAL_TSFILE_DEVICE_TASK_RUN_READER, e);
     }
   }
 
@@ -194,7 +196,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       }
     }
     throw new IllegalArgumentException(
-        "Unknown external TsFile device task partition: " + partitionIndex);
+        DataNodeQueryMessages.UNKNOWN_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION + partitionIndex);
   }
 
   @Override
@@ -223,7 +225,8 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
   private void checkNotClosed() {
     if (closed) {
-      throw new IllegalStateException("External TsFile query resource has been closed: " + queryId);
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_BEEN_CLOSED + queryId);
     }
   }
 
@@ -237,10 +240,10 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
           resource.deserialize();
         } catch (IOException e) {
           throw new RuntimeException(
-              "Failed to deserialize external TsFile resource: "
-                  + tsFilePath
-                  + ", "
-                  + e.getMessage(),
+              String.format(
+                  DataNodeQueryMessages.FAILED_TO_DESERIALIZE_EXTERNAL_TSFILE_RESOURCE,
+                  tsFilePath,
+                  e.getMessage()),
               e);
         }
       } else {
@@ -292,7 +295,8 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
                 runFiles.size(),
                 pendingDeviceTasks));
       } catch (IOException e) {
-        throw new RuntimeException("Failed to flush external TsFile device task partition", e);
+        throw new RuntimeException(
+            DataNodeQueryMessages.FAILED_TO_FLUSH_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION, e);
       }
       for (DeviceTask deviceTask : pendingDeviceTasks) {
         deviceEntryIndexes.add(deviceTask.deviceEntryIndex);
@@ -393,7 +397,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   private void createDeviceTaskPartitions(int partitionCount) {
     if (partitionCount <= 0) {
       throw new IllegalArgumentException(
-          "External TsFile device task partition count must be positive");
+          DataNodeQueryMessages.EXTERNAL_TSFILE_DEVICE_TASK_PARTITION_COUNT_MUST_BE_POSITIVE);
     }
     for (int i = 0; i < partitionCount; i++) {
       deviceTaskPartitions.add(new DeviceTaskPartition(i));
@@ -643,7 +647,8 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
         }
       } catch (IOException e) {
         close();
-        throw new RuntimeException("Failed to create external TsFile device collector", e);
+        throw new RuntimeException(
+            DataNodeQueryMessages.FAILED_TO_CREATE_EXTERNAL_TSFILE_DEVICE_COLLECTOR, e);
       }
     }
 

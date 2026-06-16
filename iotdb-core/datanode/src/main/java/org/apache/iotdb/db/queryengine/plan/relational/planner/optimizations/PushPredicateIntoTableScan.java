@@ -55,6 +55,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -580,7 +581,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               new ConvertSchemaPredicateToFilterVisitor.Context(table));
       if (deviceFilter == null) {
         throw new UnsupportedOperationException(
-            "Unsupported external TsFile device filter: " + predicate);
+            DataNodeQueryMessages.UNSUPPORTED_EXTERNAL_TSFILE_DEVICE_FILTER + predicate);
       }
       return deviceFilter;
     }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryDataSource;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource;
@@ -56,7 +57,8 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
 
     DeviceEntry deviceEntry = deviceEntries.get(currentDeviceIndex);
     if (deviceEntry == null) {
-      throw new IllegalStateException("Current device entry in TableScanOperator is empty");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.CURRENT_DEVICE_ENTRY_IN_TABLESCANOPERATOR_IS_EMPTY);
     }
 
     this.seriesScanUtil =
@@ -110,7 +112,8 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
     try {
       if (!deviceTaskReader.nextDevice()) {
         throw new IllegalStateException(
-            "Unexpected end of external TsFile device task reader at device index "
+            DataNodeQueryMessages
+                    .UNEXPECTED_END_OF_EXTERNAL_TSFILE_DEVICE_TASK_READER_AT_DEVICE_INDEX
                 + currentDeviceIndex);
       }
       DeviceEntry expectedDeviceEntry = deviceEntries.get(currentDeviceIndex);
@@ -118,15 +121,16 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
       if (!expectedDeviceEntry.getDeviceID().equals(currentDeviceEntry.getDeviceID())) {
         throw new IllegalStateException(
             String.format(
-                "External TsFile device task reader is not aligned with device entries at index %d:"
-                    + " expected %s but got %s",
+                DataNodeQueryMessages
+                    .EXTERNAL_TSFILE_DEVICE_TASK_READER_IS_NOT_ALIGNED_WITH_DEVICE_ENTRIES,
                 currentDeviceIndex,
                 expectedDeviceEntry.getDeviceID(),
                 currentDeviceEntry.getDeviceID()));
       }
       return deviceTaskReader.getCurrentDeviceQueryDataSource();
     } catch (IOException e) {
-      throw new RuntimeException("Failed to update external TsFile device resources", e);
+      throw new RuntimeException(
+          DataNodeQueryMessages.FAILED_TO_UPDATE_EXTERNAL_TSFILE_DEVICE_RESOURCES, e);
     }
   }
 

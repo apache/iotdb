@@ -1603,7 +1603,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
       TableFunctionInvocation node, TableFunctionInvocationAnalysis functionAnalysis) {
     if (!(functionAnalysis.getTableFunctionHandle()
         instanceof ReadTsFileTableFunction.ReadTsFileTableFunctionHandle)) {
-      throw new IllegalStateException("readTsFile table function handle is invalid");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.READ_TSFILE_TABLE_FUNCTION_HANDLE_IS_INVALID);
     }
 
     ReadTsFileTableFunction.ReadTsFileTableFunctionHandle handle =

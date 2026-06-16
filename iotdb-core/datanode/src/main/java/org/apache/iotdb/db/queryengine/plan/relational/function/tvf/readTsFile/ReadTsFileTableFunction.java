@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -78,8 +79,9 @@ public class ReadTsFileTableFunction implements TableFunction {
     if (mergedTableSchema == null) {
       throw new UDFArgumentNotValidException(
           tableName.isEmpty()
-              ? "No table schema found in TsFiles"
-              : "No table schema found for table " + tableName + " in TsFiles");
+              ? DataNodeQueryMessages.NO_TABLE_SCHEMA_FOUND_IN_TSFILES
+              : String.format(
+                  DataNodeQueryMessages.NO_TABLE_SCHEMA_FOUND_FOR_TABLE_IN_TSFILES, tableName));
     }
     DescribedSchema outputSchema = convertToDescribedSchema(mergedTableSchema);
 
@@ -106,17 +108,18 @@ public class ReadTsFileTableFunction implements TableFunction {
   public TableFunctionProcessorProvider getProcessorProvider(
       TableFunctionHandle tableFunctionHandle) {
     throw new UnsupportedOperationException(
-        "readTsFile must be planned as an ExternalTsFileScanNode");
+        DataNodeQueryMessages.READ_TSFILE_MUST_BE_PLANNED_AS_EXTERNAL_TSFILE_SCAN_NODE);
   }
 
   private static String getRequiredStringArgument(Map<String, Argument> arguments, String name) {
     Argument argument = arguments.get(name);
     if (!(argument instanceof ScalarArgument)) {
-      throw new UDFArgumentNotValidException("Missing scalar argument: " + name);
+      throw new UDFArgumentNotValidException(DataNodeQueryMessages.MISSING_SCALAR_ARGUMENT + name);
     }
     Object value = ((ScalarArgument) argument).getValue();
     if (!(value instanceof String) || ((String) value).trim().isEmpty()) {
-      throw new UDFArgumentNotValidException("Argument " + name + " should not be empty");
+      throw new UDFArgumentNotValidException(
+          String.format(DataNodeQueryMessages.ARGUMENT_SHOULD_NOT_BE_EMPTY, name));
     }
     return ((String) value).trim();
   }
@@ -127,11 +130,12 @@ public class ReadTsFileTableFunction implements TableFunction {
       return "";
     }
     if (!(argument instanceof ScalarArgument)) {
-      throw new UDFArgumentNotValidException("Invalid scalar argument: " + name);
+      throw new UDFArgumentNotValidException(DataNodeQueryMessages.INVALID_SCALAR_ARGUMENT + name);
     }
     Object value = ((ScalarArgument) argument).getValue();
     if (!(value instanceof String)) {
-      throw new UDFArgumentNotValidException("Argument " + name + " should be a string");
+      throw new UDFArgumentNotValidException(
+          String.format(DataNodeQueryMessages.ARGUMENT_SHOULD_BE_A_STRING, name));
     }
     return ((String) value).trim();
   }
@@ -144,7 +148,9 @@ public class ReadTsFileTableFunction implements TableFunction {
             .collect(Collectors.toList());
     if (paths.isEmpty()) {
       throw new UDFArgumentNotValidException(
-          "Argument " + PATHS_PARAMETER_NAME + " should contain at least one path");
+          String.format(
+              DataNodeQueryMessages.ARGUMENT_SHOULD_CONTAIN_AT_LEAST_ONE_PATH,
+              PATHS_PARAMETER_NAME));
     }
     return paths;
   }
@@ -160,8 +166,7 @@ public class ReadTsFileTableFunction implements TableFunction {
         if (normalizedTsFilePath.startsWith(dataDir) || dataDir.startsWith(normalizedTsFilePath)) {
           throw new UDFArgumentNotValidException(
               String.format(
-                  "readTsFile path %s is not allowed because it may access IoTDB data directory %s",
-                  tsFilePath, dataDir));
+                  DataNodeQueryMessages.READ_TSFILE_PATH_IS_NOT_ALLOWED, tsFilePath, dataDir));
         }
       }
     }
@@ -226,10 +231,12 @@ public class ReadTsFileTableFunction implements TableFunction {
         List<Type> outputColumnTypes,
         List<TsTableColumnCategory> outputColumnCategories) {
       if (outputColumnNames.size() != outputColumnTypes.size()) {
-        throw new IllegalArgumentException("Output column names and types size mismatch");
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.OUTPUT_COLUMN_NAMES_AND_TYPES_SIZE_MISMATCH);
       }
       if (outputColumnNames.size() != outputColumnCategories.size()) {
-        throw new IllegalArgumentException("Output column names and categories size mismatch");
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.OUTPUT_COLUMN_NAMES_AND_CATEGORIES_SIZE_MISMATCH);
       }
       this.tableName = tableName;
       this.tsFilePaths = Collections.unmodifiableList(new ArrayList<>(tsFilePaths));
@@ -262,13 +269,13 @@ public class ReadTsFileTableFunction implements TableFunction {
     @Override
     public byte[] serialize() {
       throw new UnsupportedOperationException(
-          "ReadTsFileTableFunctionHandle does not support serialization");
+          DataNodeQueryMessages.READ_TSFILE_TABLE_FUNCTION_HANDLE_DOES_NOT_SUPPORT_SERIALIZATION);
     }
 
     @Override
     public void deserialize(byte[] bytes) {
       throw new UnsupportedOperationException(
-          "ReadTsFileTableFunctionHandle does not support deserialization");
+          DataNodeQueryMessages.READ_TSFILE_TABLE_FUNCTION_HANDLE_DOES_NOT_SUPPORT_DESERIALIZATION);
     }
 
     @Override

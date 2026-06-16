@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -61,7 +62,8 @@ final class TsFileSchemaCollector {
     for (String tsFilePath : tsFilePaths) {
       Path path = new File(tsFilePath).toPath();
       if (!Files.exists(path)) {
-        throw new UDFArgumentNotValidException("TsFile path does not exist: " + tsFilePath);
+        throw new UDFArgumentNotValidException(
+            DataNodeQueryMessages.TSFILE_PATH_DOES_NOT_EXIST + tsFilePath);
       }
       if (Files.isRegularFile(path)) {
         TableSchema tableSchema = readTableSchema(specifiedTableName, path.toFile(), true);
@@ -70,12 +72,12 @@ final class TsFileSchemaCollector {
       }
       if (!Files.isDirectory(path)) {
         throw new UDFArgumentNotValidException(
-            "TsFile path is neither a file nor a directory: " + tsFilePath);
+            DataNodeQueryMessages.TSFILE_PATH_IS_NEITHER_A_FILE_NOR_A_DIRECTORY + tsFilePath);
       }
       collectFromDirectory(tsFilePath, path);
     }
     if (tsFiles.isEmpty()) {
-      throw new UDFArgumentNotValidException("No valid TsFiles found");
+      throw new UDFArgumentNotValidException(DataNodeQueryMessages.NO_VALID_TSFILES_FOUND);
     }
   }
 
@@ -101,7 +103,8 @@ final class TsFileSchemaCollector {
         collect(filePath.toFile(), tableSchema);
       }
     } catch (IOException e) {
-      throw new UDFArgumentNotValidException("Failed to scan TsFile path: " + tsFilePath);
+      throw new UDFArgumentNotValidException(
+          DataNodeQueryMessages.FAILED_TO_SCAN_TSFILE_PATH + tsFilePath);
     }
   }
 
@@ -120,8 +123,9 @@ final class TsFileSchemaCollector {
     } else if (!tableName.equals(currentTableName)) {
       throw new UDFArgumentNotValidException(
           String.format(
-              "Cannot infer table name from TsFiles because multiple tables are found: %s and %s",
-              tableName, currentTableName));
+              DataNodeQueryMessages.CANNOT_INFER_TABLE_NAME_FROM_TSFILES_MULTIPLE_TABLES,
+              tableName,
+              currentTableName));
     }
     tsFiles.add(tsFile);
     if (schemaBuilder == null) {
@@ -153,12 +157,12 @@ final class TsFileSchemaCollector {
       }
       if (tableSchemaMap.isEmpty()) {
         throw new UDFArgumentNotValidException(
-            "Cannot infer table name from TsFile because no table schema is found in "
+            DataNodeQueryMessages.CANNOT_INFER_TABLE_NAME_FROM_TSFILE_NO_TABLE_SCHEMA
                 + tsFile.getAbsolutePath());
       }
       if (tableSchemaMap.size() > 1) {
         throw new UDFArgumentNotValidException(
-            "Cannot infer table name from TsFile because multiple tables are found in "
+            DataNodeQueryMessages.CANNOT_INFER_TABLE_NAME_FROM_TSFILE_MULTIPLE_TABLES
                 + tsFile.getAbsolutePath());
       }
       return tableSchemaMap.values().iterator().next();
@@ -180,7 +184,7 @@ final class TsFileSchemaCollector {
 
   private UDFArgumentNotValidException invalidTsFileException(File tsFile) {
     return new UDFArgumentNotValidException(
-        "File is not a valid TsFile: " + tsFile.getAbsolutePath());
+        DataNodeQueryMessages.FILE_IS_NOT_A_VALID_TSFILE + tsFile.getAbsolutePath());
   }
 
   private static class MergedTableSchemaBuilder {
@@ -207,7 +211,8 @@ final class TsFileSchemaCollector {
         if (currentCategory == ColumnCategory.TIME) {
           if (currentTimeColumn != null) {
             throw new UDFArgumentNotValidException(
-                "Multiple time columns found when merging table schema for table " + tableName);
+                DataNodeQueryMessages.MULTIPLE_TIME_COLUMNS_FOUND_WHEN_MERGING_TABLE_SCHEMA
+                    + tableName);
           }
           currentTimeColumn = columnSchemas.get(i);
         } else if (currentCategory == ColumnCategory.TAG) {
@@ -235,7 +240,7 @@ final class TsFileSchemaCollector {
       if (!timeColumnSchema.getMeasurementName().equals(currentTimeColumn.getMeasurementName())
           || currentTimeColumn.getType() != TSDataType.TIMESTAMP) {
         throw new UDFArgumentNotValidException(
-            "Time column conflicts when merging table schema for table " + tableName);
+            DataNodeQueryMessages.TIME_COLUMN_CONFLICTS_WHEN_MERGING_TABLE_SCHEMA + tableName);
       }
     }
 
@@ -247,7 +252,7 @@ final class TsFileSchemaCollector {
             .getMeasurementName()
             .equals(currentTagColumns.get(i).getMeasurementName())) {
           throw new UDFArgumentNotValidException(
-              "Tag columns conflict when merging table schema for table " + tableName);
+              DataNodeQueryMessages.TAG_COLUMNS_CONFLICT_WHEN_MERGING_TABLE_SCHEMA + tableName);
         }
       }
       tagColumnSchemas.addAll(currentTagColumns.subList(prefixLength, currentTagColumns.size()));
@@ -260,10 +265,11 @@ final class TsFileSchemaCollector {
         if (existingColumn != null
             && !existingColumn.getType().isCompatible(fieldColumn.getType())) {
           throw new UDFArgumentNotValidException(
-              "Field column "
-                  + fieldColumn.getMeasurementName()
-                  + " has conflicting data types when merging table schema for table "
-                  + tableName);
+              String.format(
+                  DataNodeQueryMessages
+                      .FIELD_COLUMN_HAS_CONFLICTING_DATA_TYPES_WHEN_MERGING_TABLE_SCHEMA,
+                  fieldColumn.getMeasurementName(),
+                  tableName));
         }
         fieldColumnSchemaMap.putIfAbsent(fieldName, fieldColumn);
       }
@@ -275,10 +281,10 @@ final class TsFileSchemaCollector {
       ColumnCategory existingCategory = columnCategoryMap.get(columnName);
       if (existingCategory != null && existingCategory != currentCategory) {
         throw new UDFArgumentNotValidException(
-            "Column "
-                + columnSchema.getMeasurementName()
-                + " has conflicting categories when merging table schema for table "
-                + tableName);
+            String.format(
+                DataNodeQueryMessages.COLUMN_HAS_CONFLICTING_CATEGORIES_WHEN_MERGING_TABLE_SCHEMA,
+                columnSchema.getMeasurementName(),
+                tableName));
       }
       columnCategoryMap.putIfAbsent(columnName, currentCategory);
     }
