@@ -363,7 +363,10 @@ public class Coordinator {
       return result;
     } finally {
       long executionTime = System.currentTimeMillis() - startTime;
-      if (execution != null && isWrite && executionTime >= CONFIG.getSlowQueryThreshold()) {
+      if (execution != null
+          && isWrite
+          && executionTime >= CONFIG.getSlowQueryThreshold()
+          && execution.getContext().getUserId() != AuthorityChecker.INTERNAL_AUDIT_USER_ID) {
         // Audit slow write operations
         PrivilegeType curType = isTreeModel ? PrivilegeType.WRITE_DATA : PrivilegeType.INSERT;
         TSStatus tsStatus = execution.getTSStatus();
@@ -941,6 +944,7 @@ public class Coordinator {
             queryExecution.isDebug());
       }
       if (isUserQuery
+          && queryExecution.getContext().getUserId() != AuthorityChecker.INTERNAL_AUDIT_USER_ID
           && queryExecution.getTotalExecutionTime() / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
         TSStatus tsStatus = queryExecution.getTSStatus();
         AuditLogFields auditLogFields =
