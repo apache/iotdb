@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.junit.Test;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeStatement;
@@ -331,11 +332,47 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void lateralColumnAliasCanBeUsedInWindowSpecification() {
+    String orderBySql = "SELECT s1 AS x, row_number() OVER (ORDER BY x) AS rn FROM table1";
+    AnalyzedQuery analyzedOrderBy = analyze(orderBySql);
+    FunctionCall rowNumber = (FunctionCall) getSelectExpression(analyzedOrderBy, 1);
+    assertIdentifier(
+        analyzedOrderBy
+            .analysis
+            .getWindow(rowNumber)
+            .getOrderBy()
+            .get()
+            .getSortItems()
+            .get(0)
+            .getSortKey(),
+        "s1");
+    new PlanTester().createPlan(orderBySql);
+
+    String partitionBySql = "SELECT s1 AS x, avg(s2) OVER (PARTITION BY x) AS a FROM table1";
+    AnalyzedQuery analyzedPartitionBy = analyze(partitionBySql);
+    FunctionCall avg = (FunctionCall) getSelectExpression(analyzedPartitionBy, 1);
+    assertIdentifier(analyzedPartitionBy.analysis.getWindow(avg).getPartitionBy().get(0), "s1");
+    new PlanTester().createPlan(partitionBySql);
+  }
+
+  @Test
   public void lateralColumnAliasCanBeSelectedDirectly() {
     String sql = "SELECT s1 AS x, x FROM table1";
 
     AnalyzedQuery analyzedQuery = analyze(sql);
     assertIdentifier(getSelectExpression(analyzedQuery, 1), "s1");
+    assertEquals("x", getOutputFieldName(analyzedQuery, 1));
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
+  public void lateralColumnAliasPreservesOriginalOutputNameWithoutExplicitAlias() {
+    String sql = "SELECT s1 + 1 AS x, x FROM table1";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertTrue(getSelectExpression(analyzedQuery, 1) instanceof ArithmeticBinaryExpression);
+    assertEquals("x", getOutputFieldName(analyzedQuery, 1));
 
     new PlanTester().createPlan(sql);
   }
@@ -446,6 +483,17 @@ public class SelectAliasReuseTest {
         .getSelectExpressions(analyzedQuery.query)
         .get(index)
         .getExpression();
+  }
+
+  private static String getOutputFieldName(AnalyzedQuery analyzedQuery, int index) {
+    List<Field> fields =
+        new ArrayList<>(
+            analyzedQuery
+                .analysis
+                .getScope(analyzedQuery.query)
+                .getRelationType()
+                .getVisibleFields());
+    return fields.get(index).getName().orElse(null);
   }
 
   private static void assertArithmeticIdentifiers(

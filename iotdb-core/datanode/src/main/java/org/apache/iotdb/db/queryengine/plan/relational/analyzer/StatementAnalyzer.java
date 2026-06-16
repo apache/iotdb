@@ -529,7 +529,10 @@ public class StatementAnalyzer {
           node.getArguments().stream()
               .map(argument -> treeRewriter.rewrite(argument, context))
               .collect(toImmutableList());
-      if (ExpressionTreeRewriter.sameElements(node.getArguments(), arguments)) {
+
+      Optional<Window> window = rewriteWindow(node.getWindow(), context, treeRewriter);
+      if (ExpressionTreeRewriter.sameElements(node.getArguments(), arguments)
+          && ExpressionTreeRewriter.sameElements(node.getWindow(), window)) {
         return node;
       }
 
@@ -537,7 +540,7 @@ public class StatementAnalyzer {
         return new FunctionCall(
             node.getLocation().get(),
             node.getName(),
-            node.getWindow(),
+            window,
             node.getNullTreatment(),
             node.isDistinct(),
             node.getProcessingMode(),
@@ -551,6 +554,96 @@ public class StatementAnalyzer {
       }
       return new FunctionCall(
           node.getName(), node.isDistinct(), node.getProcessingMode(), arguments);
+    }
+
+    private Optional<Window> rewriteWindow(
+        Optional<Window> window, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      if (!window.isPresent()) {
+        return Optional.empty();
+      }
+      if (!(window.get() instanceof WindowSpecification)) {
+        return window;
+      }
+
+      WindowSpecification specification = (WindowSpecification) window.get();
+      List<Expression> partitionBy =
+          specification.getPartitionBy().stream()
+              .map(expression -> treeRewriter.rewrite(expression, context))
+              .collect(toImmutableList());
+      Optional<OrderBy> orderBy =
+          specification.getOrderBy().map(value -> rewriteOrderBy(value, context, treeRewriter));
+      Optional<WindowFrame> frame =
+          specification.getFrame().map(value -> rewriteWindowFrame(value, context, treeRewriter));
+
+      if (ExpressionTreeRewriter.sameElements(specification.getPartitionBy(), partitionBy)
+          && ExpressionTreeRewriter.sameElements(specification.getOrderBy(), orderBy)
+          && ExpressionTreeRewriter.sameElements(specification.getFrame(), frame)) {
+        return window;
+      }
+
+      return Optional.of(
+          new WindowSpecification(
+              specification
+                  .getLocation()
+                  .orElseThrow(
+                      () -> new IllegalStateException("WindowSpecification location is missing")),
+              specification.getExistingWindowName(),
+              partitionBy,
+              orderBy,
+              frame));
+    }
+
+    private OrderBy rewriteOrderBy(
+        OrderBy node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      List<SortItem> sortItems =
+          node.getSortItems().stream()
+              .map(sortItem -> rewriteSortItem(sortItem, context, treeRewriter))
+              .collect(toImmutableList());
+      if (ExpressionTreeRewriter.sameElements(node.getSortItems(), sortItems)) {
+        return node;
+      }
+      return node.getLocation()
+          .map(location -> new OrderBy(location, sortItems))
+          .orElseGet(() -> new OrderBy(sortItems));
+    }
+
+    private SortItem rewriteSortItem(
+        SortItem node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      Expression sortKey = treeRewriter.rewrite(node.getSortKey(), context);
+      if (sortKey == node.getSortKey()) {
+        return node;
+      }
+      return node.getLocation()
+          .map(
+              location ->
+                  new SortItem(location, sortKey, node.getOrdering(), node.getNullOrdering()))
+          .orElseGet(() -> new SortItem(sortKey, node.getOrdering(), node.getNullOrdering()));
+    }
+
+    private WindowFrame rewriteWindowFrame(
+        WindowFrame node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      FrameBound start = rewriteFrameBound(node.getStart(), context, treeRewriter);
+      Optional<FrameBound> end =
+          node.getEnd().map(value -> rewriteFrameBound(value, context, treeRewriter));
+      if (start == node.getStart() && ExpressionTreeRewriter.sameElements(node.getEnd(), end)) {
+        return node;
+      }
+      return new WindowFrame(
+          node.getLocation()
+              .orElseThrow(() -> new IllegalStateException("WindowFrame location is missing")),
+          node.getType(),
+          start,
+          end);
+    }
+
+    private FrameBound rewriteFrameBound(
+        FrameBound node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+      Optional<Expression> value =
+          node.getValue().map(expression -> treeRewriter.rewrite(expression, context));
+      if (ExpressionTreeRewriter.sameElements(node.getValue(), value)) {
+        return node;
+      }
+      return new FrameBound(node.getLocation().orElse(null), node.getType(), value.orElse(null));
     }
 
     @Override
@@ -1755,6 +1848,21 @@ public class StatementAnalyzer {
       }
 
       for (FunctionCall windowFunction : extractWindowFunctions(expressions.build())) {
+        if (analysis.getWindow(windowFunction) != null) {
+          continue;
+        }
+        Analysis.ResolvedWindow resolvedWindow =
+            resolveWindowSpecification(querySpecification, windowFunction.getWindow().get());
+        analysis.setWindow(windowFunction, resolvedWindow);
+      }
+    }
+
+    private void resolveFunctionCallAndMeasureWindows(
+        QuerySpecification querySpecification, Expression expression) {
+      for (FunctionCall windowFunction : extractWindowFunctions(ImmutableList.of(expression))) {
+        if (analysis.getWindow(windowFunction) != null) {
+          continue;
+        }
         Analysis.ResolvedWindow resolvedWindow =
             resolveWindowSpecification(querySpecification, windowFunction.getWindow().get());
         analysis.setWindow(windowFunction, resolvedWindow);
@@ -1977,6 +2085,7 @@ public class StatementAnalyzer {
           } else {
             Expression rewrittenExpression =
                 rewriteLateralColumnAliases(selectExpression, scope, visibleAliases);
+            resolveFunctionCallAndMeasureWindows(node, rewrittenExpression);
             analyzeSelectSingleColumn(
                 rewrittenExpression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
             singleColumnExpressionBuilder.put(NodeRef.of(singleColumn), rewrittenExpression);
@@ -3373,6 +3482,7 @@ public class StatementAnalyzer {
           SingleColumn column = (SingleColumn) item;
           Expression expression =
               selectAnalysis.getSingleColumnExpression(column).orElse(column.getExpression());
+          Expression outputNameExpression = column.getExpression();
 
           // process Columns
           List<Expression> expandedExpressions = column.getExpandedExpressions();
@@ -3444,11 +3554,18 @@ public class StatementAnalyzer {
           Optional<QualifiedObjectName> originTable = Optional.empty();
           Optional<String> originColumn = Optional.empty();
           QualifiedName name = null;
+          QualifiedName outputName = null;
 
           if (expression instanceof Identifier) {
             name = QualifiedName.of(((Identifier) expression).getValue());
           } else if (expression instanceof DereferenceExpression) {
             name = getQualifiedName((DereferenceExpression) expression);
+          }
+
+          if (outputNameExpression instanceof Identifier) {
+            outputName = QualifiedName.of(((Identifier) outputNameExpression).getValue());
+          } else if (outputNameExpression instanceof DereferenceExpression) {
+            outputName = getQualifiedName((DereferenceExpression) outputNameExpression);
           }
 
           if (name != null) {
@@ -3467,8 +3584,8 @@ public class StatementAnalyzer {
             }
           }
 
-          if (!field.isPresent() && (name != null)) {
-            field = Optional.of(getLast(name.getOriginalParts()));
+          if (!field.isPresent() && (outputName != null)) {
+            field = Optional.of(getLast(outputName.getOriginalParts()));
           }
 
           Field newField =
