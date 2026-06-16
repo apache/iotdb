@@ -111,6 +111,15 @@ public class IoTDBDataNodeReceiverTest {
   }
 
   @Test
+  public void testSchemaSnapshotDatabaseIsFilteredByPattern() {
+    Assert.assertTrue(
+        IoTDBDataNodeReceiver.shouldLoadSchemaSnapshotDatabase("root.ln.**", "root.ln"));
+    Assert.assertTrue(IoTDBDataNodeReceiver.shouldLoadSchemaSnapshotDatabase("root.**", "root.db"));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldLoadSchemaSnapshotDatabase("root.ln.**", "root.db"));
+  }
+
+  @Test
   public void testLoadTsFileSyncStatementVerifiesSchemaWhenConvertingType() throws Exception {
     final Path tsFile = Files.createTempFile("pipe-load-convert-verify-schema", ".tsfile");
     try {

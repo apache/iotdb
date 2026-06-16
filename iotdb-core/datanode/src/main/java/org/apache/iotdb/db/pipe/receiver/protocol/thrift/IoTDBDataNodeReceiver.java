@@ -540,6 +540,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final String databaseName = parameters.get(ColumnHeaderConstant.DATABASE);
     final PartialPath databasePath = new PartialPath(databaseName);
 
+    final String pathPattern = parameters.get(ColumnHeaderConstant.PATH_PATTERN);
+    if (!shouldLoadSchemaSnapshotDatabase(pathPattern, databaseName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    final PipePattern pipePattern =
+        PipePattern.parsePatternFromString(pathPattern, IoTDBPipePattern::new);
+
     final TSStatus createDatabaseStatus = createSchemaSnapshotDatabaseIfNecessary(databasePath);
     if (createDatabaseStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return createDatabaseStatus;
@@ -553,9 +560,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final PipePattern pipePattern =
-        PipePattern.parsePatternFromString(
-            parameters.get(ColumnHeaderConstant.PATH_PATTERN), IoTDBPipePattern::new);
 
     // Clear to avoid previous exceptions
     batchVisitor.clear();
@@ -578,6 +582,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         .filter(Optional::isPresent)
         .forEach(statement -> results.add(executeStatementAndClassifyExceptions(statement.get())));
     return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  static boolean shouldLoadSchemaSnapshotDatabase(
+      final String pathPattern, final String databaseName) {
+    return PipePattern.parsePatternFromString(pathPattern, IoTDBPipePattern::new)
+        .mayOverlapWithDb(databaseName);
   }
 
   private TSStatus createSchemaSnapshotDatabaseIfNecessary(final PartialPath databasePath) {
