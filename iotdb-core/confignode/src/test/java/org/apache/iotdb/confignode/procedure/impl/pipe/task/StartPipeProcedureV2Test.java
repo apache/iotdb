@@ -36,7 +36,7 @@ public class StartPipeProcedureV2Test {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    StartPipeProcedureV2 proc = new StartPipeProcedureV2("testPipe");
+    StartPipeProcedureV2 proc = new StartPipeProcedureV2("testPipe", true);
 
     try {
       proc.serialize(outputStream);

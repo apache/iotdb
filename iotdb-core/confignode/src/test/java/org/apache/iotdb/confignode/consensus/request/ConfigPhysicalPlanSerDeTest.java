@@ -971,6 +971,8 @@ public class ConfigPhysicalPlanSerDeTest {
     final AlterPipePlanV2 alterPipePlanV21 =
         (AlterPipePlanV2)
             ConfigPhysicalPlan.Factory.create(alterPipePlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterPipePlanV2.getCurrentPipeStaticMeta(), alterPipePlanV21.getCurrentPipeStaticMeta());
     Assert.assertEquals(alterPipePlanV2.getPipeStaticMeta(), alterPipePlanV21.getPipeStaticMeta());
     Assert.assertEquals(
         alterPipePlanV2.getPipeRuntimeMeta(), alterPipePlanV21.getPipeRuntimeMeta());
@@ -980,12 +982,13 @@ public class ConfigPhysicalPlanSerDeTest {
   public void SetPipeStatusPlanV2Test() throws IOException {
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2(
-            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING);
+            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING, true);
     final SetPipeStatusPlanV2 setPipeStatusPlanV21 =
         (SetPipeStatusPlanV2)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());
     Assert.assertEquals(setPipeStatusPlanV2.getPipeName(), setPipeStatusPlanV21.getPipeName());
     Assert.assertEquals(setPipeStatusPlanV2.getPipeStatus(), setPipeStatusPlanV21.getPipeStatus());
+    Assert.assertEquals(setPipeStatusPlanV2.isTableModel(), setPipeStatusPlanV21.isTableModel());
   }
 
   @Test
@@ -993,7 +996,10 @@ public class ConfigPhysicalPlanSerDeTest {
     final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
         setPipeStatusWithStoppedByRuntimeExceptionPlanV2 =
             new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
-                "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.STOPPED, true);
+                "pipe",
+                org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.STOPPED,
+                true,
+                true);
     final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
         setPipeStatusWithStoppedByRuntimeExceptionPlanV21 =
             (SetPipeStatusWithStoppedByRuntimeExceptionPlanV2)
@@ -1008,14 +1014,18 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         setPipeStatusWithStoppedByRuntimeExceptionPlanV2.isStoppedByRuntimeException(),
         setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isStoppedByRuntimeException());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.isTableModel(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isTableModel());
   }
 
   @Test
   public void DropPipePlanV2Test() throws IOException {
-    final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("demo");
+    final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("demo", true);
     final DropPipePlanV2 dropPipePlanV21 =
         (DropPipePlanV2) ConfigPhysicalPlan.Factory.create(dropPipePlanV2.serializeToByteBuffer());
     Assert.assertEquals(dropPipePlanV2.getPipeName(), dropPipePlanV21.getPipeName());
+    Assert.assertEquals(dropPipePlanV2.isTableModel(), dropPipePlanV21.isTableModel());
   }
 
   @Test

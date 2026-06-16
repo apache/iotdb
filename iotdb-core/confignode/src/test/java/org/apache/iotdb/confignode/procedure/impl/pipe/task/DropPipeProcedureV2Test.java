@@ -36,7 +36,7 @@ public class DropPipeProcedureV2Test {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    DropPipeProcedureV2 proc = new DropPipeProcedureV2("testPipe");
+    DropPipeProcedureV2 proc = new DropPipeProcedureV2("testPipe", true);
 
     try {
       proc.serialize(outputStream);

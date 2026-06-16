@@ -1594,8 +1594,12 @@ public class ProcedureManager {
   }
 
   public TSStatus startPipe(String pipeName) {
+    return startPipe(pipeName, false);
+  }
+
+  public TSStatus startPipe(String pipeName, boolean isTableModel) {
     try {
-      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName);
+      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName, isTableModel);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1620,8 +1624,12 @@ public class ProcedureManager {
   }
 
   public TSStatus stopPipe(String pipeName) {
+    return stopPipe(pipeName, false);
+  }
+
+  public TSStatus stopPipe(String pipeName, boolean isTableModel) {
     try {
-      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName);
+      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName, isTableModel);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1661,8 +1669,12 @@ public class ProcedureManager {
   }
 
   public TSStatus dropPipe(String pipeName) {
+    return dropPipe(pipeName, false);
+  }
+
+  public TSStatus dropPipe(String pipeName, boolean isTableModel) {
     try {
-      final DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      final DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName, isTableModel);
       executor.submitProcedure(procedure);
       final TSStatus status = waitingProcedureFinished(procedure, PROCEDURE_WAIT_TIME_OUT << 1);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

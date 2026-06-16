@@ -27,9 +27,11 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class AlterPipePlanV2 extends ConfigPhysicalPlan {
 
+  private PipeStaticMeta currentPipeStaticMeta;
   private PipeStaticMeta pipeStaticMeta;
   private PipeRuntimeMeta pipeRuntimeMeta;
 
@@ -39,8 +41,23 @@ public class AlterPipePlanV2 extends ConfigPhysicalPlan {
 
   public AlterPipePlanV2(PipeStaticMeta pipeStaticMeta, PipeRuntimeMeta pipeRuntimeMeta) {
     super(ConfigPhysicalPlanType.AlterPipeV2);
+    this.currentPipeStaticMeta = pipeStaticMeta;
     this.pipeStaticMeta = pipeStaticMeta;
     this.pipeRuntimeMeta = pipeRuntimeMeta;
+  }
+
+  public AlterPipePlanV2(
+      PipeStaticMeta currentPipeStaticMeta,
+      PipeStaticMeta pipeStaticMeta,
+      PipeRuntimeMeta pipeRuntimeMeta) {
+    super(ConfigPhysicalPlanType.AlterPipeV2);
+    this.currentPipeStaticMeta = currentPipeStaticMeta;
+    this.pipeStaticMeta = pipeStaticMeta;
+    this.pipeRuntimeMeta = pipeRuntimeMeta;
+  }
+
+  public PipeStaticMeta getCurrentPipeStaticMeta() {
+    return currentPipeStaticMeta;
   }
 
   public PipeStaticMeta getPipeStaticMeta() {
@@ -56,11 +73,45 @@ public class AlterPipePlanV2 extends ConfigPhysicalPlan {
     stream.writeShort(getType().getPlanType());
     pipeStaticMeta.serialize(stream);
     pipeRuntimeMeta.serialize(stream);
+    currentPipeStaticMeta.serialize(stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeStaticMeta = PipeStaticMeta.deserialize(buffer);
     pipeRuntimeMeta = PipeRuntimeMeta.deserialize(buffer);
+    currentPipeStaticMeta =
+        buffer.hasRemaining() ? PipeStaticMeta.deserialize(buffer) : pipeStaticMeta;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    AlterPipePlanV2 that = (AlterPipePlanV2) obj;
+    return currentPipeStaticMeta.equals(that.currentPipeStaticMeta)
+        && pipeStaticMeta.equals(that.pipeStaticMeta)
+        && pipeRuntimeMeta.equals(that.pipeRuntimeMeta);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(currentPipeStaticMeta, pipeStaticMeta, pipeRuntimeMeta);
+  }
+
+  @Override
+  public String toString() {
+    return "AlterPipePlanV2{"
+        + "currentPipeStaticMeta='"
+        + currentPipeStaticMeta
+        + "', pipeStaticMeta='"
+        + pipeStaticMeta
+        + "', pipeRuntimeMeta='"
+        + pipeRuntimeMeta
+        + "'}";
   }
 }

@@ -116,6 +116,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
    * This should be called after {@link #executeFromValidateTask} and {@link
    * #executeFromCalculateInfoForTask}.
    */
+  public PipeStaticMeta getPipeStaticMeta() {
+    return pipeStaticMeta;
+  }
+
+  /**
+   * This should be called after {@link #executeFromValidateTask} and {@link
+   * #executeFromCalculateInfoForTask}.
+   */
   public CreatePipePlanV2 constructPlan() {
     return new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
   }
@@ -268,7 +276,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     pipeStaticMeta =
         new PipeStaticMeta(
             createPipeRequest.getPipeName(),
-            System.currentTimeMillis(),
+            pipeTaskInfo.get().generateUniqueCreationTime(createPipeRequest.getPipeName()),
             createPipeRequest.getExtractorAttributes(),
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
@@ -386,7 +394,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info(ProcedureMessages.CREATEPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
     final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
+        parsePushPipeMetaExceptionForPipe(
+            pipeName, pushSinglePipeMetaToDataNodes(pipeStaticMeta, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_CREATE_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
@@ -421,7 +430,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new DropPipePlanV2(createPipeRequest.getPipeName()));
+              .write(
+                  new DropPipePlanV2(
+                      createPipeRequest.getPipeName(), pipeStaticMeta.visibleUnderTableModel()));
     } catch (final ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());

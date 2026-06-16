@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -38,6 +39,7 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -46,10 +48,39 @@ public class PipeTaskInfoAutoRestartTest {
   private static final int DATA_NODE_ID = 1;
 
   private PipeTaskInfo pipeTaskInfo;
+  private long creationTime;
+
+  private static boolean trySetPushPipeMetaRespExceptionMessageCreationTime(
+      final TPushPipeMetaRespExceptionMessage exceptionMessage, final long creationTime) {
+    try {
+      exceptionMessage
+          .getClass()
+          .getMethod("setCreationTime", long.class)
+          .invoke(exceptionMessage, creationTime);
+      return true;
+    } catch (final Exception ignored) {
+      return false;
+    }
+  }
+
+  private static OptionalLong tryGetPushPipeMetaRespExceptionMessageCreationTime(
+      final TPushPipeMetaRespExceptionMessage exceptionMessage) {
+    try {
+      if (!Boolean.TRUE.equals(
+          exceptionMessage.getClass().getMethod("isSetCreationTime").invoke(exceptionMessage))) {
+        return OptionalLong.empty();
+      }
+      return OptionalLong.of(
+          (long) exceptionMessage.getClass().getMethod("getCreationTime").invoke(exceptionMessage));
+    } catch (final Exception ignored) {
+      return OptionalLong.empty();
+    }
+  }
 
   @Before
   public void setUp() {
     pipeTaskInfo = new PipeTaskInfo();
+    creationTime = System.currentTimeMillis();
   }
 
   @Test
@@ -88,10 +119,51 @@ public class PipeTaskInfoAutoRestartTest {
     Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
   }
 
+  @Test
+  public void testRecordDataNodePushPipeMetaExceptionsTargetsSameNamePipeByCreationTime() {
+    final String pipeName = "sameNamePipe";
+    final PipeStaticMeta treePipeStaticMeta = createPipe(pipeName, PipeStatus.RUNNING, false);
+    final PipeStaticMeta tablePipeStaticMeta = createPipe(pipeName, PipeStatus.RUNNING, true);
+
+    final TPushPipeMetaRespExceptionMessage probe =
+        new TPushPipeMetaRespExceptionMessage(pipeName, "probe", System.currentTimeMillis());
+    trySetPushPipeMetaRespExceptionMessageCreationTime(
+        probe, tablePipeStaticMeta.getCreationTime());
+    org.junit.Assume.assumeTrue(
+        tryGetPushPipeMetaRespExceptionMessageCreationTime(probe).isPresent());
+
+    Assert.assertTrue(
+        pipeTaskInfo.recordDataNodePushPipeMetaExceptions(
+            createErrorRespMap(pipeName, tablePipeStaticMeta.getCreationTime())));
+
+    final PipeRuntimeMeta treeRuntimeMeta =
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName, false).getRuntimeMeta();
+    final PipeRuntimeMeta tableRuntimeMeta =
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName, true).getRuntimeMeta();
+
+    Assert.assertEquals(PipeStatus.RUNNING, treeRuntimeMeta.getStatus().get());
+    Assert.assertFalse(treeRuntimeMeta.getIsStoppedByRuntimeException());
+    Assert.assertEquals(PipeStatus.STOPPED, tableRuntimeMeta.getStatus().get());
+    Assert.assertTrue(tableRuntimeMeta.getIsStoppedByRuntimeException());
+    Assert.assertTrue(
+        tableRuntimeMeta.getNodeId2PipeRuntimeExceptionMap().containsKey(DATA_NODE_ID));
+
+    Assert.assertNotEquals(
+        treePipeStaticMeta.getCreationTime(), tablePipeStaticMeta.getCreationTime());
+  }
+
   private Map<Integer, TPushPipeMetaResp> createErrorRespMap(final String pipeName) {
+    return createErrorRespMap(pipeName, null);
+  }
+
+  private Map<Integer, TPushPipeMetaResp> createErrorRespMap(
+      final String pipeName, final Long creationTime) {
     final TPushPipeMetaRespExceptionMessage exceptionMessage =
         new TPushPipeMetaRespExceptionMessage(
             pipeName, "failed to push pipe meta", System.currentTimeMillis());
+    if (creationTime != null) {
+      trySetPushPipeMetaRespExceptionMessageCreationTime(exceptionMessage, creationTime);
+    }
     final TPushPipeMetaResp resp =
         new TPushPipeMetaResp()
             .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
@@ -99,11 +171,20 @@ public class PipeTaskInfoAutoRestartTest {
     return Collections.singletonMap(DATA_NODE_ID, resp);
   }
 
-  private void createPipe(final String pipeName, final PipeStatus initialStatus) {
+  private PipeStaticMeta createPipe(final String pipeName, final PipeStatus initialStatus) {
+    return createPipe(pipeName, initialStatus, false);
+  }
+
+  private PipeStaticMeta createPipe(
+      final String pipeName, final PipeStatus initialStatus, final boolean isTableModel) {
     final Map<String, String> extractorAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
     final Map<String, String> connectorAttributes = new HashMap<>();
     extractorAttributes.put("extractor", "iotdb-source");
+    if (isTableModel) {
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    }
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("connector", "iotdb-thrift-sink");
 
@@ -114,7 +195,7 @@ public class PipeTaskInfoAutoRestartTest {
     final PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             pipeName,
-            System.currentTimeMillis(),
+            ++creationTime,
             extractorAttributes,
             processorAttributes,
             connectorAttributes);
@@ -122,7 +203,9 @@ public class PipeTaskInfoAutoRestartTest {
     pipeTaskInfo.createPipe(new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta));
 
     if (PipeStatus.RUNNING.equals(initialStatus)) {
-      pipeTaskInfo.setPipeStatus(new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING));
+      pipeTaskInfo.setPipeStatus(
+          new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING, isTableModel));
     }
+    return pipeStaticMeta;
   }
 }

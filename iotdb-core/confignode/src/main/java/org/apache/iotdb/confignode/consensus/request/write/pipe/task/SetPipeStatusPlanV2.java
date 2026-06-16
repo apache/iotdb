@@ -34,15 +34,21 @@ public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
 
   private String pipeName;
   private PipeStatus status;
+  private boolean isTableModel;
 
   public SetPipeStatusPlanV2() {
     super(ConfigPhysicalPlanType.SetPipeStatusV2);
   }
 
   public SetPipeStatusPlanV2(String pipeName, PipeStatus status) {
+    this(pipeName, status, false);
+  }
+
+  public SetPipeStatusPlanV2(String pipeName, PipeStatus status, boolean isTableModel) {
     super(ConfigPhysicalPlanType.SetPipeStatusV2);
     this.pipeName = pipeName;
     this.status = status;
+    this.isTableModel = isTableModel;
   }
 
   public String getPipeName() {
@@ -53,17 +59,23 @@ public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
     return status;
   }
 
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(pipeName, stream);
     ReadWriteIOUtils.write(status.getType(), stream);
+    ReadWriteIOUtils.write(isTableModel, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeName = ReadWriteIOUtils.readString(buffer);
     status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(buffer));
+    isTableModel = buffer.hasRemaining() && ReadWriteIOUtils.readBool(buffer);
   }
 
   @Override
@@ -75,16 +87,25 @@ public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
       return false;
     }
     SetPipeStatusPlanV2 that = (SetPipeStatusPlanV2) obj;
-    return pipeName.equals(that.pipeName) && status.equals(that.status);
+    return isTableModel == that.isTableModel
+        && pipeName.equals(that.pipeName)
+        && status.equals(that.status);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName, status);
+    return Objects.hash(pipeName, status, isTableModel);
   }
 
   @Override
   public String toString() {
-    return "SetPipeStatusPlanV2{" + "pipeName='" + pipeName + "', status='" + status + "'}";
+    return "SetPipeStatusPlanV2{"
+        + "pipeName='"
+        + pipeName
+        + "', status='"
+        + status
+        + "', isTableModel="
+        + isTableModel
+        + "'}";
   }
 }

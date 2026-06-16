@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -47,26 +49,51 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropPipeProcedureV2.class);
 
   private String pipeName;
+  private boolean isTableModel;
+  private PipeMeta pipeMetaToDrop;
 
   public DropPipeProcedureV2() {
     super();
   }
 
   public DropPipeProcedureV2(String pipeName) throws PipeException {
+    this(pipeName, false);
+  }
+
+  public DropPipeProcedureV2(String pipeName, boolean isTableModel) throws PipeException {
     super();
     this.pipeName = pipeName;
+    this.isTableModel = isTableModel;
   }
 
   /** This is only used when the pipe task info lock is held by another procedure. */
   public DropPipeProcedureV2(String pipeName, AtomicReference<PipeTaskInfo> pipeTaskInfo)
       throws PipeException {
+    this(pipeName, false, pipeTaskInfo);
+  }
+
+  /** This is only used when the pipe task info lock is held by another procedure. */
+  public DropPipeProcedureV2(
+      String pipeName, boolean isTableModel, AtomicReference<PipeTaskInfo> pipeTaskInfo)
+      throws PipeException {
     super();
     this.pipeName = pipeName;
+    this.isTableModel = isTableModel;
     this.pipeTaskInfo = pipeTaskInfo;
   }
 
   public String getPipeName() {
     return pipeName;
+  }
+
+  public boolean isTableModel() {
+    return pipeMetaToDrop == null
+        ? isTableModel
+        : pipeMetaToDrop.getStaticMeta().visibleUnderTableModel();
+  }
+
+  public PipeMeta getPipeMetaToDrop() {
+    return pipeMetaToDrop;
   }
 
   @Override
@@ -86,7 +113,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMCALCULATEINFOFORTASK, pipeName);
-    // Do nothing
+    pipeMetaToDrop = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel);
   }
 
   @Override
@@ -96,7 +123,10 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     TSStatus response;
     try {
-      response = env.getConfigManager().getConsensusManager().write(new DropPipePlanV2(pipeName));
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new DropPipePlanV2(pipeName, isTableModel));
     } catch (ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -111,8 +141,22 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
-    final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, dropSinglePipeOnDataNodes(pipeName, env));
+    String exceptionMessage;
+    try {
+      if (pipeMetaToDrop == null) {
+        exceptionMessage =
+            parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
+      } else {
+        final PipeMeta droppedPipeMeta =
+            copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMetaToDrop);
+        droppedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+        exceptionMessage =
+            parsePushPipeMetaExceptionForPipe(
+                pipeName, env.pushSinglePipeMetaToDataNodes(droppedPipeMeta.serialize()));
+      }
+    } catch (final IOException e) {
+      exceptionMessage = e.getMessage();
+    }
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_DROP_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
@@ -151,12 +195,23 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.DROP_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
+    ReadWriteIOUtils.write(isTableModel, stream);
+    if (pipeMetaToDrop == null) {
+      ReadWriteIOUtils.write(false, stream);
+    } else {
+      ReadWriteIOUtils.write(true, stream);
+      pipeMetaToDrop.serialize(stream);
+    }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
+    isTableModel = byteBuffer.hasRemaining() && ReadWriteIOUtils.readBool(byteBuffer);
+    if (byteBuffer.hasRemaining() && ReadWriteIOUtils.readBool(byteBuffer)) {
+      pipeMetaToDrop = PipeMeta.deserialize4Coordinator(byteBuffer);
+    }
   }
 
   @Override
@@ -171,11 +226,12 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     return getProcId() == that.getProcId()
         && getCurrentState().equals(that.getCurrentState())
         && getCycles() == that.getCycles()
+        && isTableModel == that.isTableModel
         && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pipeName);
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pipeName, isTableModel);
   }
 }

@@ -135,11 +135,15 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   private TSStatus startPipe(String pipeName) {
+    return startPipe(pipeName, false);
+  }
+
+  private TSStatus startPipe(String pipeName, boolean isTableModel) {
     final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().startConsensusPipe(pipeName);
     } else {
-      status = configManager.getProcedureManager().startPipe(pipeName);
+      status = configManager.getProcedureManager().startPipe(pipeName, isTableModel);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(ManagerMessages.FAILED_TO_START_PIPE_RESULT_STATUS, pipeName, status);
@@ -156,16 +160,20 @@ public class PipeTaskCoordinator {
           String.format(
               "Failed to start pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
-    return startPipe(pipeName);
+    return startPipe(pipeName, req.isTableModel);
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   private TSStatus stopPipe(String pipeName) {
+    return stopPipe(pipeName, false);
+  }
+
+  private TSStatus stopPipe(String pipeName, boolean isTableModel) {
     final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().stopConsensusPipe(pipeName);
     } else {
-      status = configManager.getProcedureManager().stopPipe(pipeName);
+      status = configManager.getProcedureManager().stopPipe(pipeName, isTableModel);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(ManagerMessages.FAILED_TO_STOP_PIPE_RESULT_STATUS, pipeName, status);
@@ -182,7 +190,7 @@ public class PipeTaskCoordinator {
           String.format(
               "Failed to stop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
-    return stopPipe(pipeName);
+    return stopPipe(pipeName, req.isTableModel);
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
@@ -202,7 +210,7 @@ public class PipeTaskCoordinator {
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().dropConsensusPipe(pipeName);
     } else {
-      status = configManager.getProcedureManager().dropPipe(pipeName);
+      status = configManager.getProcedureManager().dropPipe(pipeName, req.isTableModel);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(ManagerMessages.FAILED_TO_DROP_PIPE_RESULT_STATUS, pipeName, status);

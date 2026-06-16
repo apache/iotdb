@@ -71,6 +71,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -2240,6 +2241,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                         .addOrReplaceEquivalentAttributesWithClone(
                             new PipeParameters(
                                 ImmutableMap.of(
+                                    SystemConstant.SQL_DIALECT_KEY,
+                                    sourcePipeParameters.getStringOrDefault(
+                                        SystemConstant.SQL_DIALECT_KEY,
+                                        SystemConstant.SQL_DIALECT_TREE_VALUE),
                                     PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
                                     Boolean.toString(true),
                                     PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
@@ -2285,6 +2290,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                         .addOrReplaceEquivalentAttributesWithClone(
                             new PipeParameters(
                                 ImmutableMap.of(
+                                    SystemConstant.SQL_DIALECT_KEY,
+                                    sourcePipeParameters.getStringOrDefault(
+                                        SystemConstant.SQL_DIALECT_KEY,
+                                        SystemConstant.SQL_DIALECT_TREE_VALUE),
                                     PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
                                     Boolean.toString(false),
                                     PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
@@ -2374,9 +2383,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .filter(
                   pipeMeta ->
                       pipeMeta
-                          .getStaticMeta()
-                          .getPipeName()
-                          .equals(alterPipeStatement.getPipeName()))
+                              .getStaticMeta()
+                              .getPipeName()
+                              .equals(alterPipeStatement.getPipeName())
+                          && pipeMeta
+                              .getStaticMeta()
+                              .visibleUnder(alterPipeStatement.isTableModel()))
               .findFirst()
               .orElse(null);
       if (pipeMetaFromCoordinator == null) {

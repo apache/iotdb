@@ -60,6 +60,18 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeTaskAgent.class);
 
+  private static void trySetPushPipeMetaRespExceptionMessageCreationTime(
+      final TPushPipeMetaRespExceptionMessage exceptionMessage, final long creationTime) {
+    try {
+      exceptionMessage
+          .getClass()
+          .getMethod("setCreationTime", long.class)
+          .invoke(exceptionMessage, creationTime);
+    } catch (final Exception ignored) {
+      // The field is absent when compiling against an old thrift-datanode artifact.
+    }
+  }
+
   @Override
   protected boolean isShutdown() {
     return PipeConfigNodeAgent.runtime().isShutdown();
@@ -108,7 +120,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     }
 
     pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getPipeMeta(pipeStaticMeta)
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
@@ -122,10 +134,14 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
           ? super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator.deepCopy4TaskAgent())
           : null;
     } catch (final Exception e) {
-      return new TPushPipeMetaRespExceptionMessage(
-          pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
-          e.getMessage(),
-          System.currentTimeMillis());
+      final TPushPipeMetaRespExceptionMessage exceptionMessage =
+          new TPushPipeMetaRespExceptionMessage(
+              pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
+              e.getMessage(),
+              System.currentTimeMillis());
+      trySetPushPipeMetaRespExceptionMessageCreationTime(
+          exceptionMessage, pipeMetaFromCoordinator.getStaticMeta().getCreationTime());
+      return exceptionMessage;
     }
   }
 

@@ -31,29 +31,41 @@ import java.util.Objects;
 public class DropPipePlanV2 extends ConfigPhysicalPlan {
 
   private String pipeName;
+  private boolean isTableModel;
 
   public DropPipePlanV2() {
     super(ConfigPhysicalPlanType.DropPipeV2);
   }
 
   public DropPipePlanV2(String pipeName) {
+    this(pipeName, false);
+  }
+
+  public DropPipePlanV2(String pipeName, boolean isTableModel) {
     super(ConfigPhysicalPlanType.DropPipeV2);
     this.pipeName = pipeName;
+    this.isTableModel = isTableModel;
   }
 
   public String getPipeName() {
     return pipeName;
   }
 
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     BasicStructureSerDeUtil.write(pipeName, stream);
+    stream.writeBoolean(isTableModel);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeName = BasicStructureSerDeUtil.readString(buffer);
+    isTableModel = buffer.hasRemaining() && buffer.get() != 0;
   }
 
   @Override
@@ -65,16 +77,16 @@ public class DropPipePlanV2 extends ConfigPhysicalPlan {
       return false;
     }
     DropPipePlanV2 that = (DropPipePlanV2) obj;
-    return pipeName.equals(that.pipeName);
+    return isTableModel == that.isTableModel && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName);
+    return Objects.hash(pipeName, isTableModel);
   }
 
   @Override
   public String toString() {
-    return "DropPipePlanV2{" + "pipeName='" + pipeName + "'}";
+    return "DropPipePlanV2{" + "pipeName='" + pipeName + "', isTableModel=" + isTableModel + "'}";
   }
 }

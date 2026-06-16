@@ -91,7 +91,7 @@ public class StopPipeProcedureV2Test {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    StopPipeProcedureV2 proc = new StopPipeProcedureV2("testPipe");
+    StopPipeProcedureV2 proc = new StopPipeProcedureV2("testPipe", true);
 
     try {
       proc.serialize(outputStream);

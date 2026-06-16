@@ -108,12 +108,15 @@ public class PipeTableResp implements DataSet {
       final String pipeName,
       final boolean isTableModel,
       final String userName) {
-    final PipeTableResp resp = filter(whereClause, pipeName);
-    resp.allPipeMeta.removeIf(
-        meta ->
-            !meta.getStaticMeta().visibleUnder(isTableModel)
-                || !isVisible4User(userName, meta.getStaticMeta()));
-    return resp;
+    return new PipeTableResp(
+            status,
+            allPipeMeta.stream()
+                .filter(
+                    meta ->
+                        meta.getStaticMeta().visibleUnder(isTableModel)
+                            && isVisible4User(userName, meta.getStaticMeta()))
+                .collect(Collectors.toList()))
+        .filter(whereClause, pipeName);
   }
 
   public boolean isVisible4User(final String userName, final PipeStaticMeta meta) {

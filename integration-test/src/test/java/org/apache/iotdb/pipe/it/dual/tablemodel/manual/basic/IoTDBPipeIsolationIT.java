@@ -312,6 +312,86 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
+  public void testSameNameTreeOnlyAndTableOnlyPipeIsolation() throws Exception {
+    final String pipeName = "same_name_pipe";
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s with sink ('node-urls'='%s')",
+              pipeName, receiverDataNode.getIpAndPortString()));
+    }
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s with sink ('node-urls'='%s')",
+              pipeName, receiverDataNode.getIpAndPortString()));
+    }
+
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("stop pipe " + pipeName);
+    }
+
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("drop pipe " + pipeName);
+    }
+
+    Assert.assertEquals(0, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("start pipe " + pipeName);
+      statement.execute("drop pipe " + pipeName);
+    }
+
+    Assert.assertEquals(0, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+    Assert.assertEquals(0, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+  }
+
+  @Test
+  public void testSameNamePipeWithOverlappedVisibilityConflicts() throws Exception {
+    final String pipeName = "same_name_conflict_pipe";
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s with sink ('node-urls'='%s')",
+              pipeName, receiverDataNode.getIpAndPortString()));
+    }
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s"
+                  + " with source ('capture.tree'='true','capture.table'='true')"
+                  + " with sink ('node-urls'='%s')",
+              pipeName, receiverDataNode.getIpAndPortString()));
+      fail("Creating a both-visible pipe should conflict with an existing same-name tree pipe.");
+    } catch (final SQLException ignored) {
+      // expected
+    }
+
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+    Assert.assertEquals(0, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+  }
+
+  @Test
   public void testCaptureCornerCases() {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
