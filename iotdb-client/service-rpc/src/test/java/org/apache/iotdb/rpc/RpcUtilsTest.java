@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collections;
 
 public class RpcUtilsTest {
 
@@ -63,5 +67,26 @@ public class RpcUtilsTest {
     Assert.assertEquals(
         "1970-01-01T07:59:59.999+08:00",
         RpcUtils.parseLongToDateWithPrecision(formatter, -1, zoneId, "ms"));
+  }
+
+  @Test
+  public void testVerifySuccessListAllowsSuccessfulStatuses() throws BatchExecutionException {
+    RpcUtils.verifySuccess(
+        Arrays.asList(
+            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
+            RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)));
+  }
+
+  @Test
+  public void testVerifySuccessListThrowsOnFailure() {
+    TSStatus failedStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "failed");
+
+    try {
+      RpcUtils.verifySuccess(Collections.singletonList(failedStatus));
+      Assert.fail("Expected BatchExecutionException");
+    } catch (BatchExecutionException e) {
+      Assert.assertEquals(Collections.singletonList(failedStatus), e.getStatusList());
+      Assert.assertTrue(e.getMessage().contains("failed"));
+    }
   }
 }
