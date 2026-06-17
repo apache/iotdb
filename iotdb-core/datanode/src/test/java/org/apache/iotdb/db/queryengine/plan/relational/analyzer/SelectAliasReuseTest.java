@@ -21,6 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
@@ -34,6 +37,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
@@ -42,12 +47,14 @@ import org.junit.Test;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeStatement;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -404,6 +411,30 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void lateralColumnAliasPlanReusesPreviousProjection() {
+    LogicalQueryPlan plan =
+        new PlanTester().createPlan("SELECT CAST(s2 AS double) AS x, x + 1.0 AS y FROM table1");
+    List<ProjectNode> projects = new ArrayList<>();
+    collectProjectNodes(plan.getRootNode(), projects);
+
+    Symbol castSymbol = null;
+    int castAssignments = 0;
+    for (ProjectNode project : projects) {
+      for (Map.Entry<Symbol, Expression> assignment : project.getAssignments().entrySet()) {
+        if (assignment.getValue() instanceof Cast) {
+          castSymbol = assignment.getKey();
+          castAssignments++;
+        }
+      }
+    }
+
+    assertNotNull(castSymbol);
+    assertEquals(1, castAssignments);
+    assertTrue(hasArithmeticOnSymbol(projects, castSymbol));
+    assertFalse(hasArithmeticOnCast(projects));
+  }
+
+  @Test
   public void duplicateAliasesAreAmbiguous() {
     assertAnalyzeSemanticException(
         "SELECT s1 AS x, s2 AS x FROM table1 ORDER BY x", "Column alias 'x' is ambiguous");
@@ -540,6 +571,50 @@ public class SelectAliasReuseTest {
   private static void assertFieldReference(Expression expression, int index) {
     assertTrue(expression instanceof FieldReference);
     assertEquals(index, ((FieldReference) expression).getFieldIndex());
+  }
+
+  private static void collectProjectNodes(PlanNode node, List<ProjectNode> projects) {
+    if (node instanceof ProjectNode) {
+      projects.add((ProjectNode) node);
+    }
+    for (PlanNode child : node.getChildren()) {
+      collectProjectNodes(child, projects);
+    }
+  }
+
+  private static boolean hasArithmeticOnSymbol(List<ProjectNode> projects, Symbol symbol) {
+    for (ProjectNode project : projects) {
+      for (Expression expression : project.getAssignments().getExpressions()) {
+        if (expression instanceof ArithmeticBinaryExpression) {
+          ArithmeticBinaryExpression arithmeticExpression = (ArithmeticBinaryExpression) expression;
+          if (isSymbolReference(arithmeticExpression.getLeft(), symbol)
+              || isSymbolReference(arithmeticExpression.getRight(), symbol)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean hasArithmeticOnCast(List<ProjectNode> projects) {
+    for (ProjectNode project : projects) {
+      for (Expression expression : project.getAssignments().getExpressions()) {
+        if (expression instanceof ArithmeticBinaryExpression) {
+          ArithmeticBinaryExpression arithmeticExpression = (ArithmeticBinaryExpression) expression;
+          if (arithmeticExpression.getLeft() instanceof Cast
+              || arithmeticExpression.getRight() instanceof Cast) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean isSymbolReference(Expression expression, Symbol symbol) {
+    return expression instanceof SymbolReference
+        && ((SymbolReference) expression).getName().equals(symbol.getName());
   }
 
   private static QuerySpecification getExistsSubquery(QuerySpecification query) {

@@ -524,21 +524,56 @@ public class StatementAnalyzer {
     if (visibleAliases.isEmpty()) {
       return expression;
     }
-    return ExpressionTreeRewriter.rewriteWith(
-        new LateralColumnAliasRewriter(scope, visibleAliases), expression);
+    return rewriteLateralColumnAliasesWithReferences(expression, scope, visibleAliases)
+        .getExpression();
+  }
+
+  private static LateralColumnAliasRewrite rewriteLateralColumnAliasesWithReferences(
+      Expression expression, Scope scope, SelectAliasLookup visibleAliases) {
+    if (visibleAliases.isEmpty()) {
+      return new LateralColumnAliasRewrite(expression, ImmutableMap.of());
+    }
+    LateralColumnAliasRewriter rewriter = new LateralColumnAliasRewriter(scope, visibleAliases);
+    return new LateralColumnAliasRewrite(
+        ExpressionTreeRewriter.rewriteWith(rewriter, expression), rewriter.getReferences());
   }
 
   private static Expression copyExpression(Expression expression) {
     return ExpressionTreeRewriter.rewriteWith(new DeepCopyExpressionRewriter(), expression);
   }
 
+  private static final class LateralColumnAliasRewrite {
+    private final Expression expression;
+    private final Map<NodeRef<Expression>, Expression> references;
+
+    private LateralColumnAliasRewrite(
+        Expression expression, Map<NodeRef<Expression>, Expression> references) {
+      this.expression = requireNonNull(expression, "expression is null");
+      this.references = ImmutableMap.copyOf(requireNonNull(references, "references is null"));
+    }
+
+    private Expression getExpression() {
+      return expression;
+    }
+
+    private Map<NodeRef<Expression>, Expression> getReferences() {
+      return references;
+    }
+  }
+
   private static final class LateralColumnAliasRewriter extends ExpressionRewriter<Void> {
     private final Scope scope;
     private final SelectAliasLookup visibleAliases;
+    private final ImmutableMap.Builder<NodeRef<Expression>, Expression> references =
+        ImmutableMap.builder();
 
     private LateralColumnAliasRewriter(Scope scope, SelectAliasLookup visibleAliases) {
       this.scope = requireNonNull(scope, "scope is null");
       this.visibleAliases = requireNonNull(visibleAliases, "visibleAliases is null");
+    }
+
+    private Map<NodeRef<Expression>, Expression> getReferences() {
+      return references.buildOrThrow();
     }
 
     @Override
@@ -559,7 +594,9 @@ public class StatementAnalyzer {
                 "Lateral column alias '%s' containing window function is not supported",
                 node.getValue()));
       }
-      return copyExpression(selectAlias.get().getRewrittenExpression());
+      Expression copiedExpression = copyExpression(selectAlias.get().getRewrittenExpression());
+      references.put(NodeRef.of(copiedExpression), selectAlias.get().getRewrittenExpression());
+      return copiedExpression;
     }
 
     @Override
@@ -1425,7 +1462,10 @@ public class StatementAnalyzer {
       if (node.getOrderBy().isPresent()) {
         orderByExpressions =
             analyzeOrderBy(
-                node, getSortItemsFromOrderBy(node.getOrderBy()), queryBodyScope, emptyList());
+                node,
+                getSortItemsFromOrderBy(node.getOrderBy()),
+                queryBodyScope,
+                SelectAliasLookup.builder().build());
 
         if ((queryBodyScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
@@ -2146,11 +2186,17 @@ public class StatementAnalyzer {
             }
           } else {
             SelectAliasLookup visibleAliases = visibleAliasBuilder.build();
-            Expression rewrittenExpression =
-                rewriteLateralColumnAliases(selectExpression, scope, visibleAliases);
+            LateralColumnAliasRewrite lateralColumnAliasRewrite =
+                rewriteLateralColumnAliasesWithReferences(selectExpression, scope, visibleAliases);
+            Expression rewrittenExpression = lateralColumnAliasRewrite.getExpression();
             resolveFunctionCallAndMeasureWindows(node, rewrittenExpression);
             analyzeSelectSingleColumn(
-                rewrittenExpression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+                rewrittenExpression,
+                node,
+                scope,
+                outputExpressionBuilder,
+                selectExpressionBuilder,
+                lateralColumnAliasRewrite.getReferences());
             singleColumnExpressionBuilder.put(NodeRef.of(singleColumn), rewrittenExpression);
             if (singleColumn.getAlias().isPresent()) {
               Identifier alias = singleColumn.getAlias().get();
@@ -3231,10 +3277,28 @@ public class StatementAnalyzer {
         Scope scope,
         ImmutableList.Builder<Expression> outputExpressionBuilder,
         ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder) {
+      analyzeSelectSingleColumn(
+          expression,
+          node,
+          scope,
+          outputExpressionBuilder,
+          selectExpressionBuilder,
+          ImmutableMap.of());
+    }
+
+    private void analyzeSelectSingleColumn(
+        Expression expression,
+        QuerySpecification node,
+        Scope scope,
+        ImmutableList.Builder<Expression> outputExpressionBuilder,
+        ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder,
+        Map<NodeRef<Expression>, Expression> lateralColumnAliasReferences) {
       ExpressionAnalysis expressionAnalysis = analyzeExpression(expression, scope);
       analysis.recordSubqueries(node, expressionAnalysis);
       outputExpressionBuilder.add(expression);
-      selectExpressionBuilder.add(new Analysis.SelectExpression(expression, Optional.empty()));
+      selectExpressionBuilder.add(
+          new Analysis.SelectExpression(
+              expression, Optional.empty(), lateralColumnAliasReferences));
 
       Type type = expressionAnalysis.getType(expression);
       if (node.getSelect().isDistinct() && !type.isComparable()) {

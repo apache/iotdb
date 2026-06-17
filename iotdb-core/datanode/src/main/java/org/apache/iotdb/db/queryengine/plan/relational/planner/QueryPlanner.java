@@ -194,16 +194,21 @@ public class QueryPlanner {
 
     List<Expression> orderBy = analysis.getOrderByExpressions(query);
     if (!orderBy.isEmpty()) {
-      builder =
-          builder.appendProjections(
-              Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
+      if (hasLateralColumnAliasReferences(selectExpressions)) {
+        builder = builder.appendProjections(orderBy, symbolAllocator, queryContext);
+        builder = appendSelectProjections(builder, selectExpressions);
+      } else {
+        builder =
+            builder.appendProjections(
+                Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
+      }
     }
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, query.getOrderBy(), analysis.getOrderByExpressions(query));
     builder = sort(builder, orderingScheme);
     builder = offset(builder, query.getOffset());
     builder = limit(builder, query.getLimit(), orderingScheme);
-    builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+    builder = appendSelectProjections(builder, selectExpressions);
 
     return new RelationPlan(
         builder.getRoot(),
@@ -263,7 +268,7 @@ public class QueryPlanner {
       // Add projections for the outputs of SELECT, but stack them on top of the ones from the FROM
       // clause so both are visible
       // when resolving the ORDER BY clause.
-      builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+      builder = appendSelectProjections(builder, selectExpressions);
       // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
       // scopes). Fields from the bottom of
       // the scope stack need to be placed first to match the expected layout for nested scopes.
@@ -290,7 +295,7 @@ public class QueryPlanner {
       // Add projections for the outputs of SELECT, but stack them on top of the ones from the FROM
       // clause so both are visible
       // when resolving the ORDER BY clause.
-      builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+      builder = appendSelectProjections(builder, selectExpressions);
 
       // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
       // scopes). Fields from the bottom of
@@ -310,9 +315,14 @@ public class QueryPlanner {
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
     if (!orderBy.isEmpty() || node.getSelect().isDistinct()) {
-      builder =
-          builder.appendProjections(
-              Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
+      if (hasLateralColumnAliasReferences(selectExpressions)) {
+        builder = builder.appendProjections(orderBy, symbolAllocator, queryContext);
+        builder = appendSelectProjections(builder, selectExpressions);
+      } else {
+        builder =
+            builder.appendProjections(
+                Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
+      }
     }
 
     builder = distinct(builder, node, outputs);
@@ -322,7 +332,7 @@ public class QueryPlanner {
     builder = offset(builder, node.getOffset());
     builder = limit(builder, node.getLimit(), orderingScheme);
 
-    builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+    builder = appendSelectProjections(builder, selectExpressions);
     for (Expression expr : expressions) {
       predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(expr);
     }
@@ -751,6 +761,41 @@ public class QueryPlanner {
       }
     }
     return result.build();
+  }
+
+  private PlanBuilder appendSelectProjections(
+      PlanBuilder builder, List<Analysis.SelectExpression> selectExpressions) {
+    if (!hasLateralColumnAliasReferences(selectExpressions)) {
+      return builder.appendProjections(
+          outputExpressions(selectExpressions), symbolAllocator, queryContext);
+    }
+
+    for (Analysis.SelectExpression selectExpression : selectExpressions) {
+      if (!selectExpression.getLateralColumnAliasReferences().isEmpty()) {
+        ImmutableMap.Builder<NodeRef<Expression>, Symbol> mappings = ImmutableMap.builder();
+        for (Map.Entry<NodeRef<Expression>, Expression> entry :
+            selectExpression.getLateralColumnAliasReferences().entrySet()) {
+          mappings.put(entry.getKey(), builder.translate(entry.getValue()));
+        }
+        builder = builder.withAdditionalIdentityMappings(mappings.buildOrThrow());
+      }
+
+      builder =
+          builder.appendProjections(
+              selectExpression
+                  .getUnfoldedExpressions()
+                  .orElseGet(() -> ImmutableList.of(selectExpression.getExpression())),
+              symbolAllocator,
+              queryContext);
+    }
+    return builder;
+  }
+
+  private static boolean hasLateralColumnAliasReferences(
+      List<Analysis.SelectExpression> selectExpressions) {
+    return selectExpressions.stream()
+        .map(Analysis.SelectExpression::getLateralColumnAliasReferences)
+        .anyMatch(references -> !references.isEmpty());
   }
 
   public PlanNode plan(Delete node) {
