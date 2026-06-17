@@ -150,22 +150,26 @@ public class Scheduler {
                     CompletableFuture.runAsync(
                         () -> {
                           int regionId = entry.getKey();
-                          CachedMTreeStore store = entry.getValue();
-                          if (store == null) {
-                            // store has been closed
-                            return;
-                          }
-                          LockManager lockManager = store.getLockManager();
-                          lockManager.globalReadLock();
-                          if (!regionToStore.containsKey(regionId)) {
-                            // double check store have not been closed
-                            return;
-                          }
                           try {
-                            executeFlush(store, regionId, null, true);
-                            executeRelease(store, false);
+                            CachedMTreeStore store = entry.getValue();
+                            if (store == null) {
+                              // store has been closed
+                              return;
+                            }
+                            LockManager lockManager = store.getLockManager();
+                            lockManager.globalReadLock();
+                            try {
+                              if (!regionToStore.containsKey(regionId)) {
+                                // double check store have not been closed
+                                return;
+                              }
+                              executeFlush(store, regionId, null, true);
+                              executeRelease(store, false);
+                            } finally {
+                              lockManager.globalReadUnlock();
+                            }
                           } finally {
-                            lockManager.globalReadUnlock();
+                            flushingRegionSet.remove(regionId);
                           }
                         },
                         workerPool))
@@ -226,22 +230,25 @@ public class Scheduler {
       flushingRegionSet.add(regionId);
       workerPool.submit(
           () -> {
-            CachedMTreeStore store = regionToStore.get(regionId);
-            if (store == null) {
-              // store has been closed
-              return;
-            }
-            LockManager lockManager = store.getLockManager();
-            lockManager.globalReadLock();
-            if (!regionToStore.containsKey(regionId)) {
-              // double check store have not been closed
-              return;
-            }
             try {
-
-              executeFlush(store, regionId, remainToFlush, false);
+              CachedMTreeStore store = regionToStore.get(regionId);
+              if (store == null) {
+                // store has been closed
+                return;
+              }
+              LockManager lockManager = store.getLockManager();
+              lockManager.globalReadLock();
+              try {
+                if (!regionToStore.containsKey(regionId)) {
+                  // double check store have not been closed
+                  return;
+                }
+                executeFlush(store, regionId, remainToFlush, false);
+              } finally {
+                lockManager.globalReadUnlock();
+              }
             } finally {
-              lockManager.globalReadUnlock();
+              flushingRegionSet.remove(regionId);
             }
           });
       if (remainToFlush.get() <= 0) {

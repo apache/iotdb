@@ -304,12 +304,6 @@ public abstract class PageManager implements IPageManager {
       }
 
       if (!child.isMeasurement() && getNodeAddress(child) < 0) {
-        if (child.isDevice() && child.getAsDeviceMNode().isUseTemplate()) {
-          throw new MetadataException(
-              String.format(
-                  "Adding or updating children of device using template [%s] is NOT allowed.",
-                  child.getFullPath()));
-        }
         short estSegSize = estimateSegmentSize(child);
         long glbIndex = preAllocateSegment(estSegSize, cxt);
         SchemaFile.setNodeAddress(child, glbIndex);
