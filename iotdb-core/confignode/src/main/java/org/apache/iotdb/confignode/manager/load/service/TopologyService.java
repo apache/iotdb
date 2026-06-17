@@ -36,9 +36,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
-import org.apache.iotdb.confignode.manager.load.cache.detector.FixedDetector;
-import org.apache.iotdb.confignode.manager.load.cache.detector.PhiAccrualDetector;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
@@ -90,7 +89,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
   /* (fromDataNodeId, toDataNodeId) -> heartbeat history */
   private final Map<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> heartbeats;
 
-  private final IFailureDetector failureDetector;
+  private volatile IFailureDetector failureDetector;
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private int proberRotationIndex = 0;
@@ -109,21 +108,11 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     this.shouldRun = new AtomicBoolean(false);
     this.awaitForSignal = new AwaitForSignal(this.getClass().getSimpleName());
 
-    switch (CONF.getFailureDetector()) {
-      case IFailureDetector.PHI_ACCRUAL_DETECTOR:
-        this.failureDetector =
-            new PhiAccrualDetector(
-                CONF.getFailureDetectorPhiThreshold(),
-                CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
-                CONF.getHeartbeatIntervalInMs() * 200_000L,
-                IFailureDetector.PHI_COLD_START_THRESHOLD,
-                new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
-        break;
-      case IFailureDetector.FIXED_DETECTOR:
-      default:
-        this.failureDetector =
-            new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L);
-    }
+    this.failureDetector = AbstractLoadCache.buildFailureDetector();
+  }
+
+  public void reloadFailureDetector() {
+    this.failureDetector = AbstractLoadCache.buildFailureDetector();
   }
 
   public synchronized void startTopologyService() {

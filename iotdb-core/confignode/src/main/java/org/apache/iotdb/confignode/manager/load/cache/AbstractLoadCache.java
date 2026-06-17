@@ -43,28 +43,33 @@ public abstract class AbstractLoadCache {
   // The current statistics calculated by the latest heartbeat sample
   protected final AtomicReference<AbstractStatistics> currentStatistics;
 
-  protected final IFailureDetector failureDetector;
+  protected volatile IFailureDetector failureDetector;
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   protected AbstractLoadCache() {
     this.currentStatistics = new AtomicReference<>();
     this.slidingWindow = Collections.synchronizedList(new LinkedList<>());
+    this.failureDetector = buildFailureDetector();
+  }
+
+  public static IFailureDetector buildFailureDetector() {
     switch (CONF.getFailureDetector()) {
       case IFailureDetector.PHI_ACCRUAL_DETECTOR:
-        this.failureDetector =
-            new PhiAccrualDetector(
-                CONF.getFailureDetectorPhiThreshold(),
-                CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
-                CONF.getHeartbeatIntervalInMs() * 200_000L,
-                IFailureDetector.PHI_COLD_START_THRESHOLD,
-                new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
-        break;
+        return new PhiAccrualDetector(
+            CONF.getFailureDetectorPhiThreshold(),
+            CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
+            CONF.getHeartbeatIntervalInMs() * 200_000L,
+            IFailureDetector.PHI_COLD_START_THRESHOLD,
+            new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
       case IFailureDetector.FIXED_DETECTOR:
       default:
-        this.failureDetector =
-            new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L);
+        return new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L);
     }
+  }
+
+  public void reloadFailureDetector() {
+    this.failureDetector = buildFailureDetector();
   }
 
   /**

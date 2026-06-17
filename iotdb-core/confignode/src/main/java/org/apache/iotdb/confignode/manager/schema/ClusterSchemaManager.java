@@ -141,8 +141,6 @@ public class ClusterSchemaManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
-  private static final int DATA_REGION_PER_DATA_NODE = CONF.getDataRegionPerDataNode();
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -523,7 +521,7 @@ public class ClusterSchemaManager {
       final int maxSchemaRegionGroupNum =
           calcMaxRegionGroupNum(
               databaseSchema.getMinSchemaRegionGroupNum(),
-              SCHEMA_REGION_PER_DATA_NODE,
+              CONF.getSchemaRegionPerDataNode(),
               dataNodeNum,
               databaseNum,
               databaseSchema.getSchemaReplicationFactor(),
@@ -549,10 +547,10 @@ public class ClusterSchemaManager {
       final int maxDataRegionGroupNum =
           calcMaxRegionGroupNum(
               databaseSchema.getMinDataRegionGroupNum(),
-              DATA_REGION_PER_DATA_NODE == 0
+              CONF.getDataRegionPerDataNode() == 0
                   ? CONF.getDataRegionPerDataNodeProportion()
-                  : DATA_REGION_PER_DATA_NODE,
-              DATA_REGION_PER_DATA_NODE == 0 ? totalCpuCoreNum : dataNodeNum,
+                  : CONF.getDataRegionPerDataNode(),
+              CONF.getDataRegionPerDataNode() == 0 ? totalCpuCoreNum : dataNodeNum,
               databaseNum,
               databaseSchema.getDataReplicationFactor(),
               allocatedDataRegionGroupCount);

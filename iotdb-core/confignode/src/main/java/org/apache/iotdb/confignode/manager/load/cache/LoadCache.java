@@ -203,6 +203,12 @@ public class LoadCache {
     consensusGroupCacheMap.clear();
   }
 
+  public void reloadFailureDetector() {
+    nodeCacheMap.values().forEach(AbstractLoadCache::reloadFailureDetector);
+    regionGroupCacheMap.values().forEach(RegionGroupCache::reloadFailureDetector);
+    consensusGroupCacheMap.values().forEach(AbstractLoadCache::reloadFailureDetector);
+  }
+
   /**
    * Check if the specified Node is processing heartbeat. And set the processing flag to true.
    *

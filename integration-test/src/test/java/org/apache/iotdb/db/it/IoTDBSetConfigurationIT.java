@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -118,6 +121,155 @@ public class IoTDBSetConfigurationIT {
   }
 
   @Test
+  public void testHotReloadHeartbeatInterval() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"heartbeat_interval_in_ms\"=\"500\"");
+      assertAppliedConfiguration(0, "heartbeat_interval_in_ms", "500");
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("set configuration \"heartbeat_interval_in_ms\"=\"1000\"");
+      } catch (Exception e) {
+        Assert.fail(e.getMessage());
+      }
+    }
+    Assert.assertTrue(
+        EnvFactory.getEnv().getConfigNodeWrapperList().stream()
+            .allMatch(
+                nodeWrapper ->
+                    checkConfigFileContains(nodeWrapper, "heartbeat_interval_in_ms=1000")));
+  }
+
+  @Test
+  public void testHotReloadContinuousQueryMinEveryInterval() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"continuous_query_min_every_interval_in_ms\"=\"50\"");
+      assertAppliedConfiguration(0, "continuous_query_min_every_interval_in_ms", "50");
+      assertAppliedConfiguration(
+          EnvFactory.getEnv().getConfigNodeWrapperList().size(),
+          "continuous_query_min_every_interval_in_ms",
+          "50");
+      statement.execute(
+          "CREATE CQ hot_reload_cq\n"
+              + "RESAMPLE EVERY 50ms\n"
+              + "BEGIN \n"
+              + "  SELECT count(s1)  \n"
+              + "    INTO root.sg_count.d(count_s1)\n"
+              + "    FROM root.sg.d\n"
+              + "    GROUP BY(30m)\n"
+              + "END");
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        try {
+          statement.execute("DROP CQ hot_reload_cq");
+        } catch (SQLException ignored) {
+          // The CQ may not exist if the hot-reload assertion failed before creation.
+        }
+        statement.execute(
+            "set configuration \"continuous_query_min_every_interval_in_ms\"=\"1000\"");
+      } catch (Exception e) {
+        Assert.fail(e.getMessage());
+      }
+    }
+    Assert.assertTrue(
+        EnvFactory.getEnv().getNodeWrapperList().stream()
+            .allMatch(
+                nodeWrapper ->
+                    checkConfigFileContains(
+                        nodeWrapper, "continuous_query_min_every_interval_in_ms=1000")));
+  }
+
+  @Test
+  public void testHotReloadRegionGroupExtensionConfiguration() {
+    String database = "root.hot_reload_region";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"schema_region_group_extension_policy\"=\"CUSTOM\"");
+      statement.execute("set configuration \"data_region_group_extension_policy\"=\"CUSTOM\"");
+      statement.execute("set configuration \"default_schema_region_group_num_per_database\"=\"2\"");
+      statement.execute("set configuration \"default_data_region_group_num_per_database\"=\"3\"");
+      statement.execute("set configuration \"schema_region_per_data_node\"=\"2\"");
+      statement.execute("set configuration \"data_region_per_data_node\"=\"2\"");
+
+      assertAppliedConfiguration(0, "schema_region_group_extension_policy", "CUSTOM");
+      assertAppliedConfiguration(0, "data_region_group_extension_policy", "CUSTOM");
+      assertAppliedConfiguration(0, "default_schema_region_group_num_per_database", "2");
+      assertAppliedConfiguration(0, "default_data_region_group_num_per_database", "3");
+      assertShowVariable(statement, ColumnHeaderConstant.SCHEMA_REGION_PER_DATA_NODE, "2");
+      assertShowVariable(statement, ColumnHeaderConstant.DATA_REGION_PER_DATA_NODE, "2");
+
+      statement.execute("CREATE DATABASE " + database);
+      statement.execute("INSERT INTO " + database + ".d(timestamp, s1) VALUES (1, 1)");
+      assertRegionGroupNum(statement, database, 2, 3);
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        try {
+          statement.execute("DELETE DATABASE " + database);
+        } catch (SQLException ignored) {
+          // The database may not exist if the hot-reload assertion failed before creation.
+        }
+        statement.execute("set configuration \"schema_region_group_extension_policy\"=\"AUTO\"");
+        statement.execute("set configuration \"data_region_group_extension_policy\"=\"AUTO\"");
+        statement.execute(
+            "set configuration \"default_schema_region_group_num_per_database\"=\"1\"");
+        statement.execute("set configuration \"default_data_region_group_num_per_database\"=\"2\"");
+        statement.execute("set configuration \"schema_region_per_data_node\"=\"1\"");
+        statement.execute("set configuration \"data_region_per_data_node\"=\"0\"");
+      } catch (Exception e) {
+        Assert.fail(e.getMessage());
+      }
+    }
+    Assert.assertTrue(
+        EnvFactory.getEnv().getConfigNodeWrapperList().stream()
+            .allMatch(
+                nodeWrapper ->
+                    checkConfigFileContains(
+                        nodeWrapper,
+                        "schema_region_group_extension_policy=AUTO",
+                        "data_region_group_extension_policy=AUTO",
+                        "default_schema_region_group_num_per_database=1",
+                        "default_data_region_group_num_per_database=2",
+                        "schema_region_per_data_node=1",
+                        "data_region_per_data_node=0")));
+  }
+
+  @Test
+  public void testHotReloadReadConsistencyLevel() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"read_consistency_level\"=\"weak\"");
+      assertAppliedConfiguration(0, "read_consistency_level", "weak");
+      assertAppliedConfiguration(
+          EnvFactory.getEnv().getConfigNodeWrapperList().size(), "read_consistency_level", "weak");
+      assertShowVariable(statement, ColumnHeaderConstant.READ_CONSISTENCY_LEVEL, "weak");
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("set configuration \"read_consistency_level\"=\"strong\"");
+      } catch (Exception e) {
+        Assert.fail(e.getMessage());
+      }
+    }
+    Assert.assertTrue(
+        EnvFactory.getEnv().getNodeWrapperList().stream()
+            .allMatch(
+                nodeWrapper ->
+                    checkConfigFileContains(nodeWrapper, "read_consistency_level=strong")));
+  }
+
+  @Test
   public void testSetClusterName() throws Exception {
     // set cluster name on cn and dn
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -175,6 +327,57 @@ public class IoTDBSetConfigurationIT {
     } catch (IOException ignore) {
       return false;
     }
+  }
+
+  private static void assertAppliedConfiguration(int nodeId, String key, String value)
+      throws Exception {
+    try (ITableSession tableSessionConnection = EnvFactory.getEnv().getTableSessionConnection()) {
+      SessionDataSet sessionDataSet =
+          tableSessionConnection.executeQueryStatement("show configuration on " + nodeId);
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      while (iterator.next()) {
+        if (key.equals(iterator.getString(1))) {
+          Assert.assertEquals(value, iterator.isNull(2) ? null : iterator.getString(2));
+          return;
+        }
+      }
+    }
+    Assert.fail("Cannot find applied configuration: " + key);
+  }
+
+  private static void assertShowVariable(Statement statement, String key, String value)
+      throws SQLException {
+    try (ResultSet resultSet = statement.executeQuery("show variables")) {
+      while (resultSet.next()) {
+        if (key.equals(resultSet.getString(1))) {
+          Assert.assertEquals(value, resultSet.getString(2));
+          return;
+        }
+      }
+    }
+    Assert.fail("Cannot find variable: " + key);
+  }
+
+  private static void assertRegionGroupNum(
+      Statement statement,
+      String database,
+      int expectedSchemaRegionGroupNum,
+      int expectedDataRegionGroupNum)
+      throws SQLException {
+    int schemaRegionGroupNum = 0;
+    int dataRegionGroupNum = 0;
+    try (ResultSet resultSet = statement.executeQuery("show regions of database " + database)) {
+      while (resultSet.next()) {
+        String regionType = resultSet.getString(ColumnHeaderConstant.TYPE);
+        if ("SchemaRegion".equals(regionType)) {
+          schemaRegionGroupNum++;
+        } else if ("DataRegion".equals(regionType)) {
+          dataRegionGroupNum++;
+        }
+      }
+    }
+    Assert.assertEquals(expectedSchemaRegionGroupNum, schemaRegionGroupNum);
+    Assert.assertEquals(expectedDataRegionGroupNum, dataRegionGroupNum);
   }
 
   @Test

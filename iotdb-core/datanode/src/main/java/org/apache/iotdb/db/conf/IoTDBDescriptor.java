@@ -2196,6 +2196,12 @@ public class IoTDBDescriptor {
       // update load config
       loadLoadTsFileHotModifiedProp(properties);
 
+      // update CQ semantic-check config pushed from ConfigNode
+      loadCqMinEveryIntervalInMs(properties);
+
+      // update query routing consistency config pushed from ConfigNode
+      loadReadConsistencyLevel(properties);
+
       // update pipe config
       loadPipeHotModifiedProp(properties);
 
@@ -2818,6 +2824,34 @@ public class IoTDBDescriptor {
             properties.getProperty("continuous_query_minimum_every_interval", "1s").trim(),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
             false));
+  }
+
+  private void loadCqMinEveryIntervalInMs(TrimProperties properties) throws IOException {
+    long cqMinEveryIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "continuous_query_min_every_interval_in_ms",
+                String.valueOf(conf.getCqMinEveryIntervalInMs())));
+    if (cqMinEveryIntervalInMs <= 0) {
+      throw new IOException(
+          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is "
+              + cqMinEveryIntervalInMs
+              + ".");
+    }
+    conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
+  }
+
+  private void loadReadConsistencyLevel(TrimProperties properties) throws IOException {
+    String readConsistencyLevel =
+        properties.getProperty(
+            "read_consistency_level", conf.getReadConsistencyLevel().name().toLowerCase());
+    if (!"strong".equals(readConsistencyLevel) && !"weak".equals(readConsistencyLevel)) {
+      throw new IOException(
+          String.format(
+              "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+              readConsistencyLevel));
+    }
+    conf.setReadConsistencyLevel(readConsistencyLevel);
   }
 
   public void loadClusterProps(TrimProperties properties) throws IOException {

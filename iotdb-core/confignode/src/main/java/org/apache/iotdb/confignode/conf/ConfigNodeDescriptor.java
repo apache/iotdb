@@ -214,42 +214,7 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-    conf.setSchemaRegionGroupExtensionPolicy(
-        RegionGroupExtensionPolicy.parse(
-            properties.getProperty(
-                "schema_region_group_extension_policy",
-                conf.getSchemaRegionGroupExtensionPolicy().getPolicy())));
-
-    conf.setDefaultSchemaRegionGroupNumPerDatabase(
-        Integer.parseInt(
-            properties.getProperty(
-                "default_schema_region_group_num_per_database",
-                String.valueOf(conf.getDefaultSchemaRegionGroupNumPerDatabase()))));
-
-    conf.setSchemaRegionPerDataNode(
-        (int)
-            Double.parseDouble(
-                properties.getProperty(
-                    "schema_region_per_data_node",
-                    String.valueOf(conf.getSchemaRegionPerDataNode()))));
-
-    conf.setDataRegionGroupExtensionPolicy(
-        RegionGroupExtensionPolicy.parse(
-            properties.getProperty(
-                "data_region_group_extension_policy",
-                conf.getDataRegionGroupExtensionPolicy().getPolicy())));
-
-    conf.setDefaultDataRegionGroupNumPerDatabase(
-        Integer.parseInt(
-            properties.getProperty(
-                "default_data_region_group_num_per_database",
-                String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase()))));
-
-    conf.setDataRegionPerDataNode(
-        (int)
-            Double.parseDouble(
-                properties.getProperty(
-                    "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode()))));
+    loadRegionGroupExtensionConfig(properties).applyTo(conf);
 
     try {
       conf.setRegionAllocateStrategy(
@@ -307,10 +272,7 @@ public class ConfigNodeDescriptor {
                     "pipe_receiver_file_dir",
                     conf.getSystemDir() + File.separator + "pipe" + File.separator + "receiver")));
 
-    conf.setHeartbeatIntervalInMs(
-        Long.parseLong(
-            properties.getProperty(
-                "heartbeat_interval_in_ms", String.valueOf(conf.getHeartbeatIntervalInMs()))));
+    conf.setHeartbeatIntervalInMs(loadHeartbeatIntervalInMs(properties, false));
 
     String failureDetector = properties.getProperty("failure_detector", conf.getFailureDetector());
     if (IFailureDetector.FIXED_DETECTOR.equals(failureDetector)
@@ -397,16 +359,7 @@ public class ConfigNodeDescriptor {
               ConfigNodeMessages.UNKNOWN_ROUTE_PRIORITY_POLICY_PLEASE_SET_TO, routePriorityPolicy));
     }
 
-    String readConsistencyLevel =
-        properties.getProperty("read_consistency_level", conf.getReadConsistencyLevel());
-    if (readConsistencyLevel.equals("strong") || readConsistencyLevel.equals("weak")) {
-      conf.setReadConsistencyLevel(readConsistencyLevel);
-    } else {
-      throw new IOException(
-          String.format(
-              ConfigNodeMessages.UNKNOWN_READ_CONSISTENCY_LEVEL_PLEASE_SET_TO,
-              readConsistencyLevel));
-    }
+    conf.setReadConsistencyLevel(loadReadConsistencyLevel(properties));
 
     // commons
     commonDescriptor.loadCommonProps(properties);
@@ -768,7 +721,7 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getForceWalPeriodForConfigNodeSimpleInMs()))));
   }
 
-  private void loadCQConfig(TrimProperties properties) {
+  private void loadCQConfig(TrimProperties properties) throws IOException {
     int cqSubmitThread =
         Integer.parseInt(
             properties.getProperty(
@@ -782,12 +735,48 @@ public class ConfigNodeDescriptor {
     }
     conf.setCqSubmitThread(cqSubmitThread);
 
+    conf.setCqMinEveryIntervalInMs(loadCqMinEveryIntervalInMs(properties, false));
+  }
+
+  private long loadHeartbeatIntervalInMs(TrimProperties properties, boolean rejectInvalid)
+      throws IOException {
+    long heartbeatIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "heartbeat_interval_in_ms", String.valueOf(conf.getHeartbeatIntervalInMs())));
+    if (heartbeatIntervalInMs <= 0) {
+      String warning =
+          "heartbeat_interval_in_ms should be greater than 0, but was "
+              + heartbeatIntervalInMs
+              + ", using previous value "
+              + conf.getHeartbeatIntervalInMs()
+              + ".";
+      if (rejectInvalid) {
+        throw new IOException(warning);
+      }
+      LOGGER.warn(
+          "heartbeat_interval_in_ms should be greater than 0, but was {}, using previous value {}.",
+          heartbeatIntervalInMs,
+          conf.getHeartbeatIntervalInMs());
+      heartbeatIntervalInMs = conf.getHeartbeatIntervalInMs();
+    }
+    return heartbeatIntervalInMs;
+  }
+
+  private long loadCqMinEveryIntervalInMs(TrimProperties properties, boolean rejectInvalid)
+      throws IOException {
     long cqMinEveryIntervalInMs =
         Long.parseLong(
             properties.getProperty(
                 "continuous_query_min_every_interval_in_ms",
                 String.valueOf(conf.getCqMinEveryIntervalInMs())));
     if (cqMinEveryIntervalInMs <= 0) {
+      if (rejectInvalid) {
+        throw new IOException(
+            "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is "
+                + cqMinEveryIntervalInMs
+                + ".");
+      }
       LOGGER.warn(
           ConfigNodeMessages.CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER,
           cqMinEveryIntervalInMs,
@@ -795,7 +784,107 @@ public class ConfigNodeDescriptor {
       cqMinEveryIntervalInMs = conf.getCqMinEveryIntervalInMs();
     }
 
-    conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
+    return cqMinEveryIntervalInMs;
+  }
+
+  private RegionGroupExtensionConfig loadRegionGroupExtensionConfig(TrimProperties properties)
+      throws IOException {
+    RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
+        RegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "schema_region_group_extension_policy",
+                conf.getSchemaRegionGroupExtensionPolicy().getPolicy()));
+    int defaultSchemaRegionGroupNumPerDatabase =
+        Integer.parseInt(
+            properties.getProperty(
+                "default_schema_region_group_num_per_database",
+                String.valueOf(conf.getDefaultSchemaRegionGroupNumPerDatabase())));
+    int schemaRegionPerDataNode =
+        (int)
+            Double.parseDouble(
+                properties.getProperty(
+                    "schema_region_per_data_node",
+                    String.valueOf(conf.getSchemaRegionPerDataNode())));
+    RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
+        RegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "data_region_group_extension_policy",
+                conf.getDataRegionGroupExtensionPolicy().getPolicy()));
+    int defaultDataRegionGroupNumPerDatabase =
+        Integer.parseInt(
+            properties.getProperty(
+                "default_data_region_group_num_per_database",
+                String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase())));
+    int dataRegionPerDataNode =
+        (int)
+            Double.parseDouble(
+                properties.getProperty(
+                    "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode())));
+
+    if (defaultSchemaRegionGroupNumPerDatabase <= 0) {
+      throw new IOException("default_schema_region_group_num_per_database should be positive.");
+    }
+    if (schemaRegionPerDataNode <= 0) {
+      throw new IOException("schema_region_per_data_node should be positive.");
+    }
+    if (defaultDataRegionGroupNumPerDatabase <= 0) {
+      throw new IOException("default_data_region_group_num_per_database should be positive.");
+    }
+    if (dataRegionPerDataNode < 0) {
+      throw new IOException("data_region_per_data_node should be non-negative.");
+    }
+
+    return new RegionGroupExtensionConfig(
+        schemaRegionGroupExtensionPolicy,
+        defaultSchemaRegionGroupNumPerDatabase,
+        schemaRegionPerDataNode,
+        dataRegionGroupExtensionPolicy,
+        defaultDataRegionGroupNumPerDatabase,
+        dataRegionPerDataNode);
+  }
+
+  private String loadReadConsistencyLevel(TrimProperties properties) throws IOException {
+    String readConsistencyLevel =
+        properties.getProperty("read_consistency_level", conf.getReadConsistencyLevel());
+    if (readConsistencyLevel.equals("strong") || readConsistencyLevel.equals("weak")) {
+      return readConsistencyLevel;
+    }
+    throw new IOException(
+        String.format(
+            ConfigNodeMessages.UNKNOWN_READ_CONSISTENCY_LEVEL_PLEASE_SET_TO, readConsistencyLevel));
+  }
+
+  private static class RegionGroupExtensionConfig {
+    private final RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy;
+    private final int defaultSchemaRegionGroupNumPerDatabase;
+    private final int schemaRegionPerDataNode;
+    private final RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy;
+    private final int defaultDataRegionGroupNumPerDatabase;
+    private final int dataRegionPerDataNode;
+
+    private RegionGroupExtensionConfig(
+        RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy,
+        int defaultSchemaRegionGroupNumPerDatabase,
+        int schemaRegionPerDataNode,
+        RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy,
+        int defaultDataRegionGroupNumPerDatabase,
+        int dataRegionPerDataNode) {
+      this.schemaRegionGroupExtensionPolicy = schemaRegionGroupExtensionPolicy;
+      this.defaultSchemaRegionGroupNumPerDatabase = defaultSchemaRegionGroupNumPerDatabase;
+      this.schemaRegionPerDataNode = schemaRegionPerDataNode;
+      this.dataRegionGroupExtensionPolicy = dataRegionGroupExtensionPolicy;
+      this.defaultDataRegionGroupNumPerDatabase = defaultDataRegionGroupNumPerDatabase;
+      this.dataRegionPerDataNode = dataRegionPerDataNode;
+    }
+
+    private void applyTo(ConfigNodeConfig conf) {
+      conf.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
+      conf.setDefaultSchemaRegionGroupNumPerDatabase(defaultSchemaRegionGroupNumPerDatabase);
+      conf.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
+      conf.setDataRegionGroupExtensionPolicy(dataRegionGroupExtensionPolicy);
+      conf.setDefaultDataRegionGroupNumPerDatabase(defaultDataRegionGroupNumPerDatabase);
+      conf.setDataRegionPerDataNode(dataRegionPerDataNode);
+    }
   }
 
   /**
@@ -826,6 +915,15 @@ public class ConfigNodeDescriptor {
     ConfigurationFileUtils.updateAppliedProperties(properties, true);
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
+    long heartbeatIntervalInMs = loadHeartbeatIntervalInMs(properties, true);
+    long cqMinEveryIntervalInMs = loadCqMinEveryIntervalInMs(properties, true);
+    RegionGroupExtensionConfig regionGroupExtensionConfig =
+        loadRegionGroupExtensionConfig(properties);
+    String readConsistencyLevel = loadReadConsistencyLevel(properties);
+    conf.setHeartbeatIntervalInMs(heartbeatIntervalInMs);
+    conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
+    regionGroupExtensionConfig.applyTo(conf);
+    conf.setReadConsistencyLevel(readConsistencyLevel);
     Optional.ofNullable(properties.getProperty("enable_topology_probing"))
         .ifPresent(v -> conf.setEnableTopologyProbing(Boolean.parseBoolean(v)));
     loadPipeHotModifiedProp(properties);

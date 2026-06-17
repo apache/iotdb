@@ -1501,17 +1501,6 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "data_replication_factor" + errorSuffix);
     }
 
-    if (clusterParameters.getSchemaRegionPerDataNode() != CONF.getSchemaRegionPerDataNode()) {
-      return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
-    }
-    if (clusterParameters.getDataRegionPerDataNode() != CONF.getDataRegionPerDataNode()) {
-      return errorStatus.setMessage(errorPrefix + "data_region_per_data_node" + errorSuffix);
-    }
-
-    if (!clusterParameters.getReadConsistencyLevel().equals(CONF.getReadConsistencyLevel())) {
-      return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
-    }
-
     if (clusterParameters.getDiskSpaceWarningThreshold()
         != COMMON_CONF.getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
@@ -1762,6 +1751,9 @@ public class ConfigManager implements IManager {
       TrimProperties properties = new TrimProperties();
       properties.putAll(req.getConfigs());
 
+      long previousHeartbeatIntervalInMs = CONF.getHeartbeatIntervalInMs();
+      int previousSchemaRegionPerDataNode = CONF.getSchemaRegionPerDataNode();
+      int previousDataRegionPerDataNode = CONF.getDataRegionPerDataNode();
       boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
       if (configurationFileFound) {
         File file = new File(url.getFile());
@@ -1786,6 +1778,9 @@ public class ConfigManager implements IManager {
         }
         LOGGER.warn(msg);
       }
+      handleHeartbeatIntervalHotReload(previousHeartbeatIntervalInMs);
+      handleRegionPerDataNodeHotReload(
+          previousSchemaRegionPerDataNode, previousDataRegionPerDataNode);
       handleTopologyProbingHotReload(wasTopologyProbingEnabled);
       if (currentNodeId == req.getNodeId()) {
         return tsStatus;
@@ -1796,6 +1791,26 @@ public class ConfigManager implements IManager {
     statusList.add(tsStatus);
     statusList.addAll(statusListOfOtherNodes);
     return RpcUtils.squashResponseStatusList(statusList);
+  }
+
+  private void handleHeartbeatIntervalHotReload(long previousHeartbeatIntervalInMs) {
+    if (previousHeartbeatIntervalInMs == CONF.getHeartbeatIntervalInMs()) {
+      return;
+    }
+    getLoadManager().reloadHeartbeatInterval();
+    getRetryFailedTasksThread().reloadHeartbeatInterval();
+  }
+
+  private void handleRegionPerDataNodeHotReload(
+      int previousSchemaRegionPerDataNode, int previousDataRegionPerDataNode) {
+    if (previousSchemaRegionPerDataNode == CONF.getSchemaRegionPerDataNode()
+        && previousDataRegionPerDataNode == CONF.getDataRegionPerDataNode()) {
+      return;
+    }
+    if (!getConsensusManager().isLeader()) {
+      return;
+    }
+    getClusterSchemaManager().adjustMaxRegionGroupNum();
   }
 
   private void handleTopologyProbingHotReload(boolean wasEnabled) {
