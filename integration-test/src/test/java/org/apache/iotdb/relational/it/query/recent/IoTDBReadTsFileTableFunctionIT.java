@@ -168,7 +168,7 @@ public class IoTDBReadTsFileTableFunctionIT {
             + toSqlPath(tsFile2)
             + "', TABLE_NAME => 'table1') GROUP BY tag1 ORDER BY tag1",
         new String[] {"tag1", "count_s1", "sum_s1"},
-        new String[] {"tag1_1,4,10,", "tag1_2,4,10,"},
+        new String[] {"tag1_1,4,10.0,", "tag1_2,4,10.0,"},
         DATABASE_NAME);
   }
 
