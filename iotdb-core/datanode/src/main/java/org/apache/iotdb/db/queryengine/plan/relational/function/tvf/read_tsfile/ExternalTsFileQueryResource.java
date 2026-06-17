@@ -321,6 +321,9 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     }
 
     private boolean reserveUnreservedMemory() {
+      if (unreservedBytes == 0) {
+        return true;
+      }
       try {
         externalTsFileResourceMemoryReservationManager.reserveMemoryImmediately(unreservedBytes);
       } catch (MemoryNotEnoughException e) {
@@ -345,6 +348,10 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
     void finish() {
       if (pendingDeviceTasks.isEmpty()) {
+        return;
+      }
+      if (!reserveUnreservedMemory()) {
+        flush();
         return;
       }
       sortPendingDeviceTasks();
