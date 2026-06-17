@@ -96,10 +96,6 @@ public class RegionGroupCache {
     regionCacheMap.remove(dataNodeId);
   }
 
-  public void reloadFailureDetector() {
-    regionCacheMap.values().forEach(RegionCache::reloadFailureDetector);
-  }
-
   /**
    * Update currentStatistics based on the latest NodeHeartbeatSamples that cached in the
    * slidingWindow.

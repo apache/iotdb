@@ -1501,6 +1501,17 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "data_replication_factor" + errorSuffix);
     }
 
+    if (clusterParameters.getSchemaRegionPerDataNode() != CONF.getSchemaRegionPerDataNode()) {
+      return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
+    }
+    if (clusterParameters.getDataRegionPerDataNode() != CONF.getDataRegionPerDataNode()) {
+      return errorStatus.setMessage(errorPrefix + "data_region_per_data_node" + errorSuffix);
+    }
+
+    if (!clusterParameters.getReadConsistencyLevel().equals(CONF.getReadConsistencyLevel())) {
+      return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
+    }
+
     if (clusterParameters.getDiskSpaceWarningThreshold()
         != COMMON_CONF.getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
@@ -1739,13 +1750,20 @@ public class ConfigManager implements IManager {
   public TSStatus setConfiguration(TSetConfigurationReq req) {
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     int currentNodeId = CONF.getConfigNodeId();
-    if (currentNodeId != req.getNodeId()) {
+    TSStatus consistentClusterConfigStatus =
+        checkConsistentClusterConfigSetConfigurationTarget(req);
+    if (consistentClusterConfigStatus != null) {
+      return consistentClusterConfigStatus;
+    }
+    if (currentNodeId != req.getNodeId() && req.getNodeId() != NodeManager.APPLY_CONFIG_LOCALLY) {
       tsStatus = confirmLeader();
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return tsStatus;
       }
     }
-    if (currentNodeId == req.getNodeId() || req.getNodeId() < 0) {
+    if (currentNodeId == req.getNodeId()
+        || req.getNodeId() < 0
+        || req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
       URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
       boolean configurationFileFound = (url != null && new File(url.getFile()).exists());
       TrimProperties properties = new TrimProperties();
@@ -1782,7 +1800,7 @@ public class ConfigManager implements IManager {
       handleRegionPerDataNodeHotReload(
           previousSchemaRegionPerDataNode, previousDataRegionPerDataNode);
       handleTopologyProbingHotReload(wasTopologyProbingEnabled);
-      if (currentNodeId == req.getNodeId()) {
+      if (currentNodeId == req.getNodeId() || req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
         return tsStatus;
       }
     }
@@ -1791,6 +1809,30 @@ public class ConfigManager implements IManager {
     statusList.add(tsStatus);
     statusList.addAll(statusListOfOtherNodes);
     return RpcUtils.squashResponseStatusList(statusList);
+  }
+
+  private TSStatus checkConsistentClusterConfigSetConfigurationTarget(TSetConfigurationReq req) {
+    if (req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
+      if (getConsensusManager() != null && !getConsensusManager().isLeader()) {
+        return null;
+      }
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "The internal configuration application target is invalid.");
+    }
+    if (req.getNodeId() < 0) {
+      return null;
+    }
+    for (String configKey : req.getConfigs().keySet()) {
+      if (ConfigurationFileUtils.parameterNeedKeepConsistentInCluster(configKey)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR,
+            "The parameter '"
+                + configKey
+                + "' must be consistent across the entire cluster and cannot be set on a specific node.");
+      }
+    }
+    return null;
   }
 
   private void handleHeartbeatIntervalHotReload(long previousHeartbeatIntervalInMs) {

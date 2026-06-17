@@ -214,7 +214,7 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-    loadRegionGroupExtensionConfig(properties).applyTo(conf);
+    loadRegionGroupExtensionConfig(properties);
 
     try {
       conf.setRegionAllocateStrategy(
@@ -272,7 +272,7 @@ public class ConfigNodeDescriptor {
                     "pipe_receiver_file_dir",
                     conf.getSystemDir() + File.separator + "pipe" + File.separator + "receiver")));
 
-    conf.setHeartbeatIntervalInMs(loadHeartbeatIntervalInMs(properties, false));
+    conf.setHeartbeatIntervalInMs(loadHeartbeatIntervalInMs(properties));
 
     String failureDetector = properties.getProperty("failure_detector", conf.getFailureDetector());
     if (IFailureDetector.FIXED_DETECTOR.equals(failureDetector)
@@ -735,48 +735,33 @@ public class ConfigNodeDescriptor {
     }
     conf.setCqSubmitThread(cqSubmitThread);
 
-    conf.setCqMinEveryIntervalInMs(loadCqMinEveryIntervalInMs(properties, false));
+    conf.setCqMinEveryIntervalInMs(loadCqMinEveryIntervalInMs(properties));
   }
 
-  private long loadHeartbeatIntervalInMs(TrimProperties properties, boolean rejectInvalid)
-      throws IOException {
-    long heartbeatIntervalInMs =
-        Long.parseLong(
-            properties.getProperty(
-                "heartbeat_interval_in_ms", String.valueOf(conf.getHeartbeatIntervalInMs())));
+  private long loadHeartbeatIntervalInMs(TrimProperties properties) {
+    return Long.parseLong(
+        properties.getProperty(
+            "heartbeat_interval_in_ms", String.valueOf(conf.getHeartbeatIntervalInMs())));
+  }
+
+  private long loadHotReloadHeartbeatIntervalInMs(TrimProperties properties) throws IOException {
+    long heartbeatIntervalInMs = loadHeartbeatIntervalInMs(properties);
     if (heartbeatIntervalInMs <= 0) {
-      String warning =
+      throw new IOException(
           "heartbeat_interval_in_ms should be greater than 0, but was "
               + heartbeatIntervalInMs
-              + ", using previous value "
-              + conf.getHeartbeatIntervalInMs()
-              + ".";
-      if (rejectInvalid) {
-        throw new IOException(warning);
-      }
-      LOGGER.warn(
-          "heartbeat_interval_in_ms should be greater than 0, but was {}, using previous value {}.",
-          heartbeatIntervalInMs,
-          conf.getHeartbeatIntervalInMs());
-      heartbeatIntervalInMs = conf.getHeartbeatIntervalInMs();
+              + ".");
     }
     return heartbeatIntervalInMs;
   }
 
-  private long loadCqMinEveryIntervalInMs(TrimProperties properties, boolean rejectInvalid)
-      throws IOException {
+  private long loadCqMinEveryIntervalInMs(TrimProperties properties) {
     long cqMinEveryIntervalInMs =
         Long.parseLong(
             properties.getProperty(
                 "continuous_query_min_every_interval_in_ms",
                 String.valueOf(conf.getCqMinEveryIntervalInMs())));
     if (cqMinEveryIntervalInMs <= 0) {
-      if (rejectInvalid) {
-        throw new IOException(
-            "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is "
-                + cqMinEveryIntervalInMs
-                + ".");
-      }
       LOGGER.warn(
           ConfigNodeMessages.CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER,
           cqMinEveryIntervalInMs,
@@ -787,8 +772,23 @@ public class ConfigNodeDescriptor {
     return cqMinEveryIntervalInMs;
   }
 
-  private RegionGroupExtensionConfig loadRegionGroupExtensionConfig(TrimProperties properties)
-      throws IOException {
+  private long loadHotReloadCqMinEveryIntervalInMs(TrimProperties properties) throws IOException {
+    long cqMinEveryIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "continuous_query_min_every_interval_in_ms",
+                String.valueOf(conf.getCqMinEveryIntervalInMs())));
+    if (cqMinEveryIntervalInMs <= 0) {
+      throw new IOException(
+          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is "
+              + cqMinEveryIntervalInMs
+              + ".");
+    }
+
+    return cqMinEveryIntervalInMs;
+  }
+
+  private void loadRegionGroupExtensionConfig(TrimProperties properties) throws IOException {
     RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
         RegionGroupExtensionPolicy.parse(
             properties.getProperty(
@@ -800,11 +800,9 @@ public class ConfigNodeDescriptor {
                 "default_schema_region_group_num_per_database",
                 String.valueOf(conf.getDefaultSchemaRegionGroupNumPerDatabase())));
     int schemaRegionPerDataNode =
-        (int)
-            Double.parseDouble(
-                properties.getProperty(
-                    "schema_region_per_data_node",
-                    String.valueOf(conf.getSchemaRegionPerDataNode())));
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_region_per_data_node", String.valueOf(conf.getSchemaRegionPerDataNode())));
     RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
         RegionGroupExtensionPolicy.parse(
             properties.getProperty(
@@ -816,10 +814,9 @@ public class ConfigNodeDescriptor {
                 "default_data_region_group_num_per_database",
                 String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase())));
     int dataRegionPerDataNode =
-        (int)
-            Double.parseDouble(
-                properties.getProperty(
-                    "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode())));
+        Integer.parseInt(
+            properties.getProperty(
+                "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode())));
 
     if (defaultSchemaRegionGroupNumPerDatabase <= 0) {
       throw new IOException("default_schema_region_group_num_per_database should be positive.");
@@ -834,13 +831,12 @@ public class ConfigNodeDescriptor {
       throw new IOException("data_region_per_data_node should be non-negative.");
     }
 
-    return new RegionGroupExtensionConfig(
-        schemaRegionGroupExtensionPolicy,
-        defaultSchemaRegionGroupNumPerDatabase,
-        schemaRegionPerDataNode,
-        dataRegionGroupExtensionPolicy,
-        defaultDataRegionGroupNumPerDatabase,
-        dataRegionPerDataNode);
+    conf.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
+    conf.setDefaultSchemaRegionGroupNumPerDatabase(defaultSchemaRegionGroupNumPerDatabase);
+    conf.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
+    conf.setDataRegionGroupExtensionPolicy(dataRegionGroupExtensionPolicy);
+    conf.setDefaultDataRegionGroupNumPerDatabase(defaultDataRegionGroupNumPerDatabase);
+    conf.setDataRegionPerDataNode(dataRegionPerDataNode);
   }
 
   private String loadReadConsistencyLevel(TrimProperties properties) throws IOException {
@@ -852,39 +848,6 @@ public class ConfigNodeDescriptor {
     throw new IOException(
         String.format(
             ConfigNodeMessages.UNKNOWN_READ_CONSISTENCY_LEVEL_PLEASE_SET_TO, readConsistencyLevel));
-  }
-
-  private static class RegionGroupExtensionConfig {
-    private final RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy;
-    private final int defaultSchemaRegionGroupNumPerDatabase;
-    private final int schemaRegionPerDataNode;
-    private final RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy;
-    private final int defaultDataRegionGroupNumPerDatabase;
-    private final int dataRegionPerDataNode;
-
-    private RegionGroupExtensionConfig(
-        RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy,
-        int defaultSchemaRegionGroupNumPerDatabase,
-        int schemaRegionPerDataNode,
-        RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy,
-        int defaultDataRegionGroupNumPerDatabase,
-        int dataRegionPerDataNode) {
-      this.schemaRegionGroupExtensionPolicy = schemaRegionGroupExtensionPolicy;
-      this.defaultSchemaRegionGroupNumPerDatabase = defaultSchemaRegionGroupNumPerDatabase;
-      this.schemaRegionPerDataNode = schemaRegionPerDataNode;
-      this.dataRegionGroupExtensionPolicy = dataRegionGroupExtensionPolicy;
-      this.defaultDataRegionGroupNumPerDatabase = defaultDataRegionGroupNumPerDatabase;
-      this.dataRegionPerDataNode = dataRegionPerDataNode;
-    }
-
-    private void applyTo(ConfigNodeConfig conf) {
-      conf.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
-      conf.setDefaultSchemaRegionGroupNumPerDatabase(defaultSchemaRegionGroupNumPerDatabase);
-      conf.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
-      conf.setDataRegionGroupExtensionPolicy(dataRegionGroupExtensionPolicy);
-      conf.setDefaultDataRegionGroupNumPerDatabase(defaultDataRegionGroupNumPerDatabase);
-      conf.setDataRegionPerDataNode(dataRegionPerDataNode);
-    }
   }
 
   /**
@@ -915,14 +878,12 @@ public class ConfigNodeDescriptor {
     ConfigurationFileUtils.updateAppliedProperties(properties, true);
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
-    long heartbeatIntervalInMs = loadHeartbeatIntervalInMs(properties, true);
-    long cqMinEveryIntervalInMs = loadCqMinEveryIntervalInMs(properties, true);
-    RegionGroupExtensionConfig regionGroupExtensionConfig =
-        loadRegionGroupExtensionConfig(properties);
+    long heartbeatIntervalInMs = loadHotReloadHeartbeatIntervalInMs(properties);
+    long cqMinEveryIntervalInMs = loadHotReloadCqMinEveryIntervalInMs(properties);
     String readConsistencyLevel = loadReadConsistencyLevel(properties);
+    loadRegionGroupExtensionConfig(properties);
     conf.setHeartbeatIntervalInMs(heartbeatIntervalInMs);
     conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
-    regionGroupExtensionConfig.applyTo(conf);
     conf.setReadConsistencyLevel(readConsistencyLevel);
     Optional.ofNullable(properties.getProperty("enable_topology_probing"))
         .ifPresent(v -> conf.setEnableTopologyProbing(Boolean.parseBoolean(v)));

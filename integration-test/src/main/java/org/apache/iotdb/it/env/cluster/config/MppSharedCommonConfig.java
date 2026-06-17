@@ -479,14 +479,14 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode) {
     dnConfig.setDataRegionPerDataNode(dataRegionPerDataNode);
     cnConfig.setDataRegionPerDataNode(dataRegionPerDataNode);
     return this;
   }
 
   @Override
-  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  public CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     dnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     cnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     return this;

@@ -187,8 +187,6 @@ public class LoadManager {
   }
 
   public void reloadHeartbeatInterval() {
-    loadCache.reloadFailureDetector();
-    topologyService.reloadFailureDetector();
     heartbeatService.reloadHeartbeatInterval();
     statisticsService.reloadHeartbeatInterval();
     eventService.reloadHeartbeatInterval();

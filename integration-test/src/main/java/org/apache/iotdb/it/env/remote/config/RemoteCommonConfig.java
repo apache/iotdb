@@ -339,11 +339,12 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode) {
     return this;
   }
 
-  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  @Override
+  public CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     return this;
   }
 

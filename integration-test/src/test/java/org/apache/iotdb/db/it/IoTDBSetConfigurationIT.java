@@ -247,6 +247,7 @@ public class IoTDBSetConfigurationIT {
   public void testHotReloadReadConsistencyLevel() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      assertSetConsistentClusterConfigurationOnSpecificNodeFailed(statement);
       statement.execute("set configuration \"read_consistency_level\"=\"weak\"");
       assertAppliedConfiguration(0, "read_consistency_level", "weak");
       assertAppliedConfiguration(
@@ -331,9 +332,9 @@ public class IoTDBSetConfigurationIT {
 
   private static void assertAppliedConfiguration(int nodeId, String key, String value)
       throws Exception {
-    try (ITableSession tableSessionConnection = EnvFactory.getEnv().getTableSessionConnection()) {
-      SessionDataSet sessionDataSet =
-          tableSessionConnection.executeQueryStatement("show configuration on " + nodeId);
+    try (ITableSession tableSessionConnection = EnvFactory.getEnv().getTableSessionConnection();
+        SessionDataSet sessionDataSet =
+            tableSessionConnection.executeQueryStatement("show configuration on " + nodeId)) {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         if (key.equals(iterator.getString(1))) {
@@ -343,6 +344,20 @@ public class IoTDBSetConfigurationIT {
       }
     }
     Assert.fail("Cannot find applied configuration: " + key);
+  }
+
+  private static void assertSetConsistentClusterConfigurationOnSpecificNodeFailed(
+      Statement statement) throws SQLException {
+    try {
+      statement.execute("set configuration \"read_consistency_level\"=\"weak\" on 0");
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "must be consistent across the entire cluster and only one can be set at a time"));
+      return;
+    }
+    Assert.fail("Set consistent cluster configuration on a specific node should fail.");
   }
 
   private static void assertShowVariable(Statement statement, String key, String value)
