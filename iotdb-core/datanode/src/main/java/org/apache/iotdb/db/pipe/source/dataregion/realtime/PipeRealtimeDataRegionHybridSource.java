@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.pipe.source.dataregion.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeOperator;
@@ -33,6 +37,8 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -178,6 +184,10 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   // If the insertNode's memory has reached the dangerous threshold, we should not extract any
   // tablets.
   private boolean canNotUseTabletAnymore(final PipeRealtimeEvent event) {
+    if (shouldForceUseTsFileForIoTConsensusV2WideTable(event)) {
+      return true;
+    }
+
     final long floatingMemoryUsageInByte =
         PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
@@ -211,6 +221,76 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
               .orElse(0));
     }
     return mayInsertNodeMemoryReachDangerousThreshold;
+  }
+
+  private boolean shouldForceUseTsFileForIoTConsensusV2WideTable(final PipeRealtimeEvent event) {
+    if (pipeName == null
+        || !pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+        || !(DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2)
+        || !(event.getEvent() instanceof PipeInsertNodeTabletInsertionEvent)) {
+      return false;
+    }
+
+    final PipeInsertNodeTabletInsertionEvent tabletInsertionEvent =
+        (PipeInsertNodeTabletInsertionEvent) event.getEvent();
+    if (!tabletInsertionEvent.isTableModelEvent()) {
+      return false;
+    }
+
+    final int measurementCount = countMeasurements(tabletInsertionEvent.getInsertNode());
+    final long estimatedEventSizeInBytes = tabletInsertionEvent.ramBytesUsed();
+    final PipeConfig pipeConfig = PipeConfig.getInstance();
+    final int measurementCountThreshold =
+        pipeConfig.getPipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold();
+    final long memoryThresholdInBytes =
+        pipeConfig.getPipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes();
+
+    final boolean isWideTableEvent =
+        measurementCountThreshold > 0 && measurementCount >= measurementCountThreshold;
+    final boolean isLargeEvent =
+        memoryThresholdInBytes > 0 && estimatedEventSizeInBytes >= memoryThresholdInBytes;
+    if (!isWideTableEvent && !isLargeEvent) {
+      return false;
+    }
+
+    if (event.maySourceOnlyUseTablets(this)) {
+      LOGGER.info(
+          "Pipe task {} in data region {} switches IoTConsensusV2 table-model realtime extraction "
+              + "to TsFile for {}, because measurement count is {} (threshold {}) and estimated "
+              + "event size is {} bytes (threshold {}).",
+          pipeName,
+          dataRegionId,
+          event.getTsFileEpoch().getFilePath(),
+          measurementCount,
+          measurementCountThreshold,
+          estimatedEventSizeInBytes,
+          memoryThresholdInBytes);
+    }
+    return true;
+  }
+
+  private int countMeasurements(final InsertNode insertNode) {
+    if (insertNode instanceof InsertRowsNode) {
+      int maxMeasurementCount = 0;
+      for (final InsertNode insertRowNode : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
+        maxMeasurementCount = Math.max(maxMeasurementCount, countMeasurements(insertRowNode));
+      }
+      return maxMeasurementCount;
+    }
+    return countMeasurements(insertNode.getMeasurements());
+  }
+
+  private int countMeasurements(final String[] measurements) {
+    int count = 0;
+    if (measurements == null) {
+      return count;
+    }
+    for (final String measurement : measurements) {
+      if (measurement != null) {
+        ++count;
+      }
+    }
+    return count;
   }
 
   @Override

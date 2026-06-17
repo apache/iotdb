@@ -292,6 +292,18 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_realtime_force_downgrading_proportion",
                 String.valueOf(config.getPipeRealtimeForceDowngradingProportion()))));
+    config.setPipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_realtime_iot_consensus_v2_force_tsfile_measurement_count_threshold",
+                String.valueOf(
+                    config.getPipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold()))));
+    config.setPipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_realtime_iot_consensus_v2_force_tsfile_memory_threshold_in_bytes",
+                String.valueOf(
+                    config.getPipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes()))));
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
             properties.getProperty(

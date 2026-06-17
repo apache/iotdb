@@ -26,6 +26,8 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.object.EmptyObjectTableSizeIndexReader;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.object.IObjectTableSizeIndexReader;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile.TsFileTableDiskUsageIndexWriter;
@@ -38,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -151,6 +154,26 @@ public class TableDiskUsageIndex {
       return;
     }
     addOperationToQueue(new WriteOperation(database, tsFileID, tableSizeMap));
+  }
+
+  public void calculateAndWriteTableSizeMap(String database, TsFileResource resource) {
+    if (database == null || resource == null) {
+      return;
+    }
+    if (failedToRecover) {
+      return;
+    }
+    if (stop) {
+      LOGGER.warn(
+          "Skip adding operation {} to queue because TableDiskUsageIndex has been stopped.",
+          CalculateAndWriteTableSizeMapOperation.class.getSimpleName());
+      return;
+    }
+    if (!queue.offer(new CalculateAndWriteTableSizeMapOperation(database, resource))) {
+      LOGGER.warn(
+          "Skip calculating table disk usage for TsFile {} because TableDiskUsageIndex queue is full.",
+          resource.getTsFilePath());
+    }
   }
 
   public void write(String database, TsFileID originTsFileID, TsFileID newTsFileID) {
@@ -388,6 +411,26 @@ public class TableDiskUsageIndex {
           tableDiskUsageIndex.writerMap.get(regionId);
       if (dataRegionTableSizeIndexWriter != null) {
         dataRegionTableSizeIndexWriter.tsFileIndexWriter.write(tsFileID, tableSizeMap);
+      }
+    }
+  }
+
+  private static class CalculateAndWriteTableSizeMapOperation extends Operation {
+
+    private final TsFileResource resource;
+
+    protected CalculateAndWriteTableSizeMapOperation(String database, TsFileResource resource) {
+      super(database, resource.getTsFileID().regionId);
+      this.resource = resource;
+    }
+
+    @Override
+    public void apply(TableDiskUsageIndex tableDiskUsageIndex) throws IOException {
+      final Optional<Map<String, Long>> tableSizeMap =
+          TableDiskUsageStatisticUtil.calculateTableSizeMap(resource);
+      if (tableSizeMap.isPresent() && !tableSizeMap.get().isEmpty()) {
+        new WriteOperation(database, resource.getTsFileID(), tableSizeMap.get())
+            .apply(tableDiskUsageIndex);
       }
     }
   }

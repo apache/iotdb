@@ -216,6 +216,8 @@ public class CommonConfig {
   private int pipeRealTimeQueueMaxWaitingTsFileSize = 1;
   private boolean pipeRealtimeForceDowngradingEnabled = true;
   private double pipeRealtimeForceDowngradingProportion = 0.25d;
+  private int pipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold = 512;
+  private long pipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes = 15 * MB;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
@@ -1681,6 +1683,40 @@ public class CommonConfig {
     logger.info(
         "pipeRealtimeForceDowngradingProportion is set to {}.",
         pipeRealtimeForceDowngradingProportion);
+  }
+
+  public int getPipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold() {
+    return pipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold;
+  }
+
+  public void setPipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold(
+      int pipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold) {
+    if (this.pipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold
+        == pipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold) {
+      return;
+    }
+    this.pipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold =
+        pipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold;
+    logger.info(
+        "pipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold is set to {}.",
+        pipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold);
+  }
+
+  public long getPipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes() {
+    return pipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes;
+  }
+
+  public void setPipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes(
+      long pipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes) {
+    if (this.pipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes
+        == pipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes) {
+      return;
+    }
+    this.pipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes =
+        pipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes;
+    logger.info(
+        "pipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes is set to {}.",
+        pipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes);
   }
 
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {

@@ -126,6 +126,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRealtimeForceDowngradingProportion();
   }
 
+  public int getPipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold() {
+    return COMMON_CONFIG.getPipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold();
+  }
+
+  public long getPipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes() {
+    return COMMON_CONFIG.getPipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes();
+  }
+
   /////////////////////////////// Subtask Executor ///////////////////////////////
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
@@ -519,6 +527,12 @@ public class PipeConfig {
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_REALTIME_FORCE_DOWNGRADING_PROPORTION,
         getPipeRealtimeForceDowngradingProportion());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_REALTIME_IOT_CONSENSUS_V2_FORCE_TSFILE_MEASUREMENT_COUNT_THRESHOLD,
+        getPipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_REALTIME_IOT_CONSENSUS_V2_FORCE_TSFILE_MEMORY_THRESHOLD_IN_BYTES,
+        getPipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes());
 
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_SUBTASK_EXECUTOR_MAX_THREAD_NUM,
