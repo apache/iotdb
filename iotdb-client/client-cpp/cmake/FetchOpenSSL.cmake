@@ -18,43 +18,66 @@
 # =============================================================================
 # FetchOpenSSL.cmake  (only included when WITH_SSL=ON)
 #
+# OpenSSL is pinned to the 1.x series. Apache Thrift 0.21's TSSLSocket.cpp uses
+# APIs that were removed in OpenSSL 3.x (SSLv3_method / TLSv1_method /
+# ASN1_STRING_data / non-const X509_NAME*), so a 3.x OpenSSL cannot be used.
+#
 # Resolution order:
-#   1. find_package(OpenSSL) - any system / vendor install is taken as-is,
-#      whatever its version (1.x or 3.x). This is always preferred.
-#   2. On Linux/macOS, when no system OpenSSL is present:
-#         use tarball ${IOTDB_OS_DEPS_DIR}/openssl-${OPENSSL_VERSION}.tar.gz
+#   1. find_package(OpenSSL) - accepted ONLY when it is 1.x. A 3.x system
+#      OpenSSL is deliberately ignored (we do not fall back to it).
+#   2. On Linux/macOS, when no usable 1.x OpenSSL is present:
+#         use tarball ${IOTDB_OS_DEPS_DIR}/openssl-${OPENSSL_FALLBACK_VERSION}.tar.gz
 #         or download from openssl.org when not in offline mode, then
 #         ./config && make && make install_sw into ${CMAKE_BINARY_DIR}/_deps/openssl.
-#         The fallback pins OpenSSL 1.1.1 (1.x), not 3.x.
-#   3. On Windows: emit a FATAL_ERROR with instructions to install a prebuilt
-#      OpenSSL; building OpenSSL from source on MSVC is out of scope.
+#   3. On Windows: emit a FATAL_ERROR asking for a prebuilt OpenSSL 1.1.1;
+#      building OpenSSL from source on MSVC is out of scope.
 #
 # Side effects:
 #   Defines imported targets OpenSSL::SSL / OpenSSL::Crypto via find_package
 #   so callers can just link against them.
 # =============================================================================
 
-# Fallback build only: the system OpenSSL (any version) is preferred above. When
-# none is found we build 1.1.1 (1.x); 3.x is intentionally not used as a fallback.
-set(OPENSSL_VERSION "1.1.1w" CACHE STRING "OpenSSL version to fetch when no system OpenSSL is found")
+# Version built from source when no usable 1.x OpenSSL is found. Named distinctly
+# from find_package's OPENSSL_VERSION output variable to avoid collisions.
+set(OPENSSL_FALLBACK_VERSION "1.1.1w"
+    CACHE STRING "OpenSSL 1.x version built from source when no usable system OpenSSL is found")
 
 find_package(OpenSSL QUIET)
+if(OpenSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "3.0")
+    # Reject 3.x: Thrift 0.21 does not compile against it. Clear the resolved
+    # state so the rest of the script treats it as "no usable OpenSSL".
+    message(STATUS
+            "[OpenSSL] ignoring system OpenSSL ${OPENSSL_VERSION}: Thrift "
+            "${THRIFT_VERSION} requires OpenSSL 1.x. Will use "
+            "${OPENSSL_FALLBACK_VERSION} instead.")
+    set(OpenSSL_FOUND FALSE)
+    unset(OPENSSL_INCLUDE_DIR CACHE)
+    unset(OPENSSL_SSL_LIBRARY CACHE)
+    unset(OPENSSL_CRYPTO_LIBRARY CACHE)
+    unset(OPENSSL_SSL_LIBRARIES CACHE)
+    unset(OPENSSL_CRYPTO_LIBRARIES CACHE)
+    unset(SSL_EAY_RELEASE CACHE)
+    unset(SSL_EAY_DEBUG CACHE)
+    unset(LIB_EAY_RELEASE CACHE)
+    unset(LIB_EAY_DEBUG CACHE)
+endif()
 if(OpenSSL_FOUND)
-    message(STATUS "[OpenSSL] using system OpenSSL ${OPENSSL_VERSION_MAJOR}.${OPENSSL_VERSION_MINOR}")
+    message(STATUS "[OpenSSL] using system OpenSSL ${OPENSSL_VERSION} (1.x)")
     return()
 endif()
 
 if(WIN32)
     message(FATAL_ERROR
-            "[OpenSSL] WITH_SSL=ON but no OpenSSL was found on Windows. "
-            "Please install a prebuilt OpenSSL (e.g. 'choco install openssl', "
-            "or any Win64 OpenSSL installer), then re-run the configure step "
-            "with -DOPENSSL_ROOT_DIR=<install_path>. Pass -DWITH_SSL=OFF to "
-            "build without SSL.")
+            "[OpenSSL] WITH_SSL=ON but no OpenSSL 1.x was found on Windows "
+            "(Thrift ${THRIFT_VERSION} does not build against OpenSSL 3.x). "
+            "Please install OpenSSL 1.1.1 (e.g. "
+            "'choco install openssl --version=1.1.1.2100'), then re-run the "
+            "configure step with -DOPENSSL_ROOT_DIR=<install_path>. Pass "
+            "-DWITH_SSL=OFF to build without SSL.")
 endif()
 
-# --- Linux / macOS fallback: build from source ---------------------------
-set(_ossl_tarname "openssl-${OPENSSL_VERSION}.tar.gz")
+# --- Linux / macOS fallback: build OpenSSL 1.x from source ---------------
+set(_ossl_tarname "openssl-${OPENSSL_FALLBACK_VERSION}.tar.gz")
 set(_ossl_tarball "${IOTDB_OS_DEPS_DIR}/${_ossl_tarname}")
 
 if(NOT EXISTS "${_ossl_tarball}")
@@ -75,9 +98,9 @@ if(NOT EXISTS "${_ossl_tarball}")
 endif()
 
 set(_ossl_root  "${CMAKE_BINARY_DIR}/_deps/openssl")
-set(_ossl_src   "${_ossl_root}/src/openssl-${OPENSSL_VERSION}")
+set(_ossl_src   "${_ossl_root}/src/openssl-${OPENSSL_FALLBACK_VERSION}")
 set(_ossl_inst  "${_ossl_root}/install")
-set(_ossl_stamp "${_ossl_root}/.built-${OPENSSL_VERSION}")
+set(_ossl_stamp "${_ossl_root}/.built-${OPENSSL_FALLBACK_VERSION}")
 
 if(NOT EXISTS "${_ossl_stamp}")
     file(REMOVE_RECURSE "${_ossl_root}/src")

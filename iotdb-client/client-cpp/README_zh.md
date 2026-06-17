@@ -243,9 +243,11 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 | `BOOST_INCLUDEDIR` | `boost.include.dir` |
 | `CMAKE_BUILD_TYPE` | `cmake.build.type`，例如 `-Dcmake.build.type=Debug` |
 
-SSL 默认开启（`WITH_SSL=ON`）：优先使用系统已安装的 OpenSSL（1.x 或 3.x 均可），
-找不到时回退到从源码构建 OpenSSL 1.1.1w（不再使用 3.x）；启用 SSL 时会把所用的
-OpenSSL 动态库一并复制到产物 `lib/` 目录。直接使用 CMake 时传入
+SSL 默认开启（`WITH_SSL=ON`），且**固定使用 OpenSSL 1.x**：Thrift 0.21 的
+`TSSLSocket.cpp` 用到了 OpenSSL 3.x 已移除的 API，因此不支持 3.x。CMake 仅在
+系统 OpenSSL 为 1.x 时才采用它（发现 3.x 会忽略），否则回退到从源码构建 OpenSSL
+1.1.1w；使用 1.x 动态库时会把它一并复制到产物 `lib/` 目录。Windows 请安装 1.1.1
+（如 `choco install openssl --version=1.1.1.2100`）。直接使用 CMake 时传入
 `-DWITH_SSL=OFF`、`-DIOTDB_OFFLINE=ON` 等即可。
 Debug 构建请在配置阶段传入 `-DCMAKE_BUILD_TYPE=Debug`。Windows 使用 Visual
 Studio 生成器时也需要传入该选项，以便内置 Thrift 静态库使用 Debug MSVC 运行时；

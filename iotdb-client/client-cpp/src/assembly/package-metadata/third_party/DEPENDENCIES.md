@@ -28,7 +28,7 @@ included for provenance.
 | --- | --- | --- |
 | Apache Thrift | 0.21.0 | Apache License 2.0 |
 | Boost | 1.60.0 on Linux/Windows, 1.84.0 on macOS by default | Boost Software License 1.0 |
-| OpenSSL | system OpenSSL when present (`WITH_SSL=ON`, default); 1.1.1w from-source fallback | Apache License 2.0 |
+| OpenSSL | 1.x only (`WITH_SSL=ON`, default): system 1.x when present, else 1.1.1w from source. 3.x is not supported | Apache License 2.0 |
 | GNU m4 | 1.4.19 on Linux build bootstrap | GPL-3.0-or-later |
 | GNU flex | 2.6.4 on Linux build bootstrap | BSD-style flex license |
 | GNU bison | 3.8 on Linux build bootstrap | GPL-3.0-or-later |

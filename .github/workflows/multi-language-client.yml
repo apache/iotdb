@@ -125,13 +125,13 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          brew install boost openssl llvm@17 bison
+          # No openssl here: Homebrew only ships OpenSSL 3.x (openssl@1.1 is gone)
+          # and Thrift 0.21 needs 1.x, so the build compiles OpenSSL 1.1.1w from
+          # source (see cmake/FetchOpenSSL.cmake).
+          brew install boost llvm@17 bison
           ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
-          # WITH_SSL is on by default; Homebrew OpenSSL is keg-only, so point
-          # find_package(OpenSSL) at it instead of a from-source fallback.
-          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl)" >> "$GITHUB_ENV"
           clang-format --version
           bison --version
           sudo rm -rf /Applications/Xcode_14.3.1.app
@@ -147,7 +147,8 @@ jobs:
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
           
-          choco install openssl -y
+          # Pin OpenSSL 1.1.1: Thrift 0.21 does not build against OpenSSL 3.x.
+          choco install openssl --version=1.1.1.2100 -y
           $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
           echo "$sslPath\bin" >> $env:GITHUB_PATH
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV

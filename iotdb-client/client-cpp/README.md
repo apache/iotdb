@@ -492,11 +492,12 @@ Prerequisites:
 2. **flex / bison.** Install <https://sourceforge.net/projects/winflexbison/>
    and rename `win_flex.exe`→`flex.exe`, `win_bison.exe`→`bison.exe` on
    `PATH`.
-3. **OpenSSL** *(`WITH_SSL=ON` is the default)*: install OpenSSL — e.g.
-   `choco install openssl`, or run the Win64 OpenSSL installer from
-   <https://slproweb.com/products/Win32OpenSSL.html> — then pass
-   `-DOPENSSL_ROOT_DIR=...` to CMake if it is not auto-detected. Pass
-   `-DWITH_SSL=OFF` to build without SSL.
+3. **OpenSSL 1.1.1** *(`WITH_SSL=ON` is the default)*: install OpenSSL **1.x**
+   — e.g. `choco install openssl --version=1.1.1.2100`, or a Win64 OpenSSL
+   1.1.1 installer from <https://slproweb.com/products/Win32OpenSSL.html> —
+   then pass `-DOPENSSL_ROOT_DIR=...` to CMake if it is not auto-detected.
+   OpenSSL 3.x is not supported (Thrift 0.21 needs 1.x). Pass `-DWITH_SSL=OFF`
+   to build without SSL.
 
 On Windows the SDK ships as **`iotdb_session.dll`** plus an import library
 **`iotdb_session.lib`**, built with **`/MD`** (dynamic CRT, same as a
@@ -512,20 +513,23 @@ the GNU autotools tarballs assume a POSIX shell environment.
 `iotdb_session` builds **with OpenSSL by default** (`WITH_SSL=ON`). Disable
 it with `-Dwith.ssl=OFF` (Maven) or `-DWITH_SSL=OFF` (standalone CMake).
 
-CMake first calls `find_package(OpenSSL)` and **prefers any system / vendor
-OpenSSL** it finds, regardless of version (1.x or 3.x). When SSL is enabled the
-resolved OpenSSL shared libraries are **bundled into the package `lib/`
-directory** (next to `iotdb_session`) so the published SDK is self-contained.
+OpenSSL is **pinned to the 1.x series**. Apache Thrift 0.21's `TSSLSocket.cpp`
+uses APIs removed in OpenSSL 3.x (`SSLv3_method`, `TLSv1_method`,
+`ASN1_STRING_data`, non-const `X509_NAME*`), so a 3.x OpenSSL cannot be used.
 
-If no system OpenSSL is found, it falls back to:
+CMake calls `find_package(OpenSSL)` and **accepts a system OpenSSL only when it
+is 1.x**; a 3.x install is ignored. When a 1.x OpenSSL is used, its shared
+libraries are **bundled into the package `lib/` directory** (next to
+`iotdb_session`) so the published SDK is self-contained.
 
-- **Linux / macOS** – use a local `openssl-<ver>.tar.gz` (or download it
+If no usable 1.x OpenSSL is found, it falls back to:
+
+- **Linux / macOS** – use a local `openssl-1.1.1w.tar.gz` (or download it
   when not in offline mode), configure with `no-shared`, install into
-  `build/_deps/openssl/install`, and link statically. The fallback pins
-  **OpenSSL 1.1.1w (1.x)**, not 3.x.
+  `build/_deps/openssl/install`, and link statically.
 - **Windows** – fail with a friendly message that points at a prebuilt
-  OpenSSL (`choco install openssl` or the Win64 installer). Building OpenSSL
-  from source via MSVC is out of scope.
+  OpenSSL 1.1.1 (`choco install openssl --version=1.1.1.2100`). Building
+  OpenSSL from source via MSVC is out of scope.
 
 ## Tests
 
