@@ -823,6 +823,8 @@ public final class DataNodeQueryMessages {
       "Cannot infer table name from TsFile because multiple tables are found in ";
   public static final String FILE_IS_NOT_A_VALID_TSFILE =
       "File is not a valid TsFile: ";
+  public static final String FAILED_TO_READ_TABLE_SCHEMA_FROM_TSFILE =
+      "Failed to read table schema from TsFile: ";
   public static final String MULTIPLE_TIME_COLUMNS_FOUND_WHEN_MERGING_TABLE_SCHEMA =
       "Multiple time columns found when merging table schema for table ";
   public static final String TIME_COLUMN_CONFLICTS_WHEN_MERGING_TABLE_SCHEMA =

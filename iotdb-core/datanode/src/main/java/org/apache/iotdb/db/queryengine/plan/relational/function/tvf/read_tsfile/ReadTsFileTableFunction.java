@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;

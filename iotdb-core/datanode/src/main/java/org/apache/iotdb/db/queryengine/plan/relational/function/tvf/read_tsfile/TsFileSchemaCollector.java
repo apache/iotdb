@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile;
 
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -162,7 +162,31 @@ final class TsFileSchemaCollector {
         }
         return null;
       }
-      Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
+      return readTableSchemaFromValidTsFile(specifiedTableName, tsFile, reader);
+    } catch (UDFArgumentNotValidException e) {
+      throw e;
+    } catch (Exception e) {
+      if (failOnInvalidTsFile) {
+        throw invalidTsFileException(tsFile);
+      }
+      return null;
+    }
+  }
+
+  private TableSchema readTableSchemaFromValidTsFile(
+      String specifiedTableName, File tsFile, TsFileSequenceReader reader) {
+    try {
+      return selectTableSchema(specifiedTableName, tsFile, reader.getTableSchemaMap());
+    } catch (UDFArgumentNotValidException e) {
+      throw e;
+    } catch (Exception e) {
+      throw failedToReadTableSchemaException(tsFile);
+    }
+  }
+
+  private TableSchema selectTableSchema(
+      String specifiedTableName, File tsFile, Map<String, TableSchema> tableSchemaMap) {
+    try {
       if (specifiedTableName != null) {
         return tableSchemaMap.get(specifiedTableName.toLowerCase(Locale.ENGLISH));
       }
@@ -180,10 +204,7 @@ final class TsFileSchemaCollector {
     } catch (UDFArgumentNotValidException e) {
       throw e;
     } catch (Exception e) {
-      if (failOnInvalidTsFile) {
-        throw invalidTsFileException(tsFile);
-      }
-      return null;
+      throw failedToReadTableSchemaException(tsFile);
     }
   }
 
@@ -196,6 +217,11 @@ final class TsFileSchemaCollector {
   private UDFArgumentNotValidException invalidTsFileException(File tsFile) {
     return new UDFArgumentNotValidException(
         DataNodeQueryMessages.FILE_IS_NOT_A_VALID_TSFILE + tsFile.getAbsolutePath());
+  }
+
+  private UDFArgumentNotValidException failedToReadTableSchemaException(File tsFile) {
+    return new UDFArgumentNotValidException(
+        DataNodeQueryMessages.FAILED_TO_READ_TABLE_SCHEMA_FROM_TSFILE + tsFile.getAbsolutePath());
   }
 
   private static class MergedTableSchemaBuilder {

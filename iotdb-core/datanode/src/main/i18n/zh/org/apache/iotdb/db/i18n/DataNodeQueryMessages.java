@@ -821,6 +821,8 @@ public final class DataNodeQueryMessages {
       "无法从 TsFile 推断表名，因为发现了多个表，文件：";
   public static final String FILE_IS_NOT_A_VALID_TSFILE =
       "文件不是有效的 TsFile：";
+  public static final String FAILED_TO_READ_TABLE_SCHEMA_FROM_TSFILE =
+      "从 TsFile 读取表结构失败：";
   public static final String MULTIPLE_TIME_COLUMNS_FOUND_WHEN_MERGING_TABLE_SCHEMA =
       "合并表结构时发现多个时间列，表：";
   public static final String TIME_COLUMN_CONFLICTS_WHEN_MERGING_TABLE_SCHEMA =

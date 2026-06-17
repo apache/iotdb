@@ -302,10 +302,6 @@ public class ChunkCache {
     private final LongConsumer ioSizeRecorder;
     private final boolean externalTsFile;
 
-    private ChunkLoader(LongConsumer ioSizeRecorder) {
-      this(ioSizeRecorder, false);
-    }
-
     private ChunkLoader(LongConsumer ioSizeRecorder, boolean externalTsFile) {
       this.ioSizeRecorder = ioSizeRecorder;
       this.externalTsFile = externalTsFile;
