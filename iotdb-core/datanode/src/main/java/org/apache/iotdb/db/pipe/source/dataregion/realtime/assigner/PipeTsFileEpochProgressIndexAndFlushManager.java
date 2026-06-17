@@ -156,7 +156,7 @@ public class PipeTsFileEpochProgressIndexAndFlushManager {
         .map(Entry::getValue)
         .filter(Objects::nonNull)
         .anyMatch(
-            resource -> !resource.getLeft().getMaxProgressIndex().isEqualOrAfter(progressIndex));
+            resource -> progressIndex.isEqualOrAfter(resource.getLeft().getMaxProgressIndex()));
   }
 
   //////////////////////////// singleton ////////////////////////////
