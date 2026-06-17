@@ -63,6 +63,37 @@ if(OpenSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "3.0")
 endif()
 if(OpenSSL_FOUND)
     message(STATUS "[OpenSSL] using system OpenSSL ${OPENSSL_VERSION} (1.x)")
+    if(WIN32)
+        # FindOpenSSL on the Shining Light / choco layout may pick an import lib
+        # under lib/VC/<arch>/<MD|MT>/ that binds to a different OpenSSL ABI than
+        # the bin/ DLLs. This happens on CI runners where a 1.1.1 install is laid
+        # on top of a pre-existing 3.x one: the top-level lib/ and include/ become
+        # 1.1.1 but the VC sub-dir import libs stay 3.x, so the link fails to
+        # resolve 1.1-only symbols (e.g. SSL_get_peer_certificate). Pin the import
+        # libs to the top-level lib/ ones, which match the 1.1 runtime DLLs we
+        # bundle. Derive the root from the include dir find_package actually used.
+        get_filename_component(_ossl_win_root "${OPENSSL_INCLUDE_DIR}" DIRECTORY)
+        set(_ossl_ssl_implib    "${_ossl_win_root}/lib/libssl.lib")
+        set(_ossl_crypto_implib "${_ossl_win_root}/lib/libcrypto.lib")
+        if(EXISTS "${_ossl_ssl_implib}" AND EXISTS "${_ossl_crypto_implib}")
+            message(STATUS
+                    "[OpenSSL] pinning Windows import libs to ${_ossl_ssl_implib} "
+                    "and ${_ossl_crypto_implib}")
+            # FindOpenSSL creates these as UNKNOWN imported targets, which link via
+            # IMPORTED_LOCATION_<CONFIG>; override both that and IMPORTED_IMPLIB for
+            # every config so the pin applies regardless of how the target is typed.
+            foreach(_cfg "" "_RELEASE" "_DEBUG" "_RELWITHDEBINFO" "_MINSIZEREL")
+                set_target_properties(OpenSSL::SSL PROPERTIES
+                        IMPORTED_LOCATION${_cfg} "${_ossl_ssl_implib}"
+                        IMPORTED_IMPLIB${_cfg} "${_ossl_ssl_implib}")
+                set_target_properties(OpenSSL::Crypto PROPERTIES
+                        IMPORTED_LOCATION${_cfg} "${_ossl_crypto_implib}"
+                        IMPORTED_IMPLIB${_cfg} "${_ossl_crypto_implib}")
+            endforeach()
+            set(OPENSSL_SSL_LIBRARY "${_ossl_ssl_implib}" CACHE FILEPATH "" FORCE)
+            set(OPENSSL_CRYPTO_LIBRARY "${_ossl_crypto_implib}" CACHE FILEPATH "" FORCE)
+        endif()
+    endif()
     return()
 endif()
 
