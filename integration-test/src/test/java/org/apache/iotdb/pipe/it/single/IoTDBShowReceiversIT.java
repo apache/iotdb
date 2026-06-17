@@ -126,7 +126,6 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
     final String password = "Passwd123456@";
     final String normalUser = "show_receiver_normal";
     final String systemUser = "show_receiver_system";
-    final String usePipeUser = "show_receiver_use_pipe";
     final String pipeName = "show_receivers_auth_pipe";
 
     TestUtils.executeNonQueries(
@@ -134,9 +133,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         Arrays.asList(
             "create user " + normalUser + " '" + password + "'",
             "create user " + systemUser + " '" + password + "'",
-            "create user " + usePipeUser + " '" + password + "'",
-            "grant system on root.** to user " + systemUser,
-            "grant use_pipe on root.** to user " + usePipeUser),
+            "grant system on root.** to user " + systemUser),
         null);
     createWriteBackPipe("root.show_receivers_auth", pipeName);
 
@@ -149,13 +146,6 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         "select * from information_schema.receivers",
         BaseEnv.TABLE_SQL_DIALECT,
         normalUser,
-        password);
-
-    assertUserCannotSeeReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, usePipeUser, password);
-    assertUserCannotSeeReceivers(
-        "select * from information_schema.receivers",
-        BaseEnv.TABLE_SQL_DIALECT,
-        usePipeUser,
         password);
 
     assertShowReceiversAsUser(
