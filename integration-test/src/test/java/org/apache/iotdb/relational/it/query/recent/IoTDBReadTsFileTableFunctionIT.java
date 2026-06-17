@@ -148,6 +148,31 @@ public class IoTDBReadTsFileTableFunctionIT {
   }
 
   @Test
+  public void testReadTsFileGroupedAggregationAcrossDevices() throws Exception {
+    File tsFile1 = new File(tmpDir, "grouped-aggregation-1.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(tsFile1)) {
+      generateTable(
+          writer, "table1", Arrays.asList("tag1", "tag2"), Arrays.asList("s1", "s2"), 1, 2);
+    }
+    File tsFile2 = new File(tmpDir, "grouped-aggregation-2.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(tsFile2)) {
+      generateTable(
+          writer, "table1", Arrays.asList("tag1", "tag2"), Arrays.asList("s1", "s2"), 3, 4);
+    }
+
+    tableResultSetEqualTest(
+        "SELECT tag1, count(s1) AS count_s1, sum(s1) AS sum_s1"
+            + " FROM read_tsfile(PATHS => '"
+            + toSqlPath(tsFile1)
+            + ","
+            + toSqlPath(tsFile2)
+            + "', TABLE_NAME => 'table1') GROUP BY tag1 ORDER BY tag1",
+        new String[] {"tag1", "count_s1", "sum_s1"},
+        new String[] {"tag1_1,4,10,", "tag1_2,4,10,"},
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testReadMultipleTsFilesWithDeviceFilter() throws Exception {
     File tsFile1 = new File(tmpDir, "multi-1.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile1)) {

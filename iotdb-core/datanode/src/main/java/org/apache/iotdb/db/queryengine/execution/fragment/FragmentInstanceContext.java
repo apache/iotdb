@@ -652,15 +652,14 @@ public class FragmentInstanceContext extends QueryContext {
     try {
       if (externalTsFileQueryResource == null) {
         this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
-        return true;
+      } else {
+        this.sharedQueryDataSource = new ExternalTsFileQueryDataSource(externalTsFileQueryResource);
+        closedUnseqFileNum = externalTsFileQueryResource.getSharedTsFileResources().size();
       }
-
-      this.sharedQueryDataSource = new ExternalTsFileQueryDataSource(externalTsFileQueryResource);
-      closedUnseqFileNum = externalTsFileQueryResource.getSharedTsFileResources().size();
-      return true;
     } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);
     }
+    return true;
   }
 
   public MemoryReservationManager getMemoryReservationContext() {

@@ -167,7 +167,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       }
 
       // calculate DataSet part
-      boolean singleDeviceEntry = tableScanNode.getDeviceEntries().size() < 2;
+      boolean singleDeviceEntry = isSingleDeviceEntry(tableScanNode);
       if (groupingKeys.isEmpty()) {
         // GlobalAggregation
         if (singleDeviceEntry) {
@@ -205,6 +205,16 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       } else {
         return PushDownLevel.PARTIAL;
       }
+    }
+
+    private boolean isSingleDeviceEntry(DeviceTableScanNode tableScanNode) {
+      if (tableScanNode instanceof ExternalTsFileScanNode
+          || tableScanNode instanceof ExternalTsFileAggregationScanNode) {
+        // External scan nodes collect device entries in distributed planning, so the logical
+        // optimizer cannot safely use the single-device shortcut here.
+        return false;
+      }
+      return tableScanNode.getDeviceEntries().size() < 2;
     }
 
     private List<Symbol> getTagColumnsInTableStore(

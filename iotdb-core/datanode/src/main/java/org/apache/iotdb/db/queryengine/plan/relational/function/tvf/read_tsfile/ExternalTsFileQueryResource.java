@@ -455,6 +455,8 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
           new MemoryDeviceTaskRunCursor(partition.getPendingDeviceTasks());
       if (memoryCursor.hasCurrentDeviceTask()) {
         addCursor(memoryCursor);
+      } else {
+        memoryCursor.close();
       }
     }
 
