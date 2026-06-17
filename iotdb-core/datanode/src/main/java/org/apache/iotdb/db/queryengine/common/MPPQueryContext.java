@@ -284,6 +284,8 @@ public class MPPQueryContext implements IAuditEntity {
     }
     for (ExternalTsFileQueryResource externalTsFileQueryResource : externalTsFileQueryResources) {
       try {
+        // QueryExecution may finish before all FragmentInstances stop. Close only resources that
+        // have not been retained by runtime FragmentInstances.
         externalTsFileQueryResource.closeByQueryExecution();
       } catch (Exception e) {
         LOGGER.warn("Failed to release external TsFile query resource", e);

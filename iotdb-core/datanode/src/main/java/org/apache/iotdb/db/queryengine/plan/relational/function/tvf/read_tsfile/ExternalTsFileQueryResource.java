@@ -95,6 +95,10 @@ public class ExternalTsFileQueryResource {
   private final List<DeviceTaskPartition> deviceTaskPartitions = new ArrayList<>();
   private Comparator<DeviceEntry> deviceEntryComparator;
 
+  // Counts FragmentInstances that have entered runtime datasource initialization and may read
+  // files under queryTempRoot. QueryExecution cleanup only closes this resource when the count is
+  // zero. Otherwise the last FragmentInstance release closes it, which prevents QueryExecution from
+  // deleting temporary run files while drivers are still reading them.
   private int fragmentInstanceUsageCount;
   private boolean closed;
 

@@ -669,9 +669,13 @@ public class FragmentInstanceContext extends QueryContext {
 
   private void releaseExternalTsFileQueryResource() {
     if (!externalTsFileQueryResourceRetained || externalTsFileQueryResource == null) {
+      externalTsFileQueryResource = null;
+      externalTsFileQueryResourceRetained = false;
       return;
     }
     try {
+      // This FragmentInstance retained the resource during datasource initialization. Releasing the
+      // last runtime usage closes the shared resource and deletes its temporary run files.
       externalTsFileQueryResource.closeByFragmentInstance();
     } catch (Exception e) {
       LOGGER.warn("Failed to release external TsFile query resource", e);
