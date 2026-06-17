@@ -24,6 +24,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -43,6 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,6 +52,8 @@ import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -402,10 +406,19 @@ public class IoTDBReadTsFileTableFunctionIT {
         new File(dataNodeWrapper.getDataNodeDir() + File.separator + "data", "forbidden.tsfile");
     Files.createDirectories(dataDir.getParentFile().toPath());
     Files.write(dataDir.toPath(), new byte[0]);
-    tableAssertTestFail(
-        "SELECT * FROM read_tsfile(PATHS => '" + toSqlPath(dataDir) + "')",
-        "is not allowed because it may access IoTDB data directory",
-        DATABASE_NAME);
+    try (Connection connection =
+            EnvFactory.getEnv()
+                .getWriteOnlyConnectionWithSpecifiedDataNode(
+                    dataNodeWrapper, BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute("SELECT * FROM read_tsfile(PATHS => '" + toSqlPath(dataDir) + "')");
+      fail("Expected read_tsfile to reject paths under the current DataNode data directory");
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage(),
+          e.getMessage().contains("is not allowed because it may access IoTDB data directory"));
+    }
   }
 
   private static void generateTable(
