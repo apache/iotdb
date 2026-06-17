@@ -383,16 +383,16 @@ public class StatementAnalyzer {
 
   private static final class SelectAnalysis {
     private final List<Expression> outputExpressions;
-    private final List<SelectAlias> aliases;
+    private final SelectAliasLookup aliases;
     private final Map<NodeRef<SingleColumn>, Expression> singleColumnExpressions;
 
     private SelectAnalysis(
         List<Expression> outputExpressions,
-        List<SelectAlias> aliases,
+        SelectAliasLookup aliases,
         Map<NodeRef<SingleColumn>, Expression> singleColumnExpressions) {
       this.outputExpressions =
           ImmutableList.copyOf(requireNonNull(outputExpressions, "outputExpressions is null"));
-      this.aliases = ImmutableList.copyOf(requireNonNull(aliases, "aliases is null"));
+      this.aliases = requireNonNull(aliases, "aliases is null");
       this.singleColumnExpressions =
           ImmutableMap.copyOf(
               requireNonNull(singleColumnExpressions, "singleColumnExpressions is null"));
@@ -402,7 +402,7 @@ public class StatementAnalyzer {
       return outputExpressions;
     }
 
-    private List<SelectAlias> getAliases() {
+    private SelectAliasLookup getAliases() {
       return aliases;
     }
 
@@ -442,6 +442,71 @@ public class StatementAnalyzer {
     }
   }
 
+  private static final class SelectAliasLookup {
+    private final Map<String, List<SelectAlias>> aliasesByCanonicalName;
+    private final int size;
+
+    private SelectAliasLookup(Map<String, List<SelectAlias>> aliasesByCanonicalName) {
+      requireNonNull(aliasesByCanonicalName, "aliasesByCanonicalName is null");
+
+      ImmutableMap.Builder<String, List<SelectAlias>> aliasesBuilder = ImmutableMap.builder();
+      int aliasCount = 0;
+      for (Map.Entry<String, List<SelectAlias>> entry : aliasesByCanonicalName.entrySet()) {
+        List<SelectAlias> aliases = ImmutableList.copyOf(entry.getValue());
+        aliasesBuilder.put(entry.getKey(), aliases);
+        aliasCount += aliases.size();
+      }
+      this.aliasesByCanonicalName = aliasesBuilder.build();
+      this.size = aliasCount;
+    }
+
+    private static Builder builder() {
+      return new Builder();
+    }
+
+    private boolean isEmpty() {
+      return size == 0;
+    }
+
+    private Optional<SelectAlias> resolve(Identifier identifier) {
+      List<SelectAlias> matches = aliasesByCanonicalName.get(identifier.getCanonicalValue());
+      if (matches == null || matches.isEmpty()) {
+        return Optional.empty();
+      }
+      if (matches.size() > 1) {
+        throw new SemanticException(
+            String.format(
+                "Column alias '%s' is ambiguous at positions %s",
+                identifier.getValue(),
+                matches.stream()
+                    .map(alias -> Integer.toString(alias.getPosition()))
+                    .collect(Collectors.joining(", "))));
+      }
+      return Optional.of(matches.get(0));
+    }
+
+    private static final class Builder {
+      private final Map<String, List<SelectAlias>> aliasesByCanonicalName = new HashMap<>();
+      private int size;
+
+      private void add(SelectAlias alias) {
+        requireNonNull(alias, "alias is null");
+        aliasesByCanonicalName
+            .computeIfAbsent(alias.getCanonicalName(), ignored -> new ArrayList<>())
+            .add(alias);
+        size++;
+      }
+
+      private SelectAliasLookup build() {
+        return new SelectAliasLookup(aliasesByCanonicalName);
+      }
+
+      private boolean isEmpty() {
+        return size == 0;
+      }
+    }
+  }
+
   private static boolean resolvesToInputColumn(Scope scope, Identifier identifier) {
     return scope
         .tryResolveField(identifier, QualifiedName.of(identifier.getValue()))
@@ -450,25 +515,12 @@ public class StatementAnalyzer {
   }
 
   private static Optional<SelectAlias> resolveSelectAlias(
-      Identifier identifier, List<SelectAlias> aliases) {
-    List<SelectAlias> matches =
-        aliases.stream()
-            .filter(alias -> alias.getCanonicalName().equals(identifier.getCanonicalValue()))
-            .collect(toImmutableList());
-    if (matches.size() > 1) {
-      throw new SemanticException(
-          String.format(
-              "Column alias '%s' is ambiguous at positions %s",
-              identifier.getValue(),
-              matches.stream()
-                  .map(alias -> Integer.toString(alias.getPosition()))
-                  .collect(Collectors.joining(", "))));
-    }
-    return matches.stream().findFirst();
+      Identifier identifier, SelectAliasLookup aliases) {
+    return aliases.resolve(identifier);
   }
 
   private static Expression rewriteLateralColumnAliases(
-      Expression expression, Scope scope, List<SelectAlias> visibleAliases) {
+      Expression expression, Scope scope, SelectAliasLookup visibleAliases) {
     if (visibleAliases.isEmpty()) {
       return expression;
     }
@@ -482,11 +534,11 @@ public class StatementAnalyzer {
 
   private static final class LateralColumnAliasRewriter extends ExpressionRewriter<Void> {
     private final Scope scope;
-    private final List<SelectAlias> visibleAliases;
+    private final SelectAliasLookup visibleAliases;
 
-    private LateralColumnAliasRewriter(Scope scope, List<SelectAlias> visibleAliases) {
+    private LateralColumnAliasRewriter(Scope scope, SelectAliasLookup visibleAliases) {
       this.scope = requireNonNull(scope, "scope is null");
-      this.visibleAliases = ImmutableList.copyOf(visibleAliases);
+      this.visibleAliases = requireNonNull(visibleAliases, "visibleAliases is null");
     }
 
     @Override
@@ -2063,10 +2115,10 @@ public class StatementAnalyzer {
       ImmutableList.Builder<Expression> outputExpressionBuilder = ImmutableList.builder();
       ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder =
           ImmutableList.builder();
-      ImmutableList.Builder<SelectAlias> selectAliasBuilder = ImmutableList.builder();
+      SelectAliasLookup.Builder selectAliasBuilder = SelectAliasLookup.builder();
       ImmutableMap.Builder<NodeRef<SingleColumn>, Expression> singleColumnExpressionBuilder =
           ImmutableMap.builder();
-      List<SelectAlias> visibleAliases = new ArrayList<>();
+      SelectAliasLookup.Builder visibleAliasBuilder = SelectAliasLookup.builder();
 
       int outputPosition = 1;
       for (SelectItem item : node.getSelect().getSelectItems()) {
@@ -2093,6 +2145,7 @@ public class StatementAnalyzer {
               outputPosition++;
             }
           } else {
+            SelectAliasLookup visibleAliases = visibleAliasBuilder.build();
             Expression rewrittenExpression =
                 rewriteLateralColumnAliases(selectExpression, scope, visibleAliases);
             resolveFunctionCallAndMeasureWindows(node, rewrittenExpression);
@@ -2104,7 +2157,7 @@ public class StatementAnalyzer {
               SelectAlias selectAlias =
                   new SelectAlias(alias.getCanonicalValue(), outputPosition, rewrittenExpression);
               selectAliasBuilder.add(selectAlias);
-              visibleAliases.add(selectAlias);
+              visibleAliasBuilder.add(selectAlias);
             }
             outputPosition++;
           }
@@ -3196,7 +3249,7 @@ public class StatementAnalyzer {
         QuerySpecification node,
         Scope scope,
         List<Expression> outputExpressions,
-        List<SelectAlias> selectAliases) {
+        SelectAliasLookup selectAliases) {
       if (node.getGroupBy().isPresent()) {
         ImmutableList.Builder<List<Set<FieldId>>> cubes = ImmutableList.builder();
         ImmutableList.Builder<List<Set<FieldId>>> rollups = ImmutableList.builder();
@@ -3348,7 +3401,7 @@ public class StatementAnalyzer {
         Expression expression,
         Scope scope,
         List<Expression> outputExpressions,
-        List<SelectAlias> selectAliases) {
+        SelectAliasLookup selectAliases) {
       if (!(expression instanceof Identifier)) {
         return expression;
       }
@@ -4703,7 +4756,7 @@ public class StatementAnalyzer {
     }
 
     private List<Expression> analyzeOrderBy(
-        Node node, List<SortItem> sortItems, Scope orderByScope, List<SelectAlias> selectAliases) {
+        Node node, List<SortItem> sortItems, Scope orderByScope, SelectAliasLookup selectAliases) {
       ImmutableList.Builder<Expression> orderByFieldsBuilder = ImmutableList.builder();
 
       for (SortItem item : sortItems) {
@@ -4755,7 +4808,7 @@ public class StatementAnalyzer {
     }
 
     private Optional<SelectAlias> resolveOrderBySelectAlias(
-        Expression expression, List<SelectAlias> selectAliases) {
+        Expression expression, SelectAliasLookup selectAliases) {
       if (!(expression instanceof Identifier)) {
         return Optional.empty();
       }
