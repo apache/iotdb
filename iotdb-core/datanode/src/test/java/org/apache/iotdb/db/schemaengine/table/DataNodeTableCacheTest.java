@@ -51,6 +51,8 @@ import java.util.concurrent.Semaphore;
 public class DataNodeTableCacheTest {
 
   private static final String DATABASE = "interrupted_fetch_database";
+  private static final String TABLE_CACHE_TEST_DATABASE = "root.table_cache_test";
+  private static final String TABLE_NAME = "table1";
 
   @Test
   public void testInvalidColumnPreservesWritableViewType() {
@@ -451,9 +453,49 @@ public class DataNodeTableCacheTest {
     }
   }
 
+  @Test
+  public void commitUpdateTableIsIdempotent() {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    try {
+      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
+
+      Assert.assertTrue(cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null));
+      Assert.assertTrue(cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null));
+
+      Assert.assertEquals(
+          TABLE_NAME, cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME).getTableName());
+    } finally {
+      cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    }
+  }
+
+  @Test
+  public void commitAfterRollbackUpdateTableIsIgnored() {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    try {
+      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
+
+      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      Assert.assertTrue(cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null));
+
+      Assert.assertNull(cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, false));
+    } finally {
+      cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    }
+  }
+
   private Semaphore getFetchTableSemaphore(final DataNodeTableCache cache) throws Exception {
     final Field field = DataNodeTableCache.class.getDeclaredField("fetchTableSemaphore");
     field.setAccessible(true);
     return (Semaphore) field.get(cache);
+  }
+
+  private TsTable createTable(final String tableName) {
+    final TsTable table = new TsTable(tableName);
+    table.addColumnSchema(
+        new FieldColumnSchema("s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    return table;
   }
 }
