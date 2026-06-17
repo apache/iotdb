@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -87,6 +89,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   private final Path queryTempRoot;
   private final String tableName;
   private final List<String> tsFilePaths;
+  private final Map<Symbol, ColumnSchema> tableColumnSchema;
   private final List<TsFileResource> sharedTsFileResources;
   private final List<DeviceEntry> sharedDeviceEntries = new ArrayList<>();
   private final List<DeviceTaskPartition> deviceTaskPartitions = new ArrayList<>();
@@ -96,7 +99,11 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   private volatile boolean closed;
 
   public ExternalTsFileQueryResource(
-      MPPQueryContext queryContext, Path tempRoot, String tableName, List<String> tsFilePaths) {
+      MPPQueryContext queryContext,
+      Path tempRoot,
+      String tableName,
+      List<String> tsFilePaths,
+      Map<Symbol, ColumnSchema> tableColumnSchema) {
     this.queryContext = requireNonNull(queryContext, "queryContext is null");
     this.queryId = queryContext.getQueryId();
     this.externalTsFileResourceMemoryReservationManager =
@@ -105,6 +112,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     this.queryTempRoot = requireNonNull(tempRoot, "tempRoot is null");
     this.tableName = tableName;
     this.tsFilePaths = requireNonNull(tsFilePaths, "tsFilePaths");
+    this.tableColumnSchema = tableColumnSchema;
     this.sharedTsFileResources = createTsFileResources(this.tsFilePaths);
     for (String tsFilePath : tsFilePaths) {
       FileReaderManager.getInstance().increaseExternalFileReaderReference(tsFilePath);
@@ -174,6 +182,10 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
   public List<String> getTsFilePaths() {
     return tsFilePaths;
+  }
+
+  public Map<Symbol, ColumnSchema> getTableColumnSchema() {
+    return tableColumnSchema;
   }
 
   public List<TsFileResource> getSharedTsFileResources() {
@@ -579,6 +591,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
         if (cursor.hasCurrentDeviceTask()) {
           return cursor;
         }
+        cursor.close();
       }
       return null;
     }

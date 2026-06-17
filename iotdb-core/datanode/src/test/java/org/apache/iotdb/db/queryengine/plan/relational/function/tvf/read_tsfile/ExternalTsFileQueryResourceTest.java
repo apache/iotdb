@@ -153,7 +153,7 @@ public class ExternalTsFileQueryResourceTest {
     queryContext.setStartTime(System.currentTimeMillis());
     queryContext.setTimeOut(Long.MAX_VALUE);
     return new ExternalTsFileQueryResource(
-        queryContext, root.toPath().resolve("tmp"), "table1", tsFilePaths);
+        queryContext, root.toPath().resolve("tmp"), "table1", tsFilePaths, Collections.emptyMap());
   }
 
   private DeviceTaskRunReader newReader(DeviceTaskPartition partition) {

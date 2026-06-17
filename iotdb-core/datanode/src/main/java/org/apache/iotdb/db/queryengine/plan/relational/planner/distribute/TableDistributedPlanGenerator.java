@@ -2055,9 +2055,24 @@ public class TableDistributedPlanGenerator
       final List<PlanNode> resultTableScanNodeList,
       final SortPropertyContext sortPropertyContext,
       final boolean sortDeviceEntries) {
+    final Map<Symbol, ColumnSchema> tableColumnSchema;
+    if (deviceTableScanNode instanceof ExternalTsFileScanNode) {
+      tableColumnSchema =
+          ((ExternalTsFileScanNode) deviceTableScanNode)
+              .getExternalTsFileQueryResource()
+              .getTableColumnSchema();
+    } else if (deviceTableScanNode instanceof ExternalTsFileAggregationScanNode) {
+      tableColumnSchema =
+          ((ExternalTsFileAggregationScanNode) deviceTableScanNode)
+              .getExternalTsFileQueryResource()
+              .getTableColumnSchema();
+    } else {
+      tableColumnSchema =
+          analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
+    }
     final Optional<OrderingScheme> newOrderingScheme =
         tableScanOrderingSchema(
-            analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName()),
+            tableColumnSchema,
             deviceTableScanNode.getAssignments(),
             sortPropertyContext.orderingSymbols,
             sortPropertyContext.sortOrders,

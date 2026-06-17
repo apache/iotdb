@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
@@ -258,7 +260,7 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public ExternalTsFileQueryResource createExternalTsFileQueryResource(
-      String tableName, List<String> tsFilePaths) {
+      String tableName, List<String> tsFilePaths, Map<Symbol, ColumnSchema> tableColumnSchema) {
     if (externalTsFileQueryResources == null) {
       externalTsFileQueryResources = new ArrayList<>();
     }
@@ -270,7 +272,8 @@ public class MPPQueryContext implements IAuditEntity {
                 .resolve(queryId.getId())
                 .resolve(String.valueOf(externalTsFileQueryResources.size())),
             tableName,
-            tsFilePaths);
+            tsFilePaths,
+            tableColumnSchema);
     externalTsFileQueryResources.add(externalTsFileQueryResource);
     return externalTsFileQueryResource;
   }

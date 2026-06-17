@@ -1635,7 +1635,6 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     Map<Symbol, ColumnSchema> assignments = assignmentsBuilder.build();
     QualifiedObjectName qualifiedObjectName =
         createExternalTsFileQualifiedObjectName(handle.getTableName());
-    analysis.addTableSchema(qualifiedObjectName, assignments);
 
     ExternalTsFileScanNode scanNode =
         new ExternalTsFileScanNode(
@@ -1645,7 +1644,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
             assignments,
             tagAndAttributeIndexMap,
             queryContext.createExternalTsFileQueryResource(
-                handle.getTableName(), handle.getTsFilePaths()));
+                handle.getTableName(), handle.getTsFilePaths(), assignments));
 
     return new RelationPlan(scanNode, scope, outputSymbols, outerContext);
   }

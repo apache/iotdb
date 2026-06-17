@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 
@@ -93,8 +94,21 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       context.setCanTransform(false);
 
       DeviceTableScanNode deviceTableScanNode = context.getTableScanNode();
-      Map<Symbol, ColumnSchema> tableColumnSchema =
-          analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
+      Map<Symbol, ColumnSchema> tableColumnSchema;
+      if (deviceTableScanNode instanceof ExternalTsFileScanNode) {
+        tableColumnSchema =
+            ((ExternalTsFileScanNode) deviceTableScanNode)
+                .getExternalTsFileQueryResource()
+                .getTableColumnSchema();
+      } else if (deviceTableScanNode instanceof ExternalTsFileAggregationScanNode) {
+        tableColumnSchema =
+            ((ExternalTsFileAggregationScanNode) deviceTableScanNode)
+                .getExternalTsFileQueryResource()
+                .getTableColumnSchema();
+      } else {
+        tableColumnSchema =
+            analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
+      }
 
       OrderingScheme orderingScheme = node.getOrderingScheme();
       int streamSortIndex = -1;

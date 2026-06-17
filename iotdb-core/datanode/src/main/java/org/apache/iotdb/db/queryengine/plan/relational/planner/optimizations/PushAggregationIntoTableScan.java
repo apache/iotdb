@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 
 import com.google.common.collect.ImmutableSet;
@@ -117,7 +119,6 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
               node.getGroupingKeys(),
               projectNode,
               tableScanNode,
-              context.analysis,
               context.session,
               context.metadata);
       if (pushDownLevel == PushDownLevel.NOOP) { // no push-down
@@ -142,7 +143,6 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         List<Symbol> groupingKeys,
         ProjectNode projectNode,
         DeviceTableScanNode tableScanNode,
-        Analysis analysis,
         SessionInfo session,
         Metadata metadata) {
       boolean hasProject = projectNode != null;
@@ -198,7 +198,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         return PushDownLevel.NOOP;
       } else if (singleDeviceEntry
           || ImmutableSet.copyOf(groupingKeys)
-              .containsAll(getTagColumnsInTableStore(tableScanNode, analysis, metadata, session))) {
+              .containsAll(getTagColumnsInTableStore(tableScanNode, metadata, session))) {
         // If all tag columns appear in groupingKeys and no Measurement column appears, we can push
         // down completely.
         return PushDownLevel.COMPLETE;
@@ -208,23 +208,27 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
     }
 
     private List<Symbol> getTagColumnsInTableStore(
-        DeviceTableScanNode tableScanNode,
-        Analysis analysis,
-        Metadata metadata,
-        SessionInfo session) {
-      if (tableScanNode instanceof ExternalTsFileScanNode) {
-        return analysis
-            .getTableColumnSchema(tableScanNode.getQualifiedObjectName())
-            .entrySet()
-            .stream()
-            .filter(entry -> entry.getValue().getColumnCategory() == TAG)
-            .map(Map.Entry::getKey)
-            .collect(Collectors.toList());
+        DeviceTableScanNode tableScanNode, Metadata metadata, SessionInfo session) {
+      Collection<ColumnSchema> columnSchemas;
+      if (tableScanNode instanceof ExternalTsFileScanNode externalTsFileScanNode) {
+        columnSchemas =
+            externalTsFileScanNode.getExternalTsFileQueryResource().getTableColumnSchema().values();
+      } else if (tableScanNode
+          instanceof ExternalTsFileAggregationScanNode externalTsFileAggregationScanNode) {
+        columnSchemas =
+            externalTsFileAggregationScanNode
+                .getExternalTsFileQueryResource()
+                .getTableColumnSchema()
+                .values();
+      } else {
+        columnSchemas =
+            Objects.requireNonNull(
+                    metadata
+                        .getTableSchema(session, tableScanNode.getQualifiedObjectName())
+                        .orElse(null))
+                .getColumns();
       }
-      return Objects.requireNonNull(
-              metadata.getTableSchema(session, tableScanNode.getQualifiedObjectName()).orElse(null))
-          .getColumns()
-          .stream()
+      return columnSchemas.stream()
           .filter(columnSchema -> columnSchema.getColumnCategory() == TAG)
           .map(columnSchema -> Symbol.of(columnSchema.getName()))
           .collect(Collectors.toList());
