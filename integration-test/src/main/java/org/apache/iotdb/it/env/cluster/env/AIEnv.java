@@ -19,24 +19,13 @@
 
 package org.apache.iotdb.it.env.cluster.env;
 
-import org.apache.iotdb.it.env.cluster.EnvUtils;
-import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.AINodeStarter;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
-import org.apache.iotdb.it.framework.IoTDBTestLogger;
-import org.apache.iotdb.itbase.runtime.ParallelRequestDelegate;
-import org.apache.iotdb.itbase.runtime.RequestDelegate;
 
-import org.slf4j.Logger;
-
-import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.NODE_START_TIMEOUT;
-
 public class AIEnv extends AbstractEnv {
-  private static final Logger logger = IoTDBTestLogger.logger;
 
   @Override
   public void initClusterEnvironment() {
@@ -59,41 +48,15 @@ public class AIEnv extends AbstractEnv {
       final List<ConfigNodeWrapper> configNodeWrappers,
       final List<DataNodeWrapper> dataNodeWrappers,
       final String testClassName) {
-    String seedConfigNode = configNodeWrappers.get(0).getIpAndPortString();
-    int dataNodePort = dataNodeWrappers.get(0).getPort();
-    startAINode(seedConfigNode, dataNodePort, testClassName);
-  }
-
-  private void startAINode(
-      final String seedConfigNode, final int clusterIngressPort, final String testClassName) {
-    final AINodeWrapper aiNodeWrapper =
-        new AINodeWrapper(
-            seedConfigNode,
-            clusterIngressPort,
-            testClassName,
-            testMethodName,
-            index,
-            EnvUtils.searchAvailablePorts(),
-            startTime);
-    extraNodeWrappers.add(aiNodeWrapper);
-    aiNodeWrapper.setKillPoints(extraNodeKillPoints);
-    final String aiNodeEndPoint = aiNodeWrapper.getIpAndPortString();
-    aiNodeWrapper.createNodeDir();
-    aiNodeWrapper.createLogDir();
-    final RequestDelegate<Void> aiNodesDelegate =
-        new ParallelRequestDelegate<>(
-            Collections.singletonList(aiNodeEndPoint), NODE_START_TIMEOUT, this);
-
-    aiNodesDelegate.addRequest(
-        () -> {
-          aiNodeWrapper.start();
-          return null;
-        });
-
-    try {
-      aiNodesDelegate.requestAll();
-    } catch (final SQLException e) {
-      logger.error("Start aiNodes failed", e);
-    }
+    AINodeStarter.startAINode(
+        configNodeWrappers.get(0).getIpAndPortString(),
+        dataNodeWrappers.get(0).getPort(),
+        testClassName,
+        testMethodName,
+        index,
+        startTime,
+        extraNodeKillPoints,
+        this::registerExtraNode,
+        this::dumpTestJVMSnapshot);
   }
 }

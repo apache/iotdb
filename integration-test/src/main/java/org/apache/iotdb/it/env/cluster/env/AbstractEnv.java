@@ -275,6 +275,10 @@ public abstract class AbstractEnv implements BaseEnv {
     // Default: no extra nodes. Subclasses override to add nodes.
   }
 
+  protected void registerExtraNode(final AbstractNodeWrapper nodeWrapper) {
+    extraNodeWrappers.add(nodeWrapper);
+  }
+
   private ConfigNodeWrapper newConfigNode() {
     final ConfigNodeWrapper configNodeWrapper =
         new ConfigNodeWrapper(
