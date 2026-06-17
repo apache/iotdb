@@ -183,25 +183,7 @@
                 <artifactId>libthrift</artifactId>
                 <version>${thrift.version}</version>
                 <exclusions>
-                    <!-- Seemed suspicious to have this dependency in -->
-                    <exclusion>
-                        <groupId>org.apache.tomcat.embed</groupId>
-                        <artifactId>tomcat-embed-core</artifactId>
-                    </exclusion>
-                    <!-- We don't want the old javax packages -->
-                    <exclusion>
-                        <groupId>javax.annotation</groupId>
-                        <artifactId>javax.annotation-api</artifactId>
-                    </exclusion>
-                    <!-- We don't use thrift http connection -->
-                    <exclusion>
-                        <groupId>org.apache.httpcomponents</groupId>
-                        <artifactId>httpclient</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.apache.httpcomponents</groupId>
-                        <artifactId>httpcore</artifactId>
-                    </exclusion>
+                    <!-- We don't use thrift HTTP client or servlet transports. -->
                     <exclusion>
                         <groupId>org.apache.httpcomponents.client5</groupId>
                         <artifactId>httpclient5</artifactId>
@@ -213,6 +195,10 @@
                     <exclusion>
                         <groupId>org.apache.httpcomponents.core5</groupId>
                         <artifactId>httpcore5-h2</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>jakarta.servlet</groupId>
+                        <artifactId>jakarta.servlet-api</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
