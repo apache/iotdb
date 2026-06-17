@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
+import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -35,7 +36,6 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
-import java.util.Map;
 
 public class PipeHistoricalDataRegionTsFileSourceTest {
 
@@ -48,19 +48,19 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
           tempDir,
           "superset.tsfile",
           hybridProgressIndex(
-              new IoTProgressIndex(Map.of(1, 100L, 2, 200L)),
+              new IoTProgressIndex(ImmutableMap.of(1, 100L, 2, 200L)),
               new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
           hybridProgressIndex(
-              new IoTProgressIndex(Map.of(1, 100L)),
+              new IoTProgressIndex(1, 100L),
               new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 9))),
           false);
 
       assertMayTsFileContainUnprocessedData(
           tempDir,
           "missing-dimension.tsfile",
-          hybridProgressIndex(new IoTProgressIndex(Map.of(1, 100L))),
+          hybridProgressIndex(new IoTProgressIndex(1, 100L)),
           hybridProgressIndex(
-              new IoTProgressIndex(Map.of(1, 90L)),
+              new IoTProgressIndex(1, 90L),
               new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
           true);
     } finally {

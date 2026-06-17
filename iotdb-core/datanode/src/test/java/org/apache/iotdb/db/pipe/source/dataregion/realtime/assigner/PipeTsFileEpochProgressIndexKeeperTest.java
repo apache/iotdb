@@ -35,7 +35,6 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Map;
 
 public class PipeTsFileEpochProgressIndexKeeperTest {
 
@@ -98,7 +97,7 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
   public void testProgressIndexCheckUsesEqualOrAfterCoverage() throws IOException {
     final ProgressIndex registeredProgressIndex =
         hybridProgressIndex(
-            new IoTProgressIndex(Map.of(1, 90L)),
+            new IoTProgressIndex(1, 90L),
             new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10)));
     keeper.registerProgressIndex(
         DATA_REGION_ID,
@@ -107,7 +106,7 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
 
     Assert.assertFalse(
         keeper.isProgressIndexAfterOrEquals(
-            DATA_REGION_ID, TASK_SCOPE_A, "current.tsfile", new IoTProgressIndex(Map.of(1, 100L))));
+            DATA_REGION_ID, TASK_SCOPE_A, "current.tsfile", new IoTProgressIndex(1, 100L)));
 
     Assert.assertTrue(
         keeper.isProgressIndexAfterOrEquals(
@@ -115,7 +114,7 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
             TASK_SCOPE_A,
             "current.tsfile",
             hybridProgressIndex(
-                new IoTProgressIndex(Map.of(1, 100L)),
+                new IoTProgressIndex(1, 100L),
                 new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10)))));
   }
 
