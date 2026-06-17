@@ -251,21 +251,27 @@ public abstract class AbstractEnv implements BaseEnv {
       throw new AssertionError();
     }
 
-    initExtraNodes(seedConfigNode, this.dataNodeWrapperList.get(0).getPort());
+    initExtraNodes(configNodeWrapperList, dataNodeWrapperList, testClassName);
 
     checkClusterStatusWithoutUnknown();
   }
 
   /**
-   * Hook for subclasses to create and start extra node types (e.g., AINode, StreamNode) beyond the
-   * core ConfigNode and DataNode. Subclasses should create node wrappers, add them to {@link
-   * #extraNodeWrappers}, and start them.
+   * Hook method for subclasses to initialize and start extra node types beyond the core ConfigNode
+   * and DataNode (e.g., AINode, StreamNode, ProxyNode).
    *
-   * @param seedConfigNode the ip:port of the seed ConfigNode
-   * @param dataNodePort the port of the first DataNode (useful for nodes that need it, e.g.,
-   *     AINode)
+   * <p>Subclasses should create node wrappers, add them to {@link #extraNodeWrappers}, configure
+   * kill points via {@link #extraNodeKillPoints}, and start the nodes. Subclasses have direct
+   * access to protected fields: {@code testMethodName}, {@code index}, {@code startTime}.
+   *
+   * @param configNodeWrappers list of all ConfigNode wrappers in the cluster (unmodifiable)
+   * @param dataNodeWrappers list of all DataNode wrappers in the cluster (unmodifiable)
+   * @param testClassName the test class name for logging and identification purposes
    */
-  protected void initExtraNodes(final String seedConfigNode, final int dataNodePort) {
+  protected void initExtraNodes(
+      final List<ConfigNodeWrapper> configNodeWrappers,
+      final List<DataNodeWrapper> dataNodeWrappers,
+      final String testClassName) {
     // Default: no extra nodes. Subclasses override to add nodes.
   }
 

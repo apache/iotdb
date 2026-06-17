@@ -21,6 +21,8 @@ package org.apache.iotdb.it.env.cluster.env;
 
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.runtime.ParallelRequestDelegate;
 import org.apache.iotdb.itbase.runtime.RequestDelegate;
@@ -29,6 +31,7 @@ import org.slf4j.Logger;
 
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.NODE_START_TIMEOUT;
 
@@ -52,8 +55,13 @@ public class AIEnv extends AbstractEnv {
   }
 
   @Override
-  protected void initExtraNodes(String seedConfigNode, int dataNodePort) {
-    startAINode(seedConfigNode, dataNodePort, getTestClassName());
+  protected void initExtraNodes(
+      final List<ConfigNodeWrapper> configNodeWrappers,
+      final List<DataNodeWrapper> dataNodeWrappers,
+      final String testClassName) {
+    String seedConfigNode = configNodeWrappers.get(0).getIpAndPortString();
+    int dataNodePort = dataNodeWrappers.get(0).getPort();
+    startAINode(seedConfigNode, dataNodePort, testClassName);
   }
 
   private void startAINode(
