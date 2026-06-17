@@ -378,7 +378,7 @@ etc. directly.
 
 | Option                | Default                          | Purpose                                                                                                  |
 |-----------------------|----------------------------------|----------------------------------------------------------------------------------------------------------|
-| `WITH_SSL`            | `OFF`                            | Link against OpenSSL. See *SSL* below.                                                                   |
+| `WITH_SSL`            | `ON`                             | Link against OpenSSL and bundle its runtime libraries. See *SSL* below.                                  |
 | `BUILD_TESTING`       | `OFF` (Maven sets `ON` for verify) | Build Catch2 IT executables (Catch2 v2.13.7 header downloaded at configure time).                        |
 | `CATCH2_INCLUDE_DIR`  | (unset)                          | Pre-downloaded Catch2 include dir (Maven sets this under `target/test/catch2`).                          |
 | `IOTDB_OFFLINE`       | `OFF`                            | Disallow any network access during configure.                                                            |
@@ -427,8 +427,8 @@ cmake --build build --config Release --target install
 
    | Platform   | Required files                                                                                                                                                       |
    |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-   | `linux/`   | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (and `openssl-3.5.0.tar.gz` when `WITH_SSL=ON`)            |
-   | `mac/`     | `thrift-0.21.0.tar.gz`, `boost_1_84_0.tar.gz` (newer Boost for Xcode/Clang; Apple ships m4/flex/bison; `openssl-3.5.0.tar.gz` optional)                               |
+   | `linux/`   | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (and `openssl-1.1.1w.tar.gz` only when `WITH_SSL=ON` and no system OpenSSL is present) |
+   | `mac/`     | `thrift-0.21.0.tar.gz`, `boost_1_84_0.tar.gz` (newer Boost for Xcode/Clang; Apple ships m4/flex/bison; `openssl-1.1.1w.tar.gz` optional)                              |
    | `windows/` | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz` (Boost headers only - no `b2` build required for `iotdb_session`)                                                      |
 
    Reference URLs (the configure step uses the same):
@@ -437,7 +437,7 @@ cmake --build build --config Release --target install
    - GNU m4 1.4.19:       <https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.gz>
    - GNU flex 2.6.4:      <https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz>
    - GNU bison 3.8:       <https://ftp.gnu.org/gnu/bison/bison-3.8.tar.gz>
-   - OpenSSL 3.5.0:       <https://www.openssl.org/source/openssl-3.5.0.tar.gz>
+   - OpenSSL 1.1.1w:      <https://www.openssl.org/source/openssl-1.1.1w.tar.gz>
 
 2. Run the build with offline mode enabled:
 
@@ -492,9 +492,11 @@ Prerequisites:
 2. **flex / bison.** Install <https://sourceforge.net/projects/winflexbison/>
    and rename `win_flex.exe`→`flex.exe`, `win_bison.exe`→`bison.exe` on
    `PATH`.
-3. **OpenSSL** *(only when `WITH_SSL=ON`)*: run the Win64 OpenSSL
-   installer from <https://slproweb.com/products/Win32OpenSSL.html>, then
-   pass `-DOPENSSL_ROOT_DIR=...` to CMake.
+3. **OpenSSL** *(`WITH_SSL=ON` is the default)*: install OpenSSL — e.g.
+   `choco install openssl`, or run the Win64 OpenSSL installer from
+   <https://slproweb.com/products/Win32OpenSSL.html> — then pass
+   `-DOPENSSL_ROOT_DIR=...` to CMake if it is not auto-detected. Pass
+   `-DWITH_SSL=OFF` to build without SSL.
 
 On Windows the SDK ships as **`iotdb_session.dll`** plus an import library
 **`iotdb_session.lib`**, built with **`/MD`** (dynamic CRT, same as a
@@ -507,16 +509,23 @@ the GNU autotools tarballs assume a POSIX shell environment.
 
 ## SSL
 
-Both Thrift and `iotdb_session` build without OpenSSL by default. Enable
-SSL with `-Dwith.ssl=ON` (Maven) or `-DWITH_SSL=ON` (standalone CMake).
-CMake first calls `find_package(OpenSSL)`;
-if nothing is found, it falls back to:
+`iotdb_session` builds **with OpenSSL by default** (`WITH_SSL=ON`). Disable
+it with `-Dwith.ssl=OFF` (Maven) or `-DWITH_SSL=OFF` (standalone CMake).
+
+CMake first calls `find_package(OpenSSL)` and **prefers any system / vendor
+OpenSSL** it finds, regardless of version (1.x or 3.x). When SSL is enabled the
+resolved OpenSSL shared libraries are **bundled into the package `lib/`
+directory** (next to `iotdb_session`) so the published SDK is self-contained.
+
+If no system OpenSSL is found, it falls back to:
 
 - **Linux / macOS** – use a local `openssl-<ver>.tar.gz` (or download it
   when not in offline mode), configure with `no-shared`, install into
-  `build/_deps/openssl/install`, and link statically.
-- **Windows** – fail with a friendly message that points at the Win64
-  OpenSSL installer. Building OpenSSL from source via MSVC is out of scope.
+  `build/_deps/openssl/install`, and link statically. The fallback pins
+  **OpenSSL 1.1.1w (1.x)**, not 3.x.
+- **Windows** – fail with a friendly message that points at a prebuilt
+  OpenSSL (`choco install openssl` or the Win64 installer). Building OpenSSL
+  from source via MSVC is out of scope.
 
 ## Tests
 

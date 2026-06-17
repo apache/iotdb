@@ -71,6 +71,18 @@ fi
 cmake --version
 java -version
 
+# WITH_SSL is on by default; install the system OpenSSL dev package so
+# find_package(OpenSSL) resolves it (manylinux_2_28 is AlmaLinux 8 -> OpenSSL
+# 1.1.1) instead of falling back to a from-source build.
+if ! rpm -q openssl-devel >/dev/null 2>&1; then
+  if command -v dnf >/dev/null 2>&1; then
+    dnf install -y openssl-devel
+  else
+    yum install -y openssl-devel
+  fi
+fi
+openssl version || true
+
 cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dspotless.skip=true \

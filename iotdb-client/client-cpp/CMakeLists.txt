@@ -78,7 +78,7 @@ if(NOT MSVC)
     file(WRITE "${_iotdb_cxx11_abi_stamp}" "${_iotdb_cxx11_abi_stamp_value}")
 endif()
 
-option(WITH_SSL "Build with OpenSSL support" OFF)
+option(WITH_SSL "Build with OpenSSL support" ON)
 option(BUILD_TESTING "Build IT test executables" OFF)
 option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
 set(IOTDB_SESSION_VERSION "0.0.0"
@@ -120,6 +120,7 @@ include(FetchBoost)        # -> BOOST_INCLUDE_DIR (Thrift build only)
 include(FetchBuildTools)
 if(WITH_SSL)
     include(FetchOpenSSL)
+    include(InstallOpenSSLRuntime)
 endif()
 include(FetchThrift)
 include(GenerateThriftSources)
@@ -222,6 +223,12 @@ install(TARGETS iotdb_session
         RUNTIME DESTINATION lib
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
+
+# Ship the OpenSSL shared libraries we link against next to iotdb_session so the
+# packaged SDK is self-contained on machines without a system OpenSSL.
+if(WITH_SSL)
+    iotdb_install_openssl_runtime()
+endif()
 
 foreach(_hdr IN LISTS IOTDB_PUBLIC_HEADERS)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/include/${_hdr}"

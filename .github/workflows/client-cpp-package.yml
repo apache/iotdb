@@ -299,6 +299,9 @@ jobs:
           ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
+          # WITH_SSL is on by default; Homebrew OpenSSL is keg-only, so point
+          # find_package(OpenSSL) at it instead of a from-source fallback.
+          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl)" >> "$GITHUB_ENV"
           clang-format --version
           bison --version
       - name: Cache Maven packages

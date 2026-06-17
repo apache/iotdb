@@ -49,7 +49,7 @@
         <cmake.install.prefix>${project.build.directory}/install</cmake.install.prefix>
         <iotdb.deps.dir>${project.basedir}/third-party</iotdb.deps.dir>
         <iotdb.offline>OFF</iotdb.offline>
-        <with.ssl>OFF</with.ssl>
+        <with.ssl>ON</with.ssl>
         <iotdb.cxx11.abi/>
         <!-- Switched to OFF by the .skipTests profile below. -->
         <build.tests>ON</build.tests>

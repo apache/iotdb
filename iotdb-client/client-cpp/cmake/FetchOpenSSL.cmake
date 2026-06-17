@@ -19,21 +19,24 @@
 # FetchOpenSSL.cmake  (only included when WITH_SSL=ON)
 #
 # Resolution order:
-#   1. find_package(OpenSSL) - any system / vendor install is taken as-is.
-#   2. On Linux/macOS:
+#   1. find_package(OpenSSL) - any system / vendor install is taken as-is,
+#      whatever its version (1.x or 3.x). This is always preferred.
+#   2. On Linux/macOS, when no system OpenSSL is present:
 #         use tarball ${IOTDB_OS_DEPS_DIR}/openssl-${OPENSSL_VERSION}.tar.gz
 #         or download from openssl.org when not in offline mode, then
-#         ./Configure && make && make install_sw into ${CMAKE_BINARY_DIR}/_deps/openssl.
-#   3. On Windows: emit a FATAL_ERROR with instructions to run the bundled
-#      Win64OpenSSL installer (or any other prebuilt OpenSSL); building
-#      OpenSSL from source on MSVC is out of scope.
+#         ./config && make && make install_sw into ${CMAKE_BINARY_DIR}/_deps/openssl.
+#         The fallback pins OpenSSL 1.1.1 (1.x), not 3.x.
+#   3. On Windows: emit a FATAL_ERROR with instructions to install a prebuilt
+#      OpenSSL; building OpenSSL from source on MSVC is out of scope.
 #
 # Side effects:
 #   Defines imported targets OpenSSL::SSL / OpenSSL::Crypto via find_package
 #   so callers can just link against them.
 # =============================================================================
 
-set(OPENSSL_VERSION "3.5.0" CACHE STRING "OpenSSL version to fetch when missing")
+# Fallback build only: the system OpenSSL (any version) is preferred above. When
+# none is found we build 1.1.1 (1.x); 3.x is intentionally not used as a fallback.
+set(OPENSSL_VERSION "1.1.1w" CACHE STRING "OpenSSL version to fetch when no system OpenSSL is found")
 
 find_package(OpenSSL QUIET)
 if(OpenSSL_FOUND)
@@ -44,9 +47,10 @@ endif()
 if(WIN32)
     message(FATAL_ERROR
             "[OpenSSL] WITH_SSL=ON but no OpenSSL was found on Windows. "
-            "Please run third-party/windows/Win64OpenSSL-3_5_0.exe (or any "
-            "OpenSSL installer), then re-run the configure step with "
-            "-DOPENSSL_ROOT_DIR=<install_path>.")
+            "Please install a prebuilt OpenSSL (e.g. 'choco install openssl', "
+            "or any Win64 OpenSSL installer), then re-run the configure step "
+            "with -DOPENSSL_ROOT_DIR=<install_path>. Pass -DWITH_SSL=OFF to "
+            "build without SSL.")
 endif()
 
 # --- Linux / macOS fallback: build from source ---------------------------
@@ -88,12 +92,14 @@ if(NOT EXISTS "${_ossl_stamp}")
     endif()
 
     message(STATUS "[OpenSSL] configuring -> ${_ossl_inst}")
+    # ./config auto-detects the platform target (1.1.1's ./Configure needs an
+    # explicit one); no-shared links OpenSSL straight into libiotdb_session.
     execute_process(
-            COMMAND ./Configure --prefix=${_ossl_inst} --openssldir=${_ossl_inst}/ssl no-shared
+            COMMAND ./config --prefix=${_ossl_inst} --openssldir=${_ossl_inst}/ssl no-shared
             WORKING_DIRECTORY "${_ossl_src}"
             RESULT_VARIABLE _rc)
     if(NOT _rc EQUAL 0)
-        message(FATAL_ERROR "[OpenSSL] Configure failed (rc=${_rc})")
+        message(FATAL_ERROR "[OpenSSL] config failed (rc=${_rc})")
     endif()
 
     message(STATUS "[OpenSSL] building (-j${_jobs})")
