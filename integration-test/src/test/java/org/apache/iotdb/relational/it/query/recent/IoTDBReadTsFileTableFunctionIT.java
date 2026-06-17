@@ -214,6 +214,45 @@ public class IoTDBReadTsFileTableFunctionIT {
   }
 
   @Test
+  public void testTimeJoinReadTsFileWithSameTableNameFromDifferentTsFiles() throws Exception {
+    File leftTsFile = new File(tmpDir, "time-join-left.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(leftTsFile)) {
+      generateTable(writer, "table1", Arrays.asList("left_tag"), Arrays.asList("left_value"), 1, 3);
+    }
+    File rightTsFile = new File(tmpDir, "time-join-right.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(rightTsFile)) {
+      generateTable(
+          writer, "table1", Arrays.asList("right_tag"), Arrays.asList("right_value"), 2, 4);
+    }
+
+    String[] expectedHeader =
+        new String[] {"time", "left_tag", "left_value", "right_tag", "right_value"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.002Z,left_tag_1,2,right_tag_1,2,",
+          "1970-01-01T00:00:00.002Z,left_tag_1,2,right_tag_2,2,",
+          "1970-01-01T00:00:00.002Z,left_tag_2,2,right_tag_1,2,",
+          "1970-01-01T00:00:00.002Z,left_tag_2,2,right_tag_2,2,",
+          "1970-01-01T00:00:00.003Z,left_tag_1,3,right_tag_1,3,",
+          "1970-01-01T00:00:00.003Z,left_tag_1,3,right_tag_2,3,",
+          "1970-01-01T00:00:00.003Z,left_tag_2,3,right_tag_1,3,",
+          "1970-01-01T00:00:00.003Z,left_tag_2,3,right_tag_2,3,",
+        };
+    tableResultSetEqualTest(
+        "SELECT l.time, l.left_tag, l.left_value, r.right_tag, r.right_value"
+            + " FROM read_tsfile(PATHS => '"
+            + toSqlPath(leftTsFile)
+            + "', TABLE_NAME => 'table1') l"
+            + " JOIN read_tsfile(PATHS => '"
+            + toSqlPath(rightTsFile)
+            + "', TABLE_NAME => 'table1') r ON l.time = r.time"
+            + " ORDER BY l.time, l.left_tag, r.right_tag",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testReadMultipleTsFilesWithTagSchemaMerge() throws Exception {
     File tsFile1 = new File(tmpDir, "tag-schema-merge-1.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile1)) {
