@@ -839,6 +839,8 @@ public final class DataNodeQueryMessages {
       "未知的外部 TsFile 设备任务分区：";
   public static final String EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_BEEN_CLOSED =
       "外部 TsFile 查询资源已关闭：";
+  public static final String EXTERNAL_TSFILE_FRAGMENT_INSTANCE_USAGE_COUNT_CANNOT_BE_NEGATIVE =
+      "外部 TsFile FragmentInstance 使用计数不能为负数";
   public static final String FAILED_TO_DESERIALIZE_EXTERNAL_TSFILE_RESOURCE =
       "反序列化外部 TsFile 资源失败：%s，%s";
   public static final String FAILED_TO_FLUSH_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION =

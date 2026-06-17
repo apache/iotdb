@@ -56,7 +56,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -66,6 +65,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongConsumer;
 
 /**
@@ -172,7 +172,9 @@ public class MPPQueryContext implements IAuditEntity {
   // Tables in the subquery
   private final Map<NodeRef<Query>, List<Identifier>> subQueryTables = new HashMap<>();
 
-  private List<ExternalTsFileQueryResource> externalTsFileQueryResources;
+  private final Set<ExternalTsFileQueryResource> externalTsFileQueryResources =
+      ConcurrentHashMap.newKeySet();
+  private final AtomicInteger externalTsFileQueryResourceIndex = new AtomicInteger();
 
   @TestOnly
   public MPPQueryContext(QueryId queryId) {
@@ -261,16 +263,14 @@ public class MPPQueryContext implements IAuditEntity {
 
   public ExternalTsFileQueryResource createExternalTsFileQueryResource(
       String tableName, List<String> tsFilePaths, Map<Symbol, ColumnSchema> tableColumnSchema) {
-    if (externalTsFileQueryResources == null) {
-      externalTsFileQueryResources = new ArrayList<>();
-    }
+    int resourceIndex = externalTsFileQueryResourceIndex.getAndIncrement();
     ExternalTsFileQueryResource externalTsFileQueryResource =
         new ExternalTsFileQueryResource(
             this,
             Paths.get(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir())
                 .resolve(ExternalTsFileQueryResource.EXTERNAL_TSFILE_TMP_DIR)
                 .resolve(queryId.getId())
-                .resolve(String.valueOf(externalTsFileQueryResources.size())),
+                .resolve(String.valueOf(resourceIndex)),
             tableName,
             tsFilePaths,
             tableColumnSchema);
@@ -279,23 +279,32 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void releaseExternalTsFileQueryResources() {
-    if (externalTsFileQueryResources == null) {
+    if (externalTsFileQueryResources.isEmpty()) {
       return;
     }
     for (ExternalTsFileQueryResource externalTsFileQueryResource : externalTsFileQueryResources) {
       try {
-        externalTsFileQueryResource.close();
+        externalTsFileQueryResource.closeByQueryExecution();
       } catch (Exception e) {
         LOGGER.warn("Failed to release external TsFile query resource", e);
       }
     }
-    FileUtils.deleteFileOrDirectory(
-        Paths.get(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir())
-            .resolve(ExternalTsFileQueryResource.EXTERNAL_TSFILE_TMP_DIR)
-            .resolve(queryId.getId())
-            .toFile(),
-        true);
-    externalTsFileQueryResources = null;
+  }
+
+  public void removeExternalTsFileQueryResource(ExternalTsFileQueryResource resource) {
+    externalTsFileQueryResources.remove(resource);
+    deleteExternalTsFileQueryTmpRootIfEmpty();
+  }
+
+  private void deleteExternalTsFileQueryTmpRootIfEmpty() {
+    if (externalTsFileQueryResources.isEmpty()) {
+      FileUtils.deleteFileOrDirectory(
+          Paths.get(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir())
+              .resolve(ExternalTsFileQueryResource.EXTERNAL_TSFILE_TMP_DIR)
+              .resolve(queryId.getId())
+              .toFile(),
+          true);
+    }
   }
 
   public long getLocalQueryId() {

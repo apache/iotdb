@@ -841,6 +841,8 @@ public final class DataNodeQueryMessages {
       "Unknown external TsFile device task partition: ";
   public static final String EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_BEEN_CLOSED =
       "External TsFile query resource has been closed: ";
+  public static final String EXTERNAL_TSFILE_FRAGMENT_INSTANCE_USAGE_COUNT_CANNOT_BE_NEGATIVE =
+      "External TsFile fragment instance usage count cannot be negative";
   public static final String FAILED_TO_DESERIALIZE_EXTERNAL_TSFILE_RESOURCE =
       "Failed to deserialize external TsFile resource: %s, %s";
   public static final String FAILED_TO_FLUSH_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION =

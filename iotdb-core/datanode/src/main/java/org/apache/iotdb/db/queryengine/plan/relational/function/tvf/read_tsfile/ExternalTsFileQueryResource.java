@@ -75,7 +75,7 @@ import static java.util.Objects.requireNonNull;
  * increments/decrements for the query's external TsFile paths and deletes the query temporary
  * directory.
  */
-public class ExternalTsFileQueryResource implements AutoCloseable {
+public class ExternalTsFileQueryResource {
 
   public static final String EXTERNAL_TSFILE_TMP_DIR = "external-tsfile";
 
@@ -94,9 +94,9 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   private final List<DeviceEntry> sharedDeviceEntries = new ArrayList<>();
   private final List<DeviceTaskPartition> deviceTaskPartitions = new ArrayList<>();
   private Comparator<DeviceEntry> deviceEntryComparator;
-  private int deviceTaskPartitionCount;
 
-  private volatile boolean closed;
+  private int fragmentInstanceUsageCount;
+  private boolean closed;
 
   public ExternalTsFileQueryResource(
       MPPQueryContext queryContext,
@@ -121,12 +121,10 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
   public void collectDeviceEntries(
       SchemaFilter schemaFilter, Comparator<DeviceEntry> comparator, int partitionCount) {
-    checkNotClosed();
     if (partitionCount <= 0) {
       throw new IllegalArgumentException(
           DataNodeQueryMessages.EXTERNAL_TSFILE_DEVICE_TASK_PARTITION_COUNT_MUST_BE_POSITIVE);
     }
-    this.deviceTaskPartitionCount = partitionCount;
     this.deviceEntryComparator = comparator;
     acquireMemoryForTsFileReaders();
     ExternalTsFileDeviceFilterVisitor deviceFilterVisitor = new ExternalTsFileDeviceFilterVisitor();
@@ -146,8 +144,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
         DeviceTask deviceTask =
             new DeviceTask(deviceEntryIndex, deviceCollector.getCurrentDeviceOffsets());
         DeviceTaskPartition partition =
-            getOrCreateDeviceTaskPartition(
-                Math.floorMod(deviceID.hashCode(), deviceTaskPartitionCount));
+            getOrCreateDeviceTaskPartition(Math.floorMod(deviceID.hashCode(), partitionCount));
         partition.add(deviceTask);
         if (partition.shouldFlush()) {
           partition.flush();
@@ -163,7 +160,6 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   }
 
   public DeviceTaskRunReader getDeviceTaskRunReader(int partitionIndex) {
-    checkNotClosed();
     DeviceTaskPartition partition = getDeviceTaskPartition(partitionIndex);
     try {
       return deviceEntryComparator == null
@@ -210,8 +206,30 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
         DataNodeQueryMessages.UNKNOWN_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION + partitionIndex);
   }
 
-  @Override
-  public void close() {
+  public synchronized void retainFragmentInstanceUsage() {
+    checkNotClosed();
+    fragmentInstanceUsageCount++;
+  }
+
+  public synchronized void closeByFragmentInstance() {
+    fragmentInstanceUsageCount--;
+    if (fragmentInstanceUsageCount < 0) {
+      fragmentInstanceUsageCount++;
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXTERNAL_TSFILE_FRAGMENT_INSTANCE_USAGE_COUNT_CANNOT_BE_NEGATIVE);
+    }
+    if (fragmentInstanceUsageCount == 0) {
+      close();
+    }
+  }
+
+  public synchronized void closeByQueryExecution() {
+    if (fragmentInstanceUsageCount == 0) {
+      close();
+    }
+  }
+
+  private void close() {
     if (closed) {
       return;
     }
@@ -224,7 +242,11 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
         FileUtils.deleteFileOrDirectory(queryTempRoot.toFile(), true);
       }
     } finally {
-      externalTsFileResourceMemoryReservationManager.releaseAllReservedMemory();
+      try {
+        externalTsFileResourceMemoryReservationManager.releaseAllReservedMemory();
+      } finally {
+        queryContext.removeExternalTsFileQueryResource(this);
+      }
     }
   }
 

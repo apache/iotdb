@@ -57,7 +57,7 @@ public class ExternalTsFileQueryResourceTest {
   @After
   public void tearDown() {
     if (resource != null) {
-      resource.close();
+      resource.closeByQueryExecution();
     }
   }
 
