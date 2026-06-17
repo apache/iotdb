@@ -100,7 +100,7 @@ public class PipeTsFileEpochProgressIndexAndFlushManagerTest {
         hybridProgressIndex(
             new IoTProgressIndex(Map.of(1, 90L)),
             new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10)));
-    keeper.registerProgressIndex(
+    keeper.registerResource(
         DATA_REGION_ID,
         TASK_SCOPE_A,
         createTsFileResource("registered-hybrid.tsfile", registeredProgressIndex));
