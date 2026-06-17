@@ -1168,6 +1168,57 @@ public class IoTDBTableIT {
   }
 
   @Test
+  public void testDropTableShouldNotDropTreeView() throws Exception {
+    try {
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create database root.drop_table_tree_view_source");
+        statement.execute("create timeseries root.drop_table_tree_view_source.d1.s1 int32");
+      }
+
+      try (final Connection connection =
+              EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create database drop_table_tree_view_db");
+        statement.execute("use drop_table_tree_view_db");
+        statement.execute(
+            "create view tree_view_to_drop (device_id string tag) restrict as root.drop_table_tree_view_source.**");
+
+        try {
+          statement.execute("drop table tree_view_to_drop");
+          fail();
+        } catch (final SQLException e) {
+          assertEquals(
+              "701: Table 'drop_table_tree_view_db.tree_view_to_drop' is a tree view table, does not support alter table",
+              e.getMessage());
+        }
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("show tree views"),
+            "TableName,TTL(ms),",
+            Collections.singleton("tree_view_to_drop,INF,"));
+
+        statement.execute("drop view tree_view_to_drop");
+      }
+    } finally {
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute("drop database root.drop_table_tree_view_source");
+      } catch (final SQLException ignored) {
+        // Ignore cleanup errors.
+      }
+
+      try (final Connection connection =
+              EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.execute("drop database drop_table_tree_view_db");
+      } catch (final SQLException ignored) {
+        // Ignore cleanup errors.
+      }
+    }
+  }
+
+  @Test
   public void testTreeViewTable() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {

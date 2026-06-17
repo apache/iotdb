@@ -1263,7 +1263,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus preDeleteTable(final PreDeleteTablePlan plan) {
     return executeWithLock(
         () -> {
-          final TableType tableType = resolveTableType(plan);
+          final TableType tableType = resolvePlanConstrainedTableType(plan);
           tableModelMTree.preDeleteTable(
               getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName(), tableType);
           executeOriginalIfPresent(
@@ -1302,7 +1302,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus setTableComment(final SetTableCommentPlan plan) {
     return executeWithLock(
         () -> {
-          final TableType tableType = resolveTableType(plan);
+          final TableType tableType = resolvePlanConstrainedTableType(plan);
           tableModelMTree.setTableComment(
               getQualifiedDatabasePartialPath(plan.getDatabase()),
               plan.getTableName(),
@@ -1677,27 +1677,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return info;
   }
 
-  private TableType resolveTableType(final Object plan) throws MetadataException {
-    String database = null;
-    String tableName = null;
-    if (plan instanceof PreDeleteTablePlan) {
-      final PreDeleteTablePlan preDeletePlan = (PreDeleteTablePlan) plan;
-      database = preDeletePlan.getDatabase();
-      tableName = preDeletePlan.getTableName();
-    } else if (plan instanceof SetTableCommentPlan) {
-      final SetTableCommentPlan commentPlan = (SetTableCommentPlan) plan;
-      database = commentPlan.getDatabase();
-      tableName = commentPlan.getTableName();
-    }
-    if (database != null && tableName != null) {
+  // Keep the SQL object-kind constraint from the plan. Only DROP/COMMENT VIEW can target either
+  // tree views or SQL logical views.
+  private TableType resolvePlanConstrainedTableType(final AbstractTablePlan plan)
+      throws MetadataException {
+    final TableType tableType = getTableType(plan);
+    if (tableType == TableType.VIEW_FROM_TREE) {
       final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
           tableModelMTree.getTableAndStatusIfExists(
-              getQualifiedDatabasePartialPath(database), tableName);
-      if (tableAndStatus.isPresent()) {
-        return TableType.values()[tableAndStatus.get().getLeft().getType()];
+              getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
+      if (tableAndStatus.isPresent()
+          && TableType.values()[tableAndStatus.get().getLeft().getType()] == TableType.VIEW) {
+        return TableType.VIEW;
       }
     }
-    return getTableType(plan);
+    return tableType;
   }
 
   private static TableType getTableType(final Object plan) {

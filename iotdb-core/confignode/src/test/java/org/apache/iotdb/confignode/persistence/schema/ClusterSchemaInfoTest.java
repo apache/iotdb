@@ -22,7 +22,9 @@ package org.apache.iotdb.confignode.persistence.schema;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
@@ -35,7 +37,10 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSe
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -119,6 +124,30 @@ public class ClusterSchemaInfoTest {
 
     Assert.assertFalse(clusterSchemaInfo.getTsTableIfExists("db", "view").isPresent());
     Assert.assertFalse(clusterSchemaInfo.getTsTableIfExists("db", "source").isPresent());
+  }
+
+  @Test
+  public void testDropTableAndDropViewRespectStatementObjectType() throws Exception {
+    createTableDatabase("db");
+    createUsingBaseTable("db", "table");
+    createUsingTreeView("db", "tree_view");
+    createUsingSqlLogicalView("db", "sql_view");
+
+    final TSStatus dropTreeViewAsTableStatus =
+        clusterSchemaInfo.preDeleteTable(new PreDeleteTablePlan("db", "tree_view"));
+    Assert.assertEquals(
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode(), dropTreeViewAsTableStatus.getCode());
+    Assert.assertTrue(clusterSchemaInfo.getTsTableIfExists("db", "tree_view").isPresent());
+
+    final TSStatus dropTableAsViewStatus =
+        clusterSchemaInfo.preDeleteTable(new PreDeleteViewPlan("db", "table"));
+    Assert.assertEquals(
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode(), dropTableAsViewStatus.getCode());
+    Assert.assertTrue(clusterSchemaInfo.getTsTableIfExists("db", "table").isPresent());
+
+    assertSuccess(clusterSchemaInfo.preDeleteTable(new PreDeleteViewPlan("db", "sql_view")));
+    assertSuccess(clusterSchemaInfo.dropTable(new CommitDeleteViewPlan("db", "sql_view")));
+    Assert.assertFalse(clusterSchemaInfo.getTsTableIfExists("db", "sql_view").isPresent());
   }
 
   @Test
@@ -361,6 +390,27 @@ public class ClusterSchemaInfoTest {
                 database,
                 new WritableView(viewName, database, sourceTableName, true),
                 TableNodeStatus.PRE_CREATE)));
+    assertSuccess(
+        clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, viewName)));
+  }
+
+  private void createUsingTreeView(final String database, final String viewName)
+      throws IllegalPathException {
+    final TsTable view = new TsTable(viewName);
+    Assert.assertNull(TreeViewSchema.setPathPattern(view, new PartialPath("root.sg.**")));
+    assertSuccess(
+        clusterSchemaInfo.preCreateTableView(
+            new PreCreateTableViewPlan(database, view, TableNodeStatus.PRE_CREATE)));
+    assertSuccess(
+        clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, viewName)));
+  }
+
+  private void createUsingSqlLogicalView(final String database, final String viewName) {
+    final TsTable view = new TsTable(viewName);
+    SqlViewSchema.setQuerySql(view, "select * from table");
+    assertSuccess(
+        clusterSchemaInfo.preCreateTableView(
+            new PreCreateTableViewPlan(database, view, TableNodeStatus.PRE_CREATE)));
     assertSuccess(
         clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, viewName)));
   }
