@@ -447,7 +447,9 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
 
   public void deregister(final String taskID) {
     if (!sinkMap.containsKey(taskID)) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_DATA_REGION_SINK, taskID);
+      LOGGER.warn(
+          DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_DATA_REGION_SINK,
+          getDisplayTaskID(taskID));
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -462,7 +464,8 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     }
     final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_SINK, taskID);
+      LOGGER.info(
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_SINK, getDisplayTaskID(taskID));
       return;
     }
     rate.mark();
@@ -474,10 +477,16 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     }
     final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_SINK_1, taskID);
+      LOGGER.info(
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_SINK_1, getDisplayTaskID(taskID));
       return;
     }
     rate.mark();
+  }
+
+  private String getDisplayTaskID(final String taskID) {
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
+    return Objects.nonNull(sink) ? sink.getDisplayTaskID() : "unknown";
   }
 
   public void markPipeHeartbeatEvent(final String taskID) {
