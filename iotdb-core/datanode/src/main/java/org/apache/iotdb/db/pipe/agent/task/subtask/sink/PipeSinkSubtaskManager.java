@@ -48,8 +48,12 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -60,6 +64,14 @@ public class PipeSinkSubtaskManager {
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
+
+  private static final Set<String> SENSITIVE_ATTRIBUTE_KEYS = new HashSet<>();
+
+  static {
+    SENSITIVE_ATTRIBUTE_KEYS.add("ssl.trust-store-pwd");
+    SENSITIVE_ATTRIBUTE_KEYS.add("scp.password");
+    SENSITIVE_ATTRIBUTE_KEYS.add("password");
+  }
 
   private final Map<String, List<PipeSinkSubtaskLifeCycle>>
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
@@ -145,8 +157,7 @@ public class PipeSinkSubtaskManager {
       for (int sinkIndex = 0; sinkIndex < sinkNum; sinkIndex++) {
         final String taskID =
             String.format(
-                "%s_%s_%s",
-                attributeDisplayStringWithPrefix, environment.getCreationTime(), sinkIndex);
+                "%s_%s_%s", attributeSortedString, environment.getCreationTime(), sinkIndex);
         environment.setSinkTaskId(taskID);
 
         final PipeConnector pipeSink =
@@ -181,6 +192,7 @@ public class PipeSinkSubtaskManager {
             new PipeSinkSubtask(
                 taskID,
                 environment.getCreationTime(),
+                attributeSortedString,
                 attributeDisplayStringWithPrefix,
                 sinkIndex,
                 pendingQueue,
@@ -290,13 +302,21 @@ public class PipeSinkSubtaskManager {
     return sortedStringSourceMap.toString();
   }
 
-  /** Masked attribute string for logs, metrics and exception messages. */
-  private static String generateAttributeDisplayString(
-      final PipeParameters pipeConnectorParameters) {
+  /**
+   * Attribute string for logs, metrics and exception messages with sensitive attributes removed.
+   */
+  static String generateAttributeDisplayString(final PipeParameters pipeConnectorParameters) {
     final TreeMap<String, String> filteredAttributes =
         new TreeMap<>(pipeConnectorParameters.getAttribute());
     filteredAttributes.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
-    return new PipeParameters(filteredAttributes).toString();
+    filteredAttributes.keySet().removeIf(PipeSinkSubtaskManager::isSensitiveAttributeKey);
+    return filteredAttributes.toString();
+  }
+
+  private static boolean isSensitiveAttributeKey(final String key) {
+    return Objects.nonNull(key)
+        && SENSITIVE_ATTRIBUTE_KEYS.contains(
+            PipeParameters.KeyReducer.reduce(key).toLowerCase(Locale.ROOT));
   }
 
   private void throwNoSuchSubtaskException(final String attributeSortedString) {
