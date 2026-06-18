@@ -185,7 +185,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
     final Map<String, String> processorAttributes = new HashMap<>();
     final Map<String, String> sinkAttributes = new HashMap<>();
 
-    sourceAttributes.put("source.pattern", database + ".**");
+    sourceAttributes.put("source.path", database + ".**");
     sourceAttributes.put("source.inclusion", sourceInclusion);
     sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
