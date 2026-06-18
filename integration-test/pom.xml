@@ -544,7 +544,13 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <!-- Temporarily exclude all AINode (AIClusterIT) integration tests.
+                     includedGroups is intentionally kept as AIClusterIT so this profile stays
+                     scoped to the AINode tests only - leaving it empty would make failsafe run
+                     every IT in this module. The matching excludedGroups then skips them, and
+                     because excludedGroups takes precedence over includedGroups, no AINode test
+                     is executed even when this profile is activated. -->
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.AIClusterIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.AIClusterIT</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
