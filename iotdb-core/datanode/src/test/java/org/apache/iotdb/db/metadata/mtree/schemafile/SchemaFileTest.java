@@ -316,6 +316,39 @@ public class SchemaFileTest {
   }
 
   @Test
+  public void testFlushUpdatedChildWithNegativeSegmentAddress() throws Exception {
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    ICachedMNode sgNode = nodeFactory.createDatabaseDeviceMNode(null, "sg").getAsMNode();
+    ICachedMNode device = nodeFactory.createDeviceMNode(sgNode, "d1").getAsMNode();
+    sgNode.addChild(device);
+
+    writeMNodeInTest(sf, sgNode);
+
+    // Typical flush order: the parent already has this child record on disk, while the updated
+    // child object in memory may still have no valid segment address.
+    ICachedMNodeContainer.getCachedMNodeContainer(device).setSegmentAddress(-1L);
+    addNodeToUpdateBuffer(sgNode, device);
+    writeMNodeInTest(sf, sgNode);
+
+    Assert.assertTrue(getSegAddrInContainer(device) >= 0);
+
+    device.addChild(getMeasurementNode(device, "s1", "alias_s1"));
+    writeMNodeInTest(sf, device);
+    Assert.assertEquals(
+        "alias_s1", sf.getChildNode(device, "s1").getAsMeasurementMNode().getAlias());
+
+    long deviceSegmentAddress = getSegAddrInContainer(device);
+    sf.close();
+
+    sf = SchemaFile.loadSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    ICachedMNode loadedDevice = sf.getChildNode(sgNode, "d1");
+    Assert.assertEquals(deviceSegmentAddress, getSegAddrInContainer(loadedDevice));
+    Assert.assertEquals(
+        "alias_s1", sf.getChildNode(loadedDevice, "s1").getAsMeasurementMNode().getAlias());
+    sf.close();
+  }
+
+  @Test
   public void testMassiveSegment() throws MetadataException, IOException {
     ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot");
     fillChildren(dbNode, 500, "MEN", this::supplyEntity);
