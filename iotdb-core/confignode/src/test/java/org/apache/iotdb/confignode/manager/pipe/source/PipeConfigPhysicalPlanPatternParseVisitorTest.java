@@ -92,6 +92,28 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
   }
 
   @Test
+  public void testCreateDatabaseWithProcess() {
+    final DatabaseSchemaPlan includedCreateDatabasePlan =
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.ln"));
+    final DatabaseSchemaPlan excludedCreateDatabasePlan =
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.db"));
+    final IoTDBPipePatternOperations rootLnPattern =
+        new UnionIoTDBPipePattern(new IoTDBPipePattern("root.ln.**"));
+
+    Assert.assertEquals(
+        includedCreateDatabasePlan,
+        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+            .process(includedCreateDatabasePlan, rootLnPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+            .process(excludedCreateDatabasePlan, rootLnPattern)
+            .isPresent());
+  }
+
+  @Test
   public void testAlterDatabase() {
     final DatabaseSchemaPlan alterDatabasePlan =
         new DatabaseSchemaPlan(
@@ -199,6 +221,26 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
         IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
             .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnFullPath, multiplePathPattern)
             .orElseThrow(AssertionError::new));
+  }
+
+  @Test
+  public void testCommitSetSchemaTemplateWithRootLnPattern() {
+    final IoTDBPipePatternOperations rootLnPattern =
+        new UnionIoTDBPipePattern(new IoTDBPipePattern("root.ln.**"));
+    final CommitSetSchemaTemplatePlan includedSetTemplatePlan =
+        new CommitSetSchemaTemplatePlan("t1", "root.ln.wf01");
+    final CommitSetSchemaTemplatePlan excludedSetTemplatePlan =
+        new CommitSetSchemaTemplatePlan("t1", "root.db.wf01");
+
+    Assert.assertEquals(
+        includedSetTemplatePlan,
+        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+            .process(includedSetTemplatePlan, rootLnPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+            .process(excludedSetTemplatePlan, rootLnPattern)
+            .isPresent());
   }
 
   @Test

@@ -83,6 +83,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsSta
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
@@ -536,17 +537,29 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus loadSchemaSnapShot(
       final Map<String, String> parameters, final List<String> fileAbsolutePaths)
       throws IllegalPathException, IOException {
+    final String databaseName = parameters.get(ColumnHeaderConstant.DATABASE);
+    final PartialPath databasePath = new PartialPath(databaseName);
+
+    final String pathPattern = parameters.get(ColumnHeaderConstant.PATH_PATTERN);
+    if (!shouldLoadSchemaSnapshotDatabase(pathPattern, databaseName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    final PipePattern pipePattern =
+        PipePattern.parsePatternFromString(pathPattern, IoTDBPipePattern::new);
+
+    final TSStatus createDatabaseStatus = createSchemaSnapshotDatabaseIfNecessary(databasePath);
+    if (createDatabaseStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return createDatabaseStatus;
+    }
+
     final SRStatementGenerator generator =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(fileAbsolutePaths.get(0)),
             fileAbsolutePaths.size() > 1 ? Paths.get(fileAbsolutePaths.get(1)) : null,
-            new PartialPath(parameters.get(ColumnHeaderConstant.DATABASE)));
+            databasePath);
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final PipePattern pipePattern =
-        PipePattern.parsePatternFromString(
-            parameters.get(ColumnHeaderConstant.PATH_PATTERN), IoTDBPipePattern::new);
 
     // Clear to avoid previous exceptions
     batchVisitor.clear();
@@ -569,6 +582,39 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         .filter(Optional::isPresent)
         .forEach(statement -> results.add(executeStatementAndClassifyExceptions(statement.get())));
     return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  static boolean shouldLoadSchemaSnapshotDatabase(
+      final String pathPattern, final String databaseName) {
+    return PipePattern.parsePatternFromString(pathPattern, IoTDBPipePattern::new)
+        .mayOverlapWithDb(databaseName);
+  }
+
+  private TSStatus createSchemaSnapshotDatabaseIfNecessary(final PartialPath databasePath) {
+    final DatabaseSchemaStatement statement =
+        new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+    statement.setDatabasePath(databasePath);
+
+    final TSStatus status = executeStatementAndClassifyExceptions(statement);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+    if (status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+      return Objects.equals(
+              status.getMessage(),
+              databasePath.getFullPath() + " has already been created as database")
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(status.getMessage());
+    }
+
+    if (status.getCode() == TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(status.getMessage());
+    }
+
+    return status;
   }
 
   private TPipeTransferResp handleTransferSchemaPlan(final PipeTransferPlanNodeReq req) {
