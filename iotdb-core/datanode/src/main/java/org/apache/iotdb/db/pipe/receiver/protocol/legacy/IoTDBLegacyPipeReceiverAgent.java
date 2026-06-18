@@ -160,8 +160,7 @@ public class IoTDBLegacyPipeReceiverAgent {
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
                   false);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
+          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         LOGGER.error(
             "Create Database error, statement: {}, result status : {}.", statement, result.status);
         return false;

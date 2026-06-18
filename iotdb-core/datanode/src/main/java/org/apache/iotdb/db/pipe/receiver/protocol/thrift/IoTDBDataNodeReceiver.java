@@ -539,9 +539,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       throws IllegalPathException, IOException {
     final String databaseName = parameters.get(ColumnHeaderConstant.DATABASE);
     final PartialPath databasePath = new PartialPath(databaseName);
+    final String pathPattern = parameters.get(ColumnHeaderConstant.PATH_PATTERN);
     final PipePattern pipePattern =
-        PipePattern.parsePatternFromString(
-            parameters.get(ColumnHeaderConstant.PATH_PATTERN), IoTDBPipePattern::new);
+        PipePattern.parsePatternFromString(pathPattern, IoTDBPipePattern::new);
 
     if (!shouldLoadTreeSchemaSnapshotDatabase(pipePattern, databaseName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

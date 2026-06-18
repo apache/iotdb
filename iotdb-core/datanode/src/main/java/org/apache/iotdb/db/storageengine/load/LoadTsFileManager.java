@@ -125,7 +125,20 @@ public class LoadTsFileManager {
   public LoadTsFileManager() {
     registerCleanupTaskExecutor();
     recover();
+  }
+
+  public void start() {
     activeLoadAgent.start();
+  }
+
+  public void stop() {
+    activeLoadAgent.stop();
+    synchronized (uuid2CleanupTask) {
+      uuid2CleanupTask.values().forEach(CleanupTask::cancel);
+      uuid2CleanupTask.clear();
+      cleanupTaskQueue.clear();
+    }
+    new HashSet<>(uuid2WriterManager.keySet()).forEach(this::forceCloseWriterManager);
   }
 
   private long getCleanupTaskDelayInMs() {

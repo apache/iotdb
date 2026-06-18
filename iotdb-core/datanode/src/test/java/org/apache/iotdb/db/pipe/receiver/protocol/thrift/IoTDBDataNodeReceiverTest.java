@@ -114,6 +114,8 @@ public class IoTDBDataNodeReceiverTest {
   public void testTreeSchemaSnapshotDatabaseIsFilteredByPattern() {
     Assert.assertTrue(
         IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.ln.**", true, "root.ln"));
+    Assert.assertTrue(
+        IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.**", true, "root.db"));
     Assert.assertFalse(
         IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.ln.**", true, "root.db"));
     Assert.assertFalse(
