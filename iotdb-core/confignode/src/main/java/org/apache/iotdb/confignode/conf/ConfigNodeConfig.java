@@ -204,6 +204,9 @@ public class ConfigNodeConfig {
   /** The heartbeat interval in milliseconds. */
   private volatile long heartbeatIntervalInMs = 1000;
 
+  /** Startup heartbeat interval used to initialize failure detectors. */
+  private long failureDetectorHeartbeatIntervalInMs = heartbeatIntervalInMs;
+
   /** Failure detector implementation */
   private String failureDetector = IFailureDetector.PHI_ACCRUAL_DETECTOR;
 
@@ -730,6 +733,14 @@ public class ConfigNodeConfig {
 
   public void setHeartbeatIntervalInMs(long heartbeatIntervalInMs) {
     this.heartbeatIntervalInMs = heartbeatIntervalInMs;
+  }
+
+  public long getFailureDetectorHeartbeatIntervalInMs() {
+    return failureDetectorHeartbeatIntervalInMs;
+  }
+
+  public void setFailureDetectorHeartbeatIntervalInMs(long failureDetectorHeartbeatIntervalInMs) {
+    this.failureDetectorHeartbeatIntervalInMs = failureDetectorHeartbeatIntervalInMs;
   }
 
   public String getLeaderDistributionPolicy() {

@@ -273,6 +273,7 @@ public class ConfigNodeDescriptor {
                     conf.getSystemDir() + File.separator + "pipe" + File.separator + "receiver")));
 
     conf.setHeartbeatIntervalInMs(loadHeartbeatIntervalInMs(properties));
+    conf.setFailureDetectorHeartbeatIntervalInMs(conf.getHeartbeatIntervalInMs());
 
     String failureDetector = properties.getProperty("failure_detector", conf.getFailureDetector());
     if (IFailureDetector.FIXED_DETECTOR.equals(failureDetector)
