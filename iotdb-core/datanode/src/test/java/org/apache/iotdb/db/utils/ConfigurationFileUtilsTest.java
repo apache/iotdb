@@ -40,7 +40,6 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
@@ -52,13 +51,7 @@ public class ConfigurationFileUtilsTest {
 
   @After
   public void tearDown() throws IOException {
-    if (!dir.exists()) {
-      return;
-    }
-    for (File file : Objects.requireNonNull(dir.listFiles())) {
-      Files.delete(file.toPath());
-    }
-    Files.delete(dir.toPath());
+    EnvironmentUtils.cleanDir(dir.getPath());
   }
 
   @Test
