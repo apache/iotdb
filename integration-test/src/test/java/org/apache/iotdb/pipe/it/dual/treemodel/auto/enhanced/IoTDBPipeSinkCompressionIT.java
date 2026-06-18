@@ -221,6 +221,17 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db.d1(time, s1) values (1, 1)",
+              "insert into root.db.d1(time, s2) values (1, 1)",
+              "insert into root.db.d1(time, s3) values (1, 1)",
+              "insert into root.db.d1(time, s4) values (1, 1)",
+              "insert into root.db.d1(time, s5) values (1, 1)",
+              "flush"),
+          null);
+
       // Create 5 pipes with different zstd compression levels, p4 and p5 should fail.
 
       try (final Connection connection = senderEnv.getConnection();
@@ -273,17 +284,6 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
         e.printStackTrace();
         fail(e.getMessage());
       }
-
-      TestUtils.executeNonQueries(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (1, 1)",
-              "insert into root.db.d1(time, s2) values (1, 1)",
-              "insert into root.db.d1(time, s3) values (1, 1)",
-              "insert into root.db.d1(time, s4) values (1, 1)",
-              "insert into root.db.d1(time, s5) values (1, 1)",
-              "flush"),
-          null);
 
       try (final Connection connection = senderEnv.getConnection();
           final Statement statement = connection.createStatement()) {
