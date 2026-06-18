@@ -267,6 +267,20 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             currentSchema.getName(),
             currentSchema.getMaxDataRegionGroupNum());
       }
+      if (alterSchema.isSetMaxSchemaRegionGroupNum()) {
+        currentSchema.setMaxSchemaRegionGroupNum(alterSchema.getMaxSchemaRegionGroupNum());
+        LOGGER.info(
+            ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MAXIMUM_NUMBER_OF_SCHEMAREGIONGROUPS_FOR,
+            currentSchema.getName(),
+            currentSchema.getMaxSchemaRegionGroupNum());
+      }
+      if (alterSchema.isSetMaxDataRegionGroupNum()) {
+        currentSchema.setMaxDataRegionGroupNum(alterSchema.getMaxDataRegionGroupNum());
+        LOGGER.info(
+            ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MAXIMUM_NUMBER_OF_DATAREGIONGROUPS_FOR,
+            currentSchema.getName(),
+            currentSchema.getMaxDataRegionGroupNum());
+      }
 
       if (alterSchema.isSetTTL()) {
         currentSchema.setTTL(alterSchema.getTTL());

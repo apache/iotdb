@@ -289,7 +289,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testAlterDatabaseIdempotent() throws Exception {
     testIdempotent(
         Collections.singletonList("create database root.sg1"),
-        "ALTER DATABASE root.sg1 WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3;",
+        "ALTER DATABASE root.sg1 WITH TTL=3600000;",
         "create database root.sg2",
         "count databases",
         "count,",
