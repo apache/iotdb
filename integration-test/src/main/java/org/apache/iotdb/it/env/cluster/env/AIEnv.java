@@ -19,42 +19,44 @@
 
 package org.apache.iotdb.it.env.cluster.env;
 
-import org.apache.iotdb.itbase.runtime.NodeConnection;
+import org.apache.iotdb.it.env.cluster.node.AINodeStarter;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 public class AIEnv extends AbstractEnv {
+
   @Override
   public void initClusterEnvironment() {
     initClusterEnvironment(1, 1);
-    checkActivationStatus(3);
   }
 
   @Override
   public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
-    super.initEnvironment(configNodesNum, dataNodesNum, 600, true);
-    checkActivationStatus(configNodesNum + dataNodesNum + 1);
+    super.initEnvironment(configNodesNum, dataNodesNum, 600);
   }
 
   @Override
   public void initClusterEnvironment(
       int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
-    super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount, true);
-    checkActivationStatus(configNodesNum + dataNodesNum + 1);
+    super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount);
   }
 
   @Override
-  public NodeConnection getWriteConnection(
-      Object o, String username3, String password3, String treeSqlDialect) {
-    return null;
-  }
-
-  private void checkActivationStatus(int nodeCnt) {
-    Map<Integer, String> activateMap = new HashMap<>();
-    for (int i = 0; i < nodeCnt + 1; i++) {
-      activateMap.put(i, "ACTIVATED");
-    }
-    checkActivationStatus(activate -> activateMap.values().stream().allMatch("ACTIVATED"::equals));
+  protected void initExtraNodes(
+      final List<ConfigNodeWrapper> configNodeWrappers,
+      final List<DataNodeWrapper> dataNodeWrappers,
+      final String testClassName) {
+    AINodeStarter.startAINode(
+        configNodeWrappers.get(0).getIpAndPortString(),
+        dataNodeWrappers.get(0).getPort(),
+        testClassName,
+        testMethodName,
+        index,
+        startTime,
+        extraNodeKillPoints,
+        this::registerExtraNode,
+        this::dumpTestJVMSnapshot);
   }
 }
