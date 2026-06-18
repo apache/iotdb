@@ -39,10 +39,10 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.PIPE_I
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.PROTOCOL_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.RECEIVER_NODE_ID_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.RECEIVER_NODE_TYPE_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.RECEIVER_USER_NAME_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_ADDRESS_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_CLUSTER_ID_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_PORTS_TABLE_MODEL;
-import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.USER_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.infoSchemaTableScan;
@@ -56,13 +56,13 @@ public class ShowReceiversTest {
           RECEIVER_NODE_TYPE_TABLE_MODEL,
           RECEIVER_NODE_ID_TABLE_MODEL,
           PROTOCOL_TABLE_MODEL,
+          SENDER_CLUSTER_ID_TABLE_MODEL,
           SENDER_ADDRESS_TABLE_MODEL,
+          RECEIVER_USER_NAME_TABLE_MODEL,
           SENDER_PORTS_TABLE_MODEL,
           CONNECTION_COUNT_TABLE_MODEL,
           PIPE_COUNT_TABLE_MODEL,
           PIPE_IDS_TABLE_MODEL,
-          USER_NAME,
-          SENDER_CLUSTER_ID_TABLE_MODEL,
           LAST_HANDSHAKE_TIME_TABLE_MODEL,
           LAST_TRANSFER_TIME_TABLE_MODEL);
 

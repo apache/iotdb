@@ -76,16 +76,15 @@ public class InformationSchemaReceiversSupplierTest {
         columns.get(0), "receiver_node_type", TSDataType.STRING, TsTableColumnCategory.TAG);
     assertColumn(columns.get(1), "receiver_node_id", TSDataType.INT32, TsTableColumnCategory.TAG);
     assertColumn(columns.get(2), "protocol", TSDataType.STRING, TsTableColumnCategory.TAG);
-    assertColumn(columns.get(3), "sender_address", TSDataType.STRING, TsTableColumnCategory.TAG);
+    assertColumn(columns.get(3), "sender_cluster_id", TSDataType.STRING, TsTableColumnCategory.TAG);
+    assertColumn(columns.get(4), "sender_address", TSDataType.STRING, TsTableColumnCategory.TAG);
+    assertColumn(columns.get(5), "user_name", TSDataType.STRING, TsTableColumnCategory.TAG);
     assertColumn(
-        columns.get(4), "sender_ports", TSDataType.STRING, TsTableColumnCategory.ATTRIBUTE);
+        columns.get(6), "sender_ports", TSDataType.STRING, TsTableColumnCategory.ATTRIBUTE);
     assertColumn(
-        columns.get(5), "connection_count", TSDataType.INT32, TsTableColumnCategory.ATTRIBUTE);
-    assertColumn(columns.get(6), "pipe_count", TSDataType.INT32, TsTableColumnCategory.ATTRIBUTE);
-    assertColumn(columns.get(7), "pipe_ids", TSDataType.STRING, TsTableColumnCategory.ATTRIBUTE);
-    assertColumn(columns.get(8), "user_name", TSDataType.STRING, TsTableColumnCategory.TAG);
-    assertColumn(
-        columns.get(9), "sender_cluster_id", TSDataType.STRING, TsTableColumnCategory.ATTRIBUTE);
+        columns.get(7), "connection_count", TSDataType.INT32, TsTableColumnCategory.ATTRIBUTE);
+    assertColumn(columns.get(8), "pipe_count", TSDataType.INT32, TsTableColumnCategory.ATTRIBUTE);
+    assertColumn(columns.get(9), "pipe_ids", TSDataType.STRING, TsTableColumnCategory.ATTRIBUTE);
     assertColumn(
         columns.get(10),
         "last_handshake_time",
@@ -125,13 +124,13 @@ public class InformationSchemaReceiversSupplierTest {
     assertEquals(PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE, getText(tsBlock, 0));
     assertEquals(1, tsBlock.getColumn(1).getInt(0));
     assertEquals(PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT, getText(tsBlock, 2));
-    assertEquals("10.0.0.1", getText(tsBlock, 3));
-    assertEquals("9001", getText(tsBlock, 4));
-    assertEquals(1, tsBlock.getColumn(5).getInt(0));
-    assertEquals(1, tsBlock.getColumn(6).getInt(0));
-    assertTrue(getText(tsBlock, 7).contains("pipe-a@"));
-    assertEquals("root", getText(tsBlock, 8));
-    assertEquals("cluster-a", getText(tsBlock, 9));
+    assertEquals("cluster-a", getText(tsBlock, 3));
+    assertEquals("10.0.0.1", getText(tsBlock, 4));
+    assertEquals("root", getText(tsBlock, 5));
+    assertEquals("9001", getText(tsBlock, 6));
+    assertEquals(1, tsBlock.getColumn(7).getInt(0));
+    assertEquals(1, tsBlock.getColumn(8).getInt(0));
+    assertTrue(getText(tsBlock, 9).contains("pipe-a@"));
     assertEquals(100L, tsBlock.getColumn(10).getLong(0));
     assertEquals(200L, tsBlock.getColumn(11).getLong(0));
     assertFalse(supplier.hasNext());
@@ -191,8 +190,11 @@ public class InformationSchemaReceiversSupplierTest {
     assertEquals(PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE, getText(tsBlock, 0));
     assertTrue(tsBlock.getColumn(1).isNull(0));
     assertEquals(PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP, getText(tsBlock, 2));
-    assertEquals(0, tsBlock.getColumn(6).getInt(0));
-    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 7));
+    assertEquals("cluster-b", getText(tsBlock, 3));
+    assertEquals("10.0.0.2", getText(tsBlock, 4));
+    assertEquals("root", getText(tsBlock, 5));
+    assertEquals(0, tsBlock.getColumn(8).getInt(0));
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 9));
     assertTrue(tsBlock.getColumn(10).isNull(0));
     assertTrue(tsBlock.getColumn(11).isNull(0));
     assertFalse(supplier.hasNext());
@@ -211,8 +213,9 @@ public class InformationSchemaReceiversSupplierTest {
     final TsBlock tsBlock = supplier.next();
 
     assertEquals(1, tsBlock.getPositionCount());
-    assertEquals("10.0.0.1", getText(tsBlock, 3));
-    assertEquals("user1", getText(tsBlock, 8));
+    assertEquals("cluster-a", getText(tsBlock, 3));
+    assertEquals("10.0.0.1", getText(tsBlock, 4));
+    assertEquals("user1", getText(tsBlock, 5));
     assertFalse(supplier.hasNext());
   }
 
@@ -229,8 +232,8 @@ public class InformationSchemaReceiversSupplierTest {
     final TsBlock tsBlock = supplier.next();
 
     assertEquals(2, tsBlock.getPositionCount());
-    assertEquals("user1", getText(tsBlock, 8, 0));
-    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertEquals("user1", getText(tsBlock, 5, 0));
+    assertEquals("user2", getText(tsBlock, 5, 1));
     assertFalse(supplier.hasNext());
   }
 
@@ -253,8 +256,8 @@ public class InformationSchemaReceiversSupplierTest {
     final TsBlock tsBlock = supplier.next();
 
     assertEquals(2, tsBlock.getPositionCount());
-    assertEquals("user1", getText(tsBlock, 8, 0));
-    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertEquals("user1", getText(tsBlock, 5, 0));
+    assertEquals("user2", getText(tsBlock, 5, 1));
     assertFalse(supplier.hasNext());
   }
 
@@ -271,8 +274,8 @@ public class InformationSchemaReceiversSupplierTest {
     final TsBlock tsBlock = supplier.next();
 
     assertEquals(2, tsBlock.getPositionCount());
-    assertEquals("user1", getText(tsBlock, 8, 0));
-    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertEquals("user1", getText(tsBlock, 5, 0));
+    assertEquals("user2", getText(tsBlock, 5, 1));
     assertFalse(supplier.hasNext());
   }
 
@@ -305,7 +308,7 @@ public class InformationSchemaReceiversSupplierTest {
     assertEquals(
         showReceiversTsBlock.getPositionCount(), informationSchemaTsBlock.getPositionCount());
     assertEquals(1, informationSchemaTsBlock.getPositionCount());
-    for (int columnIndex : new int[] {0, 2, 3, 4, 7, 8, 9}) {
+    for (int columnIndex : new int[] {0, 2, 3, 4, 5, 6, 9}) {
       assertEquals(
           getText(showReceiversTsBlock, columnIndex),
           getText(informationSchemaTsBlock, columnIndex));
@@ -314,11 +317,11 @@ public class InformationSchemaReceiversSupplierTest {
         showReceiversTsBlock.getColumn(1).getInt(0),
         informationSchemaTsBlock.getColumn(1).getInt(0));
     assertEquals(
-        showReceiversTsBlock.getColumn(5).getInt(0),
-        informationSchemaTsBlock.getColumn(5).getInt(0));
+        showReceiversTsBlock.getColumn(7).getInt(0),
+        informationSchemaTsBlock.getColumn(7).getInt(0));
     assertEquals(
-        showReceiversTsBlock.getColumn(6).getInt(0),
-        informationSchemaTsBlock.getColumn(6).getInt(0));
+        showReceiversTsBlock.getColumn(8).getInt(0),
+        informationSchemaTsBlock.getColumn(8).getInt(0));
     assertFalse(supplier.hasNext());
   }
 

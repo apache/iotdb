@@ -231,7 +231,12 @@ public class InformationSchema {
     receiversTable.addColumnSchema(
         new TagColumnSchema(ColumnHeaderConstant.PROTOCOL_TABLE_MODEL, TSDataType.STRING));
     receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.SENDER_CLUSTER_ID_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
         new TagColumnSchema(ColumnHeaderConstant.SENDER_ADDRESS_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.RECEIVER_USER_NAME_TABLE_MODEL, TSDataType.STRING));
     receiversTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.SENDER_PORTS_TABLE_MODEL, TSDataType.STRING));
@@ -242,11 +247,6 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.PIPE_COUNT_TABLE_MODEL, TSDataType.INT32));
     receiversTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.PIPE_IDS_TABLE_MODEL, TSDataType.STRING));
-    receiversTable.addColumnSchema(
-        new TagColumnSchema(ColumnHeaderConstant.USER_NAME, TSDataType.STRING));
-    receiversTable.addColumnSchema(
-        new AttributeColumnSchema(
-            ColumnHeaderConstant.SENDER_CLUSTER_ID_TABLE_MODEL, TSDataType.STRING));
     receiversTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.LAST_HANDSHAKE_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));

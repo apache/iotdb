@@ -62,8 +62,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
     createWriteBackPipe("root.show_receivers_filter", "show_receivers_filter_pipe");
 
     assertShowReceivers(
-        "select receiver_node_type, receiver_node_id, protocol, sender_address, sender_ports, "
-            + "connection_count, pipe_count, pipe_ids, user_name, sender_cluster_id, "
+        "select receiver_node_type, receiver_node_id, protocol, sender_cluster_id, "
+            + "sender_address, user_name, sender_ports, connection_count, pipe_count, pipe_ids, "
             + "last_handshake_time, last_transfer_time "
             + "from information_schema.receivers where protocol = 'thrift'",
         BaseEnv.TABLE_SQL_DIALECT,
@@ -360,20 +360,26 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
-        if ("DataNode".equals(resultSet.getString(1))
-            && "thrift".equals(resultSet.getString(3))
-            && resultSet.getString(4) != null
-            && !resultSet.getString(4).isEmpty()
-            && resultSet.getString(5) != null
-            && !resultSet.getString(5).isEmpty()
-            && resultSet.getInt(6) >= 1
-            && resultSet.getInt(7) >= 1
-            && resultSet.getString(8).contains(pipeName + "@")
-            && expectedReceiverUserName.equals(resultSet.getString(9))
-            && resultSet.getString(10) != null
-            && !resultSet.getString(10).isEmpty()
-            && resultSet.getString(11) != null
-            && resultSet.getString(12) != null) {
+        final String senderClusterId = getString(resultSet, "SenderClusterId", "sender_cluster_id");
+        final String senderAddress = getString(resultSet, "SenderAddress", "sender_address");
+        final String userNameInRow = getString(resultSet, "UserName", "user_name");
+        final String senderPorts = getString(resultSet, "SenderPorts", "sender_ports");
+        final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
+        if ("DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
+            && "thrift".equals(getString(resultSet, "Protocol", "protocol"))
+            && senderClusterId != null
+            && !senderClusterId.isEmpty()
+            && senderAddress != null
+            && !senderAddress.isEmpty()
+            && expectedReceiverUserName.equals(userNameInRow)
+            && senderPorts != null
+            && !senderPorts.isEmpty()
+            && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
+            && getInt(resultSet, "PipeCount", "pipe_count") >= 1
+            && pipeIds != null
+            && pipeIds.contains(pipeName + "@")
+            && getString(resultSet, "LastHandshakeTime", "last_handshake_time") != null
+            && getString(resultSet, "LastTransferTime", "last_transfer_time") != null) {
           return true;
         }
       }
@@ -393,11 +399,11 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
-        final String pipeIds = resultSet.getString(8);
-        if ("DataNode".equals(resultSet.getString(1))
-            && "thrift".equals(resultSet.getString(3))
-            && resultSet.getInt(6) >= 1
-            && resultSet.getInt(7) >= 2
+        final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
+        if ("DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
+            && "thrift".equals(getString(resultSet, "Protocol", "protocol"))
+            && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
+            && getInt(resultSet, "PipeCount", "pipe_count") >= 2
             && pipeIds != null
             && pipeIds.contains(firstPipeName + "@")
             && pipeIds.contains(secondPipeName + "@")) {
@@ -417,15 +423,18 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         final Statement statement = connection.createStatement();
         final ResultSet resultSet =
             statement.executeQuery(
-                "select receiver_node_type, sender_address, connection_count, pipe_ids "
+                "select receiver_node_type, sender_cluster_id, sender_address, "
+                    + "connection_count, pipe_ids "
                     + "from information_schema.receivers where protocol = 'thrift'")) {
       while (resultSet.next()) {
         if ("DataNode".equals(resultSet.getString(1))
             && resultSet.getString(2) != null
             && !resultSet.getString(2).isEmpty()
-            && resultSet.getInt(3) >= 1
-            && resultSet.getString(4) != null
-            && resultSet.getString(4).contains(pipeName + "@")) {
+            && resultSet.getString(3) != null
+            && !resultSet.getString(3).isEmpty()
+            && resultSet.getInt(4) >= 1
+            && resultSet.getString(5) != null
+            && resultSet.getString(5).contains(pipeName + "@")) {
           return true;
         }
       }
@@ -465,6 +474,26 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       }
     }
     throw new AssertionError("Cannot find DataNodeId for " + targetDataNode.getIpAndPortString());
+  }
+
+  private static String getString(
+      final ResultSet resultSet, final String treeColumnName, final String tableColumnName)
+      throws SQLException {
+    try {
+      return resultSet.getString(treeColumnName);
+    } catch (final SQLException ignored) {
+      return resultSet.getString(tableColumnName);
+    }
+  }
+
+  private static int getInt(
+      final ResultSet resultSet, final String treeColumnName, final String tableColumnName)
+      throws SQLException {
+    try {
+      return resultSet.getInt(treeColumnName);
+    } catch (final SQLException ignored) {
+      return resultSet.getInt(tableColumnName);
+    }
   }
 
   private void assertShowReceiversWithoutDataNode(

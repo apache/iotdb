@@ -174,25 +174,47 @@ public class PipeReceiverRuntimeRegistryTest {
 
     final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
 
-    assertEquals(2, snapshots.size());
+    assertEquals(3, snapshots.size());
     assertEquals(
         PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE, snapshots.get(0).getReceiverNodeType());
     assertEquals(
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE, snapshots.get(1).getReceiverNodeType());
+    assertEquals(
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE, snapshots.get(2).getReceiverNodeType());
 
-    final PipeReceiverRuntimeSnapshot dataSnapshot = snapshots.get(1);
-    assertEquals(2, dataSnapshot.getConnectionCount());
-    assertEquals("9001,9002", dataSnapshot.getSenderPorts());
-    assertEquals(2, dataSnapshot.getPipeCount());
-    assertTrue(dataSnapshot.getPipeIds().contains("pipe-a@"));
-    assertTrue(dataSnapshot.getPipeIds().contains("pipe-b@"));
-    assertEquals("cluster-a;cluster-b", dataSnapshot.getSenderClusterId());
-    assertEquals(150, dataSnapshot.getLastHandshakeTime());
-    assertEquals(200, dataSnapshot.getLastTransferTime());
+    final PipeReceiverRuntimeSnapshot clusterASnapshot = snapshots.get(1);
+    assertEquals(1, clusterASnapshot.getConnectionCount());
+    assertEquals("9001", clusterASnapshot.getSenderPorts());
+    assertEquals(1, clusterASnapshot.getPipeCount());
+    assertTrue(clusterASnapshot.getPipeIds().contains("pipe-a@"));
+    assertEquals("cluster-a", clusterASnapshot.getSenderClusterId());
+    assertEquals(100, clusterASnapshot.getLastHandshakeTime());
+    assertEquals(200, clusterASnapshot.getLastTransferTime());
+
+    final PipeReceiverRuntimeSnapshot clusterBSnapshot = snapshots.get(2);
+    assertEquals(1, clusterBSnapshot.getConnectionCount());
+    assertEquals("9002", clusterBSnapshot.getSenderPorts());
+    assertEquals(1, clusterBSnapshot.getPipeCount());
+    assertTrue(clusterBSnapshot.getPipeIds().contains("pipe-b@"));
+    assertEquals("cluster-b", clusterBSnapshot.getSenderClusterId());
+    assertEquals(150, clusterBSnapshot.getLastHandshakeTime());
+    assertEquals(150, clusterBSnapshot.getLastTransferTime());
   }
 
   @Test
   public void testDefaultSnapshotOrderingUsesAllDocumentedKeys() {
+    registry.registerOrUpdateSession(
+        "data-cluster-b",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9007,
+        "root",
+        "cluster-b",
+        "pipe-g",
+        7,
+        700);
     registry.registerOrUpdateSession(
         "data-user-b",
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
@@ -268,12 +290,13 @@ public class PipeReceiverRuntimeRegistryTest {
 
     final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
 
-    assertEquals(6, snapshots.size());
+    assertEquals(7, snapshots.size());
     assertSnapshotOrderKey(
         snapshots.get(0),
         PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
         1,
         PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-a",
         "10.0.0.1",
         "root");
     assertSnapshotOrderKey(
@@ -281,6 +304,7 @@ public class PipeReceiverRuntimeRegistryTest {
         PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
         2,
         PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-a",
         "10.0.0.1",
         "root");
     assertSnapshotOrderKey(
@@ -288,6 +312,7 @@ public class PipeReceiverRuntimeRegistryTest {
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
         1,
         PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+        "cluster-a",
         "10.0.0.2",
         "root");
     assertSnapshotOrderKey(
@@ -295,6 +320,7 @@ public class PipeReceiverRuntimeRegistryTest {
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
         1,
         PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-a",
         "10.0.0.1",
         "root");
     assertSnapshotOrderKey(
@@ -302,6 +328,7 @@ public class PipeReceiverRuntimeRegistryTest {
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
         1,
         PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-a",
         "10.0.0.2",
         "alice");
     assertSnapshotOrderKey(
@@ -309,8 +336,17 @@ public class PipeReceiverRuntimeRegistryTest {
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
         1,
         PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-a",
         "10.0.0.2",
         "bob");
+    assertSnapshotOrderKey(
+        snapshots.get(6),
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-b",
+        "10.0.0.1",
+        "root");
   }
 
   @Test
@@ -616,6 +652,28 @@ public class PipeReceiverRuntimeRegistryTest {
   }
 
   @Test
+  public void testSameSenderAddressAndUserWithDifferentClusterIdsAreNotAggregated() {
+    registerDataSession(
+        "data-cluster-a", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
+    registerDataSession(
+        "data-cluster-b", 1, "10.0.0.1", 9002, "root", "cluster-b", "pipe-b", 2, 200);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(2, snapshots.size());
+    assertEquals("cluster-a", snapshots.get(0).getSenderClusterId());
+    assertEquals("9001", snapshots.get(0).getSenderPorts());
+    assertEquals(1, snapshots.get(0).getConnectionCount());
+    assertEquals(1, snapshots.get(0).getPipeCount());
+    assertTrue(snapshots.get(0).getPipeIds().contains("pipe-a@"));
+    assertEquals("cluster-b", snapshots.get(1).getSenderClusterId());
+    assertEquals("9002", snapshots.get(1).getSenderPorts());
+    assertEquals(1, snapshots.get(1).getConnectionCount());
+    assertEquals(1, snapshots.get(1).getPipeCount());
+    assertTrue(snapshots.get(1).getPipeIds().contains("pipe-b@"));
+  }
+
+  @Test
   public void testSameSenderAddressWithDifferentProtocolsAreNotAggregated() {
     registry.registerOrUpdateSession(
         "data-thrift",
@@ -783,7 +841,7 @@ public class PipeReceiverRuntimeRegistryTest {
         "127.0.0.1",
         -2,
         "root",
-        "cluster-b",
+        "cluster-a",
         "pipe-b",
         2,
         200);
@@ -792,6 +850,8 @@ public class PipeReceiverRuntimeRegistryTest {
 
     assertEquals(1, snapshots.size());
     assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshots.get(0).getSenderPorts());
+    assertEquals(2, snapshots.get(0).getConnectionCount());
+    assertEquals(2, snapshots.get(0).getPipeCount());
   }
 
   @Test
@@ -862,11 +922,13 @@ public class PipeReceiverRuntimeRegistryTest {
       String receiverNodeType,
       int receiverNodeId,
       String protocol,
+      String senderClusterId,
       String senderAddress,
       String userName) {
     assertEquals(receiverNodeType, snapshot.getReceiverNodeType());
     assertEquals(receiverNodeId, snapshot.getReceiverNodeId());
     assertEquals(protocol, snapshot.getProtocol());
+    assertEquals(senderClusterId, snapshot.getSenderClusterId());
     assertEquals(senderAddress, snapshot.getSenderAddress());
     assertEquals(userName, snapshot.getUserName());
   }

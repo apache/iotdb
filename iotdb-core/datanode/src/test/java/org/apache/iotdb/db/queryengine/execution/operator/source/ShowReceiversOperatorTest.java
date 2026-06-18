@@ -73,13 +73,13 @@ public class ShowReceiversOperatorTest {
             RECEIVER_NODE_TYPE,
             RECEIVER_NODE_ID,
             PROTOCOL,
+            SENDER_CLUSTER_ID,
             SENDER_ADDRESS,
+            RECEIVER_USER_NAME,
             SENDER_PORTS,
             CONNECTION_COUNT,
             PIPE_COUNT,
             PIPE_IDS,
-            RECEIVER_USER_NAME,
-            SENDER_CLUSTER_ID,
             LAST_HANDSHAKE_TIME,
             LAST_TRANSFER_TIME),
         DatasetHeaderFactory.getShowReceiversHeader().getRespColumns());
@@ -113,13 +113,13 @@ public class ShowReceiversOperatorTest {
     assertEquals(PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE, getText(tsBlock, 0));
     assertEquals(1, tsBlock.getColumn(1).getInt(0));
     assertEquals(PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT, getText(tsBlock, 2));
-    assertEquals("10.0.0.1", getText(tsBlock, 3));
-    assertEquals("9001", getText(tsBlock, 4));
-    assertEquals(1, tsBlock.getColumn(5).getInt(0));
-    assertEquals(1, tsBlock.getColumn(6).getInt(0));
-    assertTrue(getText(tsBlock, 7).contains("pipe-a@"));
-    assertEquals("root", getText(tsBlock, 8));
-    assertEquals("cluster-a", getText(tsBlock, 9));
+    assertEquals("cluster-a", getText(tsBlock, 3));
+    assertEquals("10.0.0.1", getText(tsBlock, 4));
+    assertEquals("root", getText(tsBlock, 5));
+    assertEquals("9001", getText(tsBlock, 6));
+    assertEquals(1, tsBlock.getColumn(7).getInt(0));
+    assertEquals(1, tsBlock.getColumn(8).getInt(0));
+    assertTrue(getText(tsBlock, 9).contains("pipe-a@"));
     assertEquals(DateTimeUtils.convertLongToDate(100, "ms"), getText(tsBlock, 10));
     assertEquals(DateTimeUtils.convertLongToDate(200, "ms"), getText(tsBlock, 11));
   }
@@ -158,11 +158,14 @@ public class ShowReceiversOperatorTest {
     final TsBlock tsBlock = operator.next();
 
     assertEquals(1, tsBlock.getPositionCount());
-    assertEquals("9001,9002", getText(tsBlock, 4));
-    assertEquals(2, tsBlock.getColumn(5).getInt(0));
-    assertEquals(2, tsBlock.getColumn(6).getInt(0));
-    assertTrue(getText(tsBlock, 7).contains("pipe-a@"));
-    assertTrue(getText(tsBlock, 7).contains("pipe-b@"));
+    assertEquals("cluster-a", getText(tsBlock, 3));
+    assertEquals("10.0.0.1", getText(tsBlock, 4));
+    assertEquals("root", getText(tsBlock, 5));
+    assertEquals("9001,9002", getText(tsBlock, 6));
+    assertEquals(2, tsBlock.getColumn(7).getInt(0));
+    assertEquals(2, tsBlock.getColumn(8).getInt(0));
+    assertTrue(getText(tsBlock, 9).contains("pipe-a@"));
+    assertTrue(getText(tsBlock, 9).contains("pipe-b@"));
     assertFalse(operator.hasNext());
   }
 
@@ -240,10 +243,12 @@ public class ShowReceiversOperatorTest {
     final TsBlock tsBlock = operator.next();
 
     assertEquals(1, tsBlock.getPositionCount());
-    assertEquals("9001", getText(tsBlock, 4));
-    assertEquals(1, tsBlock.getColumn(5).getInt(0));
-    assertEquals(0, tsBlock.getColumn(6).getInt(0));
-    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 7));
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 3));
+    assertEquals("10.0.0.1", getText(tsBlock, 4));
+    assertEquals("root", getText(tsBlock, 5));
+    assertEquals("9001", getText(tsBlock, 6));
+    assertEquals(1, tsBlock.getColumn(7).getInt(0));
+    assertEquals(0, tsBlock.getColumn(8).getInt(0));
     assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 9));
     assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 10));
     assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, getText(tsBlock, 11));
@@ -263,8 +268,9 @@ public class ShowReceiversOperatorTest {
     final TsBlock tsBlock = operator.next();
 
     assertEquals(1, tsBlock.getPositionCount());
-    assertEquals("10.0.0.1", getText(tsBlock, 3));
-    assertEquals("user1", getText(tsBlock, 8));
+    assertEquals("cluster-a", getText(tsBlock, 3));
+    assertEquals("10.0.0.1", getText(tsBlock, 4));
+    assertEquals("user1", getText(tsBlock, 5));
     assertFalse(operator.hasNext());
   }
 
@@ -284,8 +290,8 @@ public class ShowReceiversOperatorTest {
     final TsBlock tsBlock = operator.next();
 
     assertEquals(2, tsBlock.getPositionCount());
-    assertEquals("user1", getText(tsBlock, 8, 0));
-    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertEquals("user1", getText(tsBlock, 5, 0));
+    assertEquals("user2", getText(tsBlock, 5, 1));
     assertFalse(operator.hasNext());
   }
 
@@ -308,8 +314,8 @@ public class ShowReceiversOperatorTest {
     final TsBlock tsBlock = operator.next();
 
     assertEquals(2, tsBlock.getPositionCount());
-    assertEquals("user1", getText(tsBlock, 8, 0));
-    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertEquals("user1", getText(tsBlock, 5, 0));
+    assertEquals("user2", getText(tsBlock, 5, 1));
     assertFalse(operator.hasNext());
   }
 
@@ -325,13 +331,25 @@ public class ShowReceiversOperatorTest {
     final TsBlock tsBlock = operator.next();
 
     assertEquals(2, tsBlock.getPositionCount());
-    assertEquals("user1", getText(tsBlock, 8, 0));
-    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertEquals("user1", getText(tsBlock, 5, 0));
+    assertEquals("user2", getText(tsBlock, 5, 1));
     assertFalse(operator.hasNext());
   }
 
   @Test
   public void testShowReceiversOutputKeepsDefaultSnapshotOrdering() {
+    registry.registerOrUpdateSession(
+        "data-cluster-b",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9007,
+        "root",
+        "cluster-b",
+        "pipe-g",
+        7,
+        700);
     registry.registerOrUpdateSession(
         "data-user-b",
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
@@ -411,13 +429,14 @@ public class ShowReceiversOperatorTest {
     assertTrue(operator.hasNext());
     final TsBlock tsBlock = operator.next();
 
-    assertEquals(6, tsBlock.getPositionCount());
+    assertEquals(7, tsBlock.getPositionCount());
     assertRowKey(
         tsBlock,
         0,
         PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
         1,
         PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-a",
         "10.0.0.1",
         "root");
     assertRowKey(
@@ -426,6 +445,7 @@ public class ShowReceiversOperatorTest {
         PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
         2,
         PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-a",
         "10.0.0.1",
         "root");
     assertRowKey(
@@ -434,6 +454,7 @@ public class ShowReceiversOperatorTest {
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
         1,
         PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+        "cluster-a",
         "10.0.0.2",
         "root");
     assertRowKey(
@@ -442,6 +463,7 @@ public class ShowReceiversOperatorTest {
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
         1,
         PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-a",
         "10.0.0.1",
         "root");
     assertRowKey(
@@ -450,6 +472,7 @@ public class ShowReceiversOperatorTest {
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
         1,
         PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-a",
         "10.0.0.2",
         "alice");
     assertRowKey(
@@ -458,8 +481,43 @@ public class ShowReceiversOperatorTest {
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
         1,
         PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-a",
         "10.0.0.2",
         "bob");
+    assertRowKey(
+        tsBlock,
+        6,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "cluster-b",
+        "10.0.0.1",
+        "root");
+    assertFalse(operator.hasNext());
+  }
+
+  @Test
+  public void testSameSenderAddressAndUserWithDifferentClustersAreNotAggregatedInOutput() {
+    registerUserSession("data-cluster-a", "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
+    registerUserSession("data-cluster-b", "10.0.0.1", 9002, "root", "cluster-b", "pipe-b", 2, 200);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(null, new PlanNodeId("show-receivers"));
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(2, tsBlock.getPositionCount());
+    assertEquals("cluster-a", getText(tsBlock, 3, 0));
+    assertEquals("9001", getText(tsBlock, 6, 0));
+    assertEquals(1, tsBlock.getColumn(7).getInt(0));
+    assertEquals(1, tsBlock.getColumn(8).getInt(0));
+    assertTrue(getText(tsBlock, 9, 0).contains("pipe-a@"));
+    assertEquals("cluster-b", getText(tsBlock, 3, 1));
+    assertEquals("9002", getText(tsBlock, 6, 1));
+    assertEquals(1, tsBlock.getColumn(7).getInt(1));
+    assertEquals(1, tsBlock.getColumn(8).getInt(1));
+    assertTrue(getText(tsBlock, 9, 1).contains("pipe-b@"));
     assertFalse(operator.hasNext());
   }
 
@@ -500,12 +558,14 @@ public class ShowReceiversOperatorTest {
       final String receiverNodeType,
       final int receiverNodeId,
       final String protocol,
+      final String senderClusterId,
       final String senderAddress,
       final String userName) {
     assertEquals(receiverNodeType, getText(tsBlock, 0, position));
     assertEquals(receiverNodeId, tsBlock.getColumn(1).getInt(position));
     assertEquals(protocol, getText(tsBlock, 2, position));
-    assertEquals(senderAddress, getText(tsBlock, 3, position));
-    assertEquals(userName, getText(tsBlock, 8, position));
+    assertEquals(senderClusterId, getText(tsBlock, 3, position));
+    assertEquals(senderAddress, getText(tsBlock, 4, position));
+    assertEquals(userName, getText(tsBlock, 5, position));
   }
 }

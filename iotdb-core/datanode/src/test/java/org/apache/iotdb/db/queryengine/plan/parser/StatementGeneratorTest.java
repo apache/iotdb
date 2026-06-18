@@ -193,6 +193,7 @@ public class StatementGeneratorTest {
             new SortItem("ReceiverNodeType", Ordering.ASC),
             new SortItem("ReceiverNodeId", Ordering.ASC),
             new SortItem("Protocol", Ordering.ASC),
+            new SortItem("SenderClusterId", Ordering.ASC),
             new SortItem("SenderAddress", Ordering.ASC),
             new SortItem("UserName", Ordering.ASC)),
         ((ShowReceiversStatement) showReceivers).getSortItemList());

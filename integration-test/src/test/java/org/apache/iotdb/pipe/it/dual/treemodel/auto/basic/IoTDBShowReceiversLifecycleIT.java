@@ -231,20 +231,26 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
-        if ("DataNode".equals(resultSet.getString(1))
-            && "thrift".equals(resultSet.getString(3))
-            && resultSet.getString(4) != null
-            && !resultSet.getString(4).isEmpty()
-            && resultSet.getString(5) != null
-            && !resultSet.getString(5).isEmpty()
-            && resultSet.getInt(6) >= 1
-            && resultSet.getInt(7) >= 1
-            && resultSet.getString(8).contains(pipeName + "@")
-            && SessionConfig.DEFAULT_USER.equals(resultSet.getString(9))
-            && resultSet.getString(10) != null
-            && !resultSet.getString(10).isEmpty()
-            && resultSet.getString(11) != null
-            && resultSet.getString(12) != null) {
+        final String senderClusterId = getString(resultSet, "SenderClusterId", "sender_cluster_id");
+        final String senderAddress = getString(resultSet, "SenderAddress", "sender_address");
+        final String userName = getString(resultSet, "UserName", "user_name");
+        final String senderPorts = getString(resultSet, "SenderPorts", "sender_ports");
+        final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
+        if ("DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
+            && "thrift".equals(getString(resultSet, "Protocol", "protocol"))
+            && senderClusterId != null
+            && !senderClusterId.isEmpty()
+            && senderAddress != null
+            && !senderAddress.isEmpty()
+            && SessionConfig.DEFAULT_USER.equals(userName)
+            && senderPorts != null
+            && !senderPorts.isEmpty()
+            && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
+            && getInt(resultSet, "PipeCount", "pipe_count") >= 1
+            && pipeIds != null
+            && pipeIds.contains(pipeName + "@")
+            && getString(resultSet, "LastHandshakeTime", "last_handshake_time") != null
+            && getString(resultSet, "LastTransferTime", "last_transfer_time") != null) {
           return true;
         }
       }
@@ -270,7 +276,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
-        final String pipeIds = resultSet.getString(8);
+        final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
         if (pipeIds != null && pipeIds.contains(pipeName + "@")) {
           return true;
         }
@@ -300,9 +306,10 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
-        final String receiverNodeType = resultSet.getString(1);
-        final String protocol = resultSet.getString(3);
-        final String pipeIds = resultSet.getString(8);
+        final String receiverNodeType =
+            getString(resultSet, "ReceiverNodeType", "receiver_node_type");
+        final String protocol = getString(resultSet, "Protocol", "protocol");
+        final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
         if (!"thrift".equals(protocol) || pipeIds == null || !pipeIds.contains(pipeName + "@")) {
           continue;
         }
@@ -338,9 +345,9 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
-        final String pipeIds = resultSet.getString(8);
-        if ("DataNode".equals(resultSet.getString(1))
-            && protocol.equals(resultSet.getString(3))
+        final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
+        if ("DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
+            && protocol.equals(getString(resultSet, "Protocol", "protocol"))
             && pipeIds != null
             && pipeIds.contains(pipeName + "@")) {
           return true;
@@ -348,5 +355,25 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
       }
     }
     return false;
+  }
+
+  private static String getString(
+      final ResultSet resultSet, final String treeColumnName, final String tableColumnName)
+      throws SQLException {
+    try {
+      return resultSet.getString(treeColumnName);
+    } catch (final SQLException ignored) {
+      return resultSet.getString(tableColumnName);
+    }
+  }
+
+  private static int getInt(
+      final ResultSet resultSet, final String treeColumnName, final String tableColumnName)
+      throws SQLException {
+    try {
+      return resultSet.getInt(treeColumnName);
+    } catch (final SQLException ignored) {
+      return resultSet.getInt(tableColumnName);
+    }
   }
 }

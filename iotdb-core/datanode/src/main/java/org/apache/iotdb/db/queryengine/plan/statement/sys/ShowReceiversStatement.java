@@ -37,6 +37,7 @@ public class ShowReceiversStatement extends ShowStatement {
           new SortItem(ColumnHeaderConstant.RECEIVER_NODE_TYPE, Ordering.ASC),
           new SortItem(ColumnHeaderConstant.RECEIVER_NODE_ID, Ordering.ASC),
           new SortItem(ColumnHeaderConstant.PROTOCOL, Ordering.ASC),
+          new SortItem(ColumnHeaderConstant.SENDER_CLUSTER_ID, Ordering.ASC),
           new SortItem(ColumnHeaderConstant.SENDER_ADDRESS, Ordering.ASC),
           new SortItem(ColumnHeaderConstant.RECEIVER_USER_NAME, Ordering.ASC));
 

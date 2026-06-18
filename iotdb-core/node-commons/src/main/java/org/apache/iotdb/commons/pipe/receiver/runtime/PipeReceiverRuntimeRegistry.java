@@ -147,6 +147,7 @@ public class PipeReceiverRuntimeRegistry {
                 session.receiverNodeType,
                 session.receiverNodeId,
                 session.protocol,
+                session.senderClusterId,
                 session.senderAddress,
                 session.userName);
         AggregatedRuntimeInfo aggregatedInfo = aggregatedInfoMap.get(groupKey);
@@ -157,7 +158,6 @@ public class PipeReceiverRuntimeRegistry {
         aggregatedInfo.senderPorts.add(session.senderPort);
         aggregatedInfo.connectionCount++;
         aggregatedInfo.pipeIds.addAll(session.pipeIds);
-        aggregatedInfo.senderClusterIds.add(session.senderClusterId);
         aggregatedInfo.lastHandshakeTime =
             Math.max(aggregatedInfo.lastHandshakeTime, session.lastHandshakeTime);
         aggregatedInfo.lastTransferTime =
@@ -233,6 +233,7 @@ public class PipeReceiverRuntimeRegistry {
     private final String receiverNodeType;
     private final int receiverNodeId;
     private final String protocol;
+    private final String senderClusterId;
     private final String senderAddress;
     private final String userName;
 
@@ -240,11 +241,13 @@ public class PipeReceiverRuntimeRegistry {
         String receiverNodeType,
         int receiverNodeId,
         String protocol,
+        String senderClusterId,
         String senderAddress,
         String userName) {
       this.receiverNodeType = receiverNodeType;
       this.receiverNodeId = receiverNodeId;
       this.protocol = protocol;
+      this.senderClusterId = senderClusterId;
       this.senderAddress = senderAddress;
       this.userName = userName;
     }
@@ -260,6 +263,10 @@ public class PipeReceiverRuntimeRegistry {
         return result;
       }
       result = protocol.compareTo(other.protocol);
+      if (result != 0) {
+        return result;
+      }
+      result = senderClusterId.compareTo(other.senderClusterId);
       if (result != 0) {
         return result;
       }
@@ -282,13 +289,15 @@ public class PipeReceiverRuntimeRegistry {
       return receiverNodeId == groupKey.receiverNodeId
           && Objects.equals(receiverNodeType, groupKey.receiverNodeType)
           && Objects.equals(protocol, groupKey.protocol)
+          && Objects.equals(senderClusterId, groupKey.senderClusterId)
           && Objects.equals(senderAddress, groupKey.senderAddress)
           && Objects.equals(userName, groupKey.userName);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(receiverNodeType, receiverNodeId, protocol, senderAddress, userName);
+      return Objects.hash(
+          receiverNodeType, receiverNodeId, protocol, senderClusterId, senderAddress, userName);
     }
   }
 
@@ -296,7 +305,6 @@ public class PipeReceiverRuntimeRegistry {
     private final GroupKey groupKey;
     private final TreeSet<Integer> senderPorts = new TreeSet<>();
     private final TreeSet<String> pipeIds = new TreeSet<>();
-    private final TreeSet<String> senderClusterIds = new TreeSet<>();
     private int connectionCount;
     private long lastHandshakeTime;
     private long lastTransferTime;
@@ -320,7 +328,7 @@ public class PipeReceiverRuntimeRegistry {
           pipeIds.size(),
           pipeIds.isEmpty() ? UNKNOWN : joinStringSet(pipeIds),
           groupKey.userName,
-          senderClusterIds.isEmpty() ? UNKNOWN : joinStringSet(senderClusterIds),
+          groupKey.senderClusterId,
           lastHandshakeTime,
           lastTransferTime);
     }
