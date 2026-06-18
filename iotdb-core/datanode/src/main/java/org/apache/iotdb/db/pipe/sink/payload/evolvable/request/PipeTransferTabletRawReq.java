@@ -188,8 +188,17 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       buffer.position(startPosition);
     }
 
-    tablet = PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
-    isAligned = ReadWriteIOUtils.readBool(buffer);
+    try {
+      tablet = PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
+      isAligned = ReadWriteIOUtils.readBool(buffer);
+    } catch (final RuntimeException e) {
+      buffer.position(startPosition);
+      throw new IllegalArgumentException(
+          String.format(
+              "Failed to deserialize raw tablet request at body position %s with remaining body length %s.",
+              startPosition, buffer.remaining()),
+          e);
+    }
   }
 
   private static void ensureStatementDeserializedFromCurrentTabletFormat(

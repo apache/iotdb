@@ -436,6 +436,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final long TEST_CONNECTION_TIMEOUT_MS =
       CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
+  private static final int TEST_CONNECTION_RETRY_NUM = 1;
 
   private static final ExecutorService TOPOLOGY_PROBING_EXECUTOR =
       IoTDBThreadPoolFactory.newFixedThreadPool(
@@ -2223,7 +2224,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         DnToCnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToCnRequestType, TConfigNodeLocation> handler) ->
             DnToCnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithTimeoutInMs(handler, TEST_CONNECTION_TIMEOUT_MS));
+                .sendAsyncRequest(
+                    handler, TEST_CONNECTION_RETRY_NUM, TEST_CONNECTION_TIMEOUT_MS, true));
   }
 
   private List<TTestConnectionResult> testAllDataNodeConnectionInHeartbeatChannel(
@@ -2249,7 +2251,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
             DnToDnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithTimeoutInMs(handler, TEST_CONNECTION_TIMEOUT_MS));
+                .sendAsyncRequest(
+                    handler, TEST_CONNECTION_RETRY_NUM, TEST_CONNECTION_TIMEOUT_MS, true));
   }
 
   private List<TTestConnectionResult> testAllDataNodeMPPServiceConnection(
@@ -2262,7 +2265,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
             DataNodeMPPServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithTimeoutInMs(handler, TEST_CONNECTION_TIMEOUT_MS));
+                .sendAsyncRequest(
+                    handler, TEST_CONNECTION_RETRY_NUM, TEST_CONNECTION_TIMEOUT_MS, true));
   }
 
   private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(
@@ -2275,7 +2279,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
             DataNodeExternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithTimeoutInMs(handler, TEST_CONNECTION_TIMEOUT_MS));
+                .sendAsyncRequest(
+                    handler, TEST_CONNECTION_RETRY_NUM, TEST_CONNECTION_TIMEOUT_MS, true));
   }
 
   @Override

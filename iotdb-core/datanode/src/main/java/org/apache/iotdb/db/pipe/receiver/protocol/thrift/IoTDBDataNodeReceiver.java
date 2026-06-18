@@ -629,8 +629,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       throws IllegalPathException, IOException {
     final String databaseName = parameters.get(ColumnHeaderConstant.DATABASE);
     final PartialPath databasePath = PartialPath.getQualifiedDatabasePartialPath(databaseName);
+    final boolean isTreeModelDataAllowedToBeCaptured =
+        PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters);
+    final TreePattern treePattern =
+        parseTreePattern(
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN), isTreeModelDataAllowedToBeCaptured);
 
     if (!PathUtils.isTableModelDatabase(databaseName)) {
+      if (!shouldLoadTreeSchemaSnapshotDatabase(treePattern, databaseName)) {
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
       final TSStatus createDatabaseStatus = createSchemaSnapshotDatabaseIfNecessary(databasePath);
       if (createDatabaseStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return createDatabaseStatus;
@@ -650,13 +658,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final boolean isTreeModelDataAllowedToBeCaptured =
-        PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters);
-    final TreePattern treePattern =
-        TreePattern.parsePatternFromString(
-            parameters.get(ColumnHeaderConstant.PATH_PATTERN),
-            isTreeModelDataAllowedToBeCaptured,
-            p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
     final TablePattern tablePattern =
         new TablePattern(
             PipeTransferFileSealReqV2.isTableModelDataAllowedToBeCaptured(parameters),
@@ -705,6 +706,28 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         .filter(Optional::isPresent)
         .forEach(statement -> results.add(executeStatementAndClassifyExceptions(statement.get())));
     return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  static boolean shouldLoadTreeSchemaSnapshotDatabase(
+      final String pathPattern,
+      final boolean isTreeModelDataAllowedToBeCaptured,
+      final String databaseName) {
+    return shouldLoadTreeSchemaSnapshotDatabase(
+        parseTreePattern(pathPattern, isTreeModelDataAllowedToBeCaptured), databaseName);
+  }
+
+  private static TreePattern parseTreePattern(
+      final String pathPattern, final boolean isTreeModelDataAllowedToBeCaptured) {
+    return TreePattern.parsePatternFromString(
+        pathPattern,
+        isTreeModelDataAllowedToBeCaptured,
+        p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
+  }
+
+  private static boolean shouldLoadTreeSchemaSnapshotDatabase(
+      final TreePattern treePattern, final String databaseName) {
+    return treePattern.isTreeModelDataAllowedToBeCaptured()
+        && treePattern.mayOverlapWithDb(databaseName);
   }
 
   private TSStatus createSchemaSnapshotDatabaseIfNecessary(final PartialPath databasePath) {

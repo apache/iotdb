@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -145,6 +146,21 @@ public class PipeDataNodePluginAgentTest {
                         put(
                             PipeSinkConstant.CONNECTOR_KEY,
                             BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
+                      }
+                    }))
+            .getClass());
+    Assert.assertEquals(
+        IoTDBDataRegionSyncSink.class,
+        agent.dataRegion().reflectSink(new PipeParameters(new HashMap<>())).getClass());
+    Assert.assertEquals(
+        IoTDBDataRegionAsyncSink.class,
+        agent
+            .dataRegion()
+            .reflectSink(
+                new PipeParameters(
+                    new HashMap<String, String>() {
+                      {
+                        put(PipeSinkConstant.CONNECTOR_SERIALIZE_BY_REGION_KEY, "false");
                       }
                     }))
             .getClass());
