@@ -140,7 +140,8 @@ public class ExternalTsFileQueryResource {
         }
         DeviceEntry deviceEntry = new AlignedDeviceEntry(deviceID, new Binary[0]);
         int deviceEntryIndex = sharedDeviceEntries.size();
-        // Reserve the boxed index that partition.add will append to deviceEntryIndexes.
+        // Reserve the DeviceEntry reference in sharedDeviceEntries, plus the boxed index and its
+        // reference that partition.add will append to deviceEntryIndexes.
         externalTsFileResourceMemoryReservationManager.reserveMemoryCumulatively(
             deviceEntry.ramBytesUsed()
                 + MemoryEstimationHelper.INTEGER_INSTANCE_SIZE
@@ -376,10 +377,9 @@ public class ExternalTsFileQueryResource {
     }
 
     void finish() {
-      if (deviceEntryComparator == null) {
-        return;
+      if (deviceEntryComparator != null) {
+        deviceEntryIndexes.sort(ExternalTsFileQueryResource.this::compareDeviceEntryIndexes);
       }
-      deviceEntryIndexes.sort(ExternalTsFileQueryResource.this::compareDeviceEntryIndexes);
 
       if (pendingDeviceTasks.isEmpty()) {
         return;
