@@ -122,8 +122,7 @@ public class RpcUtils {
   }
 
   public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
-    StringBuilder errMsgs =
-        new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getStatusCode()).append(": ");
+    StringBuilder errMsgs = new StringBuilder();
     for (TSStatus status : statuses) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -131,7 +130,8 @@ public class RpcUtils {
       }
     }
     if (errMsgs.length() > 0) {
-      throw new BatchExecutionException(statuses, errMsgs.toString());
+      throw new BatchExecutionException(
+          statuses, TSStatusCode.MULTIPLE_ERROR.getStatusCode() + ": " + errMsgs);
     }
   }
 
@@ -152,9 +152,9 @@ public class RpcUtils {
       for (TSStatus subStatus : statusList) {
         if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && subStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          if (!msgSet.contains(status)) {
-            errMsg.append(status).append("; ");
-            msgSet.add(status);
+          if (!msgSet.contains(subStatus)) {
+            errMsg.append(subStatus).append("; ");
+            msgSet.add(subStatus);
           }
         }
       }
