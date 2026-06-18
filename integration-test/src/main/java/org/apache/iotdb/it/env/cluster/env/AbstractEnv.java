@@ -561,7 +561,7 @@ public abstract class AbstractEnv implements BaseEnv {
         .append(processStatusPassed)
         .append(", expectedNodeSize=")
         .append(
-            configNodeWrapperList.size() + dataNodeWrapperList.size() + aiNodeWrapperList.size())
+            configNodeWrapperList.size() + dataNodeWrapperList.size() + extraNodeWrappers.size())
         .append(", actualNodeSize=")
         .append(actualNodeSize);
     if (showClusterStatus != null) {
@@ -596,7 +596,7 @@ public abstract class AbstractEnv implements BaseEnv {
     final List<AbstractNodeWrapper> allNodeWrappers = new ArrayList<>();
     allNodeWrappers.addAll(configNodeWrapperList);
     allNodeWrappers.addAll(dataNodeWrapperList);
-    allNodeWrappers.addAll(aiNodeWrapperList);
+    allNodeWrappers.addAll(extraNodeWrappers);
     return allNodeWrappers.stream()
         .map(AbstractNodeWrapper::getLogDirPath)
         .distinct()
