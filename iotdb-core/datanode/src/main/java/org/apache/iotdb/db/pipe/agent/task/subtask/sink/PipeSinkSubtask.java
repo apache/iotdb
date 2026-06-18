@@ -73,6 +73,23 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final String taskID,
       final long creationTime,
       final String attributeSortedString,
+      final int sinkIndex,
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
+      final PipeConnector outputPipeConnector) {
+    this(
+        taskID,
+        creationTime,
+        attributeSortedString,
+        attributeSortedString,
+        sinkIndex,
+        inputPendingQueue,
+        outputPipeConnector);
+  }
+
+  public PipeSinkSubtask(
+      final String taskID,
+      final long creationTime,
+      final String attributeSortedString,
       final String attributeDisplayString,
       final int sinkIndex,
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,

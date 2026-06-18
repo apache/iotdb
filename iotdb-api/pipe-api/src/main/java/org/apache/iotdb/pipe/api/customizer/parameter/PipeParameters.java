@@ -441,7 +441,7 @@ public class PipeParameters {
       return value;
     }
 
-    private static boolean isHiddenKey(final String key) {
+    public static boolean isHiddenKey(final String key) {
       return Objects.nonNull(key) && KEYS.contains(KeyReducer.reduce(key).toLowerCase(Locale.ROOT));
     }
   }

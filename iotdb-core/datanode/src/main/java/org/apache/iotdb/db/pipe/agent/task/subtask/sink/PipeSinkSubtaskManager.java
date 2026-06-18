@@ -48,12 +48,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -64,14 +60,6 @@ public class PipeSinkSubtaskManager {
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
-
-  private static final Set<String> SENSITIVE_ATTRIBUTE_KEYS = new HashSet<>();
-
-  static {
-    SENSITIVE_ATTRIBUTE_KEYS.add("ssl.trust-store-pwd");
-    SENSITIVE_ATTRIBUTE_KEYS.add("scp.password");
-    SENSITIVE_ATTRIBUTE_KEYS.add("password");
-  }
 
   private final Map<String, List<PipeSinkSubtaskLifeCycle>>
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
@@ -309,14 +297,8 @@ public class PipeSinkSubtaskManager {
     final TreeMap<String, String> filteredAttributes =
         new TreeMap<>(pipeConnectorParameters.getAttribute());
     filteredAttributes.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
-    filteredAttributes.keySet().removeIf(PipeSinkSubtaskManager::isSensitiveAttributeKey);
+    filteredAttributes.keySet().removeIf(PipeParameters.ValueHider::isHiddenKey);
     return filteredAttributes.toString();
-  }
-
-  private static boolean isSensitiveAttributeKey(final String key) {
-    return Objects.nonNull(key)
-        && SENSITIVE_ATTRIBUTE_KEYS.contains(
-            PipeParameters.KeyReducer.reduce(key).toLowerCase(Locale.ROOT));
   }
 
   private void throwNoSuchSubtaskException(final String attributeSortedString) {
