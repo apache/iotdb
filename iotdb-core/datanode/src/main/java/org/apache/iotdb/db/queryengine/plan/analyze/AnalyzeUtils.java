@@ -112,6 +112,9 @@ public class AnalyzeUtils {
       return realStatement;
     }
     analysis.setRealStatement(realStatement);
+    if (skipPartitionAnalyzeForEmptyInsert(analysis, realStatement)) {
+      return realStatement;
+    }
 
     analyzeDataPartition(
         analysis,
@@ -119,6 +122,15 @@ public class AnalyzeUtils {
         context.getSession().getUserName(),
         partitionFetcher);
     return realStatement;
+  }
+
+  public static boolean skipPartitionAnalyzeForEmptyInsert(
+      final IAnalysis analysis, final InsertBaseStatement insertStatement) {
+    if (!insertStatement.isEmpty() || !analysis.isFailed()) {
+      return false;
+    }
+    analysis.setFinishQueryAfterAnalyze(true);
+    return true;
   }
 
   public static String getDatabaseName(

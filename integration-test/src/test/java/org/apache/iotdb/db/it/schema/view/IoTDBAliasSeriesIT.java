@@ -125,4 +125,34 @@ public class IoTDBAliasSeriesIT extends AbstractSchemaIT {
       }
     }
   }
+
+  @Test
+  public void testInsertIntoViewWithTypeMismatch() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.db");
+      statement.execute("CREATE DATABASE root.view");
+      statement.execute("CREATE ALIGNED TIMESERIES root.db.d1(s01 INT32, s02 INT64)");
+      statement.execute("CREATE TIMESERIES root.db.d2.s01 WITH DATATYPE=INT32");
+      statement.execute("CREATE TIMESERIES root.db.d2.s02 WITH DATATYPE=TEXT");
+      statement.execute("CREATE VIEW root.view.v1(col1, col2) AS root.db.d1.s01, root.db.d2.s01");
+
+      statement.execute("INSERT INTO root.db.d1(time, s01, s02) ALIGNED VALUES(100, 200, 300)");
+      statement.execute("INSERT INTO root.db.d1(time, s01, s02) ALIGNED VALUES(200, 300, 400)");
+      statement.execute("INSERT INTO root.db.d2(time, s01, s02) VALUES(300, 300, 400)");
+      statement.execute("INSERT INTO root.db.d2(time, s01, s02) VALUES(400, 300, 400)");
+      try {
+        statement.execute("INSERT INTO root.view.v1(time, col1) ALIGNED VALUES(300, \"hello\")");
+        Assert.fail("expect exception");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage(), e.getMessage().contains("Fail to insert measurements [col1]"));
+        Assert.assertFalse(
+            e.getMessage(),
+            e.getMessage()
+                .contains(
+                    "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE."));
+      }
+    }
+  }
 }

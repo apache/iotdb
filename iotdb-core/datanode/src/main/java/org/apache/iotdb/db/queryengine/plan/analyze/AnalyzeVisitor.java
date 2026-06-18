@@ -3184,6 +3184,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
     analysis.setRealStatement(realInsertStatement);
+    if (AnalyzeUtils.skipPartitionAnalyzeForEmptyInsert(analysis, realInsertStatement)) {
+      return analysis;
+    }
 
     if (realInsertStatement instanceof InsertRowStatement) {
       InsertRowStatement realInsertRowStatement = (InsertRowStatement) realInsertStatement;
@@ -3225,6 +3228,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
     analysis.setRealStatement(realInsertRowsStatement);
+    if (AnalyzeUtils.skipPartitionAnalyzeForEmptyInsert(analysis, realInsertRowsStatement)) {
+      return analysis;
+    }
 
     AnalyzeUtils.analyzeDataPartition(
         analysis,
@@ -3251,6 +3257,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
     analysis.setRealStatement(realStatement);
+    if (AnalyzeUtils.skipPartitionAnalyzeForEmptyInsert(analysis, realStatement)) {
+      return analysis;
+    }
 
     AnalyzeUtils.analyzeDataPartition(
         analysis,
@@ -3276,6 +3285,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
     analysis.setRealStatement(realInsertStatement);
+    if (AnalyzeUtils.skipPartitionAnalyzeForEmptyInsert(analysis, realInsertStatement)) {
+      return analysis;
+    }
 
     if (realInsertStatement instanceof InsertRowsOfOneDeviceStatement) {
       InsertRowsOfOneDeviceStatement realStatement =
