@@ -260,7 +260,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         throw new PipeException(
             String.format(
                 "Exception in pipe process, subtask: %s, last event: %s, root cause: %s",
-                taskID,
+                getDisplayTaskID(),
                 lastEvent instanceof EnrichedEvent
                     ? ((EnrichedEvent) lastEvent).coreReportMessage()
                     : lastEvent,
@@ -300,7 +300,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     } catch (final Exception e) {
       LOGGER.info(
           DataNodePipeMessages.EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_PROCESSOR_SUBTASK,
-          taskID,
+          getDisplayTaskID(),
           ErrorHandlingCommonUtils.getRootCause(e).getMessage(),
           e);
     } finally {

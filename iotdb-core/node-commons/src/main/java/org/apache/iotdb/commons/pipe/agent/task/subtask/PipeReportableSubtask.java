@@ -88,7 +88,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     if (retryCount.get() == 0) {
       LOGGER.warn(
           PipeMessages.FAILED_TO_EXECUTE_SUBTASK,
-          taskID,
+          getDisplayTaskID(),
           creationTime,
           this.getClass().getSimpleName(),
           throwable.getMessage(),
@@ -102,7 +102,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           LOGGER::warn,
           throwable,
           PipeMessages.RETRY_EXECUTING_SUBTASK,
-          taskID,
+          getDisplayTaskID(),
           creationTime,
           this.getClass().getSimpleName(),
           retryCount.get(),
@@ -113,7 +113,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
       } catch (final InterruptedException e) {
         LOGGER.warn(
             PipeMessages.INTERRUPTED_RETRYING_SUBTASK,
-            taskID,
+            getDisplayTaskID(),
             creationTime,
             this.getClass().getSimpleName(),
             e);
@@ -125,7 +125,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
       final String errorMessage =
           String.format(
               PipeMessages.SUBTASK_RETRY_EXCEEDED_FORMAT,
-              taskID,
+              getDisplayTaskID(),
               creationTime,
               this.getClass().getSimpleName(),
               retryCount.get() - 1,
@@ -139,7 +139,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
               : new PipeRuntimeCriticalException(errorMessage));
       LOGGER.warn(
           PipeMessages.SUBTASK_EXCEPTION_REPORTED,
-          taskID,
+          getDisplayTaskID(),
           creationTime,
           this.getClass().getSimpleName(),
           throwable);
@@ -154,7 +154,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     if (retryCount.get() == 0) {
       LOGGER.warn(
           PipeMessages.FAILED_TO_EXECUTE_SUBTASK_RETRY_FOREVER,
-          taskID,
+          getDisplayTaskID(),
           creationTime,
           this.getClass().getSimpleName(),
           throwable.getMessage(),
@@ -165,7 +165,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     PipeLogger.log(
         LOGGER::warn,
         PipeMessages.RETRY_EXECUTING_SUBTASK_FOREVER,
-        taskID,
+        getDisplayTaskID(),
         creationTime,
         this.getClass().getSimpleName(),
         retryCount.get(),
@@ -176,7 +176,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     } catch (final InterruptedException e) {
       LOGGER.warn(
           PipeMessages.INTERRUPTED_RETRYING_SUBTASK,
-          taskID,
+          getDisplayTaskID(),
           creationTime,
           this.getClass().getSimpleName());
       Thread.currentThread().interrupt();
