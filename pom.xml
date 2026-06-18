@@ -27,16 +27,6 @@
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
-        <repository>
-            <id>apache-iotdb-1191</id>
-            <url>https://repository.apache.org/content/repositories/orgapacheiotdb-1191/</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
     </repositories>
     <parent>
         <groupId>org.apache</groupId>
