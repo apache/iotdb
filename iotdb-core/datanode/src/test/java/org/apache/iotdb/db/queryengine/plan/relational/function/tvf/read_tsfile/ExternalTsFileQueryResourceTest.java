@@ -21,8 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource.DeviceOffset;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource.DeviceTask;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileDeviceQueryTask.DeviceOffset;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource.DeviceTaskPartition;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource.DeviceTaskRunReader;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
@@ -175,8 +174,8 @@ public class ExternalTsFileQueryResourceTest {
     }
   }
 
-  private DeviceTask task(int deviceEntryIndex, DeviceOffset... offsets) {
-    return new DeviceTask(deviceEntryIndex, Arrays.asList(offsets));
+  private ExternalTsFileDeviceQueryTask task(int deviceEntryIndex, DeviceOffset... offsets) {
+    return new ExternalTsFileDeviceQueryTask(deviceEntryIndex, Arrays.asList(offsets));
   }
 
   private DeviceOffset offset(int fileIndex, long startOffset, long endOffset) {
