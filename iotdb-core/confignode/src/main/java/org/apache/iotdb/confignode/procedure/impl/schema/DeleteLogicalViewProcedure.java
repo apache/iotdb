@@ -303,7 +303,7 @@ public class DeleteLogicalViewProcedure
     if (o == null || getClass() != o.getClass()) return false;
     DeleteLogicalViewProcedure that = (DeleteLogicalViewProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(this.getCurrentState(), that.getCurrentState())
         && this.getCycles() == that.getCycles()
         && isGeneratedByPipe == that.isGeneratedByPipe
         && patternTree.equals(that.patternTree);

@@ -195,7 +195,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
             nextState);
       }
     }
-    if (getStateId(getCurrentState()) == stateToBeAdded) {
+    final TState currentState = getCurrentState();
+    if (currentState != null && getStateId(currentState) == stateToBeAdded) {
       cycles++;
     } else {
       cycles = 0;
