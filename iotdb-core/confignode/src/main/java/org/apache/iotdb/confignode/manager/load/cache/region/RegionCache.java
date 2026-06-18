@@ -87,6 +87,9 @@ public class RegionCache extends AbstractLoadCache {
     if (lastStatus.equals(RegionStatus.Adding) || lastStatus.equals(RegionStatus.Removing)) {
       RegionHeartbeatSample fakeHeartbeatSample =
           new RegionHeartbeatSample(newHeartbeatSample.getSampleLogicalTimestamp(), lastStatus);
+      // Keep the latest reported disk usage so that a replica transiting Adding/Removing does not
+      // report a fake diskUsage of 0 and skew LOAD BALANCE decisions during scale-out/scale-in.
+      fakeHeartbeatSample.setDiskUsage(newHeartbeatSample.getDiskUsage());
       super.cacheHeartbeatSample(fakeHeartbeatSample);
     } else {
       super.cacheHeartbeatSample(newHeartbeatSample);

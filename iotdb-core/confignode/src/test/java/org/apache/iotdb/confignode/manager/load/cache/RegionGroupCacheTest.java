@@ -141,6 +141,69 @@ public class RegionGroupCacheTest {
   }
 
   @Test
+  public void regionGroupDiskUsageAggregationTest() {
+    // The RegionGroup's diskUsage must be the sum of every replica's diskUsage. This locks in the
+    // contract that disk flows RegionHeartbeatSample -> RegionStatistics -> RegionGroupStatistics,
+    // which the LOAD BALANCE migrators rely on (see V2-1008: diskCounter was always 0MB because the
+    // sample's diskUsage was never populated).
+    long currentTime = System.nanoTime();
+    RegionGroupCache regionGroupCache =
+        new RegionGroupCache(
+            DATABASE, GROUP_ID, Stream.of(0, 1, 2).collect(Collectors.toSet()), false);
+
+    RegionHeartbeatSample sample0 = new RegionHeartbeatSample(currentTime, RegionStatus.Running);
+    sample0.setDiskUsage(500_000_000L);
+    RegionHeartbeatSample sample1 = new RegionHeartbeatSample(currentTime, RegionStatus.Running);
+    sample1.setDiskUsage(300_000_000L);
+    RegionHeartbeatSample sample2 = new RegionHeartbeatSample(currentTime, RegionStatus.Running);
+    sample2.setDiskUsage(200_000_000L);
+    regionGroupCache.cacheHeartbeatSample(0, sample0);
+    regionGroupCache.cacheHeartbeatSample(1, sample1);
+    regionGroupCache.cacheHeartbeatSample(2, sample2);
+    regionGroupCache.updateCurrentStatistics();
+
+    Assert.assertEquals(1_000_000_000L, regionGroupCache.getCurrentStatistics().getDiskUsage());
+    Assert.assertEquals(
+        500_000_000L,
+        regionGroupCache.getCurrentStatistics().getRegionStatisticsMap().get(0).getDiskUsage());
+    Assert.assertEquals(
+        300_000_000L,
+        regionGroupCache.getCurrentStatistics().getRegionStatisticsMap().get(1).getDiskUsage());
+    Assert.assertEquals(
+        200_000_000L,
+        regionGroupCache.getCurrentStatistics().getRegionStatisticsMap().get(2).getDiskUsage());
+  }
+
+  @Test
+  public void fakeHeartbeatSampleRetainsDiskUsageTest() {
+    // When a replica is transiting Adding/Removing, RegionCache caches a fake sample that keeps the
+    // previous status. That fake sample must inherit the latest reported diskUsage instead of
+    // dropping it to 0, otherwise LOAD BALANCE made during scale-out/scale-in becomes disk-blind.
+    long currentTime = System.nanoTime();
+    RegionGroupCache regionGroupCache =
+        new RegionGroupCache(DATABASE, GROUP_ID, Stream.of(0).collect(Collectors.toSet()), false);
+
+    RegionHeartbeatSample addingSample =
+        new RegionHeartbeatSample(currentTime, RegionStatus.Adding);
+    addingSample.setDiskUsage(700_000_000L);
+    regionGroupCache.cacheHeartbeatSample(0, addingSample);
+
+    // overwrite=false: since the last status is Adding, a fake sample keeping the Adding status is
+    // cached, but it must carry this new sample's disk usage.
+    RegionHeartbeatSample runningSample =
+        new RegionHeartbeatSample(currentTime + 1, RegionStatus.Running);
+    runningSample.setDiskUsage(900_000_000L);
+    regionGroupCache.cacheHeartbeatSample(0, runningSample);
+    regionGroupCache.updateCurrentStatistics();
+
+    Assert.assertEquals(
+        RegionStatus.Adding, regionGroupCache.getCurrentStatistics().getRegionStatus(0));
+    Assert.assertEquals(
+        900_000_000L,
+        regionGroupCache.getCurrentStatistics().getRegionStatisticsMap().get(0).getDiskUsage());
+  }
+
+  @Test
   public void migrateRegionRegionGroupStatusTest() {
     long currentTime = System.nanoTime();
     RegionGroupCache regionGroupCache =

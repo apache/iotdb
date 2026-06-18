@@ -116,15 +116,20 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
       TDataNodeHeartbeatResp heartbeatResp,
       RegionStatus dataNodeRegionStatus,
       TConsensusGroupId regionGroupId) {
-    loadManager
-        .getLoadCache()
-        .cacheRegionHeartbeatSample(
-            regionGroupId,
-            nodeId,
-            new RegionHeartbeatSample(
-                heartbeatResp.getHeartbeatTimestamp(),
-                getRegionHeartbeatStatus(regionGroupId, dataNodeRegionStatus)),
-            false);
+    RegionHeartbeatSample sample =
+        new RegionHeartbeatSample(
+            heartbeatResp.getHeartbeatTimestamp(),
+            getRegionHeartbeatStatus(regionGroupId, dataNodeRegionStatus));
+    // diskUsage is the TsFile bytes of this Region replica on this DataNode (nodeId). It is carried
+    // by the same heartbeat (regionDisk is keyed by the consensus group id). RegionGroupCache later
+    // sums it across replicas into the RegionGroup's diskUsage, which the LOAD BALANCE migrators
+    // and
+    // RemoveDataNodeHandler consume. Without this the diskUsage stays 0 and balancing becomes
+    // disk-blind (diskCounter shows 0MB).
+    if (heartbeatResp.getRegionDisk() != null) {
+      sample.setDiskUsage(heartbeatResp.getRegionDisk().getOrDefault(regionGroupId.getId(), 0L));
+    }
+    loadManager.getLoadCache().cacheRegionHeartbeatSample(regionGroupId, nodeId, sample, false);
   }
 
   private RegionStatus getRegionHeartbeatStatus(
