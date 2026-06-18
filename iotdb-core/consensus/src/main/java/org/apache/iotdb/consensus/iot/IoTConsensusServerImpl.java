@@ -450,26 +450,29 @@ public class IoTConsensusServerImpl {
   public boolean loadSnapshot(String snapshotId) {
     // Snapshot fragments are spread across the receive folders by the FolderManager (a DataRegion,
     // for example, uses one receive folder per local data dir), so a given snapshot only exists
-    // under the folders that actually received fragments. Load from those folders and skip the
-    // others; otherwise the state machine would fail on a folder that never received this snapshot
-    // and turn a healthy multi-data-dir transfer into a spurious failure.
+    // under the folders that actually received fragments. Collect exactly those folders and hand
+    // them to the state machine in a single load call.
+    //
+    // It must be a single call rather than one call per folder: the state machine's load is
+    // destructive (a DataRegion load wipes the data dirs before relinking), so loading folders one
+    // at a time would make each load erase the fragments linked by the previous folders, leaving
+    // only the last folder's data. The state machine instead clears the data dirs once and relinks
+    // every folder's fragments together.
     //
     // Note: an empty region produces a snapshot with zero fragments, so none of the receive folders
     // contains it. That is a legitimate (no-op) load, not a failure, so an absent snapshot must not
     // be reported as failure here.
+    List<File> snapshotDirs = new ArrayList<>();
     for (String dir : recvFolderManager.getFolders()) {
       File snapshotDir = getSnapshotPath(dir, snapshotId);
-      if (!snapshotDir.exists()) {
-        continue;
-      }
-      if (!stateMachine.loadSnapshot(snapshotDir)) {
-        // Stop at the first failure. The snapshot is already broken on this replica, and loading
-        // the remaining folders is both pointless and harmful: a load wipes the data dirs before
-        // relinking. Report the failure so the AddPeer coordinator does not activate this peer.
-        return false;
+      if (snapshotDir.exists()) {
+        snapshotDirs.add(snapshotDir);
       }
     }
-    return true;
+    if (snapshotDirs.isEmpty()) {
+      return true;
+    }
+    return stateMachine.loadSnapshot(snapshotDirs);
   }
 
   private File getSnapshotPath(String curStorageDir, String snapshotRelativePath) {
