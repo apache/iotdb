@@ -41,7 +41,7 @@ public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
 
   public ParallelRequestDelegate(
       final List<String> endpoints, final int taskTimeoutSeconds, final AbstractEnv env) {
-    this(endpoints, taskTimeoutSeconds, env::dumpTestJVMSnapshot);
+    this(endpoints, taskTimeoutSeconds, env != null ? env::dumpTestJVMSnapshot : () -> {});
   }
 
   public ParallelRequestDelegate(
