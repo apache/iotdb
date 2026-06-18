@@ -699,10 +699,22 @@ public class PipeReceiverRuntimeRegistryTest {
         "pipe-air-gap",
         2,
         200);
+    registry.registerOrUpdateSession(
+        "data-writeback",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_WRITEBACK,
+        "10.0.0.1",
+        9003,
+        "root",
+        "cluster-a",
+        "pipe-writeback",
+        3,
+        300);
 
     final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
 
-    assertEquals(2, snapshots.size());
+    assertEquals(3, snapshots.size());
     final PipeReceiverRuntimeSnapshot airGapSnapshot =
         findSnapshot(
             snapshots,
@@ -717,14 +729,25 @@ public class PipeReceiverRuntimeRegistryTest {
             1,
             PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
             "10.0.0.1");
+    final PipeReceiverRuntimeSnapshot writeBackSnapshot =
+        findSnapshot(
+            snapshots,
+            PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+            1,
+            PipeReceiverRuntimeRegistry.PROTOCOL_WRITEBACK,
+            "10.0.0.1");
     assertNotNull(airGapSnapshot);
     assertNotNull(thriftSnapshot);
+    assertNotNull(writeBackSnapshot);
     assertEquals("9002", airGapSnapshot.getSenderPorts());
     assertEquals(1, airGapSnapshot.getConnectionCount());
     assertTrue(airGapSnapshot.getPipeIds().contains("pipe-air-gap@"));
     assertEquals("9001", thriftSnapshot.getSenderPorts());
     assertEquals(1, thriftSnapshot.getConnectionCount());
     assertTrue(thriftSnapshot.getPipeIds().contains("pipe-thrift@"));
+    assertEquals("9003", writeBackSnapshot.getSenderPorts());
+    assertEquals(1, writeBackSnapshot.getConnectionCount());
+    assertTrue(writeBackSnapshot.getPipeIds().contains("pipe-writeback@"));
   }
 
   @Test

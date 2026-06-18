@@ -39,6 +39,7 @@ public class PipeReceiverRuntimeRegistry {
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
   public static final String PROTOCOL_THRIFT = "thrift";
   public static final String PROTOCOL_AIR_GAP = "air_gap";
+  public static final String PROTOCOL_WRITEBACK = "writeback";
 
   private static final PipeReceiverRuntimeRegistry INSTANCE = new PipeReceiverRuntimeRegistry();
 

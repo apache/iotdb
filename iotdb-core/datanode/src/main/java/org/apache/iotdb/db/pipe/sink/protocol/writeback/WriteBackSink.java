@@ -442,7 +442,7 @@ public class WriteBackSink implements PipeConnector, PipeConnectorWithEventDisca
             sessionId,
             PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
             IOTDB_CONFIG.getDataNodeId(),
-            PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+            PipeReceiverRuntimeRegistry.PROTOCOL_WRITEBACK,
             IOTDB_CONFIG.getRpcAddress(),
             IOTDB_CONFIG.getRpcPort(),
             userName,

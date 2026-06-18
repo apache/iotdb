@@ -65,7 +65,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         "select receiver_node_type, receiver_node_id, protocol, sender_cluster_id, "
             + "sender_address, user_name, sender_ports, connection_count, pipe_count, pipe_ids, "
             + "last_handshake_time, last_transfer_time "
-            + "from information_schema.receivers where protocol = 'thrift'",
+            + "from information_schema.receivers where protocol = 'writeback'",
         BaseEnv.TABLE_SQL_DIALECT,
         "show_receivers_filter_pipe");
   }
@@ -366,7 +366,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         final String senderPorts = getString(resultSet, "SenderPorts", "sender_ports");
         final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
         if ("DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
-            && "thrift".equals(getString(resultSet, "Protocol", "protocol"))
+            && "writeback".equals(getString(resultSet, "Protocol", "protocol"))
             && senderClusterId != null
             && !senderClusterId.isEmpty()
             && senderAddress != null
@@ -401,7 +401,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       while (resultSet.next()) {
         final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
         if ("DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
-            && "thrift".equals(getString(resultSet, "Protocol", "protocol"))
+            && "writeback".equals(getString(resultSet, "Protocol", "protocol"))
             && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
             && getInt(resultSet, "PipeCount", "pipe_count") >= 2
             && pipeIds != null
@@ -425,7 +425,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
             statement.executeQuery(
                 "select receiver_node_type, sender_cluster_id, sender_address, "
                     + "connection_count, pipe_ids "
-                    + "from information_schema.receivers where protocol = 'thrift'")) {
+                    + "from information_schema.receivers where protocol = 'writeback'")) {
       while (resultSet.next()) {
         if ("DataNode".equals(resultSet.getString(1))
             && resultSet.getString(2) != null

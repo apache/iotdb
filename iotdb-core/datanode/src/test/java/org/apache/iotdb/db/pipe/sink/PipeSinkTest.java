@@ -148,7 +148,7 @@ public class PipeSinkTest {
         final PipeReceiverRuntimeSnapshot snapshot = snapshots.get(0);
         Assert.assertEquals(
             PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE, snapshot.getReceiverNodeType());
-        Assert.assertEquals(PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT, snapshot.getProtocol());
+        Assert.assertEquals(PipeReceiverRuntimeRegistry.PROTOCOL_WRITEBACK, snapshot.getProtocol());
         Assert.assertFalse(snapshot.getSenderAddress().isEmpty());
         Assert.assertFalse(snapshot.getSenderPorts().isEmpty());
         Assert.assertEquals(1, snapshot.getConnectionCount());
