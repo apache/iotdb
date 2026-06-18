@@ -58,6 +58,7 @@ public class MultiEnvFactory {
   /** Create several environments according to the specific number. */
   public static void createEnv(final int num) {
     // Not judge EnvType for individual test convenience
+    envList.clear();
     final long startTime = System.currentTimeMillis();
     for (int i = 0; i < num; ++i) {
       try {

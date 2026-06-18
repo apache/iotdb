@@ -85,6 +85,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
@@ -188,6 +189,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
               -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
@@ -295,6 +297,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
@@ -402,6 +405,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
@@ -491,6 +495,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
@@ -577,6 +582,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
@@ -663,6 +669,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
@@ -749,6 +756,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
@@ -852,6 +860,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
               -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
@@ -958,6 +967,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
               -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
@@ -1047,6 +1057,7 @@ jobs:
               mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
+              -DintegrationTest.clusterReadyRetryCount=90 \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }},${{ matrix.cluster3 }} \
               -pl integration-test \
