@@ -1,0 +1,30 @@
+Apache IoTDB C++ Session Client
+Bundled / statically linked third-party components
+==================================================
+
+In addition to the Apache IoTDB code (covered by the top-level LICENSE and
+NOTICE files), this binary distribution statically links or bundles the
+third-party components listed below. Components licensed under the Apache
+License, Version 2.0 are covered by the top-level LICENSE file; other license
+texts are reproduced under third_party/licenses/.
+
+------------------------------------------------------------------------------
+Apache Thrift  (statically linked into the iotdb_session library)
+Licensed under the Apache License, Version 2.0 (see the top-level LICENSE).
+
+Apache Thrift
+Copyright (C) 2006 - 2019, The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+------------------------------------------------------------------------------
+OpenSSL  (bundled shared libraries: libssl / libcrypto, present only when the
+SDK is built with SSL support)
+Copyright 1999-2025 The OpenSSL Project Authors. All Rights Reserved.
+Licensed under the Apache License, Version 2.0 (see the top-level LICENSE).
+
+------------------------------------------------------------------------------
+Boost  (statically linked / header-only)
+Distributed under the Boost Software License, Version 1.0
+(see third_party/licenses/LICENSE-Boost-1.0).
