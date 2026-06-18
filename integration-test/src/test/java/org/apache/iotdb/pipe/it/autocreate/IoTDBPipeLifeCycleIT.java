@@ -448,8 +448,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     }
 
     try {
-      TestUtils.restartCluster(senderEnv);
       TestUtils.restartCluster(receiverEnv);
+      TestUtils.restartCluster(senderEnv);
     } catch (final Throwable e) {
       e.printStackTrace();
       return;
