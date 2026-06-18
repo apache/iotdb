@@ -76,7 +76,8 @@ public class Scheduler {
     this.releaseFlushStrategy = releaseFlushStrategy;
   }
 
-  private void executeFlush(CachedMTreeStore store, int regionId, AtomicInteger remainToFlush) {
+  private void executeFlush(
+      CachedMTreeStore store, int regionId, AtomicInteger remainToFlush, boolean propagateFailure) {
     IMemoryManager memoryManager = store.getMemoryManager();
     ISchemaFile file = store.getSchemaFile();
     LockManager lockManager = store.getLockManager();
@@ -97,6 +98,9 @@ public class Scheduler {
           regionId,
           e.getMessage(),
           e);
+      if (propagateFailure) {
+        throw new RuntimeException(e);
+      }
     } finally {
       long time = System.currentTimeMillis() - startTime;
       if (time > 10_000) {
@@ -145,22 +149,26 @@ public class Scheduler {
                     CompletableFuture.runAsync(
                         () -> {
                           int regionId = entry.getKey();
-                          CachedMTreeStore store = entry.getValue();
-                          if (store == null) {
-                            // store has been closed
-                            return;
-                          }
-                          LockManager lockManager = store.getLockManager();
-                          lockManager.globalReadLock();
-                          if (!regionToStore.containsKey(regionId)) {
-                            // double check store have not been closed
-                            return;
-                          }
                           try {
-                            executeFlush(store, regionId, null);
-                            executeRelease(store, false);
+                            CachedMTreeStore store = entry.getValue();
+                            if (store == null) {
+                              // store has been closed
+                              return;
+                            }
+                            LockManager lockManager = store.getLockManager();
+                            lockManager.globalReadLock();
+                            try {
+                              if (!regionToStore.containsKey(regionId)) {
+                                // double check store have not been closed
+                                return;
+                              }
+                              executeFlush(store, regionId, null, true);
+                              executeRelease(store, false);
+                            } finally {
+                              lockManager.globalReadUnlock();
+                            }
                           } finally {
-                            lockManager.globalReadUnlock();
+                            flushingRegionSet.remove(regionId);
                           }
                         },
                         workerPool))
@@ -221,22 +229,25 @@ public class Scheduler {
       flushingRegionSet.add(regionId);
       workerPool.submit(
           () -> {
-            CachedMTreeStore store = regionToStore.get(regionId);
-            if (store == null) {
-              // store has been closed
-              return;
-            }
-            LockManager lockManager = store.getLockManager();
-            lockManager.globalReadLock();
-            if (!regionToStore.containsKey(regionId)) {
-              // double check store have not been closed
-              return;
-            }
             try {
-
-              executeFlush(store, regionId, remainToFlush);
+              CachedMTreeStore store = regionToStore.get(regionId);
+              if (store == null) {
+                // store has been closed
+                return;
+              }
+              LockManager lockManager = store.getLockManager();
+              lockManager.globalReadLock();
+              try {
+                if (!regionToStore.containsKey(regionId)) {
+                  // double check store have not been closed
+                  return;
+                }
+                executeFlush(store, regionId, remainToFlush, false);
+              } finally {
+                lockManager.globalReadUnlock();
+              }
             } finally {
-              lockManager.globalReadUnlock();
+              flushingRegionSet.remove(regionId);
             }
           });
       if (remainToFlush.get() <= 0) {
