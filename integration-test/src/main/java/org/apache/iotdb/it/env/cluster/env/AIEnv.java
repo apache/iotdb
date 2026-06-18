@@ -22,6 +22,7 @@ package org.apache.iotdb.it.env.cluster.env;
 import org.apache.iotdb.it.env.cluster.node.AINodeStarter;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.itbase.runtime.NodeConnection;
 
 import java.util.List;
 
@@ -41,6 +42,12 @@ public class AIEnv extends AbstractEnv {
   public void initClusterEnvironment(
       int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
     super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount);
+  }
+
+  @Override
+  public NodeConnection getWriteConnection(
+      Object o, String username3, String password3, String treeSqlDialect) {
+    throw new UnsupportedOperationException("AINode does not have write connection");
   }
 
   @Override

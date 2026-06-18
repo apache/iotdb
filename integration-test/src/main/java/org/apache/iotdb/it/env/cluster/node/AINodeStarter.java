@@ -56,7 +56,8 @@ public class AINodeStarter {
             testMethodName,
             clusterIndex,
             EnvUtils.searchAvailablePorts(),
-            startTime);
+            startTime,
+            false);
     nodeRegister.accept(aiNodeWrapper);
     aiNodeWrapper.setKillPoints(killPoints);
     aiNodeWrapper.createNodeDir();

@@ -607,9 +607,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
         // Check the number of nodes
         if (showClusterResp.getNodeStatus().size()
-            != configNodeWrapperList.size()
-                + dataNodeWrapperList.size()
-                + aiNodeWrapperList.size()) {
+            != configNodeWrapperList.size() + dataNodeWrapperList.size()) {
           passed = false;
           nodeSizePassed = false;
         }
