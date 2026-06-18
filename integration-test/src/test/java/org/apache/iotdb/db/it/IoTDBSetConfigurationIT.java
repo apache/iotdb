@@ -126,6 +126,8 @@ public class IoTDBSetConfigurationIT {
         Statement statement = connection.createStatement()) {
       statement.execute("set configuration \"heartbeat_interval_in_ms\"=\"500\"");
       assertAppliedConfiguration(0, "heartbeat_interval_in_ms", "500");
+      assertAppliedConfiguration(
+          EnvFactory.getEnv().getConfigNodeWrapperList().size(), "heartbeat_interval_in_ms", "500");
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     } finally {
@@ -138,6 +140,39 @@ public class IoTDBSetConfigurationIT {
     }
     Assert.assertTrue(
         EnvFactory.getEnv().getConfigNodeWrapperList().stream()
+            .allMatch(
+                nodeWrapper ->
+                    checkConfigFileContains(nodeWrapper, "heartbeat_interval_in_ms=1000")));
+  }
+
+  @Test
+  public void testRejectedHotReloadDoesNotUpdateAppliedConfiguration() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"heartbeat_interval_in_ms\"=\"500\"");
+      assertAppliedConfiguration(0, "heartbeat_interval_in_ms", "500");
+      assertAppliedConfiguration(
+          EnvFactory.getEnv().getConfigNodeWrapperList().size(), "heartbeat_interval_in_ms", "500");
+
+      assertSetConfigurationFailed(
+          statement,
+          "set configuration \"heartbeat_interval_in_ms\"=\"-1\"",
+          "heartbeat_interval_in_ms should be greater than 0");
+      assertAppliedConfiguration(0, "heartbeat_interval_in_ms", "500");
+      assertAppliedConfiguration(
+          EnvFactory.getEnv().getConfigNodeWrapperList().size(), "heartbeat_interval_in_ms", "500");
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("set configuration \"heartbeat_interval_in_ms\"=\"1000\"");
+      } catch (Exception e) {
+        Assert.fail(e.getMessage());
+      }
+    }
+    Assert.assertTrue(
+        EnvFactory.getEnv().getNodeWrapperList().stream()
             .allMatch(
                 nodeWrapper ->
                     checkConfigFileContains(nodeWrapper, "heartbeat_interval_in_ms=1000")));
@@ -195,14 +230,24 @@ public class IoTDBSetConfigurationIT {
       statement.execute("set configuration \"data_region_group_extension_policy\"=\"CUSTOM\"");
       statement.execute("set configuration \"default_schema_region_group_num_per_database\"=\"2\"");
       statement.execute("set configuration \"default_data_region_group_num_per_database\"=\"3\"");
-      statement.execute("set configuration \"schema_region_per_data_node\"=\"2\"");
-      statement.execute("set configuration \"data_region_per_data_node\"=\"2\"");
+      statement.execute("set configuration \"schema_region_per_data_node\"=\"2.0\"");
+      statement.execute("set configuration \"data_region_per_data_node\"=\"2.0\"");
 
       assertAppliedConfiguration(0, "schema_region_group_extension_policy", "CUSTOM");
       assertAppliedConfiguration(0, "data_region_group_extension_policy", "CUSTOM");
       assertAppliedConfiguration(0, "default_schema_region_group_num_per_database", "2");
       assertAppliedConfiguration(0, "default_data_region_group_num_per_database", "3");
       assertShowVariable(statement, ColumnHeaderConstant.SCHEMA_REGION_PER_DATA_NODE, "2");
+      assertShowVariable(statement, ColumnHeaderConstant.DATA_REGION_PER_DATA_NODE, "2");
+      assertSetConfigurationFailed(
+          statement,
+          "set configuration \"schema_region_per_data_node\"=\"1.9\"",
+          "schema_region_per_data_node should be an integer");
+      assertShowVariable(statement, ColumnHeaderConstant.SCHEMA_REGION_PER_DATA_NODE, "2");
+      assertSetConfigurationFailed(
+          statement,
+          "set configuration \"data_region_per_data_node\"=\"1.9\"",
+          "data_region_per_data_node should be an integer");
       assertShowVariable(statement, ColumnHeaderConstant.DATA_REGION_PER_DATA_NODE, "2");
 
       statement.execute("CREATE DATABASE " + database);
@@ -358,6 +403,17 @@ public class IoTDBSetConfigurationIT {
       return;
     }
     Assert.fail("Set consistent cluster configuration on a specific node should fail.");
+  }
+
+  private static void assertSetConfigurationFailed(
+      Statement statement, String sql, String expectedMessage) throws SQLException {
+    try {
+      statement.execute(sql);
+    } catch (SQLException e) {
+      assertTrue(e.getMessage().contains(expectedMessage));
+      return;
+    }
+    Assert.fail("Set configuration should fail: " + sql);
   }
 
   private static void assertShowVariable(Statement statement, String key, String value)

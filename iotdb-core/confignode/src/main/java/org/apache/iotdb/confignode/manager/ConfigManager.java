@@ -1796,6 +1796,9 @@ public class ConfigManager implements IManager {
         }
         LOGGER.warn(msg);
       }
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return tsStatus;
+      }
       handleHeartbeatIntervalHotReload(previousHeartbeatIntervalInMs);
       handleRegionPerDataNodeHotReload(
           previousSchemaRegionPerDataNode, previousDataRegionPerDataNode);

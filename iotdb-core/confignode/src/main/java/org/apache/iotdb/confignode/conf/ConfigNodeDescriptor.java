@@ -45,6 +45,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
@@ -801,9 +802,8 @@ public class ConfigNodeDescriptor {
                 "default_schema_region_group_num_per_database",
                 String.valueOf(conf.getDefaultSchemaRegionGroupNumPerDatabase())));
     int schemaRegionPerDataNode =
-        Integer.parseInt(
-            properties.getProperty(
-                "schema_region_per_data_node", String.valueOf(conf.getSchemaRegionPerDataNode())));
+        parseIntegerCompatibleValue(
+            properties, "schema_region_per_data_node", conf.getSchemaRegionPerDataNode());
     RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
         RegionGroupExtensionPolicy.parse(
             properties.getProperty(
@@ -815,9 +815,8 @@ public class ConfigNodeDescriptor {
                 "default_data_region_group_num_per_database",
                 String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase())));
     int dataRegionPerDataNode =
-        Integer.parseInt(
-            properties.getProperty(
-                "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode())));
+        parseIntegerCompatibleValue(
+            properties, "data_region_per_data_node", conf.getDataRegionPerDataNode());
 
     if (defaultSchemaRegionGroupNumPerDatabase <= 0) {
       throw new IOException("default_schema_region_group_num_per_database should be positive.");
@@ -838,6 +837,17 @@ public class ConfigNodeDescriptor {
     conf.setDataRegionGroupExtensionPolicy(dataRegionGroupExtensionPolicy);
     conf.setDefaultDataRegionGroupNumPerDatabase(defaultDataRegionGroupNumPerDatabase);
     conf.setDataRegionPerDataNode(dataRegionPerDataNode);
+  }
+
+  private int parseIntegerCompatibleValue(
+      TrimProperties properties, String propertyName, int defaultValue) throws IOException {
+    String propertyValue = properties.getProperty(propertyName, String.valueOf(defaultValue));
+    try {
+      return new BigDecimal(propertyValue).stripTrailingZeros().intValueExact();
+    } catch (ArithmeticException | NumberFormatException e) {
+      throw new IOException(
+          propertyName + " should be an integer, but was " + propertyValue + ".", e);
+    }
   }
 
   private String loadReadConsistencyLevel(TrimProperties properties) throws IOException {
@@ -876,7 +886,6 @@ public class ConfigNodeDescriptor {
   }
 
   public void loadHotModifiedProps(TrimProperties properties) throws IOException {
-    ConfigurationFileUtils.updateAppliedProperties(properties, true);
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
     long heartbeatIntervalInMs = loadHotReloadHeartbeatIntervalInMs(properties);
@@ -889,6 +898,7 @@ public class ConfigNodeDescriptor {
     Optional.ofNullable(properties.getProperty("enable_topology_probing"))
         .ifPresent(v -> conf.setEnableTopologyProbing(Boolean.parseBoolean(v)));
     loadPipeHotModifiedProp(properties);
+    ConfigurationFileUtils.updateAppliedProperties(properties, true);
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {

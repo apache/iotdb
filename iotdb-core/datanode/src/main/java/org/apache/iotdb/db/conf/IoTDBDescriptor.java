@@ -2106,7 +2106,6 @@ public class IoTDBDescriptor {
 
   public synchronized void loadHotModifiedProps(TrimProperties properties)
       throws QueryProcessException, IOException {
-    ConfigurationFileUtils.updateAppliedProperties(properties, true);
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
@@ -2326,6 +2325,7 @@ public class IoTDBDescriptor {
         conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
       }
 
+      ConfigurationFileUtils.updateAppliedProperties(properties, true);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
