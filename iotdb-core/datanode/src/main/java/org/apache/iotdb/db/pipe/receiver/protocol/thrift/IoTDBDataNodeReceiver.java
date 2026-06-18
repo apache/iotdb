@@ -539,14 +539,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       throws IllegalPathException, IOException {
     final String databaseName = parameters.get(ColumnHeaderConstant.DATABASE);
     final PartialPath databasePath = new PartialPath(databaseName);
-
     final String pathPattern = parameters.get(ColumnHeaderConstant.PATH_PATTERN);
-    if (!shouldLoadSchemaSnapshotDatabase(pathPattern, databaseName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
     final PipePattern pipePattern =
         PipePattern.parsePatternFromString(pathPattern, IoTDBPipePattern::new);
 
+    if (!shouldLoadTreeSchemaSnapshotDatabase(pipePattern, databaseName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
     final TSStatus createDatabaseStatus = createSchemaSnapshotDatabaseIfNecessary(databasePath);
     if (createDatabaseStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return createDatabaseStatus;
@@ -584,10 +583,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return PipeReceiverStatusHandler.getPriorStatus(results);
   }
 
-  static boolean shouldLoadSchemaSnapshotDatabase(
-      final String pathPattern, final String databaseName) {
-    return PipePattern.parsePatternFromString(pathPattern, IoTDBPipePattern::new)
-        .mayOverlapWithDb(databaseName);
+  static boolean shouldLoadTreeSchemaSnapshotDatabase(
+      final String pathPattern,
+      final boolean isTreeModelDataAllowedToBeCaptured,
+      final String databaseName) {
+    return isTreeModelDataAllowedToBeCaptured
+        && shouldLoadTreeSchemaSnapshotDatabase(
+            PipePattern.parsePatternFromString(pathPattern, IoTDBPipePattern::new), databaseName);
+  }
+
+  private static boolean shouldLoadTreeSchemaSnapshotDatabase(
+      final PipePattern pipePattern, final String databaseName) {
+    return pipePattern.mayOverlapWithDb(databaseName);
   }
 
   private TSStatus createSchemaSnapshotDatabaseIfNecessary(final PartialPath databasePath) {

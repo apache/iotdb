@@ -111,12 +111,15 @@ public class IoTDBDataNodeReceiverTest {
   }
 
   @Test
-  public void testSchemaSnapshotDatabaseIsFilteredByPattern() {
+  public void testTreeSchemaSnapshotDatabaseIsFilteredByPattern() {
     Assert.assertTrue(
-        IoTDBDataNodeReceiver.shouldLoadSchemaSnapshotDatabase("root.ln.**", "root.ln"));
-    Assert.assertTrue(IoTDBDataNodeReceiver.shouldLoadSchemaSnapshotDatabase("root.**", "root.db"));
+        IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.ln.**", true, "root.ln"));
+    Assert.assertTrue(
+        IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.**", true, "root.db"));
     Assert.assertFalse(
-        IoTDBDataNodeReceiver.shouldLoadSchemaSnapshotDatabase("root.ln.**", "root.db"));
+        IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.ln.**", true, "root.db"));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.ln.**", false, "root.ln"));
   }
 
   @Test
