@@ -376,7 +376,7 @@ public class ConfigManager implements IManager {
     CQInfo cqInfo = new CQInfo();
     ExternalServiceInfo externalServiceInfo = new ExternalServiceInfo();
     this.permissionManager = createPermissionManager(authorInfo);
-    PipeInfo pipeInfo = new PipeInfo(this.permissionManager::login4Pipe);
+    PipeInfo pipeInfo = new PipeInfo(userName -> this.permissionManager.login4Pipe(userName, null));
     QuotaInfo quotaInfo = new QuotaInfo();
     TTLInfo ttlInfo = new TTLInfo();
     SubscriptionInfo subscriptionInfo = new SubscriptionInfo();

@@ -96,7 +96,7 @@ public class PipeTaskInfoAutoRestartTest {
   public void testEnrichOldUserPipeWithRootUserForCompatibility() {
     final String rootUserName = CommonDescriptor.getInstance().getConfig().getDefaultAdminName();
     final String rootPassword = "root-current-password";
-    pipeTaskInfo = new PipeTaskInfo((username, password) -> rootPassword);
+    pipeTaskInfo = new PipeTaskInfo(username -> rootPassword);
 
     createPipe("oldPipe", PipeStatus.STOPPED);
 
@@ -124,7 +124,7 @@ public class PipeTaskInfoAutoRestartTest {
 
   @Test
   public void testDoNotOverwritePipeWithUserForCompatibility() {
-    pipeTaskInfo = new PipeTaskInfo((username, password) -> "root-current-password");
+    pipeTaskInfo = new PipeTaskInfo(username -> "root-current-password");
 
     createPipeWithSourceAttributes(
         "newPipe",
@@ -149,7 +149,7 @@ public class PipeTaskInfoAutoRestartTest {
 
   @Test
   public void testDoNotEnrichSystemPipeForCompatibility() {
-    pipeTaskInfo = new PipeTaskInfo((username, password) -> "root-current-password");
+    pipeTaskInfo = new PipeTaskInfo(username -> "root-current-password");
 
     createPipeWithSourceAttributes(
         PipeStaticMeta.generateSubscriptionPipeName("topic", "group"),
@@ -173,7 +173,7 @@ public class PipeTaskInfoAutoRestartTest {
   public void testEnrichOldWriteBackSinkWithRootUserForCompatibility() {
     final String rootUserName = CommonDescriptor.getInstance().getConfig().getDefaultAdminName();
     final String rootPassword = "root-current-password";
-    pipeTaskInfo = new PipeTaskInfo((username, password) -> rootPassword);
+    pipeTaskInfo = new PipeTaskInfo(username -> rootPassword);
 
     createPipeWithAttributes(
         "oldWriteBackPipe",
@@ -206,7 +206,7 @@ public class PipeTaskInfoAutoRestartTest {
   @Test
   public void testEnrichLoadedPipeMetasWithRootUserForCompatibility() {
     final String rootPassword = "root-current-password";
-    pipeTaskInfo = new PipeTaskInfo((username, password) -> rootPassword);
+    pipeTaskInfo = new PipeTaskInfo(username -> rootPassword);
 
     createPipeWithSourceAttributes(
         "loadedPipe",

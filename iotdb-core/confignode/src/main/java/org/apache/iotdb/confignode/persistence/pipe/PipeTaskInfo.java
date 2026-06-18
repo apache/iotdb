@@ -80,7 +80,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -97,16 +97,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   // Pure in-memory object, not involved in snapshot serialization and deserialization.
   private final PipeTaskInfoVersion pipeTaskInfoVersion;
-  private final BiFunction<String, String, String> pipeUserPasswordProvider;
+  // Accepts a username and returns its current stored password for pipe authentication.
+  private final Function<String, String> pipeUserCurrentPasswordProvider;
 
   public PipeTaskInfo() {
     this(null);
   }
 
-  public PipeTaskInfo(final BiFunction<String, String, String> pipeUserPasswordProvider) {
+  public PipeTaskInfo(final Function<String, String> pipeUserCurrentPasswordProvider) {
     this.pipeMetaKeeper = new PipeMetaKeeper();
     this.pipeTaskInfoVersion = new PipeTaskInfoVersion();
-    this.pipeUserPasswordProvider = pipeUserPasswordProvider;
+    this.pipeUserCurrentPasswordProvider = pipeUserCurrentPasswordProvider;
   }
 
   /////////////////////////////// Lock ///////////////////////////////
@@ -1022,7 +1023,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private void enrichPipeMetaWithRootUserForCompatibility(final PipeStaticMeta pipeStaticMeta) {
-    if (pipeUserPasswordProvider == null) {
+    if (pipeUserCurrentPasswordProvider == null) {
       return;
     }
     final boolean shouldEnrichSource = pipeStaticMeta.mayNeedCompatibleRootUserForIoTDBSource();
@@ -1032,12 +1033,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final String rootUserName = CommonDescriptor.getInstance().getConfig().getDefaultAdminName();
-    final String password = pipeUserPasswordProvider.apply(rootUserName, null);
+    final String password = pipeUserCurrentPasswordProvider.apply(rootUserName);
     if (Objects.isNull(password)) {
       throw new PipeException(
           String.format(
-              "Failed to enrich pipe %s with root user for compatibility because root user %s does not exist.",
-              pipeStaticMeta.getPipeName(), rootUserName));
+              ConfigNodeMessages
+                  .FAILED_TO_ENRICH_PIPE_WITH_ROOT_USER_FOR_COMPATIBILITY_BECAUSE_ROOT_USER_DOES_NOT_EXIST,
+              pipeStaticMeta.getPipeName(),
+              rootUserName));
     }
 
     if (shouldEnrichSource) {

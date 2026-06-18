@@ -49,7 +49,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class PipeInfo implements SnapshotProcessor {
 
@@ -62,10 +62,10 @@ public class PipeInfo implements SnapshotProcessor {
     this(null);
   }
 
-  public PipeInfo(final BiFunction<String, String, String> pipeUserPasswordProvider)
+  public PipeInfo(final Function<String, String> pipeUserCurrentPasswordProvider)
       throws IOException {
     pipePluginInfo = new PipePluginInfo();
-    pipeTaskInfo = new PipeTaskInfo(pipeUserPasswordProvider);
+    pipeTaskInfo = new PipeTaskInfo(pipeUserCurrentPasswordProvider);
   }
 
   public PipePluginInfo getPipePluginInfo() {
