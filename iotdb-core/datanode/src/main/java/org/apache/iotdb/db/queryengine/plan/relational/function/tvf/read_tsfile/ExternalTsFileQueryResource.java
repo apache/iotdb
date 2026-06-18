@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
@@ -142,8 +143,11 @@ public class ExternalTsFileQueryResource {
         }
         DeviceEntry deviceEntry = new AlignedDeviceEntry(deviceID, new Binary[0]);
         int deviceEntryIndex = sharedDeviceEntries.size();
+        // Reserve the boxed index that partition.add will append to deviceEntryIndexes.
         externalTsFileResourceMemoryReservationManager.reserveMemoryCumulatively(
-            deviceEntry.ramBytesUsed());
+            deviceEntry.ramBytesUsed()
+                + MemoryEstimationHelper.INTEGER_INSTANCE_SIZE
+                + 2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF);
         sharedDeviceEntries.add(deviceEntry);
         DeviceTask deviceTask =
             new DeviceTask(deviceEntryIndex, deviceCollector.getCurrentDeviceOffsets());
@@ -309,6 +313,7 @@ public class ExternalTsFileQueryResource {
     }
 
     void add(DeviceTask deviceTask) {
+      deviceEntryIndexes.add(deviceTask.deviceEntryIndex);
       pendingDeviceTasks.add(deviceTask);
       unreservedBytes += deviceTask.ramBytesUsed();
     }
@@ -326,26 +331,17 @@ public class ExternalTsFileQueryResource {
         throw new RuntimeException(
             DataNodeQueryMessages.FAILED_TO_FLUSH_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION, e);
       }
-      for (DeviceTask deviceTask : pendingDeviceTasks) {
-        deviceEntryIndexes.add(deviceTask.deviceEntryIndex);
-      }
       pendingDeviceTasks.clear();
       releaseDeviceTaskMemory();
     }
 
     private void sortPendingDeviceTasks() {
-      if (deviceEntryComparator != null) {
-        pendingDeviceTasks.sort(
-            (left, right) ->
-                compareDeviceEntryIndexes(left.deviceEntryIndex, right.deviceEntryIndex));
-      } else {
-        pendingDeviceTasks.sort(
-            (left, right) ->
-                sharedDeviceEntries
-                    .get(left.deviceEntryIndex)
-                    .getDeviceID()
-                    .compareTo(sharedDeviceEntries.get(right.deviceEntryIndex).getDeviceID()));
+      if (deviceEntryComparator == null) {
+        return;
       }
+      pendingDeviceTasks.sort(
+          (left, right) ->
+              compareDeviceEntryIndexes(left.deviceEntryIndex, right.deviceEntryIndex));
     }
 
     private boolean shouldFlush() {
@@ -385,30 +381,21 @@ public class ExternalTsFileQueryResource {
     }
 
     void finish() {
-      if (pendingDeviceTasks.isEmpty()) {
-        return;
+      if (!pendingDeviceTasks.isEmpty()) {
+        if (!reserveUnreservedMemory()) {
+          flush();
+        } else {
+          sortPendingDeviceTasks();
+        }
       }
-      if (!reserveUnreservedMemory()) {
-        flush();
-        return;
-      }
-      sortPendingDeviceTasks();
-      for (DeviceTask deviceTask : pendingDeviceTasks) {
-        deviceEntryIndexes.add(deviceTask.deviceEntryIndex);
-      }
+      sortDeviceEntries();
     }
 
     private void sortDeviceEntries() {
-      if (deviceEntryComparator != null) {
-        deviceEntryIndexes.sort(ExternalTsFileQueryResource.this::compareDeviceEntryIndexes);
-      } else {
-        deviceEntryIndexes.sort(
-            (left, right) ->
-                sharedDeviceEntries
-                    .get(left)
-                    .getDeviceID()
-                    .compareTo(sharedDeviceEntries.get(right).getDeviceID()));
+      if (deviceEntryComparator == null) {
+        return;
       }
+      deviceEntryIndexes.sort(ExternalTsFileQueryResource.this::compareDeviceEntryIndexes);
     }
 
     private List<Path> getRunFiles() {
@@ -444,7 +431,6 @@ public class ExternalTsFileQueryResource {
     deviceTaskPartitions.sort(Comparator.comparingInt(DeviceTaskPartition::getPartitionIndex));
     for (DeviceTaskPartition partition : deviceTaskPartitions) {
       partition.finish();
-      partition.sortDeviceEntries();
     }
   }
 
@@ -469,20 +455,36 @@ public class ExternalTsFileQueryResource {
     private Map<TsFileResource, DeviceOffset> currentDeviceOffsetMap;
 
     protected void initialize(DeviceTaskPartition partition) throws IOException {
-      for (Path runFile : partition.getRunFiles()) {
-        DeviceTaskRunCursor cursor = new DiskDeviceTaskRunCursor(runFile);
-        if (cursor.hasCurrentDeviceTask()) {
-          addCursor(cursor);
-        } else {
-          cursor.close();
+      try {
+        for (Path runFile : partition.getRunFiles()) {
+          DeviceTaskRunCursor cursor = new DiskDeviceTaskRunCursor(runFile);
+          if (cursor.hasCurrentDeviceTask()) {
+            addCursor(cursor);
+          } else {
+            cursor.close();
+          }
         }
+        DeviceTaskRunCursor memoryCursor =
+            new MemoryDeviceTaskRunCursor(partition.getPendingDeviceTasks());
+        if (memoryCursor.hasCurrentDeviceTask()) {
+          addCursor(memoryCursor);
+        } else {
+          memoryCursor.close();
+        }
+      } catch (IOException | RuntimeException e) {
+        closeAllCursorsOnInitializationFailure(e);
+        throw e;
       }
-      DeviceTaskRunCursor memoryCursor =
-          new MemoryDeviceTaskRunCursor(partition.getPendingDeviceTasks());
-      if (memoryCursor.hasCurrentDeviceTask()) {
-        addCursor(memoryCursor);
-      } else {
-        memoryCursor.close();
+    }
+
+    private void closeAllCursorsOnInitializationFailure(Exception exception) {
+      DeviceTaskRunCursor cursor;
+      while ((cursor = pollRemainingCursor()) != null) {
+        try {
+          cursor.close();
+        } catch (IOException e) {
+          exception.addSuppressed(e);
+        }
       }
     }
 
@@ -662,10 +664,20 @@ public class ExternalTsFileQueryResource {
     private DeviceTask currentDeviceTask;
 
     private DiskDeviceTaskRunCursor(Path runFile) throws IOException {
-      this.inputStream =
+      DataInputStream inputStream =
           new DataInputStream(new BufferedInputStream(Files.newInputStream(runFile)));
-      this.remainingDeviceTasks = ReadWriteIOUtils.readInt(inputStream);
-      advance();
+      try {
+        this.inputStream = inputStream;
+        this.remainingDeviceTasks = ReadWriteIOUtils.readInt(inputStream);
+        advance();
+      } catch (IOException | RuntimeException e) {
+        try {
+          inputStream.close();
+        } catch (IOException closeException) {
+          e.addSuppressed(closeException);
+        }
+        throw e;
+      }
     }
 
     @Override

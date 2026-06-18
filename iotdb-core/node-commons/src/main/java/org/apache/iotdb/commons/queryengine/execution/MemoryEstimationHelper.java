@@ -46,7 +46,7 @@ public class MemoryEstimationHelper {
 
   public static final long ARRAY_LIST_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
-  private static final long INTEGER_INSTANCE_SIZE =
+  public static final long INTEGER_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Integer.class);
   public static final long TIME_RANGE_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TimeRange.class);
