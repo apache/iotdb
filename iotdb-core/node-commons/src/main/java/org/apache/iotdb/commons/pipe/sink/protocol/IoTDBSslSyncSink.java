@@ -273,7 +273,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
   @Override
   public void discardReceiverRuntimeSessions() {
     if (clientManager != null) {
-      clientManager.close();
+      clientManager.discardReceiverRuntimeSessions();
     }
   }
 }

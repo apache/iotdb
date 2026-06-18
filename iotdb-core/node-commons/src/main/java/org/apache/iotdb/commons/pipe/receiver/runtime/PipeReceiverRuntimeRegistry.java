@@ -121,6 +121,17 @@ public class PipeReceiverRuntimeRegistry {
     }
   }
 
+  public void removePipeFromAllSessions(String pipeName, long pipeCreationTime) {
+    if (isBlank(pipeName)) {
+      return;
+    }
+    for (SessionRuntimeInfo session : sessionInfoMap.values()) {
+      synchronized (session) {
+        session.removePipe(pipeName, pipeCreationTime);
+      }
+    }
+  }
+
   public void deregister(String connectionKey) {
     if (!isBlank(connectionKey)) {
       sessionInfoMap.remove(connectionKey);

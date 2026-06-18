@@ -556,6 +556,23 @@ public class PipeReceiverRuntimeRegistryTest {
   }
 
   @Test
+  public void testRemovePipeFromAllSessions() {
+    registerDataSession("data-1", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
+    registerDataSession("data-2", 1, "10.0.0.1", 9002, "root", "cluster-a", "pipe-a", 1, 200);
+    registerDataSession("data-3", 1, "10.0.0.1", 9003, "root", "cluster-a", "pipe-b", 2, 300);
+
+    registry.removePipeFromAllSessions("pipe-a", 1);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    assertEquals(3, snapshots.get(0).getConnectionCount());
+    assertEquals(1, snapshots.get(0).getPipeCount());
+    assertFalse(snapshots.get(0).getPipeIds().contains("pipe-a@"));
+    assertTrue(snapshots.get(0).getPipeIds().contains("pipe-b@"));
+  }
+
+  @Test
   public void testMultipleConnectionsAndDuplicatePipeAggregationDoesNotInflatePipeCount() {
     registerDataSession("data-1", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
     registerDataSession("data-2", 1, "10.0.0.1", 9002, "root", "cluster-a", "pipe-a", 1, 200);

@@ -45,6 +45,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferPipeReceiverRuntimeInfoCleanupReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -456,6 +457,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferCompressedTimer(System.nanoTime() - startTime);
               }
+            }
+          case TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP:
+            {
+              final PipeTransferPipeReceiverRuntimeInfoCleanupReq cleanupReq =
+                  PipeTransferPipeReceiverRuntimeInfoCleanupReq.fromTPipeTransferReq(req);
+              PipeReceiverRuntimeRegistry.getInstance()
+                  .removePipeFromAllSessions(
+                      cleanupReq.getPipeName(), cleanupReq.getPipeCreationTime());
+              return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
             }
           default:
             break;

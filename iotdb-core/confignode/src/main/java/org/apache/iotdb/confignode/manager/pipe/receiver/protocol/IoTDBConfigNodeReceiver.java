@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferPipeReceiverRuntimeInfoCleanupReq;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -229,6 +230,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             return recordConfigNodeTransferIfSuccess(resp);
           case TRANSFER_COMPRESSED:
             return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+          case TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP:
+            final PipeTransferPipeReceiverRuntimeInfoCleanupReq cleanupReq =
+                PipeTransferPipeReceiverRuntimeInfoCleanupReq.fromTPipeTransferReq(req);
+            PipeReceiverRuntimeRegistry.getInstance()
+                .removePipeFromAllSessions(
+                    cleanupReq.getPipeName(), cleanupReq.getPipeCreationTime());
+            return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
           default:
             break;
         }
@@ -262,7 +270,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private boolean needHandshake(final PipeRequestType type) {
     return Objects.isNull(receiverFileDirWithIdSuffix.get())
         && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V1
-        && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V2;
+        && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V2
+        && type != PipeRequestType.TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP;
   }
 
   private TPipeTransferResp recordConfigNodeHandshakeIfSuccess(
