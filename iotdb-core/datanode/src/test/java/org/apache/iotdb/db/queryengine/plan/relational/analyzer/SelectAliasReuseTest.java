@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
@@ -253,6 +254,20 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void lateralColumnAliasSupportsWideSelectListChain() {
+    int aliasCount = 64;
+    String sql = wideLateralColumnAliasSql(aliasCount);
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertEquals(
+        aliasCount + 1, analyzedQuery.analysis.getSelectExpressions(analyzedQuery.query).size());
+    assertTrue(
+        getSelectExpression(analyzedQuery, aliasCount) instanceof ArithmeticBinaryExpression);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
   public void lateralColumnAliasDoesNotSupportForwardOrSelfReference() {
     assertAnalyzeSemanticException(
         "SELECT y + 1 AS x, s1 AS y FROM table1", "Column 'y' cannot be resolved");
@@ -269,6 +284,20 @@ public class SelectAliasReuseTest {
     assertArithmeticIdentifiers(getSelectExpression(analyzedQuery, 1), "x", null);
 
     new PlanTester().createPlan(sql);
+  }
+
+  @Test
+  public void lateralColumnAliasHonorsDelimitedCaseSensitivity() {
+    String exactMatch = "SELECT s1 AS \"x\", \"x\" + 1 AS y FROM table1";
+    AnalyzedQuery analyzedQuery = analyze(exactMatch);
+    assertArithmeticIdentifiers(getSelectExpression(analyzedQuery, 1), "s1", null);
+    new PlanTester().createPlan(exactMatch);
+
+    assertAnalyzeSemanticException(
+        "SELECT s1 AS \"x\", x + 1 AS y FROM table1", "Column 'x' cannot be resolved");
+
+    assertAnalyzeSemanticException(
+        "SELECT s1 AS x, \"x\" + 1 AS y FROM table1", "Column 'x' cannot be resolved");
   }
 
   @Test
@@ -339,6 +368,16 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void selectDistinctSupportsLateralColumnAliasWithoutOrderBy() {
+    String sql = "SELECT DISTINCT s1 AS x, x + 1 AS y FROM table1";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertArithmeticIdentifiers(getSelectExpression(analyzedQuery, 1), "s1", null);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
   public void columnsSelectItemDoesNotRegisterLateralColumnAlias() {
     assertAnalyzeSemanticException(
         "SELECT COLUMNS('s.*') AS x, x + 1 AS y FROM table1", "Column 'x' cannot be resolved");
@@ -373,6 +412,27 @@ public class SelectAliasReuseTest {
     FunctionCall avg = (FunctionCall) getSelectExpression(analyzedPartitionBy, 1);
     assertIdentifier(analyzedPartitionBy.analysis.getWindow(avg).getPartitionBy().get(0), "s1");
     new PlanTester().createPlan(partitionBySql);
+  }
+
+  @Test
+  public void namedWindowDefinitionDoesNotSeeLateralColumnAlias() {
+    assertAnalyzeSemanticException(
+        "SELECT s1 AS x, row_number() OVER w AS rn FROM table1 WINDOW w AS (ORDER BY x)",
+        "Column 'x' cannot be resolved");
+  }
+
+  @Test
+  public void lateralColumnAliasCanBeUsedInWindowFrameBounds() {
+    String sql =
+        "SELECT s1 AS x, sum(s2) OVER "
+            + "(ORDER BY time ROWS BETWEEN x PRECEDING AND CURRENT ROW) AS total FROM table1";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    FunctionCall sum = (FunctionCall) getSelectExpression(analyzedQuery, 1);
+    FrameBound start = analyzedQuery.analysis.getWindow(sum).getFrame().get().getStart();
+    assertIdentifier(start.getValue().get(), "s1");
+
+    new PlanTester().createPlan(sql);
   }
 
   @Test
@@ -551,6 +611,15 @@ public class SelectAliasReuseTest {
                 .getRelationType()
                 .getVisibleFields());
     return fields.get(index).getName().orElse(null);
+  }
+
+  private static String wideLateralColumnAliasSql(int aliasCount) {
+    StringBuilder sql = new StringBuilder("SELECT s1 AS c0");
+    for (int i = 1; i < aliasCount; i++) {
+      sql.append(", c").append(i - 1).append(" + 1 AS c").append(i);
+    }
+    sql.append(", c0 + c").append(aliasCount - 1).append(" AS final_value FROM table1");
+    return sql.toString();
   }
 
   private static void assertArithmeticIdentifiers(

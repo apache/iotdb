@@ -442,7 +442,13 @@ public class StatementAnalyzer {
     }
   }
 
-  private static final class SelectAliasLookup {
+  private interface SelectAliasResolver {
+    boolean isEmpty();
+
+    Optional<SelectAlias> resolve(Identifier identifier);
+  }
+
+  private static final class SelectAliasLookup implements SelectAliasResolver {
     private final Map<String, List<SelectAlias>> aliasesByCanonicalName;
     private final int size;
 
@@ -464,11 +470,18 @@ public class StatementAnalyzer {
       return new Builder();
     }
 
-    private boolean isEmpty() {
+    @Override
+    public boolean isEmpty() {
       return size == 0;
     }
 
-    private Optional<SelectAlias> resolve(Identifier identifier) {
+    @Override
+    public Optional<SelectAlias> resolve(Identifier identifier) {
+      return resolveFrom(aliasesByCanonicalName, identifier);
+    }
+
+    private static Optional<SelectAlias> resolveFrom(
+        Map<String, List<SelectAlias>> aliasesByCanonicalName, Identifier identifier) {
       List<SelectAlias> matches = aliasesByCanonicalName.get(identifier.getCanonicalValue());
       if (matches == null || matches.isEmpty()) {
         return Optional.empty();
@@ -485,7 +498,7 @@ public class StatementAnalyzer {
       return Optional.of(matches.get(0));
     }
 
-    private static final class Builder {
+    private static final class Builder implements SelectAliasResolver {
       private final Map<String, List<SelectAlias>> aliasesByCanonicalName = new HashMap<>();
       private int size;
 
@@ -501,8 +514,14 @@ public class StatementAnalyzer {
         return new SelectAliasLookup(aliasesByCanonicalName);
       }
 
-      private boolean isEmpty() {
+      @Override
+      public boolean isEmpty() {
         return size == 0;
+      }
+
+      @Override
+      public Optional<SelectAlias> resolve(Identifier identifier) {
+        return resolveFrom(aliasesByCanonicalName, identifier);
       }
     }
   }
@@ -515,12 +534,12 @@ public class StatementAnalyzer {
   }
 
   private static Optional<SelectAlias> resolveSelectAlias(
-      Identifier identifier, SelectAliasLookup aliases) {
+      Identifier identifier, SelectAliasResolver aliases) {
     return aliases.resolve(identifier);
   }
 
   private static Expression rewriteLateralColumnAliases(
-      Expression expression, Scope scope, SelectAliasLookup visibleAliases) {
+      Expression expression, Scope scope, SelectAliasResolver visibleAliases) {
     if (visibleAliases.isEmpty()) {
       return expression;
     }
@@ -529,7 +548,7 @@ public class StatementAnalyzer {
   }
 
   private static LateralColumnAliasRewrite rewriteLateralColumnAliasesWithReferences(
-      Expression expression, Scope scope, SelectAliasLookup visibleAliases) {
+      Expression expression, Scope scope, SelectAliasResolver visibleAliases) {
     if (visibleAliases.isEmpty()) {
       return new LateralColumnAliasRewrite(expression, ImmutableMap.of());
     }
@@ -563,11 +582,11 @@ public class StatementAnalyzer {
 
   private static final class LateralColumnAliasRewriter extends ExpressionRewriter<Void> {
     private final Scope scope;
-    private final SelectAliasLookup visibleAliases;
+    private final SelectAliasResolver visibleAliases;
     private final ImmutableMap.Builder<NodeRef<Expression>, Expression> references =
         ImmutableMap.builder();
 
-    private LateralColumnAliasRewriter(Scope scope, SelectAliasLookup visibleAliases) {
+    private LateralColumnAliasRewriter(Scope scope, SelectAliasResolver visibleAliases) {
       this.scope = requireNonNull(scope, "scope is null");
       this.visibleAliases = requireNonNull(visibleAliases, "visibleAliases is null");
     }
@@ -2158,7 +2177,6 @@ public class StatementAnalyzer {
       SelectAliasLookup.Builder selectAliasBuilder = SelectAliasLookup.builder();
       ImmutableMap.Builder<NodeRef<SingleColumn>, Expression> singleColumnExpressionBuilder =
           ImmutableMap.builder();
-      SelectAliasLookup.Builder visibleAliasBuilder = SelectAliasLookup.builder();
 
       int outputPosition = 1;
       for (SelectItem item : node.getSelect().getSelectItems()) {
@@ -2185,9 +2203,9 @@ public class StatementAnalyzer {
               outputPosition++;
             }
           } else {
-            SelectAliasLookup visibleAliases = visibleAliasBuilder.build();
             LateralColumnAliasRewrite lateralColumnAliasRewrite =
-                rewriteLateralColumnAliasesWithReferences(selectExpression, scope, visibleAliases);
+                rewriteLateralColumnAliasesWithReferences(
+                    selectExpression, scope, selectAliasBuilder);
             Expression rewrittenExpression = lateralColumnAliasRewrite.getExpression();
             resolveFunctionCallAndMeasureWindows(node, rewrittenExpression);
             analyzeSelectSingleColumn(
@@ -2203,7 +2221,6 @@ public class StatementAnalyzer {
               SelectAlias selectAlias =
                   new SelectAlias(alias.getCanonicalValue(), outputPosition, rewrittenExpression);
               selectAliasBuilder.add(selectAlias);
-              visibleAliasBuilder.add(selectAlias);
             }
             outputPosition++;
           }
