@@ -148,8 +148,7 @@ public class PipeSinkSubtaskManager {
       for (int sinkIndex = 0; sinkIndex < sinkNum; sinkIndex++) {
         final String taskID =
             String.format(
-                "%s_%s_%s",
-                attributeDisplayStringWithPrefix, environment.getCreationTime(), sinkIndex);
+                "%s_%s_%s", attributeSortedString, environment.getCreationTime(), sinkIndex);
         environment.setSinkTaskId(taskID);
 
         final PipeConnector pipeSink =
@@ -184,6 +183,7 @@ public class PipeSinkSubtaskManager {
             new PipeSinkSubtask(
                 taskID,
                 environment.getCreationTime(),
+                attributeSortedString,
                 attributeDisplayStringWithPrefix,
                 sinkIndex,
                 pendingQueue,
@@ -293,13 +293,15 @@ public class PipeSinkSubtaskManager {
     return sortedStringSourceMap.toString();
   }
 
-  /** Masked attribute string for logs, metrics and exception messages. */
-  private static String generateAttributeDisplayString(
-      final PipeParameters pipeConnectorParameters) {
+  /**
+   * Attribute string for logs, metrics and exception messages with sensitive attributes removed.
+   */
+  static String generateAttributeDisplayString(final PipeParameters pipeConnectorParameters) {
     final TreeMap<String, String> filteredAttributes =
         new TreeMap<>(pipeConnectorParameters.getAttribute());
     filteredAttributes.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
-    return new PipeParameters(filteredAttributes).toString();
+    filteredAttributes.keySet().removeIf(PipeParameters.ValueHider::isHiddenKey);
+    return filteredAttributes.toString();
   }
 
   private void throwNoSuchSubtaskException(final String attributeSortedString) {

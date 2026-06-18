@@ -99,7 +99,7 @@ public abstract class PipeSubtaskExecutor {
 
   public final synchronized void register(final PipeSubtask subtask) {
     if (registeredIdSubtaskMapper.containsKey(subtask.getTaskID())) {
-      LOGGER.warn(PipeMessages.SUBTASK_ALREADY_REGISTERED, getSafeSubtaskStr(subtask.getTaskID()));
+      LOGGER.warn(PipeMessages.SUBTASK_ALREADY_REGISTERED, subtask.getDisplayTaskID());
       return;
     }
 
@@ -125,13 +125,13 @@ public abstract class PipeSubtaskExecutor {
     final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
     if (subtask.isSubmittingSelf()) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(PipeMessages.SUBTASK_ALREADY_RUNNING, getSafeSubtaskStr(subTaskID));
+        LOGGER.debug(PipeMessages.SUBTASK_ALREADY_RUNNING, subtask.getDisplayTaskID());
       }
     } else {
       subtask.allowSubmittingSelf();
       subtask.submitSelf();
       ++runningSubtaskNumber;
-      LOGGER.info(PipeMessages.SUBTASK_STARTED, getSafeSubtaskStr(subTaskID));
+      LOGGER.info(PipeMessages.SUBTASK_STARTED, subtask.getDisplayTaskID());
     }
   }
 
@@ -154,9 +154,9 @@ public abstract class PipeSubtaskExecutor {
     if (subtask != null) {
       try {
         subtask.close();
-        LOGGER.info(PipeMessages.SUBTASK_CLOSED, getSafeSubtaskStr(subTaskID));
+        LOGGER.info(PipeMessages.SUBTASK_CLOSED, subtask.getDisplayTaskID());
       } catch (final Exception e) {
-        LOGGER.error(PipeMessages.SUBTASK_CLOSE_FAILED, getSafeSubtaskStr(subTaskID), e);
+        LOGGER.error(PipeMessages.SUBTASK_CLOSE_FAILED, subtask.getDisplayTaskID(), e);
       }
     }
   }
