@@ -110,7 +110,7 @@ public class IoTDBRestServiceDescriptor {
         trimProperties.getProperty("trust_store_path", conf.getTrustStorePath()));
     conf.setTrustStorePwd(trimProperties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
     conf.setSslProtocol(
-        RpcSslUtils.normalizeStandardTlsProtocol(
+        RpcSslUtils.normalizeProtocol(
             trimProperties.getProperty("ssl_protocol", conf.getSslProtocol())));
     conf.setIdleTimeoutInSeconds(
         Integer.parseInt(

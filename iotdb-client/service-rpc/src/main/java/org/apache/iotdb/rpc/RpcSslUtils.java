@@ -28,10 +28,13 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.AccessDeniedException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
@@ -132,25 +135,6 @@ public final class RpcSslUtils {
     return protocol;
   }
 
-  public static boolean isSpecificProtocol(String sslProtocol) {
-    String trimmed = trimToEmpty(sslProtocol);
-    return !trimmed.isEmpty() && !DEFAULT_PROTOCOL.equals(trimmed.toUpperCase(Locale.ROOT));
-  }
-
-  public static String normalizeStandardTlsProtocol(String sslProtocol) {
-    String protocol = normalizeProtocol(sslProtocol);
-    if (!isStandardTlsProtocol(protocol)) {
-      throw new IllegalArgumentException(
-          "Unsupported SSL protocol " + protocol + ". Only standard TLS protocols are supported.");
-    }
-    return protocol;
-  }
-
-  public static boolean isStandardTlsProtocol(String sslProtocol) {
-    String protocol = normalizeProtocol(sslProtocol).toUpperCase(Locale.ROOT);
-    return DEFAULT_PROTOCOL.equals(protocol) || protocol.matches("TLSV\\d+(\\.\\d+)*");
-  }
-
   public static void validateKeyStore(String keyStorePath, String keyStorePassword)
       throws TTransportException {
     validateStore(keyStorePath, keyStorePassword);
@@ -207,11 +191,11 @@ public final class RpcSslUtils {
   private static KeyStore loadStore(String storePath, String storePassword, String storeType)
       throws GeneralSecurityException, IOException {
     KeyStore store = KeyStore.getInstance(storeType);
-    try (FileInputStream fis = new FileInputStream(storePath)) {
-      store.load(fis, toPassword(storePassword));
+    try (InputStream inputStream = Files.newInputStream(Path.of(storePath))) {
+      store.load(inputStream, toPassword(storePassword));
     } catch (AccessDeniedException e) {
       throw new AccessDeniedException("Failed to load keystore or truststore file");
-    } catch (FileNotFoundException e) {
+    } catch (FileNotFoundException | NoSuchFileException e) {
       throw new FileNotFoundException("keystore or truststore file not found: " + storePath);
     }
     return store;
@@ -237,7 +221,7 @@ public final class RpcSslUtils {
     return password == null ? null : password.toCharArray();
   }
 
-  private static String normalizeProtocol(String value) {
+  public static String normalizeProtocol(String value) {
     String trimmed = trimToEmpty(value);
     return trimmed.isEmpty() ? DEFAULT_PROTOCOL : trimmed;
   }

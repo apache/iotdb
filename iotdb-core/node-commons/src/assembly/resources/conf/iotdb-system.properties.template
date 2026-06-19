@@ -475,7 +475,8 @@ trust_store_path=
 trust_store_pwd=
 
 # SSL protocol used by server-side SSL services.
-# Only standard TLS protocol names are supported, such as TLS, TLSv1.2, or TLSv1.3.
+# The protocol is passed to the current JSSE provider, such as TLS, TLSv1.2,
+# TLSv1.3, or another provider-specific SSL protocol name.
 # effectiveMode: restart
 # Datatype: String
 # Privilege: SECURITY

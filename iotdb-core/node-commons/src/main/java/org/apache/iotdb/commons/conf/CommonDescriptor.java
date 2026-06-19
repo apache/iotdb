@@ -660,7 +660,7 @@ public class CommonDescriptor {
         properties.getProperty("trust_store_path", config.getTrustStorePath()));
     config.setTrustStorePwd(properties.getProperty("trust_store_pwd", config.getTrustStorePwd()));
     config.setSslProtocol(
-        RpcSslUtils.normalizeStandardTlsProtocol(
+        RpcSslUtils.normalizeProtocol(
             properties.getProperty("ssl_protocol", config.getSslProtocol())));
     configureRpcSsl();
   }
