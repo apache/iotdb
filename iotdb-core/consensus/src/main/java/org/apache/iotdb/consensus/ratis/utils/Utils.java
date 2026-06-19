@@ -55,7 +55,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -368,14 +367,8 @@ public class Utils {
       String trustStorePassword = config.getGrpc().getSslTrustStorePassword();
       try {
         KeyManager keyManager = RpcSslUtils.createKeyManagers(keyStorePath, keyStorePassword)[0];
-        TrustManager originalTrustManager =
-            RpcSslUtils.createTrustManagers(trustStorePath, trustStorePassword)[0];
-
-        // The self-signed certification may not set Subject Alternative Name (SAN)
-        // Thrift with ssl didn't check it, but Grpc did.
-        // Wrap to disable the verification
         TrustManager trustManager =
-            new NoHostnameVerificationTrustManager((X509TrustManager) originalTrustManager);
+            RpcSslUtils.createTrustManagers(trustStorePath, trustStorePassword)[0];
         GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
       } catch (AccessDeniedException e) {
         LOGGER.error(ConsensusMessages.FAILED_TO_LOAD_KEYSTORE);
