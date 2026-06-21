@@ -149,9 +149,9 @@ public interface CommonConfig {
 
   CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte);
 
-  CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
+  CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode);
 
-  CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
+  CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode);
 
   CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled);
 
