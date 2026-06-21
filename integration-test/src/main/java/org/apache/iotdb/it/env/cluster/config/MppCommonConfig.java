@@ -466,13 +466,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode) {
     setProperty("data_region_per_data_node", String.valueOf(dataRegionPerDataNode));
     return this;
   }
 
   @Override
-  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  public CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     setProperty("schema_region_per_data_node", String.valueOf(schemaRegionPerDataNode));
     return this;
   }

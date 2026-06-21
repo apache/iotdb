@@ -74,9 +74,6 @@ public class EventService {
           null,
           null);
 
-  private static final long HEARTBEAT_INTERVAL =
-      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
-
   // Event executor service
   private final Object eventServiceMonitor = new Object();
 
@@ -120,7 +117,7 @@ public class EventService {
                 eventServiceExecutor,
                 this::broadcastChangeEventIfNecessary,
                 0,
-                HEARTBEAT_INTERVAL,
+                ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
                 TimeUnit.MILLISECONDS);
         LOGGER.info(ManagerMessages.EVENT_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
@@ -140,6 +137,24 @@ public class EventService {
         previousRegionGroupStatisticsMap.clear();
         previousConsensusGroupStatisticsMap.clear();
       }
+    }
+  }
+
+  /** Reload the event-check interval without rebuilding the service instance. */
+  public void reloadHeartbeatInterval() {
+    synchronized (eventServiceMonitor) {
+      if (currentEventServiceFuture == null) {
+        return;
+      }
+      currentEventServiceFuture.cancel(false);
+      currentEventServiceFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              eventServiceExecutor,
+              this::broadcastChangeEventIfNecessary,
+              0,
+              ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
+              TimeUnit.MILLISECONDS);
+      LOGGER.info(ManagerMessages.EVENT_SERVICE_IS_STARTED_SUCCESSFULLY);
     }
   }
 
