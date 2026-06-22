@@ -100,7 +100,7 @@ public class PipeCommitQueueTest {
     private final ProgressIndex progressIndex;
 
     private TestEnrichedEvent(final long commitId, final ProgressIndex progressIndex) {
-      this(
+      super(
           null,
           0,
           PipeCommitQueueTest.this.pipeTaskMeta,
@@ -122,32 +122,6 @@ public class PipeCommitQueueTest {
     }
 
     /////////////////////////////// Useless logic ///////////////////////////////
-
-    protected TestEnrichedEvent(
-        final String pipeName,
-        final long creationTime,
-        final PipeTaskMeta pipeTaskMeta,
-        final TreePattern treePattern,
-        final TablePattern tablePattern,
-        final String userId,
-        final String userName,
-        final String cliHostname,
-        final boolean skipIfNoPrivileges,
-        final long startTime,
-        final long endTime) {
-      super(
-          pipeName,
-          creationTime,
-          pipeTaskMeta,
-          treePattern,
-          tablePattern,
-          userId,
-          userName,
-          cliHostname,
-          skipIfNoPrivileges,
-          startTime,
-          endTime);
-    }
 
     @Override
     public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
