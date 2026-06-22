@@ -452,6 +452,12 @@ public class SessionPool extends org.apache.iotdb.session.pool.SessionPool imple
     }
 
     @Override
+    public Builder sslProtocol(String sslProtocol) {
+      super.sslProtocol(sslProtocol);
+      return this;
+    }
+
+    @Override
     public Builder host(String host) {
       super.host(host);
       return this;
