@@ -644,6 +644,10 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void addExternalTsFileQueryResource(
       ExternalTsFileQueryResource externalTsFileQueryResource) {
+    if (this.externalTsFileQueryResource != null) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_ALREADY_BEEN_SET);
+    }
     this.externalTsFileQueryResource = externalTsFileQueryResource;
   }
 
