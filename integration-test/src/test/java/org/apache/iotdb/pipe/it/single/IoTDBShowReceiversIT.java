@@ -19,17 +19,22 @@
 
 package org.apache.iotdb.pipe.it.single;
 
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.awaitility.Awaitility;
 import org.junit.Assert;
@@ -192,6 +197,75 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         password);
   }
 
+  @Test
+  public void testOldSenderRuntimeShowsUnknownPipeIdsAndDisappearsAfterClientClose()
+      throws Exception {
+    final DataNodeWrapper receiverDataNode = env.getDataNodeWrapper(0);
+    final int receiverDataNodeId = getDataNodeId(receiverDataNode);
+
+    final IoTDBSyncClient client = createPipeTransferClient(receiverDataNode);
+    try {
+      sendOldDataNodeHandshake(client);
+
+      assertOldSenderReceiverRuntime(
+          "show receivers", BaseEnv.TREE_SQL_DIALECT, receiverDataNodeId);
+      assertOldSenderReceiverRuntime(
+          "select * from information_schema.receivers",
+          BaseEnv.TABLE_SQL_DIALECT,
+          receiverDataNodeId);
+    } finally {
+      client.close();
+    }
+
+    assertNoThriftReceiverRuntimeOnDataNode(
+        "show receivers", BaseEnv.TREE_SQL_DIALECT, receiverDataNodeId);
+    assertNoThriftReceiverRuntimeOnDataNode(
+        "select * from information_schema.receivers",
+        BaseEnv.TABLE_SQL_DIALECT,
+        receiverDataNodeId);
+  }
+
+  @Test
+  public void testReceiverRuntimeClearedAfterDataNodeRestartAndCanReconnect() throws Exception {
+    Assert.assertTrue(env.getDataNodeWrapperList().size() >= 2);
+    final int restartedDataNodeIndex = 0;
+    final DataNodeWrapper restartedDataNode = env.getDataNodeWrapper(restartedDataNodeIndex);
+    final int restartedDataNodeId = getDataNodeId(restartedDataNode);
+
+    IoTDBSyncClient client = createPipeTransferClient(restartedDataNode);
+    try {
+      sendOldDataNodeHandshake(client);
+      assertOldSenderReceiverRuntime(
+          "show receivers", BaseEnv.TREE_SQL_DIALECT, restartedDataNodeId);
+
+      env.shutdownDataNode(restartedDataNodeIndex);
+    } finally {
+      client.close();
+    }
+
+    env.ensureNodeStatus(
+        Collections.singletonList(restartedDataNode),
+        Collections.singletonList(NodeStatus.Unknown));
+    assertNoThriftReceiverRuntimeOnDataNode(
+        "show receivers", BaseEnv.TREE_SQL_DIALECT, restartedDataNodeId);
+
+    env.startDataNode(restartedDataNodeIndex);
+    env.ensureNodeStatus(
+        Collections.singletonList(restartedDataNode),
+        Collections.singletonList(NodeStatus.Running));
+
+    client = createPipeTransferClient(restartedDataNode);
+    try {
+      sendOldDataNodeHandshake(client);
+      assertOldSenderReceiverRuntime(
+          "select * from information_schema.receivers",
+          BaseEnv.TABLE_SQL_DIALECT,
+          restartedDataNodeId);
+    } finally {
+      client.close();
+    }
+  }
+
   private void createWriteBackPipe(final String database, final String pipeName) {
     TestUtils.executeNonQueries(
         env,
@@ -332,6 +406,96 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
             () -> Assert.assertFalse(hasAnyReceiver(sql, sqlDialect, userName, password)));
   }
 
+  private IoTDBSyncClient createPipeTransferClient(final DataNodeWrapper dataNodeWrapper)
+      throws Exception {
+    return new IoTDBSyncClient(
+        new ThriftClientProperty.Builder().build(),
+        dataNodeWrapper.getIp(),
+        dataNodeWrapper.getPort(),
+        false,
+        null,
+        null);
+  }
+
+  private void sendOldDataNodeHandshake(final IoTDBSyncClient client) throws Exception {
+    final TPipeTransferResp resp =
+        client.pipeTransfer(
+            PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
+                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
+  }
+
+  private void assertOldSenderReceiverRuntime(
+      final String sql, final String sqlDialect, final int receiverDataNodeId) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(1L, TimeUnit.SECONDS)
+        .pollInterval(1L, TimeUnit.SECONDS)
+        .atMost(60L, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                Assert.assertTrue(
+                    hasOldSenderReceiverRuntime(sql, sqlDialect, receiverDataNodeId)));
+  }
+
+  private boolean hasOldSenderReceiverRuntime(
+      final String sql, final String sqlDialect, final int receiverDataNodeId) throws SQLException {
+    try (final Connection connection =
+            getAvailableReceiverQueryConnection(
+                SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet = statement.executeQuery(sql)) {
+      while (resultSet.next()) {
+        if ("DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
+            && receiverDataNodeId == getInt(resultSet, "ReceiverNodeId", "receiver_node_id")
+            && "thrift".equals(getString(resultSet, "Protocol", "protocol"))
+            && "Unknown".equals(getString(resultSet, "SenderClusterId", "sender_cluster_id"))
+            && SessionConfig.DEFAULT_USER.equals(getString(resultSet, "UserName", "user_name"))
+            && getString(resultSet, "SenderAddress", "sender_address") != null
+            && getString(resultSet, "SenderPorts", "sender_ports") != null
+            && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
+            && getInt(resultSet, "PipeCount", "pipe_count") == 0
+            && "Unknown".equals(getString(resultSet, "PipeIDs", "pipe_ids"))
+            && getString(resultSet, "LastHandshakeTime", "last_handshake_time") != null
+            && getString(resultSet, "LastTransferTime", "last_transfer_time") != null) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  private void assertNoThriftReceiverRuntimeOnDataNode(
+      final String sql, final String sqlDialect, final int receiverDataNodeId) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(1L, TimeUnit.SECONDS)
+        .pollInterval(1L, TimeUnit.SECONDS)
+        .atMost(60L, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                Assert.assertFalse(
+                    hasThriftReceiverRuntimeOnDataNode(sql, sqlDialect, receiverDataNodeId)));
+  }
+
+  private boolean hasThriftReceiverRuntimeOnDataNode(
+      final String sql, final String sqlDialect, final int receiverDataNodeId) throws SQLException {
+    try (final Connection connection =
+            getAvailableReceiverQueryConnection(
+                SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet = statement.executeQuery(sql)) {
+      while (resultSet.next()) {
+        if ("DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
+            && receiverDataNodeId == getInt(resultSet, "ReceiverNodeId", "receiver_node_id")
+            && "thrift".equals(getString(resultSet, "Protocol", "protocol"))) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
   private boolean hasExpectedReceiver(
       final String sql, final String sqlDialect, final String pipeName) throws SQLException {
     return hasExpectedReceiver(
@@ -458,6 +622,16 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
     // product cluster-level plan, but avoids the test wrapper comparing independently collected
     // snapshots from multiple client entry points.
     return env.getConnection(env.getDataNodeWrapper(0), userName, password, sqlDialect);
+  }
+
+  private Connection getAvailableReceiverQueryConnection(
+      final String userName, final String password, final String sqlDialect) throws SQLException {
+    for (final DataNodeWrapper dataNodeWrapper : env.getDataNodeWrapperList()) {
+      if (dataNodeWrapper.isAlive()) {
+        return env.getConnection(dataNodeWrapper, userName, password, sqlDialect);
+      }
+    }
+    return getReceiverQueryConnection(userName, password, sqlDialect);
   }
 
   private int getDataNodeId(final DataNodeWrapper targetDataNode) throws Exception {
