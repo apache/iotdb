@@ -346,6 +346,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
       "enable =  true",
       "true",
       "false",
+      "2024-06-28 08:00:00",
     };
     for (int i = 0; i < generateDataSize; i++) {
       tablet.addValue(

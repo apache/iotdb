@@ -140,6 +140,45 @@ public final class DataNodePipeMessages {
           + "node may not be ready yet, and meta will be pushed by config node later.";
   public static final String FAILED_TO_PERSIST_PROGRESS_INDEX_TO_CONFIGNODE =
       "Failed to persist progress index to configNode, status: {}";
+  public static final String SHUTDOWN_PROGRESS_NOT_CONFIRMED =
+      "This shutdown progress was not confirmed to be persisted on ConfigNode.";
+  public static final String START_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+      "Start to persist all pipe progress indexes during shutdown, pipe count {}, deadline {} ms";
+  public static final String
+      INTERRUPTED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "Interrupted while persisting all pipe progress indexes during shutdown. "
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String
+      TIMED_OUT_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "Timed out after {} ms while persisting all pipe progress indexes during shutdown. "
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String FAILED_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+      "Failed to persist all pipe progress indexes during shutdown within {} ms. "
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String COLLECTED_PIPE_METAS_FOR_SHUTDOWN_PROGRESS_PERSIST =
+      "Collected pipe metas for shutdown progress persist, pipe count {}, pipe meta count {}, "
+          + "pipe meta size {} bytes, took {} ms";
+  public static final String COLLECTED_EMPTY_PIPE_METAS_DURING_SHUTDOWN =
+      "Collected empty pipe metas for {} pipes during shutdown.";
+  public static final String START_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+      "Start to pushHeartbeat shutdown pipe meta to ConfigNode, dataNode id {}, pipe count {}, "
+          + "pipe meta count {}, pipe meta size {} bytes";
+  public static final String FAILED_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+      "Failed to pushHeartbeat shutdown pipe meta to ConfigNode, status {}, took {} ms. "
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String
+      SUCCESSFULLY_FINISHED_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+          "Successfully finished pushHeartbeat shutdown pipe meta to ConfigNode, pipe count {}, "
+              + "pipe meta count {}, pipe meta size {} bytes, took {} ms";
+  public static final String
+      EXCEPTION_OCCURRED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "Exception occurred while persisting all pipe progress indexes during shutdown. "
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String PERSISTING_PIPE_PROGRESS_INDEXES_BEFORE_SHUTDOWN =
+      "Persisting pipe progress indexes before shutdown with timeout {} ms.";
+  public static final String PIPE_PROGRESS_INDEXES_WERE_NOT_CONFIRMED_DURING_SHUTDOWN =
+      "Pipe progress indexes were not confirmed by ConfigNode during shutdown. "
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
   public static final String FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS =
       "Failure when register pipe plugin {}. Skip this plugin and continue startup.";
   public static final String

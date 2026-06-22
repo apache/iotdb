@@ -387,8 +387,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
     }
 
     try {
-      TestUtils.restartCluster(senderEnv);
       TestUtils.restartCluster(receiverEnv);
+      TestUtils.restartCluster(senderEnv);
     } catch (final Throwable e) {
       e.printStackTrace();
       return;

@@ -20,11 +20,15 @@
 package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
@@ -152,6 +156,145 @@ public class PipeTaskInfoAutoRestartTest {
         treePipeStaticMeta.getCreationTime(), tablePipeStaticMeta.getCreationTime());
   }
 
+  @Test
+  public void testEnrichOldUserPipeWithRootUserForCompatibility() {
+    final String rootUserName = CommonDescriptor.getInstance().getConfig().getDefaultAdminName();
+    final String rootPassword = "root-current-password";
+    pipeTaskInfo = new PipeTaskInfo(username -> rootPassword);
+
+    createPipe("oldPipe", PipeStatus.STOPPED);
+
+    final Map<String, String> sourceAttributes =
+        pipeTaskInfo
+            .getPipeMetaByPipeName("oldPipe")
+            .getStaticMeta()
+            .getSourceParameters()
+            .getAttribute();
+    Assert.assertEquals(
+        String.valueOf(IoTDBConstant.SUPER_USER_ID),
+        sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_USER_ID));
+    Assert.assertEquals(
+        rootUserName, sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY));
+    Assert.assertEquals(
+        rootPassword, sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+    Assert.assertFalse(
+        pipeTaskInfo
+            .getPipeMetaByPipeName("oldPipe")
+            .getStaticMeta()
+            .getSinkParameters()
+            .getAttribute()
+            .containsKey(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY));
+  }
+
+  @Test
+  public void testDoNotOverwritePipeWithUserForCompatibility() {
+    pipeTaskInfo = new PipeTaskInfo(username -> "root-current-password");
+
+    createPipeWithSourceAttributes(
+        "newPipe",
+        new HashMap<String, String>() {
+          {
+            put("extractor", "iotdb-source");
+            put(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, "user");
+            put(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, "user-password");
+          }
+        });
+
+    final Map<String, String> sourceAttributes =
+        pipeTaskInfo
+            .getPipeMetaByPipeName("newPipe")
+            .getStaticMeta()
+            .getSourceParameters()
+            .getAttribute();
+    Assert.assertEquals("user", sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY));
+    Assert.assertEquals(
+        "user-password", sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+  }
+
+  @Test
+  public void testDoNotEnrichSystemPipeForCompatibility() {
+    pipeTaskInfo = new PipeTaskInfo(username -> "root-current-password");
+
+    createPipeWithSourceAttributes(
+        PipeStaticMeta.generateSubscriptionPipeName("topic", "group"),
+        new HashMap<String, String>() {
+          {
+            put("extractor", "iotdb-source");
+          }
+        });
+
+    final Map<String, String> sourceAttributes =
+        pipeTaskInfo
+            .getPipeMetaByPipeName(PipeStaticMeta.generateSubscriptionPipeName("topic", "group"))
+            .getStaticMeta()
+            .getSourceParameters()
+            .getAttribute();
+    Assert.assertFalse(sourceAttributes.containsKey(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY));
+    Assert.assertFalse(sourceAttributes.containsKey(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+  }
+
+  @Test
+  public void testEnrichOldWriteBackSinkWithRootUserForCompatibility() {
+    final String rootUserName = CommonDescriptor.getInstance().getConfig().getDefaultAdminName();
+    final String rootPassword = "root-current-password";
+    pipeTaskInfo = new PipeTaskInfo(username -> rootPassword);
+
+    createPipeWithAttributes(
+        "oldWriteBackPipe",
+        new HashMap<String, String>() {
+          {
+            put("extractor", "iotdb-source");
+            put(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, "source-user");
+            put(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, "source-password");
+          }
+        },
+        new HashMap<String, String>() {
+          {
+            put("connector", "write-back-sink");
+          }
+        });
+
+    final Map<String, String> sinkAttributes =
+        pipeTaskInfo
+            .getPipeMetaByPipeName("oldWriteBackPipe")
+            .getStaticMeta()
+            .getSinkParameters()
+            .getAttribute();
+    Assert.assertEquals(
+        String.valueOf(IoTDBConstant.SUPER_USER_ID),
+        sinkAttributes.get(PipeSinkConstant.SINK_IOTDB_USER_ID));
+    Assert.assertEquals(rootUserName, sinkAttributes.get(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY));
+    Assert.assertEquals(rootPassword, sinkAttributes.get(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY));
+  }
+
+  @Test
+  public void testEnrichLoadedPipeMetasWithRootUserForCompatibility() {
+    final String rootPassword = "root-current-password";
+    pipeTaskInfo = new PipeTaskInfo(username -> rootPassword);
+
+    createPipeWithSourceAttributes(
+        "loadedPipe",
+        new HashMap<String, String>() {
+          {
+            put("extractor", "iotdb-source");
+          }
+        });
+    final Map<String, String> sourceAttributes =
+        pipeTaskInfo
+            .getPipeMetaByPipeName("loadedPipe")
+            .getStaticMeta()
+            .getSourceParameters()
+            .getAttribute();
+    sourceAttributes.remove(PipeSourceConstant.SOURCE_IOTDB_USER_ID);
+    sourceAttributes.remove(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+    sourceAttributes.remove(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
+
+    pipeTaskInfo.enrichPipeMetasWithRootUserForCompatibility();
+
+    Assert.assertEquals(
+        rootPassword, sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+  }
+
   private Map<Integer, TPushPipeMetaResp> createErrorRespMap(final String pipeName) {
     return createErrorRespMap(pipeName, null);
   }
@@ -178,15 +321,34 @@ public class PipeTaskInfoAutoRestartTest {
   private PipeStaticMeta createPipe(
       final String pipeName, final PipeStatus initialStatus, final boolean isTableModel) {
     final Map<String, String> extractorAttributes = new HashMap<>();
-    final Map<String, String> processorAttributes = new HashMap<>();
-    final Map<String, String> connectorAttributes = new HashMap<>();
     extractorAttributes.put("extractor", "iotdb-source");
     if (isTableModel) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
     }
-    processorAttributes.put("processor", "do-nothing-processor");
+    final PipeStaticMeta pipeStaticMeta =
+        createPipeWithSourceAttributes(pipeName, extractorAttributes);
+
+    if (PipeStatus.RUNNING.equals(initialStatus)) {
+      pipeTaskInfo.setPipeStatus(
+          new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING, isTableModel));
+    }
+    return pipeStaticMeta;
+  }
+
+  private PipeStaticMeta createPipeWithSourceAttributes(
+      final String pipeName, final Map<String, String> extractorAttributes) {
+    final Map<String, String> connectorAttributes = new HashMap<>();
     connectorAttributes.put("connector", "iotdb-thrift-sink");
+    return createPipeWithAttributes(pipeName, extractorAttributes, connectorAttributes);
+  }
+
+  private PipeStaticMeta createPipeWithAttributes(
+      final String pipeName,
+      final Map<String, String> extractorAttributes,
+      final Map<String, String> connectorAttributes) {
+    final Map<String, String> processorAttributes = new HashMap<>();
+    processorAttributes.put("processor", "do-nothing-processor");
 
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, DATA_NODE_ID);
     final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
@@ -201,11 +363,6 @@ public class PipeTaskInfoAutoRestartTest {
             connectorAttributes);
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     pipeTaskInfo.createPipe(new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta));
-
-    if (PipeStatus.RUNNING.equals(initialStatus)) {
-      pipeTaskInfo.setPipeStatus(
-          new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING, isTableModel));
-    }
     return pipeStaticMeta;
   }
 }

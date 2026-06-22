@@ -140,10 +140,45 @@ public class DirectoryStrategyTest {
 
     PowerMockito.when(JVMCommonUtils.getOccupiedSpace(dataDirList.get(minIndex)))
         .thenReturn(Long.MAX_VALUE);
+    // The occupied space is cached, so the new value is reflected only after a cache refresh.
+    minFolderOccupiedSpaceFirstStrategy.invalidateCache();
     minIndex = getIndexOfMinOccupiedSpace();
     for (int i = 0; i < dataDirList.size(); i++) {
       assertEquals(minIndex, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
     }
+  }
+
+  @Test
+  public void testMinFolderOccupiedSpaceFirstStrategyCachesOccupiedSpace()
+      throws DiskSpaceInsufficientException, IOException {
+    MinFolderOccupiedSpaceFirstStrategy strategy = new MinFolderOccupiedSpaceFirstStrategy();
+    // Disable the time-based refresh so the count-based refresh is the only trigger under test.
+    strategy.setRefreshIntervalMs(Long.MAX_VALUE);
+    strategy.setRefreshSelectionThreshold(3);
+    strategy.setFolders(dataDirList);
+
+    int minIndex = getIndexOfMinOccupiedSpace();
+    // The first selection builds the cache via a single round of getOccupiedSpace calls.
+    assertEquals(minIndex, strategy.nextFolderIndex());
+    assertEquals(1, strategy.getSelectionsSinceRefresh());
+
+    // Mutate the occupied space of every folder so that a different folder becomes the least
+    // occupied one. While the cache is still valid the selection must not change, which proves the
+    // strategy is no longer re-walking the directory tree on every selection.
+    for (int i = 0; i < dataDirList.size(); i++) {
+      boolean available = !fullDirIndexSet.contains(i);
+      PowerMockito.when(JVMCommonUtils.getOccupiedSpace(dataDirList.get(i)))
+          .thenReturn(available ? (long) (dataDirList.size() - i) : Long.MAX_VALUE);
+    }
+    assertEquals(minIndex, strategy.nextFolderIndex());
+    assertEquals(minIndex, strategy.nextFolderIndex());
+    assertEquals(3, strategy.getSelectionsSinceRefresh());
+
+    // The threshold has been reached, so the next selection resets the state, recomputes the
+    // occupied space and reflects the mutated values.
+    int newMinIndex = getIndexOfMinOccupiedSpace();
+    assertEquals(newMinIndex, strategy.nextFolderIndex());
+    assertEquals(1, strategy.getSelectionsSinceRefresh());
   }
 
   private int getIndexOfMinOccupiedSpace() throws IOException {

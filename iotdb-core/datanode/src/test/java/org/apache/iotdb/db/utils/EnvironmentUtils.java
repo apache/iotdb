@@ -55,7 +55,6 @@ import org.apache.iotdb.udf.api.exception.UDFManagementException;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
@@ -69,6 +68,12 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.fail;
@@ -83,6 +88,8 @@ public class EnvironmentUtils {
   private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final TierManager tierManager = TierManager.getInstance();
+  private static final int DELETE_RETRY_TIMES = 5;
+  private static final long DELETE_RETRY_INTERVAL_MS = 100;
 
   public static long TEST_QUERY_JOB_ID = 1;
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID, false);
@@ -277,7 +284,69 @@ public class EnvironmentUtils {
   }
 
   public static void cleanDir(String dir) throws IOException {
-    FSFactoryProducer.getFSFactory().deleteDirectory(dir);
+    Path path = FSFactoryProducer.getFSFactory().getFile(dir).toPath();
+    if (!Files.exists(path)) {
+      return;
+    }
+
+    IOException lastException = null;
+    for (int i = 0; i < DELETE_RETRY_TIMES; i++) {
+      try {
+        deleteRecursively(path);
+        return;
+      } catch (NoSuchFileException e) {
+        return;
+      } catch (IOException e) {
+        lastException = e;
+        if (i + 1 == DELETE_RETRY_TIMES) {
+          break;
+        }
+        try {
+          TimeUnit.MILLISECONDS.sleep(DELETE_RETRY_INTERVAL_MS);
+        } catch (InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+          IOException ioException =
+              new IOException("Interrupted while deleting " + dir, interruptedException);
+          ioException.addSuppressed(e);
+          throw ioException;
+        }
+      }
+    }
+    throw lastException;
+  }
+
+  private static void deleteRecursively(Path path) throws IOException {
+    if (!Files.exists(path)) {
+      return;
+    }
+
+    Files.walkFileTree(
+        path,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws IOException {
+            Files.deleteIfExists(file);
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            if (exc instanceof NoSuchFileException) {
+              return FileVisitResult.CONTINUE;
+            }
+            throw exc;
+          }
+
+          @Override
+          public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            if (exc != null) {
+              throw exc;
+            }
+            Files.deleteIfExists(dir);
+            return FileVisitResult.CONTINUE;
+          }
+        });
   }
 
   /** disable memory control</br> this function should be called before all code in the setup */
@@ -338,19 +407,6 @@ public class EnvironmentUtils {
   }
 
   public static void recursiveDeleteFolder(String path) throws IOException {
-    File file = new File(path);
-    if (file.isDirectory()) {
-      File[] files = file.listFiles();
-      if (files == null || files.length == 0) {
-        FileUtils.deleteDirectory(file);
-      } else {
-        for (File f : files) {
-          recursiveDeleteFolder(f.getAbsolutePath());
-        }
-        FileUtils.deleteDirectory(file);
-      }
-    } else {
-      FileUtils.delete(file);
-    }
+    cleanDir(path);
   }
 }

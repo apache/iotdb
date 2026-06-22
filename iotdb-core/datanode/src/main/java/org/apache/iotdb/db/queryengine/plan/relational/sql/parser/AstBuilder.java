@@ -2635,10 +2635,24 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitGroupBy(RelationalSqlParser.GroupByContext ctx) {
+  public Node visitAllGroupBy(RelationalSqlParser.AllGroupByContext ctx) {
+    return new GroupBy(getLocation(ctx), false, true, ImmutableList.of());
+  }
+
+  @Override
+  public Node visitExplicitGroupBy(RelationalSqlParser.ExplicitGroupByContext ctx) {
+    if (ctx.setQuantifier() == null && ctx.groupingElement().size() > 1) {
+      for (RelationalSqlParser.GroupingElementContext element : ctx.groupingElement()) {
+        if (element.getText().equalsIgnoreCase("ALL")) {
+          throw new SemanticException(
+              "GROUP BY ALL cannot be combined with explicit grouping elements");
+        }
+      }
+    }
     return new GroupBy(
         getLocation(ctx),
         isDistinct(ctx.setQuantifier()),
+        false,
         visit(ctx.groupingElement(), GroupingElement.class));
   }
 

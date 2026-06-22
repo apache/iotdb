@@ -110,7 +110,9 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
 
   public void deregister(final String taskID) {
     if (!connectorMap.containsKey(taskID)) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_CONNECTOR, taskID);
+      LOGGER.warn(
+          DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_CONNECTOR,
+          getDisplayTaskID(taskID));
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -125,10 +127,16 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
     }
     final Rate rate = schemaRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_SCHEMA_REGION_WRITE, taskID);
+      LOGGER.info(
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_SCHEMA_REGION_WRITE, getDisplayTaskID(taskID));
       return;
     }
     rate.mark();
+  }
+
+  private String getDisplayTaskID(final String taskID) {
+    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    return Objects.nonNull(connector) ? connector.getDisplayTaskID() : "unknown";
   }
 
   //////////////////////////// singleton ////////////////////////////

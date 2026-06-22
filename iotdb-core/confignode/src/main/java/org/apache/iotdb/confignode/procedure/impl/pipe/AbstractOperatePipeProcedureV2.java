@@ -146,12 +146,7 @@ public abstract class AbstractOperatePipeProcedureV2
           LOGGER.debug(
               ProcedureMessages.PROCEDUREID_LOCK_EVENT_WAIT_PIPE_LOCK_WILL_BE_RELEASED,
               getProcId());
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .unlock();
-          pipeTaskInfo = null;
+          releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
         }
         break;
       default:
@@ -165,12 +160,7 @@ public abstract class AbstractOperatePipeProcedureV2
               ProcedureMessages.PROCEDUREID_INVALID_LOCK_STATE_PIPE_LOCK_WILL_BE_RELEASED,
               getProcId(),
               procedureLockState);
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .unlock();
-          pipeTaskInfo = null;
+          releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
         }
         break;
     }
@@ -196,9 +186,14 @@ public abstract class AbstractOperatePipeProcedureV2
       }
       PipeProcedureMetrics.getInstance()
           .updateTimer(this.getOperation().getName(), this.elapsedTime());
-      configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-      pipeTaskInfo = null;
+      releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
     }
+  }
+
+  private void releasePipeTaskCoordinatorLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    // Clear before releasing the semaphore to avoid clobbering a re-scheduled execution's marker.
+    pipeTaskInfo = null;
+    configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
   }
 
   protected abstract PipeTaskOperation getOperation();
