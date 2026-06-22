@@ -111,13 +111,13 @@ public class SessionPool implements ISessionPool {
   protected final String password;
   protected int fetchSize;
 
-  private boolean useSSL;
+  protected boolean useSSL;
 
-  private String trustStore;
+  protected String trustStore;
 
-  private String trustStorePwd;
+  protected String trustStorePwd;
 
-  private String sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
+  protected String sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
 
   protected ZoneId zoneId;
   // this field only take effect in write request, nothing to do with any other type requests,
@@ -130,9 +130,6 @@ public class SessionPool implements ISessionPool {
   // datanode while encountering retriable errors in current DataNode
   protected boolean enableRedirection;
   protected boolean enableQueryRedirection = false;
-  protected boolean useSSL;
-  protected String trustStore;
-  protected String trustStorePwd;
 
   protected Map<String, TEndPoint> deviceIdToEndpoint;
   protected Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint;

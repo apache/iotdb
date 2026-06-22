@@ -452,6 +452,12 @@ public class Session extends org.apache.iotdb.session.Session implements ISessio
     }
 
     @Override
+    public Builder sslProtocol(String sslProtocol) {
+      super.sslProtocol(sslProtocol);
+      return this;
+    }
+
+    @Override
     public Builder enableIoTDBRpcCompression(boolean enabled) {
       super.enableIoTDBRpcCompression(enabled);
       return this;
