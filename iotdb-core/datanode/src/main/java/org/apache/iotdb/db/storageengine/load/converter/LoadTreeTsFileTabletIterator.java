@@ -29,10 +29,10 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -264,12 +264,13 @@ class LoadTreeTsFileTabletIterator
       throws IOException {
     final LinkedHashMap<IDeviceID, List<String>> deviceMeasurementsMap = new LinkedHashMap<>();
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
-      final TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
-      while (deviceIterator.hasNext()) {
-        final IDeviceID device = deviceIterator.next().getLeft();
+      final Iterator<Pair<IDeviceID, List<TimeseriesMetadata>>> metadataIterator =
+          reader.iterAllTimeseriesMetadata(false, false);
+      while (metadataIterator.hasNext()) {
+        final Pair<IDeviceID, List<TimeseriesMetadata>> deviceMetadata = metadataIterator.next();
         deviceMeasurementsMap.put(
-            device,
-            reader.readDeviceMetadata(device).values().stream()
+            deviceMetadata.getLeft(),
+            deviceMetadata.getRight().stream()
                 .map(TimeseriesMetadata::getMeasurementId)
                 .collect(Collectors.toList()));
       }
@@ -506,9 +507,7 @@ class LoadTreeTsFileTabletIterator
   }
 
   private List<String> extractMeasurementNames(final Tablet tablet) {
-    final List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
-    tablet.getSchemas().forEach(schema -> measurements.add(schema.getMeasurementName()));
-    return measurements;
+    return IMeasurementSchema.getMeasurementNameList(tablet.getSchemas());
   }
 
   private boolean measurementsEqual(
