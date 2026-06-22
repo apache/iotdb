@@ -229,6 +229,31 @@ public class CommonDescriptor {
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
 
+    long minFolderOccupiedSpaceCacheRefreshIntervalMs =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "min_folder_occupied_space_cache_refresh_interval_ms",
+                    String.valueOf(config.getMinFolderOccupiedSpaceCacheRefreshIntervalMs()))
+                .trim());
+    if (minFolderOccupiedSpaceCacheRefreshIntervalMs > 0) {
+      config.setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
+          minFolderOccupiedSpaceCacheRefreshIntervalMs);
+    }
+
+    int minFolderOccupiedSpaceCacheRefreshSelectionThreshold =
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "min_folder_occupied_space_cache_refresh_selection_threshold",
+                    String.valueOf(
+                        config.getMinFolderOccupiedSpaceCacheRefreshSelectionThreshold()))
+                .trim());
+    if (minFolderOccupiedSpaceCacheRefreshSelectionThreshold > 0) {
+      config.setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
+          minFolderOccupiedSpaceCacheRefreshSelectionThreshold);
+    }
+
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 

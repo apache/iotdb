@@ -764,6 +764,18 @@ topology_probing_timeout_ratio=0.5
 # Datatype: double(percentage)
 disk_space_warning_threshold=0.05
 
+# The refresh interval in milliseconds for the occupied-space cache used by
+# MinFolderOccupiedSpaceFirstStrategy. The default is 60000 (60 seconds).
+# effectiveMode: restart
+# Datatype: long
+min_folder_occupied_space_cache_refresh_interval_ms=60000
+
+# The number of folder selections after which MinFolderOccupiedSpaceFirstStrategy refreshes its
+# occupied-space cache. The default is 1000.
+# effectiveMode: restart
+# Datatype: int
+min_folder_occupied_space_cache_refresh_selection_threshold=1000
+
 # Purpose: for data partition repair
 # The number of threads used for parallel scanning in the partition table recovery
 # effectiveMode: restart
