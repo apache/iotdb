@@ -88,8 +88,7 @@ public class ImportDataTable extends AbstractImportData {
             .enableAutoFetch(false)
             .database(database);
     if (useSsl) {
-      tableSessionPoolBuilder =
-          tableSessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      tableSessionPoolBuilder = configureSsl(tableSessionPoolBuilder);
     }
     sessionPool = tableSessionPoolBuilder.build();
     // Fail fast on invalid credentials/network before file scanning and worker startup.

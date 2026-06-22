@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.i18n.ServiceMessages;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.apache.thrift.TBaseAsyncProcessor;
 import org.apache.thrift.TProcessor;
@@ -45,13 +46,7 @@ import org.apache.thrift.transport.TTransportFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.net.InetSocketAddress;
-import java.nio.file.AccessDeniedException;
-import java.security.KeyStore;
-import java.security.cert.X509Certificate;
-import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -184,13 +179,13 @@ public abstract class AbstractThriftServiceThread extends Thread {
     this.serviceName = serviceName;
 
     try {
-      validateCertificate(keyStorePath, keyStorePwd);
+      RpcSslUtils.validateKeyStore(keyStorePath, keyStorePwd);
       TSSLTransportFactory.TSSLTransportParameters params =
-          new TSSLTransportFactory.TSSLTransportParameters();
-      params.setKeyStore(keyStorePath, keyStorePwd);
+          RpcSslUtils.createTSSLTransportParameters();
+      RpcSslUtils.setKeyStore(params, keyStorePath, keyStorePwd);
       if (trustStorePath != null && !trustStorePath.isEmpty()) {
-        validateCertificate(trustStorePath, trustStorePwd);
-        params.setTrustStore(trustStorePath, trustStorePwd);
+        RpcSslUtils.validateTrustStore(trustStorePath, trustStorePwd);
+        RpcSslUtils.setTrustStore(params, trustStorePath, trustStorePwd);
         params.requireClientAuth(true);
       }
       InetSocketAddress socketAddress = new InetSocketAddress(bindAddress, port);
@@ -204,41 +199,6 @@ public abstract class AbstractThriftServiceThread extends Thread {
     } catch (TTransportException e) {
       catchFailedInitialization(e);
     }
-  }
-
-  private static void validateCertificate(String keyStorePath, String keystorePassword)
-      throws TTransportException {
-    try {
-      KeyStore keystore = KeyStore.getInstance("JKS");
-      try (FileInputStream fis = new FileInputStream(keyStorePath)) {
-        keystore.load(fis, keystorePassword.toCharArray());
-      }
-
-      Enumeration<String> aliases = keystore.aliases();
-      while (aliases.hasMoreElements()) {
-        String currentAlias = aliases.nextElement();
-        checkCertificate(keystore, currentAlias);
-      }
-    } catch (AccessDeniedException e) {
-      throw new TTransportException(ServiceMessages.FAILED_TO_LOAD_KEYSTORE_OR_TRUSTSTORE);
-    } catch (FileNotFoundException e) {
-      throw new TTransportException(ServiceMessages.KEYSTORE_OR_TRUSTSTORE_NOT_FOUND);
-    } catch (Exception e) {
-      throw new TTransportException(e);
-    }
-  }
-
-  private static void checkCertificate(KeyStore keystore, String alias) throws Exception {
-    if (!keystore.containsAlias(alias)) {
-      return;
-    }
-
-    X509Certificate cert = (X509Certificate) keystore.getCertificate(alias);
-    if (cert == null) {
-      return;
-    }
-
-    cert.checkValidity();
   }
 
   @SuppressWarnings("squid:S107")

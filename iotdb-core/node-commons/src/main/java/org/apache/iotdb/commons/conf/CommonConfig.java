@@ -506,6 +506,9 @@ public class CommonConfig {
   /** ssl trust Store password. */
   private String trustStorePwd = "";
 
+  /** SSL protocol. */
+  private String sslProtocol = "TLS";
+
   private String userEncryptTokenHint = "not set yet";
 
   private boolean enforceStrongPassword = true;
@@ -3114,6 +3117,14 @@ public class CommonConfig {
 
   public void setTrustStorePwd(String trustStorePwd) {
     this.trustStorePwd = trustStorePwd;
+  }
+
+  public String getSslProtocol() {
+    return sslProtocol;
+  }
+
+  public void setSslProtocol(String sslProtocol) {
+    this.sslProtocol = sslProtocol;
   }
 
   public boolean isEnforceStrongPassword() {

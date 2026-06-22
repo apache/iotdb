@@ -71,8 +71,7 @@ public class ExportDataTable extends AbstractExportData {
             .database(database)
             .thriftMaxFrameSize(rpcMaxFrameSize);
     if (useSsl) {
-      tableSessionBuilder =
-          tableSessionBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      tableSessionBuilder = configureSsl(tableSessionBuilder);
     }
     tableSession = tableSessionBuilder.build();
     SessionDataSet sessionDataSet = tableSession.executeQueryStatement("show databases", timeout);

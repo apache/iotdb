@@ -240,6 +240,18 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
+   * Sets the SSL protocol for secure connections.
+   *
+   * @param sslProtocol the SSL protocol.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue TLS
+   */
+  public TableSessionBuilder sslProtocol(String sslProtocol) {
+    this.sslProtocol = sslProtocol;
+    return this;
+  }
+
+  /**
    * Enables or disables rpc compression for the connection.
    *
    * @param enableCompression whether to enable compression.

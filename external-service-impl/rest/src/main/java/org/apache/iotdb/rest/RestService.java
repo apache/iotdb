@@ -21,6 +21,7 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.externalservice.api.IExternalService;
 import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.filter.ApiOriginFilter;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
@@ -52,6 +53,7 @@ public class RestService implements IExternalService {
       String trustStorePath,
       String keyStorePwd,
       String trustStorePwd,
+      String sslProtocol,
       int idleTime,
       boolean clientAuth) {
     server = new Server();
@@ -61,6 +63,7 @@ public class RestService implements IExternalService {
     httpsConfig.addCustomizer(new SecureRequestCustomizer());
 
     SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
+    configureSSL(sslContextFactory, sslProtocol);
     sslContextFactory.setKeyStorePath(keyStorePath);
     sslContextFactory.setKeyStorePassword(keyStorePwd);
     if (clientAuth) {
@@ -125,6 +128,7 @@ public class RestService implements IExternalService {
           config.getTrustStorePath(),
           config.getKeyStorePwd(),
           config.getTrustStorePwd(),
+          config.getSslProtocol(),
           config.getIdleTimeoutInSeconds(),
           config.isClientAuth());
     } else {
@@ -141,5 +145,10 @@ public class RestService implements IExternalService {
     } finally {
       server.destroy();
     }
+  }
+
+  private void configureSSL(SslContextFactory.Server sslContextFactory, String sslProtocol) {
+    String protocol = RpcSslUtils.normalizeProtocol(sslProtocol);
+    sslContextFactory.setProtocol(protocol);
   }
 }

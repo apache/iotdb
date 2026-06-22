@@ -634,6 +634,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    setProperty("enable_thrift_ssl", String.valueOf(enableThriftClientSSL));
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
     setProperty("enable_internal_ssl", String.valueOf(enableInternalSSL));
     return this;
@@ -660,6 +666,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setTrustStorePwd(String trustStorePwd) {
     setProperty("trust_store_pwd", trustStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    setProperty("ssl_protocol", sslProtocol);
     return this;
   }
 
