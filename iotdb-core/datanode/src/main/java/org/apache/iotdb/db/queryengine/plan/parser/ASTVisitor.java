@@ -214,6 +214,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -4445,6 +4446,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     return createTopicStatement;
+  }
+
+  @Override
+  public Statement visitAlterTopic(IoTDBSqlParser.AlterTopicContext ctx) {
+    final AlterTopicStatement alterTopicStatement = new AlterTopicStatement();
+
+    if (ctx.topicName != null) {
+      alterTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(DataNodeQueryMessages.NOT_SUPPORT_FOR_THIS_SQL_IN_ALTER_TOPIC);
+    }
+
+    alterTopicStatement.setTopicAttributes(
+        parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause()));
+
+    return alterTopicStatement;
   }
 
   private Map<String, String> parseTopicAttributesClause(

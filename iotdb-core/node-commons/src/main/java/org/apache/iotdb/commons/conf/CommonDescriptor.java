@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -276,6 +277,15 @@ public class CommonDescriptor {
             properties.getProperty(
                 "tag_attribute_total_size", String.valueOf(config.getTagAttributeTotalSize()))));
 
+    int singleMeasurementCheckCacheSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "single_measurement_check_cache_size",
+                String.valueOf(config.getSingleMeasurementCheckCacheSize())));
+    if (singleMeasurementCheckCacheSize >= 0) {
+      config.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
+    }
+
     config.setTimePartitionOrigin(
         Long.parseLong(
             properties.getProperty(
@@ -454,6 +464,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_meta_syncer_sync_interval_minutes",
                 String.valueOf(config.getSubscriptionMetaSyncerSyncIntervalMinutes()))));
+
+    config.setSubscriptionOwnerLeaseDurationMsMin(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_owner_lease_duration_ms_min",
+                String.valueOf(config.getSubscriptionOwnerLeaseDurationMsMin()))));
 
     config.setSubscriptionConsensusBatchMaxDelayInMs(
         Integer.parseInt(
@@ -643,5 +659,13 @@ public class CommonDescriptor {
     config.setTrustStorePath(
         properties.getProperty("trust_store_path", config.getTrustStorePath()));
     config.setTrustStorePwd(properties.getProperty("trust_store_pwd", config.getTrustStorePwd()));
+    config.setSslProtocol(
+        RpcSslUtils.normalizeProtocol(
+            properties.getProperty("ssl_protocol", config.getSslProtocol())));
+    configureRpcSsl();
+  }
+
+  public void configureRpcSsl() {
+    RpcSslUtils.configure(config.getSslProtocol());
   }
 }

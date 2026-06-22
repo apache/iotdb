@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -121,6 +122,20 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class StatementGeneratorTest {
+
+  @Test
+  public void testAlterTopicStatement() {
+    final Statement statement =
+        StatementGenerator.createStatement(
+            "ALTER TOPIC topic1 WITH ('owner-id'='owner2','owner-epoch'='6')",
+            ZonedDateTime.now().getOffset());
+
+    Assert.assertTrue(statement instanceof AlterTopicStatement);
+    final AlterTopicStatement alterTopicStatement = (AlterTopicStatement) statement;
+    Assert.assertEquals("topic1", alterTopicStatement.getTopicName());
+    Assert.assertEquals("owner2", alterTopicStatement.getTopicAttributes().get("owner-id"));
+    Assert.assertEquals("6", alterTopicStatement.getTopicAttributes().get("owner-epoch"));
+  }
 
   @Test
   public void testShowDiskUsage() {

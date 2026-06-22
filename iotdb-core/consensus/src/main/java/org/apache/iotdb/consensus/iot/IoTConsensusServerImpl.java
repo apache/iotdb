@@ -511,14 +511,32 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void loadSnapshot(String snapshotId) {
-    // TODO: (xingtanzjr) throw exception if the snapshot load failed
-    recvFolderManager
-        .getFolders()
-        .forEach(
-            dir -> {
-              stateMachine.loadSnapshot(getSnapshotPath(dir, snapshotId));
-            });
+  public boolean loadSnapshot(String snapshotId) {
+    // Snapshot fragments are spread across the receive folders by the FolderManager (a DataRegion,
+    // for example, uses one receive folder per local data dir), so a given snapshot only exists
+    // under the folders that actually received fragments. Collect exactly those folders and hand
+    // them to the state machine in a single load call.
+    //
+    // It must be a single call rather than one call per folder: the state machine's load is
+    // destructive (a DataRegion load wipes the data dirs before relinking), so loading folders one
+    // at a time would make each load erase the fragments linked by the previous folders, leaving
+    // only the last folder's data. The state machine instead clears the data dirs once and relinks
+    // every folder's fragments together.
+    //
+    // Note: an empty region produces a snapshot with zero fragments, so none of the receive folders
+    // contains it. That is a legitimate (no-op) load, not a failure, so an absent snapshot must not
+    // be reported as failure here.
+    List<File> snapshotDirs = new ArrayList<>();
+    for (String dir : recvFolderManager.getFolders()) {
+      File snapshotDir = getSnapshotPath(dir, snapshotId);
+      if (snapshotDir.exists()) {
+        snapshotDirs.add(snapshotDir);
+      }
+    }
+    if (snapshotDirs.isEmpty()) {
+      return true;
+    }
+    return stateMachine.loadSnapshot(snapshotDirs);
   }
 
   private File getSnapshotPath(String curStorageDir, String snapshotRelativePath) {

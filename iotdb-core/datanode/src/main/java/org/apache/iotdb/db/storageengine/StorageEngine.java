@@ -329,6 +329,7 @@ public class StorageEngine implements IService {
     }
 
     asyncRecoverTsFileResource();
+    loadTsFileManager.start();
   }
 
   private void startTimedService() {
@@ -413,6 +414,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
+    loadTsFileManager.stop();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
         CompactionScheduleTaskManager.getInstance().unregisterDataRegion(dataRegion);
@@ -431,6 +433,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
+    loadTsFileManager.stop();
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {

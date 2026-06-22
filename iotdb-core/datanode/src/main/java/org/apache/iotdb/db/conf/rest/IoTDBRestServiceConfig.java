@@ -27,7 +27,7 @@ public class IoTDBRestServiceConfig {
   /** Set the REST Service port. */
   private int restServicePort = 18080;
 
-  /** Whether to display rest service interface information through swagger. */
+  /** Whether to display rest service interface information through OpenAPI. */
   private boolean enableSwagger = false;
 
   /** Enable the REST Service ssl. */
@@ -44,6 +44,9 @@ public class IoTDBRestServiceConfig {
 
   /** ssl trust Store password. */
   private String trustStorePwd = "";
+
+  /** SSL protocol. */
+  private String sslProtocol = "";
 
   /** ssl timeout. */
   private int idleTimeoutInSeconds = 50000;
@@ -76,6 +79,14 @@ public class IoTDBRestServiceConfig {
 
   public void setTrustStorePwd(String trustStorePwd) {
     this.trustStorePwd = trustStorePwd;
+  }
+
+  public String getSslProtocol() {
+    return sslProtocol;
+  }
+
+  public void setSslProtocol(String sslProtocol) {
+    this.sslProtocol = sslProtocol;
   }
 
   public int getIdleTimeoutInSeconds() {

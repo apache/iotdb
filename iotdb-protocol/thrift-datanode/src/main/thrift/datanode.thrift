@@ -582,6 +582,21 @@ struct TPushTopicMetaRespExceptionMessage {
   3: required i64 timeStamp
 }
 
+// Dedicated subscription owner-lease heartbeat (CN -> DN), decoupled from the node heartbeat.
+// Carries a relative remaining duration; the DataNode derives the local expire time on its own
+// clock (leaseExpireAt = localNow + leaseRemainingMs), so no absolute timestamp is compared across
+// ConfigNode and DataNode clocks.
+struct TTopicOwnerLeaseEntry {
+  1: required string topicName
+  2: required string ownerId
+  3: required i64 ownerEpoch
+  4: required i64 leaseRemainingMs
+}
+
+struct TPushTopicOwnerLeaseReq {
+  1: required list<TTopicOwnerLeaseEntry> ownerLeases
+}
+
 struct TPushConsumerGroupMetaReq {
   1: required list<binary> consumerGroupMetas
 }
@@ -1232,6 +1247,12 @@ service IDataNodeRPCService {
   * Send multiple topic metas to DataNodes, for create/drop subscriptions
   */
   TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req)
+
+ /**
+  * Renew topic owner leases on DataNodes via the dedicated subscription owner heartbeat
+  * (independent from the node heartbeat). Carries relative remaining durations.
+  */
+  common.TSStatus pushTopicOwnerLease(TPushTopicOwnerLeaseReq req)
 
  /**
   * Send consumerGroupMetas to DataNodes, for synchronization

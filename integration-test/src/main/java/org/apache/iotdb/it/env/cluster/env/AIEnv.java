@@ -19,7 +19,14 @@
 
 package org.apache.iotdb.it.env.cluster.env;
 
+import org.apache.iotdb.it.env.cluster.node.AINodeStarter;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+
+import java.util.List;
+
 public class AIEnv extends AbstractEnv {
+
   @Override
   public void initClusterEnvironment() {
     initClusterEnvironment(1, 1);
@@ -27,12 +34,29 @@ public class AIEnv extends AbstractEnv {
 
   @Override
   public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
-    super.initEnvironment(configNodesNum, dataNodesNum, 600, true);
+    super.initEnvironment(configNodesNum, dataNodesNum, 600);
   }
 
   @Override
   public void initClusterEnvironment(
       int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
-    super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount, true);
+    super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount);
+  }
+
+  @Override
+  protected void initExtraNodes(
+      final List<ConfigNodeWrapper> configNodeWrappers,
+      final List<DataNodeWrapper> dataNodeWrappers,
+      final String testClassName) {
+    AINodeStarter.startAINode(
+        configNodeWrappers.get(0).getIpAndPortString(),
+        dataNodeWrappers.get(0).getPort(),
+        testClassName,
+        testMethodName,
+        index,
+        startTime,
+        extraNodeKillPoints,
+        this::registerExtraNode,
+        this::dumpTestJVMSnapshot);
   }
 }
