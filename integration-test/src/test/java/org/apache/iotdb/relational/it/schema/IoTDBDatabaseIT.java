@@ -507,7 +507,7 @@ public class IoTDBDatabaseIT {
                   "pipe_count,INT32,ATTRIBUTE,",
                   "pipe_ids,STRING,ATTRIBUTE,",
                   "user_name,STRING,TAG,",
-                  "sender_cluster_id,STRING,ATTRIBUTE,",
+                  "sender_cluster_id,STRING,TAG,",
                   "last_handshake_time,TIMESTAMP,ATTRIBUTE,",
                   "last_transfer_time,TIMESTAMP,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(

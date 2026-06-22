@@ -854,6 +854,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitShowReceivers(
       ShowReceiversStatement statement, TreeAccessCheckContext context) {
     // This query follows SHOW PIPES: it cannot be rejected here.
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+        context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true),
+        () -> "SHOW RECEIVERS");
     return StatusUtils.OK;
   }
 

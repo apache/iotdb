@@ -533,7 +533,7 @@ public class PipeReceiverRuntimeRegistryTest {
   }
 
   @Test
-  public void testRegisterOrUpdateSessionReplacesPipeId() {
+  public void testRegisterOrUpdateSessionAddsPipeId() {
     registry.registerOrUpdateSession(
         "config-1",
         PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
@@ -562,8 +562,8 @@ public class PipeReceiverRuntimeRegistryTest {
     final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
 
     assertEquals(1, snapshots.size());
-    assertEquals(1, snapshots.get(0).getPipeCount());
-    assertFalse(snapshots.get(0).getPipeIds().contains("pipe-a@"));
+    assertEquals(2, snapshots.get(0).getPipeCount());
+    assertTrue(snapshots.get(0).getPipeIds().contains("pipe-a@"));
     assertTrue(snapshots.get(0).getPipeIds().contains("pipe-b@"));
   }
 
@@ -788,7 +788,7 @@ public class PipeReceiverRuntimeRegistryTest {
   }
 
   @Test
-  public void testRegisterOrUpdateSessionClearsPipeId() {
+  public void testRegisterOrUpdateSessionWithoutPipeInfoKeepsPipeId() {
     registry.registerOrUpdateSession(
         "config-1",
         PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
@@ -817,8 +817,8 @@ public class PipeReceiverRuntimeRegistryTest {
     final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
 
     assertEquals(1, snapshots.size());
-    assertEquals(0, snapshots.get(0).getPipeCount());
-    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshots.get(0).getPipeIds());
+    assertEquals(1, snapshots.get(0).getPipeCount());
+    assertTrue(snapshots.get(0).getPipeIds().contains("pipe-a@"));
   }
 
   @Test

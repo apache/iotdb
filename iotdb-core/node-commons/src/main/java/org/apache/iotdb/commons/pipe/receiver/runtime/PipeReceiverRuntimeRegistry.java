@@ -83,7 +83,6 @@ public class PipeReceiverRuntimeRegistry {
             session.senderClusterId = normalize(senderClusterId);
             session.lastHandshakeTime = handshakeTime;
             session.lastTransferTime = Math.max(session.lastTransferTime, handshakeTime);
-            session.pipeIds.clear();
             session.addPipe(pipeName, pipeCreationTime);
           }
           return session;

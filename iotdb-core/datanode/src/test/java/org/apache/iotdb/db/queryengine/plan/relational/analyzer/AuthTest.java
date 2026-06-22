@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
@@ -53,6 +55,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetad
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_ID;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -142,14 +145,21 @@ public class AuthTest {
   @Test
   public void testTreeShowReceiversUsesSameLocalAuthAsShowPipes() {
     final TreeAccessCheckVisitor visitor = new TreeAccessCheckVisitor();
-    final TreeAccessCheckContext context = new TreeAccessCheckContext(1, user1, "127.0.0.1");
+    final TreeAccessCheckContext showPipesContext =
+        new TreeAccessCheckContext(1, user1, "127.0.0.1");
+    final TreeAccessCheckContext showReceiversContext =
+        new TreeAccessCheckContext(1, user1, "127.0.0.1");
 
-    final TSStatus showPipesStatus = visitor.visitShowPipes(new ShowPipesStatement(), context);
+    final TSStatus showPipesStatus =
+        visitor.visitShowPipes(new ShowPipesStatement(), showPipesContext);
     final TSStatus showReceiversStatus =
-        visitor.visitShowReceivers(new ShowReceiversStatement(), context);
+        visitor.visitShowReceivers(new ShowReceiversStatement(), showReceiversContext);
 
     assertEquals(StatusUtils.OK.getCode(), showPipesStatus.getCode());
     assertEquals(showPipesStatus.getCode(), showReceiversStatus.getCode());
+    assertEquals(AuditLogOperation.QUERY, showReceiversContext.getAuditLogOperation());
+    assertEquals(AuditEventType.OBJECT_AUTHENTICATION, showReceiversContext.getAuditEventType());
+    assertTrue(showReceiversContext.getResult());
   }
 
   @Test
