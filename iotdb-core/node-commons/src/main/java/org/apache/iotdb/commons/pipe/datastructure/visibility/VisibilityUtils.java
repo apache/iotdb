@@ -132,16 +132,6 @@ public class VisibilityUtils {
     return Visibility.NONE;
   }
 
-  public static Visibility calculateFromPipeSourceParameters(
-      final PipeParameters sourceParameters) {
-    final boolean isTreeDialect =
-        sourceParameters
-            .getStringOrDefault(
-                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
-    return isTreeDialect ? Visibility.TREE_ONLY : Visibility.TABLE_ONLY;
-  }
-
   public static Visibility calculateFromTopicConfig(final TopicConfig config) {
     final boolean isTreeDialect =
         config
