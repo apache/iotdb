@@ -46,18 +46,32 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/rc/')
-      - uses: dorny/paths-filter@v3
+        with:
+          fetch-depth: 0
+      - name: Detect C++ package changes
         id: filter
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/rc/')
-        with:
-          filters: |
-            cpp:
-              - 'iotdb-client/client-cpp/**'
-              - 'iotdb-client/pom.xml'
-              - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
-              - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
-              - '.github/workflows/client-cpp-package.yml'
-              - '.github/scripts/package-client-cpp-*.sh'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE="${{ github.event.before }}"
+          HEAD="${{ github.sha }}"
+          if [[ "$BASE" =~ ^0+$ ]]; then
+            BASE="$(git hash-object -t tree /dev/null)"
+          fi
+
+          cpp=false
+          while IFS= read -r file; do
+            case "$file" in
+              iotdb-client/client-cpp/*|iotdb-client/pom.xml|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
+                cpp=true
+                break
+                ;;
+            esac
+          done < <(git diff --name-only "$BASE" "$HEAD")
+
+          echo "cpp=${cpp}" >> "$GITHUB_OUTPUT"
       - id: result
         shell: bash
         run: |

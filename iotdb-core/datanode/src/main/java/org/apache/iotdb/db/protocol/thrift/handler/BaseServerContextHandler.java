@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.thrift.handler;
 
+import org.apache.iotdb.commons.service.NoopServerContext;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.session.ClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -63,17 +64,17 @@ public class BaseServerContextHandler {
     getSessionManager().registerSession(new ClientSession(socket));
     if (factory != null) {
       context = factory.newServerContext(out, socket);
-      if (!context.whenConnect()) {
+      if (context != null && !context.whenConnect()) {
         return context;
       }
     }
-    return context;
+    return context == null ? NoopServerContext.INSTANCE : context;
   }
 
   public void deleteContext(ServerContext context, TProtocol in, TProtocol out) {
     getSessionManager().removeCurrSession();
 
-    if (context != null && factory != null) {
+    if (context instanceof JudgableServerContext) {
       ((JudgableServerContext) context).whenDisconnect();
     }
   }

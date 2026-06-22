@@ -35,8 +35,8 @@ import java.nio.file.AccessDeniedException;
 import java.security.KeyStore;
 
 /**
- * In Thrift 0.14.1, TNonblockingSocket's constructor throws a never-happened exception. So, we
- * screen the exception https://issues.apache.org/jira/browse/THRIFT-5412
+ * TNonblockingSocket's constructor declares a TTransportException for compatibility, but this code
+ * path is not expected to throw one. See https://issues.apache.org/jira/browse/THRIFT-5412.
  */
 public class TNonblockingTransportWrapper {
 
