@@ -88,6 +88,21 @@ public class DeviceTableScanNode extends TableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
+      Map<Symbol, Integer> tagAndAttributeIndexMap) {
+    this(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        tagAndAttributeIndexMap,
+        Optional.empty());
+  }
+
+  public DeviceTableScanNode(
+      PlanNodeId id,
+      QualifiedObjectName qualifiedObjectName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
       Map<Symbol, Integer> tagAndAttributeIndexMap,
       Optional<QualifiedObjectName> originalWritableViewName) {
     super(id, qualifiedObjectName, outputSymbols, assignments);
