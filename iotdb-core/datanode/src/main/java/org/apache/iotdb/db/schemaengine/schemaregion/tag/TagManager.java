@@ -59,6 +59,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Locale;
+
 
 import static java.util.stream.Collectors.toList;
 
@@ -244,9 +246,12 @@ public class TagManager {
           continue;
         }
         String tagValue = entry.getKey();
-        if (tagValue.contains(tagFilter.getValue())) {
+        if (tagValue
+        .toLowerCase(Locale.ROOT)
+        .contains(tagFilter.getValue().toLowerCase(Locale.ROOT))) {
           allMatchedNodes.addAll(entry.getValue());
         }
+
       }
     } else {
       for (Map.Entry<String, Set<IMeasurementMNode<?>>> entry : value2Node.entrySet()) {
