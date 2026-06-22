@@ -97,6 +97,7 @@ import static org.apache.iotdb.session.Session.TREE;
 public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
+  private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
   protected Session session;
@@ -151,7 +152,8 @@ public class SessionConnection {
     this.sqlDialect = sqlDialect;
     this.database = database;
     try {
-      init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+      init(
+          endPoint, session.useSSL, session.trustStore, session.trustStorePwd, session.sslProtocol);
     } catch (StatementExecutionException e) {
       throw new IoTDBConnectionException(e.getMessage());
     } catch (IoTDBConnectionException e) {
@@ -179,7 +181,12 @@ public class SessionConnection {
     initClusterConn();
   }
 
-  private void init(TEndPoint endPoint, boolean useSSL, String trustStore, String trustStorePwd)
+  private void init(
+      TEndPoint endPoint,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      String sslProtocol)
       throws IoTDBConnectionException, StatementExecutionException {
     DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
@@ -189,12 +196,13 @@ public class SessionConnection {
       }
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransportWithSSLConfig(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 session.connectionTimeoutInMs,
                 trustStore,
-                trustStorePwd);
+                trustStorePwd,
+                sslProtocol);
       } else {
         transport =
             DeepCopyRpcTransportFactory.INSTANCE.getTransport(
@@ -221,6 +229,9 @@ public class SessionConnection {
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
     openReq.putToConfiguration("sql_dialect", sqlDialect);
+    if (session.useEncryptedPassword) {
+      openReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
+    }
     if (database != null) {
       openReq.putToConfiguration("db", database);
     }
@@ -262,7 +273,12 @@ public class SessionConnection {
     for (TEndPoint tEndPoint : endPointList) {
       try {
         session.defaultEndPoint = tEndPoint;
-        init(tEndPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+        init(
+            tEndPoint,
+            session.useSSL,
+            session.trustStore,
+            session.trustStorePwd,
+            session.sslProtocol);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error(SessionMessages.CLUSTER_NO_NODES);
@@ -1079,7 +1095,12 @@ public class SessionConnection {
           }
           tryHostNum++;
           try {
-            init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+            init(
+                endPoint,
+                session.useSSL,
+                session.trustStore,
+                session.trustStorePwd,
+                session.sslProtocol);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
             logger.warn(SessionMessages.NODE_DOWN_TRY_NEXT, endPoint);

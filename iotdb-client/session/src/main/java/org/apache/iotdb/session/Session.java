@@ -129,10 +129,12 @@ public class Session implements ISession {
   protected List<String> nodeUrls;
   protected String username;
   protected String password;
+  protected boolean useEncryptedPassword;
   protected int fetchSize;
   protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
+  protected String sslProtocol;
 
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
@@ -463,6 +465,7 @@ public class Session implements ISession {
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.username = builder.username;
     this.password = builder.pw;
+    this.useEncryptedPassword = builder.useEncryptedPassword;
     this.fetchSize = builder.fetchSize;
     this.zoneId = builder.zoneId;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
@@ -472,6 +475,7 @@ public class Session implements ISession {
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
+    this.sslProtocol = builder.sslProtocol;
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
@@ -541,6 +545,7 @@ public class Session implements ISession {
               useSSL,
               trustStore,
               trustStorePwd,
+              sslProtocol,
               enableRPCCompaction,
               version.toString());
     } else {
@@ -4430,6 +4435,11 @@ public class Session implements ISession {
 
     public Builder trustStorePwd(String trustStorePwd) {
       this.trustStorePwd = trustStorePwd;
+      return this;
+    }
+
+    public Builder sslProtocol(String sslProtocol) {
+      this.sslProtocol = sslProtocol;
       return this;
     }
 

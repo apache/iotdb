@@ -67,6 +67,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -77,6 +78,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
       LoggerFactory.getLogger(GeneralRegionAttributeSecurityService.class);
 
   private static final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
+  private static final int ATTRIBUTE_UPDATE_RETRY_NUM = 1;
   private final Map<Integer, Pair<Long, Integer>> dataNodeId2FailureDurationAndTimesMap =
       new HashMap<>();
   private final Set<ISchemaRegion> regionLeaders =
@@ -214,46 +216,42 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
                                   ByteBuffer.wrap(bytes)));
                     }));
 
-    DnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(
-            clientHandler,
+    final long timeoutInMs =
+        TimeUnit.SECONDS.toMillis(
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getGeneralRegionAttributeSecurityServiceTimeoutSeconds());
+    DnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(clientHandler, ATTRIBUTE_UPDATE_RETRY_NUM, timeoutInMs);
 
     final AtomicBoolean needFetch = new AtomicBoolean(false);
+    final Set<Integer> failedDataNodes = new HashSet<>(clientHandler.getRequestIndices());
+    final long failureDurationToFetchInMs =
+        TimeUnit.SECONDS.toMillis(
+            iotdbConfig.getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch());
 
-    final Set<Integer> failedDataNodes =
-        clientHandler.getResponseMap().entrySet().stream()
-            .filter(
-                entry -> {
-                  final boolean failed =
-                      entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode();
-                  if (failed) {
-                    dataNodeId2FailureDurationAndTimesMap.compute(
-                        entry.getKey(),
-                        (k, v) -> {
-                          if (Objects.isNull(v)) {
-                            return new Pair<>(System.currentTimeMillis(), 1);
-                          }
-                          v.setRight(v.getRight() + 1);
-                          if (System.currentTimeMillis() - v.getLeft()
-                                  >= iotdbConfig
-                                      .getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch()
-                              || v.getRight()
-                                  >= iotdbConfig
-                                      .getGeneralRegionAttributeSecurityServiceFailureTimesToFetch()) {
-                            needFetch.set(true);
-                          }
-                          return v;
-                        });
-                  } else {
-                    dataNodeId2FailureDurationAndTimesMap.remove(entry.getKey());
+    clientHandler.getResponseMap().entrySet().stream()
+        .filter(entry -> entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .map(Map.Entry::getKey)
+        .forEach(dataNodeId2FailureDurationAndTimesMap::remove);
+
+    failedDataNodes.forEach(
+        dataNodeId ->
+            dataNodeId2FailureDurationAndTimesMap.compute(
+                dataNodeId,
+                (k, v) -> {
+                  if (Objects.isNull(v)) {
+                    return new Pair<>(System.currentTimeMillis(), 1);
                   }
-                  return failed;
-                })
-            .map(Map.Entry::getKey)
-            .collect(Collectors.toSet());
+                  v.setRight(v.getRight() + 1);
+                  if (System.currentTimeMillis() - v.getLeft() >= failureDurationToFetchInMs
+                      || v.getRight()
+                          >= iotdbConfig
+                              .getGeneralRegionAttributeSecurityServiceFailureTimesToFetch()) {
+                    needFetch.set(true);
+                  }
+                  return v;
+                }));
 
     // Compute node shrinkage before failure removal in commit
     final Map<SchemaRegionId, Set<TDataNodeLocation>> result =
@@ -301,7 +299,8 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
     super(
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName()),
-        iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds() * 1000L);
+        TimeUnit.SECONDS.toMillis(
+            iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds()));
   }
 
   private static final class GeneralRegionAttributeSecurityServiceHolder {

@@ -159,4 +159,15 @@ public class UtilsTest {
     Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?rpc_compress=true", properties);
     assertTrue(Config.rpcThriftCompressionEnable);
   }
+
+  @Test
+  public void testParseSslConfig() throws IoTDBURLException {
+    Properties properties = new Properties();
+    IoTDBConnectionParams params =
+        Utils.parseUrl(
+            "jdbc:iotdb://127.0.0.1:6667?use_ssl=true&ssl_protocol=ProviderProtocol", properties);
+
+    assertTrue(params.isUseSSL());
+    assertEquals("ProviderProtocol", params.getSslProtocol());
+  }
 }

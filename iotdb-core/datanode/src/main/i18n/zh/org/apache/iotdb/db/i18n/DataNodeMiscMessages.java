@@ -183,6 +183,8 @@ public final class DataNodeMiscMessages {
       "推送单个 Topic 元数据时发生错误";
   public static final String ERROR_PUSHING_MULTI_TOPIC_META =
       "推送多个 Topic 元数据时发生错误";
+  public static final String ERROR_PUSHING_TOPIC_OWNER_LEASE =
+      "推送 Topic owner 租约时发生错误";
   public static final String ERROR_PUSHING_CONSUMER_GROUP_META =
       "推送消费者组元数据时发生错误";
   public static final String ERROR_PUSHING_SINGLE_CONSUMER_GROUP_META =
@@ -714,6 +716,22 @@ public final class DataNodeMiscMessages {
       "订阅：创建绑定到消费者组 [{}] 的 Broker";
   public static final String SUBSCRIPTION_DROP_BROKER =
       "订阅：删除绑定到消费者组 [{}] 的 Broker";
+  public static final String SUBSCRIPTION_BROKER_NOT_EXIST_FMT =
+      "订阅：绑定到消费者组 [%s] 的 Broker 不存在";
+  public static final String SUBSCRIPTION_PIPE_BROKER_NOT_EMPTY =
+      "订阅：绑定到消费者组 [{}] 的 Pipe Broker 非空，无法删除";
+  public static final String SUBSCRIPTION_CONSENSUS_BROKER_NOT_EMPTY =
+      "订阅：绑定到消费者组 [{}] 的共识 Broker 非空，无法删除";
+  public static final String SUBSCRIPTION_DROP_CONSENSUS_BROKER =
+      "订阅：删除绑定到消费者组 [{}] 的共识 Broker";
+  public static final String SUBSCRIPTION_CREATE_PIPE_BROKER_FOR_BINDING =
+      "订阅：绑定到消费者组 [{}] 的 Pipe Broker 不存在，为绑定预取队列创建新 Broker";
+  public static final String SUBSCRIPTION_CREATE_CONSENSUS_BROKER_FOR_BINDING =
+      "订阅：绑定到消费者组 [{}] 的共识 Broker 不存在，为绑定共识预取队列创建新 Broker";
+  public static final String SUBSCRIPTION_CONSENSUS_UNEXPECTED_IN_FLIGHT_RESPONSE_FMT =
+      "ConsensusPrefetchingQueue %s：消费者 %s 的处理中响应不符合预期，提交上下文 %s，偏移量 %s";
+  public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
+      "不支持的共识订阅进度文件版本 %s";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionConsumerAgent
@@ -760,6 +778,10 @@ public final class DataNodeMiscMessages {
       "异常 {} 在 {} 执行接收子任务时发生";
   public static final String EXCEPTION_CONSTRUCT_TABLET_ITERATOR =
       "异常 {} 在 {} 构造 ToTabletIterator 时发生";
+  public static final String EXCEPTION_EMIT_EVENTS_BEFORE_COMMIT_TERMINATE_EVENT =
+      "订阅：SubscriptionPrefetchingQueue {} 在提交 PipeTerminateEvent {} 前封存剩余事件失败";
+  public static final String COMMIT_TERMINATE_EVENT =
+      "订阅：SubscriptionPrefetchingQueue {} 提交 PipeTerminateEvent {}";
 
   // ---------------------------------------------------------------------------
   // consensus – BaseStateMachine

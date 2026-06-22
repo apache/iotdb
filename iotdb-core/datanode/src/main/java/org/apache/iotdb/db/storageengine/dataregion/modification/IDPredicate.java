@@ -22,7 +22,6 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.Accountable;
@@ -270,15 +269,9 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public int serializedSize() {
-      if (pattern != null) {
-        byte[] bytes = pattern.getBytes(TSFileConfig.STRING_CHARSET);
-        return super.serializedSize()
-            + ReadWriteForEncodingUtils.varIntSize(bytes.length)
-            + bytes.length * Character.BYTES
-            + ReadWriteForEncodingUtils.varIntSize(segmentIndex);
-      } else {
-        return ReadWriteForEncodingUtils.varIntSize(-1);
-      }
+      return super.serializedSize()
+          + ModEntry.sizeToWriteVarString(pattern)
+          + ReadWriteForEncodingUtils.varIntSize(segmentIndex);
     }
 
     @Override
