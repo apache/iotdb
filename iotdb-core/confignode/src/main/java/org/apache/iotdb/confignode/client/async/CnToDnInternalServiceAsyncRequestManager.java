@@ -96,6 +96,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSubscriptionRuntimeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicOwnerLeaseReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
@@ -244,6 +245,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.pushSubscriptionRuntime(
                 (TPushSubscriptionRuntimeReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.SUBSCRIPTION_PUSH_OWNER_LEASE,
+        (req, client, handler) ->
+            client.pushTopicOwnerLease(
+                (TPushTopicOwnerLeaseReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.PIPE_HEARTBEAT,
         (req, client, handler) ->

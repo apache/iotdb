@@ -709,6 +709,43 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletBatchReqFromLegacyV13BodyWithBinaryReqs() throws IOException {
+    final InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            1,
+            new Object[] {1},
+            false);
+    final ByteBuffer binaryBuffer = ByteBuffer.wrap(new byte[] {'a', 'b'});
+
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.TRANSFER_TABLET_BATCH,
+            serializeLegacyTabletBatchBody(
+                Collections.singletonList(binaryBuffer),
+                Collections.singletonList(node.serializeToByteBuffer()),
+                Collections.singletonList(serializeLegacyTabletRawBuffer(false))));
+
+    final PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializedReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializedReq.getType());
+    Assert.assertEquals(1, deserializedReq.getBinaryReqs().size());
+    Assert.assertArrayEquals(
+        new byte[] {'a', 'b'},
+        byteBufferToByteArray(deserializedReq.getBinaryReqs().get(0).getByteBuffer()));
+    Assert.assertEquals(1, deserializedReq.getInsertNodeReqs().size());
+    Assert.assertEquals(1, deserializedReq.getTabletReqs().size());
+    Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
+    assertLegacyTabletStatement(deserializedReq.getTabletReqs().get(0).constructStatement());
+  }
+
+  @Test
   public void testPipeTransferTabletRawReqWithLegacyTabletFormat() throws IOException {
     final TPipeTransferReq req = new TPipeTransferReq();
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
@@ -722,6 +759,51 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(req.getType(), deserializedReq.getType());
     Assert.assertTrue(deserializedReq.getIsAligned());
     assertLegacyTabletStatement(deserializedReq.constructStatement());
+  }
+
+  @Test
+  public void testPipeTransferTabletRawReqWithSingleColumnLegacyTabletFormat() throws IOException {
+    final TPipeTransferReq req = new TPipeTransferReq();
+    req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_RAW.getType();
+    req.body = serializeSingleColumnLegacyTabletRawBuffer(false);
+
+    final PipeTransferTabletRawReq deserializedReq =
+        PipeTransferTabletRawReq.fromTPipeTransferReq(req);
+
+    Assert.assertFalse(deserializedReq.getIsAligned());
+    final InsertTabletStatement statement = deserializedReq.constructStatement();
+    Assert.assertEquals("root.sg.d", statement.getDevicePath().getFullPath());
+    Assert.assertArrayEquals(new String[] {"s1"}, statement.getMeasurements());
+    Assert.assertArrayEquals(new TSDataType[] {TSDataType.INT32}, statement.getDataTypes());
+    Assert.assertEquals(2, statement.getRowCount());
+    Assert.assertArrayEquals(new long[] {1700000000000L, 1700000000001L}, statement.getTimes());
+    Assert.assertArrayEquals(new int[] {2, 1}, (int[]) statement.getColumns()[0]);
+  }
+
+  @Test
+  public void testPipeTransferTabletBatchReqRejectsTruncatedRawTablet() throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(0, outputStream);
+      ReadWriteIOUtils.write(0, outputStream);
+      ReadWriteIOUtils.write(1, outputStream);
+      outputStream.write(new byte[] {1, 0, 0, 0, 0, 0});
+
+      final TPipeTransferReq req =
+          legacyTransferReq(
+              PipeRequestType.TRANSFER_TABLET_BATCH,
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+
+      try {
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
+        Assert.fail("Expected IllegalArgumentException");
+      } catch (final IllegalArgumentException e) {
+        Assert.assertTrue(e.getMessage().contains("Failed to deserialize raw tablet"));
+        Assert.assertTrue(
+            e.getCause().getMessage().contains("Failed to deserialize raw tablet request"));
+      }
+    }
   }
 
   @Test
@@ -1254,8 +1336,8 @@ public class PipeDataNodeThriftRequestTest {
       writeLegacyMeasurementSchema(outputStream, "s2", TSDataType.TEXT);
 
       ReadWriteIOUtils.write((byte) 1, outputStream);
-      ReadWriteIOUtils.write(2L, outputStream);
-      ReadWriteIOUtils.write(1L, outputStream);
+      ReadWriteIOUtils.write(1700000000000L, outputStream);
+      ReadWriteIOUtils.write(1700000000001L, outputStream);
 
       ReadWriteIOUtils.write((byte) 0, outputStream);
 
@@ -1274,12 +1356,52 @@ public class PipeDataNodeThriftRequestTest {
     }
   }
 
-  private static ByteBuffer serializeLegacyTabletBatchBody(
-      final List<ByteBuffer> insertNodeBuffers, final List<ByteBuffer> tabletBuffers)
+  private static ByteBuffer serializeSingleColumnLegacyTabletRawBuffer(final boolean isAligned)
       throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(0, outputStream);
+      ReadWriteIOUtils.write("root.sg.d", outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(1, outputStream);
+      writeLegacyMeasurementSchema(outputStream, "s1", TSDataType.INT32);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(1700000000000L, outputStream);
+      ReadWriteIOUtils.write(1700000000001L, outputStream);
+
+      ReadWriteIOUtils.write((byte) 0, outputStream);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+      ReadWriteIOUtils.write(1, outputStream);
+
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  private static ByteBuffer serializeLegacyTabletBatchBody(
+      final List<ByteBuffer> insertNodeBuffers, final List<ByteBuffer> tabletBuffers)
+      throws IOException {
+    return serializeLegacyTabletBatchBody(
+        Collections.emptyList(), insertNodeBuffers, tabletBuffers);
+  }
+
+  private static ByteBuffer serializeLegacyTabletBatchBody(
+      final List<ByteBuffer> binaryBuffers,
+      final List<ByteBuffer> insertNodeBuffers,
+      final List<ByteBuffer> tabletBuffers)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(binaryBuffers.size(), outputStream);
+      for (final ByteBuffer binaryBuffer : binaryBuffers) {
+        ReadWriteIOUtils.write(binaryBuffer.limit(), outputStream);
+        writeByteBuffer(outputStream, binaryBuffer);
+      }
 
       ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
       for (final ByteBuffer insertNodeBuffer : insertNodeBuffers) {

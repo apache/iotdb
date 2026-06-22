@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.relational.it.schema;
 
+import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -41,12 +43,14 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -139,6 +143,8 @@ public class IoTDBDatabaseIT {
 
       final int[] schemaRegionGroupNum = new int[] {0};
       final int[] dataRegionGroupNum = new int[] {0};
+      final int[] defaultSchemaRegionGroupNum = new int[] {1};
+      final int[] defaultDataRegionGroupNum = new int[] {2};
       // show
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         int cnt = 0;
@@ -158,7 +164,9 @@ public class IoTDBDatabaseIT {
           assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
           assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
           assertEquals(schemaRegionGroupNum[cnt], resultSet.getInt(6));
-          assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(7));
+          assertTrue(resultSet.getInt(7) >= defaultSchemaRegionGroupNum[cnt]);
+          assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(8));
+          assertTrue(resultSet.getInt(9) >= defaultDataRegionGroupNum[cnt]);
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
@@ -431,7 +439,9 @@ public class IoTDBDatabaseIT {
                   "data_replication_factor,INT32,ATTRIBUTE,",
                   "time_partition_interval,INT64,ATTRIBUTE,",
                   "schema_region_group_num,INT32,ATTRIBUTE,",
-                  "data_region_group_num,INT32,ATTRIBUTE,")));
+                  "max_schema_region_group_num,INT32,ATTRIBUTE,",
+                  "data_region_group_num,INT32,ATTRIBUTE,",
+                  "max_data_region_group_num,INT32,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
           "ColumnName,DataType,Category,",
@@ -655,13 +665,36 @@ public class IoTDBDatabaseIT {
       statement.execute(
           "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) RESTRICT WITH (ttl=100) AS root.\"a\".**");
 
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("select * from databases"),
-          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,",
-          new HashSet<>(
-              Arrays.asList(
-                  "information_schema,INF,null,null,null,null,null,",
-                  "test,INF,1,1,604800000,0,0,")));
+      try (final ResultSet resultSet = statement.executeQuery("select * from databases")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final List<TsTableColumnSchema> expectedColumnSchemas =
+            InformationSchema.getSchemaTables().get(InformationSchema.DATABASES).getColumnList();
+        assertEquals(expectedColumnSchemas.size(), metaData.getColumnCount());
+        for (int i = 0; i < expectedColumnSchemas.size(); i++) {
+          assertEquals(expectedColumnSchemas.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          if ("information_schema".equals(resultSet.getString(1))) {
+            for (int columnIndex = 3; columnIndex <= 9; columnIndex++) {
+              assertNull(resultSet.getObject(columnIndex));
+            }
+          } else {
+            assertEquals("test", resultSet.getString(1));
+            assertEquals("INF", resultSet.getString(2));
+            assertEquals(1, resultSet.getInt(3));
+            assertEquals(1, resultSet.getInt(4));
+            assertEquals(604800000, resultSet.getLong(5));
+            assertEquals(0, resultSet.getInt(6));
+            assertTrue(resultSet.getInt(7) >= 1);
+            assertEquals(0, resultSet.getInt(8));
+            assertTrue(resultSet.getInt(9) >= 2);
+          }
+          cnt++;
+        }
+        assertEquals(2, cnt);
+      }
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from tables where status = 'USING'"),
           "database,table_name,ttl(ms),status,comment,table_type,",
@@ -889,8 +922,8 @@ public class IoTDBDatabaseIT {
           Collections.singleton("information_schema,INF,null,null,null,"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.databases"),
-          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,",
-          Collections.singleton("information_schema,INF,null,null,null,null,null,"));
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,max_schema_region_group_num,data_region_group_num,max_data_region_group_num,",
+          Collections.singleton("information_schema,INF,null,null,null,null,null,null,null,"));
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

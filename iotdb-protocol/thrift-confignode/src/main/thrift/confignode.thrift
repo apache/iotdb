@@ -736,10 +736,8 @@ struct TDatabaseInfo {
   4: required i32 dataReplicationFactor
   5: required i64 timePartitionInterval
   6: required i32 schemaRegionNum
-  7: required i32 minSchemaRegionNum
   8: required i32 maxSchemaRegionNum
   9: required i32 dataRegionNum
-  10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
 }
@@ -1947,6 +1945,9 @@ service IConfigNodeRPCService {
   // ======================================================
   /** Create Topic */
   common.TSStatus createTopic(TCreateTopicReq req)
+
+  /** Alter Topic */
+  common.TSStatus alterTopic(TAlterTopicReq req)
 
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)

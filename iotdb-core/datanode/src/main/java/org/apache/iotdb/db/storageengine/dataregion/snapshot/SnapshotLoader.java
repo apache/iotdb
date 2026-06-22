@@ -28,7 +28,9 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +44,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -52,11 +55,26 @@ public class SnapshotLoader {
   private Logger LOGGER = LoggerFactory.getLogger(SnapshotLoader.class);
   private String storageGroupName;
   private String snapshotPath;
+  private List<String> snapshotPaths;
   private String dataRegionId;
   private SnapshotLogAnalyzer logAnalyzer;
 
   public SnapshotLoader(String snapshotPath, String storageGroupName, String dataRegionId) {
     this.snapshotPath = snapshotPath;
+    this.snapshotPaths = Collections.singletonList(snapshotPath);
+    this.storageGroupName = storageGroupName;
+    this.dataRegionId = dataRegionId;
+  }
+
+  /**
+   * A snapshot received by IoTConsensus is spread across several receive folders (one per local
+   * data dir), so loading it means relinking the fragments from all of them. The data dirs must be
+   * cleared exactly once, before relinking from any folder; see {@link
+   * #loadSnapshotFromMultipleDirs()}.
+   */
+  public SnapshotLoader(List<String> snapshotPaths, String storageGroupName, String dataRegionId) {
+    this.snapshotPaths = snapshotPaths;
+    this.snapshotPath = snapshotPaths.isEmpty() ? null : snapshotPaths.get(0);
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
   }
@@ -98,6 +116,10 @@ public class SnapshotLoader {
    * @return
    */
   public DataRegion loadSnapshotForStateMachine() {
+    if (snapshotPaths.size() > 1) {
+      return loadSnapshotFromMultipleDirs();
+    }
+
     LOGGER.info(
         StorageEngineMessages.LOADING_SNAPSHOT_FOR, storageGroupName, dataRegionId, snapshotPath);
 
@@ -107,6 +129,33 @@ public class SnapshotLoader {
       return loadSnapshotWithoutLog();
     } else {
       return loadSnapshotWithLog(snapshotLogFile);
+    }
+  }
+
+  /**
+   * Load a snapshot whose fragments are spread across several dirs (the IoTConsensus receive
+   * folders). The snapshot log is not transferred during an IoTConsensus snapshot, so every
+   * received fragment dir takes the without-log path. Crucially, the data dirs are cleared exactly
+   * once before relinking from all dirs: clearing per-dir (as one load call per dir would) erases
+   * the fragments linked by the previous dirs and leaves only the last dir's data. Because each dir
+   * contributes a disjoint set of files, the relink order does not affect the result.
+   */
+  private DataRegion loadSnapshotFromMultipleDirs() {
+    LOGGER.info(
+        StorageEngineMessages.LOADING_SNAPSHOT_FOR, storageGroupName, dataRegionId, snapshotPaths);
+    try {
+      deleteAllFilesInDataDirs();
+      LOGGER.info(StorageEngineMessages.REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR);
+      for (String path : snapshotPaths) {
+        File snapshotDir = new File(path);
+        createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir);
+        loadCompressionRatio(snapshotDir);
+      }
+      return loadSnapshot();
+    } catch (IOException | DiskSpaceInsufficientException e) {
+      LOGGER.error(
+          StorageEngineMessages.EXCEPTION_LOADING_SNAPSHOT_FOR, storageGroupName, dataRegionId, e);
+      return null;
     }
   }
 
@@ -360,6 +409,8 @@ public class SnapshotLoader {
       String targetSuffix, File[] files, FolderManager folderManager) throws IOException {
     Map<String, String> fileTarget = new HashMap<>();
     for (File file : files) {
+      checkTsFileResourceExists(file);
+
       String fileKey = file.getName().split("\\.")[0];
       String dataDir = fileTarget.get(fileKey);
 
@@ -391,6 +442,17 @@ public class SnapshotLoader {
                 targetSuffix),
             e);
       }
+    }
+  }
+
+  private void checkTsFileResourceExists(File file) {
+    if (!file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+      return;
+    }
+
+    String resourceFileName = file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
+    if (!new File(resourceFileName).exists()) {
+      LOGGER.warn("The associated resource file of {} is not found in the snapshot", file);
     }
   }
 

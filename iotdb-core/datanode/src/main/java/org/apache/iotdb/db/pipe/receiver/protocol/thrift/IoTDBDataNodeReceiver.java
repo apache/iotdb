@@ -48,6 +48,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFil
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferPipeReceiverRuntimeInfoCleanupReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -104,6 +105,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsSta
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
@@ -659,8 +661,24 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus loadSchemaSnapShot(
       final Map<String, String> parameters, final List<String> fileAbsolutePaths)
       throws IllegalPathException, IOException {
-    final PartialPath databasePath =
-        PartialPath.getQualifiedDatabasePartialPath(parameters.get(ColumnHeaderConstant.DATABASE));
+    final String databaseName = parameters.get(ColumnHeaderConstant.DATABASE);
+    final PartialPath databasePath = PartialPath.getQualifiedDatabasePartialPath(databaseName);
+    final boolean isTreeModelDataAllowedToBeCaptured =
+        PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters);
+    final TreePattern treePattern =
+        parseTreePattern(
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN), isTreeModelDataAllowedToBeCaptured);
+
+    if (!PathUtils.isTableModelDatabase(databaseName)) {
+      if (!shouldLoadTreeSchemaSnapshotDatabase(treePattern, databaseName)) {
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+      final TSStatus createDatabaseStatus = createSchemaSnapshotDatabaseIfNecessary(databasePath);
+      if (createDatabaseStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return createDatabaseStatus;
+      }
+    }
+
     final SRStatementGenerator generator =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(fileAbsolutePaths.get(0)),
@@ -674,13 +692,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final boolean isTreeModelDataAllowedToBeCaptured =
-        PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters);
-    final TreePattern treePattern =
-        TreePattern.parsePatternFromString(
-            parameters.get(ColumnHeaderConstant.PATH_PATTERN),
-            isTreeModelDataAllowedToBeCaptured,
-            p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
     final TablePattern tablePattern =
         new TablePattern(
             PipeTransferFileSealReqV2.isTableModelDataAllowedToBeCaptured(parameters),
@@ -729,6 +740,55 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         .filter(Optional::isPresent)
         .forEach(statement -> results.add(executeStatementAndClassifyExceptions(statement.get())));
     return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  static boolean shouldLoadTreeSchemaSnapshotDatabase(
+      final String pathPattern,
+      final boolean isTreeModelDataAllowedToBeCaptured,
+      final String databaseName) {
+    return shouldLoadTreeSchemaSnapshotDatabase(
+        parseTreePattern(pathPattern, isTreeModelDataAllowedToBeCaptured), databaseName);
+  }
+
+  private static TreePattern parseTreePattern(
+      final String pathPattern, final boolean isTreeModelDataAllowedToBeCaptured) {
+    return TreePattern.parsePatternFromString(
+        pathPattern,
+        isTreeModelDataAllowedToBeCaptured,
+        p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
+  }
+
+  private static boolean shouldLoadTreeSchemaSnapshotDatabase(
+      final TreePattern treePattern, final String databaseName) {
+    return treePattern.isTreeModelDataAllowedToBeCaptured()
+        && treePattern.mayOverlapWithDb(databaseName);
+  }
+
+  private TSStatus createSchemaSnapshotDatabaseIfNecessary(final PartialPath databasePath) {
+    final DatabaseSchemaStatement statement =
+        new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+    statement.setDatabasePath(databasePath);
+
+    final TSStatus status = executeStatementAndClassifyExceptions(statement);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+    if (status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+      return Objects.equals(
+              status.getMessage(),
+              databasePath.getFullPath() + " has already been created as database")
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(status.getMessage());
+    }
+
+    if (status.getCode() == TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(status.getMessage());
+    }
+
+    return status;
   }
 
   private TPipeTransferResp handleTransferSchemaPlan(final PipeTransferPlanNodeReq req) {

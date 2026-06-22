@@ -60,6 +60,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
+  private final String attributeDisplayString;
   private final int sinkIndex;
 
   // Now parallel connectors run the same time, thus the heartbeat events are not sure
@@ -75,8 +76,27 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final int sinkIndex,
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
       final PipeConnector outputPipeConnector) {
+    this(
+        taskID,
+        creationTime,
+        attributeSortedString,
+        attributeSortedString,
+        sinkIndex,
+        inputPendingQueue,
+        outputPipeConnector);
+  }
+
+  public PipeSinkSubtask(
+      final String taskID,
+      final long creationTime,
+      final String attributeSortedString,
+      final String attributeDisplayString,
+      final int sinkIndex,
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
+      final PipeConnector outputPipeConnector) {
     super(taskID, creationTime, outputPipeConnector);
     this.attributeSortedString = attributeSortedString;
+    this.attributeDisplayString = attributeDisplayString;
     this.sinkIndex = sinkIndex;
     this.inputPendingQueue = inputPendingQueue;
 
@@ -159,7 +179,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
           DataNodePipeMessages.PIPECONNECTOR
               + outputPipeSink.getClass().getName()
               + "(id: "
-              + taskID
+              + getDisplayTaskID()
               + ")"
               + " heartbeat failed, or encountered failure when transferring generic event. Failure: "
               + e.getMessage(),
@@ -184,13 +204,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       outputPipeSink.close();
       LOGGER.info(
           DataNodePipeMessages.PIPE_CONNECTOR_SUBTASK_WAS_CLOSED_WITHIN_MS,
-          taskID,
+          getDisplayTaskID(),
           outputPipeSink,
           System.currentTimeMillis() - startTime);
     } catch (final Exception e) {
       LOGGER.info(
           DataNodePipeMessages.EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_CONNECTOR_SUBTASK,
-          taskID,
+          getDisplayTaskID(),
           ErrorHandlingCommonUtils.getRootCause(e).getMessage(),
           e);
     } finally {
@@ -374,5 +394,15 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     lastExceptionTime = Long.MAX_VALUE;
     PipeDataNodeAgent.runtime().report(event, exception);
+  }
+
+  @Override
+  public String getDisplayTaskID() {
+    return generateDisplayTaskID(attributeDisplayString, creationTime, sinkIndex);
+  }
+
+  static String generateDisplayTaskID(
+      final String attributeDisplayString, final long creationTime, final int sinkIndex) {
+    return String.format("%s_%s_%s", attributeDisplayString, creationTime, sinkIndex);
   }
 }

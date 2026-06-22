@@ -184,6 +184,8 @@ public final class DataNodeMiscMessages {
       "Error occurred when pushing single topic meta";
   public static final String ERROR_PUSHING_MULTI_TOPIC_META =
       "Error occurred when pushing multi topic meta";
+  public static final String ERROR_PUSHING_TOPIC_OWNER_LEASE =
+      "Error occurred when pushing topic owner lease";
   public static final String ERROR_PUSHING_CONSUMER_GROUP_META =
       "Error occurred when pushing consumer group meta";
   public static final String ERROR_PUSHING_SINGLE_CONSUMER_GROUP_META =
@@ -777,6 +779,11 @@ public final class DataNodeMiscMessages {
       "Exception {} occurred when {} execute receiver subtask";
   public static final String EXCEPTION_CONSTRUCT_TABLET_ITERATOR =
       "Exception {} occurred when {} construct ToTabletIterator";
+  public static final String EXCEPTION_EMIT_EVENTS_BEFORE_COMMIT_TERMINATE_EVENT =
+      "Subscription: SubscriptionPrefetchingQueue {} failed to emit remaining events before "
+          + "committing PipeTerminateEvent {}";
+  public static final String COMMIT_TERMINATE_EVENT =
+      "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}";
 
   // ---------------------------------------------------------------------------
   // consensus – BaseStateMachine

@@ -159,7 +159,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -1463,7 +1463,8 @@ public class DataNodeTableOperatorGenerator
               scanAscending,
               true,
               timeColumnName,
-              measurementColumnsIndexMap.keySet()));
+              measurementColumnsIndexMap.keySet(),
+              context.getMemoryReservationManager()));
     }
 
     ITableTimeRangeIterator timeRangeIterator = null;

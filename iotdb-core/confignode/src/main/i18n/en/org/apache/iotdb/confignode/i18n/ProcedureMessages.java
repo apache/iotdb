@@ -1001,7 +1001,7 @@ public final class ProcedureMessages {
   public static final String VALIDATE_TABLE_FOR_TABLE_WHEN_SETTING_PROPERTIES =
       "Validate table for table {}.{} when setting properties";
   public static final String WAITTASKFINISH_RETURNS_PROCESSING_WHICH_MEANS_THE_WAITING_HAS_BEEN_INTERRUPTED =
-      "waitTaskFinish() returns PROCESSING, which means the waiting has been interrupted, this procedure will end without rollback";
+      "waitTaskFinish() returns PROCESSING, which means the waiting has been interrupted (ConfigNode shutdown or leader change); the AddRegionPeer task is still running on the coordinator, this procedure will stay at DO_ADD_REGION_PEER and resume polling after recovery";
 
     public static final String FAILED_TO_CREATE_DATABASE_THE_TTL_SHOULD_BE_NON_NEGATIVE = "Failed to create database. The TTL should be non-negative.";
   public static final String FAILED_TO_CREATE_DATABASE_THE_DATAREGIONGROUPNUM_SHOULD_BE_POSITIVE = "Failed to create database. The dataRegionGroupNum should be positive.";
