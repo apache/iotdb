@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.disk.strategy;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
@@ -41,20 +42,12 @@ import java.io.IOException;
  */
 public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
-  /**
-   * Recompute the occupied space at most once per this interval, so that changes made outside of
-   * this strategy (or a low selection rate) cannot keep the cache stale forever.
-   */
-  private static final long DEFAULT_REFRESH_INTERVAL_MS = 60_000L;
-
-  /**
-   * Recompute the occupied space after this many selections, bounding how far the cached state can
-   * drift from reality (and thus the worst-case imbalance) regardless of the selection rate.
-   */
-  private static final int DEFAULT_REFRESH_SELECTION_THRESHOLD = 1000;
-
-  private long refreshIntervalMs = DEFAULT_REFRESH_INTERVAL_MS;
-  private int refreshSelectionThreshold = DEFAULT_REFRESH_SELECTION_THRESHOLD;
+  private long refreshIntervalMs =
+      CommonDescriptor.getInstance().getConfig().getMinFolderOccupiedSpaceCacheRefreshIntervalMs();
+  private int refreshSelectionThreshold =
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .getMinFolderOccupiedSpaceCacheRefreshSelectionThreshold();
 
   /** Cached occupied space per folder, captured at the last refresh. */
   private long[] cachedOccupiedSpace;

@@ -185,6 +185,12 @@ public class CommonConfig {
   /** Disk Monitor. */
   private double diskSpaceWarningThreshold = 0.05;
 
+  /** Refresh interval for MinFolderOccupiedSpaceFirstStrategy occupied-space cache. */
+  private long minFolderOccupiedSpaceCacheRefreshIntervalMs = 60_000L;
+
+  /** Refresh selection threshold for MinFolderOccupiedSpaceFirstStrategy occupied-space cache. */
+  private int minFolderOccupiedSpaceCacheRefreshSelectionThreshold = 1000;
+
   /** Time partition origin in milliseconds. */
   private long timePartitionOrigin = 0;
 
@@ -779,6 +785,26 @@ public class CommonConfig {
 
   public void setDiskSpaceWarningThreshold(double diskSpaceWarningThreshold) {
     this.diskSpaceWarningThreshold = diskSpaceWarningThreshold;
+  }
+
+  public long getMinFolderOccupiedSpaceCacheRefreshIntervalMs() {
+    return minFolderOccupiedSpaceCacheRefreshIntervalMs;
+  }
+
+  public void setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
+      long minFolderOccupiedSpaceCacheRefreshIntervalMs) {
+    this.minFolderOccupiedSpaceCacheRefreshIntervalMs =
+        minFolderOccupiedSpaceCacheRefreshIntervalMs;
+  }
+
+  public int getMinFolderOccupiedSpaceCacheRefreshSelectionThreshold() {
+    return minFolderOccupiedSpaceCacheRefreshSelectionThreshold;
+  }
+
+  public void setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
+      int minFolderOccupiedSpaceCacheRefreshSelectionThreshold) {
+    this.minFolderOccupiedSpaceCacheRefreshSelectionThreshold =
+        minFolderOccupiedSpaceCacheRefreshSelectionThreshold;
   }
 
   public boolean isReadOnly() {
