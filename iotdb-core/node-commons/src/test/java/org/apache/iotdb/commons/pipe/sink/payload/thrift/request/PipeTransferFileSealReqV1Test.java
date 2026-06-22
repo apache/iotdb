@@ -26,6 +26,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertAirGapReqBytes;
 import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertVersionAndType;
 import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.copyOf;
 
@@ -36,40 +37,47 @@ public class PipeTransferFileSealReqV1Test {
 
   @Test
   public void testFileSealReqV1RoundTripKeepsFileNameAndLength() throws IOException {
-    final DummyFileSealReqV1 req = DummyFileSealReqV1.toTPipeTransferReq(FILE_NAME, FILE_LENGTH);
+    assertFileSealReqRoundTrip(FILE_NAME, FILE_LENGTH);
+  }
+
+  @Test
+  public void testEmptyFileSealReqV1RoundTripKeepsFileNameAndLength() throws IOException {
+    assertFileSealReqRoundTrip(FILE_NAME, 0L);
+  }
+
+  @Test
+  public void testFileSealAirGapBytesKeepSameBodyFormat() throws IOException {
+    assertAirGapReqBytes(
+        new DummyFileSealReqV1().convertToTPipeTransferSnapshotSealBytes(FILE_NAME, FILE_LENGTH),
+        IoTDBSinkRequestVersion.VERSION_1,
+        PipeRequestType.TRANSFER_TS_FILE_SEAL,
+        body -> assertFileSealBody(body, FILE_NAME, FILE_LENGTH));
+  }
+
+  private static void assertFileSealReqRoundTrip(
+      final String expectedFileName, final long expectedFileLength) throws IOException {
+    final DummyFileSealReqV1 req =
+        DummyFileSealReqV1.toTPipeTransferReq(expectedFileName, expectedFileLength);
 
     assertVersionAndType(
         req, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_TS_FILE_SEAL);
-    Assert.assertEquals(FILE_NAME, req.getFileName());
-    Assert.assertEquals(FILE_LENGTH, req.getFileLength());
-    assertFileSealBody(req.body.duplicate());
+    Assert.assertEquals(expectedFileName, req.getFileName());
+    Assert.assertEquals(expectedFileLength, req.getFileLength());
+    assertFileSealBody(req.body.duplicate(), expectedFileName, expectedFileLength);
 
     final DummyFileSealReqV1 deserializedReq =
         (DummyFileSealReqV1) new DummyFileSealReqV1().translateFromTPipeTransferReq(copyOf(req));
 
     Assert.assertEquals(req.version, deserializedReq.version);
     Assert.assertEquals(req.type, deserializedReq.type);
-    Assert.assertEquals(FILE_NAME, deserializedReq.getFileName());
-    Assert.assertEquals(FILE_LENGTH, deserializedReq.getFileLength());
+    Assert.assertEquals(expectedFileName, deserializedReq.getFileName());
+    Assert.assertEquals(expectedFileLength, deserializedReq.getFileLength());
   }
 
-  @Test
-  public void testFileSealAirGapBytesKeepSameBodyFormat() throws IOException {
-    final ByteBuffer buffer =
-        ByteBuffer.wrap(
-            new DummyFileSealReqV1()
-                .convertToTPipeTransferSnapshotSealBytes(FILE_NAME, FILE_LENGTH));
-
-    Assert.assertEquals(
-        IoTDBSinkRequestVersion.VERSION_1.getVersion(), ReadWriteIOUtils.readByte(buffer));
-    Assert.assertEquals(
-        PipeRequestType.TRANSFER_TS_FILE_SEAL.getType(), ReadWriteIOUtils.readShort(buffer));
-    assertFileSealBody(buffer);
-  }
-
-  private static void assertFileSealBody(final ByteBuffer body) {
-    Assert.assertEquals(FILE_NAME, ReadWriteIOUtils.readString(body));
-    Assert.assertEquals(FILE_LENGTH, ReadWriteIOUtils.readLong(body));
+  private static void assertFileSealBody(
+      final ByteBuffer body, final String expectedFileName, final long expectedFileLength) {
+    Assert.assertEquals(expectedFileName, ReadWriteIOUtils.readString(body));
+    Assert.assertEquals(expectedFileLength, ReadWriteIOUtils.readLong(body));
     Assert.assertFalse(body.hasRemaining());
   }
 

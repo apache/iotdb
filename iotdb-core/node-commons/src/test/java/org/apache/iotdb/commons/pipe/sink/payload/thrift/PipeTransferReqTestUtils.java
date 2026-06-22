@@ -29,6 +29,7 @@ import org.junit.Assert;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 public final class PipeTransferReqTestUtils {
 
@@ -38,6 +39,18 @@ public final class PipeTransferReqTestUtils {
       final PipeRequestType expectedType) {
     Assert.assertEquals(expectedVersion.getVersion(), req.version);
     Assert.assertEquals(expectedType.getType(), req.type);
+  }
+
+  public static void assertAirGapReqBytes(
+      final byte[] reqBytes,
+      final IoTDBSinkRequestVersion expectedVersion,
+      final PipeRequestType expectedType,
+      final Consumer<ByteBuffer> bodyAssertion) {
+    final ByteBuffer reqBuffer = ByteBuffer.wrap(reqBytes);
+    Assert.assertEquals(expectedVersion.getVersion(), ReadWriteIOUtils.readByte(reqBuffer));
+    Assert.assertEquals(expectedType.getType(), ReadWriteIOUtils.readShort(reqBuffer));
+    bodyAssertion.accept(reqBuffer);
+    Assert.assertFalse(reqBuffer.hasRemaining());
   }
 
   public static TPipeTransferReq copyOf(final TPipeTransferReq req) {

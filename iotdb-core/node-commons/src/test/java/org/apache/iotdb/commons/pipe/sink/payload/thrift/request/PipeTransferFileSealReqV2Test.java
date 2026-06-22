@@ -27,10 +27,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertAirGapReqBytes;
 import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertVersionAndType;
 import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.copyOf;
 
@@ -59,24 +61,13 @@ public class PipeTransferFileSealReqV2Test {
     final List<Long> fileLengths = Arrays.asList(12L, 34L);
     final Map<String, String> parameters = snapshotParameters();
 
-    final DummyFileSealReqV2 req =
-        DummyFileSealReqV2.toTPipeTransferReq(fileNames, fileLengths, parameters);
+    assertSnapshotSealReqRoundTrip(fileNames, fileLengths, parameters);
+  }
 
-    assertVersionAndType(
-        req, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL);
-    Assert.assertEquals(fileNames, req.getFileNames());
-    Assert.assertEquals(fileLengths, req.getFileLengths());
-    Assert.assertEquals(parameters, req.getParameters());
-    assertSnapshotSealBody(req.body.duplicate(), fileNames, fileLengths, parameters);
-
-    final DummyFileSealReqV2 deserializedReq =
-        (DummyFileSealReqV2) new DummyFileSealReqV2().translateFromTPipeTransferReq(copyOf(req));
-
-    Assert.assertEquals(req.version, deserializedReq.version);
-    Assert.assertEquals(req.type, deserializedReq.type);
-    Assert.assertEquals(fileNames, deserializedReq.getFileNames());
-    Assert.assertEquals(fileLengths, deserializedReq.getFileLengths());
-    Assert.assertEquals(parameters, deserializedReq.getParameters());
+  @Test
+  public void testEmptySnapshotSealReqV2RoundTripKeepsFilesAndParameters() throws IOException {
+    assertSnapshotSealReqRoundTrip(
+        Collections.emptyList(), Collections.emptyList(), Collections.emptyMap());
   }
 
   @Test
@@ -85,17 +76,39 @@ public class PipeTransferFileSealReqV2Test {
     final List<Long> fileLengths = Arrays.asList(12L, 34L);
     final Map<String, String> parameters = snapshotParameters();
 
-    final ByteBuffer buffer =
-        ByteBuffer.wrap(
-            new DummyFileSealReqV2()
-                .convertToTPipeTransferSnapshotSealBytes(fileNames, fileLengths, parameters));
+    assertAirGapReqBytes(
+        new DummyFileSealReqV2()
+            .convertToTPipeTransferSnapshotSealBytes(fileNames, fileLengths, parameters),
+        IoTDBSinkRequestVersion.VERSION_1,
+        PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL,
+        body -> assertSnapshotSealBody(body, fileNames, fileLengths, parameters));
+  }
 
-    Assert.assertEquals(
-        IoTDBSinkRequestVersion.VERSION_1.getVersion(), ReadWriteIOUtils.readByte(buffer));
-    Assert.assertEquals(
-        PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL.getType(),
-        ReadWriteIOUtils.readShort(buffer));
-    assertSnapshotSealBody(buffer, fileNames, fileLengths, parameters);
+  private static void assertSnapshotSealReqRoundTrip(
+      final List<String> expectedFileNames,
+      final List<Long> expectedFileLengths,
+      final Map<String, String> expectedParameters)
+      throws IOException {
+    final DummyFileSealReqV2 req =
+        DummyFileSealReqV2.toTPipeTransferReq(
+            expectedFileNames, expectedFileLengths, expectedParameters);
+
+    assertVersionAndType(
+        req, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL);
+    Assert.assertEquals(expectedFileNames, req.getFileNames());
+    Assert.assertEquals(expectedFileLengths, req.getFileLengths());
+    Assert.assertEquals(expectedParameters, req.getParameters());
+    assertSnapshotSealBody(
+        req.body.duplicate(), expectedFileNames, expectedFileLengths, expectedParameters);
+
+    final DummyFileSealReqV2 deserializedReq =
+        (DummyFileSealReqV2) new DummyFileSealReqV2().translateFromTPipeTransferReq(copyOf(req));
+
+    Assert.assertEquals(req.version, deserializedReq.version);
+    Assert.assertEquals(req.type, deserializedReq.type);
+    Assert.assertEquals(expectedFileNames, deserializedReq.getFileNames());
+    Assert.assertEquals(expectedFileLengths, deserializedReq.getFileLengths());
+    Assert.assertEquals(expectedParameters, deserializedReq.getParameters());
   }
 
   private static void assertCapture(
@@ -130,13 +143,18 @@ public class PipeTransferFileSealReqV2Test {
       Assert.assertEquals(expectedFileLength.longValue(), ReadWriteIOUtils.readLong(body));
     }
 
+    final Map<String, String> parameters = readStringMap(body);
+    Assert.assertEquals(expectedParameters, parameters);
+    Assert.assertFalse(body.hasRemaining());
+  }
+
+  private static Map<String, String> readStringMap(final ByteBuffer body) {
     final int parameterSize = ReadWriteIOUtils.readInt(body);
-    final Map<String, String> parameters = new LinkedHashMap<>();
+    final Map<String, String> parameters = new HashMap<>();
     for (int i = 0; i < parameterSize; i++) {
       parameters.put(ReadWriteIOUtils.readString(body), ReadWriteIOUtils.readString(body));
     }
-    Assert.assertEquals(expectedParameters, parameters);
-    Assert.assertFalse(body.hasRemaining());
+    return parameters;
   }
 
   private static Map<String, String> markerParameters(final String... keys) {

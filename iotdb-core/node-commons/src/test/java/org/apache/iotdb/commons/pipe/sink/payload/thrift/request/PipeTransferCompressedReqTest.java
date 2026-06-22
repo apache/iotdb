@@ -77,6 +77,18 @@ public class PipeTransferCompressedReqTest {
   }
 
   @Test
+  public void testPipeTransferCompressedReqWithNoCompressor() throws IOException {
+    final TPipeTransferReq originalReq = createReq(new byte[] {1, 2, 3, 4});
+
+    final TPipeTransferReq compressedReq =
+        PipeTransferCompressedReq.toTPipeTransferReq(originalReq, Collections.emptyList());
+
+    assertVersionAndType(
+        compressedReq, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_COMPRESSED);
+    assertRoundTrip(originalReq, compressedReq);
+  }
+
+  @Test
   public void testPipeTransferCompressedReqBytes() throws IOException {
     final TPipeTransferReq originalReq = createReq(new byte[] {1, 2, 3, 4});
     final TPipeTransferReq compressedReq =

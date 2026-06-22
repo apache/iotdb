@@ -26,6 +26,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertAirGapReqBytes;
 import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertVersionAndType;
 import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.copyOf;
 
@@ -37,44 +38,59 @@ public class PipeTransferFilePieceReqTest {
 
   @Test
   public void testFilePieceReqRoundTripKeepsOffsetAndBody() throws IOException {
+    assertFilePieceReqRoundTrip(FILE_NAME, START_WRITING_OFFSET, FILE_PIECE);
+  }
+
+  @Test
+  public void testEmptyFilePieceReqRoundTripKeepsOffsetAndBody() throws IOException {
+    assertFilePieceReqRoundTrip(FILE_NAME, 0L, new byte[0]);
+  }
+
+  @Test
+  public void testFilePieceAirGapBytesKeepSameBodyFormat() throws IOException {
+    assertAirGapReqBytes(
+        new DummyFilePieceReq()
+            .convertToTPipeTransferBytes(FILE_NAME, START_WRITING_OFFSET, FILE_PIECE),
+        IoTDBSinkRequestVersion.VERSION_1,
+        PipeRequestType.TRANSFER_TS_FILE_PIECE,
+        body -> assertFilePieceBody(body, FILE_NAME, START_WRITING_OFFSET, FILE_PIECE));
+  }
+
+  private static void assertFilePieceReqRoundTrip(
+      final String expectedFileName,
+      final long expectedStartWritingOffset,
+      final byte[] expectedFilePiece)
+      throws IOException {
     final DummyFilePieceReq req =
-        DummyFilePieceReq.toTPipeTransferReq(FILE_NAME, START_WRITING_OFFSET, FILE_PIECE);
+        DummyFilePieceReq.toTPipeTransferReq(
+            expectedFileName, expectedStartWritingOffset, expectedFilePiece);
 
     assertVersionAndType(
         req, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_TS_FILE_PIECE);
-    Assert.assertEquals(FILE_NAME, req.getFileName());
-    Assert.assertEquals(START_WRITING_OFFSET, req.getStartWritingOffset());
-    Assert.assertArrayEquals(FILE_PIECE, req.getFilePiece());
-    assertFilePieceBody(req.body.duplicate());
+    Assert.assertEquals(expectedFileName, req.getFileName());
+    Assert.assertEquals(expectedStartWritingOffset, req.getStartWritingOffset());
+    Assert.assertArrayEquals(expectedFilePiece, req.getFilePiece());
+    assertFilePieceBody(
+        req.body.duplicate(), expectedFileName, expectedStartWritingOffset, expectedFilePiece);
 
     final DummyFilePieceReq deserializedReq =
         (DummyFilePieceReq) new DummyFilePieceReq().translateFromTPipeTransferReq(copyOf(req));
 
     Assert.assertEquals(req.version, deserializedReq.version);
     Assert.assertEquals(req.type, deserializedReq.type);
-    Assert.assertEquals(FILE_NAME, deserializedReq.getFileName());
-    Assert.assertEquals(START_WRITING_OFFSET, deserializedReq.getStartWritingOffset());
-    Assert.assertArrayEquals(FILE_PIECE, deserializedReq.getFilePiece());
+    Assert.assertEquals(expectedFileName, deserializedReq.getFileName());
+    Assert.assertEquals(expectedStartWritingOffset, deserializedReq.getStartWritingOffset());
+    Assert.assertArrayEquals(expectedFilePiece, deserializedReq.getFilePiece());
   }
 
-  @Test
-  public void testFilePieceAirGapBytesKeepSameBodyFormat() throws IOException {
-    final ByteBuffer buffer =
-        ByteBuffer.wrap(
-            new DummyFilePieceReq()
-                .convertToTPipeTransferBytes(FILE_NAME, START_WRITING_OFFSET, FILE_PIECE));
-
-    Assert.assertEquals(
-        IoTDBSinkRequestVersion.VERSION_1.getVersion(), ReadWriteIOUtils.readByte(buffer));
-    Assert.assertEquals(
-        PipeRequestType.TRANSFER_TS_FILE_PIECE.getType(), ReadWriteIOUtils.readShort(buffer));
-    assertFilePieceBody(buffer);
-  }
-
-  private static void assertFilePieceBody(final ByteBuffer body) {
-    Assert.assertEquals(FILE_NAME, ReadWriteIOUtils.readString(body));
-    Assert.assertEquals(START_WRITING_OFFSET, ReadWriteIOUtils.readLong(body));
-    Assert.assertArrayEquals(FILE_PIECE, ReadWriteIOUtils.readBinary(body).getValues());
+  private static void assertFilePieceBody(
+      final ByteBuffer body,
+      final String expectedFileName,
+      final long expectedStartWritingOffset,
+      final byte[] expectedFilePiece) {
+    Assert.assertEquals(expectedFileName, ReadWriteIOUtils.readString(body));
+    Assert.assertEquals(expectedStartWritingOffset, ReadWriteIOUtils.readLong(body));
+    Assert.assertArrayEquals(expectedFilePiece, ReadWriteIOUtils.readBinary(body).getValues());
     Assert.assertFalse(body.hasRemaining());
   }
 

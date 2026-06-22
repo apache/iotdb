@@ -91,6 +91,9 @@ public class PipeTransferSliceReqBuilderTest {
 
     Assert.assertFalse(
         PipeTransferSliceReqBuilder.shouldSlice(
+            createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 0), bodySizeLimit));
+    Assert.assertFalse(
+        PipeTransferSliceReqBuilder.shouldSlice(
             createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 3), bodySizeLimit));
     Assert.assertFalse(
         PipeTransferSliceReqBuilder.shouldSlice(
@@ -105,6 +108,10 @@ public class PipeTransferSliceReqBuilderTest {
   public void testGetSliceCountForBoundaryBodySizes() {
     final int bodySizeLimit = PipeTransferSliceReqBuilder.getBodySizeLimit();
 
+    Assert.assertEquals(
+        0,
+        PipeTransferSliceReqBuilder.getSliceCount(
+            createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 0), bodySizeLimit));
     Assert.assertEquals(
         1,
         PipeTransferSliceReqBuilder.getSliceCount(
