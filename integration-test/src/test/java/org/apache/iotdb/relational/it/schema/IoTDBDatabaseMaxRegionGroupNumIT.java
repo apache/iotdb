@@ -48,6 +48,10 @@ import java.util.Set;
 public class IoTDBDatabaseMaxRegionGroupNumIT {
 
   private static final int SERIES_SLOT_NUM = 8;
+  private static final int DEFAULT_SCHEMA_REGION_GROUP_NUM = 1;
+  private static final int DEFAULT_DATA_REGION_GROUP_NUM = 2;
+  private static final int MAX_SCHEMA_REGION_GROUP_NUM = 3;
+  private static final int MAX_DATA_REGION_GROUP_NUM = 4;
   private static final String TABLE_NAME = "table1";
   private static final BKDRHashExecutor PARTITION_EXECUTOR = new BKDRHashExecutor(SERIES_SLOT_NUM);
 
@@ -58,8 +62,8 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
         .getCommonConfig()
         .setSchemaRegionGroupExtensionPolicy("CUSTOM")
         .setDataRegionGroupExtensionPolicy("CUSTOM")
-        .setDefaultSchemaRegionGroupNumPerDatabase(1)
-        .setDefaultDataRegionGroupNumPerDatabase(2)
+        .setDefaultSchemaRegionGroupNumPerDatabase(DEFAULT_SCHEMA_REGION_GROUP_NUM)
+        .setDefaultDataRegionGroupNumPerDatabase(DEFAULT_DATA_REGION_GROUP_NUM)
         .setSeriesSlotNum(SERIES_SLOT_NUM)
         .setSeriesPartitionExecutorClass(BKDRHashExecutor.class.getName())
         .setTimePartitionInterval(10);
@@ -110,7 +114,7 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
   }
 
   @Test
-  public void testCreatePartitionAfterAlterMaxRegionGroupNum() throws SQLException {
+  public void testAllocatedRegionGroupNumEqualsQuotaAfterAlterAndWrite() throws SQLException {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -123,16 +127,27 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
       final String secondDevice = getDeviceInNewSeriesSlot(usedSeriesSlots);
 
       insertData(statement, firstDevice, 0, 0);
-      assertRegionGroupNum(statement, "test_partition", 1, 2);
+      assertRegionGroupNum(
+          statement,
+          "test_partition",
+          DEFAULT_SCHEMA_REGION_GROUP_NUM,
+          DEFAULT_SCHEMA_REGION_GROUP_NUM,
+          DEFAULT_DATA_REGION_GROUP_NUM,
+          DEFAULT_DATA_REGION_GROUP_NUM);
 
       statement.execute(
-          "alter database test_partition set properties max_schema_region_group_num=3");
+          "alter database test_partition set properties max_schema_region_group_num="
+              + MAX_SCHEMA_REGION_GROUP_NUM);
       insertData(statement, secondDevice, 0, 1);
-      assertRegionGroupNum(statement, "test_partition", 3, 2);
+      assertAllocatedRegionGroupNumEqualsQuota(
+          statement, "test_partition", MAX_SCHEMA_REGION_GROUP_NUM, DEFAULT_DATA_REGION_GROUP_NUM);
 
-      statement.execute("alter database test_partition set properties max_data_region_group_num=4");
+      statement.execute(
+          "alter database test_partition set properties max_data_region_group_num="
+              + MAX_DATA_REGION_GROUP_NUM);
       insertData(statement, secondDevice, 20, 2);
-      assertRegionGroupNum(statement, "test_partition", 3, 4);
+      assertAllocatedRegionGroupNumEqualsQuota(
+          statement, "test_partition", MAX_SCHEMA_REGION_GROUP_NUM, MAX_DATA_REGION_GROUP_NUM);
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select count(*) from " + TABLE_NAME),
@@ -173,21 +188,41 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
         .getSlotId();
   }
 
+  private static void assertAllocatedRegionGroupNumEqualsQuota(
+      final Statement statement,
+      final String database,
+      final int schemaRegionGroupQuota,
+      final int dataRegionGroupQuota)
+      throws SQLException {
+    assertRegionGroupNum(
+        statement,
+        database,
+        schemaRegionGroupQuota,
+        schemaRegionGroupQuota,
+        dataRegionGroupQuota,
+        dataRegionGroupQuota);
+  }
+
   private static void assertRegionGroupNum(
       final Statement statement,
       final String database,
       final int schemaRegionGroupNum,
-      final int dataRegionGroupNum)
+      final int maxSchemaRegionGroupNum,
+      final int dataRegionGroupNum,
+      final int maxDataRegionGroupNum)
       throws SQLException {
     try (final ResultSet resultSet =
         statement.executeQuery(
-            "select schema_region_group_num, data_region_group_num "
+            "select schema_region_group_num, max_schema_region_group_num, "
+                + "data_region_group_num, max_data_region_group_num "
                 + "from information_schema.databases where database = '"
                 + database
                 + "'")) {
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(schemaRegionGroupNum, resultSet.getInt("schema_region_group_num"));
+      Assert.assertEquals(maxSchemaRegionGroupNum, resultSet.getInt("max_schema_region_group_num"));
       Assert.assertEquals(dataRegionGroupNum, resultSet.getInt("data_region_group_num"));
+      Assert.assertEquals(maxDataRegionGroupNum, resultSet.getInt("max_data_region_group_num"));
       Assert.assertFalse(resultSet.next());
     }
   }
