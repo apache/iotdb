@@ -40,10 +40,7 @@ public class PipeTransferCompressedReqTest {
 
   @Test
   public void testPipeTransferCompressedReq() throws IOException {
-    final TPipeTransferReq originalReq = new TPipeTransferReq();
-    originalReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
-    originalReq.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
-    originalReq.body = ByteBuffer.wrap(new byte[] {1, 2, 3, 4});
+    final TPipeTransferReq originalReq = createReq(new byte[] {1, 2, 3, 4});
 
     final TPipeTransferReq compressedReq =
         PipeTransferCompressedReq.toTPipeTransferReq(
@@ -51,22 +48,57 @@ public class PipeTransferCompressedReqTest {
             Collections.singletonList(
                 PipeCompressorFactory.getCompressor(
                     PipeCompressor.PipeCompressionType.GZIP.getIndex())));
-    final TPipeTransferReq decompressedReq =
-        PipeTransferCompressedReq.fromTPipeTransferReq(compressedReq);
 
     Assert.assertEquals(IoTDBSinkRequestVersion.VERSION_1.getVersion(), compressedReq.version);
     Assert.assertEquals(PipeRequestType.TRANSFER_COMPRESSED.getType(), compressedReq.type);
-    Assert.assertEquals(originalReq.version, decompressedReq.version);
-    Assert.assertEquals(originalReq.type, decompressedReq.type);
-    Assert.assertArrayEquals(originalReq.getBody(), decompressedReq.getBody());
+    assertRoundTrip(originalReq, compressedReq);
+  }
+
+  @Test
+  public void testPipeTransferCompressedReqWithMultipleCompressors() throws IOException {
+    final TPipeTransferReq originalReq = createReq(new byte[] {1, 2, 3, 4});
+
+    final TPipeTransferReq compressedReq =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            originalReq,
+            Arrays.asList(
+                PipeCompressorFactory.getCompressor(
+                    PipeCompressor.PipeCompressionType.GZIP.getIndex()),
+                PipeCompressorFactory.getCompressor(
+                    PipeCompressor.PipeCompressionType.LZ4.getIndex())));
+
+    assertRoundTrip(originalReq, compressedReq);
+  }
+
+  @Test
+  public void testPipeTransferCompressedReqBytes() throws IOException {
+    final TPipeTransferReq originalReq = createReq(new byte[] {1, 2, 3, 4});
+    final byte[] originalReqBytes =
+        BytesUtils.concatByteArrayList(
+            Arrays.asList(
+                new byte[] {originalReq.version},
+                BytesUtils.shortToBytes(originalReq.type),
+                originalReq.getBody()));
+    final ByteBuffer compressedReqBuffer =
+        ByteBuffer.wrap(
+            PipeTransferCompressedReq.toTPipeTransferReqBytes(
+                originalReqBytes,
+                Collections.singletonList(
+                    PipeCompressorFactory.getCompressor(
+                        PipeCompressor.PipeCompressionType.GZIP.getIndex()))));
+    final TPipeTransferReq compressedReq = new TPipeTransferReq();
+    compressedReq.version = ReadWriteIOUtils.readByte(compressedReqBuffer);
+    compressedReq.type = ReadWriteIOUtils.readShort(compressedReqBuffer);
+    compressedReq.body = compressedReqBuffer.slice();
+
+    Assert.assertEquals(IoTDBSinkRequestVersion.VERSION_1.getVersion(), compressedReq.version);
+    Assert.assertEquals(PipeRequestType.TRANSFER_COMPRESSED.getType(), compressedReq.type);
+    assertRoundTrip(originalReq, compressedReq);
   }
 
   @Test
   public void testPipeTransferCompressedReqFromLegacyV13Body() throws IOException {
-    final TPipeTransferReq originalReq = new TPipeTransferReq();
-    originalReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
-    originalReq.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
-    originalReq.body = ByteBuffer.wrap(new byte[] {1, 2, 3, 4});
+    final TPipeTransferReq originalReq = createReq(new byte[] {1, 2, 3, 4});
 
     final TPipeTransferReq compressedReq = new TPipeTransferReq();
     compressedReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
@@ -78,12 +110,25 @@ public class PipeTransferCompressedReqTest {
                 PipeCompressorFactory.getCompressor(
                     PipeCompressor.PipeCompressionType.GZIP.getIndex())));
 
+    assertRoundTrip(originalReq, compressedReq);
+  }
+
+  private static void assertRoundTrip(
+      final TPipeTransferReq originalReq, final TPipeTransferReq compressedReq) throws IOException {
     final TPipeTransferReq decompressedReq =
         PipeTransferCompressedReq.fromTPipeTransferReq(compressedReq);
 
     Assert.assertEquals(originalReq.version, decompressedReq.version);
     Assert.assertEquals(originalReq.type, decompressedReq.type);
     Assert.assertArrayEquals(originalReq.getBody(), decompressedReq.getBody());
+  }
+
+  private static TPipeTransferReq createReq(final byte[] body) {
+    final TPipeTransferReq req = new TPipeTransferReq();
+    req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
+    req.body = ByteBuffer.wrap(body);
+    return req;
   }
 
   private static ByteBuffer serializeLegacyCompressedBody(
