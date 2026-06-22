@@ -804,16 +804,36 @@ public class ValueConverter {
   }
 
   private static int parseDate(final String value) {
-    if (value == null || value.isEmpty()) {
+    if (value == null) {
       return DEFAULT_DATE;
     }
-    try {
-      if (TypeInferenceUtils.isNumber(value)) {
-        int date = Integer.parseInt(value);
+    final String trimmedValue = StringUtils.trim(value);
+    if (trimmedValue.isEmpty()) {
+      return DEFAULT_DATE;
+    }
+    if (TypeInferenceUtils.isNumber(trimmedValue)) {
+      try {
+        int date = Integer.parseInt(trimmedValue);
         DateUtils.parseIntToLocalDate(date);
         return date;
+      } catch (final Exception e) {
+        return DEFAULT_DATE;
       }
-      return DateTimeUtils.parseDateExpressionToInt(StringUtils.trim(value));
+    }
+    try {
+      return DateTimeUtils.parseDateExpressionToInt(trimmedValue);
+    } catch (final Exception e) {
+      return parseDateTimeToDate(trimmedValue);
+    }
+  }
+
+  private static int parseDateTimeToDate(final String value) {
+    try {
+      return DateUtils.parseDateExpressionToInt(
+          Instant.ofEpochMilli(
+                  DateTimeUtils.convertDatetimeStrToLong(value, ZoneOffset.UTC, 0, "ms"))
+              .atZone(ZoneOffset.UTC)
+              .toLocalDate());
     } catch (final Exception e) {
       return DEFAULT_DATE;
     }
