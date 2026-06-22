@@ -727,7 +727,7 @@ public class IoTDBConfig {
    * Minimum every interval to perform continuous query.
    * The every interval of continuous query instances should not be lower than this limit.
    */
-  private long continuousQueryMinimumEveryInterval = 1000;
+  private volatile long continuousQueryMinimumEveryInterval = 1000;
 
   /** How much memory may be used in ONE SELECT INTO operation (in Byte). */
   private long intoOperationBufferSizeInByte = 100 * 1024 * 1024L;
@@ -1018,7 +1018,7 @@ public class IoTDBConfig {
   private long detailContainerMinDegradeMemoryInBytes = 1024 * 1024L;
   private int schemaThreadCount = 5;
 
-  private ReadConsistencyLevel readConsistencyLevel = ReadConsistencyLevel.STRONG;
+  private volatile ReadConsistencyLevel readConsistencyLevel = ReadConsistencyLevel.STRONG;
 
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
   private long throttleThreshold = 200 * 1024 * 1024 * 1024L;
@@ -1055,7 +1055,7 @@ public class IoTDBConfig {
   private long schemaRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
 
   /** CQ related */
-  private long cqMinEveryIntervalInMs = 1_000;
+  private volatile long cqMinEveryIntervalInMs = 1_000;
 
   private long dataRatisConsensusRequestTimeoutMs = 10000L;
   private long schemaRatisConsensusRequestTimeoutMs = 10000L;
@@ -3795,6 +3795,7 @@ public class IoTDBConfig {
 
   public void setCqMinEveryIntervalInMs(long cqMinEveryIntervalInMs) {
     this.cqMinEveryIntervalInMs = cqMinEveryIntervalInMs;
+    this.continuousQueryMinimumEveryInterval = cqMinEveryIntervalInMs;
   }
 
   public double getUsableCompactionMemoryProportion() {
