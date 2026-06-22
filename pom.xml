@@ -190,6 +190,14 @@
                         <groupId>jakarta.servlet</groupId>
                         <artifactId>jakarta.servlet-api</artifactId>
                     </exclusion>
+                    <!--
+                      commons-lang3 is only used by Thrift's partial deserialization runtime.
+                      IoTDB does not use org.apache.thrift.partial APIs.
+                    -->
+                    <exclusion>
+                        <groupId>org.apache.commons</groupId>
+                        <artifactId>commons-lang3</artifactId>
+                    </exclusion>
                 </exclusions>
             </dependency>
             <dependency>
