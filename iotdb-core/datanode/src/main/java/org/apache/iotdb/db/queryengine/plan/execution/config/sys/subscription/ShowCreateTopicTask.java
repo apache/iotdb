@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateTopic;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -107,6 +108,9 @@ public class ShowCreateTopicTask implements IConfigTask {
         .entrySet()
         .removeIf(entry -> entry.getKey().startsWith(SystemConstant.SYSTEM_PREFIX_KEY));
     result.entrySet().removeIf(entry -> entry.getKey().startsWith(SystemConstant.AUDIT_PREFIX_KEY));
+    result.remove(ConsumerConstant.USERNAME_KEY);
+    result.remove(ConsumerConstant.PASSWORD_KEY);
+    result.remove(ConsumerConstant.ENCRYPTED_PASSWORD_KEY);
     return result;
   }
 }

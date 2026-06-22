@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowCreateTopicTask;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 
 import org.junit.Test;
 
@@ -208,6 +209,9 @@ public class ShowCreateTaskTest {
     topicAttributes.put("format", "SubscriptionTsFileHandler");
     topicAttributes.put("database", "test_db");
     topicAttributes.put("__audit.topic", "audit");
+    topicAttributes.put(ConsumerConstant.USERNAME_KEY, "alice");
+    topicAttributes.put(ConsumerConstant.PASSWORD_KEY, "password");
+    topicAttributes.put(ConsumerConstant.ENCRYPTED_PASSWORD_KEY, "encrypted-password");
 
     final TopicMeta topicMeta = new TopicMeta("test_topic", 1L, topicAttributes);
 

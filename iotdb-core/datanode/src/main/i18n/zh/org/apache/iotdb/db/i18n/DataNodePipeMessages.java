@@ -124,6 +124,8 @@ public final class DataNodePipeMessages {
       "减少 reference count for event {} in PipeRealtimePriorityBlockingQueue 失败";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "获取 PendingQueue. No such subtask:  失败";
+  public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
+      "从 ConfigNode 获取 pipe 信息失败，状态为 %s。";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
       "获取 pipe metas, will be synced by configNode later 失败。";
   public static final String FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM =
@@ -168,6 +170,10 @@ public final class DataNodePipeMessages {
       "Pipe skipping temporary TsFile which shouldn't be transferred: {}";
   public static final String PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING =
       "Pulled pipe meta from config node: {}, recovering ...";
+  public static final String FAILED_TO_SHOW_CREATE_PIPE_NOT_EXIST =
+      "show create pipe %s 失败，该 pipe 不存在。";
+  public static final String FAILED_TO_SHOW_CREATE_TOPIC_NOT_EXIST =
+      "show create topic %s 失败，该 topic 不存在。";
   public static final String RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_NODE =
       "Received pipe heartbeat request {} from config node.";
   public static final String REGION_NO_TSFILEINSERTIONEVENTS_TO_REPLACE_FOR_SOURCE =

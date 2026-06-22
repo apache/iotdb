@@ -131,6 +131,8 @@ public final class DataNodePipeMessages {
       "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "Failed to get PendingQueue. No such subtask: ";
+  public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
+      "Failed to get pipe info from config node, status is %s.";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
       "Failed to get pipe metas, will be synced by configNode later...";
   public static final String FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM =
@@ -175,6 +177,10 @@ public final class DataNodePipeMessages {
       "Pipe skipping temporary TsFile which shouldn't be transferred: {}";
   public static final String PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING =
       "Pulled pipe meta from config node: {}, recovering ...";
+  public static final String FAILED_TO_SHOW_CREATE_PIPE_NOT_EXIST =
+      "Failed to show create pipe %s, the pipe does not exist.";
+  public static final String FAILED_TO_SHOW_CREATE_TOPIC_NOT_EXIST =
+      "Failed to show create topic %s, the topic does not exist.";
   public static final String RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_NODE =
       "Received pipe heartbeat request {} from config node.";
   public static final String REGION_NO_TSFILEINSERTIONEVENTS_TO_REPLACE_FOR_SOURCE =

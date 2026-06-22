@@ -290,6 +290,7 @@ public final class DataNodeQueryMessages {
       "SELECT INTO：${i} 中的 i 应为整数。";
   public static final String FAILED_TO_GET_DATABASE_MAP =
       "获取数据库映射失败";
+  public static final String UNKNOWN_DATABASE = "未知数据库 %s";
   public static final String LOAD_ANALYSIS_STAGE_ALL_TSFILES_HAVE_BEEN_ANALYZED =
       "加载 - 分析阶段：所有 TsFile 已分析完毕。";
   public static final String ASYNC_LOAD_HAS_FAILED_AND_IS_NOW_TRYING =

@@ -291,6 +291,7 @@ public final class DataNodeQueryMessages {
       "select into: the i of ${i} should be an integer.";
   public static final String FAILED_TO_GET_DATABASE_MAP =
       "Failed to get database Map";
+  public static final String UNKNOWN_DATABASE = "Unknown database %s";
   public static final String LOAD_ANALYSIS_STAGE_ALL_TSFILES_HAVE_BEEN_ANALYZED =
       "Load - Analysis Stage: all tsfiles have been analyzed.";
   public static final String ASYNC_LOAD_HAS_FAILED_AND_IS_NOW_TRYING =

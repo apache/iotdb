@@ -81,6 +81,7 @@ import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
@@ -187,7 +188,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -2367,7 +2370,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IoTDBException(
                 String.format(
-                    "Failed to get pipe info from config node, status is %s.",
+                    DataNodePipeMessages.FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS,
                     getAllPipeInfoResp.getStatus()),
                 TSStatusCode.PIPE_ERROR.getStatusCode()));
         return future;
@@ -2760,15 +2763,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (Objects.nonNull(userName)) {
         tShowPipeReq.setUserName(userName);
       }
-      final TShowPipeResp showPipeResp = configNodeClient.showPipe(tShowPipeReq);
-      if (showPipeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(new IoTDBException(showPipeResp.getStatus()));
+      // showPipe applies user visibility; getAllPipeInfo is needed for full pipe attributes.
+      final TShowPipeResp visiblePipeResp = configNodeClient.showPipe(tShowPipeReq);
+      if (visiblePipeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(visiblePipeResp.getStatus()));
         return future;
       }
-      if (!showPipeResp.isSetPipeInfoList() || showPipeResp.getPipeInfoList().isEmpty()) {
+      if (!visiblePipeResp.isSetPipeInfoList() || visiblePipeResp.getPipeInfoList().isEmpty()) {
         future.setException(
             new IoTDBException(
-                String.format("Failed to show create pipe %s, the pipe does not exist.", pipeName),
+                String.format(DataNodePipeMessages.FAILED_TO_SHOW_CREATE_PIPE_NOT_EXIST, pipeName),
                 TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()));
         return future;
       }
@@ -2778,7 +2782,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IoTDBException(
                 String.format(
-                    "Failed to get pipe info from config node, status is %s.",
+                    DataNodePipeMessages.FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS,
                     getAllPipeInfoResp.getStatus()),
                 TSStatusCode.PIPE_ERROR.getStatusCode()));
         return future;
@@ -2796,7 +2800,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (pipeMeta == null) {
         future.setException(
             new IoTDBException(
-                String.format("Failed to show create pipe %s, the pipe does not exist.", pipeName),
+                String.format(DataNodePipeMessages.FAILED_TO_SHOW_CREATE_PIPE_NOT_EXIST, pipeName),
                 TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()));
         return future;
       }
@@ -3032,7 +3036,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IoTDBException(
                 String.format(
-                    "Failed to show create topic %s, the topic does not exist.", topicName),
+                    DataNodePipeMessages.FAILED_TO_SHOW_CREATE_TOPIC_NOT_EXIST, topicName),
                 TSStatusCode.TOPIC_NOT_EXIST_ERROR.getStatusCode()));
         return future;
       }
@@ -4267,10 +4271,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showCreateDatabase(final String database) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
+    if (InformationSchema.INFORMATION_DATABASE.equals(database)
+        || Audit.TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(database)) {
       future.setException(
           new IoTDBException(
-              "The system database does not support show create.",
+              DataNodeSchemaMessages.SYSTEM_DATABASE_NOT_SUPPORT_SHOW_CREATE,
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
@@ -4292,7 +4297,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (databaseInfo == null) {
         future.setException(
             new IoTDBException(
-                String.format("Unknown database %s", database),
+                String.format(DataNodeQueryMessages.UNKNOWN_DATABASE, database),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         return future;
       }
@@ -4337,7 +4342,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.setException(
             new IoTDBException(
-                String.format("Unknown database %s", database),
+                String.format(DataNodeQueryMessages.UNKNOWN_DATABASE, database),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         unsetDatabaseIfNotExist(useDB.getDatabaseId().getValue(), clientSession);
       }
@@ -5111,7 +5116,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   private String getTableErrorMessage(final TSStatus status, final String database) {
     if (status.code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
       unsetDatabaseIfNotExist(database, SessionManager.getInstance().getCurrSession());
-      return String.format("Unknown database %s", PathUtils.unQualifyDatabaseName(database));
+      return String.format(
+          DataNodeQueryMessages.UNKNOWN_DATABASE, PathUtils.unQualifyDatabaseName(database));
     }
     return status.getMessage();
   }
