@@ -365,7 +365,8 @@ public class ConfigManager implements IManager {
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
     ExternalServiceInfo externalServiceInfo = new ExternalServiceInfo();
-    PipeInfo pipeInfo = new PipeInfo();
+    this.permissionManager = createPermissionManager(authorInfo);
+    PipeInfo pipeInfo = new PipeInfo(userName -> this.permissionManager.login4Pipe(userName, null));
     QuotaInfo quotaInfo = new QuotaInfo();
     TTLInfo ttlInfo = new TTLInfo();
     SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
@@ -399,7 +400,6 @@ public class ConfigManager implements IManager {
             new ClusterSchemaQuotaStatistics(
                 COMMON_CONF.getSeriesLimitThreshold(), COMMON_CONF.getDeviceLimitThreshold()));
     this.partitionManager = new PartitionManager(this, partitionInfo);
-    this.permissionManager = createPermissionManager(authorInfo);
     this.procedureManager = createProcedureManager(procedureInfo);
     this.externalServiceManager = new ExternalServiceManager(this);
     this.udfManager = new UDFManager(this, udfInfo);
