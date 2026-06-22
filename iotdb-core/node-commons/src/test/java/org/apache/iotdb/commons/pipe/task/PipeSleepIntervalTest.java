@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 import org.junit.After;
@@ -31,7 +30,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.concurrent.TimeUnit;
+
 public class PipeSleepIntervalTest {
+  private static final long INIT_SLEEP_INTERVAL_MS = 25L;
+  private static final long MAX_SLEEP_INTERVAL_MS = 50L;
+  private static final long SLEEP_ASSERTION_TOLERANCE_MS = 5L;
+
   private long oldPipeSinkSubtaskSleepIntervalInitMs;
   private long oldPipeSinkSubtaskSleepIntervalMaxMs;
 
@@ -40,8 +45,8 @@ public class PipeSleepIntervalTest {
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     oldPipeSinkSubtaskSleepIntervalInitMs = config.getPipeSinkSubtaskSleepIntervalInitMs();
     oldPipeSinkSubtaskSleepIntervalMaxMs = config.getPipeSinkSubtaskSleepIntervalMaxMs();
-    config.setPipeSinkSubtaskSleepIntervalInitMs(25L);
-    config.setPipeSinkSubtaskSleepIntervalMaxMs(50L);
+    config.setPipeSinkSubtaskSleepIntervalInitMs(INIT_SLEEP_INTERVAL_MS);
+    config.setPipeSinkSubtaskSleepIntervalMaxMs(MAX_SLEEP_INTERVAL_MS);
   }
 
   @After
@@ -52,32 +57,49 @@ public class PipeSleepIntervalTest {
   }
 
   @Test
-  public void test() {
-    try (final PipeAbstractSinkSubtask subtask =
-        new PipeAbstractSinkSubtask(null, 0, null) {
-          @Override
-          protected String getRootCause(Throwable throwable) {
-            return null;
-          }
+  public void testSleepIntervalStopsIncreasingAtMax() {
+    try (final TestSinkSubtask subtask = new TestSinkSubtask()) {
+      Assert.assertEquals(INIT_SLEEP_INTERVAL_MS, subtask.getSleepInterval());
 
-          @Override
-          protected void report(EnrichedEvent event, PipeRuntimeException exception) {}
+      assertSleepAtLeast(subtask, MAX_SLEEP_INTERVAL_MS);
+      Assert.assertEquals(MAX_SLEEP_INTERVAL_MS, subtask.getSleepInterval());
 
-          @Override
-          protected boolean executeOnce() {
-            return false;
-          }
-        }) {
-      long startTime = System.currentTimeMillis();
-      subtask.sleep4NonReportException();
-      Assert.assertTrue(
-          System.currentTimeMillis() - startTime
-              >= PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs());
-      startTime = System.currentTimeMillis() - startTime;
-      subtask.sleep4NonReportException();
-      Assert.assertTrue(
-          System.currentTimeMillis() - startTime
-              >= PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs());
+      assertSleepAtLeast(subtask, MAX_SLEEP_INTERVAL_MS);
+      Assert.assertEquals(MAX_SLEEP_INTERVAL_MS, subtask.getSleepInterval());
+    }
+  }
+
+  private static void assertSleepAtLeast(
+      final PipeAbstractSinkSubtask subtask, final long expectedSleepMs) {
+    final long startTime = System.nanoTime();
+    subtask.sleep4NonReportException();
+
+    Assert.assertTrue(
+        System.nanoTime() - startTime
+            >= TimeUnit.MILLISECONDS.toNanos(expectedSleepMs - SLEEP_ASSERTION_TOLERANCE_MS));
+  }
+
+  private static class TestSinkSubtask extends PipeAbstractSinkSubtask {
+
+    private TestSinkSubtask() {
+      super(null, 0, null);
+    }
+
+    private long getSleepInterval() {
+      return sleepInterval;
+    }
+
+    @Override
+    protected String getRootCause(final Throwable throwable) {
+      return null;
+    }
+
+    @Override
+    protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {}
+
+    @Override
+    protected boolean executeOnce() {
+      return false;
     }
   }
 }

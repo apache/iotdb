@@ -42,27 +42,62 @@ public class PipeCommitQueueTest {
   @Test
   public void testCommitQueue() {
     final PipeCommitQueue pipeCommitQueue = new PipeCommitQueue();
-    pipeCommitQueue.offer(new TestEnrichedEvent(1, new IoTProgressIndex(0, 1L)));
-    pipeCommitQueue.offer(new TestEnrichedEvent(3, new IoTProgressIndex(0, 3L)));
+    pipeCommitQueue.offer(event(1));
+    pipeCommitQueue.offer(eventWithHook(3));
     Assert.assertEquals(1, pipeCommitQueue.size());
-    Assert.assertEquals(new IoTProgressIndex(0, 1L), pipeTaskMeta.getProgressIndex());
-    TestEnrichedEvent nextEvent = new TestEnrichedEvent(5, new IoTProgressIndex(0, 5L));
-    nextEvent.setShouldReportOnCommit(false);
-    pipeCommitQueue.offer(nextEvent);
-    pipeCommitQueue.offer(new TestEnrichedEvent(4, new IoTProgressIndex(0, 4L)));
+    assertProgressIndex(1);
+
+    pipeCommitQueue.offer(eventWithHook(5, false));
+    pipeCommitQueue.offer(eventWithHook(4));
     Assert.assertEquals(1, pipeCommitQueue.size());
-    nextEvent = new TestEnrichedEvent(2, new IoTProgressIndex(0, 2L));
-    nextEvent.addOnCommittedHook(() -> commitHookTestSet.add(1));
-    pipeCommitQueue.offer(nextEvent);
+    Assert.assertTrue(commitHookTestSet.isEmpty());
+
+    pipeCommitQueue.offer(eventWithHook(2));
     Assert.assertEquals(0, pipeCommitQueue.size());
-    Assert.assertEquals(new IoTProgressIndex(0, 4L), pipeTaskMeta.getProgressIndex());
-    Assert.assertEquals(1, commitHookTestSet.size());
-    // Test null progressIndex
-    pipeCommitQueue.offer(new TestEnrichedEvent(6, null));
+    assertProgressIndex(4);
+    Assert.assertEquals(4, commitHookTestSet.size());
+    Assert.assertTrue(commitHookTestSet.contains(2));
+    Assert.assertTrue(commitHookTestSet.contains(3));
+    Assert.assertTrue(commitHookTestSet.contains(4));
+    Assert.assertTrue(commitHookTestSet.contains(5));
+
+    pipeCommitQueue.offer(eventWithHook(6, null));
+    Assert.assertEquals(0, pipeCommitQueue.size());
+    assertProgressIndex(4);
+    Assert.assertTrue(commitHookTestSet.contains(6));
+    Assert.assertEquals(5, commitHookTestSet.size());
+  }
+
+  private TestEnrichedEvent event(final long commitId) {
+    return event(commitId, new IoTProgressIndex(0, commitId));
+  }
+
+  private TestEnrichedEvent eventWithHook(final long commitId) {
+    return eventWithHook(commitId, new IoTProgressIndex(0, commitId));
+  }
+
+  private TestEnrichedEvent eventWithHook(final long commitId, final boolean shouldReportOnCommit) {
+    final TestEnrichedEvent event = eventWithHook(commitId);
+    event.setShouldReportOnCommit(shouldReportOnCommit);
+    return event;
+  }
+
+  private TestEnrichedEvent eventWithHook(final long commitId, final ProgressIndex progressIndex) {
+    final TestEnrichedEvent event = event(commitId, progressIndex);
+    event.addOnCommittedHook(() -> commitHookTestSet.add((int) commitId));
+    return event;
+  }
+
+  private TestEnrichedEvent event(final long commitId, final ProgressIndex progressIndex) {
+    return new TestEnrichedEvent(commitId, progressIndex);
+  }
+
+  private void assertProgressIndex(final long searchIndex) {
+    Assert.assertEquals(new IoTProgressIndex(0, searchIndex), pipeTaskMeta.getProgressIndex());
   }
 
   private class TestEnrichedEvent extends EnrichedEvent {
-    private ProgressIndex progressIndex;
+    private final ProgressIndex progressIndex;
 
     private TestEnrichedEvent(final long commitId, final ProgressIndex progressIndex) {
       this(
