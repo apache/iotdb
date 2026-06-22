@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
@@ -395,21 +396,18 @@ public class SnapshotLoader {
   private void linkObjectTreeFromSnapshotToObjectDirs(
       File sourceObjectRoot, FolderManager folderManager) throws IOException {
     Path sourceRootPath = sourceObjectRoot.toPath();
-    // Process files during traversal to avoid loading all object file paths into memory.
+    // Process one directory at a time to avoid loading all object file paths into memory.
     Files.walkFileTree(
         sourceRootPath,
         new SimpleFileVisitor<Path>() {
           @Override
-          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+          public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
               throws IOException {
-            if (!ObjectTypeUtils.isObjectCandidate(file.getFileName().toString())) {
-              return FileVisitResult.CONTINUE;
-            }
-            processFileWithFolderRetry(
+            processObjectFilesInDirectoryWithFolderRetry(
                 folderManager,
-                file,
-                sourceRootPath.relativize(file),
-                "Failed to process object file after retries. Source: %s");
+                dir,
+                sourceRootPath,
+                StorageEngineMessages.FAILED_TO_PROCESS_OBJECT_FILE_AFTER_RETRIES);
             return FileVisitResult.CONTINUE;
           }
         });
@@ -624,7 +622,7 @@ public class SnapshotLoader {
     }
     Path rootPath = objectSnapshotRoot.toPath();
     AtomicInteger cnt = new AtomicInteger(0);
-    // Process files during traversal to avoid loading all object file paths into memory.
+    // Process one directory at a time to avoid loading all object file paths into memory.
     Files.walkFileTree(
         rootPath, new ObjectSnapshotLinkFileVisitor(rootPath, fileInfoSet, folderManager, cnt));
 
@@ -646,21 +644,16 @@ public class SnapshotLoader {
     }
 
     @Override
-    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-      if (!ObjectTypeUtils.isObjectCandidate(file.getFileName().toString())) {
-        return FileVisitResult.CONTINUE;
-      }
-      String infoStr = getFileInfoString(file.toFile());
-      if (!fileInfoSet.contains(infoStr)) {
-        throw new IOException(
-            String.format("File %s is not in the log file list", file.toAbsolutePath()));
-      }
-      processFileWithFolderRetry(
-          folderManager,
-          file,
-          rootPath.relativize(file),
-          "Failed to process object snapshot file after retries. Source: %s");
-      cnt.incrementAndGet();
+    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+        throws IOException {
+      int objectFileCount =
+          processObjectFilesInDirectoryWithFolderRetry(
+              folderManager,
+              dir,
+              rootPath,
+              fileInfoSet,
+              StorageEngineMessages.FAILED_TO_PROCESS_OBJECT_SNAPSHOT_FILE_AFTER_RETRIES);
+      cnt.addAndGet(objectFileCount);
       return FileVisitResult.CONTINUE;
     }
   }
@@ -684,39 +677,135 @@ public class SnapshotLoader {
     }
   }
 
-  private void processFileWithFolderRetry(
-      FolderManager folderManager, Path sourceFile, Path targetRelPath, String finalErrorTemplate)
+  private int processObjectFilesInDirectoryWithFolderRetry(
+      FolderManager folderManager, Path sourceDir, Path sourceRootPath, String finalErrorTemplate)
       throws IOException {
-    try {
-      String firstFolderOfSameDisk =
-          IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
-              ? folderManager.getFirstFolderOfSameDisk(sourceFile.toAbsolutePath().toString())
-              : null;
+    return processObjectFilesInDirectoryWithFolderRetry(
+        folderManager, sourceDir, sourceRootPath, (Set<String>) null, finalErrorTemplate);
+  }
 
-      if (firstFolderOfSameDisk != null) {
-        processObjectFileInDir(firstFolderOfSameDisk, sourceFile, targetRelPath);
-      } else {
-        folderManager.getNextWithRetry(
-            currentObjectDir ->
-                processObjectFileInDir(currentObjectDir, sourceFile, targetRelPath));
+  private int processObjectFilesInDirectoryWithFolderRetry(
+      FolderManager folderManager,
+      Path sourceDir,
+      Path sourceRootPath,
+      Set<String> fileInfoSet,
+      String finalErrorTemplate)
+      throws IOException {
+    List<Path> currentBatch = new ArrayList<>();
+    long currentBatchBytes = 0;
+    int objectFileCount = 0;
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(sourceDir)) {
+      for (Path objectFilePath : stream) {
+        File objectFile = objectFilePath.toFile();
+        if (!objectFile.isFile() || !ObjectTypeUtils.isObjectCandidate(objectFile.getName())) {
+          continue;
+        }
+        if (fileInfoSet != null) {
+          String infoStr = getFileInfoString(objectFile);
+          if (!fileInfoSet.contains(infoStr)) {
+            throw new IOException(
+                String.format(
+                    StorageEngineMessages.SNAPSHOT_FILE_NOT_IN_LOG, objectFile.getAbsolutePath()));
+          }
+        }
+        long objectFileSize = objectFile.length();
+        if (shouldFlushCurrentObjectBatch(currentBatch, currentBatchBytes, objectFileSize)) {
+          processObjectFileBatchWithFolderRetry(
+              folderManager, sourceDir, sourceRootPath, currentBatch, finalErrorTemplate);
+          currentBatch.clear();
+          currentBatchBytes = 0;
+        }
+        currentBatch.add(objectFilePath);
+        currentBatchBytes += objectFileSize;
+        objectFileCount++;
       }
+    }
+    processObjectFileBatchWithFolderRetry(
+        folderManager, sourceDir, sourceRootPath, currentBatch, finalErrorTemplate);
+    return objectFileCount;
+  }
+
+  private void processObjectFileBatchWithFolderRetry(
+      FolderManager folderManager,
+      Path sourceDir,
+      Path sourceRootPath,
+      List<Path> objectFiles,
+      String finalErrorTemplate)
+      throws IOException {
+    if (objectFiles.isEmpty()) {
+      return;
+    }
+    try {
+      Path targetRelDir = sourceRootPath.relativize(sourceDir);
+      processObjectFilesInDir(folderManager, sourceDir, objectFiles, targetRelDir);
     } catch (Exception e) {
-      throw new IOException(String.format(finalErrorTemplate, sourceFile.toAbsolutePath()), e);
+      throw new IOException(String.format(finalErrorTemplate, sourceDir.toAbsolutePath()), e);
     }
   }
 
-  private File processObjectFileInDir(String objectDir, Path sourceFile, Path targetRelPath)
+  private boolean shouldFlushCurrentObjectBatch(
+      List<Path> currentBatch, long currentBatchBytes, long nextObjectFileSize) {
+    if (currentBatch.isEmpty()) {
+      return false;
+    }
+    return currentBatchBytes + nextObjectFileSize
+            > IoTDBDescriptor.getInstance().getConfig().getLoadSnapshotObjectBatchBytes()
+        || currentBatch.size()
+            >= IoTDBDescriptor.getInstance().getConfig().getLoadSnapshotObjectBatchFileCount();
+  }
+
+  private void processObjectFilesInDir(
+      FolderManager folderManager, Path sourceDir, List<Path> sourceFiles, Path targetRelDir)
+      throws Exception {
+    String firstFolderOfSameDisk =
+        IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
+            ? folderManager.getFirstFolderOfSameDisk(sourceDir.toAbsolutePath().toString())
+            : null;
+
+    if (firstFolderOfSameDisk != null) {
+      processObjectFilesInDir(firstFolderOfSameDisk, sourceFiles, targetRelDir);
+    } else {
+      folderManager.getNextWithRetry(
+          currentObjectDir -> {
+            processObjectFilesInDir(currentObjectDir, sourceFiles, targetRelDir);
+            return null;
+          });
+    }
+  }
+
+  private void processObjectFilesInDir(String objectDir, List<Path> sourceFiles, Path targetRelDir)
       throws IOException {
-    File targetFile = new File(objectDir).toPath().resolve(targetRelPath).toFile();
-    try {
-      return createLinkOrCopy(sourceFile, targetFile);
-    } catch (IOException e) {
-      LOGGER.warn(FAILED_PROCESS_FILE_LOG, sourceFile.getFileName(), objectDir, e.getMessage(), e);
-      throw new IOException(
-          String.format(
-              "Failed to process object file. Source: %s, Target dir: %s",
-              sourceFile.toAbsolutePath(), objectDir),
-          e);
+    Path targetDir =
+        targetRelDir == null
+            ? new File(objectDir).toPath()
+            : new File(objectDir).toPath().resolve(targetRelDir);
+    createDirectoryIfNeeded(targetDir.toFile());
+    List<File> createdFiles = new ArrayList<>(sourceFiles.size());
+    for (Path sourceFile : sourceFiles) {
+      File targetFile = targetDir.resolve(sourceFile.getFileName()).toFile();
+      try {
+        createLinkOrCopy(sourceFile, targetFile);
+        createdFiles.add(targetFile);
+      } catch (IOException e) {
+        LOGGER.warn(
+            FAILED_PROCESS_FILE_LOG, sourceFile.getFileName(), objectDir, e.getMessage(), e);
+        rollbackCreatedObjectFiles(createdFiles);
+        throw new IOException(
+            String.format(
+                "Failed to process object file. Source: %s, Target dir: %s",
+                sourceFile.toAbsolutePath(), objectDir),
+            e);
+      }
+    }
+  }
+
+  private void rollbackCreatedObjectFiles(List<File> createdFiles) {
+    for (File createdFile : createdFiles) {
+      try {
+        Files.deleteIfExists(createdFile.toPath());
+      } catch (IOException deleteException) {
+        LOGGER.warn("Failed to rollback object snapshot file {}", createdFile, deleteException);
+      }
     }
   }
 
@@ -735,8 +824,12 @@ public class SnapshotLoader {
 
   private void createParentDirectoryIfNeeded(File targetFile) throws IOException {
     File parentDir = targetFile.getParentFile();
-    if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs()) {
-      throw new IOException(String.format(CANNOT_CREATE_DIR_MSG, parentDir.getAbsolutePath()));
+    createDirectoryIfNeeded(parentDir);
+  }
+
+  private void createDirectoryIfNeeded(File dir) throws IOException {
+    if (dir != null && !dir.exists() && !dir.mkdirs()) {
+      throw new IOException(String.format(CANNOT_CREATE_DIR_MSG, dir.getAbsolutePath()));
     }
   }
 

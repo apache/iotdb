@@ -376,6 +376,10 @@ public final class StorageEngineMessages {
       "Failed to process file {} in dir {}: {}";
   public static final String FAILED_TO_PROCESS_SNAPSHOT_FILE_AFTER_RETRIES =
       "Failed to process file after retries. Source: %s, Target suffix: %s";
+  public static final String FAILED_TO_PROCESS_OBJECT_FILE_AFTER_RETRIES =
+      "Failed to process object file after retries. Source: %s";
+  public static final String FAILED_TO_PROCESS_OBJECT_SNAPSHOT_FILE_AFTER_RETRIES =
+      "Failed to process object snapshot file after retries. Source: %s";
   public static final String SNAPSHOT_FILE_NUM_MISMATCH =
       "The file num in log is %d, while file num in disk is %d";
   public static final String SNAPSHOT_FILE_NOT_IN_LOG = "File %s is not in the log file list";

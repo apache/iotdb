@@ -376,6 +376,10 @@ public final class StorageEngineMessages {
       "处理文件 {} 失败，所在目录为 {}: {}";
   public static final String FAILED_TO_PROCESS_SNAPSHOT_FILE_AFTER_RETRIES =
       "重试后仍无法处理文件。源文件: %s，目标后缀: %s";
+  public static final String FAILED_TO_PROCESS_OBJECT_FILE_AFTER_RETRIES =
+      "重试后仍无法处理 Object 文件。源文件: %s";
+  public static final String FAILED_TO_PROCESS_OBJECT_SNAPSHOT_FILE_AFTER_RETRIES =
+      "重试后仍无法处理 Object 快照文件。源文件: %s";
   public static final String SNAPSHOT_FILE_NUM_MISMATCH =
       "日志中的文件数为 %d，但磁盘中的文件数为 %d";
   public static final String SNAPSHOT_FILE_NOT_IN_LOG = "文件 %s 不在日志文件列表中";

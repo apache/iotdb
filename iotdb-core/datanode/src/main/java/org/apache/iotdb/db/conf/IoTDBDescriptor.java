@@ -3150,6 +3150,16 @@ public class IoTDBDescriptor {
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
     conf.setLoadObjectFileTempDir(
         properties.getProperty(LOAD_OBJECT_FILE_TEMP_DIR_KEY, conf.getLoadObjectFileTempDir()));
+    conf.setLoadSnapshotObjectBatchBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_snapshot_object_batch_bytes",
+                Long.toString(conf.getLoadSnapshotObjectBatchBytes()))));
+    conf.setLoadSnapshotObjectBatchFileCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_snapshot_object_batch_file_count",
+                Integer.toString(conf.getLoadSnapshotObjectBatchFileCount()))));
     conf.setLoadActiveListeningPipeDir(
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));

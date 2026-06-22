@@ -1231,6 +1231,10 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.LOAD_OBJECT_FILE_TEMP_FOLDER_NAME;
 
+  private long loadSnapshotObjectBatchBytes = 128L * 1024 * 1024;
+
+  private int loadSnapshotObjectBatchFileCount = 1000;
+
   private long loadActiveListeningCheckIntervalSeconds = 5L;
 
   private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
@@ -4352,6 +4356,26 @@ public class IoTDBConfig {
       return;
     }
     this.loadObjectFileTempDir = addDataHomeDir(loadObjectFileTempDir.trim());
+  }
+
+  public long getLoadSnapshotObjectBatchBytes() {
+    return loadSnapshotObjectBatchBytes;
+  }
+
+  public void setLoadSnapshotObjectBatchBytes(long loadSnapshotObjectBatchBytes) {
+    if (loadSnapshotObjectBatchBytes > 0) {
+      this.loadSnapshotObjectBatchBytes = loadSnapshotObjectBatchBytes;
+    }
+  }
+
+  public int getLoadSnapshotObjectBatchFileCount() {
+    return loadSnapshotObjectBatchFileCount;
+  }
+
+  public void setLoadSnapshotObjectBatchFileCount(int loadSnapshotObjectBatchFileCount) {
+    if (loadSnapshotObjectBatchFileCount > 0) {
+      this.loadSnapshotObjectBatchFileCount = loadSnapshotObjectBatchFileCount;
+    }
   }
 
   public String[] getLoadActiveListeningDirs() {
