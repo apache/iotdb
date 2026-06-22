@@ -47,13 +47,7 @@ public class ConfigurationFileUtilsTest {
 
   @After
   public void tearDown() throws IOException {
-    if (!dir.exists()) {
-      return;
-    }
-    for (File file : Objects.requireNonNull(dir.listFiles())) {
-      Files.delete(file.toPath());
-    }
-    Files.delete(dir.toPath());
+    EnvironmentUtils.cleanDir(dir.getPath());
   }
 
   @Test
