@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.checkerframework.checker.units.qual.C;
 
 import javax.annotation.Nullable;
 
@@ -108,6 +109,37 @@ public class DeviceTableScanNode extends TableScanNode {
     super(id, qualifiedObjectName, outputSymbols, assignments);
     this.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
     this.originalWritableViewName = originalWritableViewName;
+  }
+
+  public DeviceTableScanNode(
+      PlanNodeId id,
+      QualifiedObjectName qualifiedObjectName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
+      List<DeviceEntry> deviceEntries,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
+      Ordering scanOrder,
+      Expression timePredicate,
+      Expression pushDownPredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      boolean pushLimitToEachDevice,
+      boolean containsNonAlignedDevice) {
+    this(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        deviceEntries,
+        tagAndAttributeIndexMap,
+        scanOrder,
+        timePredicate,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        pushLimitToEachDevice,
+        containsNonAlignedDevice,
+        Optional.empty());
   }
 
   public DeviceTableScanNode(
