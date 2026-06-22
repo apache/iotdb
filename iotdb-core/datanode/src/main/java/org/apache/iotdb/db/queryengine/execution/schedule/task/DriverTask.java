@@ -60,6 +60,7 @@ public class DriverTask implements IDIndexedAccessible {
   private final DriverTaskHandle driverTaskHandle;
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
+  private boolean reservedInReadyQueue;
 
   private long estimatedMemorySize;
 
@@ -211,6 +212,18 @@ public class DriverTask implements IDIndexedAccessible {
 
   public void setLastEnterBlockQueueTime(long lastEnterBlockQueueTime) {
     this.lastEnterBlockQueueTime = lastEnterBlockQueueTime;
+  }
+
+  public void markReservedInReadyQueue() {
+    reservedInReadyQueue = true;
+  }
+
+  public boolean releaseReservedInReadyQueue() {
+    if (!reservedInReadyQueue) {
+      return false;
+    }
+    reservedInReadyQueue = false;
+    return true;
   }
 
   /** a comparator of ddl, the less the ddl is, the low order it has. */

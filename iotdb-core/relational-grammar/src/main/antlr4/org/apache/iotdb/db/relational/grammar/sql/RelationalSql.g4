@@ -49,6 +49,7 @@ statement
     // Database Statement
     | useDatabaseStatement
     | showDatabasesStatement
+    | countDatabasesStatement
     | createDbStatement
     | alterDbStatement
     | dropDbStatement
@@ -107,6 +108,7 @@ statement
 
     // Subscription Statement
     | createTopicStatement
+    | alterTopicStatement
     | dropTopicStatement
     | showTopicsStatement
     | showSubscriptionsStatement
@@ -201,6 +203,10 @@ useDatabaseStatement
 
 showDatabasesStatement
     : SHOW DATABASES (DETAILS)?
+    ;
+
+countDatabasesStatement
+    : COUNT DATABASES
     ;
 
 createDbStatement
@@ -530,6 +536,10 @@ showPipePluginsStatement
 // -------------------------------------------- Subscription Statement ---------------------------------------------------------
 createTopicStatement
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
+    ;
+
+alterTopicStatement
+    : ALTER TOPIC topicName=identifier topicAttributesClause
     ;
 
 topicAttributesClause
@@ -933,8 +943,8 @@ copyToStatementOption
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
-    | EXPLAIN (query | executeStatement | executeImmediateStatement) #explain
-    | EXPLAIN ANALYZE VERBOSE? (query | executeStatement | executeImmediateStatement) #explainAnalyze
+    | EXPLAIN ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explain
+    | EXPLAIN ANALYZE VERBOSE? ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explainAnalyze
     ;
 
 query
@@ -976,6 +986,7 @@ fillClause
 fillMethod
     : LINEAR timeColumnClause? fillGroupClause?                                    #linearFill
     | PREVIOUS timeBoundClause? timeColumnClause? fillGroupClause?                 #previousFill
+    | NEXT timeBoundClause? timeColumnClause? fillGroupClause?                     #nextFill
     | CONSTANT literalExpression                                                   #valueFill
     ;
 
@@ -1044,7 +1055,8 @@ fromFirstQuerySpecification
     ;
 
 groupBy
-    : setQuantifier? groupingElement (',' groupingElement)*
+    : ALL                                                                                         #allGroupBy
+    | setQuantifier? groupingElement (',' groupingElement)*                                       #explicitGroupBy
     ;
 
 groupingElement

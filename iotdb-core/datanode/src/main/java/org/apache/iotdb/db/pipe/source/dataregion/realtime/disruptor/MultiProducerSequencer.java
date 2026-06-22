@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.BooleanSupplier;
 
 /**
  * Multi-producer sequencer for coordinating concurrent publishers
@@ -85,10 +88,10 @@ public final class MultiProducerSequencer {
 
   public MultiProducerSequencer(int bufferSize, Sequence[] gatingSequences) {
     if (bufferSize < 1) {
-      throw new IllegalArgumentException("bufferSize must not be less than 1");
+      throw new IllegalArgumentException(DataNodePipeMessages.BUFFERSIZE_MUST_NOT_BE_LESS_THAN_1);
     }
     if (Integer.bitCount(bufferSize) != 1) {
-      throw new IllegalArgumentException("bufferSize must be a power of 2");
+      throw new IllegalArgumentException(DataNodePipeMessages.BUFFERSIZE_MUST_BE_A_POWER_OF_2);
     }
 
     this.bufferSize = bufferSize;
@@ -110,14 +113,31 @@ public final class MultiProducerSequencer {
    * @return highest claimed sequence number
    */
   public long next(int n) {
+    return next(n, () -> false);
+  }
+
+  /**
+   * Claim next n sequences for publishing, or abort if the caller is closing.
+   *
+   * @param n number of sequences to claim
+   * @param abortCondition returns {@code true} if the claim should be abandoned
+   * @return highest claimed sequence number, or {@link Sequence#INITIAL_VALUE} if aborted
+   */
+  public long next(final int n, final BooleanSupplier abortCondition) {
     if (n < 1) {
-      throw new IllegalArgumentException("n must be > 0");
+      throw new IllegalArgumentException(DataNodePipeMessages.N_MUST_BE_0);
     }
 
+    final BooleanSupplier effectiveAbortCondition =
+        abortCondition != null ? abortCondition : () -> false;
     long current;
     long next;
 
     do {
+      if (effectiveAbortCondition.getAsBoolean()) {
+        return Sequence.INITIAL_VALUE;
+      }
+
       current = cursor.get();
       next = current + n;
 
@@ -128,6 +148,9 @@ public final class MultiProducerSequencer {
         long gatingSequence = Sequence.getMinimumSequence(gatingSequences.get(), current);
 
         if (wrapPoint > gatingSequence) {
+          if (effectiveAbortCondition.getAsBoolean()) {
+            return Sequence.INITIAL_VALUE;
+          }
           LockSupport.parkNanos(1);
           continue;
         }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,11 +43,13 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
   }
 
   public void add(Procedure<Env> procedure) {
-    queue.add(new ProcedureDelayContainer<>(procedure));
+    ProcedureDelayContainer<Env> delayTask = new ProcedureDelayContainer<>(procedure);
+    queue.remove(delayTask);
+    queue.add(delayTask);
   }
 
   public boolean remove(Procedure<Env> procedure) {
-    return queue.remove(new ProcedureDelayContainer<>(procedure));
+    return queue.remove(new ProcedureDelayContainer<>(procedure)) || procedure.isFinished();
   }
 
   private ProcedureDelayContainer<Env> takeQuietly() {
@@ -66,10 +70,15 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
       }
       Procedure<Env> procedure = delayTask.getProcedure();
       if (procedure instanceof InternalProcedure) {
+        if (procedure.isFinished()) {
+          continue;
+        }
         InternalProcedure internal = (InternalProcedure) procedure;
         internal.periodicExecute(executor.getEnvironment());
-        procedure.updateTimestamp();
-        queue.add(delayTask);
+        if (!procedure.isFinished()) {
+          procedure.updateTimestamp();
+          queue.add(delayTask);
+        }
       } else {
         if (procedure.setTimeoutFailure(executor.getEnvironment())) {
           long rootProcId = executor.getRootProcedureId(procedure);
@@ -80,7 +89,7 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
           } catch (Exception e) {
             // Do nothing since new CN leader can converge to the correct state when restore this
             // procedure.
-            LOGGER.warn("Failed to update procedure {}", procedure, e);
+            LOGGER.warn(ProcedureMessages.FAILED_TO_UPDATE_PROCEDURE, procedure, e);
           }
           executor.getScheduler().addFront(procedure);
         }
@@ -100,6 +109,23 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
 
     public Procedure<Env> getProcedure() {
       return procedure;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof ProcedureDelayContainer)) {
+        return false;
+      }
+      ProcedureDelayContainer<?> that = (ProcedureDelayContainer<?>) o;
+      return procedure == that.procedure;
+    }
+
+    @Override
+    public int hashCode() {
+      return System.identityHashCode(procedure);
     }
 
     @Override

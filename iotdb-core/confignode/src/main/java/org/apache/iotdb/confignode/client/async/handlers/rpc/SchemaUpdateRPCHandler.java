@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -48,17 +49,18 @@ public class SchemaUpdateRPCHandler extends DataNodeTSStatusRPCHandler {
   @Override
   public void onComplete(TSStatus tsStatus) {
     responseMap.put(requestId, tsStatus);
-    LOGGER.info("{} for {} receives: {}", requestType, requestId, tsStatus);
+    LOGGER.info(ConfigNodeMessages.FOR_RECEIVES, requestType, requestId, tsStatus);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       nodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+      LOGGER.info(
+          ConfigNodeMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       nodeLocationMap.remove(requestId);
       LOGGER.warn(
-          "Failed to {} on DataNode {}, {}", requestType, formattedTargetLocation, tsStatus);
+          ConfigNodeMessages.FAILED_TO_ON_DATANODE, requestType, formattedTargetLocation, tsStatus);
     } else {
       LOGGER.warn(
-          "Failed to {} on DataNode {}, {}", requestType, formattedTargetLocation, tsStatus);
+          ConfigNodeMessages.FAILED_TO_ON_DATANODE, requestType, formattedTargetLocation, tsStatus);
     }
     countDownLatch.countDown();
   }
@@ -75,10 +77,10 @@ public class SchemaUpdateRPCHandler extends DataNodeTSStatusRPCHandler {
             + e.getMessage();
     LOGGER.warn(errorMsg);
 
-    countDownLatch.countDown();
     responseMap.put(
         requestId,
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+    countDownLatch.countDown();
   }
 }

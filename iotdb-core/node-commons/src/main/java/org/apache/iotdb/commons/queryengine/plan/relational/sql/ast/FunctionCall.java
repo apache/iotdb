@@ -177,6 +177,7 @@ public class FunctionCall extends Expression {
   public List<Node> getChildren() {
     ImmutableList.Builder<Node> nodes = ImmutableList.builder();
     nodes.addAll(arguments);
+    window.ifPresent(window -> nodes.add((Node) window));
     return nodes.build();
   }
 
@@ -190,6 +191,8 @@ public class FunctionCall extends Expression {
     }
     FunctionCall o = (FunctionCall) obj;
     return Objects.equals(name, o.name)
+        && Objects.equals(window, o.window)
+        && Objects.equals(nullTreatment, o.nullTreatment)
         && Objects.equals(distinct, o.distinct)
         && Objects.equals(processingMode, o.processingMode)
         && Objects.equals(arguments, o.arguments);
@@ -197,7 +200,7 @@ public class FunctionCall extends Expression {
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, distinct, processingMode, arguments);
+    return Objects.hash(name, window, nullTreatment, distinct, processingMode, arguments);
   }
 
   public enum NullTreatment {
@@ -214,6 +217,8 @@ public class FunctionCall extends Expression {
     FunctionCall otherFunction = (FunctionCall) other;
 
     return name.equals(otherFunction.name)
+        && window.isPresent() == otherFunction.window.isPresent()
+        && nullTreatment.equals(otherFunction.nullTreatment)
         && distinct == otherFunction.distinct
         && processingMode.equals(otherFunction.processingMode);
   }

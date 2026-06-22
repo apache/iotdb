@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -118,7 +119,7 @@ public class DataNodeTableCache implements ITableCache {
                               table -> new Pair<>(table, 0L),
                               (v1, v2) -> v2,
                               ConcurrentHashMap::new))));
-      LOGGER.info("Init DataNodeTableCache successfully");
+      LOGGER.info(DataNodeSchemaMessages.INIT_TABLE_CACHE_SUCCESS);
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -142,7 +143,7 @@ public class DataNodeTableCache implements ITableCache {
                   return v;
                 }
               });
-      LOGGER.info("Pre-update table {}.{} successfully", database, table.getTableName());
+      LOGGER.info(DataNodeSchemaMessages.PRE_UPDATE_TABLE_SUCCESS, database, table.getTableName());
 
       // If rename table
       if (Objects.nonNull(oldName)) {
@@ -160,7 +161,7 @@ public class DataNodeTableCache implements ITableCache {
                     return v;
                   }
                 });
-        LOGGER.info("Pre-rename old table {}.{} successfully", database, oldName);
+        LOGGER.info(DataNodeSchemaMessages.PRE_RENAME_OLD_TABLE_SUCCESS, database, oldName);
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -173,12 +174,19 @@ public class DataNodeTableCache implements ITableCache {
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreUpdateMap(database, tableName);
-      LOGGER.info("Rollback-update table {}.{} successfully", database, tableName);
+      LOGGER.info(DataNodeSchemaMessages.ROLLBACK_UPDATE_TABLE_SUCCESS, database, tableName);
 
       // If rename table
       if (Objects.nonNull(oldName)) {
         // Equals to commit update
-        final TsTable oldTable = preUpdateTableMap.get(database).get(oldName).getLeft();
+        final TsTable oldTable = getTableFromPreUpdateMap(database, oldName);
+        if (Objects.isNull(oldTable)) {
+          LOGGER.info(
+              "Skip rollback renaming old table {}.{} because it has been handled.",
+              database,
+              oldName);
+          return;
+        }
         // Cannot be rolled back, consider:
         // 1. Fetched a written CN table
         // 2. CN rollback because of timeout
@@ -190,7 +198,7 @@ public class DataNodeTableCache implements ITableCache {
         databaseTableMap
             .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
             .put(tableName, oldTable);
-        LOGGER.info("Rollback renaming old table {}.{} successfully.", database, oldName);
+        LOGGER.info(DataNodeSchemaMessages.ROLLBACK_RENAME_OLD_TABLE_SUCCESS, database, oldName);
         removeTableFromPreUpdateMap(database, oldName);
       }
     } finally {
@@ -199,15 +207,25 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   private void removeTableFromPreUpdateMap(final String database, final String tableName) {
-    preUpdateTableMap.compute(
+    preUpdateTableMap.computeIfPresent(
         database,
         (k, v) -> {
-          if (v == null) {
-            throw new IllegalStateException();
+          final Pair<TsTable, Long> tableVersionPair = v.get(tableName);
+          if (Objects.nonNull(tableVersionPair)) {
+            tableVersionPair.setLeft(null);
           }
-          v.get(tableName).setLeft(null);
           return v;
         });
+  }
+
+  private @Nullable TsTable getTableFromPreUpdateMap(
+      final String database, final String tableName) {
+    final Map<String, Pair<TsTable, Long>> tableMap = preUpdateTableMap.get(database);
+    if (Objects.isNull(tableMap)) {
+      return null;
+    }
+    final Pair<TsTable, Long> tableVersionPair = tableMap.get(tableName);
+    return Objects.nonNull(tableVersionPair) ? tableVersionPair.getLeft() : null;
   }
 
   @Override
@@ -216,7 +234,15 @@ public class DataNodeTableCache implements ITableCache {
     database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      final TsTable newTable = preUpdateTableMap.get(database).get(tableName).getLeft();
+      final TsTable newTable = getTableFromPreUpdateMap(database, tableName);
+      if (Objects.isNull(newTable)) {
+        LOGGER.info(
+            "Skip commit-update table {}.{} because it has been handled.", database, tableName);
+        if (Objects.nonNull(oldName)) {
+          removeTableFromPreUpdateMap(database, oldName);
+        }
+        return;
+      }
       // Cannot be committed, consider:
       // 1. Fetched a non-changed CN table
       // 2. CN is changed
@@ -231,17 +257,17 @@ public class DataNodeTableCache implements ITableCache {
               .put(tableName, newTable);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Commit-update table {}.{} successfully, {}",
+            DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL,
             database,
             tableName,
             compareTable(oldTable, newTable));
       } else if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("Commit-update table {}.{} successfully.", database, tableName);
+        LOGGER.info(DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS, database, tableName);
       }
       removeTableFromPreUpdateMap(database, tableName);
       if (Objects.nonNull(oldName)) {
         removeTableFromPreUpdateMap(database, oldName);
-        LOGGER.info("Rename old table {}.{} successfully.", database, oldName);
+        LOGGER.info(DataNodeSchemaMessages.RENAME_OLD_TABLE_SUCCESS, database, oldName);
       }
       instanceVersion.incrementAndGet();
     } finally {
@@ -373,8 +399,10 @@ public class DataNodeTableCache implements ITableCache {
   private Map<String, Map<String, TsTable>> getTablesInConfigNode(
       final Map<String, Map<String, Long>> tableInput) {
     Map<String, Map<String, TsTable>> result = Collections.emptyMap();
+    boolean acquired = false;
     try {
       fetchTableSemaphore.acquire();
+      acquired = true;
       final TFetchTableResp resp =
           ClusterConfigTaskExecutor.getInstance()
               .fetchTables(
@@ -386,13 +414,12 @@ public class DataNodeTableCache implements ITableCache {
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn(
-          "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.");
-    } catch (final Exception e) {
-      fetchTableSemaphore.release();
-      throw e;
+      LOGGER.warn(DataNodeSchemaMessages.INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES);
+    } finally {
+      if (acquired) {
+        fetchTableSemaphore.release();
+      }
     }
-    fetchTableSemaphore.release();
     return result;
   }
 
@@ -420,7 +447,7 @@ public class DataNodeTableCache implements ITableCache {
                     isUpdated.set(true);
                     if (LOGGER.isDebugEnabled()) {
                       LOGGER.debug(
-                          "Update table {}.{} by table fetch, {}",
+                          DataNodeSchemaMessages.UPDATE_TABLE_BY_FETCH_WITH_DETAIL,
                           database,
                           tableName,
                           compareTable(
@@ -429,7 +456,8 @@ public class DataNodeTableCache implements ITableCache {
                                   .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
                                   .get(tableName)));
                     } else if (LOGGER.isInfoEnabled()) {
-                      LOGGER.info("Update table {}.{} by table fetch.", database, tableName);
+                      LOGGER.info(
+                          DataNodeSchemaMessages.UPDATE_TABLE_BY_FETCH, database, tableName);
                     }
                     existingPair.setLeft(null);
                     if (Objects.nonNull(tsTable)) {
@@ -452,13 +480,14 @@ public class DataNodeTableCache implements ITableCache {
 
   private String compareTable(final TsTable oldTable, final TsTable newTable) {
     if (Objects.isNull(oldTable)) {
-      return "Added table: " + newTable;
+      return DataNodeSchemaMessages.COMPARE_TABLE_ADDED + newTable;
     }
     if (Objects.isNull(newTable)) {
-      return "Removed table: " + oldTable;
+      return DataNodeSchemaMessages.COMPARE_TABLE_REMOVED + oldTable;
     }
     boolean modified = false;
-    final StringBuilder builder = new StringBuilder("Table name: " + oldTable.getTableName());
+    final StringBuilder builder =
+        new StringBuilder(DataNodeSchemaMessages.COMPARE_TABLE_NAME + oldTable.getTableName());
     final Map<String, String> oldProps =
         Objects.nonNull(oldTable.getProps())
             ? new HashMap<>(oldTable.getProps())
@@ -479,10 +508,10 @@ public class DataNodeTableCache implements ITableCache {
                 return false;
               });
       if (!oldProps.isEmpty()) {
-        builder.append(" Removed props: ").append(oldProps);
+        builder.append(DataNodeSchemaMessages.COMPARE_TABLE_REMOVED_PROPS).append(oldProps);
       }
       if (!newProps.isEmpty()) {
-        builder.append(" Added props: ").append(newProps);
+        builder.append(DataNodeSchemaMessages.COMPARE_TABLE_ADDED_PROPS).append(newProps);
       }
       modified = true;
     }
@@ -517,14 +546,14 @@ public class DataNodeTableCache implements ITableCache {
             .collect(Collectors.toList());
 
     if (!oldSchema.isEmpty()) {
-      builder.append(" Removed column(s): ").append(oldSchema);
+      builder.append(DataNodeSchemaMessages.COMPARE_TABLE_REMOVED_COLUMNS).append(oldSchema);
       modified = true;
     }
     if (!newSchema.isEmpty()) {
-      builder.append(" Added column(s): ").append(newSchema);
+      builder.append(DataNodeSchemaMessages.COMPARE_TABLE_ADDED_COLUMNS).append(newSchema);
       modified = true;
     }
-    return modified ? builder.toString() : " Not modified";
+    return modified ? builder.toString() : DataNodeSchemaMessages.COMPARE_TABLE_NOT_MODIFIED;
   }
 
   private TsTable getTableInCache(final String database, final String tableName) {

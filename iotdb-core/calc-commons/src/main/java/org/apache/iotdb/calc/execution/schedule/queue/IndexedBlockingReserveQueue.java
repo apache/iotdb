@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.schedule.queue;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import com.google.common.base.Preconditions;
 
 /**
@@ -47,12 +49,13 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
     E output = pollFirst();
     size--;
     reservedSize++;
+    markReserved(output);
     return output;
   }
 
   public synchronized void push(E element) {
     if (element == null) {
-      throw new NullPointerException("pushed element is null");
+      throw new NullPointerException(CalcMessages.PUSHED_ELEMENT_IS_NULL);
     }
     Preconditions.checkState(size + reservedSize < capacity, TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
     pushToQueue(element);
@@ -63,10 +66,10 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
   /** RePush an element which is polled out for running or blocked before to the queue. */
   public synchronized void repush(E element) {
     if (element == null) {
-      throw new NullPointerException("pushed element is null");
+      throw new NullPointerException(CalcMessages.PUSHED_ELEMENT_IS_NULL);
     }
     pushToQueue(element);
-    reservedSize--;
+    decreaseReservedSizeIfNecessary(element);
     size++;
     this.notifyAll();
   }
@@ -74,7 +77,36 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
   /**
    * For task that is not in readyQueue when it's cleared, it won't be added into the queue again.
    */
-  public synchronized void decreaseReservedSize() {
-    this.reservedSize--;
+  public synchronized boolean decreaseReservedSize(E element) {
+    if (element == null) {
+      throw new NullPointerException(CalcMessages.PUSHED_ELEMENT_IS_NULL);
+    }
+    return decreaseReservedSizeIfNecessary(element);
+  }
+
+  public final synchronized int getReservedSize() {
+    return reservedSize;
+  }
+
+  @Override
+  public synchronized void clear() {
+    super.clear();
+    this.reservedSize = 0;
+  }
+
+  protected void markReserved(E element) {
+    // Do nothing by default.
+  }
+
+  protected boolean releaseReserved(E element) {
+    return true;
+  }
+
+  private boolean decreaseReservedSizeIfNecessary(E element) {
+    if (!releaseReserved(element) || reservedSize <= 0) {
+      return false;
+    }
+    reservedSize--;
+    return true;
   }
 }

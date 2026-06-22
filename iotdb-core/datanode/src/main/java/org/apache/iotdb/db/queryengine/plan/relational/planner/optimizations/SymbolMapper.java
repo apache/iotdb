@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.S
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ValuePointer;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
@@ -119,7 +120,7 @@ public class SymbolMapper {
           map(comparison.getValue()),
           map(comparison.getReference()));
     } else {
-      throw new IllegalArgumentException("Unexpected value: " + expression);
+      throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_VALUE + expression);
     }
   }
 

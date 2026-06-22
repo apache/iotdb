@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -51,6 +54,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -71,6 +75,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final IMetadataQuerier metadataQuerier;
   private final TsFileMetadata fileMetadata;
   private final Iterator<Map.Entry<String, TableSchema>> filteredTableSchemaIterator;
+  private final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
   // For memory control
   private final PipeMemoryBlock allocatedMemoryBlockForTablet;
@@ -204,7 +209,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                     chunkMetadataIterator.next();
                 if (alignedChunkMetadata == null) {
                   throw new PipeException(
-                      "Table model tsfile parsing does not support this type of ChunkMeta");
+                      DataNodePipeMessages.TABLE_MODEL_TSFILE_PARSING_DOES_NOT_SUPPORT);
                 }
 
                 // Reduce the number of times Chunks are read
@@ -236,7 +241,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           case INIT_DEVICE_META:
             if (filteredTableSchemaIterator != null && filteredTableSchemaIterator.hasNext()) {
               final Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
-              tableName = entry.getKey();
+              tableName = tabletStringInternPool.intern(entry.getKey());
               final TableSchema tableSchema = entry.getValue();
               // The table name has changed, set to false
               isSameTableName = false;
@@ -256,7 +261,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 if (schema != null
                     && schema.getMeasurementName() != null
                     && !schema.getMeasurementName().isEmpty()) {
-                  final String measurementName = schema.getMeasurementName();
+                  final String measurementName = internMeasurementName(schema);
                   if (ColumnCategory.TAG.equals(columnCategory)) {
                     columnTypes.add(ColumnCategory.TAG);
                     measurementList.add(measurementName);
@@ -320,7 +325,6 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   new ArrayList<>(dataTypeList),
                   new ArrayList<>(columnTypes),
                   rowCountAndMemorySize.getLeft());
-          tablet.initBitMaps();
           isFirstRow = false;
         }
         final int rowIndex = tablet.getRowSize();
@@ -330,7 +334,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
         if (fillMeasurementValueColumns(batchData, tablet, rowIndex)) {
           fillDeviceIdColumns(deviceID, tablet, rowIndex);
-          tablet.addTimestamp(rowIndex, batchData.currentTime());
+          PipeTabletUtils.putTimestamp(tablet, rowIndex, batchData.currentTime());
         }
       }
 
@@ -341,9 +345,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
     if (isFirstRow) {
       tablet = new Tablet(tableName, measurementList, dataTypeList, columnTypes, 0);
-      tablet.initBitMaps();
     }
 
+    PipeTabletUtils.compactBitMaps(tablet);
     return tablet;
   }
 
@@ -395,14 +399,15 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     boolean hasSelectedNonNullChunk = false;
     for (; offset < fieldSchemaList.size(); ++offset) {
       final IMeasurementSchema schema = fieldSchemaList.get(offset);
+      final String measurementName = internMeasurementName(schema);
       if (isFieldDeletedByMods(
-          schema.getMeasurementName(),
+          measurementName,
           alignedChunkMetadata.getStartTime(),
           alignedChunkMetadata.getEndTime())) {
         continue;
       }
 
-      final IChunkMetadata metadata = valueChunkMetadataMap.get(schema.getMeasurementName());
+      final IChunkMetadata metadata = valueChunkMetadataMap.get(measurementName);
       Chunk chunk = null;
       if (metadata != null) {
         chunk = reader.readMemChunk((ChunkMetadata) metadata);
@@ -421,7 +426,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         hasSelectedNonNullChunk = true;
       }
       columnTypes.add(ColumnCategory.FIELD);
-      measurementList.add(schema.getMeasurementName());
+      measurementList.add(measurementName);
       dataTypeList.add(schema.getType());
       valueChunkList.add(chunk);
       hasSelectedField = true;
@@ -451,7 +456,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     for (final IMeasurementSchema schema : fieldSchemaList) {
       if (!ModsOperationUtil.isAllDeletedByMods(
           currentDeviceID,
-          schema.getMeasurementName(),
+          internMeasurementName(schema),
           alignedChunkMetadata.getStartTime(),
           alignedChunkMetadata.getEndTime(),
           modifications)) {
@@ -466,6 +471,13 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     return !modifications.isEmpty()
         && ModsOperationUtil.isAllDeletedByMods(
             deviceID, measurementID, startTime, endTime, modifications);
+  }
+
+  private String internMeasurementName(final IMeasurementSchema schema) {
+    if (schema instanceof MeasurementSchema) {
+      tabletStringInternPool.intern((MeasurementSchema) schema);
+    }
+    return tabletStringInternPool.intern(schema.getMeasurementName());
   }
 
   private boolean fillMeasurementValueColumns(
@@ -487,44 +499,59 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           case TEXT:
           case BLOB:
           case STRING:
-            tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
+            PipeTabletUtils.putValue(tablet, rowIndex, i, dataTypeList.get(i), Binary.EMPTY_VALUE);
         }
-        tablet.getBitMaps()[i].mark(rowIndex);
+        PipeTabletUtils.markNullValue(tablet, rowIndex, i);
         continue;
       }
       needFillTime = true;
 
       switch (dataTypeList.get(i)) {
         case BOOLEAN:
-          tablet.addValue(rowIndex, i, primitiveType.getBoolean());
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getBoolean());
           break;
         case INT32:
-          tablet.addValue(rowIndex, i, primitiveType.getInt());
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getInt());
           break;
         case DATE:
-          tablet.addValue(rowIndex, i, DateUtils.parseIntToLocalDate(primitiveType.getInt()));
+          PipeTabletUtils.putValue(
+              tablet,
+              rowIndex,
+              i,
+              dataTypeList.get(i),
+              DateUtils.parseIntToLocalDate(primitiveType.getInt()));
           break;
         case INT64:
         case TIMESTAMP:
-          tablet.addValue(rowIndex, i, primitiveType.getLong());
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getLong());
           break;
         case FLOAT:
-          tablet.addValue(rowIndex, i, primitiveType.getFloat());
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getFloat());
           break;
         case DOUBLE:
-          tablet.addValue(rowIndex, i, primitiveType.getDouble());
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getDouble());
           break;
         case TEXT:
         case BLOB:
         case STRING:
           Binary binary = primitiveType.getBinary();
-          tablet.addValue(
+          PipeTabletUtils.putValue(
+              tablet,
               rowIndex,
               i,
-              binary.getValues() == null ? Binary.EMPTY_VALUE.getValues() : binary.getValues());
+              dataTypeList.get(i),
+              Objects.isNull(binary) || Objects.isNull(binary.getValues())
+                  ? Binary.EMPTY_VALUE
+                  : binary);
           break;
         default:
-          throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
+          throw new UnSupportedDataTypeException(
+              DataNodePipeMessages.UNSUPPORTED + primitiveType.getDataType());
       }
     }
     return needFillTime || hasNonDeletedField;
@@ -536,16 +563,19 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     int i = 1;
     for (int totalColumns = deviceIdSegments.length; i < totalColumns; i++) {
       if (deviceIdSegments[i] == null) {
-        tablet.addValue(rowIndex, i - 1, Binary.EMPTY_VALUE.getValues());
-        tablet.getBitMaps()[i - 1].mark(rowIndex);
+        PipeTabletUtils.putValue(
+            tablet, rowIndex, i - 1, dataTypeList.get(i - 1), Binary.EMPTY_VALUE);
+        PipeTabletUtils.markNullValue(tablet, rowIndex, i - 1);
         continue;
       }
-      tablet.addValue(rowIndex, i - 1, deviceIdSegments[i]);
+      PipeTabletUtils.putValue(
+          tablet, rowIndex, i - 1, dataTypeList.get(i - 1), deviceIdSegments[i]);
     }
 
     while (i <= deviceIdSize) {
-      tablet.addValue(rowIndex, i - 1, Binary.EMPTY_VALUE.getValues());
-      tablet.getBitMaps()[i - 1].mark(rowIndex);
+      PipeTabletUtils.putValue(
+          tablet, rowIndex, i - 1, dataTypeList.get(i - 1), Binary.EMPTY_VALUE);
+      PipeTabletUtils.markNullValue(tablet, rowIndex, i - 1);
       i++;
     }
   }

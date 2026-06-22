@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -272,28 +273,28 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
-    DataPartition dataPartition;
+    final Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
+        splitDataPartitionQueryParam(
+            dataPartitionQueryParams, config.isAutoCreateSchemaEnabled(), userName);
+    DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
+    if (null != dataPartition) {
+      return dataPartition;
+    }
+
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-          splitDataPartitionQueryParam(
-              dataPartitionQueryParams, config.isAutoCreateSchemaEnabled(), userName);
-      dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
+      final TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
+      final TDataPartitionTableResp dataPartitionTableResp =
+          client.getOrCreateDataPartitionTable(req);
 
-      if (null == dataPartition) {
-        final TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
-        final TDataPartitionTableResp dataPartitionTableResp =
-            client.getOrCreateDataPartitionTable(req);
-
-        if (dataPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          dataPartition = parseDataPartitionResp(dataPartitionTableResp);
-          partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
-        } else {
-          throw new IoTDBRuntimeException(
-              dataPartitionTableResp.getStatus().getMessage(),
-              dataPartitionTableResp.getStatus().getCode());
-        }
+      if (dataPartitionTableResp.getStatus().getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        dataPartition = parseDataPartitionResp(dataPartitionTableResp);
+        partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
+      } else {
+        throw new IoTDBRuntimeException(
+            dataPartitionTableResp.getStatus().getMessage(),
+            dataPartitionTableResp.getStatus().getCode());
       }
     } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
@@ -410,7 +411,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try {
       return new TSchemaPartitionReq(patternTree.serialize());
     } catch (final IOException e) {
-      throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
+      throw new StatementAnalyzeException(
+          DataNodeQueryMessages.AN_ERROR_OCCURRED_WHEN_SERIALIZING_PATTERN_TREE);
     }
   }
 
@@ -431,7 +433,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       return schemaNodeManagementReq;
     } catch (final IOException e) {
-      throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
+      throw new StatementAnalyzeException(
+          DataNodeQueryMessages.AN_ERROR_OCCURRED_WHEN_SERIALIZING_PATTERN_TREE);
     }
   }
 

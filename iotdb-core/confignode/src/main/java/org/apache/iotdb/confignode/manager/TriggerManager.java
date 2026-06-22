@@ -37,6 +37,8 @@ import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TransferringTriggersResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -145,7 +147,7 @@ public class TriggerManager {
               configManager.getConsensusManager().read(new GetTriggerTablePlan(onlyStateful)))
           .convertToThriftResponse();
     } catch (IOException | ConsensusException e) {
-      LOGGER.error("Fail to get TriggerTable", e);
+      LOGGER.error(ManagerMessages.FAIL_TO_GET_TRIGGERTABLE, e);
       return new TGetTriggerTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
@@ -159,7 +161,7 @@ public class TriggerManager {
               configManager.getConsensusManager().read(new GetTriggerLocationPlan(triggerName)))
           .convertToThriftResponse();
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       return new TGetLocationForTriggerResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()));
@@ -172,7 +174,7 @@ public class TriggerManager {
               configManager.getConsensusManager().read(new GetTriggerJarPlan(req.getJarNameList())))
           .convertToThriftResponse();
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new JarResp(res, Collections.emptyList()).convertToThriftResponse();
@@ -230,7 +232,7 @@ public class TriggerManager {
         }
       }
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read/write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ManagerMessages.FAILED_IN_THE_READ_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;

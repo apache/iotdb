@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
@@ -115,6 +116,7 @@ public class AggregateProcessor implements PipeProcessor {
   private PipeTaskMeta pipeTaskMeta;
   private long outputMaxDelayMilliseconds;
   private long outputMinReportIntervalMilliseconds;
+  private String outputDatabase;
   private String outputDatabaseWithPathSeparator;
 
   private final Map<String, AggregatedResultOperator> outputName2OperatorMap = new HashMap<>();
@@ -225,7 +227,7 @@ public class AggregateProcessor implements PipeProcessor {
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE)
             * 1000;
-    final String outputDatabase =
+    outputDatabase =
         parameters.getStringOrDefault(
             PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
     outputDatabaseWithPathSeparator =
@@ -370,7 +372,8 @@ public class AggregateProcessor implements PipeProcessor {
         try {
           stateReference.get().restoreTimestampAndWindows(entry.getValue());
         } catch (final IOException e) {
-          throw new PipeException("Encountered exception when deserializing from PipeTaskMeta", e);
+          throw new PipeException(
+              DataNodePipeMessages.ENCOUNTERED_EXCEPTION_WHEN_DESERIALIZING_FROM_PIPETASKMETA, e);
         }
       }
     }
@@ -424,6 +427,8 @@ public class AggregateProcessor implements PipeProcessor {
   private Map<String, Pair<Long, ByteBuffer>> processRow(
       final Row row, final RowCollector rowCollector, final AtomicReference<Exception> exception) {
     final Map<String, Pair<Long, ByteBuffer>> resultMap = new HashMap<>();
+
+    resetOutputDatabaseForGeneratedEvent(rowCollector);
 
     final long timestamp = row.getTime();
     for (int index = 0, size = row.size(); index < size; ++index) {
@@ -578,6 +583,7 @@ public class AggregateProcessor implements PipeProcessor {
                 synchronized (stateReference) {
                   final PipeRowCollector rowCollector =
                       new PipeRowCollector(pipeTaskMeta, null, dataBaseName, isTableModel);
+                  resetOutputDatabaseForGeneratedEvent(rowCollector);
                   try {
                     collectWindowOutputs(
                         stateReference.get().forceOutput(), timeSeries, rowCollector);
@@ -608,6 +614,13 @@ public class AggregateProcessor implements PipeProcessor {
     }
 
     eventCollector.collect(event);
+  }
+
+  private void resetOutputDatabaseForGeneratedEvent(final RowCollector rowCollector) {
+    if (!outputDatabase.isEmpty() && rowCollector instanceof PipeRowCollector) {
+      ((PipeRowCollector) rowCollector)
+          .resetDatabaseInfo(outputDatabase, Boolean.FALSE, null, outputDatabase);
+    }
   }
 
   /**

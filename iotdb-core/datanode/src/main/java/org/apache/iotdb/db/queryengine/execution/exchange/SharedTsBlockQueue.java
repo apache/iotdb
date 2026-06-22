@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
@@ -174,9 +175,9 @@ public class SharedTsBlockQueue {
 
   /** Notify no more TsBlocks will be added to the queue. */
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
-    LOGGER.debug("[SignalNoMoreTsBlockOnQueue]");
+    LOGGER.debug(DataNodeQueryMessages.SIGNAL_NO_MORE_TSBLOCK_ON_QUEUE);
     if (closed) {
-      LOGGER.debug("The queue has been destroyed when calling setNoMoreTsBlocks.");
+      LOGGER.debug(DataNodeQueryMessages.QUEUE_DESTROYED_WHEN_SET_NO_MORE_TSBLOCKS);
       return;
     }
     this.noMoreTsBlocks = noMoreTsBlocks;
@@ -208,7 +209,7 @@ public class SharedTsBlockQueue {
       } catch (ExecutionException e) {
         throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
       }
-      throw new IllegalStateException("queue has been destroyed");
+      throw new IllegalStateException(DataNodeQueryMessages.QUEUE_HAS_BEEN_DESTROYED);
     }
     Pair<TsBlock, Long> tsBlockWithReservedBytes = queue.remove();
     long reservedBytes = tsBlockWithReservedBytes.right;
@@ -240,7 +241,7 @@ public class SharedTsBlockQueue {
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[addTsBlock] TsBlock:{}", CommonUtils.toString(tsBlock));
+      LOGGER.debug(DataNodeQueryMessages.ADD_TSBLOCK, CommonUtils.toString(tsBlock));
     }
     if (closed) {
       // queue may have been closed

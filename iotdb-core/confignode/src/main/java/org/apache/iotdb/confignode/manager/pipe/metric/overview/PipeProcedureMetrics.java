@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.metric.overview;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -70,7 +71,8 @@ public class PipeProcedureMetrics implements IMetricSet {
   public void updateTimer(String name, long durationMillis) {
     Timer timer = timerMap.get(name);
     if (timer == null) {
-      LOGGER.warn("Failed to update pipe procedure timer, PipeProcedure({}) does not exist", name);
+      LOGGER.warn(
+          ManagerMessages.FAILED_TO_UPDATE_PIPE_PROCEDURE_TIMER_PIPEPROCEDURE_DOES_NOT_EXIST, name);
       return;
     }
     timer.updateMillis(durationMillis);

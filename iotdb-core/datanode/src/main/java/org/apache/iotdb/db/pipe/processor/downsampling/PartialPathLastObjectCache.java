@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -65,7 +66,8 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
                   .eviction()
                   .ifPresent(eviction -> eviction.setMaximum(newMemory));
               LOGGER.info(
-                  "PartialPathLastObjectCache.allocatedMemoryBlock has shrunk from {} to {}.",
+                  DataNodePipeMessages
+                      .PARTIALPATHLASTOBJECTCACHE_ALLOCATEDMEMORYBLOCK_HAS_SHRUNK_FROM_TO,
                   oldMemory,
                   newMemory);
             })
@@ -77,7 +79,8 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
                   .eviction()
                   .ifPresent(eviction -> eviction.setMaximum(newMemory));
               LOGGER.info(
-                  "PartialPathLastObjectCache.allocatedMemoryBlock has expanded from {} to {}.",
+                  DataNodePipeMessages
+                      .PARTIALPATHLASTOBJECTCACHE_ALLOCATEDMEMORYBLOCK_HAS_EXPANDED_FROM_TO,
                   oldMemory,
                   newMemory);
             });

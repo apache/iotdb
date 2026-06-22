@@ -22,6 +22,8 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,20 +61,20 @@ public class IoTDBRestServiceDescriptor {
   private TrimProperties loadProps(String configName) {
     URL url = getPropsUrl(configName);
     if (url == null) {
-      logger.warn("Couldn't load the REST Service configuration from any of the known sources.");
+      logger.warn(DataNodeMiscMessages.REST_COULD_NOT_LOAD_CONFIG);
       return null;
     }
     try (InputStream inputStream = url.openStream()) {
-      logger.info("Start to read config file {}", url);
+      logger.info(DataNodeMiscMessages.START_READ_CONFIG_FILE, url);
       TrimProperties trimProperties = new TrimProperties();
       trimProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       return trimProperties;
     } catch (FileNotFoundException e) {
-      logger.warn("REST service fail to find config file {}", url, e);
+      logger.warn(DataNodeMiscMessages.REST_FAIL_FIND_CONFIG, url, e);
     } catch (IOException e) {
-      logger.warn("REST service cannot load config file, use default configuration", e);
+      logger.warn(DataNodeMiscMessages.REST_CANNOT_LOAD_CONFIG, e);
     } catch (Exception e) {
-      logger.warn("REST service Incorrect format in config file, use default configuration", e);
+      logger.warn(DataNodeMiscMessages.REST_INCORRECT_FORMAT, e);
     }
     return null;
   }
@@ -107,6 +109,9 @@ public class IoTDBRestServiceDescriptor {
     conf.setTrustStorePath(
         trimProperties.getProperty("trust_store_path", conf.getTrustStorePath()));
     conf.setTrustStorePwd(trimProperties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
+    conf.setSslProtocol(
+        RpcSslUtils.normalizeProtocol(
+            trimProperties.getProperty("ssl_protocol", conf.getSslProtocol())));
     conf.setIdleTimeoutInSeconds(
         Integer.parseInt(
             trimProperties.getProperty(
@@ -154,7 +159,7 @@ public class IoTDBRestServiceDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
-      logger.warn("get url failed", e);
+      logger.warn(DataNodeMiscMessages.GET_URL_FAILED, e);
       return null;
     }
   }

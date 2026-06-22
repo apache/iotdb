@@ -29,6 +29,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeCo
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -429,17 +430,19 @@ public class PipeParameters {
 
     static {
       KEYS.add("ssl.trust-store-pwd");
+      KEYS.add("scp.password");
       KEYS.add("password");
     }
 
     static String hide(final String key, final String value) {
-      if (Objects.isNull(key)) {
-        return value;
-      }
-      if (KEYS.contains(KeyReducer.reduce(key))) {
+      if (isHiddenKey(key)) {
         return PLACEHOLDER;
       }
       return value;
+    }
+
+    public static boolean isHiddenKey(final String key) {
+      return Objects.nonNull(key) && KEYS.contains(KeyReducer.reduce(key).toLowerCase(Locale.ROOT));
     }
   }
 }

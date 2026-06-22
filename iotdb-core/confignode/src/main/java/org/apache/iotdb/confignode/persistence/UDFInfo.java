@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.executable.ReferenceCountedJarMetaKeeper;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
@@ -36,11 +37,11 @@ import org.apache.iotdb.confignode.consensus.request.write.function.CreateFuncti
 import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +54,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
@@ -66,7 +66,7 @@ public class UDFInfo implements SnapshotProcessor {
       ConfigNodeDescriptor.getInstance().getConf();
 
   private final UDFTable udfTable;
-  private final Map<String, String> existedJarToMD5;
+  private final ReferenceCountedJarMetaKeeper jarMetaKeeper;
 
   private final UDFExecutableManager udfExecutableManager;
 
@@ -76,19 +76,19 @@ public class UDFInfo implements SnapshotProcessor {
 
   public UDFInfo() throws IOException {
     udfTable = new UDFTable();
-    existedJarToMD5 = new HashMap<>();
+    jarMetaKeeper = new ReferenceCountedJarMetaKeeper();
     udfExecutableManager =
         UDFExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getUdfTemporaryLibDir(), CONFIG_NODE_CONF.getUdfDir());
   }
 
   public void acquireUDFTableLock() {
-    LOGGER.info("acquire UDFTableLock");
+    LOGGER.info(ConfigNodeMessages.ACQUIRE_UDFTABLELOCK);
     udfTableLock.lock();
   }
 
   public void releaseUDFTableLock() {
-    LOGGER.info("release UDFTableLock");
+    LOGGER.info(ConfigNodeMessages.RELEASE_UDFTABLELOCK);
     udfTableLock.unlock();
   }
 
@@ -98,15 +98,19 @@ public class UDFInfo implements SnapshotProcessor {
     if (udfTable.containsUDF(model, udfName)
         && udfTable.getUDFInformation(model, udfName).isAvailable()) {
       throw new IoTDBRuntimeException(
-          String.format("Failed to create UDF [%s], the same name UDF has been created", udfName),
+          String.format(
+              ConfigNodeMessages.FAILED_TO_CREATE_UDF_THE_SAME_NAME_UDF_HAS_BEEN, udfName),
           TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode());
     }
 
-    if (existedJarToMD5.containsKey(jarName) && !existedJarToMD5.get(jarName).equals(jarMD5)) {
+    if (jarMetaKeeper.containsJar(jarName)
+        && !jarMetaKeeper.jarNameExistsAndMatchesMd5(jarName, jarMD5)) {
       throw new IoTDBRuntimeException(
           String.format(
-              "Failed to create UDF [%s], the same name Jar [%s] but different MD5 [%s] has existed",
-              udfName, jarName, jarMD5),
+              ConfigNodeMessages.FAILED_TO_CREATE_UDF_THE_SAME_NAME_JAR_BUT_DIFFERENT,
+              udfName,
+              jarName,
+              jarMD5),
           TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode());
     }
   }
@@ -118,11 +122,12 @@ public class UDFInfo implements SnapshotProcessor {
       return udfTable.getUDFInformation(model, udfName);
     }
     throw new UDFManagementException(
-        String.format("Failed to drop UDF [%s], this UDF has not been created", udfName));
+        String.format(
+            ConfigNodeMessages.FAILED_TO_DROP_UDF_THIS_UDF_HAS_NOT_BEEN_CREATED, udfName));
   }
 
   public boolean needToSaveJar(String jarName) {
-    return !existedJarToMD5.containsKey(jarName);
+    return jarMetaKeeper.needToSaveJar(jarName);
   }
 
   public TSStatus addUDFInTable(CreateFunctionPlan physicalPlan) {
@@ -130,7 +135,7 @@ public class UDFInfo implements SnapshotProcessor {
       final UDFInformation udfInformation = physicalPlan.getUdfInformation();
       udfTable.addUDFInformation(udfInformation.getFunctionName(), udfInformation);
       if (udfInformation.isUsingURI()) {
-        existedJarToMD5.put(udfInformation.getJarName(), udfInformation.getJarMD5());
+        addJarReference(udfInformation.getJarName(), udfInformation.getJarMD5());
         if (physicalPlan.getJarFile() != null) {
           udfExecutableManager.saveToInstallDir(
               ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
@@ -169,10 +174,10 @@ public class UDFInfo implements SnapshotProcessor {
                 UDFExecutableManager.getInstance().getFileStringUnderInstallByName(jarName)));
       }
     } catch (Exception e) {
-      LOGGER.error("Get UDF_Jar failed", e);
+      LOGGER.error(ConfigNodeMessages.GET_UDF_JAR_FAILED, e);
       return new JarResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage("Get UDF_Jar failed, because " + e.getMessage()),
+              .setMessage(ConfigNodeMessages.GET_UDF_JAR_FAILED_BECAUSE + e.getMessage()),
           Collections.emptyList());
     }
     return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
@@ -180,7 +185,10 @@ public class UDFInfo implements SnapshotProcessor {
 
   public TSStatus dropFunction(Model model, String functionName) {
     if (udfTable.containsUDF(model, functionName)) {
-      existedJarToMD5.remove(udfTable.getUDFInformation(model, functionName).getJarName());
+      final UDFInformation udfInformation = udfTable.getUDFInformation(model, functionName);
+      if (udfInformation.isUsingURI()) {
+        removeJarReference(udfInformation.getJarName());
+      }
       udfTable.removeUDFInformation(model, functionName);
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -199,7 +207,7 @@ public class UDFInfo implements SnapshotProcessor {
 
   @TestOnly
   public Map<String, String> getRawExistedJarToMD5() {
-    return existedJarToMD5;
+    return jarMetaKeeper.getJarNameToMd5Map();
   }
 
   @Override
@@ -207,7 +215,7 @@ public class UDFInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -230,7 +238,7 @@ public class UDFInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
           snapshotFile.getAbsolutePath());
       return;
     }
@@ -243,30 +251,39 @@ public class UDFInfo implements SnapshotProcessor {
       deserializeExistedJarToMD5(fileInputStream);
 
       udfTable.deserializeUDFTable(fileInputStream);
+      rebuildJarMetadataFromUDFTable();
     } finally {
       releaseUDFTableLock();
     }
   }
 
   public void serializeExistedJarToMD5(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(existedJarToMD5.size(), outputStream);
-    for (Map.Entry<String, String> entry : existedJarToMD5.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
+    jarMetaKeeper.serializeJarNameToMd5(outputStream);
   }
 
   public void deserializeExistedJarToMD5(InputStream inputStream) throws IOException {
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    while (size > 0) {
-      existedJarToMD5.put(
-          ReadWriteIOUtils.readString(inputStream), ReadWriteIOUtils.readString(inputStream));
-      size--;
-    }
+    jarMetaKeeper.deserializeJarNameToMd5(inputStream);
   }
 
   public void clear() {
-    existedJarToMD5.clear();
+    jarMetaKeeper.clear();
     udfTable.clear();
+  }
+
+  private void addJarReference(String jarName, String jarMD5) {
+    jarMetaKeeper.addReference(jarName, jarMD5);
+  }
+
+  private void removeJarReference(String jarName) {
+    jarMetaKeeper.removeReference(jarName);
+  }
+
+  private void rebuildJarMetadataFromUDFTable() {
+    jarMetaKeeper.clear();
+    for (UDFInformation udfInformation : udfTable.getAllInformationList()) {
+      if (udfInformation.isUsingURI()) {
+        addJarReference(udfInformation.getJarName(), udfInformation.getJarMD5());
+      }
+    }
   }
 }

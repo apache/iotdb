@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.type;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.Immutable;
 
@@ -73,7 +75,7 @@ public class TypeSignature {
     for (TypeSignatureParameter parameter : parameters) {
       if (parameter.getKind() != ParameterKind.TYPE) {
         throw new IllegalStateException(
-            format("Expected all parameters to be TypeSignatures but [%s] was found", parameter));
+            format(QueryMessages.EXPECTED_ALL_TYPE_SIGNATURES, parameter));
       }
       result.add(parameter.getTypeSignature());
     }

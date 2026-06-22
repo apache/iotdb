@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedOb
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collection;
@@ -76,7 +77,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       if (hasAuditPrivilege) {
         return;
       }
-      throw new AccessDeniedException("DATABASE " + databaseName);
+      throw new AccessDeniedException(DataNodeQueryMessages.DATABASE + databaseName);
     }
 
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
@@ -95,7 +96,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(false),
           () -> databaseName);
-      throw new AccessDeniedException("DATABASE " + databaseName);
+      throw new AccessDeniedException(DataNodeQueryMessages.DATABASE + databaseName);
     }
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity
@@ -352,7 +353,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       if (hasAuditPrivilege) {
         return;
       }
-      throw new AccessDeniedException("TABLE " + tableName);
+      throw new AccessDeniedException(DataNodeQueryMessages.TABLE_2 + tableName);
     }
 
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
@@ -372,7 +373,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(false),
           tableName::getObjectName);
-      throw new AccessDeniedException("TABLE " + tableName);
+      throw new AccessDeniedException(DataNodeQueryMessages.TABLE_2 + tableName);
     }
   }
 

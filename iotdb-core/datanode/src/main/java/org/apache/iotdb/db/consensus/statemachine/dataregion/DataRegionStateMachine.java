@@ -30,6 +30,8 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -50,6 +52,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -122,27 +125,54 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
-    DataRegion newRegion =
-        new SnapshotLoader(
-                latestSnapshotRootDir.getAbsolutePath(),
-                region.getDatabaseName(),
-                region.getDataRegionIdString())
-            .loadSnapshotForStateMachine();
-    if (newRegion == null) {
-      logger.error("Fail to load snapshot from {}", latestSnapshotRootDir);
-      return;
+  public boolean loadSnapshot(File latestSnapshotRootDir) {
+    final String databaseName = region.getDatabaseName();
+    final String dataRegionIdString = region.getDataRegionIdString();
+    return loadSnapshot(
+        () ->
+            new SnapshotLoader(
+                    latestSnapshotRootDir.getAbsolutePath(), databaseName, dataRegionIdString)
+                .loadSnapshotForStateMachine(),
+        latestSnapshotRootDir);
+  }
+
+  @Override
+  public boolean loadSnapshot(List<File> latestSnapshotRootDirs) {
+    final String databaseName = region.getDatabaseName();
+    final String dataRegionIdString = region.getDataRegionIdString();
+    // A single snapshot is spread across several receive folders, and loading wipes the data dirs
+    // before relinking. It must therefore be loaded in one shot (clear once, relink every folder)
+    // rather than once per folder, otherwise each per-folder load would erase the previous folders'
+    // fragments and leave only the last one's data.
+    final List<String> snapshotRootPaths = new ArrayList<>();
+    for (File dir : latestSnapshotRootDirs) {
+      snapshotRootPaths.add(dir.getAbsolutePath());
     }
-    this.region = newRegion;
+    return loadSnapshot(
+        () ->
+            new SnapshotLoader(snapshotRootPaths, databaseName, dataRegionIdString)
+                .loadSnapshotForStateMachine(),
+        latestSnapshotRootDirs);
+  }
+
+  private boolean loadSnapshot(Supplier<DataRegion> snapshotLoader, Object snapshotRootForLog) {
+    String dataRegionIdString = region.getDataRegionIdString();
+    DataRegionId regionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
     try {
-      StorageEngine.getInstance()
-          .setDataRegion(
-              new DataRegionId(Integer.parseInt(region.getDataRegionIdString())), region);
+      DataRegion newRegion =
+          StorageEngine.getInstance().setDataRegionForSnapshotLoad(regionId, snapshotLoader);
+      if (newRegion == null) {
+        logger.error(DataNodeMiscMessages.FAIL_LOAD_SNAPSHOT, snapshotRootForLog);
+        return false;
+      }
+      this.region = newRegion;
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
+      return true;
     } catch (Exception e) {
-      logger.error("Exception occurs when replacing data region in storage engine.", e);
+      logger.error(DataNodeMiscMessages.EXCEPTION_REPLACING_DATA_REGION, e);
+      return false;
     }
   }
 
@@ -154,9 +184,12 @@ public class DataRegionStateMachine extends BaseStateMachine {
       PlanNode planNode = getPlanNode(req);
       if (planNode instanceof SearchNode) {
         ((SearchNode) planNode).setSearchIndex(indexedRequest.getSearchIndex());
+        ((SearchNode) planNode).setPhysicalTime(indexedRequest.getPhysicalTime());
+        ((SearchNode) planNode).setNodeId(indexedRequest.getNodeId());
+        ((SearchNode) planNode).setSyncIndex(indexedRequest.getSyncIndex());
         searchNodes.add((SearchNode) planNode);
       } else {
-        logger.warn("Unexpected PlanNode type {}, which is not SearchNode", planNode.getClass());
+        logger.warn(DataNodeMiscMessages.UNEXPECTED_PLAN_NODE_TYPE, planNode.getClass());
         if (onlyOne == null) {
           onlyOne = planNode;
         } else {
@@ -233,7 +266,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       } else {
         if (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == result.getCode()
             || TSStatusCode.TABLE_IS_LOST.getStatusCode() == result.getCode()) {
-          logger.info("table is not exists or lost, result code is {}", result.getCode());
+          logger.info(DataNodeMiscMessages.TABLE_NOT_EXISTS_OR_LOST, result.getCode());
         }
         break;
       }
@@ -243,6 +276,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public DataSet read(IConsensusRequest request) {
+    if (region == null) {
+      logger.error(StorageEngineMessages.DATA_REGION_IS_NULL);
+      return null;
+    }
     if (request instanceof GetConsensusReqReaderPlan) {
       return region.getWALNode().orElseThrow(UnsupportedOperationException::new);
     } else {
@@ -250,7 +287,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       try {
         fragmentInstance = getFragmentInstance(request);
       } catch (IllegalArgumentException e) {
-        logger.error("Get fragment instance failed", e);
+        logger.error(DataNodeMiscMessages.GET_FRAGMENT_INSTANCE_FAILED, e);
         return null;
       }
       return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
@@ -280,7 +317,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
               + region.getDataRegionIdString();
       return new File(snapshotDir).getCanonicalFile();
     } catch (IOException | NullPointerException e) {
-      logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotDir, e);
+      logger.warn(DataNodeMiscMessages.CANNOT_GET_CANONICAL_FILE, this, snapshotDir, e);
       return null;
     }
   }

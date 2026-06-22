@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.consensus.ConsensusFactory;
 
 import org.slf4j.Logger;
@@ -62,7 +63,7 @@ public class SystemPropertiesUtils {
   private static final String TIME_PARTITION_INTERVAL = "time_partition_interval";
 
   private SystemPropertiesUtils() {
-    throw new IllegalStateException("Utility class: SystemPropertiesUtils.");
+    throw new IllegalStateException(ConfigNodeMessages.UTILITY_CLASS_SYSTEMPROPERTIESUTILS);
   }
 
   public static void reinitializeStatics() {
@@ -151,7 +152,7 @@ public class SystemPropertiesUtils {
       systemProperties.setProperty(DATA_CONSENSUS_PROTOCOL, dataRegionConsensusProtocolClass);
       needRewriteConsensusProtocol = true;
       LOGGER.warn(
-          "[SystemProperties] Normalize {} from {} to {} for compatibility.",
+          ConfigNodeMessages.SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY,
           DATA_CONSENSUS_PROTOCOL,
           persistedDataRegionConsensusProtocolClass,
           dataRegionConsensusProtocolClass);
@@ -272,12 +273,12 @@ public class SystemPropertiesUtils {
 
     // Cluster configuration
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
-    LOGGER.info("[SystemProperties] store config_node_id: {}", conf.getConfigNodeId());
+    LOGGER.info(ConfigNodeMessages.SYSTEMPROPERTIES_STORE_CONFIG_NODE_ID, conf.getConfigNodeId());
     systemProperties.setProperty(
         "is_seed_config_node",
         String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
     LOGGER.info(
-        "[SystemProperties] store is_seed_config_node: {}",
+        ConfigNodeMessages.SYSTEMPROPERTIES_STORE_IS_SEED_CONFIG_NODE,
         ConfigNodeDescriptor.getInstance().isSeedConfigNode());
 
     // Startup configuration
@@ -347,7 +348,7 @@ public class SystemPropertiesUtils {
       return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
     } catch (NumberFormatException e) {
       throw new IOException(
-          "The parameter config_node_id doesn't exist in "
+          ConfigNodeMessages.THE_PARAMETER_CONFIG_NODE_ID_DOESN_T_EXIST_IN
               + "data/confignode/system/confignode-system.properties. "
               + "Please delete data dir data/confignode and restart again.",
           e);

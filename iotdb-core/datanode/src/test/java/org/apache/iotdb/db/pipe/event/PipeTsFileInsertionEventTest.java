@@ -242,7 +242,43 @@ public class PipeTsFileInsertionEventTest {
     }
   }
 
+  @Test(timeout = 5000)
+  public void testRealtimeEventCanSkipWaitingForClosedStatusAfterTsFileSealed() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeTsFileSealed").toFile();
+
+    try {
+      final TsFileResource resource =
+          createNonEmptyTsFileResource(tempDir, "realtime.tsfile", 1L, 1);
+      Assert.assertFalse(resource.isClosed());
+      Assert.assertFalse(resource.isEmpty());
+
+      final PipeTsFileInsertionEvent sourceEvent =
+          new PipeTsFileInsertionEvent(false, "root.db", resource, false);
+      Assert.assertTrue(sourceEvent.waitForTsFileClose());
+
+      final PipeTsFileInsertionEvent copiedEvent =
+          sourceEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+              "pipe", 1L, null, null, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
+      Assert.assertTrue(copiedEvent.waitForTsFileClose());
+
+      copiedEvent.close();
+      sourceEvent.close();
+    } finally {
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
   private TsFileResource createSpyTsFileResource(
+      final File tempDir, final String fileName, final long flushOrderId, final int dataRegionId)
+      throws IOException {
+    final TsFileResource resource =
+        createNonEmptyTsFileResource(tempDir, fileName, flushOrderId, dataRegionId);
+    final TsFileResource spyResource = Mockito.spy(resource);
+    Mockito.doReturn(String.valueOf(dataRegionId)).when(spyResource).getDataRegionId();
+    return spyResource;
+  }
+
+  private TsFileResource createNonEmptyTsFileResource(
       final File tempDir, final String fileName, final long flushOrderId, final int dataRegionId)
       throws IOException {
     final File file = new File(tempDir, fileName);
@@ -250,10 +286,12 @@ public class PipeTsFileInsertionEventTest {
 
     final TsFileResource resource = new TsFileResource(file);
     resource.updateProgressIndex(new SimpleProgressIndex(1, flushOrderId));
-
-    final TsFileResource spyResource = Mockito.spy(resource);
-    Mockito.doReturn(String.valueOf(dataRegionId)).when(spyResource).getDataRegionId();
-    return spyResource;
+    final ITimeIndex timeIndex = new ArrayDeviceTimeIndex();
+    final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d" + dataRegionId);
+    timeIndex.putStartTime(deviceID, 1);
+    timeIndex.putEndTime(deviceID, 1);
+    resource.setTimeIndex(timeIndex);
+    return resource;
   }
 
   static class TestAccessControl implements AccessControl {

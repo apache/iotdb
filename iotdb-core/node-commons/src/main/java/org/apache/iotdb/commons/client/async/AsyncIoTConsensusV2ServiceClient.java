@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.IoTConsensusV2IService;
 import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
@@ -96,7 +97,7 @@ public class AsyncIoTConsensusV2ServiceClient extends IoTConsensusV2IService.Asy
   @Override
   public void invalidate() {
     if (!hasError()) {
-      super.onError(new Exception(String.format("This client %d has been invalidated", id)));
+      super.onError(new Exception(String.format(ClientMessages.CLIENT_INVALIDATED_WITH_ID, id)));
     }
   }
 
@@ -131,7 +132,7 @@ public class AsyncIoTConsensusV2ServiceClient extends IoTConsensusV2IService.Asy
       return true;
     } catch (Exception e) {
       LOGGER.info(
-          "Unexpected exception occurs in {}, error msg is {}",
+          ClientMessages.UNEXPECTED_EXCEPTION_IN_CLIENT_WITH_MSG,
           this,
           ExceptionUtils.getRootCause(e).toString());
       return false;
@@ -170,7 +171,7 @@ public class AsyncIoTConsensusV2ServiceClient extends IoTConsensusV2IService.Asy
           new AsyncIoTConsensusV2ServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

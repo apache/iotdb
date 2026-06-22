@@ -203,6 +203,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy) {
+    cnConfig.setRegionGroupAllocatePolicy(regionGroupAllocatePolicy);
+    dnConfig.setRegionGroupAllocatePolicy(regionGroupAllocatePolicy);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     cnConfig.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
     dnConfig.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
@@ -347,14 +354,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    cnConfig.setEnableAutoLeaderBalanceForIoTConsensus(enableAutoLeaderBalanceForIoTConsensus);
-    dnConfig.setEnableAutoLeaderBalanceForIoTConsensus(enableAutoLeaderBalanceForIoTConsensus);
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     cnConfig.setQueryThreadCount(queryThreadCount);
     dnConfig.setQueryThreadCount(queryThreadCount);
@@ -379,6 +378,27 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
     cnConfig.setDataRatisTriggerSnapshotThreshold(threshold);
     dnConfig.setDataRatisTriggerSnapshotThreshold(threshold);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setConfigNodeRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setConfigNodeRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setSchemaRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setSchemaRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setDataRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setDataRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
     return this;
   }
 
@@ -459,14 +479,14 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode) {
     dnConfig.setDataRegionPerDataNode(dataRegionPerDataNode);
     cnConfig.setDataRegionPerDataNode(dataRegionPerDataNode);
     return this;
   }
 
   @Override
-  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  public CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     dnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     cnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     return this;
@@ -483,6 +503,21 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     dnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
     cnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
+      long subscriptionOwnerLeaseDurationMsMin) {
+    dnConfig.setSubscriptionOwnerLeaseDurationMsMin(subscriptionOwnerLeaseDurationMsMin);
+    cnConfig.setSubscriptionOwnerLeaseDurationMsMin(subscriptionOwnerLeaseDurationMsMin);
     return this;
   }
 
@@ -511,6 +546,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
     dnConfig.setTagAttributeTotalSize(tagAttributeTotalSize);
     cnConfig.setTagAttributeTotalSize(tagAttributeTotalSize);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    dnConfig.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
+    cnConfig.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
     return this;
   }
 
@@ -610,6 +652,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    cnConfig.setEnableThriftClientSSL(enableThriftClientSSL);
+    dnConfig.setEnableThriftClientSSL(enableThriftClientSSL);
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
     cnConfig.setEnableInternalSSL(enableInternalSSL);
     dnConfig.setEnableInternalSSL(enableInternalSSL);
@@ -641,6 +690,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setTrustStorePwd(String trustStorePwd) {
     cnConfig.setTrustStorePwd(trustStorePwd);
     dnConfig.setTrustStorePwd(trustStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    cnConfig.setSslProtocol(sslProtocol);
+    dnConfig.setSslProtocol(sslProtocol);
     return this;
   }
 

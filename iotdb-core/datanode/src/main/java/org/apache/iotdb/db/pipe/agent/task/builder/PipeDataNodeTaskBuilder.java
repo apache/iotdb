@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
@@ -169,7 +170,7 @@ public class PipeDataNodeTaskBuilder {
           PipeTaskAgent.isSnapshotMode(sourceParameters);
     } catch (final IllegalPathException e) {
       LOGGER.warn(
-          "PipeDataNodeTaskBuilder failed to parse 'inclusion' and 'exclusion' parameters: {}",
+          DataNodePipeMessages.PIPEDATANODETASKBUILDER_FAILED_TO_PARSE_INCLUSION_AND_EXCLUSION,
           e.getMessage(),
           e);
       return;
@@ -185,18 +186,22 @@ public class PipeDataNodeTaskBuilder {
         sinkParameters.addAttribute(PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
         if (insertionDeletionListeningOptionPair.right) {
           LOGGER.info(
-              "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
+              DataNodePipeMessages
+                  .PIPEDATANODETASKBUILDER_WHEN_INCLUSION_CONTAINS_DATA_DELETE_REALTIME);
         } else {
           LOGGER.info(
-              "PipeDataNodeTaskBuilder: When source uses snapshot model, 'realtime-first' is defaulted to 'false' to prevent premature halt before transfer completion.");
+              DataNodePipeMessages
+                  .PIPEDATANODETASKBUILDER_WHEN_SOURCE_USES_SNAPSHOT_MODEL_REALTIME);
         }
       } else if (isRealtime) {
         if (insertionDeletionListeningOptionPair.right) {
           LOGGER.warn(
-              "PipeDataNodeTaskBuilder: When 'inclusion' includes 'data.delete', 'realtime-first' set to 'true' may result in data synchronization issues after deletion.");
+              DataNodePipeMessages
+                  .PIPEDATANODETASKBUILDER_WHEN_INCLUSION_INCLUDES_DATA_DELETE_REALTIME);
         } else {
           LOGGER.warn(
-              "PipeDataNodeTaskBuilder: When source uses snapshot model, 'realtime-first' set to 'true' may cause prevent premature halt before transfer completion.");
+              DataNodePipeMessages
+                  .PIPEDATANODETASKBUILDER_WHEN_SOURCE_USES_SNAPSHOT_MODEL_REALTIME_1);
         }
       }
     }
@@ -216,10 +221,9 @@ public class PipeDataNodeTaskBuilder {
         sinkParameters.addAttribute(
             PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT, Boolean.TRUE.toString());
         LOGGER.info(
-            "PipeDataNodeTaskBuilder: When the realtime sync is enabled, we enable rate limiter in sending tsfile by default to reserve disk and network IO for realtime sending.");
+            DataNodePipeMessages.PIPEDATANODETASKBUILDER_WHEN_THE_REALTIME_SYNC_IS_ENABLED_1);
       } else if (!enableSendTsFileLimit) {
-        LOGGER.warn(
-            "PipeDataNodeTaskBuilder: When the realtime sync is enabled, not enabling the rate limiter in sending tsfile may introduce delay for realtime sending.");
+        LOGGER.warn(DataNodePipeMessages.PIPEDATANODETASKBUILDER_WHEN_THE_REALTIME_SYNC_IS_ENABLED);
       }
     }
   }

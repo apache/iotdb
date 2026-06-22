@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
@@ -82,7 +83,7 @@ public class DistributionPlanner {
     List<PlanNode> planNodeList =
         rewriter.visit(logicalPlan.getRootNode(), new DistributionPlanContext(context));
     if (planNodeList.size() != 1) {
-      throw new IllegalStateException("root node must return only one");
+      throw new IllegalStateException(DataNodeQueryMessages.ROOT_NODE_MUST_RETURN_ONLY_ONE);
     } else {
       return planNodeList.get(0);
     }
@@ -145,13 +146,23 @@ public class DistributionPlanner {
         ExchangeNode exchangeNode = (ExchangeNode) child;
         TRegionReplicaSet regionOfChild =
             context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion();
-        MultiChildrenSinkNode newChild =
-            memo.computeIfAbsent(
-                regionOfChild,
-                tRegionReplicaSet ->
-                    needShuffleSinkNode
-                        ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
-                        : new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId()));
+        MultiChildrenSinkNode newChild;
+        if (exchangeNode.isForcedExchange()) {
+          // Keep forced exchange branch isolated: do not merge into shared sink memo.
+          newChild =
+              needShuffleSinkNode
+                  ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
+                  : new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId());
+        } else {
+          newChild =
+              memo.computeIfAbsent(
+                  regionOfChild,
+                  tRegionReplicaSet ->
+                      needShuffleSinkNode
+                          ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
+                          : new IdentitySinkNode(
+                              context.queryContext.getQueryId().genPlanNodeId()));
+        }
         newChild.addChild(exchangeNode.getChild());
         newChild.addDownStreamChannelLocation(
             new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));

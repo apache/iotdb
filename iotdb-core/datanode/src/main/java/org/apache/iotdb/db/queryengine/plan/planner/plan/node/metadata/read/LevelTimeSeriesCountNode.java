@@ -29,10 +29,11 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -47,6 +48,8 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
   private final int level;
   private final SchemaFilter schemaFilter;
   private final Map<Integer, Template> templateMap;
+  private final boolean includeSystemDatabase;
+  private final boolean includeAuditDatabase;
 
   public LevelTimeSeriesCountNode(
       PlanNodeId id,
@@ -55,11 +58,15 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
       int level,
       SchemaFilter schemaFilter,
       @NotNull Map<Integer, Template> templateMap,
-      @NotNull PathPatternTree scope) {
+      @NotNull PathPatternTree scope,
+      boolean includeSystemDatabase,
+      boolean includeAuditDatabase) {
     super(id, partialPath, isPrefixPath, scope);
     this.level = level;
     this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;
+    this.includeSystemDatabase = includeSystemDatabase;
+    this.includeAuditDatabase = includeAuditDatabase;
   }
 
   public SchemaFilter getSchemaFilter() {
@@ -74,6 +81,14 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     return templateMap;
   }
 
+  public boolean isIncludeSystemDatabase() {
+    return includeSystemDatabase;
+  }
+
+  public boolean isIncludeAuditDatabase() {
+    return includeAuditDatabase;
+  }
+
   @Override
   public PlanNodeType getType() {
     return PlanNodeType.LEVEL_TIME_SERIES_COUNT;
@@ -82,7 +97,15 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
   @Override
   public PlanNode clone() {
     return new LevelTimeSeriesCountNode(
-        getPlanNodeId(), path, isPrefixPath, level, schemaFilter, templateMap, scope);
+        getPlanNodeId(),
+        path,
+        isPrefixPath,
+        level,
+        schemaFilter,
+        templateMap,
+        scope,
+        includeSystemDatabase,
+        includeAuditDatabase);
   }
 
   @Override
@@ -100,6 +123,8 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     ReadWriteIOUtils.write(level, byteBuffer);
     SchemaFilter.serialize(schemaFilter, byteBuffer);
+    ReadWriteIOUtils.write(includeSystemDatabase, byteBuffer);
+    ReadWriteIOUtils.write(includeAuditDatabase, byteBuffer);
     ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
     for (Template template : templateMap.values()) {
       template.serialize(byteBuffer);
@@ -114,6 +139,8 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(isPrefixPath, stream);
     ReadWriteIOUtils.write(level, stream);
     SchemaFilter.serialize(schemaFilter, stream);
+    ReadWriteIOUtils.write(includeSystemDatabase, stream);
+    ReadWriteIOUtils.write(includeAuditDatabase, stream);
     ReadWriteIOUtils.write(templateMap.size(), stream);
     for (Template template : templateMap.values()) {
       template.serialize(stream);
@@ -126,12 +153,15 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     try {
       path = new PartialPath(fullPath);
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_DEVICESSCHEMASCANNODE, e);
     }
     PathPatternTree scope = PathPatternTree.deserialize(buffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
     int level = ReadWriteIOUtils.readInt(buffer);
     SchemaFilter schemaFilter = SchemaFilter.deserialize(buffer);
+    boolean includeSystemDatabase = ReadWriteIOUtils.readBool(buffer);
+    boolean includeAuditDatabase = ReadWriteIOUtils.readBool(buffer);
     int templateNum = ReadWriteIOUtils.readInt(buffer);
     Map<Integer, Template> templateMap = new HashMap<>();
     Template template;
@@ -142,7 +172,15 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new LevelTimeSeriesCountNode(
-        planNodeId, path, isPrefixPath, level, schemaFilter, templateMap, scope);
+        planNodeId,
+        path,
+        isPrefixPath,
+        level,
+        schemaFilter,
+        templateMap,
+        scope,
+        includeSystemDatabase,
+        includeAuditDatabase);
   }
 
   @Override
@@ -157,12 +195,14 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
       return false;
     }
     LevelTimeSeriesCountNode that = (LevelTimeSeriesCountNode) o;
-    return level == that.level;
+    return level == that.level
+        && includeSystemDatabase == that.includeSystemDatabase
+        && includeAuditDatabase == that.includeAuditDatabase;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), level);
+    return Objects.hash(super.hashCode(), level, includeSystemDatabase, includeAuditDatabase);
   }
 
   @Override

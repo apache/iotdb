@@ -109,7 +109,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     this.valueStatisticsList = new ArrayList<>();
     this.alignedTvListQueryMap = alignedTvListQueryMap;
     this.columnIndexList = columnIndexList;
-    this.context.addTVListToSet(alignedTvListQueryMap);
+    this.context.addTVListToSet(alignedTvListQueryMap.keySet());
   }
 
   @Override

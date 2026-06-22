@@ -30,11 +30,13 @@ import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
@@ -180,6 +182,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                     }
                   },
                   "PipeProcessorSubtask::executeOnce");
+              if (tsFileInsertionEvent.isGeneratedByHistoricalExtractor()) {
+                PipeTerminateEvent.markHistoricalTsFileSplit(
+                    tsFileInsertionEvent.getPipeName(),
+                    tsFileInsertionEvent.getCreationTime(),
+                    regionId);
+              }
               if (ex.get() != null) {
                 throw ex.get();
               }
@@ -252,7 +260,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         throw new PipeException(
             String.format(
                 "Exception in pipe process, subtask: %s, last event: %s, root cause: %s",
-                taskID,
+                getDisplayTaskID(),
                 lastEvent instanceof EnrichedEvent
                     ? ((EnrichedEvent) lastEvent).coreReportMessage()
                     : lastEvent,
@@ -260,7 +268,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
             e);
       } else {
         LOGGER.info(
-            "Exception in pipe event processing, ignored because pipe is dropped.{}",
+            DataNodePipeMessages.EXCEPTION_IN_PIPE_EVENT_PROCESSING_IGNORED_BECAUSE,
             e.getMessage() != null ? " Message: " + e.getMessage() : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
@@ -291,8 +299,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       // closed, the execution thread may still deliver events downstream.
     } catch (final Exception e) {
       LOGGER.info(
-          "Exception occurred when closing pipe processor subtask {}, root cause: {}",
-          taskID,
+          DataNodePipeMessages.EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_PROCESSOR_SUBTASK,
+          getDisplayTaskID(),
           ErrorHandlingCommonUtils.getRootCause(e).getMessage(),
           e);
     } finally {

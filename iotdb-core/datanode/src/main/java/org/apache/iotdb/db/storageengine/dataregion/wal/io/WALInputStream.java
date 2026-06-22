@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.utils.MmapUtil;
 
@@ -82,7 +83,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
       ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
       long position;
-      if (version == WALFileVersion.V2) {
+      if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
         // New Version
         ByteBuffer magicStringBuffer = ByteBuffer.allocate(version.getVersionBytes().length);
         channel.read(magicStringBuffer, channel.size() - version.getVersionBytes().length);
@@ -122,7 +123,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       int metadataSize = metadataSizeBuf.getInt();
       endOffset = channel.size() - version.getVersionBytes().length - Integer.BYTES - metadataSize;
     } finally {
-      if (version == WALFileVersion.V2) {
+      if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
         // Set the position back to the end of head magic string
         channel.position(version.getVersionBytes().length);
       } else {
@@ -187,11 +188,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private void loadNextSegment() throws IOException {
     if (channel.position() >= endOffset) {
-      throw new EOFException("Reach the end offset of wal file");
+      throw new EOFException(StorageEngineMessages.REACH_END_OFFSET_OF_WAL_FILE);
     }
     long startTime = System.nanoTime();
     long startPosition = channel.position();
-    if (version == WALFileVersion.V2) {
+    if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
       loadNextSegmentV2();
     } else if (version == WALFileVersion.V1) {
       loadNextSegmentV1();
@@ -205,7 +206,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private void loadNextSegmentV1() throws IOException {
     // just read raw data as input
     if (channel.position() >= fileSize) {
-      throw new IOException("Unexpected end of file");
+      throw new IOException(StorageEngineMessages.UNEXPECTED_END_OF_FILE);
     }
     if (Objects.isNull(dataBuffer)) {
       // read 128 KB
@@ -240,7 +241,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         // limit the buffer to prevent it from reading too much byte than expected
         compressedBuffer.limit(segmentInfo.dataInDiskSize);
         if (readWALBufferFromChannel(compressedBuffer) != segmentInfo.dataInDiskSize) {
-          throw new IOException("Unexpected end of file");
+          throw new IOException(StorageEngineMessages.UNEXPECTED_END_OF_FILE);
         }
         compressedBuffer.flip();
         IUnCompressor unCompressor = IUnCompressor.getUnCompressor(segmentInfo.compressionType);
@@ -258,7 +259,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         dataBuffer.limit(segmentInfo.dataInDiskSize);
 
         if (readWALBufferFromChannel(dataBuffer) != segmentInfo.dataInDiskSize) {
-          throw new IOException("Unexpected end of file");
+          throw new IOException(StorageEngineMessages.UNEXPECTED_END_OF_FILE);
         }
       }
     } catch (Exception e) {
@@ -283,7 +284,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       channel.position(originPosition);
       loadNextSegmentV2();
       version = WALFileVersion.V2;
-      logger.info("Failed to load WAL segment in V1 way, try in V2 way successfully.");
+      logger.info(StorageEngineMessages.WAL_SEGMENT_V1_FAILED_V2_SUCCESS);
     }
   }
 
@@ -295,7 +296,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
    * @throws IOException If the file is broken or the given position is invalid
    */
   public void skipToGivenLogicalPosition(long pos) throws IOException {
-    if (version == WALFileVersion.V2) {
+    if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
       channel.position(version.getVersionBytes().length);
       long posRemain = pos;
       SegmentInfo segmentInfo;

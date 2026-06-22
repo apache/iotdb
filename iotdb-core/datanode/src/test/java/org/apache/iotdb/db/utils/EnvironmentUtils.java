@@ -55,7 +55,6 @@ import org.apache.iotdb.udf.api.exception.UDFManagementException;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
@@ -69,6 +68,12 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.fail;
@@ -83,6 +88,8 @@ public class EnvironmentUtils {
   private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final TierManager tierManager = TierManager.getInstance();
+  private static final int DELETE_RETRY_TIMES = 5;
+  private static final long DELETE_RETRY_INTERVAL_MS = 100;
 
   public static long TEST_QUERY_JOB_ID = 1;
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID, false);
@@ -95,6 +102,17 @@ public class EnvironmentUtils {
 
   public static boolean examinePorts =
       Boolean.parseBoolean(System.getProperty("test.port.closed", "false"));
+
+  // Per-fork port namespace. Each surefire fork shifts every test-bound port
+  // (and the corresponding examinePorts() check) by FORK_PORT_OFFSET so that
+  // parallel forks live in disjoint port spaces. This keeps the leak-detection
+  // power of examinePorts() (a fork still sees its own un-closed ports) while
+  // removing the cross-fork false positive (one fork's bound port no longer
+  // looks like another fork's leak). surefire.forkNumber starts at 1; defaults
+  // to 1 outside surefire (IDE). Modulo 30 caps the offset so the highest
+  // checked port (31999 + 30*1000 = 61999) stays within range.
+  public static final int FORK_PORT_OFFSET =
+      ((Integer.parseInt(System.getProperty("surefire.forkNumber", "1")) - 1) % 30 + 1) * 1000;
 
   public static void cleanEnv() throws IOException, StorageEngineException {
     // wait all compaction finished
@@ -174,11 +192,19 @@ public class EnvironmentUtils {
   }
 
   private static boolean examinePorts() {
-    TTransport transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 6667, 100);
+    // All checks use this fork's port namespace (base + FORK_PORT_OFFSET) so
+    // that we only ever see ports bound by THIS JVM — sibling forks live in
+    // disjoint namespaces.
+    int rpcPort = 6667 + FORK_PORT_OFFSET;
+    int syncPort = 5555 + FORK_PORT_OFFSET;
+    int jmxPort = 31999 + FORK_PORT_OFFSET;
+    int metricPort = 9091 + FORK_PORT_OFFSET;
+
+    TTransport transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", rpcPort, 100);
     if (transport != null && !transport.isOpen()) {
       try {
         transport.open();
-        logger.error("stop daemon failed. 6667 can be connected now.");
+        logger.error("stop daemon failed. {} can be connected now.", rpcPort);
         transport.close();
         return false;
       } catch (TTransportException e) {
@@ -186,11 +212,11 @@ public class EnvironmentUtils {
       }
     }
     // try sync service
-    transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 5555, 100);
+    transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", syncPort, 100);
     if (transport != null && !transport.isOpen()) {
       try {
         transport.open();
-        logger.error("stop Sync daemon failed. 5555 can be connected now.");
+        logger.error("stop Sync daemon failed. {} can be connected now.", syncPort);
         transport.close();
         return false;
       } catch (TTransportException e) {
@@ -199,9 +225,10 @@ public class EnvironmentUtils {
     }
     // try jmx connection
     try {
-      JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
+      JMXServiceURL url =
+          new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:" + jmxPort + "/jmxrmi");
       JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
-      logger.error("stop JMX failed. 31999 can be connected now.");
+      logger.error("stop JMX failed. {} can be connected now.", jmxPort);
       jmxConnector.close();
       return false;
     } catch (IOException e) {
@@ -209,8 +236,8 @@ public class EnvironmentUtils {
     }
     // try MetricService
     try (Socket socket = new Socket()) {
-      socket.connect(new InetSocketAddress("127.0.0.1", 9091), 100);
-      logger.error("stop MetricService failed. 9091 can be connected now.");
+      socket.connect(new InetSocketAddress("127.0.0.1", metricPort), 100);
+      logger.error("stop MetricService failed. {} can be connected now.", metricPort);
       return false;
     } catch (Exception e) {
       // do nothing
@@ -257,7 +284,69 @@ public class EnvironmentUtils {
   }
 
   public static void cleanDir(String dir) throws IOException {
-    FSFactoryProducer.getFSFactory().deleteDirectory(dir);
+    Path path = FSFactoryProducer.getFSFactory().getFile(dir).toPath();
+    if (!Files.exists(path)) {
+      return;
+    }
+
+    IOException lastException = null;
+    for (int i = 0; i < DELETE_RETRY_TIMES; i++) {
+      try {
+        deleteRecursively(path);
+        return;
+      } catch (NoSuchFileException e) {
+        return;
+      } catch (IOException e) {
+        lastException = e;
+        if (i + 1 == DELETE_RETRY_TIMES) {
+          break;
+        }
+        try {
+          TimeUnit.MILLISECONDS.sleep(DELETE_RETRY_INTERVAL_MS);
+        } catch (InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+          IOException ioException =
+              new IOException("Interrupted while deleting " + dir, interruptedException);
+          ioException.addSuppressed(e);
+          throw ioException;
+        }
+      }
+    }
+    throw lastException;
+  }
+
+  private static void deleteRecursively(Path path) throws IOException {
+    if (!Files.exists(path)) {
+      return;
+    }
+
+    Files.walkFileTree(
+        path,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws IOException {
+            Files.deleteIfExists(file);
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            if (exc instanceof NoSuchFileException) {
+              return FileVisitResult.CONTINUE;
+            }
+            throw exc;
+          }
+
+          @Override
+          public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            if (exc != null) {
+              throw exc;
+            }
+            Files.deleteIfExists(dir);
+            return FileVisitResult.CONTINUE;
+          }
+        });
   }
 
   /** disable memory control</br> this function should be called before all code in the setup */
@@ -318,19 +407,6 @@ public class EnvironmentUtils {
   }
 
   public static void recursiveDeleteFolder(String path) throws IOException {
-    File file = new File(path);
-    if (file.isDirectory()) {
-      File[] files = file.listFiles();
-      if (files == null || files.length == 0) {
-        FileUtils.deleteDirectory(file);
-      } else {
-        for (File f : files) {
-          recursiveDeleteFolder(f.getAbsolutePath());
-        }
-        FileUtils.deleteDirectory(file);
-      }
-    } else {
-      FileUtils.delete(file);
-    }
+    cleanDir(path);
   }
 }

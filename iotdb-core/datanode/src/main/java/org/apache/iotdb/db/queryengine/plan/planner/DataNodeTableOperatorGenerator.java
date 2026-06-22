@@ -54,6 +54,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
@@ -158,7 +159,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -199,7 +200,8 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_NO_VALUE;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_STALE_VALUE;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class DataNodeTableOperatorGenerator
@@ -1088,7 +1090,8 @@ public class DataNodeTableOperatorGenerator
               context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName());
       return new EmptyDataOperator(operatorContext);
     }
-    throw new IllegalArgumentException("Valid TreeDeviceViewScanNode is not expected here.");
+    throw new IllegalArgumentException(
+        DataNodeQueryMessages.VALID_TREEDEVICEVIEWSCANNODE_IS_NOT_EXPECTED_HERE);
   }
 
   @Override
@@ -1460,7 +1463,8 @@ public class DataNodeTableOperatorGenerator
               scanAscending,
               true,
               timeColumnName,
-              measurementColumnsIndexMap.keySet()));
+              measurementColumnsIndexMap.keySet(),
+              context.getMemoryReservationManager()));
     }
 
     ITableTimeRangeIterator timeRangeIterator = null;
@@ -1624,6 +1628,9 @@ public class DataNodeTableOperatorGenerator
           for (int j = 0; j < lastByResult.get().getRight().length; j++) {
             TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
             if (tsPrimitiveType == null
+                // Known-null at the aligned row time can still hit cache. Only miss or stale target
+                // values need to fall back to scan for correctness.
+                || tsPrimitiveType == PLACEHOLDER_STALE_VALUE
                 || (updateTimeFilter != null
                     && !LastQueryUtil.satisfyFilter(
                         updateTimeFilter,
@@ -1723,7 +1730,7 @@ public class DataNodeTableOperatorGenerator
                     parameter.getSeriesScanOptions().getGlobalTimeFilter(), timeValuePair)) {
               if (isFilterGtOrGe(updateTimeFilter)) {
                 // it means there is no data meets Filter
-                timeValuePair.setValue(EMPTY_PRIMITIVE_TYPE);
+                timeValuePair.setValue(PLACEHOLDER_NO_VALUE);
               } else {
                 allHitCache = false;
                 break;
@@ -1861,7 +1868,12 @@ public class DataNodeTableOperatorGenerator
         addOperatorContext(
             context, node.getPlanNodeId(), ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(
-        operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
+        operatorContext,
+        operator,
+        node.getQueryId(),
+        node.isVerbose(),
+        node.getTimeout(),
+        node.getOutputFormat());
   }
 
   @Override
@@ -1932,7 +1944,8 @@ public class DataNodeTableOperatorGenerator
         if (timeColumnOfTargetTable == null) {
           timeColumnOfTargetTable = inputColumns.get(i);
         } else {
-          throw new SemanticException("Multiple columns with TIME category found");
+          throw new SemanticException(
+              DataNodeQueryMessages.MULTIPLE_COLUMNS_WITH_TIME_CATEGORY_FOUND);
         }
         continue;
       }
@@ -1943,7 +1956,7 @@ public class DataNodeTableOperatorGenerator
       inputColumnCategories.add(columnCategory);
     }
     if (timeColumnOfTargetTable == null) {
-      throw new SemanticException("Missing TIME category column");
+      throw new SemanticException(DataNodeQueryMessages.MISSING_TIME_CATEGORY_COLUMN);
     }
 
     long statementSizePerLine =

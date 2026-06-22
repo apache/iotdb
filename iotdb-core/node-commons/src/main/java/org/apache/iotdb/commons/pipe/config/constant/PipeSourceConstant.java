@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -192,6 +194,6 @@ public class PipeSourceConstant {
       "extractor.consensus.receiver-dn-id";
 
   private PipeSourceConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

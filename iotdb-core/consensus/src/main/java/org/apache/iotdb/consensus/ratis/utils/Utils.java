@@ -27,7 +27,9 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.rpc.AutoScalingBufferWriteTransport;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.apache.ratis.client.RaftClientConfigKeys;
 import org.apache.ratis.conf.Parameters;
@@ -52,19 +54,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.AccessDeniedException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.KeyStore;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -370,38 +365,17 @@ public class Utils {
       String keyStorePassword = config.getGrpc().getSslKeyStorePassword();
       String trustStorePath = config.getGrpc().getSslTrustStorePath();
       String trustStorePassword = config.getGrpc().getSslTrustStorePassword();
-      try (InputStream keyStoreStream = Files.newInputStream(Paths.get(keyStorePath));
-          InputStream trustStoreStream = Files.newInputStream(Paths.get(trustStorePath))) {
-        // === 1) create KeyManager ===
-        KeyStore keyStore = KeyStore.getInstance("JKS");
-        keyStore.load(keyStoreStream, keyStorePassword.toCharArray());
-
-        KeyManagerFactory kmf =
-            KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(keyStore, keyStorePassword.toCharArray());
-        KeyManager keyManager = kmf.getKeyManagers()[0];
-
-        // === 2) create TrustManager ===
-        KeyStore trustStore = KeyStore.getInstance("JKS");
-        trustStore.load(trustStoreStream, trustStorePassword.toCharArray());
-
-        TrustManagerFactory tmf =
-            TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        tmf.init(trustStore);
-        TrustManager originalTrustManager = tmf.getTrustManagers()[0];
-
-        // The self-signed certification may not set Subject Alternative Name (SAN)
-        // Thrift with ssl didn't check it, but Grpc did.
-        // Wrap to disable the verification
+      try {
+        KeyManager keyManager = RpcSslUtils.createKeyManagers(keyStorePath, keyStorePassword)[0];
         TrustManager trustManager =
-            new NoHostnameVerificationTrustManager((X509TrustManager) originalTrustManager);
+            RpcSslUtils.createTrustManagers(trustStorePath, trustStorePassword)[0];
         GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
       } catch (AccessDeniedException e) {
-        LOGGER.error("Failed or truststore to load keystore file");
+        LOGGER.error(ConsensusMessages.FAILED_TO_LOAD_KEYSTORE);
       } catch (FileNotFoundException e) {
-        LOGGER.error("keystore or truststore file not found");
+        LOGGER.error(ConsensusMessages.KEYSTORE_FILE_NOT_FOUND);
       } catch (Exception e) {
-        LOGGER.error("Failed to read key store or trust store.", e);
+        LOGGER.error(ConsensusMessages.FAILED_TO_READ_KEYSTORE, e);
       }
     }
     return parameters;

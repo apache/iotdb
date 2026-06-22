@@ -22,11 +22,15 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -59,7 +63,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       try {
         tablet = statement.convertToTablet();
       } catch (final MetadataException e) {
-        LOGGER.warn("Failed to convert statement to tablet.", e);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CONVERT_STATEMENT_TO_TABLET, e);
         return null;
       }
     }
@@ -94,7 +98,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       statement = new InsertTabletStatement(tablet, isAligned, null);
       return statement;
     } catch (final MetadataException e) {
-      LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
+      LOGGER.warn(DataNodePipeMessages.GENERATE_STATEMENT_FROM_TABLET_ERROR, tablet, e);
       return null;
     }
   }
@@ -107,6 +111,15 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
+
+    return tabletReq;
+  }
+
+  public static PipeTransferTabletRawReq toTPipeTransferRawReq(
+      final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
+    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+
+    tabletReq.deserializeTPipeTransferRawReq(buffer, tabletStringInternPool);
 
     return tabletReq;
   }
@@ -134,27 +147,96 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   }
 
   public static PipeTransferTabletRawReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
-    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
-
-    final ByteBuffer buffer = transferReq.body;
-    final int startPosition = buffer.position();
-    try {
-      // V1: no databaseName, readDatabaseName = false
-      final InsertTabletStatement insertTabletStatement =
-          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, false);
-      tabletReq.isAligned = insertTabletStatement.isAligned();
-      // devicePath is already set in deserializeStatementFromTabletFormat for V1 format
-      tabletReq.statement = insertTabletStatement;
-    } catch (final Exception e) {
-      buffer.position(startPosition);
-      tabletReq.tablet = Tablet.deserialize(buffer);
-      tabletReq.isAligned = ReadWriteIOUtils.readBool(buffer);
-    }
+    final PipeTransferTabletRawReq tabletReq =
+        toTPipeTransferRawReq(transferReq.body, new TabletStringInternPool());
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
 
     return tabletReq;
+  }
+
+  private void deserializeTPipeTransferRawReq(
+      final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
+    final int startPosition = buffer.position();
+    try {
+      // Current V1 raw tablet requests can be converted to InsertTabletStatement directly. Keep
+      // this as the first attempt to avoid the overhead of constructing an intermediate Tablet.
+      final InsertTabletStatement insertTabletStatement =
+          TabletStatementConverter.deserializeStatementFromTabletFormat(
+              buffer, false, tabletStringInternPool);
+      // Legacy tablets do not serialize column categories. Since hasSchema=1 can be
+      // misread as FIELD, the current reader may return a corrupt statement instead of failing.
+      ensureStatementDeserializedFromCurrentTabletFormat(insertTabletStatement);
+      isAligned = insertTabletStatement.isAligned();
+      statement = insertTabletStatement;
+      return;
+    } catch (final Exception e) {
+      buffer.position(startPosition);
+    }
+
+    try {
+      // Some old senders serialize Tablet without column categories. Retry with the legacy reader
+      // before falling back to the full Tablet deserialization path.
+      final InsertTabletStatement insertTabletStatement =
+          TabletStatementConverter.deserializeLegacyStatementFromTabletFormat(
+              buffer, tabletStringInternPool);
+      isAligned = insertTabletStatement.isAligned();
+      statement = insertTabletStatement;
+      return;
+    } catch (final Exception e) {
+      buffer.position(startPosition);
+    }
+
+    try {
+      tablet = PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
+      isAligned = ReadWriteIOUtils.readBool(buffer);
+    } catch (final RuntimeException e) {
+      buffer.position(startPosition);
+      throw new IllegalArgumentException(
+          String.format(
+              "Failed to deserialize raw tablet request at body position %s with remaining body length %s.",
+              startPosition, buffer.remaining()),
+          e);
+    }
+  }
+
+  private static void ensureStatementDeserializedFromCurrentTabletFormat(
+      final InsertTabletStatement statement) {
+    final String[] measurements = statement.getMeasurements();
+    final TSDataType[] dataTypes = statement.getDataTypes();
+
+    if (Objects.isNull(measurements)
+        || Objects.isNull(dataTypes)
+        || measurements.length != dataTypes.length) {
+      throw new IllegalArgumentException(
+          "Incomplete schema in current tablet format deserialization.");
+    }
+
+    final Object[] columns = statement.getColumns();
+    if (Objects.nonNull(columns) && columns.length != measurements.length) {
+      throw new IllegalArgumentException(
+          "Column count is inconsistent with schema count in current tablet format deserialization.");
+    }
+
+    for (int i = 0; i < measurements.length; ++i) {
+      if (Objects.isNull(measurements[i]) || Objects.isNull(dataTypes[i])) {
+        throw new IllegalArgumentException(
+            "Incomplete measurement schema in current tablet format deserialization.");
+      }
+      if (statement.getRowCount() > 0 && (Objects.isNull(columns) || Objects.isNull(columns[i]))) {
+        throw new IllegalArgumentException(
+            "Incomplete column values in current tablet format deserialization.");
+      }
+    }
+
+    final long[] times = statement.getTimes();
+    if (statement.getRowCount() > 0
+        && measurements.length > 0
+        && (Objects.isNull(times) || times.length < statement.getRowCount())) {
+      throw new IllegalArgumentException(
+          "Incomplete timestamps in current tablet format deserialization.");
+    }
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
@@ -175,12 +257,12 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
         tabletToSerialize = statement.convertToTablet();
         isAlignedToSerialize = statement.isAligned();
       } catch (final MetadataException e) {
-        throw new IOException("Failed to convert statement to tablet for serialization", e);
+        throw new IOException(DataNodePipeMessages.FAILED_TO_CONVERT_STATEMENT_TO_TABLET_FOR, e);
       }
     }
 
     if (tabletToSerialize == null) {
-      throw new IOException("Cannot serialize: both tablet and statement are null");
+      throw new IOException(DataNodePipeMessages.CANNOT_SERIALIZE_BOTH_TABLET_AND_STATEMENT_ARE);
     }
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();

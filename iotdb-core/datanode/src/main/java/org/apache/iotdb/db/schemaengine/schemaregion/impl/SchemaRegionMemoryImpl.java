@@ -51,6 +51,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
@@ -256,9 +257,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
-            "Total allocated memory for direct buffer will be "
+            DataNodeSchemaMessages.DIRECT_BUFFER_MEMORY_EXCEEDED
                 + (SystemInfo.getInstance().getDirectBufferMemoryCost() + memCost)
-                + ", which is greater than limit mem cost: "
+                + DataNodeSchemaMessages.DIRECT_BUFFER_MEMORY_LIMIT
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
       }
     }
@@ -293,10 +294,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       isRecovering = false;
     } catch (final IOException e) {
-      logger.error(
-          "Cannot recover all schema info from {}, we try to recover as possible as we can",
-          schemaRegionDirPath,
-          e);
+      logger.error(DataNodeSchemaMessages.CANNOT_RECOVER_ALL_SCHEMA_INFO, schemaRegionDirPath, e);
     }
     initialized = true;
   }
@@ -305,10 +303,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(databaseDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create database schema folder {}", databaseDirPath);
+        logger.info(DataNodeSchemaMessages.CREATE_DATABASE_SCHEMA_FOLDER, databaseDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create database schema folder {} failed.", databaseDirPath);
+          logger.error(
+              DataNodeSchemaMessages.CREATE_DATABASE_SCHEMA_FOLDER_FAILED, databaseDirPath);
           throw new SchemaDirCreationFailureException(databaseDirPath);
         }
       }
@@ -317,10 +316,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
-        logger.info("create schema region folder {}", schemaRegionDirPath);
+        logger.info(DataNodeSchemaMessages.CREATE_SCHEMA_REGION_FOLDER, schemaRegionDirPath);
       } else {
         if (!schemaRegionFolder.exists()) {
-          logger.error("create schema region folder {} failed.", schemaRegionDirPath);
+          logger.error(
+              DataNodeSchemaMessages.CREATE_SCHEMA_REGION_FOLDER_FAILED, schemaRegionDirPath);
           throw new SchemaDirCreationFailureException(schemaRegionDirPath);
         }
       }
@@ -360,7 +360,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           logWriter.force();
         }
       } catch (final IOException e) {
-        logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
+        logger.error(DataNodeSchemaMessages.CANNOT_FORCE_MLOG, schemaRegionId, e);
       }
     }
   }
@@ -397,12 +397,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               new FakeCRC32Deserializer<>(new SchemaRegionPlanDeserializer()))) {
         idx = applyMLog(mLogReader);
         logger.debug(
-            "spend {} ms to deserialize {} mtree from mlog.bin",
+            DataNodeSchemaMessages.SPEND_TIME_DESERIALIZE_MTREE,
             System.currentTimeMillis() - time,
             databaseFullPath);
         return idx;
       } catch (final Exception e) {
-        throw new IOException("Failed to parse " + databaseFullPath + " mlog.bin", e);
+        throw new IOException(
+            DataNodeSchemaMessages.FAILED_TO_PARSE_MLOG
+                + databaseFullPath
+                + DataNodeSchemaMessages.MLOG_BIN_SUFFIX,
+            e);
       }
     } else {
       return 0;
@@ -419,7 +423,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         plan = mLogReader.next();
         idx++;
       } catch (Exception e) {
-        logger.error("Parse mlog error at lineNumber {} because:", idx, e);
+        logger.error(DataNodeSchemaMessages.PARSE_MLOG_ERROR, idx, e);
         break;
       }
       if (plan == null) {
@@ -428,15 +432,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       operationResult = plan.accept(recoverPlanOperator, this);
       if (operationResult.isFailed()) {
         logger.error(
-            "Can not operate cmd {} for err:",
+            DataNodeSchemaMessages.CANNOT_OPERATE_CMD,
             plan.getPlanType().name(),
             operationResult.getException());
       }
     }
 
     if (mLogReader.isFileCorrupted()) {
-      throw new IllegalStateException(
-          "The mlog.bin has been corrupted. Please remove it or fix it, and then restart IoTDB");
+      throw new IllegalStateException(DataNodeSchemaMessages.MLOG_BIN_CORRUPTED);
     }
 
     return idx;
@@ -461,7 +464,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = true;
       initialized = false;
     } catch (final IOException e) {
-      logger.error("Cannot close metadata log writer, because:", e);
+      logger.error(DataNodeSchemaMessages.CANNOT_CLOSE_METADATA_LOG_WRITER, e);
     }
   }
 
@@ -496,12 +499,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public synchronized boolean createSnapshot(final File snapshotDir) {
     if (!initialized) {
-      logger.warn(
-          "Failed to create snapshot of schemaRegion {}, because the schemaRegion has not been initialized.",
-          schemaRegionId);
+      logger.warn(DataNodeSchemaMessages.FAILED_TO_CREATE_SNAPSHOT_NOT_INITIALIZED, schemaRegionId);
       return false;
     }
-    logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
+    logger.info(DataNodeSchemaMessages.START_CREATE_SNAPSHOT, schemaRegionId);
     boolean isSuccess;
     boolean currentResult;
     final long startTime = System.currentTimeMillis();
@@ -509,7 +510,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     long snapshotStartTime = System.currentTimeMillis();
     isSuccess = mTree.createSnapshot(snapshotDir);
     logger.info(
-        "MTree snapshot creation of schemaRegion {} costs {}ms. Status: {}",
+        DataNodeSchemaMessages.MTREE_SNAPSHOT_CREATION_COST_WITH_STATUS,
         schemaRegionId,
         System.currentTimeMillis() - snapshotStartTime,
         isSuccess);
@@ -518,7 +519,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     currentResult = tagManager.createSnapshot(snapshotDir);
     isSuccess = isSuccess && currentResult;
     logger.info(
-        "Tag snapshot creation of schemaRegion {} costs {}ms. Status: {}",
+        DataNodeSchemaMessages.TAG_SNAPSHOT_CREATION_COST_WITH_STATUS,
         schemaRegionId,
         System.currentTimeMillis() - snapshotStartTime,
         currentResult);
@@ -527,7 +528,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     currentResult = deviceAttributeStore.createSnapshot(snapshotDir);
     isSuccess = isSuccess && currentResult;
     logger.info(
-        "Device attribute snapshot creation of schemaRegion {} costs {}ms. Status: {}",
+        DataNodeSchemaMessages.DEVICE_ATTR_SNAPSHOT_CREATION_COST,
         schemaRegionId,
         System.currentTimeMillis() - snapshotStartTime,
         currentResult);
@@ -536,18 +537,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     currentResult = deviceAttributeCacheUpdater.createSnapshot(snapshotDir);
     isSuccess = isSuccess && currentResult;
     logger.info(
-        "Device attribute remote updater snapshot creation of schemaRegion {} costs {}ms. Status: {}",
+        DataNodeSchemaMessages.DEVICE_ATTR_UPDATER_SNAPSHOT_CREATION_COST,
         schemaRegionId,
         System.currentTimeMillis() - snapshotStartTime,
         currentResult);
 
     logger.info(
-        "Snapshot creation of schemaRegion {} costs {}ms.",
+        DataNodeSchemaMessages.SNAPSHOT_CREATION_COST,
         schemaRegionId,
         System.currentTimeMillis() - startTime);
 
     if (isSuccess) {
-      logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+      logger.info(DataNodeSchemaMessages.SUCCESSFULLY_CREATE_SNAPSHOT, schemaRegionId);
     }
 
     return isSuccess;
@@ -555,10 +556,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // currently, this method is only used for cluster-ratis mode
   @Override
-  public void loadSnapshot(final File latestSnapshotRootDir) {
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
     clear();
 
-    logger.info("Start loading snapshot of schemaRegion {}", schemaRegionId);
+    logger.info(DataNodeSchemaMessages.START_LOADING_SNAPSHOT, schemaRegionId);
     final long startTime = System.currentTimeMillis();
 
     try {
@@ -570,7 +571,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
       deviceAttributeStore.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
-          "Device attribute snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.DEVICE_ATTR_SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - snapshotStartTime);
 
@@ -579,7 +580,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           new DeviceAttributeCacheUpdater(regionStatistics, databaseFullPath);
       deviceAttributeCacheUpdater.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
-          "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.DEVICE_ATTR_UPDATER_SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - snapshotStartTime);
 
@@ -587,7 +588,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager =
           TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
       logger.info(
-          "Tag snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.TAG_SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - snapshotStartTime);
 
@@ -611,7 +612,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
                 } catch (final IOException e) {
                   logger.error(
-                      "Failed to recover tagIndex for {} in schemaRegion {}.",
+                      DataNodeSchemaMessages.FAILED_TO_RECOVER_TAG_INDEX,
                       databaseFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
                       schemaRegionId);
                 }
@@ -638,7 +639,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               tagManager::readTags,
               tagManager::readAttributes);
       logger.info(
-          "MTree snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.MTREE_SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - snapshotStartTime);
 
@@ -646,24 +647,25 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       initialized = true;
 
       logger.info(
-          "Snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - startTime);
-      logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
+      logger.info(DataNodeSchemaMessages.SUCCESSFULLY_LOAD_SNAPSHOT, schemaRegionId);
+      return true;
     } catch (final Exception e) {
       logger.error(
-          "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
-          schemaRegionId,
-          e.getMessage(),
-          e);
+          DataNodeSchemaMessages.FAILED_TO_LOAD_SNAPSHOT, schemaRegionId, e.getMessage(), e);
       try {
         initialized = false;
         isRecovering = true;
         init();
       } catch (final Exception exception) {
         logger.error(
-            "Error occurred during initializing schemaRegion {}", schemaRegionId, exception);
+            DataNodeSchemaMessages.ERROR_DURING_INIT_SCHEMA_REGION, schemaRegionId, exception);
       }
+      // The snapshot was not loaded (the region fell back to an empty re-initialized state). Report
+      // the failure so callers honoring the loadSnapshot success/failure contract can react.
+      return false;
     }
   }
 
@@ -1055,7 +1057,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         mTree.getMeasurementMNode(alterLogicalViewPlan.getViewPath());
     if (!leafMNode.isLogicalView()) {
       throw new MetadataException(
-          String.format("[%s] is no view.", alterLogicalViewPlan.getViewPath()));
+          String.format(DataNodeSchemaMessages.IS_NO_VIEW, alterLogicalViewPlan.getViewPath()));
     }
     leafMNode.setSchema(
         new LogicalViewSchema(leafMNode.getName(), alterLogicalViewPlan.getSourceExpression()));
@@ -1333,7 +1335,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
+          String.format(DataNodeSchemaMessages.TIMESERIES_NO_TAG_ATTRIBUTE, fullPath));
     }
 
     // tags, attributes
@@ -1361,7 +1363,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey),
+          String.format(
+              DataNodeSchemaMessages.TIMESERIES_NO_SPECIFIC_TAG_ATTRIBUTE, fullPath, oldKey),
           true);
     }
     // tags, attributes
@@ -1744,7 +1747,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             try {
               return tagManager.readTagFile(offset);
             } catch (final IOException e) {
-              logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
+              logger.error(DataNodeSchemaMessages.FAILED_TO_READ_TAG_ATTRIBUTE, e.getMessage(), e);
               return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
             }
           });
@@ -1822,7 +1825,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final ISchemaRegionPlan plan, final SchemaRegionMemoryImpl context) {
       throw new UnsupportedOperationException(
           String.format(
-              "SchemaRegionPlan of type %s doesn't support recover operation in SchemaRegionMemoryImpl.",
+              DataNodeSchemaMessages.SCHEMA_REGION_PLAN_NOT_SUPPORT_RECOVER_MEMORY,
               plan.getPlanType().name()));
     }
 

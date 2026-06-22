@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.write.pipe.task;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -64,7 +65,8 @@ public class OperateMultiplePipesPlanV2 extends ConfigPhysicalPlan {
         } else if (subPlan instanceof SetPipeStatusPlanV2) {
           ((SetPipeStatusPlanV2) subPlan).serializeImpl(stream);
         } else {
-          throw new IOException("Unsupported sub plan type: " + subPlan.getClass().getName());
+          throw new IOException(
+              ConfigNodeMessages.UNSUPPORTED_SUB_PLAN_TYPE + subPlan.getClass().getName());
         }
       }
     } else {
@@ -96,7 +98,7 @@ public class OperateMultiplePipesPlanV2 extends ConfigPhysicalPlan {
           setPipeStatusPlanV2.deserializeImpl(buffer);
           subPlans.add(setPipeStatusPlanV2);
         } else {
-          throw new IOException("Unsupported sub plan type: " + type);
+          throw new IOException(ConfigNodeMessages.UNSUPPORTED_SUB_PLAN_TYPE + type);
         }
       }
     }

@@ -20,20 +20,24 @@
 package org.apache.iotdb.metrics.metricsets.disk;
 
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Disk metrics manager for Windows system.
@@ -47,9 +51,13 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
 
   private static final double BYTES_PER_KB = 1024.0;
   private static final long UPDATE_SMALLEST_INTERVAL = 10000L;
+  private static final long POWERSHELL_RETRY_INTERVAL = TimeUnit.MINUTES.toMillis(5);
+  private static final long FAILURE_LOG_INTERVAL = TimeUnit.MINUTES.toMillis(5);
   private static final String POWER_SHELL = "powershell";
   private static final String POWER_SHELL_NO_PROFILE = "-NoProfile";
   private static final String POWER_SHELL_COMMAND = "-Command";
+  private static final String WINDOWS_POWER_SHELL_RELATIVE_PATH =
+      "System32\\WindowsPowerShell\\v1.0\\powershell.exe";
   private static final String TOTAL_DISK_INSTANCE = "_Total";
   private static final Charset WINDOWS_SHELL_CHARSET = getWindowsShellCharset();
   private static final String DISK_QUERY =
@@ -77,10 +85,14 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
           + "$_.IOWriteBytesPerSec) }";
 
   private final String processId;
+  private final PowerShellExecutor powerShellExecutor;
   private final Set<String> diskIdSet = new HashSet<>();
 
   private long lastUpdateTime = 0L;
   private long updateInterval = 1L;
+  private long nextPowerShellRetryTime = 0L;
+  private long nextFailureLogTime = 0L;
+  private String lastPowerShellFailure = "";
 
   private final Map<String, Long> lastReadOperationCountForDisk = new HashMap<>();
   private final Map<String, Long> lastWriteOperationCountForDisk = new HashMap<>();
@@ -105,7 +117,14 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
   private long lastWriteOpsCountForProcess = 0L;
 
   public WindowsDiskMetricsManager() {
-    processId = String.valueOf(MetricConfigDescriptor.getInstance().getMetricConfig().getPid());
+    this(
+        String.valueOf(MetricConfigDescriptor.getInstance().getMetricConfig().getPid()),
+        new ProcessBuilderPowerShellExecutor(resolvePowerShellExecutable()));
+  }
+
+  WindowsDiskMetricsManager(String processId, PowerShellExecutor powerShellExecutor) {
+    this.processId = processId;
+    this.powerShellExecutor = powerShellExecutor;
   }
 
   @Override
@@ -339,7 +358,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
 
     String[] processMetricArray = processInfo.split("\t");
     if (processMetricArray.length < 4) {
-      LOGGER.warn("Unexpected windows process io info format: {}", processInfo);
+      LOGGER.warn(MetricsMessages.UNEXPECTED_WINDOWS_PROCESS_IO_FORMAT, processInfo);
       return;
     }
 
@@ -370,7 +389,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
       }
       String[] values = line.split("\t");
       if (values.length < 9) {
-        LOGGER.warn("Unexpected windows disk io info format: {}", line);
+        LOGGER.warn(MetricsMessages.UNEXPECTED_WINDOWS_DISK_IO_FORMAT, line);
         continue;
       }
       String diskId = values[0].trim();
@@ -427,7 +446,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
     try {
       return Math.round(Double.parseDouble(value.trim()));
     } catch (NumberFormatException e) {
-      LOGGER.warn("Failed to parse long value from windows disk metrics: {}", value, e);
+      LOGGER.warn(MetricsMessages.FAILED_TO_PARSE_LONG_WINDOWS_DISK, value, e);
       return 0L;
     }
   }
@@ -436,7 +455,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
     try {
       return Double.parseDouble(value.trim());
     } catch (NumberFormatException e) {
-      LOGGER.warn("Failed to parse double value from windows disk metrics: {}", value, e);
+      LOGGER.warn(MetricsMessages.FAILED_TO_PARSE_DOUBLE_WINDOWS_DISK, value, e);
       return 0.0;
     }
   }
@@ -446,46 +465,105 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
   }
 
   private List<String> executePowerShell(String command) {
-    List<String> result = new ArrayList<>();
-    List<String> rawOutput = new ArrayList<>();
-    Process process = null;
+    if (System.currentTimeMillis() < nextPowerShellRetryTime) {
+      return Collections.emptyList();
+    }
+
     try {
-      process =
-          new ProcessBuilder(POWER_SHELL, POWER_SHELL_NO_PROFILE, POWER_SHELL_COMMAND, command)
-              .redirectErrorStream(true)
-              .start();
-      try (BufferedReader reader =
-          new BufferedReader(
-              new InputStreamReader(process.getInputStream(), WINDOWS_SHELL_CHARSET))) {
-        String line;
-        while ((line = reader.readLine()) != null) {
-          String trimmedLine = line.trim();
-          if (!trimmedLine.isEmpty()) {
-            rawOutput.add(trimmedLine);
-          }
-        }
+      CommandResult commandResult = powerShellExecutor.execute(command);
+      List<String> rawOutput =
+          commandResult.getOutput() == null ? Collections.emptyList() : commandResult.getOutput();
+      if (commandResult.getExitCode() != 0) {
+        handlePowerShellFailure(buildPowerShellFailure(commandResult), null, command, rawOutput);
+        return Collections.emptyList();
       }
-      int exitCode = process.waitFor();
-      if (exitCode != 0) {
-        LOGGER.warn(
-            "Failed to collect windows disk metrics, powershell exit code: {}, command {}, output {}",
-            exitCode,
-            command,
-            String.join(" | ", rawOutput));
-      } else {
-        result.addAll(rawOutput);
-      }
+      clearPowerShellFailure();
+      return rawOutput;
     } catch (IOException e) {
-      LOGGER.warn("Failed to execute powershell for windows disk metrics", e);
+      handlePowerShellFailure(MetricsMessages.FAILED_TO_EXECUTE_POWERSHELL, e, command, null);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interrupted while collecting windows disk metrics", e);
-    } finally {
-      if (process != null) {
-        process.destroy();
+      handlePowerShellFailure(
+          MetricsMessages.INTERRUPTED_COLLECTING_WINDOWS_DISK, e, command, null);
+    }
+    return Collections.emptyList();
+  }
+
+  private String buildPowerShellFailure(CommandResult commandResult) {
+    if (isAccessDeniedOutput(commandResult.getOutput())) {
+      return "Access denied while collecting windows disk metrics through PowerShell/CIM";
+    }
+    return String.format(
+        "Failed to collect windows disk metrics, powershell exit code: %s",
+        commandResult.getExitCode());
+  }
+
+  private boolean isAccessDeniedOutput(List<String> output) {
+    if (output == null) {
+      return false;
+    }
+    for (String line : output) {
+      if (line == null) {
+        continue;
+      }
+      String lowerCaseLine = line.toLowerCase();
+      if (lowerCaseLine.contains("access is denied")
+          || lowerCaseLine.contains("access denied")
+          || lowerCaseLine.contains("permissiondenied")
+          || lowerCaseLine.contains("unauthorized")
+          || lowerCaseLine.contains("0x80041003")) {
+        return true;
       }
     }
-    return result;
+    return false;
+  }
+
+  private void handlePowerShellFailure(
+      String failureMessage, Exception exception, String command, List<String> output) {
+    long currentTime = System.currentTimeMillis();
+    nextPowerShellRetryTime = currentTime + POWERSHELL_RETRY_INTERVAL;
+    if (shouldLogFailure(currentTime, failureMessage)) {
+      if (exception == null) {
+        LOGGER.warn(
+            "{}. Windows disk metrics will be skipped for {} ms before retrying.",
+            failureMessage,
+            POWERSHELL_RETRY_INTERVAL);
+      } else {
+        LOGGER.warn(
+            "{}: {}. Windows disk metrics will be skipped for {} ms before retrying.",
+            failureMessage,
+            exception.toString(),
+            POWERSHELL_RETRY_INTERVAL);
+      }
+      LOGGER.debug(
+          "Failed windows disk metrics powershell command: {}, output: {}",
+          command,
+          output == null ? "" : String.join(" | ", output),
+          exception);
+    } else {
+      LOGGER.debug(
+          "{}. Windows disk metrics collection is still in retry backoff.",
+          failureMessage,
+          exception);
+    }
+  }
+
+  private boolean shouldLogFailure(long currentTime, String failureMessage) {
+    if (!failureMessage.equals(lastPowerShellFailure) || currentTime >= nextFailureLogTime) {
+      lastPowerShellFailure = failureMessage;
+      nextFailureLogTime = currentTime + FAILURE_LOG_INTERVAL;
+      return true;
+    }
+    return false;
+  }
+
+  private void clearPowerShellFailure() {
+    if (!lastPowerShellFailure.isEmpty() || nextPowerShellRetryTime > 0L) {
+      LOGGER.info("Recovered windows disk metrics collection through PowerShell/CIM.");
+    }
+    lastPowerShellFailure = "";
+    nextFailureLogTime = 0L;
+    nextPowerShellRetryTime = 0L;
   }
 
   private static Charset getWindowsShellCharset() {
@@ -505,9 +583,82 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
     return Charset.defaultCharset();
   }
 
-  private void checkUpdate() {
+  private static String resolvePowerShellExecutable() {
+    String systemRoot = System.getenv("SystemRoot");
+    if (systemRoot == null || systemRoot.isEmpty()) {
+      systemRoot = System.getenv("windir");
+    }
+    if (systemRoot != null && !systemRoot.isEmpty()) {
+      File systemPowerShell = new File(systemRoot, WINDOWS_POWER_SHELL_RELATIVE_PATH);
+      if (systemPowerShell.isFile()) {
+        return systemPowerShell.getAbsolutePath();
+      }
+    }
+    return POWER_SHELL;
+  }
+
+  private synchronized void checkUpdate() {
     if (System.currentTimeMillis() - lastUpdateTime > UPDATE_SMALLEST_INTERVAL) {
       updateInfo();
+    }
+  }
+
+  interface PowerShellExecutor {
+    CommandResult execute(String command) throws IOException, InterruptedException;
+  }
+
+  static class CommandResult {
+    private final int exitCode;
+    private final List<String> output;
+
+    CommandResult(int exitCode, List<String> output) {
+      this.exitCode = exitCode;
+      this.output = output;
+    }
+
+    int getExitCode() {
+      return exitCode;
+    }
+
+    List<String> getOutput() {
+      return output;
+    }
+  }
+
+  private static class ProcessBuilderPowerShellExecutor implements PowerShellExecutor {
+    private final String powerShellExecutable;
+
+    private ProcessBuilderPowerShellExecutor(String powerShellExecutable) {
+      this.powerShellExecutable = powerShellExecutable;
+    }
+
+    @Override
+    public CommandResult execute(String command) throws IOException, InterruptedException {
+      List<String> rawOutput = new ArrayList<>();
+      Process process = null;
+      try {
+        process =
+            new ProcessBuilder(
+                    powerShellExecutable, POWER_SHELL_NO_PROFILE, POWER_SHELL_COMMAND, command)
+                .redirectErrorStream(true)
+                .start();
+        try (BufferedReader reader =
+            new BufferedReader(
+                new InputStreamReader(process.getInputStream(), WINDOWS_SHELL_CHARSET))) {
+          String line;
+          while ((line = reader.readLine()) != null) {
+            String trimmedLine = line.trim();
+            if (!trimmedLine.isEmpty()) {
+              rawOutput.add(trimmedLine);
+            }
+          }
+        }
+        return new CommandResult(process.waitFor(), rawOutput);
+      } finally {
+        if (process != null) {
+          process.destroy();
+        }
+      }
     }
   }
 }

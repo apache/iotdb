@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiter
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -123,6 +124,6 @@ public final class LiteralEncoder {
       return new GenericLiteral(TimestampType.TIMESTAMP.getTypeEnum().name(), object.toString());
     }
 
-    throw new IllegalArgumentException("Unknown type: " + type);
+    throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_TYPE_2 + type);
   }
 }

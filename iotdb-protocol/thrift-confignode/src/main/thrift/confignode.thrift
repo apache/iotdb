@@ -104,6 +104,12 @@ struct TRatisConfig {
   34: required i64 dataRegionPeriodicSnapshotInterval
 
   35: required i32 ratisTransferLeaderTimeoutMs;
+
+  // Bound the retry attempts of a Ratis configuration change (add/remove peer) so a killed ADDING
+  // peer cannot block the reconfiguration forever. Optional for rolling-upgrade compatibility: an
+  // old ConfigNode will not set them and the DataNode falls back to its local default.
+  36: optional i32 schemaReconfigurationMaxRetryAttempts
+  37: optional i32 dataReconfigurationMaxRetryAttempts
 }
 
 struct TCQConfig {
@@ -730,10 +736,8 @@ struct TDatabaseInfo {
   4: required i32 dataReplicationFactor
   5: required i64 timePartitionInterval
   6: required i32 schemaRegionNum
-  7: required i32 minSchemaRegionNum
   8: required i32 maxSchemaRegionNum
   9: required i32 dataRegionNum
-  10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
 }
@@ -1070,6 +1074,18 @@ struct TDropSubscriptionReq {
 struct TGetAllSubscriptionInfoResp {
     1: required common.TSStatus status
     2: required list<binary> allSubscriptionInfo
+}
+
+struct TGetCommitProgressReq {
+    1: required string consumerGroupId
+    2: required string topicName
+    3: required i32 regionId
+    4: required i32 dataNodeId
+}
+
+struct TGetCommitProgressResp {
+    1: required common.TSStatus status
+    2: optional binary committedRegionProgress
 }
 
 // ====================================================
@@ -1930,6 +1946,9 @@ service IConfigNodeRPCService {
   /** Create Topic */
   common.TSStatus createTopic(TCreateTopicReq req)
 
+  /** Alter Topic */
+  common.TSStatus alterTopic(TAlterTopicReq req)
+
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)
 
@@ -1968,6 +1987,9 @@ service IConfigNodeRPCService {
 
   /** Get all subscription information. It is used for DataNode registration and restart */
   TGetAllSubscriptionInfoResp getAllSubscriptionInfo()
+
+  /** Get committed search index from ConfigNode for recovery */
+  TGetCommitProgressResp getCommitProgress(TGetCommitProgressReq req)
 
   // ======================================================
   // TestTools
@@ -2071,4 +2093,3 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTableView(TCreateTableViewReq req)
 }
-

@@ -28,6 +28,7 @@ import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.time.ZoneId;
@@ -100,7 +101,7 @@ public class UDTFConfigurations extends UDFConfigurations {
   public void check() {
     super.check();
     if (accessStrategy == null) {
-      throw new RuntimeException("Access strategy is not set.");
+      throw new RuntimeException(UdfApiMessages.ACCESS_STRATEGY_NOT_SET);
     }
     accessStrategy.check();
   }

@@ -29,8 +29,8 @@
     <artifactId>mqtt</artifactId>
     <name>IoTDB: External-Service-Impl: MQTT</name>
     <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <dependencies>
@@ -171,6 +171,10 @@
                         <ignoredDependency>org.apache.tsfile:common</ignoredDependency>
                     </ignoredDependencies>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

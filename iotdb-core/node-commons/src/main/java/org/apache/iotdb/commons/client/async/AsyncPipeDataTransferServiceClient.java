@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
@@ -93,7 +94,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   @Override
   public void invalidate() {
     if (!hasError()) {
-      super.onError(new Exception(String.format("This client %d has been invalidated", id)));
+      super.onError(new Exception(String.format(ClientMessages.CLIENT_INVALIDATED_WITH_ID, id)));
     }
   }
 
@@ -135,12 +136,16 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     this.shouldReturnSelf.set(shouldReturnSelf);
   }
 
+  public boolean shouldReturnSelf() {
+    return shouldReturnSelf.get();
+  }
+
   public void setTimeoutDynamically(final int timeout) {
     try {
       ((TNonblockingSocket) ___transport).setTimeout(timeout);
     } catch (Exception e) {
       setTimeout(timeout);
-      LOGGER.error("Failed to set timeout dynamically, set it statically", e);
+      LOGGER.error(ClientMessages.FAILED_TO_SET_TIMEOUT_DYNAMICALLY, e);
     }
   }
 
@@ -156,7 +161,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     } catch (Exception e) {
       if (printLogWhenEncounterException) {
         LOGGER.error(
-            "Unexpected exception occurs in {}, error msg is {}",
+            ClientMessages.UNEXPECTED_EXCEPTION_IN_CLIENT_WITH_MSG,
             this,
             ExceptionUtils.getRootCause(e).toString(),
             e);
@@ -171,7 +176,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   public void markHandshakeFinished() {
     isHandshakeFinished.set(true);
-    LOGGER.info("Handshake finished for client {}", this);
+    LOGGER.info(ClientMessages.HANDSHAKE_FINISHED, this);
   }
 
   // To ensure that the socket will be closed eventually, we need to manually close the socket here,
@@ -181,10 +186,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     if (!___manager.isRunning()) {
       if (___transport != null && ___transport.isOpen()) {
         ___transport.close();
-        LOGGER.warn("Manually closing transport to prevent resource leakage.");
+        LOGGER.warn(ClientMessages.MANUALLY_CLOSING_TRANSPORT);
       }
       ___currentMethod = null;
-      LOGGER.info("Method state has been reset due to manager not running.");
+      LOGGER.info(ClientMessages.METHOD_STATE_RESET);
     }
   }
 
@@ -229,7 +234,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
           new AsyncPipeDataTransferServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

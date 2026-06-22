@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.library.frequency.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -149,7 +151,7 @@ public class DWTUtil {
     int n = data.length;
 
     if (!isPower2(n)) {
-      throw new IllegalArgumentException("The data vector size is not a power of 2.");
+      throw new IllegalArgumentException(LibraryUdfMessages.DATA_VECTOR_SIZE_NOT_POWER_OF_2);
     }
 
     if (n < ncof) {
@@ -206,7 +208,7 @@ public class DWTUtil {
     int n = data.length;
 
     if (!isPower2(n)) {
-      throw new IllegalArgumentException("The data vector size is not a power of 2.");
+      throw new IllegalArgumentException(LibraryUdfMessages.DATA_VECTOR_SIZE_NOT_POWER_OF_2);
     }
 
     if (n < ncof) {

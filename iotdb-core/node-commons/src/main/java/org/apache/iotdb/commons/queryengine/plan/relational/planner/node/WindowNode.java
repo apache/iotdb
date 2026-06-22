@@ -44,8 +44,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -212,7 +212,7 @@ public class WindowNode extends SingleChildProcessNode {
     DataOrganizationSpecification specification = DataOrganizationSpecification.deserialize(buffer);
     int preSortedOrderPrefix = ReadWriteIOUtils.readInt(buffer);
     size = ReadWriteIOUtils.readInt(buffer);
-    Map<Symbol, Function> windowFunctions = new HashMap<>(size);
+    Map<Symbol, Function> windowFunctions = new LinkedHashMap<>(size);
     for (int i = 0; i < size; i++) {
       Symbol symbol = Symbol.deserialize(buffer);
       Function function = new Function(buffer);

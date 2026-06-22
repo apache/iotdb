@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
@@ -43,6 +44,7 @@ import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateClusterTopologyReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.AwaitForSignal;
 import org.apache.tsfile.utils.Pair;
@@ -71,6 +73,7 @@ import java.util.stream.Collectors;
 public class TopologyService implements Runnable, IClusterStatusSubscriber {
   private static final Logger LOGGER = LoggerFactory.getLogger(TopologyService.class);
   private static final int SAMPLING_WINDOW_SIZE = 100;
+  private static final int TOPOLOGY_PROBING_RETRY_NUM = 1;
 
   private final ExecutorService topologyThread =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -112,7 +115,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
             new PhiAccrualDetector(
                 CONF.getFailureDetectorPhiThreshold(),
                 CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
-                CONF.getHeartbeatIntervalInMs() * 200_000L,
+                CONF.getFailureDetectorHeartbeatIntervalInMs() * 200_000L,
                 IFailureDetector.PHI_COLD_START_THRESHOLD,
                 new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
         break;
@@ -128,7 +131,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       future = this.topologyThread.submit(this);
     }
     shouldRun.set(true);
-    LOGGER.info("Topology Probing has started successfully");
+    LOGGER.info(ManagerMessages.TOPOLOGY_PROBING_HAS_STARTED_SUCCESSFULLY);
   }
 
   public synchronized void stopTopologyService() {
@@ -139,7 +142,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
     heartbeats.clear();
     latestTopology.clear();
-    LOGGER.info("Topology Probing has stopped successfully");
+    LOGGER.info(ManagerMessages.TOPOLOGY_PROBING_HAS_STOPPED_SUCCESSFULLY);
   }
 
   private boolean mayWait() {
@@ -221,7 +224,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
                 nodeLocations,
                 proberLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(dataNodeAsyncRequestContext, timeout);
+        .sendAsyncRequest(dataNodeAsyncRequestContext, TOPOLOGY_PROBING_RETRY_NUM, timeout, true);
     final List<TTestConnectionResult> results = new ArrayList<>();
     dataNodeAsyncRequestContext
         .getResponseMap()
@@ -283,7 +286,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
       if (!entry.getValue().isEmpty()
           && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
-        LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
+        LOGGER.debug(ManagerMessages.CONNECTION_FROM_DATANODE_TO_DATANODE_IS_BROKEN, fromId, toId);
       } else {
         computedTopology.get(fromId).add(toId);
       }
@@ -359,15 +362,18 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
 
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(context, CONF.getTopologyProbingBaseIntervalInMs());
+        .sendAsyncRequest(
+            context, TOPOLOGY_PROBING_RETRY_NUM, CONF.getTopologyProbingBaseIntervalInMs(), true);
 
     context
         .getResponseMap()
         .forEach(
             (nodeId, resp) -> {
-              Set<Integer> reachableSet =
-                  computedTopology.getOrDefault(nodeId, Collections.emptySet());
-              lastPushedTopology.put(nodeId, new HashSet<>(reachableSet));
+              if (resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                Set<Integer> reachableSet =
+                    computedTopology.getOrDefault(nodeId, Collections.emptySet());
+                lastPushedTopology.put(nodeId, new HashSet<>(reachableSet));
+              }
             });
   }
 
@@ -389,7 +395,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
           continue;
         }
         if (!reachableTo.contains(from) && !reachableFrom.contains(to)) {
-          LOGGER.debug("[Topology] Asymmetric network partition from {} to {}", from, to);
+          LOGGER.debug(ManagerMessages.TOPOLOGY_ASYMMETRIC_NETWORK_PARTITION_FROM_TO, from, to);
         }
       }
     }

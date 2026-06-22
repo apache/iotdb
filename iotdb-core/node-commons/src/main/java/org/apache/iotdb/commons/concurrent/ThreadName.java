@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,6 +98,7 @@ public enum ThreadName {
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
   // -------------------------- ConfigNode-Recover --------------------------
   CONFIG_NODE_RECOVER("ConfigNode-Manager-Recovery"),
+  CONFIG_NODE_LEADER_SERVICES_TRANSITION("ConfigNode-Leader-Services-Transition"),
   // -------------------------- ConfigNode-Procedure ------------------------
   // TODO: Use Thread Pool to manage the procedure thread @Potato
   CONFIG_NODE_PROCEDURE_WORKER("ProcedureWorkerGroup"),
@@ -155,6 +158,9 @@ public enum ThreadName {
   PIPE_TERMINATE_EXECUTION_POOL("Pipe-Terminate-Execution-Pool"),
   LOAD_DATATYPE_CONVERT_POOL("Load-Datatype-Convert-Pool"),
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
+  SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL("Subscription-Consensus-Prefetch-Executor-Pool"),
+  SUBSCRIPTION_CONSENSUS_PREFETCH_SCHEDULER("Subscription-Consensus-Prefetch-Scheduler"),
+  SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER("Subscription-Consensus-Progress-Broadcaster"),
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
@@ -317,6 +323,9 @@ public enum ThreadName {
               PIPE_AIR_GAP_RECEIVER,
               PIPE_PARALLEL_EXECUTION_POOL,
               SUBSCRIPTION_EXECUTOR_POOL,
+              SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL,
+              SUBSCRIPTION_CONSENSUS_PREFETCH_SCHEDULER,
+              SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER,
               SUBSCRIPTION_RUNTIME_META_SYNCER,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
@@ -366,7 +375,7 @@ public enum ThreadName {
       new HashSet<>(Arrays.asList(CONFIG_NODE_REGION_MAINTAINER));
 
   private static final Set<ThreadName> configNodeRecoverThreadNames =
-      new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER));
+      new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER, CONFIG_NODE_LEADER_SERVICES_TRANSITION));
 
   private static final Set<ThreadName> configNodeProcedureThreadNames =
       new HashSet<>(
@@ -501,7 +510,7 @@ public enum ThreadName {
         }
       }
     }
-    LOGGER.debug("Unknown thread name: {}", givenThreadName);
+    LOGGER.debug(CommonMessages.UNKNOWN_THREAD_NAME, givenThreadName);
     return ThreadName.UNKNOWN;
   }
 }

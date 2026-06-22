@@ -61,6 +61,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -679,7 +680,9 @@ public class Analysis implements IAnalysis {
         .get(NodeRef.of(table))
         .getHandle()
         .orElseThrow(
-            () -> new IllegalArgumentException(format("%s is not a table reference", table)));
+            () ->
+                new IllegalArgumentException(
+                    format(DataNodeQueryMessages.S_IS_NOT_A_TABLE_REFERENCE, table)));
   }
 
   public Collection<TableSchema> getTables() {
@@ -1508,6 +1511,32 @@ public class Analysis implements IAnalysis {
     public PreviousFillAnalysis(
         TimeDuration timeBound, FieldReference fieldReference, List<FieldReference> groupingKeys) {
       super(FillPolicy.PREVIOUS);
+      this.timeBound = timeBound;
+      this.fieldReference = fieldReference;
+      this.groupingKeys = groupingKeys;
+    }
+
+    public Optional<TimeDuration> getTimeBound() {
+      return Optional.ofNullable(timeBound);
+    }
+
+    public Optional<FieldReference> getFieldReference() {
+      return Optional.ofNullable(fieldReference);
+    }
+
+    public Optional<List<FieldReference>> getGroupingKeys() {
+      return Optional.ofNullable(groupingKeys);
+    }
+  }
+
+  public static class NextFillAnalysis extends FillAnalysis {
+    @Nullable private final TimeDuration timeBound;
+    @Nullable private final FieldReference fieldReference;
+    @Nullable private final List<FieldReference> groupingKeys;
+
+    public NextFillAnalysis(
+        TimeDuration timeBound, FieldReference fieldReference, List<FieldReference> groupingKeys) {
+      super(FillPolicy.NEXT);
       this.timeBound = timeBound;
       this.fieldReference = fieldReference;
       this.groupingKeys = groupingKeys;

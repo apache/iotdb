@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
@@ -49,6 +50,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeTaskBuilder;
@@ -97,6 +99,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -217,9 +220,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           clearSchemaRegionListeningQueueIfNecessary(pipeMetaListFromCoordinator);
       closeSchemaRegionListeningQueueIfNecessary(validSchemaRegionIds, exceptionMessages);
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to clear/close the schema region listening queue, because {}. Will wait until success or the region's state machine is stopped.",
-          e.getMessage());
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLEAR_CLOSE_THE_SCHEMA_REGION, e.getMessage());
       // Do not use null pipe name to retain the field "required" to be compatible with the lower
       // versions
       exceptionMessages.add(
@@ -295,7 +296,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                         schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
               } catch (final ConsensusException e) {
                 throw new PipeException(
-                    "Failed to close listening queue for SchemaRegion "
+                    DataNodePipeMessages.FAILED_TO_CLOSE_LISTENING_QUEUE_FOR_SCHEMAREGION
                         + schemaRegionId
                         + ", because "
                         + e.getMessage(),
@@ -482,7 +483,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
                 PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
                 pipeMetaKeeper.getPipeMetaCount());
-    LOGGER.debug("Received pipe heartbeat request {} from config node.", req.heartbeatId);
+    LOGGER.debug(
+        DataNodePipeMessages.RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_NODE, req.heartbeatId);
 
     final Set<Integer> dataRegionIds =
         StorageEngine.getInstance().getAllDataRegionIds().stream()
@@ -571,9 +573,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   public boolean hasPipeReleaseRegionRelatedResource(final int consensusGroupId) {
     if (!tryReadLockWithTimeOut(10)) {
-      LOGGER.warn(
-          "Failed to check if pipe has release region related resource with consensus group id: {}.",
-          consensusGroupId);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CHECK_IF_PIPE_HAS_RELEASE, consensusGroupId);
       return false;
     }
 
@@ -616,7 +616,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       try {
         future.get();
       } catch (final ExecutionException | InterruptedException e) {
-        LOGGER.warn("Exception occurs when executing pipe task: ", e);
+        LOGGER.warn(DataNodePipeMessages.EXCEPTION_OCCURS_WHEN_EXECUTING_PIPE_TASK, e);
         throw new PipeException(e.toString());
       }
     }
@@ -624,25 +624,129 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   ///////////////////////// Shutdown Logic /////////////////////////
 
+  public long getShutdownProgressPersistTimeoutInMs() {
+    return Math.max(
+        1_000L,
+        (long) CommonDescriptor.getInstance().getConfig().getCnConnectionTimeoutInMS()
+            + CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS());
+  }
+
+  public boolean persistAllProgressIndex(final long timeoutInMs) {
+    final long normalizedTimeoutInMs = Math.max(1L, timeoutInMs);
+    final long startTime = System.currentTimeMillis();
+    final AtomicBoolean isConfirmed = new AtomicBoolean(false);
+    final Thread persistThread =
+        new Thread(
+            () -> isConfirmed.set(persistAllProgressIndexInternal()),
+            ThreadName.PIPE_RUNTIME_META_SYNCER.getName() + "-Shutdown-Persist");
+    persistThread.setDaemon(true);
+
+    LOGGER.info(
+        DataNodePipeMessages.START_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN,
+        getPipeCount(),
+        normalizedTimeoutInMs);
+    persistThread.start();
+    try {
+      final long deadlineInMs = startTime + normalizedTimeoutInMs;
+      while (persistThread.isAlive()) {
+        final long remainingTimeInMs = deadlineInMs - System.currentTimeMillis();
+        if (remainingTimeInMs <= 0) {
+          break;
+        }
+        persistThread.join(remainingTimeInMs);
+      }
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.info(
+          DataNodePipeMessages
+              .INTERRUPTED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN);
+      return false;
+    }
+
+    if (persistThread.isAlive()) {
+      LOGGER.warn(
+          DataNodePipeMessages.TIMED_OUT_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN,
+          System.currentTimeMillis() - startTime);
+      return false;
+    }
+
+    if (!isConfirmed.get()) {
+      LOGGER.warn(
+          DataNodePipeMessages.FAILED_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN,
+          System.currentTimeMillis() - startTime);
+    }
+    return isConfirmed.get();
+  }
+
   public void persistAllProgressIndex() {
-    try (final ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // Send request to some API server
+    persistAllProgressIndex(getShutdownProgressPersistTimeoutInMs());
+  }
+
+  private boolean persistAllProgressIndexInternal() {
+    final long collectStartTime = System.currentTimeMillis();
+    final int pipeCount = getPipeCount();
+    try {
       final TPipeHeartbeatResp resp = new TPipeHeartbeatResp(new ArrayList<>());
       collectPipeMetaList(new TPipeHeartbeatReq(Long.MIN_VALUE), resp);
+      final int pipeMetaCount = resp.getPipeMetaList().size();
+      final int pipeMetaSizeInBytes =
+          resp.getPipeMetaList().stream()
+              .filter(Objects::nonNull)
+              .mapToInt(ByteBuffer::remaining)
+              .sum();
+      LOGGER.info(
+          DataNodePipeMessages.COLLECTED_PIPE_METAS_FOR_SHUTDOWN_PROGRESS_PERSIST,
+          pipeCount,
+          pipeMetaCount,
+          pipeMetaSizeInBytes,
+          System.currentTimeMillis() - collectStartTime);
+
       if (resp.getPipeMetaList().isEmpty()) {
-        return;
+        if (pipeCount != 0) {
+          LOGGER.info(DataNodePipeMessages.COLLECTED_EMPTY_PIPE_METAS_DURING_SHUTDOWN, pipeCount);
+          return false;
+        }
+        return true;
       }
-      final TSStatus result =
-          configNodeClient.pushHeartbeat(
-              IoTDBDescriptor.getInstance().getConfig().getDataNodeId(), resp);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
-        LOGGER.warn("Failed to persist progress index to configNode, status: {}", result);
-      } else {
-        LOGGER.info("Successfully persisted all pipe's info to configNode.");
+
+      try (final ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        LOGGER.info(
+            DataNodePipeMessages.START_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE,
+            IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+            pipeCount,
+            pipeMetaCount,
+            pipeMetaSizeInBytes);
+        final long pushStartTime = System.currentTimeMillis();
+        final TSStatus result =
+            configNodeClient.pushHeartbeat(
+                IoTDBDescriptor.getInstance().getConfig().getDataNodeId(), resp);
+        final long pushCostTime = System.currentTimeMillis() - pushStartTime;
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
+          LOGGER.warn(DataNodePipeMessages.FAILED_TO_PERSIST_PROGRESS_INDEX_TO_CONFIGNODE, result);
+          LOGGER.warn(
+              DataNodePipeMessages.FAILED_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE,
+              result,
+              pushCostTime);
+          return false;
+        } else {
+          LOGGER.info(
+              DataNodePipeMessages
+                  .SUCCESSFULLY_FINISHED_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE,
+              pipeCount,
+              pipeMetaCount,
+              pipeMetaSizeInBytes,
+              pushCostTime);
+          LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_PERSISTED_ALL_PIPE_S_INFO_TO);
+          return true;
+        }
       }
     } catch (final Exception e) {
-      LOGGER.warn(e.getMessage());
+      LOGGER.warn(
+          DataNodePipeMessages
+              .EXCEPTION_OCCURRED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN,
+          e);
+      return false;
     }
   }
 
@@ -658,7 +762,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     try {
       if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
-        throw new PipeException("Pipe meta not found: " + pipeName);
+        throw new PipeException(DataNodePipeMessages.PIPE_META_NOT_FOUND + pipeName);
       }
 
       return pipeMetaKeeper
@@ -703,7 +807,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String message =
           String.format(
               "%s Need memory: %d bytes, free memory: %d bytes, reserved memory: %d bytes, total memory: %d bytes",
-              MESSAGE_PIPE_NOT_ENOUGH_MEMORY,
+              PipeMessages.NOT_ENOUGH_MEMORY_FOR_PIPE,
               needMemory,
               freeMemorySizeInBytes,
               reservedMemorySizeInBytes,
@@ -752,7 +856,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String message =
           String.format(
               "%s Need Floating memory: %d  bytes, free Floating memory: %d bytes",
-              MESSAGE_PIPE_NOT_ENOUGH_MEMORY,
+              PipeMessages.NOT_ENOUGH_MEMORY_FOR_PIPE,
               PipeConfig.getInstance().getPipeInsertNodeQueueMemory(),
               remainingMemory);
       LOGGER.warn(message);
