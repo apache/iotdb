@@ -148,29 +148,29 @@ public class ExternalTsFileAggTableScanOperator extends DefaultAggTableScanOpera
 
   @Override
   public void close() throws Exception {
-  Exception exception = null;
-  try {
-    if (deviceTaskReader != null) {
-      deviceTaskReader.close();
-    }
-  } catch (Exception e) {
-    exception = e;
-  } finally {
-    deviceTaskReader = null;
+    Exception exception = null;
     try {
-      super.close();
+      if (deviceTaskReader != null) {
+        deviceTaskReader.close();
+      }
     } catch (Exception e) {
-      if (exception == null) {
-        exception = e;
-      } else {
-        exception.addSuppressed(e);
+      exception = e;
+    } finally {
+      deviceTaskReader = null;
+      try {
+        super.close();
+      } catch (Exception e) {
+        if (exception == null) {
+          exception = e;
+        } else {
+          exception.addSuppressed(e);
+        }
       }
     }
-  }
 
-  if (exception != null) {
-    throw exception;
-  }
+    if (exception != null) {
+      throw exception;
+    }
   }
 
   @Override

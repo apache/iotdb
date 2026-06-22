@@ -136,11 +136,29 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
 
   @Override
   public void close() throws Exception {
-    if (deviceTaskReader != null) {
-      deviceTaskReader.close();
+    Exception exception = null;
+    try {
+      if (deviceTaskReader != null) {
+        deviceTaskReader.close();
+      }
+    } catch (Exception e) {
+      exception = e;
+    } finally {
       deviceTaskReader = null;
+      try {
+        super.close();
+      } catch (Exception e) {
+        if (exception == null) {
+          exception = e;
+        } else {
+          exception.addSuppressed(e);
+        }
+      }
     }
-    super.close();
+
+    if (exception != null) {
+      throw exception;
+    }
   }
 
   @Override
