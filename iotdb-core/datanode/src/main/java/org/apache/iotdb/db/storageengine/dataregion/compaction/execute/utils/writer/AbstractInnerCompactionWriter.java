@@ -115,8 +115,8 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   @Override
   public void write(TimeValuePair timeValuePair, int subTaskId) throws IOException {
     checkPreviousTimestamp(timeValuePair.getTimestamp(), subTaskId);
-    writeDataPoint(timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
-    chunkPointNumArray[subTaskId]++;
+    writeDataPoint(
+        timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId], subTaskId);
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
     lastTime[subTaskId] = timeValuePair.getTimestamp();
     lastTimeSet[subTaskId] = true;
