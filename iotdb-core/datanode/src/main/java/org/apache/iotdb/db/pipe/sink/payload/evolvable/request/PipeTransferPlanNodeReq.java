@@ -31,6 +31,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeTransferPlanNodeReq extends TPipeTransferReq {
@@ -48,13 +49,18 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferPlanNodeReq toTPipeTransferReq(final PlanNode planNode) {
+    return toTPipeTransferReq(planNode, planNode.serializeToByteBuffer());
+  }
+
+  public static PipeTransferPlanNodeReq toTPipeTransferReq(
+      final PlanNode planNode, final ByteBuffer serializedPlanNode) {
     final PipeTransferPlanNodeReq req = new PipeTransferPlanNodeReq();
 
     req.planNode = planNode;
 
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_PLAN_NODE.getType();
-    req.body = planNode.serializeToByteBuffer();
+    req.body = serializedPlanNode.duplicate();
 
     return req;
   }
@@ -73,13 +79,25 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(final PlanNode planNode) throws IOException {
+    return toTPipeTransferBytes(planNode.serializeToByteBuffer());
+  }
+
+  public static byte[] toTPipeTransferBytes(final ByteBuffer serializedPlanNode)
+      throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_PLAN_NODE.getType(), outputStream);
       return BytesUtils.concatByteArray(
-          byteArrayOutputStream.toByteArray(), planNode.serializeToByteBuffer().array());
+          byteArrayOutputStream.toByteArray(), getBytes(serializedPlanNode));
     }
+  }
+
+  private static byte[] getBytes(final ByteBuffer byteBuffer) {
+    final ByteBuffer duplicateBuffer = byteBuffer.duplicate();
+    final byte[] bytes = new byte[duplicateBuffer.remaining()];
+    duplicateBuffer.get(bytes);
+    return bytes;
   }
 
   /////////////////////////////// Object ///////////////////////////////

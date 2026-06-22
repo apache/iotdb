@@ -86,7 +86,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
             connector.getAttributeSortedString(),
             Tag.CREATION_TIME.toString(),
             String.valueOf(connector.getCreationTime()));
-    connector.setTabletBatchSizeHistogram(schemaBatchSizeHistogram);
+    connector.setSchemaBatchSizeHistogram(schemaBatchSizeHistogram);
 
     final Histogram schemaBatchTimeIntervalHistogram =
         metricService.getOrCreateHistogram(
@@ -96,7 +96,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
             connector.getAttributeSortedString(),
             Tag.CREATION_TIME.toString(),
             String.valueOf(connector.getCreationTime()));
-    connector.setTabletBatchTimeIntervalHistogram(schemaBatchTimeIntervalHistogram);
+    connector.setSchemaBatchTimeIntervalHistogram(schemaBatchTimeIntervalHistogram);
 
     final Histogram schemaBatchEventSizeHistogram =
         metricService.getOrCreateHistogram(

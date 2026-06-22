@@ -348,6 +348,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
   }
 
+  public void setSchemaBatchSizeHistogram(Histogram schemaBatchSizeHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).setSchemaBatchSizeHistogram(schemaBatchSizeHistogram);
+    }
+  }
+
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
     if (outputPipeSink instanceof IoTDBSink) {
       ((IoTDBSink) outputPipeSink).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
@@ -358,6 +364,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     if (outputPipeSink instanceof IoTDBSink) {
       ((IoTDBSink) outputPipeSink)
           .setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
+    }
+  }
+
+  public void setSchemaBatchTimeIntervalHistogram(Histogram schemaBatchTimeIntervalHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink)
+          .setSchemaBatchTimeIntervalHistogram(schemaBatchTimeIntervalHistogram);
     }
   }
 

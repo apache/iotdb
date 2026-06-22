@@ -105,8 +105,8 @@ public class PipeSchemaRegionSinkMetricsTest {
       metrics.register(subtask);
       metrics.bindTo(metricService);
 
-      verify(subtask).setTabletBatchSizeHistogram(batchSizeHistogram);
-      verify(subtask).setTabletBatchTimeIntervalHistogram(batchTimeHistogram);
+      verify(subtask).setSchemaBatchSizeHistogram(batchSizeHistogram);
+      verify(subtask).setSchemaBatchTimeIntervalHistogram(batchTimeHistogram);
       verify(subtask).setEventSizeHistogram(eventSizeHistogram);
 
       metrics.deregister(taskId);

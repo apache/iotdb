@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
@@ -46,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 @TreeModel
@@ -198,20 +200,41 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   private void doTransfer(
       final AirGapSocket socket, final PipeSchemaRegionWritePlanEventBatch batch)
       throws PipeException, IOException {
-    final org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode planNode =
-        batch.toPlanNode();
-    doTransfer(socket, planNode, batch.getPipeName(), batch.getCreationTime(), planNode.toString());
+    final PlanNode planNode = batch.toPlanNode();
+    doTransfer(
+        socket,
+        planNode,
+        batch.toPlanNodeByteBuffer(),
+        batch.getPipeName(),
+        batch.getCreationTime(),
+        planNode.toString());
   }
 
   private void doTransfer(
       final AirGapSocket socket,
-      final org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode planNode,
+      final PlanNode planNode,
+      final String pipeName,
+      final long creationTime,
+      final String eventDescription)
+      throws PipeException, IOException {
+    doTransfer(socket, planNode, null, pipeName, creationTime, eventDescription);
+  }
+
+  private void doTransfer(
+      final AirGapSocket socket,
+      final PlanNode planNode,
+      final ByteBuffer serializedPlanNode,
       final String pipeName,
       final long creationTime,
       final String eventDescription)
       throws PipeException, IOException {
     if (!send(
-        pipeName, creationTime, socket, PipeTransferPlanNodeReq.toTPipeTransferBytes(planNode))) {
+        pipeName,
+        creationTime,
+        socket,
+        Objects.nonNull(serializedPlanNode)
+            ? PipeTransferPlanNodeReq.toTPipeTransferBytes(serializedPlanNode)
+            : PipeTransferPlanNodeReq.toTPipeTransferBytes(planNode))) {
       final String errorMessage =
           String.format(
               "Transfer data node write plan %s error. Socket: %s.", planNode.getType(), socket);
@@ -332,18 +355,18 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   }
 
   @Override
-  public void setTabletBatchSizeHistogram(final Histogram tabletBatchSizeHistogram) {
+  public void setSchemaBatchSizeHistogram(final Histogram schemaBatchSizeHistogram) {
     if (Objects.nonNull(schemaRegionWritePlanEventBatch)) {
-      schemaRegionWritePlanEventBatch.setBatchSizeHistogram(tabletBatchSizeHistogram);
+      schemaRegionWritePlanEventBatch.setBatchSizeHistogram(schemaBatchSizeHistogram);
     }
   }
 
   @Override
-  public void setTabletBatchTimeIntervalHistogram(
-      final Histogram tabletBatchTimeIntervalHistogram) {
+  public void setSchemaBatchTimeIntervalHistogram(
+      final Histogram schemaBatchTimeIntervalHistogram) {
     if (Objects.nonNull(schemaRegionWritePlanEventBatch)) {
       schemaRegionWritePlanEventBatch.setBatchTimeIntervalHistogram(
-          tabletBatchTimeIntervalHistogram);
+          schemaBatchTimeIntervalHistogram);
     }
   }
 

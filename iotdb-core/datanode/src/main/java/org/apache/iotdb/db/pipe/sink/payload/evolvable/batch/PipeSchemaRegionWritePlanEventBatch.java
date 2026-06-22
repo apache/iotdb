@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -46,6 +47,7 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -82,8 +84,9 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
   private String pipeName;
   private long creationTime;
 
-  private long totalBufferSize = 0;
   private long firstEventProcessingTime = Long.MIN_VALUE;
+  private PlanNode cachedPlanNode;
+  private ByteBuffer cachedSerializedPlanNode;
 
   private volatile boolean isClosed = false;
 
@@ -119,7 +122,7 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
 
     if (events.isEmpty() || !Objects.equals(events.get(events.size() - 1), event)) {
       if (!event.increaseReferenceCount(PipeSchemaRegionWritePlanEventBatch.class.getName())) {
-        LOGGER.warn("Cannot increase reference count for event: {}, ignore it in batch.", event);
+        LOGGER.warn(DataNodePipeMessages.CANNOT_INCREASE_REFERENCE_COUNT_FOR_EVENT_IGNORE, event);
         return true;
       }
 
@@ -129,7 +132,7 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
           creationTime = event.getCreationTime();
         }
         appendPlanNode(event.getPlanNode());
-        totalBufferSize += event.getPlanNode().serializeToByteBuffer().limit();
+        invalidateCachedPlanNode();
         events.add(event);
       } catch (final Exception e) {
         event.decreaseReferenceCount(PipeSchemaRegionWritePlanEventBatch.class.getName(), false);
@@ -151,7 +154,7 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
     }
 
     if (events.isEmpty()) {
-      return !hasAlignmentConflict(event.getPlanNode());
+      return true;
     }
 
     return Objects.equals(pipeName, event.getPipeName())
@@ -385,7 +388,7 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
     if (events.isEmpty() || firstEventProcessingTime == Long.MIN_VALUE) {
       return false;
     }
-    return totalBufferSize >= maxBatchSizeInBytes
+    return getSerializedPlanNodeSize() >= maxBatchSizeInBytes
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
@@ -394,20 +397,47 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
       return;
     }
     batchTimeIntervalHistogram.update(System.currentTimeMillis() - firstEventProcessingTime);
-    batchSizeHistogram.update(totalBufferSize);
+    batchSizeHistogram.update(getSerializedPlanNodeSize());
     eventSizeHistogram.update(events.size());
   }
 
   public synchronized PlanNode toPlanNode() {
+    if (Objects.nonNull(cachedPlanNode)) {
+      return cachedPlanNode;
+    }
+
     switch (batchType) {
       case TIMESERIES:
-        return new InternalCreateMultiTimeSeriesNode(EMPTY_PLAN_NODE_ID, new HashMap<>(deviceMap));
+        cachedPlanNode =
+            new InternalCreateMultiTimeSeriesNode(EMPTY_PLAN_NODE_ID, new HashMap<>(deviceMap));
+        return cachedPlanNode;
       case TEMPLATE_ACTIVATE:
-        return new BatchActivateTemplateNode(
-            EMPTY_PLAN_NODE_ID, new HashMap<>(templateActivationMap));
+        cachedPlanNode =
+            new BatchActivateTemplateNode(EMPTY_PLAN_NODE_ID, new HashMap<>(templateActivationMap));
+        return cachedPlanNode;
       default:
         throw new IllegalStateException("Cannot build schema batch plan node from empty batch.");
     }
+  }
+
+  public synchronized ByteBuffer toPlanNodeByteBuffer() {
+    return getSerializedPlanNode().duplicate();
+  }
+
+  private long getSerializedPlanNodeSize() {
+    return getSerializedPlanNode().remaining();
+  }
+
+  private ByteBuffer getSerializedPlanNode() {
+    if (Objects.isNull(cachedSerializedPlanNode)) {
+      cachedSerializedPlanNode = toPlanNode().serializeToByteBuffer();
+    }
+    return cachedSerializedPlanNode;
+  }
+
+  private void invalidateCachedPlanNode() {
+    cachedPlanNode = null;
+    cachedSerializedPlanNode = null;
   }
 
   public synchronized void onSuccess() {
@@ -417,7 +447,7 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
     batchType = BatchType.NONE;
     pipeName = null;
     creationTime = 0;
-    totalBufferSize = 0;
+    invalidateCachedPlanNode();
     firstEventProcessingTime = Long.MIN_VALUE;
   }
 
@@ -450,7 +480,7 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
     batchType = BatchType.NONE;
     pipeName = null;
     creationTime = 0;
-    totalBufferSize = 0;
+    invalidateCachedPlanNode();
 
     if (events.isEmpty()) {
       firstEventProcessingTime = Long.MIN_VALUE;
@@ -469,8 +499,8 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
         creationTime = schemaEvent.getCreationTime();
       }
       appendPlanNode(schemaEvent.getPlanNode());
-      totalBufferSize += schemaEvent.getPlanNode().serializeToByteBuffer().limit();
     }
+    invalidateCachedPlanNode();
   }
 
   public synchronized boolean isEmpty() {
@@ -515,6 +545,7 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
     events.clear();
     deviceMap.clear();
     templateActivationMap.clear();
+    invalidateCachedPlanNode();
     allocatedMemoryBlock.close();
   }
 
