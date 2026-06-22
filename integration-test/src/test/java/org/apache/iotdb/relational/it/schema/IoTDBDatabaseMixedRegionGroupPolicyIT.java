@@ -41,6 +41,8 @@ import java.util.Collections;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBDatabaseMixedRegionGroupPolicyIT {
 
+  private static final int DATA_REGION_PER_DATA_NODE = 4;
+
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
@@ -50,7 +52,8 @@ public class IoTDBDatabaseMixedRegionGroupPolicyIT {
         .setDataRegionGroupExtensionPolicy("AUTO")
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setDefaultDataRegionGroupNumPerDatabase(1)
-        .setDataRegionPerDataNode(4);
+        .setDataReplicationFactor(1)
+        .setDataRegionPerDataNode(DATA_REGION_PER_DATA_NODE);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -64,6 +67,9 @@ public class IoTDBDatabaseMixedRegionGroupPolicyIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      final int expectedMaxDataRegionGroupNum =
+          DATA_REGION_PER_DATA_NODE * EnvFactory.getEnv().getDataNodeWrapperList().size();
+
       statement.execute("create database test_mixed with(max_schema_region_group_num=2)");
 
       TestUtils.assertResultSetEqual(
@@ -71,7 +77,7 @@ public class IoTDBDatabaseMixedRegionGroupPolicyIT {
               "select database, max_schema_region_group_num, max_data_region_group_num "
                   + "from information_schema.databases where database = 'test_mixed'"),
           "database,max_schema_region_group_num,max_data_region_group_num,",
-          Collections.singleton("test_mixed,2,4,"));
+          Collections.singleton("test_mixed,2," + expectedMaxDataRegionGroupNum + ","));
     }
   }
 }
