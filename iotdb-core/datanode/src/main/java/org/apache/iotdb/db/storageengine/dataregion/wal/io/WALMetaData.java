@@ -400,8 +400,7 @@ public class WALMetaData implements SerializedSize {
       return false;
     }
     ByteBuffer magicStringBytes = ByteBuffer.allocate(maxMagicLen);
-    IOUtils.readFully(
-        channel, magicStringBytes, channel.size() - maxMagicLen);
+    IOUtils.readFully(channel, magicStringBytes, channel.size() - maxMagicLen);
 
     magicStringBytes.flip();
     String magicString = new String(magicStringBytes.array(), StandardCharsets.UTF_8);
