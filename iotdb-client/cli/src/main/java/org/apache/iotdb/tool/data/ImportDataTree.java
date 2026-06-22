@@ -72,8 +72,7 @@ public class ImportDataTree extends AbstractImportData {
             .enableRedirection(false)
             .enableAutoFetch(false);
     if (useSsl) {
-      sessionPoolBuilder =
-          sessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      sessionPoolBuilder = configureSsl(sessionPoolBuilder);
     }
     sessionPool = sessionPoolBuilder.build();
     sessionPool.setEnableQueryRedirection(false);

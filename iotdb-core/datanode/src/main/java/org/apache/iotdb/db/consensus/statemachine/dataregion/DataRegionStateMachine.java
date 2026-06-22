@@ -52,6 +52,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -124,31 +125,54 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
-    String databaseName = region.getDatabaseName();
+  public boolean loadSnapshot(File latestSnapshotRootDir) {
+    final String databaseName = region.getDatabaseName();
+    final String dataRegionIdString = region.getDataRegionIdString();
+    return loadSnapshot(
+        () ->
+            new SnapshotLoader(
+                    latestSnapshotRootDir.getAbsolutePath(), databaseName, dataRegionIdString)
+                .loadSnapshotForStateMachine(),
+        latestSnapshotRootDir);
+  }
+
+  @Override
+  public boolean loadSnapshot(List<File> latestSnapshotRootDirs) {
+    final String databaseName = region.getDatabaseName();
+    final String dataRegionIdString = region.getDataRegionIdString();
+    // A single snapshot is spread across several receive folders, and loading wipes the data dirs
+    // before relinking. It must therefore be loaded in one shot (clear once, relink every folder)
+    // rather than once per folder, otherwise each per-folder load would erase the previous folders'
+    // fragments and leave only the last one's data.
+    final List<String> snapshotRootPaths = new ArrayList<>();
+    for (File dir : latestSnapshotRootDirs) {
+      snapshotRootPaths.add(dir.getAbsolutePath());
+    }
+    return loadSnapshot(
+        () ->
+            new SnapshotLoader(snapshotRootPaths, databaseName, dataRegionIdString)
+                .loadSnapshotForStateMachine(),
+        latestSnapshotRootDirs);
+  }
+
+  private boolean loadSnapshot(Supplier<DataRegion> snapshotLoader, Object snapshotRootForLog) {
     String dataRegionIdString = region.getDataRegionIdString();
     DataRegionId regionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
     try {
       DataRegion newRegion =
-          StorageEngine.getInstance()
-              .setDataRegionForSnapshotLoad(
-                  regionId,
-                  () ->
-                      new SnapshotLoader(
-                              latestSnapshotRootDir.getAbsolutePath(),
-                              databaseName,
-                              dataRegionIdString)
-                          .loadSnapshotForStateMachine());
+          StorageEngine.getInstance().setDataRegionForSnapshotLoad(regionId, snapshotLoader);
       if (newRegion == null) {
-        logger.error(DataNodeMiscMessages.FAIL_LOAD_SNAPSHOT, latestSnapshotRootDir);
-        return;
+        logger.error(DataNodeMiscMessages.FAIL_LOAD_SNAPSHOT, snapshotRootForLog);
+        return false;
       }
       this.region = newRegion;
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
+      return true;
     } catch (Exception e) {
       logger.error(DataNodeMiscMessages.EXCEPTION_REPLACING_DATA_REGION, e);
+      return false;
     }
   }
 

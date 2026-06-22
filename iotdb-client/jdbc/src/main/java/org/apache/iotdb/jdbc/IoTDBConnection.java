@@ -544,12 +544,13 @@ public class IoTDBConnection implements Connection {
 
     if (params.isUseSSL()) {
       transport =
-          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+          DeepCopyRpcTransportFactory.INSTANCE.getTransportWithSSLConfig(
               params.getHost(),
               params.getPort(),
               getNetworkTimeout(),
               params.getTrustStore(),
-              params.getTrustStorePwd());
+              params.getTrustStorePwd(),
+              params.getSslProtocol());
     } else {
       transport =
           DeepCopyRpcTransportFactory.INSTANCE.getTransport(

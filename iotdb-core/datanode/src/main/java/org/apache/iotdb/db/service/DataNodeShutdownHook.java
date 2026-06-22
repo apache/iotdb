@@ -35,6 +35,7 @@ import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeOperator;
@@ -173,7 +174,14 @@ public class DataNodeShutdownHook extends Thread {
       }
     }
     // Persist progress index before shutdown to accurate recovery after restart
-    PipeDataNodeAgent.task().persistAllProgressIndex();
+    final long shutdownProgressPersistTimeoutInMs =
+        PipeDataNodeAgent.task().getShutdownProgressPersistTimeoutInMs();
+    logger.info(
+        DataNodePipeMessages.PERSISTING_PIPE_PROGRESS_INDEXES_BEFORE_SHUTDOWN,
+        shutdownProgressPersistTimeoutInMs);
+    if (!PipeDataNodeAgent.task().persistAllProgressIndex(shutdownProgressPersistTimeoutInMs)) {
+      logger.warn(DataNodePipeMessages.PIPE_PROGRESS_INDEXES_WERE_NOT_CONFIRMED_DURING_SHUTDOWN);
+    }
     // Shutdown all consensus pipe's receiver
     PipeDataNodeAgent.receiver().iotConsensusV2().closeReceiverExecutor();
 

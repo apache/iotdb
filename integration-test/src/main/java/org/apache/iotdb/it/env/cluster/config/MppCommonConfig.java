@@ -352,15 +352,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    setProperty(
-        "enable_auto_leader_balance_for_iot_consensus",
-        String.valueOf(enableAutoLeaderBalanceForIoTConsensus));
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     if (queryThreadCount <= 0) {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
@@ -475,13 +466,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode) {
     setProperty("data_region_per_data_node", String.valueOf(dataRegionPerDataNode));
     return this;
   }
 
   @Override
-  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  public CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     setProperty("schema_region_per_data_node", String.valueOf(schemaRegionPerDataNode));
     return this;
   }
@@ -636,6 +627,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    setProperty("enable_thrift_ssl", String.valueOf(enableThriftClientSSL));
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
     setProperty("enable_internal_ssl", String.valueOf(enableInternalSSL));
     return this;
@@ -662,6 +659,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setTrustStorePwd(String trustStorePwd) {
     setProperty("trust_store_pwd", trustStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    setProperty("ssl_protocol", sslProtocol);
     return this;
   }
 
