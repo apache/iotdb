@@ -108,6 +108,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -130,10 +131,6 @@ public class PartitionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final RegionGroupExtensionPolicy SCHEMA_REGION_GROUP_EXTENSION_POLICY =
-      CONF.getSchemaRegionGroupExtensionPolicy();
-  private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
-      CONF.getDataRegionGroupExtensionPolicy();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
@@ -581,7 +578,7 @@ public class PartitionManager {
 
     try {
       if (TConsensusGroupType.SchemaRegion.equals(consensusGroupType)) {
-        switch (SCHEMA_REGION_GROUP_EXTENSION_POLICY) {
+        switch (CONF.getSchemaRegionGroupExtensionPolicy()) {
           case CUSTOM:
             return customExtendRegionGroupIfNecessary(
                 unassignedPartitionSlotsCountMap, consensusGroupType);
@@ -591,7 +588,7 @@ public class PartitionManager {
                 unassignedPartitionSlotsCountMap, consensusGroupType);
         }
       } else {
-        switch (DATA_REGION_GROUP_EXTENSION_POLICY) {
+        switch (CONF.getDataRegionGroupExtensionPolicy()) {
           case CUSTOM:
             return customExtendRegionGroupIfNecessary(
                 unassignedPartitionSlotsCountMap, consensusGroupType);
@@ -993,6 +990,23 @@ public class PartitionManager {
     }
 
     if (result.isEmpty()) {
+      // Diagnostic for the intermittent "no available RegionGroup" CI failures: dump every
+      // RegionGroup visible in PartitionInfo for this Database together with its LoadCache status.
+      // This pinpoints whether PartitionInfo simply has no RegionGroup yet (newly created
+      // RegionGroup not exposed) or it has some but all of them are currently Disabled.
+      // Only logged on the failure path right before throwing, so it never floods the log.
+      final Map<TConsensusGroupId, RegionGroupStatus> visibleRegionGroupStatusMap =
+          new LinkedHashMap<>();
+      regionGroupSlotsCounter.forEach(
+          slotsCounter ->
+              visibleRegionGroupStatusMap.put(
+                  slotsCounter.getRight(),
+                  getLoadManager().getRegionGroupStatus(slotsCounter.getRight())));
+      LOGGER.warn(
+          "No available {} RegionGroup for Database: {}. RegionGroups visible in PartitionInfo and their LoadCache status: {}",
+          type,
+          database,
+          visibleRegionGroupStatusMap);
       throw new NoAvailableRegionGroupException(type, Collections.singletonList(database));
     }
 

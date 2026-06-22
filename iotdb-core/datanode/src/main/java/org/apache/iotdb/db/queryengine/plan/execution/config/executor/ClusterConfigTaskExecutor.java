@@ -106,6 +106,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -291,6 +292,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -2845,19 +2847,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Validate topic config
     final TopicMeta temporaryTopicMeta =
         new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
-    try {
-      PipeDataNodeAgent.plugin()
-          .validate(
-              "fakePipeName",
-              // TODO: currently use root to create topic
-              temporaryTopicMeta.generateExtractorAttributes(
-                  CommonDescriptor.getInstance().getConfig().getDefaultAdminName()),
-              temporaryTopicMeta.generateProcessorAttributes(),
-              temporaryTopicMeta.generateConnectorAttributes("fakeConsumerGroupId"));
-    } catch (final Exception e) {
-      future.setException(
-          new IoTDBException(e.getMessage(), TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
-      return future;
+    if (!temporaryTopicMeta.getConfig().isConsensusMode()) {
+      try {
+        PipeDataNodeAgent.plugin()
+            .validate(
+                "fakePipeName",
+                // Topic validation uses the admin name because topic creation has no user context
+                // here.
+                temporaryTopicMeta.generateExtractorAttributes(
+                    CommonDescriptor.getInstance().getConfig().getDefaultAdminName()),
+                temporaryTopicMeta.generateProcessorAttributes(),
+                temporaryTopicMeta.generateConnectorAttributes("fakeConsumerGroupId"));
+      } catch (final Exception e) {
+        future.setException(
+            new IoTDBException(e.getMessage(), TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
+        return future;
+      }
     }
 
     try (final ConfigNodeClient configNodeClient =
@@ -2868,6 +2873,34 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .setIfNotExistsCondition(createTopicStatement.hasIfNotExistsCondition())
               .setTopicAttributes(topicAttributes);
       final TSStatus tsStatus = configNodeClient.createTopic(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        future.setException(new IoTDBException(tsStatus));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterTopic(
+      final AlterTopicStatement alterTopicStatement) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
+    }
+
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus tsStatus =
+          configNodeClient.alterTopic(
+              new TAlterTopicReq()
+                  .setTopicName(alterTopicStatement.getTopicName())
+                  .setTopicAttributes(alterTopicStatement.getTopicAttributes())
+                  .setSubscribedConsumerGroupIds(Collections.emptySet()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus));
       } else {

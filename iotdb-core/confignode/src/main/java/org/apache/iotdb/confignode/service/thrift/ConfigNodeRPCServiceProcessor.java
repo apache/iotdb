@@ -102,6 +102,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -160,6 +161,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -230,6 +233,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -859,15 +863,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) {
-    if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
+    if (configNodeConfig.getConfigNodeId() != -1
+        && configNodeLocation.getConfigNodeId() != configNodeConfig.getConfigNodeId()) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
-              "remove ConsensusGroup failed because the ConfigNode not in current Cluster.");
+              "remove ConsensusGroup failed because the target ConfigNode is not current ConfigNode.");
     }
 
     ConsensusGroupId groupId = configManager.getConsensusManager().getConsensusGroupId();
     try {
       configManager.getConsensusManager().getConsensusImpl().deleteLocalPeer(groupId);
+    } catch (ConsensusGroupNotExistException e) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+          .setMessage(ConfigNodeMessages.REMOVE_CONSENSUSGROUP_SUCCESS);
     } catch (ConsensusException e) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
@@ -1269,6 +1277,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus alterTopic(TAlterTopicReq req) {
+    return configManager.alterTopic(req);
+  }
+
+  @Override
   public TSStatus dropTopic(String topicName) {
     return configManager.dropTopic(
         new TDropTopicReq().setTopicName(topicName).setIfExistsCondition(false));
@@ -1322,6 +1335,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetAllSubscriptionInfoResp getAllSubscriptionInfo() {
     return configManager.getAllSubscriptionInfo();
+  }
+
+  @Override
+  public TGetCommitProgressResp getCommitProgress(TGetCommitProgressReq req) {
+    return configManager.getCommitProgress(req);
   }
 
   @Override

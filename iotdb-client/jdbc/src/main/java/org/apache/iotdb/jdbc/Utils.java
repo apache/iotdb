@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.rpc.RpcSslUtils;
+
 import java.nio.charset.Charset;
 import java.time.DateTimeException;
 import java.time.ZoneId;
@@ -141,6 +143,10 @@ public class Utils {
     if (properties.containsKey(RPC_COMPRESS)) {
       params.setRpcThriftCompressionEnabled(parseBooleanProperty(properties, RPC_COMPRESS));
     }
+    if (properties.containsKey(Config.SSL_PROTOCOL)) {
+      params.setSslProtocol(
+          RpcSslUtils.normalizeProtocol(properties.getProperty(Config.SSL_PROTOCOL)));
+    }
     if (properties.containsKey(Config.SQL_DIALECT)) {
       params.setSqlDialect(validateSqlDialectProperty(properties));
     }
@@ -200,6 +206,9 @@ public class Utils {
           if (!isBoolean(value)) {
             return false;
           }
+          info.put(key, value);
+          break;
+        case Config.SSL_PROTOCOL:
           info.put(key, value);
           break;
         case Config.VERSION:

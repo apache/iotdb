@@ -39,7 +39,9 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.metric.ConsensusSubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -55,15 +57,18 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
@@ -71,6 +76,7 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeat
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseType;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseVersion;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSeekResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -83,9 +89,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -104,10 +112,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
-  private static final TPipeSubscribeResp SUBSCRIPTION_MISSING_CUSTOMER_RESP =
+  private static final TPipeSubscribeResp SUBSCRIPTION_MISSING_CONSUMER_RESP =
       new TPipeSubscribeResp(
           RpcUtils.getStatus(
-              TSStatusCode.SUBSCRIPTION_MISSING_CUSTOMER,
+              TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER,
               "Missing consumer config, please handshake first."),
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
@@ -132,8 +140,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             return handlePipeSubscribeHandshake(
                 PipeSubscribeHandshakeReq.fromTPipeSubscribeReq(req));
           case HEARTBEAT:
-            return handlePipeSubscribeHeartbeat(
-                PipeSubscribeHeartbeatReq.fromTPipeSubscribeReq(req));
+            return handleSubscriptionHeartbeat(SubscriptionHeartbeatReq.fromThriftReq(req));
           case SUBSCRIBE:
             return handlePipeSubscribeSubscribe(
                 PipeSubscribeSubscribeReq.fromTPipeSubscribeReq(req));
@@ -146,6 +153,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             return handlePipeSubscribeCommit(PipeSubscribeCommitReq.fromTPipeSubscribeReq(req));
           case CLOSE:
             return handlePipeSubscribeClose(PipeSubscribeCloseReq.fromTPipeSubscribeReq(req));
+          case SEEK:
+            return handleSubscriptionSeek(SubscriptionSeekReq.fromThriftReq(req));
           default:
             break;
         }
@@ -301,9 +310,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         RpcUtils.SUCCESS_STATUS, dataNodeId, consumerId, consumerGroupId);
   }
 
-  private TPipeSubscribeResp handlePipeSubscribeHeartbeat(final PipeSubscribeHeartbeatReq req) {
+  private TPipeSubscribeResp handleSubscriptionHeartbeat(final SubscriptionHeartbeatReq req) {
     try {
-      return handlePipeSubscribeHeartbeatInternal(req);
+      return handleSubscriptionHeartbeatInternal(req);
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_HEARTBEAT, req, e);
       final String exceptionMessage =
@@ -315,27 +324,45 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
   }
 
-  private TPipeSubscribeResp handlePipeSubscribeHeartbeatInternal(
-      final PipeSubscribeHeartbeatReq req) throws IOException {
+  private TPipeSubscribeResp handleSubscriptionHeartbeatInternal(final SubscriptionHeartbeatReq req)
+      throws IOException {
     // check consumer config thread local
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
-      LOGGER.warn(
-          "Subscription: missing consumer config when handling PipeSubscribeHeartbeatReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      LOGGER.warn("Subscription: missing consumer config when handling heartbeat request: {}", req);
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
-    // TODO: do something
+    final List<SubscriptionCommitContext> processorBufferedCommitContexts =
+        req.getProcessorBufferedCommitContexts();
+    final int refreshedCount =
+        SubscriptionAgent.broker()
+            .refreshInFlightEventLeases(consumerConfig, processorBufferedCommitContexts);
+    if (Objects.nonNull(processorBufferedCommitContexts)
+        && !processorBufferedCommitContexts.isEmpty()) {
+      LOGGER.debug(
+          "Subscription: consumer {} refreshed {} of {} processor-buffered commit context lease(s)",
+          consumerConfig,
+          refreshedCount,
+          processorBufferedCommitContexts.size());
+    }
+
+    final Set<String> subscribedTopicNames =
+        SubscriptionAgent.consumer()
+            .getTopicNamesSubscribedByConsumer(
+                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic().checkTopicOwners(consumerConfig, subscribedTopicNames);
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(ownerStatus);
+    }
 
     LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_CONSUMER_HEARTBEAT_SUCCESS, consumerConfig);
 
     // fetch subscribed topics
     final Map<String, TopicConfig> topics =
-        SubscriptionAgent.topic()
-            .getTopicConfigs(
-                SubscriptionAgent.consumer()
-                    .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+        SubscriptionAgent.topic().getTopicConfigs(subscribedTopicNames);
 
     // fetch available endpoints
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
@@ -401,11 +428,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribeSubscribeReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     // subscribe topics
     final Set<String> topicNames = req.getTopicNames();
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic().checkTopicOwners(consumerConfig, topicNames);
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(ownerStatus);
+    }
     subscribe(consumerConfig, topicNames);
 
     LOGGER.info(
@@ -444,7 +476,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribeUnsubscribeReq: {}",
           req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     // unsubscribe topics
@@ -485,7 +517,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribePollReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     final List<SubscriptionEvent> events;
@@ -498,16 +530,51 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (SubscriptionPollRequestType.isValidatedRequestType(requestType)) {
       switch (SubscriptionPollRequestType.valueOf(requestType)) {
         case POLL:
+          final Set<String> pollTopicNames = ((PollPayload) request.getPayload()).getTopicNames();
+          final Set<String> subscribedTopicNames =
+              SubscriptionAgent.consumer()
+                  .getTopicNamesSubscribedByConsumer(
+                      consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+          final Set<String> topicNamesToCheck = new HashSet<>(pollTopicNames);
+          topicNamesToCheck.removeIf(topicName -> !subscribedTopicNames.contains(topicName));
+          final TSStatus ownerStatus =
+              SubscriptionAgent.topic().checkTopicOwners(consumerConfig, topicNamesToCheck);
+          if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(ownerStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollRequest(
-                  consumerConfig, (PollPayload) request.getPayload(), maxBytes);
+                  consumerConfig,
+                  (PollPayload) request.getPayload(),
+                  maxBytes,
+                  request.getProgressByTopic());
           break;
         case POLL_FILE:
+          final TSStatus tsFileOwnerStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicOwner(
+                      consumerConfig,
+                      ((PollFilePayload) request.getPayload()).getCommitContext().getTopicName());
+          if (tsFileOwnerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tsFileOwnerStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollTsFileRequest(
                   consumerConfig, (PollFilePayload) request.getPayload());
           break;
         case POLL_TABLETS:
+          final TSStatus tabletsOwnerStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicOwner(
+                      consumerConfig,
+                      ((PollTabletsPayload) request.getPayload())
+                          .getCommitContext()
+                          .getTopicName());
+          if (tabletsOwnerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tabletsOwnerStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollTabletsRequest(
                   consumerConfig, (PollTabletsPayload) request.getPayload());
@@ -565,17 +632,33 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                     }
                     totalSize.getAndAdd(size);
 
-                    SubscriptionPrefetchingQueueMetrics.getInstance()
-                        .mark(
-                            SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
-                                commitContext.getConsumerGroupId(), commitContext.getTopicName()),
-                            size);
+                    final String queueId =
+                        SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
+                            commitContext.getConsumerGroupId(), commitContext.getTopicName());
+                    if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+                        commitContext.getTopicName())) {
+                      ConsensusSubscriptionPrefetchingQueueMetrics.getInstance()
+                          .mark(queueId, size);
+                    } else {
+                      SubscriptionPrefetchingQueueMetrics.getInstance().mark(queueId, size);
+                    }
                     event.invalidateCurrentResponseByteBuffer();
-                    LOGGER.info(
-                        "Subscription: consumer {} poll {} successfully with request: {}",
-                        consumerConfig,
-                        response,
-                        req.getRequest());
+                    if (response.getResponseType()
+                            == SubscriptionPollResponseType.WATERMARK.getType()
+                        || response.getResponseType()
+                            == SubscriptionPollResponseType.TABLETS.getType()) {
+                      LOGGER.debug(
+                          "Subscription: consumer {} poll {} successfully with request: {}",
+                          consumerConfig,
+                          response,
+                          req.getRequest());
+                    } else {
+                      LOGGER.info(
+                          "Subscription: consumer {} poll {} successfully with request: {}",
+                          consumerConfig,
+                          response,
+                          req.getRequest());
+                    }
                     return byteBuffer;
                   } catch (final Exception e) {
                     final boolean isOutdated =
@@ -613,7 +696,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollRequest(
-      final ConsumerConfig consumerConfig, final PollPayload messagePayload, final long maxBytes) {
+      final ConsumerConfig consumerConfig,
+      final PollPayload messagePayload,
+      final long maxBytes,
+      final Map<String, TopicProgress> progressByTopic) {
     final Set<String> subscribedTopicNames =
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
@@ -625,7 +711,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // filter unsubscribed topics
     topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
-    return SubscriptionAgent.broker().poll(consumerConfig, topicNames, maxBytes);
+    return SubscriptionAgent.broker().poll(consumerConfig, topicNames, maxBytes, progressByTopic);
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollTsFileRequest(
@@ -655,37 +741,146 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
   }
 
-  private TPipeSubscribeResp handlePipeSubscribeCommitInternal(final PipeSubscribeCommitReq req) {
+  private TPipeSubscribeResp handlePipeSubscribeCommitInternal(final PipeSubscribeCommitReq req)
+      throws IOException {
     // check consumer config thread local
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribeCommitReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     // commit (ack or nack)
     final List<SubscriptionCommitContext> commitContexts = req.getCommitContexts();
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic()
+            .checkTopicOwners(
+                consumerConfig,
+                commitContexts.stream()
+                    .map(SubscriptionCommitContext::getTopicName)
+                    .collect(Collectors.toSet()));
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeCommitResp.toTPipeSubscribeResp(ownerStatus);
+    }
     final boolean nack = req.isNack();
-    final List<SubscriptionCommitContext> successfulCommitContexts =
-        SubscriptionAgent.broker().commit(consumerConfig, commitContexts, nack);
-
-    if (Objects.equals(successfulCommitContexts.size(), commitContexts.size())) {
-      LOGGER.info(
-          "Subscription: consumer {} commit (nack: {}) successfully, commit contexts: {}",
-          consumerConfig,
-          nack,
-          commitContexts);
-    } else {
-      LOGGER.warn(
-          "Subscription: consumer {} commit (nack: {}) partially successful, commit contexts: {}, successful commit contexts: {}",
-          consumerConfig,
-          nack,
-          commitContexts,
-          successfulCommitContexts);
+    final Set<String> subscribedTopicNames =
+        SubscriptionAgent.consumer()
+            .getTopicNamesSubscribedByConsumer(
+                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+    final List<SubscriptionCommitContext> activeCommitContexts = new ArrayList<>();
+    final List<SubscriptionCommitContext> staleUnsubscribedCommitContexts = new ArrayList<>();
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      if (Objects.nonNull(commitContext)
+          && Objects.nonNull(commitContext.getTopicName())
+          && !subscribedTopicNames.contains(commitContext.getTopicName())) {
+        staleUnsubscribedCommitContexts.add(commitContext);
+      } else {
+        activeCommitContexts.add(commitContext);
+      }
     }
 
-    return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+    final List<SubscriptionCommitContext> brokerAcceptedCommitContexts =
+        activeCommitContexts.isEmpty()
+            ? Collections.emptyList()
+            : SubscriptionAgent.broker().commit(consumerConfig, activeCommitContexts, nack);
+    final List<SubscriptionCommitContext> acceptedCommitContexts =
+        new ArrayList<>(
+            brokerAcceptedCommitContexts.size() + staleUnsubscribedCommitContexts.size());
+    acceptedCommitContexts.addAll(brokerAcceptedCommitContexts);
+    acceptedCommitContexts.addAll(staleUnsubscribedCommitContexts);
+
+    if (Objects.equals(acceptedCommitContexts.size(), commitContexts.size())) {
+      LOGGER.info(
+          "Subscription: consumer {} commit (nack: {}) accepted successfully, summary: {}",
+          consumerConfig,
+          nack,
+          summarizeCommitContexts(commitContexts));
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Subscription: consumer {} commit (nack: {}) full commit contexts: {}",
+            consumerConfig,
+            nack,
+            commitContexts);
+      }
+    } else {
+      LOGGER.warn(
+          "Subscription: consumer {} commit (nack: {}) partially accepted, requested summary: {}, accepted summary: {}, stale unsubscribed summary: {}",
+          consumerConfig,
+          nack,
+          summarizeCommitContexts(commitContexts),
+          summarizeCommitContexts(acceptedCommitContexts),
+          summarizeCommitContexts(staleUnsubscribedCommitContexts));
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Subscription: consumer {} commit (nack: {}) full requested commit contexts: {}, full accepted commit contexts: {}, full stale unsubscribed commit contexts: {}",
+            consumerConfig,
+            nack,
+            commitContexts,
+            acceptedCommitContexts,
+            staleUnsubscribedCommitContexts);
+      }
+    }
+
+    return PipeSubscribeCommitResp.toTPipeSubscribeResp(
+        RpcUtils.SUCCESS_STATUS,
+        acceptedCommitContexts,
+        SubscriptionAgent.broker()
+            .getConsensusCommittedProgressByTopic(
+                consumerConfig, brokerAcceptedCommitContexts, nack));
+  }
+
+  private static String summarizeCommitContexts(
+      final List<SubscriptionCommitContext> commitContexts) {
+    if (Objects.isNull(commitContexts) || commitContexts.isEmpty()) {
+      return "count=0";
+    }
+
+    long minLocalSeq = Long.MAX_VALUE;
+    long maxLocalSeq = Long.MIN_VALUE;
+    long minPhysicalTime = Long.MAX_VALUE;
+    long maxPhysicalTime = Long.MIN_VALUE;
+    final Set<String> regionIds = new LinkedHashSet<>();
+    final Set<String> topicNames = new LinkedHashSet<>();
+
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      if (Objects.isNull(commitContext)) {
+        continue;
+      }
+      topicNames.add(commitContext.getTopicName());
+      regionIds.add(commitContext.getRegionId());
+
+      final long localSeq = commitContext.getLocalSeq();
+      minLocalSeq = Math.min(minLocalSeq, localSeq);
+      maxLocalSeq = Math.max(maxLocalSeq, localSeq);
+
+      final long physicalTime = commitContext.getPhysicalTime();
+      minPhysicalTime = Math.min(minPhysicalTime, physicalTime);
+      maxPhysicalTime = Math.max(maxPhysicalTime, physicalTime);
+    }
+
+    return String.format(
+        "count=%d, topics=%s, regions=%s, localSeqRange=%s, physicalTimeRange=%s",
+        commitContexts.size(),
+        summarizeStringSet(topicNames, 2),
+        summarizeStringSet(regionIds, 4),
+        minLocalSeq == Long.MAX_VALUE ? "N/A" : "[" + minLocalSeq + ", " + maxLocalSeq + "]",
+        minPhysicalTime == Long.MAX_VALUE
+            ? "N/A"
+            : "[" + minPhysicalTime + ", " + maxPhysicalTime + "]");
+  }
+
+  private static String summarizeStringSet(final Set<String> values, final int maxDisplayCount) {
+    if (Objects.isNull(values) || values.isEmpty()) {
+      return "[]";
+    }
+
+    final List<String> displayValues =
+        values.stream().limit(maxDisplayCount).collect(Collectors.toList());
+    if (values.size() <= maxDisplayCount) {
+      return displayValues.toString();
+    }
+    return displayValues + "...(" + values.size() + " total)";
   }
 
   private TPipeSubscribeResp handlePipeSubscribeClose(final PipeSubscribeCloseReq req) {
@@ -708,7 +903,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribeCloseReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     closeConsumer(consumerConfig);
@@ -716,6 +911,80 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     pollTimerThreadLocal.remove();
     clearSharedConsumerState();
     return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+  }
+
+  private TPipeSubscribeResp handleSubscriptionSeek(final SubscriptionSeekReq req) {
+    try {
+      return handleSubscriptionSeekInternal(req);
+    } catch (final Exception e) {
+      LOGGER.warn("Exception occurred when seeking with request {}", req, e);
+      final String exceptionMessage =
+          String.format(
+              "Subscription: something unexpected happened when seeking with request %s: %s",
+              req, e);
+      return PipeSubscribeSeekResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SEEK_ERROR, exceptionMessage));
+    }
+  }
+
+  private TPipeSubscribeResp handleSubscriptionSeekInternal(final SubscriptionSeekReq req) {
+    // check consumer config thread local
+    final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.isNull(consumerConfig)) {
+      LOGGER.warn(
+          "Subscription: missing consumer config when handling subscription seek request: {}", req);
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
+    }
+
+    final String topicName = req.getTopicName();
+    final short seekType = req.getSeekType();
+
+    // Owner fencing: seek mutates the consumption progress, so a stale owner must not be allowed to
+    // move the position after an ownership transfer (otherwise it could corrupt the new owner's
+    // recovery point). This must be guarded just like commit.
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic().checkTopicOwner(consumerConfig, topicName);
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeSeekResp.toTPipeSubscribeResp(ownerStatus);
+    }
+
+    if (seekType == SubscriptionSeekReq.SEEK_TO_TOPIC_PROGRESS) {
+      SubscriptionAgent.broker()
+          .seekToTopicProgress(consumerConfig, topicName, req.getTopicProgress());
+      LOGGER.info(
+          "Subscription: consumer {} seek topic {} to topicProgress(regionCount={})",
+          consumerConfig,
+          topicName,
+          req.getTopicProgress().getRegionProgress().size());
+    } else if (seekType == SubscriptionSeekReq.SEEK_AFTER_TOPIC_PROGRESS) {
+      SubscriptionAgent.broker()
+          .seekAfterTopicProgress(consumerConfig, topicName, req.getTopicProgress());
+      LOGGER.info(
+          "Subscription: consumer {} seekAfter topic {} to topicProgress(regionCount={})",
+          consumerConfig,
+          topicName,
+          req.getTopicProgress().getRegionProgress().size());
+    } else if (seekType == SubscriptionSeekReq.SEEK_TO_BEGINNING
+        || seekType == SubscriptionSeekReq.SEEK_TO_END) {
+      SubscriptionAgent.broker().seek(consumerConfig, topicName, seekType);
+      LOGGER.info(
+          "Subscription: consumer {} seek topic {} with seekType={}",
+          consumerConfig,
+          topicName,
+          seekType);
+    } else {
+      final String errorMessage =
+          String.format(
+              "Subscription: unsupported seekType %s for topic %s. "
+                  + "Consensus subscription only supports seekToBeginning, seekToEnd, "
+                  + "seek(topicProgress), and seekAfter(topicProgress).",
+              seekType, topicName);
+      LOGGER.warn(errorMessage);
+      return PipeSubscribeSeekResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SEEK_ERROR, errorMessage));
+    }
+
+    return PipeSubscribeSeekResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private void closeConsumer(final ConsumerConfig consumerConfig) {

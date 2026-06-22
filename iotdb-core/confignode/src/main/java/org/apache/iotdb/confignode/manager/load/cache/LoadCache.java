@@ -82,6 +82,7 @@ public class LoadCache {
       Math.max(
           ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),
           TimeUnit.SECONDS.toMillis(10));
+  private static final int MAX_UNREADY_ENTITY_PRINT = 10;
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -494,6 +495,32 @@ public class LoadCache {
             consensusGroupStatisticsMap.put(
                 regionGroupId, consensusGroupCache.getCurrentStatistics()));
     return consensusGroupStatisticsMap;
+  }
+
+  public List<String> getNodeHeartbeatUnreadyReasons() {
+    List<Integer> unreadyNodes = new ArrayList<>();
+    nodeCacheMap.forEach(
+        (nodeId, nodeCache) -> {
+          if (nodeId == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
+            return;
+          }
+          if ((nodeCache instanceof ConfigNodeHeartbeatCache
+                  || nodeCache instanceof DataNodeHeartbeatCache)
+              && !nodeCache.hasHeartbeatSample()) {
+            unreadyNodes.add(nodeId);
+          }
+        });
+    if (unreadyNodes.isEmpty()) {
+      return Collections.emptyList();
+    }
+    Collections.sort(unreadyNodes);
+    List<Integer> nodesToPrint =
+        unreadyNodes.subList(0, Math.min(MAX_UNREADY_ENTITY_PRINT, unreadyNodes.size()));
+    String suffix =
+        unreadyNodes.size() > MAX_UNREADY_ENTITY_PRINT
+            ? "...(" + (unreadyNodes.size() - MAX_UNREADY_ENTITY_PRINT) + " more)"
+            : "";
+    return Collections.singletonList("nodes=" + nodesToPrint + suffix);
   }
 
   /**
