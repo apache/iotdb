@@ -201,6 +201,8 @@ public interface CommonConfig {
 
   CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword);
 
+  CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL);
+
   CommonConfig setEnableInternalSSL(boolean enableInternalSSL);
 
   CommonConfig setKeyStorePath(String keyStorePath);
@@ -210,6 +212,8 @@ public interface CommonConfig {
   CommonConfig setTrustStorePath(String trustStorePath);
 
   CommonConfig setTrustStorePwd(String trustStorePwd);
+
+  CommonConfig setSslProtocol(String sslProtocol);
 
   CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion);
 

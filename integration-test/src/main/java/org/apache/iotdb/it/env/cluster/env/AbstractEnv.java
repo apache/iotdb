@@ -688,6 +688,83 @@ public abstract class AbstractEnv implements BaseEnv {
     clusterConfig = new MppClusterConfig();
   }
 
+  private boolean isThriftClientSSLEnabled() {
+    return Boolean.parseBoolean(getDataNodeCommonConfigProperty("enable_thrift_ssl", "false"));
+  }
+
+  private String getDataNodeCommonConfigProperty(final String key, final String defaultValue) {
+    return ((MppCommonConfig) clusterConfig.getDataNodeCommonConfig())
+        .getProperty(key, defaultValue);
+  }
+
+  private String getClientSSLProtocol() {
+    return getDataNodeCommonConfigProperty("ssl_protocol", SessionConfig.DEFAULT_SSL_PROTOCOL);
+  }
+
+  private Properties constructConnectionProperties(
+      final String username, final String password, final String sqlDialect) {
+    final Properties info = BaseEnv.constructProperties(username, password, sqlDialect);
+    if (isThriftClientSSLEnabled()) {
+      info.put(Config.USE_SSL, Boolean.TRUE.toString());
+      putIfPresent(
+          info, Config.TRUST_STORE, getDataNodeCommonConfigProperty("trust_store_path", ""));
+      putIfPresent(
+          info, Config.TRUST_STORE_PWD, getDataNodeCommonConfigProperty("trust_store_pwd", ""));
+      putIfPresent(info, Config.SSL_PROTOCOL, getClientSSLProtocol());
+    }
+    return info;
+  }
+
+  private void putIfPresent(final Properties properties, final String key, final String value) {
+    if (value != null && !value.isEmpty()) {
+      properties.put(key, value);
+    }
+  }
+
+  private Session.Builder configureClientSSL(final Session.Builder builder) {
+    if (isThriftClientSSLEnabled()) {
+      builder
+          .useSSL(true)
+          .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
+          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
+          .sslProtocol(getClientSSLProtocol());
+    }
+    return builder;
+  }
+
+  private TableSessionBuilder configureClientSSL(final TableSessionBuilder builder) {
+    if (isThriftClientSSLEnabled()) {
+      builder
+          .useSSL(true)
+          .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
+          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
+          .sslProtocol(getClientSSLProtocol());
+    }
+    return builder;
+  }
+
+  private SessionPool.Builder configureClientSSL(final SessionPool.Builder builder) {
+    if (isThriftClientSSLEnabled()) {
+      builder
+          .useSSL(true)
+          .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
+          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
+          .sslProtocol(getClientSSLProtocol());
+    }
+    return builder;
+  }
+
+  private TableSessionPoolBuilder configureClientSSL(final TableSessionPoolBuilder builder) {
+    if (isThriftClientSSLEnabled()) {
+      builder
+          .useSSL(true)
+          .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
+          .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
+          .sslProtocol(getClientSSLProtocol());
+    }
+    return builder;
+  }
+
   @Override
   public Connection getConnection(
       final String username, final String password, final String sqlDialect) throws SQLException {
@@ -769,7 +846,8 @@ public abstract class AbstractEnv implements BaseEnv {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     final Session session =
-        new Session.Builder().host(dataNode.getIp()).port(dataNode.getPort()).build();
+        configureClientSSL(new Session.Builder().host(dataNode.getIp()).port(dataNode.getPort()))
+            .build();
     session.open();
     return session;
   }
@@ -779,10 +857,11 @@ public abstract class AbstractEnv implements BaseEnv {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     final Session session =
-        new Session.Builder()
-            .host(dataNode.getIp())
-            .port(dataNode.getPort())
-            .zoneId(zoneId)
+        configureClientSSL(
+                new Session.Builder()
+                    .host(dataNode.getIp())
+                    .port(dataNode.getPort())
+                    .zoneId(zoneId))
             .build();
     session.open();
     return session;
@@ -794,11 +873,12 @@ public abstract class AbstractEnv implements BaseEnv {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     final Session session =
-        new Session.Builder()
-            .host(dataNode.getIp())
-            .port(dataNode.getPort())
-            .username(userName)
-            .password(password)
+        configureClientSSL(
+                new Session.Builder()
+                    .host(dataNode.getIp())
+                    .port(dataNode.getPort())
+                    .username(userName)
+                    .password(password))
             .build();
     session.open();
     return session;
@@ -808,16 +888,17 @@ public abstract class AbstractEnv implements BaseEnv {
   public ISession getSessionConnection(final List<String> nodeUrls)
       throws IoTDBConnectionException {
     final Session session =
-        new Session.Builder()
-            .nodeUrls(nodeUrls)
-            .username(SessionConfig.DEFAULT_USER)
-            .password(SessionConfig.DEFAULT_PASSWORD)
-            .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
-            .zoneId(null)
-            .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
-            .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
-            .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
-            .version(SessionConfig.DEFAULT_VERSION)
+        configureClientSSL(
+                new Session.Builder()
+                    .nodeUrls(nodeUrls)
+                    .username(SessionConfig.DEFAULT_USER)
+                    .password(SessionConfig.DEFAULT_PASSWORD)
+                    .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+                    .zoneId(null)
+                    .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+                    .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+                    .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+                    .version(SessionConfig.DEFAULT_VERSION))
             .build();
     session.open();
     return session;
@@ -827,8 +908,9 @@ public abstract class AbstractEnv implements BaseEnv {
   public ITableSession getTableSessionConnection() throws IoTDBConnectionException {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    return new TableSessionBuilder()
-        .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
+    return configureClientSSL(
+            new TableSessionBuilder()
+                .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString())))
         .build();
   }
 
@@ -837,10 +919,11 @@ public abstract class AbstractEnv implements BaseEnv {
       throws IoTDBConnectionException {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    return new TableSessionBuilder()
-        .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
-        .username(userName)
-        .password(password)
+    return configureClientSSL(
+            new TableSessionBuilder()
+                .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
+                .username(userName)
+                .password(password))
         .build();
   }
 
@@ -849,23 +932,25 @@ public abstract class AbstractEnv implements BaseEnv {
       throws IoTDBConnectionException {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    return new TableSessionBuilder()
-        .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
-        .database(database)
+    return configureClientSSL(
+            new TableSessionBuilder()
+                .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
+                .database(database))
         .build();
   }
 
   public ITableSession getTableSessionConnection(List<String> nodeUrls)
       throws IoTDBConnectionException {
-    return new TableSessionBuilder()
-        .nodeUrls(nodeUrls)
-        .username(SessionConfig.DEFAULT_USER)
-        .password(SessionConfig.DEFAULT_PASSWORD)
-        .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
-        .zoneId(null)
-        .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
-        .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
-        .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+    return configureClientSSL(
+            new TableSessionBuilder()
+                .nodeUrls(nodeUrls)
+                .username(SessionConfig.DEFAULT_USER)
+                .password(SessionConfig.DEFAULT_PASSWORD)
+                .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+                .zoneId(null)
+                .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+                .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+                .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE))
         .build();
   }
 
@@ -873,12 +958,13 @@ public abstract class AbstractEnv implements BaseEnv {
   public ISessionPool getSessionPool(final int maxSize) {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    return new SessionPool.Builder()
-        .host(dataNode.getIp())
-        .port(dataNode.getPort())
-        .user(SessionConfig.DEFAULT_USER)
-        .password(SessionConfig.DEFAULT_PASSWORD)
-        .maxSize(maxSize)
+    return configureClientSSL(
+            new SessionPool.Builder()
+                .host(dataNode.getIp())
+                .port(dataNode.getPort())
+                .user(SessionConfig.DEFAULT_USER)
+                .password(SessionConfig.DEFAULT_PASSWORD)
+                .maxSize(maxSize))
         .build();
   }
 
@@ -886,11 +972,12 @@ public abstract class AbstractEnv implements BaseEnv {
   public ITableSessionPool getTableSessionPool(final int maxSize) {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    return new TableSessionPoolBuilder()
-        .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
-        .user(SessionConfig.DEFAULT_USER)
-        .password(SessionConfig.DEFAULT_PASSWORD)
-        .maxSize(maxSize)
+    return configureClientSSL(
+            new TableSessionPoolBuilder()
+                .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
+                .user(SessionConfig.DEFAULT_USER)
+                .password(SessionConfig.DEFAULT_PASSWORD)
+                .maxSize(maxSize))
         .build();
   }
 
@@ -898,12 +985,13 @@ public abstract class AbstractEnv implements BaseEnv {
   public ITableSessionPool getTableSessionPool(final int maxSize, final String database) {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    return new TableSessionPoolBuilder()
-        .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
-        .user(SessionConfig.DEFAULT_USER)
-        .password(SessionConfig.DEFAULT_PASSWORD)
-        .database(database)
-        .maxSize(maxSize)
+    return configureClientSSL(
+            new TableSessionPoolBuilder()
+                .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
+                .user(SessionConfig.DEFAULT_USER)
+                .password(SessionConfig.DEFAULT_PASSWORD)
+                .database(database)
+                .maxSize(maxSize))
         .build();
   }
 
@@ -927,7 +1015,7 @@ public abstract class AbstractEnv implements BaseEnv {
             Config.IOTDB_URL_PREFIX
                 + endpoint
                 + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
-            BaseEnv.constructProperties(username, password, sqlDialect));
+            constructConnectionProperties(username, password, sqlDialect));
     return new NodeConnection(
         endpoint,
         NodeConnection.NodeRole.DATA_NODE,
@@ -984,7 +1072,7 @@ public abstract class AbstractEnv implements BaseEnv {
                               Config.IOTDB_URL_PREFIX
                                   + endpoint
                                   + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
-                              BaseEnv.constructProperties(username, password, sqlDialect))));
+                              constructConnectionProperties(username, password, sqlDialect))));
             });
     return readConnRequestDelegate.requestAll();
   }
@@ -1031,7 +1119,7 @@ public abstract class AbstractEnv implements BaseEnv {
                     Config.IOTDB_URL_PREFIX
                         + dataNode.getIpAndPortString()
                         + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
-                    BaseEnv.constructProperties(username, password, sqlDialect))));
+                    constructConnectionProperties(username, password, sqlDialect))));
 
     return readConnRequestDelegate.requestAll();
   }
@@ -1063,8 +1151,10 @@ public abstract class AbstractEnv implements BaseEnv {
                           Config.IOTDB_URL_PREFIX
                               + dataNodeEndpoint
                               + getParam(null, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
-                          System.getProperty("User", "root"),
-                          System.getProperty("Password", "root"))) {
+                          constructConnectionProperties(
+                              System.getProperty("User", "root"),
+                              System.getProperty("Password", "root"),
+                              TREE_SQL_DIALECT))) {
                 logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
                 return null;
               } catch (final Exception e) {

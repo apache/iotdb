@@ -443,6 +443,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
       int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
     return this;
@@ -476,6 +481,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setTrustStorePwd(String trustStorePwd) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
     return this;
   }
 

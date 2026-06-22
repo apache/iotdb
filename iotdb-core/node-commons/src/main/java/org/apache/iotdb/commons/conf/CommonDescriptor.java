@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -658,5 +659,13 @@ public class CommonDescriptor {
     config.setTrustStorePath(
         properties.getProperty("trust_store_path", config.getTrustStorePath()));
     config.setTrustStorePwd(properties.getProperty("trust_store_pwd", config.getTrustStorePwd()));
+    config.setSslProtocol(
+        RpcSslUtils.normalizeProtocol(
+            properties.getProperty("ssl_protocol", config.getSslProtocol())));
+    configureRpcSsl();
+  }
+
+  public void configureRpcSsl() {
+    RpcSslUtils.configure(config.getSslProtocol());
   }
 }

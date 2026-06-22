@@ -652,6 +652,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    cnConfig.setEnableThriftClientSSL(enableThriftClientSSL);
+    dnConfig.setEnableThriftClientSSL(enableThriftClientSSL);
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
     cnConfig.setEnableInternalSSL(enableInternalSSL);
     dnConfig.setEnableInternalSSL(enableInternalSSL);
@@ -683,6 +690,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setTrustStorePwd(String trustStorePwd) {
     cnConfig.setTrustStorePwd(trustStorePwd);
     dnConfig.setTrustStorePwd(trustStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    cnConfig.setSslProtocol(sslProtocol);
+    dnConfig.setSslProtocol(sslProtocol);
     return this;
   }
 
