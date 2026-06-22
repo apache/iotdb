@@ -38,10 +38,13 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public abstract class PipeSubtaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutor.class);
+
+  private static final long WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS = 60L;
 
   private static final ExecutorService globalSubtaskCallbackListeningExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -78,7 +81,11 @@ public abstract class PipeSubtaskExecutor {
             : ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName();
     underlyingThreadPool =
         (WrappedThreadPoolExecutor)
-            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, workingThreadName);
+            IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
+                corePoolSize,
+                WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS,
+                TimeUnit.SECONDS,
+                workingThreadName);
     if (disableLogInThreadPool) {
       underlyingThreadPool.disableErrorLog();
     }
