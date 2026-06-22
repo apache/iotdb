@@ -294,12 +294,21 @@ public class AlignedChunkData implements ChunkData {
   }
 
   protected void writeTsFileData(TsFileIOWriter writer) throws IOException, PageException {
+    ensureDataReadyForWriting();
     final InputStream stream = new LoadTsFilePieceNode.ByteBufferInputStream(chunkData);
     if (needDecodeChunk) {
       writeChunkToWriter(stream, writer);
     } else {
       writeEntireChunkToWriter(stream, writer);
     }
+  }
+
+  private void ensureDataReadyForWriting() throws IOException {
+    if (chunkData != null) {
+      chunkData.rewind();
+      return;
+    }
+    chunkData = ByteBuffer.wrap(byteStream.getBuf(), 0, byteStream.size());
   }
 
   protected void deserializeTsFileDataByte(final InputStream stream) throws IOException {

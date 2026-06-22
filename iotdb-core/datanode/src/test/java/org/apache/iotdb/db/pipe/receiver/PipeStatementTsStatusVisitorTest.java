@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -60,6 +61,19 @@ public class PipeStatementTsStatusVisitorTest {
                     .setSubStatus(
                         Arrays.asList(
                             StatusUtils.OK, new TSStatus(TSStatusCode.OUT_OF_TTL.getStatusCode()))))
+            .getCode());
+  }
+
+  @Test
+  public void testDatabaseNotExistRuntimeExceptionClassification() {
+    Assert.assertEquals(
+        TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode(),
+        IoTDBDataNodeReceiver.STATEMENT_EXCEPTION_VISITOR
+            .process(
+                new InsertRowsStatement(),
+                new IoTDBRuntimeException(
+                    "Create DataPartition failed because the database: root.test.sg_0 is not exists",
+                    TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()))
             .getCode());
   }
 }

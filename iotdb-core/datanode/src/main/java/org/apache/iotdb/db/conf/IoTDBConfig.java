@@ -87,8 +87,7 @@ public class IoTDBConfig {
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   public static final String CONFIG_NAME = "iotdb-system.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
-  private static final String MULTI_DIR_STRATEGY_PREFIX =
-      "org.apache.iotdb.db.storageengine.rescon.disk.strategy.";
+  private static final String MULTI_DIR_STRATEGY_PREFIX = "org.apache.iotdb.commons.disk.strategy.";
   private static final String[] CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES =
       new String[] {"SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy"};
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
@@ -1063,6 +1062,15 @@ public class IoTDBConfig {
 
   private int dataRatisConsensusMaxRetryAttempts = 10;
   private int schemaRatisConsensusMaxRetryAttempts = 10;
+
+  /**
+   * RatisConsensus protocol, max retry attempts for a configuration change (add/remove peer). Uses
+   * a fixed 2s retry interval; bounding the attempts stops a killed ADDING peer from blocking the
+   * reconfiguration -- and hence a region migration -- forever. Pushed from the ConfigNode.
+   */
+  private int dataRatisConsensusReconfigurationMaxRetryAttempts = 15;
+
+  private int schemaRatisConsensusReconfigurationMaxRetryAttempts = 15;
   private long dataRatisConsensusInitialSleepTimeMs = 100L;
   private long schemaRatisConsensusInitialSleepTimeMs = 100L;
   private long dataRatisConsensusMaxSleepTimeMs = 10000L;
@@ -1218,6 +1226,8 @@ public class IoTDBConfig {
   private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
 
   private boolean includeNullValueInWriteThroughputMetric = false;
+
+  private boolean keepSameDiskWhenLoadingSnapshot = true;
 
   private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
       new ConcurrentHashMap<>(
@@ -3831,6 +3841,26 @@ public class IoTDBConfig {
     this.schemaRatisConsensusMaxRetryAttempts = schemaRatisConsensusMaxRetryAttempts;
   }
 
+  public int getDataRatisConsensusReconfigurationMaxRetryAttempts() {
+    return dataRatisConsensusReconfigurationMaxRetryAttempts;
+  }
+
+  public void setDataRatisConsensusReconfigurationMaxRetryAttempts(
+      int dataRatisConsensusReconfigurationMaxRetryAttempts) {
+    this.dataRatisConsensusReconfigurationMaxRetryAttempts =
+        dataRatisConsensusReconfigurationMaxRetryAttempts;
+  }
+
+  public int getSchemaRatisConsensusReconfigurationMaxRetryAttempts() {
+    return schemaRatisConsensusReconfigurationMaxRetryAttempts;
+  }
+
+  public void setSchemaRatisConsensusReconfigurationMaxRetryAttempts(
+      int schemaRatisConsensusReconfigurationMaxRetryAttempts) {
+    this.schemaRatisConsensusReconfigurationMaxRetryAttempts =
+        schemaRatisConsensusReconfigurationMaxRetryAttempts;
+  }
+
   public long getDataRatisConsensusInitialSleepTimeMs() {
     return dataRatisConsensusInitialSleepTimeMs;
   }
@@ -4133,11 +4163,17 @@ public class IoTDBConfig {
   }
 
   public String getLoadActiveListeningPipeDir() {
-    return loadActiveListeningPipeDir;
+    return loadActiveListeningPipeDir == null || Objects.equals(loadActiveListeningPipeDir, "")
+        ? extDir
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.PIPE_FOLDER_NAME
+        : loadActiveListeningPipeDir;
   }
 
   public void setLoadActiveListeningPipeDir(String loadActiveListeningPipeDir) {
-    this.loadActiveListeningPipeDir = loadActiveListeningPipeDir;
+    this.loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
   }
 
   public String[] getLoadActiveListeningDirs() {
@@ -4432,6 +4468,14 @@ public class IoTDBConfig {
 
   public void setPasswordLockTimeMinutes(int passwordLockTimeMinutes) {
     this.passwordLockTimeMinutes = passwordLockTimeMinutes;
+  }
+
+  public boolean isKeepSameDiskWhenLoadingSnapshot() {
+    return keepSameDiskWhenLoadingSnapshot;
+  }
+
+  public void setKeepSameDiskWhenLoadingSnapshot(boolean keepSameDiskWhenLoadingSnapshot) {
+    this.keepSameDiskWhenLoadingSnapshot = keepSameDiskWhenLoadingSnapshot;
   }
 
   public ConcurrentHashMap<String, EncryptParameter> getTSFileDBToEncryptMap() {

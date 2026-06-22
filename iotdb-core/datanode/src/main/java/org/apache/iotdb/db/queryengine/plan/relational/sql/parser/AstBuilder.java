@@ -142,6 +142,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ZeroOrMoreQuantifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ZeroOrOneQuantifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
+import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
@@ -158,10 +159,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -192,6 +195,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
@@ -315,6 +319,7 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.APPROX_PERCENTILE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.PERCENTILE;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_END;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_START;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
@@ -404,6 +409,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitShowDatabasesStatement(
       final RelationalSqlParser.ShowDatabasesStatementContext ctx) {
     return new ShowDB(getLocation(ctx), Objects.nonNull(ctx.DETAILS()));
+  }
+
+  @Override
+  public Node visitCountDatabasesStatement(
+      final RelationalSqlParser.CountDatabasesStatementContext ctx) {
+    return new CountDB(getLocation(ctx));
   }
 
   @Override
@@ -1383,6 +1394,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new CreateTopic(topicName, hasIfNotExistsCondition, topicAttributes);
   }
 
+  @Override
+  public Node visitAlterTopicStatement(RelationalSqlParser.AlterTopicStatementContext ctx) {
+    final String topicName = ((Identifier) visit(ctx.identifier())).getValue();
+    return new AlterTopic(
+        topicName, parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause()));
+  }
+
   private Map<String, String> parseTopicAttributesClause(
       List<RelationalSqlParser.TopicAttributeClauseContext> contexts) {
     final Map<String, String> tppicMap = new HashMap<>();
@@ -1813,7 +1831,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else {
       innerStatement = (Statement) visit(ctx.executeImmediateStatement());
     }
-    return new Explain(getLocation(ctx), innerStatement);
+    ExplainOutputFormat format = ExplainOutputFormat.GRAPHVIZ;
+    if (ctx.identifier() != null) {
+      String formatStr = ((Identifier) visit(ctx.identifier())).getValue().toUpperCase();
+      switch (formatStr) {
+        case "GRAPHVIZ":
+          format = ExplainOutputFormat.GRAPHVIZ;
+          break;
+        case "JSON":
+          format = ExplainOutputFormat.JSON;
+          break;
+        default:
+          throw new SemanticException(
+              "Invalid EXPLAIN format: " + formatStr + ". Supported formats: GRAPHVIZ, JSON");
+      }
+    }
+    return new Explain(getLocation(ctx), innerStatement, format);
   }
 
   @Override
@@ -1826,7 +1859,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else {
       innerStatement = (Statement) visit(ctx.executeImmediateStatement());
     }
-    return new ExplainAnalyze(getLocation(ctx), ctx.VERBOSE() != null, innerStatement);
+    ExplainOutputFormat format = ExplainOutputFormat.TEXT;
+    if (ctx.identifier() != null) {
+      String formatStr = ((Identifier) visit(ctx.identifier())).getValue().toUpperCase();
+      switch (formatStr) {
+        case "TEXT":
+          format = ExplainOutputFormat.TEXT;
+          break;
+        case "JSON":
+          format = ExplainOutputFormat.JSON;
+          break;
+        default:
+          throw new SemanticException(
+              "Invalid EXPLAIN ANALYZE format: " + formatStr + ". Supported formats: TEXT, JSON");
+      }
+    }
+    return new ExplainAnalyze(getLocation(ctx), ctx.VERBOSE() != null, innerStatement, format);
   }
 
   // ********************** author expressions ********************
@@ -2392,6 +2440,43 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitNextFill(RelationalSqlParser.NextFillContext ctx) {
+    TimeDuration timeBound = null;
+    LongLiteral timeColumn = null;
+    List<LongLiteral> fillGroupingElements = null;
+    if (ctx.timeBoundClause() != null) {
+      timeBound =
+          DataNodeDateTimeUtils.constructTimeDuration(
+              ctx.timeBoundClause().timeDuration().getText());
+
+      if (timeBound.monthDuration != 0 && timeBound.nonMonthDuration != 0) {
+        throw new SemanticException(
+            "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+      }
+    }
+
+    if (ctx.timeColumnClause() != null) {
+      timeColumn =
+          new LongLiteral(
+              getLocation(ctx.timeColumnClause().INTEGER_VALUE()),
+              ctx.timeColumnClause().INTEGER_VALUE().getText());
+    }
+
+    if (ctx.fillGroupClause() != null) {
+      fillGroupingElements =
+          ctx.fillGroupClause().INTEGER_VALUE().stream()
+              .map(index -> new LongLiteral(getLocation(index), index.getText()))
+              .collect(toList());
+    }
+
+    if (timeColumn != null && (timeBound == null && fillGroupingElements == null)) {
+      throw new SemanticException(
+          "Don't need to specify TIME_COLUMN while either TIME_BOUND or FILL_GROUP parameter is not specified");
+    }
+    return new Fill(getLocation(ctx), FillPolicy.NEXT, timeBound, timeColumn, fillGroupingElements);
+  }
+
+  @Override
   public Node visitLinearFill(RelationalSqlParser.LinearFillContext ctx) {
     LongLiteral timeColumn = null;
     List<LongLiteral> fillGroupingElements = null;
@@ -2550,10 +2635,24 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitGroupBy(RelationalSqlParser.GroupByContext ctx) {
+  public Node visitAllGroupBy(RelationalSqlParser.AllGroupByContext ctx) {
+    return new GroupBy(getLocation(ctx), false, true, ImmutableList.of());
+  }
+
+  @Override
+  public Node visitExplicitGroupBy(RelationalSqlParser.ExplicitGroupByContext ctx) {
+    if (ctx.setQuantifier() == null && ctx.groupingElement().size() > 1) {
+      for (RelationalSqlParser.GroupingElementContext element : ctx.groupingElement()) {
+        if (element.getText().equalsIgnoreCase("ALL")) {
+          throw new SemanticException(
+              "GROUP BY ALL cannot be combined with explicit grouping elements");
+        }
+      }
+    }
     return new GroupBy(
         getLocation(ctx),
         isDistinct(ctx.setQuantifier()),
+        false,
         visit(ctx.groupingElement(), GroupingElement.class));
   }
 
@@ -3610,6 +3709,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       } else if (arguments.size() == 3 && !(arguments.get(2) instanceof DoubleLiteral)) {
         throw new SemanticException(
             "The third argument of 'approx_percentile' function percentage must be a double literal");
+      }
+    } else if (name.toString().equalsIgnoreCase(PERCENTILE)) {
+      if (arguments.size() == 2 && !(arguments.get(1) instanceof DoubleLiteral)) {
+        throw new SemanticException(
+            "The second argument of 'percentile' function percentage must be a double literal");
       }
     }
 

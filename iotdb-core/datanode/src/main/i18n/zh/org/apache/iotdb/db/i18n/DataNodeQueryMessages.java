@@ -30,15 +30,6 @@ public final class DataNodeQueryMessages {
   public static final String THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAMEASUREMENTNODE =
       "该节点不是 SchemaMeasurementNode 实例。";
 
-  // --- Execution ---
-
-  public static final String ERROR_SETTING_FUTURE_STATE_FOR =
-      "为 {} 设置 future 状态时出错";
-  public static final String ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR =
-      "通知 {} 的状态变更监听器时出错";
-  public static final String SERVER_IS_SHUTTING_DOWN =
-      "服务器正在关闭";
-
   // --- Execution / Aggregation ---
 
   public static final String INVALID_AGGREGATION_FUNCTION =
@@ -136,6 +127,8 @@ public final class DataNodeQueryMessages {
 
   public static final String FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED =
       "释放的内存超过已预留的量。";
+  public static final String ESTIMATED_MODS_TREE_SIZE_DECREASED =
+      "估算的 mods tree 大小从 %d 减少到 %d，TsFile：%s。";
 
   // --- Execution / Operator ---
 
@@ -258,6 +251,8 @@ public final class DataNodeQueryMessages {
       "左侧表达式不是标识符：";
   public static final String THE_LEFT_HAND_VALUE_MUST_BE_AN_IDENTIFIER =
       "左侧值必须是标识符：";
+  public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
+      "表 '%s' 不包含时间列";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "标签谓词的运算符必须为 '='，目标：";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =
@@ -546,6 +541,8 @@ public final class DataNodeQueryMessages {
       "START PIPE 不支持此 SQL，请输入管道名。";
   public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_STOP_PIPE =
       "STOP PIPE 不支持此 SQL，请输入管道名。";
+  public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_ALTER_TOPIC =
+      "ALTER TOPIC 不支持此 SQL，请输入 topic 名。";
   public static final String GET_REGION_ID_STATEMENT_EXPRESSION_MUST_BE_A =
       "GET REGION ID 语句的表达式必须是时间表达式";
   public static final String WRONG_SPACE_QUOTA_TYPE =
@@ -1421,5 +1418,11 @@ public final class DataNodeQueryMessages {
 
   public static final String CANT_CONNECT_TO_NODE_PREFIX = "无法连接到节点 ";
   public static final String REMOVE_AINODE_FAILED = "移除 AINode 失败：";
+
+  public static final String QUERY_TIMEOUT_IN_FETCH_SCHEMA = "查询在拉取元数据时，执行超时";
+
+  public static final String QUERY_EXECUTION_MISSING = "查询执行实体 %s 在拉取元数据期间丢失";
+
+
   private DataNodeQueryMessages() {}
 }

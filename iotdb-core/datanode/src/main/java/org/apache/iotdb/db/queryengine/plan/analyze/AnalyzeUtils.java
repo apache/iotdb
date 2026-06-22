@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -37,8 +36,10 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -368,16 +369,32 @@ public class AnalyzeUtils {
 
     try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // TODO: may use time and db/table to filter
-      final TRegionRouteMapResp latestRegionRouteMap = configNodeClient.getLatestRegionRouteMap();
-      final Set<TRegionReplicaSet> replicaSets = new HashSet<>();
-      latestRegionRouteMap.getRegionRouteMap().entrySet().stream()
-          .filter(e -> e.getKey().getType() == TConsensusGroupType.DataRegion)
-          .forEach(e -> replicaSets.add(e.getValue()));
-      node.setReplicaSets(replicaSets);
+      node.setReplicaSets(fetchDeleteReplicaSets(configNodeClient, node));
+    } catch (final IoTDBRuntimeException e) {
+      throw e;
     } catch (final Exception e) {
       throw new IoTDBRuntimeException(e, TSStatusCode.CAN_NOT_CONNECT_CONFIGNODE.getStatusCode());
     }
+  }
+
+  static Set<TRegionReplicaSet> fetchDeleteReplicaSets(
+      final ConfigNodeClient configNodeClient, final Delete node) throws Exception {
+    final Set<TRegionReplicaSet> replicaSets = new HashSet<>();
+    for (final TableDeletionEntry tableDeletionEntry : node.getTableDeletionEntries()) {
+      final TGetRegionGroupsByTimeResp resp =
+          configNodeClient.getRegionGroupsByTime(
+              new TGetRegionGroupsByTimeReq(
+                  node.getDatabaseName(),
+                  tableDeletionEntry.getStartTime(),
+                  tableDeletionEntry.getEndTime()));
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(resp.getStatus());
+      }
+      if (resp.isSetRegionReplicaSets()) {
+        replicaSets.addAll(resp.getRegionReplicaSets());
+      }
+    }
+    return replicaSets;
   }
 
   @SuppressWarnings("java:S3655") // optional is checked
@@ -569,7 +586,7 @@ public class AnalyzeUtils {
     }
     Identifier identifier = (Identifier) left;
     // time predicate
-    if (identifier.getValue().equalsIgnoreCase("time")) {
+    if (identifier.getValue().equalsIgnoreCase(getTimeColumnName(table))) {
       long rightHandValue;
       if (right instanceof LongLiteral) {
         rightHandValue = ((LongLiteral) right).getParsedValue();
@@ -614,6 +631,17 @@ public class AnalyzeUtils {
 
     IDPredicate newPredicate = getTagPredicate(comparisonExpression, right, tagColumnOrdinal);
     return combinePredicates(oldPredicate, newPredicate);
+  }
+
+  private static String getTimeColumnName(final TsTable table) {
+    final TsTableColumnSchema timeColumnSchema = table.getTimeColumnSchema();
+    if (Objects.isNull(timeColumnSchema)) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages.THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN,
+              table.getTableName()));
+    }
+    return timeColumnSchema.getColumnName();
   }
 
   private static IDPredicate getTagPredicate(

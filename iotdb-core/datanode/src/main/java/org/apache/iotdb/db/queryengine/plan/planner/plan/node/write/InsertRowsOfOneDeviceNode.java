@@ -110,6 +110,27 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     return this;
   }
 
+  @Override
+  public SearchNode setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    insertRowNodeList.forEach(plan -> plan.setPhysicalTime(physicalTime));
+    return this;
+  }
+
+  @Override
+  public SearchNode setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    insertRowNodeList.forEach(plan -> plan.setNodeId(nodeId));
+    return this;
+  }
+
+  @Override
+  public SearchNode setSyncIndex(long syncIndex) {
+    this.syncIndex = syncIndex;
+    insertRowNodeList.forEach(plan -> plan.setSyncIndex(syncIndex));
+    return this;
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
   }
@@ -219,7 +240,10 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
       String[] measurements = insertRowNode.getMeasurements();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
-      for (int i = 0; i < measurements.length; i++) {
+      for (int i = 0; measurements != null && i < measurements.length; i++) {
+        if (measurements[i] == null || dataTypes == null || i >= dataTypes.length) {
+          continue;
+        }
         if (!measurementSet.contains(measurements[i])) {
           measurementList.add(measurements[i]);
           dataTypeList.add(dataTypes[i]);

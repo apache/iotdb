@@ -327,6 +327,8 @@ public enum ConfigPhysicalPlanType {
 
   ShowSubscription((short) 2000),
 
+  CommitProgressHandleMetaChange((short) 2001),
+
   // Authority version after and equal 2.0
   DropUserV2((short) 2100),
   UpdateUserV2((short) 2101),
@@ -334,6 +336,7 @@ public enum ConfigPhysicalPlanType {
   RDropUserV2((short) 2103),
   RenameUser((short) 2104),
   RRenameUser((short) 2105),
+  AccountUnlock((short) 2106),
 
   EnableSeparationOfAdminPowers((short) 2200),
 

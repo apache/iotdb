@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
@@ -315,6 +316,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case UpdateUserV2:
         case CreateUserWithRawPassword:
         case RenameUser:
+        case AccountUnlock:
           plan = new AuthorTreePlan(configPhysicalPlanType);
           break;
         case RCreateUser:
@@ -347,6 +349,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RRevokeUserSysPri:
         case RRevokeRoleSysPri:
         case RRenameUser:
+        case RAccountUnlock:
           plan = new AuthorRelationalPlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:
@@ -555,6 +558,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case ConsumerGroupHandleMetaChange:
           plan = new ConsumerGroupHandleMetaChangePlan();
+          break;
+        case CommitProgressHandleMetaChange:
+          plan = new CommitProgressHandleMetaChangePlan();
           break;
         case PipeUnsetTemplate:
           plan = new PipeUnsetSchemaTemplatePlan();

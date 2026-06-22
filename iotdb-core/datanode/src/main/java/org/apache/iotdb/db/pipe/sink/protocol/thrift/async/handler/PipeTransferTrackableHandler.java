@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
@@ -50,6 +51,10 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void onComplete(final TPipeTransferResp response) {
+    if (Objects.nonNull(client) && Objects.nonNull(response)) {
+      sink.recordReceiverStatus(client.getEndPoint(), response.getStatus());
+    }
+
     if (sink.isClosed()) {
       clearEventsReferenceCount();
       sink.eliminateHandler(this, true);
@@ -99,22 +104,37 @@ public abstract class PipeTransferTrackableHandler
     }
     // track handler before checking if connector is closed
     sink.trackHandler(this);
-    if (sink.isClosed()) {
-      clearEventsReferenceCount();
-      sink.eliminateHandler(this, true);
-      client.setShouldReturnSelf(true);
-      client.returnSelf(
-          (e) -> {
-            if (e instanceof IllegalStateException) {
-              LOGGER.info(DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO);
-              return true;
-            }
-            return false;
-          });
-      this.client = null;
+    if (returnFalseIfSinkIsClosed(client)) {
+      return false;
+    }
+    sink.waitIfReceiverTemporarilyUnavailable(client.getEndPoint());
+    if (returnFalseIfSinkIsClosed(client)) {
       return false;
     }
     doTransfer(client, req);
+    return true;
+  }
+
+  private boolean returnFalseIfSinkIsClosed(final AsyncPipeDataTransferServiceClient client) {
+    if (!sink.isClosed()) {
+      return false;
+    }
+
+    clearEventsReferenceCount();
+    sink.eliminateHandler(this, true);
+    client.setShouldReturnSelf(true);
+    client.returnSelf(
+        (e) -> {
+          if (e instanceof IllegalStateException) {
+            PipeLogger.log(
+                ignored ->
+                    LOGGER.info(DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO),
+                DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO);
+            return true;
+          }
+          return false;
+        });
+    this.client = null;
     return true;
   }
 
@@ -139,9 +159,9 @@ public abstract class PipeTransferTrackableHandler
       return;
     }
 
-    LOGGER.warn(
-        "The body size of the request is too large. The request will be sliced. Origin req: {}-{}. "
-            + "Request body size: {}, threshold: {}",
+    PipeLogger.log(
+        LOGGER::warn,
+        "The body size of the request is too large. The request will be sliced. Origin req: %s-%s. Request body size: %s, threshold: %s",
         req.getVersion(),
         req.getType(),
         req.body.limit(),
@@ -184,6 +204,10 @@ public abstract class PipeTransferTrackableHandler
             if (sink.isClosed() || sliceIndex == sliceCount - 1) {
               PipeTransferTrackableHandler.this.onComplete(response);
               return;
+            }
+
+            if (Objects.nonNull(response)) {
+              sink.recordReceiverStatus(client.getEndPoint(), response.getStatus());
             }
 
             if (response == null) {
@@ -242,14 +266,19 @@ public abstract class PipeTransferTrackableHandler
       final TPipeTransferReq originalReq,
       final boolean shouldReturnSelf,
       final Exception exception) {
-    LOGGER.warn(
-        "Failed to transfer slice. Origin req: {}-{}. Retry the whole transfer.",
+    PipeLogger.log(
+        LOGGER::warn,
+        exception,
+        "Failed to transfer slice. Origin req: %s-%s. Retry the whole transfer.",
         originalReq.getVersion(),
-        originalReq.getType(),
-        exception);
+        originalReq.getType());
 
     try {
       client.setShouldReturnSelf(shouldReturnSelf);
+      sink.waitIfReceiverTemporarilyUnavailable(client.getEndPoint());
+      if (returnFalseIfSinkIsClosed(client)) {
+        return;
+      }
       client.pipeTransfer(originalReq, this);
     } catch (final Exception e) {
       PipeTransferTrackableHandler.this.onError(e);

@@ -98,7 +98,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -317,6 +319,7 @@ public class StorageEngine implements IService {
     }
 
     asyncRecoverTsFileResource();
+    loadTsFileManager.start();
   }
 
   private void startTimedService() {
@@ -401,6 +404,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
+    loadTsFileManager.stop();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
         CompactionScheduleTaskManager.getInstance().unregisterDataRegion(dataRegion);
@@ -419,6 +423,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
+    loadTsFileManager.stop();
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {
@@ -1108,12 +1113,14 @@ public class StorageEngine implements IService {
 
   public void getDiskSizeByDataRegion(
       Map<Integer, Long> dataRegionDisk, List<Integer> dataRegionIds) {
-    dataRegionMap.forEach(
-        (dataRegionId, dataRegion) -> {
-          if (dataRegionIds.contains(dataRegionId.getId())) {
-            dataRegionDisk.put(dataRegionId.getId(), dataRegion.countRegionDiskSize());
-          }
-        });
+    final Collection<Integer> targetDataRegionIds =
+        dataRegionIds.size() > 1 ? new HashSet<>(dataRegionIds) : dataRegionIds;
+    for (Integer dataRegionId : targetDataRegionIds) {
+      final DataRegion dataRegion = dataRegionMap.get(new DataRegionId(dataRegionId));
+      if (dataRegion != null) {
+        dataRegionDisk.put(dataRegionId, dataRegion.countRegionDiskSize());
+      }
+    }
   }
 
   public static File getDataRegionSystemDir(String dataBaseName, String dataRegionId) {

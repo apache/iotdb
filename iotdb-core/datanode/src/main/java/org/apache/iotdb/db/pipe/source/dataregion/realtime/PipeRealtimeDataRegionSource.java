@@ -511,9 +511,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     } else {
       // This would not happen, but just in case.
       LOGGER.error(
-          "Heartbeat Event {} can not be supplied because "
-              + "the reference count can not be increased",
-          event.getEvent());
+          DataNodePipeMessages.HEARTBEAT_EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE, event.getEvent());
 
       // Do not report exception since the PipeHeartbeatEvent doesn't affect
       // the correction of pipe progress.
@@ -531,9 +529,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       // event and report the exception to PipeRuntimeAgent.
       final String errorMessage =
           String.format(
-              "Event %s can not be supplied because "
-                  + "the reference count can not be increased, "
-                  + "the data represented by this event is lost",
+              DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
               event.getEvent());
       LOGGER.error(errorMessage);
       PipeDataNodeAgent.runtime()

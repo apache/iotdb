@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
@@ -369,7 +371,7 @@ public class ConfigNodeDescriptor {
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());
     if (AbstractLeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
-        || AbstractLeaderBalancer.CFD_POLICY.equals(leaderDistributionPolicy)
+        || AbstractLeaderBalancer.CFS_POLICY.equals(leaderDistributionPolicy)
         || AbstractLeaderBalancer.HASH_POLICY.equals(leaderDistributionPolicy)) {
       conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
@@ -383,12 +385,6 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "enable_auto_leader_balance_for_ratis_consensus",
                 String.valueOf(conf.isEnableAutoLeaderBalanceForRatisConsensus()))));
-
-    conf.setEnableAutoLeaderBalanceForIoTConsensus(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_auto_leader_balance_for_iot_consensus",
-                String.valueOf(conf.isEnableAutoLeaderBalanceForIoTConsensus()))));
 
     String routePriorityPolicy =
         properties.getProperty("route_priority_policy", conf.getRoutePriorityPolicy());
@@ -629,6 +625,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "config_node_ratis_max_retry_attempts",
                 String.valueOf(conf.getConfigNodeRatisMaxRetryAttempts()))));
+    conf.setConfigNodeRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "config_node_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getConfigNodeRatisReconfigurationMaxRetryAttempts()))));
     conf.setConfigNodeRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -645,6 +646,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "data_region_ratis_max_retry_attempts",
                 String.valueOf(conf.getDataRegionRatisMaxRetryAttempts()))));
+    conf.setDataRegionRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_region_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getDataRegionRatisReconfigurationMaxRetryAttempts()))));
     conf.setDataRegionRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -661,6 +667,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_region_ratis_max_retry_attempts",
                 String.valueOf(conf.getSchemaRegionRatisMaxRetryAttempts()))));
+    conf.setSchemaRegionRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_region_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getSchemaRegionRatisReconfigurationMaxRetryAttempts()))));
     conf.setSchemaRegionRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -811,12 +822,18 @@ public class ConfigNodeDescriptor {
     }
   }
 
-  public void loadHotModifiedProps(TrimProperties properties) {
+  public void loadHotModifiedProps(TrimProperties properties) throws IOException {
     ConfigurationFileUtils.updateAppliedProperties(properties, true);
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
     Optional.ofNullable(properties.getProperty("enable_topology_probing"))
         .ifPresent(v -> conf.setEnableTopologyProbing(Boolean.parseBoolean(v)));
+    loadPipeHotModifiedProp(properties);
+  }
+
+  private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
+    PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
+    PipePeriodicalLogReducer.update();
   }
 
   public static ConfigNodeDescriptor getInstance() {

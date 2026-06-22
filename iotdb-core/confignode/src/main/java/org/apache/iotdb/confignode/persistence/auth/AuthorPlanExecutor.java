@@ -124,6 +124,9 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         case RenameUser:
           authorizer.renameUser(userName, newUsername);
           break;
+        case AccountUnlock:
+          checkUserExistsForAccountUnlock(userName);
+          break;
         case CreateUser:
           authorizer.createUser(userName, password);
           break;
@@ -241,6 +244,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           authorizer.renameUser(userName, newUsername);
           break;
         case RAccountUnlock:
+          checkUserExistsForAccountUnlock(userName);
           break;
         case RDropRole:
           authorizer.deleteRole(roleName);
@@ -446,6 +450,14 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
       return RpcUtils.getStatus(e.getCode(), e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  private void checkUserExistsForAccountUnlock(final String userName) throws AuthException {
+    // Account unlock has no persistent ConfigNode auth state change, but the write path needs this
+    // validation before broadcasting DataNode unlocks and propagating through pipe.
+    if (authorizer.getUser(userName) == null) {
+      throw new AuthException(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + userName);
+    }
   }
 
   @Override

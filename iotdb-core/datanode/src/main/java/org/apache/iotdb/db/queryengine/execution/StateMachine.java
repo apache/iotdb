@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -242,7 +242,7 @@ public class StateMachine<T> {
           try {
             futureStateChange.complete(newState);
           } catch (Throwable e) {
-            LOGGER.error(DataNodeQueryMessages.ERROR_SETTING_FUTURE_STATE_FOR, name, e);
+            LOGGER.error(CalcMessages.ERROR_SETTING_FUTURE_STATE_FOR, name, e);
           }
           for (StateChangeListener<T> stateChangeListener : stateChangeListeners) {
             fireStateChangedListener(newState, stateChangeListener);
@@ -255,7 +255,7 @@ public class StateMachine<T> {
     try {
       stateChangeListener.stateChanged(newState);
     } catch (Throwable e) {
-      LOGGER.error(DataNodeQueryMessages.ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR, name, e);
+      LOGGER.error(CalcMessages.ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR, name, e);
     }
   }
 
@@ -327,7 +327,7 @@ public class StateMachine<T> {
       executor.execute(command);
     } catch (RejectedExecutionException e) {
       if ((executor instanceof ExecutorService) && ((ExecutorService) executor).isShutdown()) {
-        throw new RuntimeException(DataNodeQueryMessages.SERVER_IS_SHUTTING_DOWN, e);
+        throw new RuntimeException(CalcMessages.SERVER_IS_SHUTTING_DOWN, e);
       }
       throw e;
     }

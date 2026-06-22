@@ -47,7 +47,6 @@ import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
 import org.apache.iotdb.it.env.cluster.config.MppConfigNodeConfig;
 import org.apache.iotdb.it.env.cluster.config.MppDataNodeConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
-import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -97,18 +96,22 @@ import static org.apache.iotdb.jdbc.Config.VERSION;
 
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = IoTDBTestLogger.logger;
+  private static final int DEFAULT_CLUSTER_READY_RETRY_COUNT = 30;
+  private static final String CLUSTER_READY_RETRY_COUNT_PROPERTY =
+      "integrationTest.clusterReadyRetryCount";
 
   private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
-  protected List<AINodeWrapper> aiNodeWrapperList = Collections.emptyList();
+  protected List<AbstractNodeWrapper> extraNodeWrappers = Collections.emptyList();
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
-  protected int retryCount = 30;
+  protected int retryCount = getDefaultClusterReadyRetryCount();
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
   private List<String> configNodeKillPoints = new ArrayList<>();
   private List<String> dataNodeKillPoints = new ArrayList<>();
+  protected List<String> extraNodeKillPoints = new ArrayList<>();
 
   /**
    * This config object stores the properties set by developers during the test. It will be cleared
@@ -126,6 +129,12 @@ public abstract class AbstractEnv implements BaseEnv {
   protected AbstractEnv(final long startTime) {
     this.startTime = startTime;
     this.clusterConfig = new MppClusterConfig();
+  }
+
+  private static int getDefaultClusterReadyRetryCount() {
+    final int configuredRetryCount =
+        Integer.getInteger(CLUSTER_READY_RETRY_COUNT_PROPERTY, DEFAULT_CLUSTER_READY_RETRY_COUNT);
+    return configuredRetryCount > 0 ? configuredRetryCount : DEFAULT_CLUSTER_READY_RETRY_COUNT;
   }
 
   @Override
@@ -169,17 +178,10 @@ public abstract class AbstractEnv implements BaseEnv {
 
   protected void initEnvironment(
       final int configNodesNum, final int dataNodesNum, final int testWorkingRetryCount) {
-    initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount, false);
-  }
-
-  protected void initEnvironment(
-      final int configNodesNum,
-      final int dataNodesNum,
-      final int retryCount,
-      final boolean addAINode) {
-    this.retryCount = retryCount;
+    this.retryCount = testWorkingRetryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
+    this.extraNodeWrappers = new ArrayList<>();
 
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
@@ -258,12 +260,32 @@ public abstract class AbstractEnv implements BaseEnv {
       throw new AssertionError();
     }
 
-    if (addAINode) {
-      this.aiNodeWrapperList = new ArrayList<>();
-      startAINode(seedConfigNode, this.dataNodeWrapperList.get(0).getPort(), testClassName);
-    }
+    initExtraNodes(configNodeWrapperList, dataNodeWrapperList, testClassName);
 
     checkClusterStatusWithoutUnknown();
+  }
+
+  /**
+   * Hook method for subclasses to initialize and start extra node types beyond the core ConfigNode
+   * and DataNode (e.g., AINode, StreamNode, ProxyNode).
+   *
+   * <p>Subclasses should create node wrappers, add them to {@link #extraNodeWrappers}, configure
+   * kill points via {@link #extraNodeKillPoints}, and start the nodes. Subclasses have direct
+   * access to protected fields: {@code testMethodName}, {@code index}, {@code startTime}.
+   *
+   * @param configNodeWrappers list of all ConfigNode wrappers in the cluster (unmodifiable)
+   * @param dataNodeWrappers list of all DataNode wrappers in the cluster (unmodifiable)
+   * @param testClassName the test class name for logging and identification purposes
+   */
+  protected void initExtraNodes(
+      final List<ConfigNodeWrapper> configNodeWrappers,
+      final List<DataNodeWrapper> dataNodeWrappers,
+      final String testClassName) {
+    // Default: no extra nodes. Subclasses override to add nodes.
+  }
+
+  protected void registerExtraNode(final AbstractNodeWrapper nodeWrapper) {
+    extraNodeWrappers.add(nodeWrapper);
   }
 
   private ConfigNodeWrapper newConfigNode() {
@@ -307,39 +329,6 @@ public abstract class AbstractEnv implements BaseEnv {
     dataNodeWrapper.createLogDir();
     dataNodeWrapper.setKillPoints(dataNodeKillPoints);
     return dataNodeWrapper;
-  }
-
-  private void startAINode(
-      final String seedConfigNode, final int clusterIngressPort, final String testClassName) {
-    final String aiNodeEndPoint;
-    final AINodeWrapper aiNodeWrapper =
-        new AINodeWrapper(
-            seedConfigNode,
-            clusterIngressPort,
-            testClassName,
-            testMethodName,
-            index,
-            EnvUtils.searchAvailablePorts(),
-            startTime);
-    aiNodeWrapperList.add(aiNodeWrapper);
-    aiNodeEndPoint = aiNodeWrapper.getIpAndPortString();
-    aiNodeWrapper.createNodeDir();
-    aiNodeWrapper.createLogDir();
-    final RequestDelegate<Void> aiNodesDelegate =
-        new ParallelRequestDelegate<>(
-            Collections.singletonList(aiNodeEndPoint), NODE_START_TIMEOUT, this);
-
-    aiNodesDelegate.addRequest(
-        () -> {
-          aiNodeWrapper.start();
-          return null;
-        });
-
-    try {
-      aiNodesDelegate.requestAll();
-    } catch (final SQLException e) {
-      logger.error("Start aiNodes failed", e);
-    }
   }
 
   public String getTestClassName() {
@@ -421,22 +410,23 @@ public abstract class AbstractEnv implements BaseEnv {
         processStatusMap.clear();
 
         showClusterResp = client.showCluster();
+        showClusterStatus = showClusterResp.getStatus();
+        actualNodeSize = showClusterResp.getNodeStatusSize();
+        lastNodeStatus = showClusterResp.getNodeStatus();
 
         // Check resp status
         if (showClusterResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           passed = false;
           showClusterPassed = false;
-          showClusterStatus = showClusterResp.getStatus();
         }
 
         // Check the number of nodes
         if (showClusterResp.getNodeStatus().size()
             != configNodeWrapperList.size()
                 + dataNodeWrapperList.size()
-                + aiNodeWrapperList.size()) {
+                + extraNodeWrappers.size()) {
           passed = false;
           nodeSizePassed = false;
-          actualNodeSize = showClusterResp.getNodeStatusSize();
         }
 
         // Check the status of nodes
@@ -444,7 +434,6 @@ public abstract class AbstractEnv implements BaseEnv {
           passed = nodeStatusCheck.test(showClusterResp.getNodeStatus());
           if (!passed) {
             nodeStatusPassed = false;
-            lastNodeStatus = showClusterResp.getNodeStatus();
           }
         }
 
@@ -465,7 +454,7 @@ public abstract class AbstractEnv implements BaseEnv {
             processStatusMap.put(nodeWrapper, 0);
           }
         }
-        for (AINodeWrapper nodeWrapper : aiNodeWrapperList) {
+        for (AbstractNodeWrapper nodeWrapper : extraNodeWrappers) {
           boolean alive = nodeWrapper.getInstance().isAlive();
           if (!alive) {
             processStatusMap.put(nodeWrapper, nodeWrapper.getInstance().waitFor());
@@ -530,8 +519,93 @@ public abstract class AbstractEnv implements BaseEnv {
       }
     }
 
+    dumpTestJVMSnapshotQuietly("cluster status check failed");
     throw new AssertionError(
-        String.format("After %d times retry, the cluster can't work!", retryCount));
+        buildClusterStatusFailureMessage(
+            showClusterPassed,
+            nodeSizePassed,
+            nodeStatusPassed,
+            processStatusPassed,
+            showClusterStatus,
+            actualNodeSize,
+            lastNodeStatus,
+            processStatusMap,
+            lastException));
+  }
+
+  private String buildClusterStatusFailureMessage(
+      final boolean showClusterPassed,
+      final boolean nodeSizePassed,
+      final boolean nodeStatusPassed,
+      final boolean processStatusPassed,
+      final TSStatus showClusterStatus,
+      final int actualNodeSize,
+      final Map<Integer, String> lastNodeStatus,
+      final Map<AbstractNodeWrapper, Integer> processStatusMap,
+      final Exception lastException) {
+    final StringBuilder builder =
+        new StringBuilder(
+            String.format("After %d times retry, the cluster status check failed", retryCount));
+    builder
+        .append(": showClusterPassed=")
+        .append(showClusterPassed)
+        .append(", nodeSizePassed=")
+        .append(nodeSizePassed)
+        .append(", nodeStatusPassed=")
+        .append(nodeStatusPassed)
+        .append(", processStatusPassed=")
+        .append(processStatusPassed)
+        .append(", expectedNodeSize=")
+        .append(
+            configNodeWrapperList.size() + dataNodeWrapperList.size() + aiNodeWrapperList.size())
+        .append(", actualNodeSize=")
+        .append(actualNodeSize);
+    if (showClusterStatus != null) {
+      builder.append(", showClusterStatus=").append(showClusterStatus);
+    }
+    if (lastNodeStatus != null) {
+      builder.append(", lastNodeStatus=").append(lastNodeStatus);
+    }
+    if (!processStatusMap.isEmpty()) {
+      builder.append(", processStatus=").append(formatProcessStatus(processStatusMap));
+    }
+    if (lastException != null) {
+      builder
+          .append(", lastException=")
+          .append(lastException.getClass().getName())
+          .append(": ")
+          .append(lastException.getMessage());
+    }
+    builder.append(", logDirs=").append(getClusterLogDirs());
+    return builder.toString();
+  }
+
+  private Map<String, Integer> formatProcessStatus(
+      final Map<AbstractNodeWrapper, Integer> processStatusMap) {
+    final Map<String, Integer> result = new LinkedHashMap<>();
+    processStatusMap.forEach(
+        (nodeWrapper, statusCode) -> result.put(nodeWrapper.getId(), statusCode));
+    return result;
+  }
+
+  private List<String> getClusterLogDirs() {
+    final List<AbstractNodeWrapper> allNodeWrappers = new ArrayList<>();
+    allNodeWrappers.addAll(configNodeWrapperList);
+    allNodeWrappers.addAll(dataNodeWrapperList);
+    allNodeWrappers.addAll(aiNodeWrapperList);
+    return allNodeWrappers.stream()
+        .map(AbstractNodeWrapper::getLogDirPath)
+        .distinct()
+        .collect(Collectors.toList());
+  }
+
+  private void dumpTestJVMSnapshotQuietly(final String reason) {
+    try {
+      logger.info("Dumping test JVM snapshots because {}.", reason);
+      dumpTestJVMSnapshot();
+    } catch (final Exception e) {
+      logger.warn("Failed to dump test JVM snapshots after {}", reason, e);
+    }
   }
 
   private void handleProcessStatus(Map<AbstractNodeWrapper, Integer> processStatusMap) {
@@ -568,14 +642,14 @@ public abstract class AbstractEnv implements BaseEnv {
               configNodeWrapper.start();
             }
           }
-          for (AINodeWrapper aiNodeWrapper : aiNodeWrapperList) {
-            if (portOccupationMap.containsValue(aiNodeWrapper.getPid())) {
+          for (AbstractNodeWrapper extraNodeWrapper : extraNodeWrappers) {
+            if (portOccupationMap.containsValue(extraNodeWrapper.getPid())) {
               logger.info(
-                  "A port is occupied by another AINode {}-{}, restart it",
-                  aiNodeWrapper.getIpAndPortString(),
-                  aiNodeWrapper.getPid());
-              aiNodeWrapper.stop();
-              aiNodeWrapper.start();
+                  "A port is occupied by another node {}-{}, restart it",
+                  extraNodeWrapper.getIpAndPortString(),
+                  extraNodeWrapper.getPid());
+              extraNodeWrapper.stop();
+              extraNodeWrapper.start();
             }
           }
         } catch (IOException e) {
@@ -592,8 +666,8 @@ public abstract class AbstractEnv implements BaseEnv {
   public void cleanClusterEnvironment() {
     final List<AbstractNodeWrapper> allNodeWrappers =
         Stream.concat(
-                dataNodeWrapperList.stream(),
-                Stream.concat(configNodeWrapperList.stream(), aiNodeWrapperList.stream()))
+                Stream.concat(configNodeWrapperList.stream(), dataNodeWrapperList.stream()),
+                extraNodeWrappers.stream())
             .collect(Collectors.toList());
     allNodeWrappers.stream()
         .findAny()
@@ -976,6 +1050,7 @@ public abstract class AbstractEnv implements BaseEnv {
             .collect(Collectors.toList());
     final RequestDelegate<Void> testDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT, this);
+    final Map<String, String> lastConnectionFailures = Collections.synchronizedMap(new HashMap<>());
     for (final DataNodeWrapper dataNode : dataNodeWrapperList) {
       final String dataNodeEndpoint = dataNode.getIpAndPortString();
       testDelegate.addRequest(
@@ -994,6 +1069,8 @@ public abstract class AbstractEnv implements BaseEnv {
                 return null;
               } catch (final Exception e) {
                 lastException = e;
+                lastConnectionFailures.put(
+                    dataNodeEndpoint, e.getClass().getName() + ": " + e.getMessage());
                 TimeUnit.SECONDS.sleep(1L);
               }
             }
@@ -1007,8 +1084,11 @@ public abstract class AbstractEnv implements BaseEnv {
       testDelegate.requestAll();
     } catch (final Exception e) {
       logger.error("exception in test Cluster with RPC, message: {}", e.getMessage(), e);
+      dumpTestJVMSnapshotQuietly("JDBC connection check failed");
       throw new AssertionError(
-          String.format("After %d times retry, the cluster can't work!", retryCount));
+          String.format(
+              "After %d times retry, JDBC connections to DataNodes are not ready. endpoints=%s, lastConnectionFailures=%s, logDirs=%s",
+              retryCount, endpoints, lastConnectionFailures, getClusterLogDirs()));
     }
   }
 
@@ -1045,6 +1125,7 @@ public abstract class AbstractEnv implements BaseEnv {
   public List<AbstractNodeWrapper> getNodeWrapperList() {
     final List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
     result.addAll(dataNodeWrapperList);
+    result.addAll(extraNodeWrappers);
     return result;
   }
 

@@ -164,6 +164,9 @@ public class LimitOperatorTest {
       int count = 0;
       while (limitOperator.isBlocked().isDone() && limitOperator.hasNext()) {
         TsBlock tsBlock = limitOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);

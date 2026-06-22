@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -39,10 +40,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_KEY;
@@ -84,8 +85,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   // If the leader cache is enabled, the batch will be divided by the leader endpoint,
   // each endpoint has a batch.
   // This is only used in plain batch since tsfile does not return redirection info.
-  private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch =
-      new ConcurrentHashMap<>();
+  private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch = new HashMap<>();
 
   public PipeTransferBatchReqBuilder(final PipeParameters parameters) {
     final boolean usingTsFileBatch =
@@ -181,38 +181,48 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   public synchronized List<Pair<TEndPoint, PipeTabletEventBatch>>
       getAllNonEmptyAndShouldEmitBatches() {
     final List<Pair<TEndPoint, PipeTabletEventBatch>> nonEmptyAndShouldEmitBatches =
-        new ArrayList<>();
+        new ArrayList<>(endPointToBatch.size() + 1);
     if (!defaultBatch.isEmpty() && defaultBatch.shouldEmit()) {
       nonEmptyAndShouldEmitBatches.add(new Pair<>(null, defaultBatch));
     }
-    endPointToBatch.forEach(
-        (endPoint, batch) -> {
-          if (!batch.isEmpty() && batch.shouldEmit()) {
-            nonEmptyAndShouldEmitBatches.add(new Pair<>(endPoint, batch));
-          }
-        });
+    for (final Map.Entry<TEndPoint, PipeTabletEventPlainBatch> entry : endPointToBatch.entrySet()) {
+      final PipeTabletEventPlainBatch batch = entry.getValue();
+      if (!batch.isEmpty() && batch.shouldEmit()) {
+        nonEmptyAndShouldEmitBatches.add(new Pair<>(entry.getKey(), batch));
+      }
+    }
     return nonEmptyAndShouldEmitBatches;
   }
 
-  public boolean isEmpty() {
-    return defaultBatch.isEmpty()
-        && endPointToBatch.values().stream().allMatch(PipeTabletEventPlainBatch::isEmpty);
+  public synchronized boolean isEmpty() {
+    if (!defaultBatch.isEmpty()) {
+      return false;
+    }
+    for (final PipeTabletEventPlainBatch batch : endPointToBatch.values()) {
+      if (!batch.isEmpty()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public synchronized void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
-    defaultBatch.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
-    endPointToBatch
-        .values()
-        .forEach(batch -> batch.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId));
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
   }
 
-  public int size() {
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
+    defaultBatch.discardEventsOfPipe(committerKey);
+    endPointToBatch.values().forEach(batch -> batch.discardEventsOfPipe(committerKey));
+  }
+
+  public synchronized int size() {
     try {
-      return defaultBatch.events.size()
-          + endPointToBatch.values().stream()
-              .map(batch -> batch.events.size())
-              .reduce(0, Integer::sum);
+      int size = defaultBatch.events.size();
+      for (final PipeTabletEventPlainBatch batch : endPointToBatch.values()) {
+        size += batch.events.size();
+      }
+      return size;
     } catch (final Exception e) {
       LOGGER.warn(
           DataNodePipeMessages.FAILED_TO_GET_THE_SIZE_OF_PIPETRANSFERBATCHREQBUILDER,

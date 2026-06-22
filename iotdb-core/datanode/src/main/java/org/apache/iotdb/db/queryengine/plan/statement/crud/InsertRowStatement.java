@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -99,7 +100,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
+    if (measurements == null) {
+      return ret;
+    }
     for (String m : measurements) {
+      if (m == null) {
+        continue;
+      }
       PartialPath fullPath = devicePath.concatAsMeasurementPath(m);
       ret.add(fullPath);
     }
@@ -120,6 +127,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   public void setValues(Object[] values) {
     this.values = values;
+    deviceID = null;
+  }
+
+  @Override
+  public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
+    super.setColumnCategories(columnCategories);
+    deviceID = null;
   }
 
   public boolean isNeedInferType() {
@@ -193,11 +207,27 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public Object getFirstValueOfIndex(int index) {
+    if (values == null || index < 0 || index >= values.length) {
+      return null;
+    }
     return values[index];
   }
 
   @Override
+  public boolean isColumnPresent(final int index) {
+    return super.isColumnPresent(index) && values != null && index < values.length;
+  }
+
+  @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    if (dataTypes == null
+        || values == null
+        || columnIndex < 0
+        || columnIndex >= dataTypes.length
+        || columnIndex >= values.length
+        || dataTypes[columnIndex] == null) {
+      return false;
+    }
     if (dataType.isCompatible(dataTypes[columnIndex])) {
       values[columnIndex] =
           dataType.castFromSingleValue(dataTypes[columnIndex], values[columnIndex]);
@@ -213,8 +243,18 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void transferType(ZoneId zoneId) throws QueryProcessException {
+    if (measurementSchemas == null) {
+      return;
+    }
 
     for (int i = 0; i < measurementSchemas.length; i++) {
+      if (!isColumnPresent(i)
+          || values == null
+          || i >= values.length
+          || dataTypes == null
+          || i >= dataTypes.length) {
+        continue;
+      }
       // null when time series doesn't exist
       if (measurementSchemas[i] == null) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -266,7 +306,10 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public void markFailedMeasurement(int index, Exception cause) {
-    if (measurements[index] == null) {
+    if (measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null) {
       return;
     }
 
@@ -276,12 +319,19 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
     InsertBaseStatement.FailedMeasurementInfo failedMeasurementInfo =
         new InsertBaseStatement.FailedMeasurementInfo(
-            measurements[index], dataTypes[index], values[index], cause);
+            measurements[index],
+            dataTypes != null && index < dataTypes.length ? dataTypes[index] : null,
+            values != null && index < values.length ? values[index] : null,
+            cause);
     failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
 
     measurements[index] = null;
-    dataTypes[index] = null;
-    values[index] = null;
+    if (dataTypes != null && index < dataTypes.length) {
+      dataTypes[index] = null;
+    }
+    if (values != null && index < values.length) {
+      values[index] = null;
+    }
   }
 
   @Override
@@ -291,15 +341,15 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
-          if (measurements != null) {
+          if (measurements != null && index < measurements.length) {
             measurements[index] = info.getMeasurement();
           }
 
-          if (dataTypes != null) {
+          if (dataTypes != null && index < dataTypes.length) {
             dataTypes[index] = info.getDataType();
           }
 
-          if (values != null) {
+          if (values != null && index < values.length) {
             values[index] = info.getValue();
           }
         });
@@ -347,12 +397,19 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       TSDataType[] dataTypes = new TSDataType[pairList.size()];
       for (int i = 0; i < pairList.size(); i++) {
         int realIndex = pairList.get(i).right;
-        copiedValues[i] = this.values[realIndex];
+        copiedValues[i] =
+            this.values != null && realIndex < this.values.length ? this.values[realIndex] : null;
         measurements[i] =
             Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
-        measurementSchemas[i] = this.measurementSchemas[realIndex];
-        dataTypes[i] = this.dataTypes[realIndex];
-        if (this.measurementIsAligned != null) {
+        measurementSchemas[i] =
+            this.measurementSchemas != null && realIndex < this.measurementSchemas.length
+                ? this.measurementSchemas[realIndex]
+                : null;
+        dataTypes[i] =
+            this.dataTypes != null && realIndex < this.dataTypes.length
+                ? this.dataTypes[realIndex]
+                : null;
+        if (this.measurementIsAligned != null && realIndex < this.measurementIsAligned.length) {
           statement.setAligned(this.measurementIsAligned[realIndex]);
         }
       }
@@ -399,14 +456,22 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public TSDataType getDataType(int index) {
-    if (isNeedInferType && (dataTypes == null || dataTypes[index] == null)) {
+    if (index < 0 || measurements == null || index >= measurements.length) {
+      return null;
+    }
+    if (isNeedInferType
+        && (dataTypes == null || index >= dataTypes.length || dataTypes[index] == null)) {
       if (dataTypes == null) {
         dataTypes = new TSDataType[measurements.length];
+      } else if (index >= dataTypes.length) {
+        dataTypes = Arrays.copyOf(dataTypes, measurements.length);
       }
-      dataTypes[index] = TypeInferenceUtils.getPredictedDataType(values[index], true);
+      dataTypes[index] =
+          TypeInferenceUtils.getPredictedDataType(
+              values != null && index < values.length ? values[index] : null, true);
       return dataTypes[index];
     } else {
-      return dataTypes != null ? dataTypes[index] : null;
+      return dataTypes != null && index < dataTypes.length ? dataTypes[index] : null;
     }
   }
 
@@ -429,6 +494,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
     if (measurementSchemas == null) {
       measurementSchemas = new MeasurementSchema[measurements.length];
+    } else if (index >= measurementSchemas.length) {
+      measurementSchemas = Arrays.copyOf(measurementSchemas, measurements.length);
     }
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
@@ -463,6 +530,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     if (this.measurementIsAligned == null) {
       this.measurementIsAligned = new boolean[this.measurements.length];
       Arrays.fill(this.measurementIsAligned, this.isAligned);
+    } else if (index >= this.measurementIsAligned.length) {
+      this.measurementIsAligned =
+          Arrays.copyOf(this.measurementIsAligned, this.measurements.length);
     }
     this.measurementIsAligned[index] = isAligned;
   }
@@ -506,8 +576,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < getTagColumnIndices().size(); i++) {
         final Integer columnIndex = getTagColumnIndices().get(i);
-        deviceIdSegments[i + 1] =
-            values[columnIndex] != null ? values[columnIndex].toString() : null;
+        final Object idSegment =
+            values != null && columnIndex >= 0 && columnIndex < values.length
+                ? values[columnIndex]
+                : null;
+        deviceIdSegments[i + 1] = idSegment != null ? idSegment.toString() : null;
       }
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -530,17 +603,23 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public void insertColumn(int pos, ColumnSchema columnSchema) {
     super.insertColumn(pos, columnSchema);
-    Object[] tmpValues = new Object[values.length + 1];
-    System.arraycopy(values, 0, tmpValues, 0, pos);
-    System.arraycopy(values, pos, tmpValues, pos + 1, values.length - pos);
+    Object[] tmpValues = new Object[measurements.length];
+    copyWithInsertedSlot(values, tmpValues, pos);
     values = tmpValues;
+    deviceID = null;
   }
 
   @TableModel
   @Override
   public void swapColumn(int src, int target) {
     super.swapColumn(src, target);
+    if (values == null) {
+      values = new Object[measurements.length];
+    } else if (values.length < measurements.length) {
+      values = Arrays.copyOf(values, measurements.length);
+    }
     CommonUtils.swapArray(values, src, target);
+    deviceID = null;
   }
 
   @TableModel
@@ -574,15 +653,19 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         }
       } else {
         // Copy from old array
-        values[newIdx] = oldValues[oldIdx];
+        if (oldValues != null && oldIdx < oldValues.length) {
+          values[newIdx] = oldValues[oldIdx];
+        }
         if (newMeasurementIsAligned != null && oldMeasurementIsAligned != null) {
-          newMeasurementIsAligned[newIdx] = oldMeasurementIsAligned[oldIdx];
+          newMeasurementIsAligned[newIdx] =
+              oldIdx < oldMeasurementIsAligned.length && oldMeasurementIsAligned[oldIdx];
         }
       }
     }
 
     // Replace old array with new array
     measurementIsAligned = newMeasurementIsAligned;
+    deviceID = null;
   }
 
   @Override
@@ -596,8 +679,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     if (values != null) {
-      values = columnsToKeep.stream().map(i -> values[i]).toArray();
+      values = columnsToKeep.stream().filter(i -> i < values.length).map(i -> values[i]).toArray();
     }
+    deviceID = null;
   }
 
   @Override

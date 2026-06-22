@@ -30,15 +30,6 @@ public final class DataNodeQueryMessages {
   public static final String THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAMEASUREMENTNODE =
       "This node isn't instance of SchemaMeasurementNode.";
 
-  // --- Execution ---
-
-  public static final String ERROR_SETTING_FUTURE_STATE_FOR =
-      "Error setting future state for {}";
-  public static final String ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR =
-      "Error notifying state change listener for {}";
-  public static final String SERVER_IS_SHUTTING_DOWN =
-      "Server is shutting down";
-
   // --- Execution / Aggregation ---
 
   public static final String INVALID_AGGREGATION_FUNCTION =
@@ -136,6 +127,8 @@ public final class DataNodeQueryMessages {
 
   public static final String FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED =
       "Free more memory than has been reserved.";
+  public static final String ESTIMATED_MODS_TREE_SIZE_DECREASED =
+      "Estimated mods tree size decreased from %d to %d for TsFile %s.";
 
   // --- Execution / Operator ---
 
@@ -259,6 +252,8 @@ public final class DataNodeQueryMessages {
       "Left hand expression is not an identifier: ";
   public static final String THE_LEFT_HAND_VALUE_MUST_BE_AN_IDENTIFIER =
       "The left hand value must be an identifier: ";
+  public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
+      "The table '%s' does not contain a time column";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "The operator of tag predicate must be '=' for ";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =
@@ -547,6 +542,8 @@ public final class DataNodeQueryMessages {
       "Not support for this sql in START PIPE, please enter pipename.";
   public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_STOP_PIPE =
       "Not support for this sql in STOP PIPE, please enter pipename.";
+  public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_ALTER_TOPIC =
+      "Not support for this sql in ALTER TOPIC, please enter topicName.";
   public static final String GET_REGION_ID_STATEMENT_EXPRESSION_MUST_BE_A =
       "Get region id statement‘ expression must be a time expression";
   public static final String WRONG_SPACE_QUOTA_TYPE =
@@ -1422,5 +1419,10 @@ public final class DataNodeQueryMessages {
 
   public static final String CANT_CONNECT_TO_NODE_PREFIX = "can't connect to node ";
   public static final String REMOVE_AINODE_FAILED = "Remove AINode failed: ";
+
+  public static final String QUERY_TIMEOUT_IN_FETCH_SCHEMA = "Query execution is time out while fetching schema";
+
+  public static final String QUERY_EXECUTION_MISSING = "Query execution %s is missing during fetching device schema";
+
   private DataNodeQueryMessages() {}
 }

@@ -111,7 +111,13 @@ public class InformationSchema {
             ColumnHeaderConstant.SCHEMA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_SCHEMA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
     schemaTables.put(DATABASES, databaseTable);
 
     final TsTable tableTable = new TsTable(TABLES);
@@ -360,6 +366,8 @@ public class InformationSchema {
     tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
     tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
     tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.REGION_ID_TABLE_MODEL, TSDataType.INT32));
@@ -433,6 +441,7 @@ public class InformationSchema {
         ImmutableSet.of(
             ColumnHeaderConstant.DATABASE.toLowerCase(),
             ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL,
+            ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL,
             ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL,
             ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
             ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));

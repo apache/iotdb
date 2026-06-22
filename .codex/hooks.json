@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; echo \"$f\" | grep -q '\\.java$' && mvn spotless:apply -f \"$(git rev-parse --show-toplevel)/pom.xml\" -DspotlessFiles=\"$(echo \"$f\" | sed 's/[.[\\\\/^$|?*+(){}]/\\\\&/g')\" -q || true; }",
+            "timeout": 30,
+            "statusMessage": "Running spotless format..."
+          }
+        ]
+      }
+    ]
+  }
+}
