@@ -381,18 +381,7 @@ public class PipeReceiverRuntimeRegistryTest {
     assertEquals(2, snapshots.get(0).getConnectionCount());
     assertEquals(2, snapshots.get(0).getPipeCount());
 
-    registry.registerOrUpdateSession(
-        "data-1",
-        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
-        1,
-        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
-        "10.0.0.1",
-        9001,
-        "root",
-        "cluster-a",
-        null,
-        Long.MIN_VALUE,
-        300);
+    registry.removePipeFromAllSessions("pipe-a", 1);
 
     snapshots = registry.snapshot();
     assertEquals(1, snapshots.size());
