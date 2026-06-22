@@ -112,6 +112,7 @@ public class IoTDBDataSourceFactoryTest {
     properties.setProperty(Config.USE_SSL, "true");
     properties.setProperty(Config.TRUST_STORE, "trust-store");
     properties.setProperty(Config.TRUST_STORE_PWD, "trust-store-password");
+    properties.setProperty(Config.SSL_PROTOCOL, "TLSv1.3");
     properties.setProperty(Config.SQL_DIALECT, Constant.TABLE);
     properties.setProperty(Utils.RPC_COMPRESS, "true");
 
@@ -124,6 +125,7 @@ public class IoTDBDataSourceFactoryTest {
     assertEquals("true", dataSource.getConnectionProperty(Config.USE_SSL));
     assertEquals("trust-store", dataSource.getConnectionProperty(Config.TRUST_STORE));
     assertEquals("trust-store-password", dataSource.getConnectionProperty(Config.TRUST_STORE_PWD));
+    assertEquals("TLSv1.3", dataSource.getConnectionProperty(Config.SSL_PROTOCOL));
     assertEquals(Constant.TABLE, dataSource.getConnectionProperty(Config.SQL_DIALECT));
     assertEquals("true", dataSource.getConnectionProperty(Utils.RPC_COMPRESS));
   }

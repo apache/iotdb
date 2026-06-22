@@ -30,15 +30,6 @@ public final class DataNodeQueryMessages {
   public static final String THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAMEASUREMENTNODE =
       "This node isn't instance of SchemaMeasurementNode.";
 
-  // --- Execution ---
-
-  public static final String ERROR_SETTING_FUTURE_STATE_FOR =
-      "Error setting future state for {}";
-  public static final String ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR =
-      "Error notifying state change listener for {}";
-  public static final String SERVER_IS_SHUTTING_DOWN =
-      "Server is shutting down";
-
   // --- Execution / Aggregation ---
 
   public static final String INVALID_AGGREGATION_FUNCTION =
@@ -551,6 +542,8 @@ public final class DataNodeQueryMessages {
       "Not support for this sql in START PIPE, please enter pipename.";
   public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_STOP_PIPE =
       "Not support for this sql in STOP PIPE, please enter pipename.";
+  public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_ALTER_TOPIC =
+      "Not support for this sql in ALTER TOPIC, please enter topicName.";
   public static final String GET_REGION_ID_STATEMENT_EXPRESSION_MUST_BE_A =
       "Get region id statement‘ expression must be a time expression";
   public static final String WRONG_SPACE_QUOTA_TYPE =

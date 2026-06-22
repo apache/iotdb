@@ -261,6 +261,47 @@ public class WritePlanNodeSplitTest {
   }
 
   @Test
+  public void testSplitInsertTabletSkipsClearedMeasurementWithRetainedColumn()
+      throws IllegalPathException {
+    InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 1"));
+
+    insertTabletNode.setTargetPath(new PartialPath("root.sg1.d1"));
+    insertTabletNode.setMeasurements(new String[] {"s0", null});
+    insertTabletNode.setTimes(
+        new long[] {-200, -101, 1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
+    insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32, TSDataType.INT32});
+    insertTabletNode.setColumns(
+        new Object[] {
+          new int[] {-20, -10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+          new int[] {-2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+        });
+    insertTabletNode.setRowCount(insertTabletNode.getTimes().length);
+    final BitMap[] bitMaps = new BitMap[] {null, new BitMap(insertTabletNode.getRowCount())};
+    bitMaps[1].mark(2);
+    insertTabletNode.setBitMaps(bitMaps);
+
+    DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+    dataPartitionQueryParam.setDeviceID(
+        insertTabletNode.getTargetPath().getIDeviceIDAsFullDevice());
+    dataPartitionQueryParam.setTimePartitionSlotList(insertTabletNode.getTimePartitionSlots());
+
+    DataPartition dataPartition =
+        getDataPartition(Collections.singletonList(dataPartitionQueryParam));
+    Analysis analysis = new Analysis();
+    analysis.setDataPartitionInfo(dataPartition);
+
+    List<WritePlanNode> insertTabletNodeList = insertTabletNode.splitByPartition(analysis);
+
+    Assert.assertEquals(6, insertTabletNodeList.size());
+    for (WritePlanNode insertNode : insertTabletNodeList) {
+      InsertTabletNode tabletNode = (InsertTabletNode) insertNode;
+      Assert.assertNotNull(tabletNode.getColumns()[0]);
+      Assert.assertNull(tabletNode.getColumns()[1]);
+      Assert.assertNull(tabletNode.getBitMaps());
+    }
+  }
+
+  @Test
   public void testSplitRelationalInsertTablet() throws IllegalPathException {
     RelationalInsertTabletNode relationalInsertTabletNode =
         new RelationalInsertTabletNode(new PlanNodeId("plan node 1"));

@@ -143,6 +143,11 @@ public class IoTDBDriver implements Driver {
       createProperty(Config.TRUST_STORE, null, "SSL trust store path.", properties),
       createSensitiveProperty(Config.TRUST_STORE_PWD, "SSL trust store password."),
       createProperty(
+          Config.SSL_PROTOCOL,
+          Config.DEFAULT_SSL_PROTOCOL,
+          "SSL protocol to use for the connection.",
+          properties),
+      createProperty(
           Config.SQL_DIALECT,
           Constant.TREE,
           SQL_DIALECT_CHOICES,

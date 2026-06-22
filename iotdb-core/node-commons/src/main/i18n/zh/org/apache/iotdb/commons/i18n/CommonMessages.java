@@ -68,6 +68,14 @@ public final class CommonMessages {
   // --- subscription ---
   public static final String CONFIG_PRINT = "{}：{}";
 
+  // --- partition ---
+  public static final String DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED =
+      "Database %s 不存在，且由于 enable_auto_create_schema 为 FALSE，无法自动创建。";
+  public static final String DATA_PARTITION_EMPTY =
+      "数据分区为空。device: %s, seriesSlot: %s, database: %s";
+  public static final String TARGET_REGION_LIST_EMPTY =
+      "targetRegionList 为空。device: %s, timeSlot: %s";
+
   // --- concurrent ---
   public static final String EXCEPTION_IN_THREAD = "线程 {}-{} 中发生异常";
   public static final String INTERRUPTED_WHILE_AWAITING = "等待条件时被中断";

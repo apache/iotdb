@@ -226,7 +226,7 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
   public int serializedSize() {
     int size = FIXED_SERIALIZED_SIZE;
     for (PartialPath path : pathList) {
-      size += ReadWriteIOUtils.sizeToWrite(path.getFullPath());
+      size += WALWriteUtils.sizeToWrite(path.getFullPath());
     }
     return size;
   }
@@ -407,6 +407,9 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
             pathList,
             firstOne.getDeleteStartTime(),
             firstOne.getDeleteEndTime())
-        .setSearchIndex(firstOne.searchIndex);
+        .setSearchIndex(firstOne.searchIndex)
+        .setPhysicalTime(firstOne.getPhysicalTime())
+        .setNodeId(firstOne.getNodeId())
+        .setSyncIndex(firstOne.getSyncIndex());
   }
 }

@@ -82,7 +82,14 @@ public class WALInfoEntry extends WALEntry {
 
   @Override
   public int serializedSize() {
-    return FIXED_SERIALIZED_SIZE + (value == null ? 0 : value.serializedSize());
+    if (value == null) {
+      return FIXED_SERIALIZED_SIZE;
+    }
+    if (value instanceof InsertTabletNode && tabletInfo != null) {
+      return FIXED_SERIALIZED_SIZE
+          + ((InsertTabletNode) value).serializedSize(tabletInfo.tabletRangeList);
+    }
+    return FIXED_SERIALIZED_SIZE + value.serializedSize();
   }
 
   @Override

@@ -343,6 +343,10 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  default R visitAlterTopic(AlterTopic node, C context) {
+    return visitStatement(node, context);
+  }
+
   default R visitDropTopic(DropTopic node, C context) {
     return visitStatement(node, context);
   }

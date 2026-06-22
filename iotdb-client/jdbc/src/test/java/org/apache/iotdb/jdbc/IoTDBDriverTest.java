@@ -59,6 +59,7 @@ public class IoTDBDriverTest {
     properties.setProperty(Config.AUTH_USER, "root");
     properties.setProperty(Config.AUTH_PASSWORD, "secret");
     properties.setProperty(Config.USE_SSL, "true");
+    properties.setProperty(Config.SSL_PROTOCOL, "TLSv1.3");
     properties.setProperty(Config.TRUST_STORE_PWD, "trust-store-secret");
 
     DriverPropertyInfo[] propertyInfos =
@@ -69,6 +70,7 @@ public class IoTDBDriverTest {
     assertNull(findProperty(propertyInfos, Config.AUTH_PASSWORD).value);
     assertNull(findProperty(propertyInfos, Config.TRUST_STORE_PWD).value);
     assertEquals("true", findProperty(propertyInfos, Config.USE_SSL).value);
+    assertEquals("TLSv1.3", findProperty(propertyInfos, Config.SSL_PROTOCOL).value);
     assertEquals(
         Arrays.asList("true", "false"),
         Arrays.asList(findProperty(propertyInfos, Config.USE_SSL).choices));

@@ -145,6 +145,7 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
     applyConnectionProperty(ds, properties, Config.USE_SSL);
     applyConnectionProperty(ds, properties, Config.TRUST_STORE);
     applyConnectionProperty(ds, properties, Config.TRUST_STORE_PWD);
+    applyConnectionProperty(ds, properties, Config.SSL_PROTOCOL);
     applyConnectionProperty(ds, properties, Utils.RPC_COMPRESS);
     applyConnectionProperty(ds, properties, Config.SQL_DIALECT);
   }
