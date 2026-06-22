@@ -1209,6 +1209,9 @@ public class TestUtils {
         // while the local connection should be closed here
         if (connectionToUse == localConnection && localConnection != null) {
           try {
+            if (statement != null) {
+              statement.close();
+            }
             localConnection.close();
             localConnection = null;
           } catch (SQLException ex) {
@@ -1216,6 +1219,7 @@ public class TestUtils {
           }
         }
         connectionToUse = null;
+        statement = null;
 
         if (retryCountLeft > 0) {
           try {
