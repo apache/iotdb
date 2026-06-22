@@ -828,6 +828,7 @@ public class ConfigPlanExecutor {
               }
             });
     if (result.get()) {
+      pipeInfo.getPipeTaskInfo().enrichPipeMetasWithRootUserForCompatibility();
       LOGGER.info(
           ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_SUCCESS_LATESTSNAPSHOTROOTDIR,
           latestSnapshotRootDir);

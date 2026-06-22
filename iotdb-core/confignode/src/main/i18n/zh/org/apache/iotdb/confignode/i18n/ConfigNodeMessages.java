@@ -212,6 +212,9 @@ public final class ConfigNodeMessages {
       "Failed to drop trigger [%s], this trigger has not been created";
   public static final String FAILED_TO_DROP_UDF_THIS_UDF_HAS_NOT_BEEN_CREATED =
       "Failed to drop UDF [%s], this UDF has not been created";
+  public static final String
+      FAILED_TO_ENRICH_PIPE_WITH_ROOT_USER_FOR_COMPATIBILITY_BECAUSE_ROOT_USER_DOES_NOT_EXIST =
+          "Failed to enrich pipe %s with root user for compatibility because root user %s does not exist.";
   public static final String FAILED_TO_FETCH_SCHEMAENGINE_BLACK_LIST_ON_DATANODE =
       "Failed to fetch schemaengine black list on DataNode {}, {}";
   public static final String FAILED_TO_GET_FIELD = "Failed to get field {}";
