@@ -45,6 +45,7 @@ import java.util.Objects;
 
 public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
+  private final transient List<PipeTransferTabletBinaryReq> binaryReqs = new ArrayList<>();
   private final transient List<PipeTransferTabletInsertNodeReq> insertNodeReqs = new ArrayList<>();
   private final transient List<PipeTransferTabletRawReq> tabletReqs = new ArrayList<>();
 
@@ -59,6 +60,26 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
     final List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
+
+    for (final PipeTransferTabletBinaryReq binaryReq : binaryReqs) {
+      final InsertBaseStatement statement = binaryReq.constructStatement();
+      if (statement.isEmpty()) {
+        continue;
+      }
+      if (statement instanceof InsertRowStatement) {
+        insertRowStatementList.add((InsertRowStatement) statement);
+      } else if (statement instanceof InsertTabletStatement) {
+        insertTabletStatementList.add((InsertTabletStatement) statement);
+      } else if (statement instanceof InsertRowsStatement) {
+        insertRowStatementList.addAll(
+            ((InsertRowsStatement) statement).getInsertRowStatementList());
+      } else {
+        throw new UnsupportedOperationException(
+            String.format(
+                "Unknown InsertBaseStatement %s constructed from PipeTransferTabletBinaryReq.",
+                statement));
+      }
+    }
 
     for (final PipeTransferTabletInsertNodeReq insertNodeReq : insertNodeReqs) {
       final InsertBaseStatement statement = insertNodeReq.constructStatement();
@@ -132,19 +153,52 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
     final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
-    // Binary size, for rolling upgrade
-    ReadWriteIOUtils.readInt(transferReq.body);
-    int size = ReadWriteIOUtils.readInt(transferReq.body);
+    // Legacy 1.3.x batch bodies may carry WAL binary requests before insert nodes and tablets.
+    int size = readNonNegativeSize(transferReq.body, "binary request count");
     for (int i = 0; i < size; ++i) {
-      batchReq.insertNodeReqs.add(
-          PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
-              (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null)));
+      final int length = readNonNegativeSize(transferReq.body, "binary request body length");
+      if (length > transferReq.body.remaining()) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid binary request body length %s, remaining body length %s.",
+                length, transferReq.body.remaining()));
+      }
+      final byte[] body = new byte[length];
+      transferReq.body.get(body);
+      batchReq.binaryReqs.add(
+          PipeTransferTabletBinaryReq.toTPipeTransferReq(ByteBuffer.wrap(body)));
     }
 
-    size = ReadWriteIOUtils.readInt(transferReq.body);
+    size = readNonNegativeSize(transferReq.body, "insert node count");
     for (int i = 0; i < size; ++i) {
-      batchReq.tabletReqs.add(
-          PipeTransferTabletRawReq.toTPipeTransferRawReq(transferReq.body, tabletStringInternPool));
+      final int startPosition = transferReq.body.position();
+      try {
+        batchReq.insertNodeReqs.add(
+            PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
+                (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null)));
+      } catch (final RuntimeException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Failed to deserialize insert node %s/%s in tablet batch at body position %s with remaining body length %s.",
+                i + 1, size, startPosition, transferReq.body.remaining()),
+            e);
+      }
+    }
+
+    size = readNonNegativeSize(transferReq.body, "raw tablet count");
+    for (int i = 0; i < size; ++i) {
+      final int startPosition = transferReq.body.position();
+      try {
+        batchReq.tabletReqs.add(
+            PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                transferReq.body, tabletStringInternPool));
+      } catch (final RuntimeException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Failed to deserialize raw tablet %s/%s in tablet batch at body position %s with remaining body length %s.",
+                i + 1, size, startPosition, transferReq.body.remaining()),
+            e);
+      }
     }
 
     batchReq.version = transferReq.version;
@@ -153,7 +207,28 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     return batchReq;
   }
 
+  private static int readNonNegativeSize(final ByteBuffer buffer, final String fieldName) {
+    if (buffer.remaining() < Integer.BYTES) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Insufficient bytes to read %s in tablet batch, remaining body length %s.",
+              fieldName, buffer.remaining()));
+    }
+
+    final int size = ReadWriteIOUtils.readInt(buffer);
+    if (size < 0) {
+      throw new IllegalArgumentException(
+          String.format("Invalid negative %s %s in tablet batch.", fieldName, size));
+    }
+    return size;
+  }
+
   /////////////////////////////// TestOnly ///////////////////////////////
+
+  @TestOnly
+  public List<PipeTransferTabletBinaryReq> getBinaryReqs() {
+    return binaryReqs;
+  }
 
   @TestOnly
   public List<PipeTransferTabletInsertNodeReq> getInsertNodeReqs() {
@@ -176,7 +251,8 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       return false;
     }
     final PipeTransferTabletBatchReq that = (PipeTransferTabletBatchReq) obj;
-    return insertNodeReqs.equals(that.insertNodeReqs)
+    return binaryReqs.equals(that.binaryReqs)
+        && insertNodeReqs.equals(that.insertNodeReqs)
         && tabletReqs.equals(that.tabletReqs)
         && version == that.version
         && type == that.type
@@ -185,6 +261,6 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(insertNodeReqs, tabletReqs, version, type, body);
+    return Objects.hash(binaryReqs, insertNodeReqs, tabletReqs, version, type, body);
   }
 }

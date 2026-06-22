@@ -40,6 +40,8 @@ public class AbstractSubscriptionConsumerBuilder {
 
   protected String consumerId;
   protected String consumerGroupId;
+  protected String ownerId;
+  protected Long ownerEpoch;
 
   protected long heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
   protected long endpointsSyncIntervalMs =
@@ -108,6 +110,27 @@ public class AbstractSubscriptionConsumerBuilder {
       return this;
     }
     this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder ownerId(@Nullable final String ownerId) {
+    if (Objects.isNull(ownerId)) {
+      return this;
+    }
+    this.ownerId = ownerId;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder ownerEpoch(final long ownerEpoch) {
+    this.ownerEpoch = ownerEpoch;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder ownerEpoch(@Nullable final Long ownerEpoch) {
+    if (Objects.isNull(ownerEpoch)) {
+      return this;
+    }
+    this.ownerEpoch = ownerEpoch;
     return this;
   }
 

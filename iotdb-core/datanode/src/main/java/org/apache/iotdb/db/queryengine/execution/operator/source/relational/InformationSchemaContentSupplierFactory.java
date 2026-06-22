@@ -347,7 +347,9 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[3].writeInt(currentDatabase.getDataReplicationFactor());
       columnBuilders[4].writeLong(currentDatabase.getTimePartitionInterval());
       columnBuilders[5].writeInt(currentDatabase.getSchemaRegionNum());
-      columnBuilders[6].writeInt(currentDatabase.getDataRegionNum());
+      columnBuilders[6].writeInt(currentDatabase.getMaxSchemaRegionNum());
+      columnBuilders[7].writeInt(currentDatabase.getDataRegionNum());
+      columnBuilders[8].writeInt(currentDatabase.getMaxDataRegionNum());
       resultBuilder.declarePosition();
       currentDatabase = null;
     }

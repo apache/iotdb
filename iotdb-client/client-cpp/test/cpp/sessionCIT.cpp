@@ -687,7 +687,10 @@ TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDelete]") {
   const char* pf = "root.cov_types.d1.sf";
   const char* pd = "root.cov_types.d1.sd";
   const char* pt = "root.cov_types.d1.st";
-  const char* tpaths[] = {pb, pi, pf, pd, pt};
+  const char* pstr = "root.cov_types.d1.sstr";
+  const char* pdate = "root.cov_types.d1.sdate";
+  const char* pblob = "root.cov_types.d1.sblob";
+  const char* tpaths[] = {pb, pi, pf, pd, pt, pstr, pdate, pblob};
   for (const char* tp : tpaths) {
     dropTimeseriesIfExists(g_session, tp);
   }
@@ -701,36 +704,56 @@ TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDelete]") {
                                        TS_COMPRESSION_SNAPPY) == TS_OK);
   REQUIRE(ts_session_create_timeseries(g_session, pt, TS_TYPE_TEXT, TS_ENCODING_PLAIN,
                                        TS_COMPRESSION_SNAPPY) == TS_OK);
+  REQUIRE(ts_session_create_timeseries(g_session, pstr, TS_TYPE_STRING, TS_ENCODING_PLAIN,
+                                       TS_COMPRESSION_SNAPPY) == TS_OK);
+  REQUIRE(ts_session_create_timeseries(g_session, pdate, TS_TYPE_DATE, TS_ENCODING_PLAIN,
+                                       TS_COMPRESSION_SNAPPY) == TS_OK);
+  REQUIRE(ts_session_create_timeseries(g_session, pblob, TS_TYPE_BLOB, TS_ENCODING_PLAIN,
+                                       TS_COMPRESSION_SNAPPY) == TS_OK);
 
   const char* dev = "root.cov_types.d1";
-  const char* names[] = {"sb", "si", "sf", "sd", "st"};
+  const char* names[] = {"sb", "si", "sf", "sd", "st", "sstr", "sdate", "sblob"};
   TSDataType_C types[] = {TS_TYPE_BOOLEAN, TS_TYPE_INT32, TS_TYPE_FLOAT, TS_TYPE_DOUBLE,
-                          TS_TYPE_TEXT};
+                          TS_TYPE_TEXT, TS_TYPE_STRING, TS_TYPE_DATE, TS_TYPE_BLOB};
   bool bv = true;
   int32_t iv = 42;
   float fv = 2.5f;
   double dv = 3.25;
   const char* tv = "hi";
-  const void* vals[] = {&bv, &iv, &fv, &dv, tv};
-  REQUIRE(ts_session_insert_record(g_session, dev, 500LL, 5, names, types, vals) == TS_OK);
+  const char* strVal = "hello";
+  TSDate_C dateVal = {2025, 5, 7};
+  const char* blobVal = "blobXY";
+  const void* vals[] = {&bv, &iv, &fv, &dv, tv, strVal, &dateVal, blobVal};
+  REQUIRE(ts_session_insert_record(g_session, dev, 500LL, 8, names, types, vals) == TS_OK);
 
   CSessionDataSet* dataSet = nullptr;
   REQUIRE(ts_session_execute_query(g_session,
-                                   "select sb,si,sf,sd,st from root.cov_types.d1 where time=500",
+                                   "select sb,si,sf,sd,st,sstr,sdate,sblob from root.cov_types.d1 "
+                                   "where time=500",
                                    &dataSet) == TS_OK);
   REQUIRE(dataSet != nullptr);
   REQUIRE(ts_dataset_has_next(dataSet));
   CRowRecord* record = ts_dataset_next(dataSet);
   REQUIRE(record != nullptr);
   REQUIRE(ts_row_record_get_timestamp(record) == 500LL);
-  REQUIRE(ts_row_record_get_field_count(record) == 5);
+  REQUIRE(ts_row_record_get_field_count(record) == 8);
   REQUIRE_FALSE(ts_row_record_is_null(record, 0));
   REQUIRE(ts_row_record_get_bool(record, 0) == true);
   REQUIRE(ts_row_record_get_int32(record, 1) == 42);
   REQUIRE(std::fabs(ts_row_record_get_float(record, 2) - 2.5f) < 1e-4f);
   REQUIRE(std::fabs(ts_row_record_get_double(record, 3) - 3.25) < 1e-9);
+  REQUIRE(ts_row_record_get_data_type(record, 4) == TS_TYPE_TEXT);
   REQUIRE(std::string(ts_row_record_get_string(record, 4)) == "hi");
-  REQUIRE(ts_row_record_get_data_type(record, 0) == TS_TYPE_BOOLEAN);
+  REQUIRE(ts_row_record_get_string_byte_length(record, 4) == 2);
+  REQUIRE(ts_row_record_get_data_type(record, 5) == TS_TYPE_STRING);
+  REQUIRE(std::string(ts_row_record_get_string(record, 5)) == "hello");
+  REQUIRE(ts_row_record_get_string_byte_length(record, 5) == 5);
+  REQUIRE(ts_row_record_get_date_int32(record, 6) == 20250507);
+  REQUIRE(std::string(ts_row_record_get_string(record, 7)) == "blobXY");
+  REQUIRE(ts_row_record_get_string_byte_length(record, 7) == 6);
+  for (int i = 0; i < 8; i++) {
+    REQUIRE(ts_row_record_get_data_type(record, i) == types[i]);
+  }
   ts_row_record_destroy(record);
   ts_dataset_destroy(dataSet);
 
@@ -743,5 +766,8 @@ TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDelete]") {
   REQUIRE(ts_session_delete_timeseries(g_session, pf) == TS_OK);
   REQUIRE(ts_session_delete_timeseries(g_session, pd) == TS_OK);
   REQUIRE(ts_session_delete_timeseries(g_session, pt) == TS_OK);
+  REQUIRE(ts_session_delete_timeseries(g_session, pstr) == TS_OK);
+  REQUIRE(ts_session_delete_timeseries(g_session, pdate) == TS_OK);
+  REQUIRE(ts_session_delete_timeseries(g_session, pblob) == TS_OK);
   REQUIRE(ts_session_delete_database(g_session, sg) == TS_OK);
 }

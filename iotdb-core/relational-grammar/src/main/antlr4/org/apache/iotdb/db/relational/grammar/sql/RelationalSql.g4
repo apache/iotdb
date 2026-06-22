@@ -108,6 +108,7 @@ statement
 
     // Subscription Statement
     | createTopicStatement
+    | alterTopicStatement
     | dropTopicStatement
     | showTopicsStatement
     | showSubscriptionsStatement
@@ -535,6 +536,10 @@ showPipePluginsStatement
 // -------------------------------------------- Subscription Statement ---------------------------------------------------------
 createTopicStatement
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
+    ;
+
+alterTopicStatement
+    : ALTER TOPIC topicName=identifier topicAttributesClause
     ;
 
 topicAttributesClause
@@ -1050,7 +1055,8 @@ fromFirstQuerySpecification
     ;
 
 groupBy
-    : setQuantifier? groupingElement (',' groupingElement)*
+    : ALL                                                                                         #allGroupBy
+    | setQuantifier? groupingElement (',' groupingElement)*                                       #explicitGroupBy
     ;
 
 groupingElement

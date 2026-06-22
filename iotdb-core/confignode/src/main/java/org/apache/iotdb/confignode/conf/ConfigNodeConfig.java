@@ -95,7 +95,7 @@ public class ConfigNodeConfig {
   private String dataPartitionAllocationStrategy = "INHERIT";
 
   /** The policy of extension SchemaRegionGroup for each Database. */
-  private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
+  private volatile RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
 
   /**
@@ -103,13 +103,13 @@ public class ConfigNodeConfig {
    * SchemaRegionGroups for each Database. When set schema_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of SchemaRegionGroups for each Database.
    */
-  private int defaultSchemaRegionGroupNumPerDatabase = 1;
+  private volatile int defaultSchemaRegionGroupNumPerDatabase = 1;
 
   /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
-  private int schemaRegionPerDataNode = 1;
+  private volatile int schemaRegionPerDataNode = 1;
 
   /** The policy of extension DataRegionGroup for each Database. */
-  private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
+  private volatile RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
 
   /**
@@ -117,13 +117,13 @@ public class ConfigNodeConfig {
    * DataRegionGroups for each Database. When set data_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of DataRegionGroups for each Database.
    */
-  private int defaultDataRegionGroupNumPerDatabase = 2;
+  private volatile int defaultDataRegionGroupNumPerDatabase = 2;
 
   /**
    * The maximum number of DataRegions expected to be managed by each DataNode. Set to 0 means that
    * each dataNode automatically has the number of CPU cores / 2 regions.
    */
-  private int dataRegionPerDataNode = 0;
+  private volatile int dataRegionPerDataNode = 0;
 
   /** each dataNode automatically has the number of CPU cores / 2 regions. */
   private final double dataRegionPerDataNodeProportion = 0.5;
@@ -202,7 +202,10 @@ public class ConfigNodeConfig {
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
   /** The heartbeat interval in milliseconds. */
-  private long heartbeatIntervalInMs = 1000;
+  private volatile long heartbeatIntervalInMs = 1000;
+
+  /** Startup heartbeat interval used to initialize failure detectors. */
+  private long failureDetectorHeartbeatIntervalInMs = heartbeatIntervalInMs;
 
   /** Failure detector implementation */
   private String failureDetector = IFailureDetector.PHI_ACCRUAL_DETECTOR;
@@ -231,13 +234,10 @@ public class ConfigNodeConfig {
   /** Whether to enable auto leader balance for Ratis consensus protocol. */
   private boolean enableAutoLeaderBalanceForRatisConsensus = true;
 
-  /** Whether to enable auto leader balance for IoTConsensus protocol. */
-  private boolean enableAutoLeaderBalanceForIoTConsensus = true;
-
   /** The route priority policy of cluster read/write requests. */
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
 
-  private String readConsistencyLevel = "strong";
+  private volatile String readConsistencyLevel = "strong";
 
   /** RatisConsensus protocol, Max size for a single log append request from leader. */
   private long dataRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
@@ -296,7 +296,7 @@ public class ConfigNodeConfig {
   /** CQ related. */
   private int cqSubmitThread = 2;
 
-  private long cqMinEveryIntervalInMs = 1_000;
+  private volatile long cqMinEveryIntervalInMs = 1_000;
 
   /** RatisConsensus protocol, request timeout for ratis client. */
   private long dataRegionRatisRequestTimeoutMs = 10000L;
@@ -735,6 +735,14 @@ public class ConfigNodeConfig {
     this.heartbeatIntervalInMs = heartbeatIntervalInMs;
   }
 
+  public long getFailureDetectorHeartbeatIntervalInMs() {
+    return failureDetectorHeartbeatIntervalInMs;
+  }
+
+  public void setFailureDetectorHeartbeatIntervalInMs(long failureDetectorHeartbeatIntervalInMs) {
+    this.failureDetectorHeartbeatIntervalInMs = failureDetectorHeartbeatIntervalInMs;
+  }
+
   public String getLeaderDistributionPolicy() {
     return leaderDistributionPolicy;
   }
@@ -750,15 +758,6 @@ public class ConfigNodeConfig {
   public void setEnableAutoLeaderBalanceForRatisConsensus(
       boolean enableAutoLeaderBalanceForRatisConsensus) {
     this.enableAutoLeaderBalanceForRatisConsensus = enableAutoLeaderBalanceForRatisConsensus;
-  }
-
-  public boolean isEnableAutoLeaderBalanceForIoTConsensus() {
-    return enableAutoLeaderBalanceForIoTConsensus;
-  }
-
-  public void setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    this.enableAutoLeaderBalanceForIoTConsensus = enableAutoLeaderBalanceForIoTConsensus;
   }
 
   public String getRoutePriorityPolicy() {

@@ -557,6 +557,8 @@ public final class DataNodeQueryMessages {
       "Not support for this sql in START PIPE, please enter pipename.";
   public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_STOP_PIPE =
       "Not support for this sql in STOP PIPE, please enter pipename.";
+  public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_ALTER_TOPIC =
+      "Not support for this sql in ALTER TOPIC, please enter topicName.";
   public static final String GET_REGION_ID_STATEMENT_EXPRESSION_MUST_BE_A =
       "Get region id statement‘ expression must be a time expression";
   public static final String WRONG_SPACE_QUOTA_TYPE =

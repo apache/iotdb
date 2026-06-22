@@ -35,6 +35,8 @@ final class SubscriptionTreeProvider extends AbstractSubscriptionProvider {
       final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
+      final String ownerId,
+      final Long ownerEpoch,
       final int thriftMaxFrameSize,
       final long heartbeatIntervalMs,
       final int connectionTimeoutInMs) {
@@ -45,6 +47,8 @@ final class SubscriptionTreeProvider extends AbstractSubscriptionProvider {
         encryptedPassword,
         consumerId,
         consumerGroupId,
+        ownerId,
+        ownerEpoch,
         thriftMaxFrameSize,
         heartbeatIntervalMs,
         connectionTimeoutInMs);

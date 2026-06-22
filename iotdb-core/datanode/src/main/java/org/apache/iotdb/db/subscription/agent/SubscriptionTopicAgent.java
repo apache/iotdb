@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
@@ -31,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -87,6 +93,8 @@ public class SubscriptionTopicAgent {
 
   private void handleSingleTopicMetaChangesInternal(final TopicMeta metaFromCoordinator) {
     final String topicName = metaFromCoordinator.getTopicName();
+    TopicMeta.validateOwnerProgression(
+        topicMetaKeeper.getTopicMeta(topicName), metaFromCoordinator);
     topicMetaKeeper.removeTopicMeta(topicName);
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
     SubscriptionAgent.broker()
@@ -194,6 +202,96 @@ public class SubscriptionTopicAgent {
                   topicName -> topicMetaKeeper.getTopicMeta(topicName).getConfig()));
     } finally {
       releaseReadLock();
+    }
+  }
+
+  public TSStatus checkTopicOwner(final ConsumerConfig consumerConfig, final String topicName) {
+    acquireReadLock();
+    try {
+      final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName);
+      if (Objects.isNull(topicMeta) || !topicMeta.isOwnerFencingEnabled()) {
+        return RpcUtils.SUCCESS_STATUS;
+      }
+
+      final String requestOwnerId = consumerConfig.getOwnerId();
+      if (Objects.isNull(requestOwnerId)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SUBSCRIPTION_OWNER_REQUIRED,
+            String.format(
+                "Subscription: topic %s enables owner fencing, but consumer %s does not carry owner-id.",
+                topicName, consumerConfig));
+      }
+
+      final Long requestOwnerEpoch = consumerConfig.getOwnerEpoch();
+      if (Objects.isNull(requestOwnerEpoch)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SUBSCRIPTION_OWNER_EPOCH_REQUIRED,
+            String.format(
+                "Subscription: topic %s enables owner fencing, but consumer %s does not carry owner-epoch.",
+                topicName, consumerConfig));
+      }
+
+      if (Objects.nonNull(topicMeta.getOwnerLeaseExpireTimeMs())
+          && System.currentTimeMillis() > topicMeta.getOwnerLeaseExpireTimeMs()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SUBSCRIPTION_OWNER_LEASE_EXPIRED,
+            String.format(
+                "Subscription: owner lease for topic %s has expired, owner-id: %s, owner-epoch: %s.",
+                topicName, topicMeta.getOwnerId(), topicMeta.getOwnerEpoch()));
+      }
+
+      if (!topicMeta.matchesOwner(requestOwnerId, requestOwnerEpoch)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SUBSCRIPTION_OWNER_FENCED,
+            String.format(
+                "Subscription: consumer owner is fenced for topic %s, request owner-id: %s,"
+                    + " request owner-epoch: %s, current owner-id: %s, current owner-epoch: %s.",
+                topicName,
+                requestOwnerId,
+                requestOwnerEpoch,
+                topicMeta.getOwnerId(),
+                topicMeta.getOwnerEpoch()));
+      }
+
+      return RpcUtils.SUCCESS_STATUS;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public TSStatus checkTopicOwners(
+      final ConsumerConfig consumerConfig, final Iterable<String> topicNames) {
+    for (final String topicName : topicNames) {
+      final TSStatus status = checkTopicOwner(consumerConfig, topicName);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+    }
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  /**
+   * Apply owner lease renewals pushed by ConfigNode via the dedicated subscription owner heartbeat.
+   * The pushed remaining duration is converted to a DataNode-local expire time on the local clock,
+   * so no absolute timestamp is compared across nodes. Owner identity/epoch changes are delivered
+   * via the topic-meta push path; here we only refresh the lease for the matching current owner.
+   */
+  public void handleTopicOwnerLeases(final List<TTopicOwnerLeaseEntry> ownerLeases) {
+    if (Objects.isNull(ownerLeases) || ownerLeases.isEmpty()) {
+      return;
+    }
+    acquireWriteLock();
+    try {
+      for (final TTopicOwnerLeaseEntry lease : ownerLeases) {
+        final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(lease.getTopicName());
+        if (Objects.isNull(topicMeta)) {
+          continue;
+        }
+        topicMeta.applyOwnerLeaseFromHeartbeat(
+            lease.getOwnerId(), lease.getOwnerEpoch(), lease.getLeaseRemainingMs());
+      }
+    } finally {
+      releaseWriteLock();
     }
   }
 }

@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -282,7 +283,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
                 commonConfig.getTrustStorePath(),
                 commonConfig.getTrustStorePwd(),
                 commonConfig.getKeyStorePath(),
-                commonConfig.getKeyStorePwd())
+                commonConfig.getKeyStorePwd(),
+                commonConfig.getSslProtocol())
             : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 // As there is a try-catch already, we do not need to use TSocket.wrap
                 endpoint.getIp(), endpoint.getPort(), timeoutMs);
@@ -1242,6 +1244,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus createTopic(TCreateTopicReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTopic(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus alterTopic(TAlterTopicReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterTopic(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

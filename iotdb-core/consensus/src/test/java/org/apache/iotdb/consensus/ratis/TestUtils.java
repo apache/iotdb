@@ -177,13 +177,15 @@ public class TestUtils {
     }
 
     @Override
-    public void loadSnapshot(File latestSnapshotRootDir) {
+    public boolean loadSnapshot(File latestSnapshotRootDir) {
       File snapshot =
           new File(latestSnapshotRootDir.getAbsolutePath() + File.separator + "snapshot");
       try (Scanner scanner = new Scanner(snapshot)) {
         integer.set(Integer.parseInt(scanner.next()));
+        return true;
       } catch (FileNotFoundException e) {
         logger.error("cannot find snapshot file {}", snapshot);
+        return false;
       }
     }
 

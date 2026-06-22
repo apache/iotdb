@@ -59,7 +59,7 @@ ddlStatement
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
-    | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
+    | createTopic | alterTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -718,6 +718,10 @@ showPipePlugins
 // Subscription =========================================================================================
 createTopic
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
+    ;
+
+alterTopic
+    : ALTER TOPIC topicName=identifier topicAttributesClause
     ;
 
 topicAttributesClause

@@ -1502,7 +1502,8 @@ public class DataNodeTableOperatorGenerator
               scanAscending,
               true,
               timeColumnName,
-              measurementColumnsIndexMap.keySet()));
+              measurementColumnsIndexMap.keySet(),
+              context.getMemoryReservationManager()));
     }
 
     ITableTimeRangeIterator timeRangeIterator = null;
