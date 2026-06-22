@@ -121,7 +121,8 @@ public class ChunkCache {
         false,
         emptyConsumer,
         emptyConsumer,
-        emptyConsumer);
+        emptyConsumer,
+        false);
   }
 
   public Chunk get(
@@ -143,7 +144,8 @@ public class ChunkCache {
         queryContext.isDebug(),
         ioSizeRecorder,
         cacheHitAdder,
-        cacheMissAdder);
+        cacheMissAdder,
+        queryContext.isExternalTsFileScan());
   }
 
   private Chunk get(
@@ -153,12 +155,13 @@ public class ChunkCache {
       boolean debug,
       LongConsumer ioSizeRecorder,
       LongConsumer cacheHitAdder,
-      LongConsumer cacheMissAdder)
+      LongConsumer cacheMissAdder,
+      boolean externalTsFile)
       throws IOException {
     long startTime = System.nanoTime();
-    ChunkLoader chunkLoader = new ChunkLoader(ioSizeRecorder);
+    ChunkLoader chunkLoader = new ChunkLoader(ioSizeRecorder, externalTsFile);
     try {
-      if (!CACHE_ENABLE) {
+      if (!CACHE_ENABLE || externalTsFile) {
         Chunk chunk = chunkLoader.apply(chunkCacheKey);
         return constructChunk(chunk, timeRangeList, chunkStatistic);
       }
@@ -297,9 +300,11 @@ public class ChunkCache {
 
     private boolean cacheMiss = false;
     private final LongConsumer ioSizeRecorder;
+    private final boolean externalTsFile;
 
-    private ChunkLoader(LongConsumer ioSizeRecorder) {
+    private ChunkLoader(LongConsumer ioSizeRecorder, boolean externalTsFile) {
       this.ioSizeRecorder = ioSizeRecorder;
+      this.externalTsFile = externalTsFile;
     }
 
     @Override
@@ -310,7 +315,7 @@ public class ChunkCache {
         cacheMiss = true;
         TsFileSequenceReader reader =
             FileReaderManager.getInstance()
-                .get(key.getFilePath(), key.tsFileID, key.closed, ioSizeRecorder);
+                .get(key.getFilePath(), key.tsFileID, key.closed, ioSizeRecorder, externalTsFile);
         Chunk chunk = reader.readMemChunk(key.offsetOfChunkHeader, ioSizeRecorder);
         // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
         chunk.getHeader().setMeasurementID(null);

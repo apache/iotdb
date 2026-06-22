@@ -97,6 +97,10 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
+  public boolean isExternalTsFileScan() {
+    return false;
+  }
+
   // Only used for query with table data(Tree view is not included)
   public boolean collectTable(String table) {
     // In the current version (2025.08.14), there is only one table under one FI

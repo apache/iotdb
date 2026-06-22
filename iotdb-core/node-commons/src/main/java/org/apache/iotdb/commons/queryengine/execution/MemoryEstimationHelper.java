@@ -44,9 +44,9 @@ public class MemoryEstimationHelper {
   private static final long MEASUREMENT_PATH_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AlignedPath.class);
 
-  private static final long ARRAY_LIST_INSTANCE_SIZE =
+  public static final long ARRAY_LIST_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
-  private static final long INTEGER_INSTANCE_SIZE =
+  public static final long INTEGER_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Integer.class);
   public static final long TIME_RANGE_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TimeRange.class);

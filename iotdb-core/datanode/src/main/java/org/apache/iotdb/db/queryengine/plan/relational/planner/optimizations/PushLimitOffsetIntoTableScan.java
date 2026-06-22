@@ -45,6 +45,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 
 import java.util.HashSet;
@@ -200,8 +202,20 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
         return node;
       }
       OrderingScheme orderingScheme = node.getOrderingScheme();
-      Map<Symbol, ColumnSchema> tableColumnSchema =
-          analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
+      Map<Symbol, ColumnSchema> tableColumnSchema;
+      if (tableScanNode instanceof ExternalTsFileScanNode) {
+        tableColumnSchema =
+            ((ExternalTsFileScanNode) tableScanNode)
+                .getExternalTsFileQueryResource()
+                .getTableColumnSchema();
+      } else if (tableScanNode instanceof ExternalTsFileAggregationScanNode) {
+        tableColumnSchema =
+            ((ExternalTsFileAggregationScanNode) tableScanNode)
+                .getExternalTsFileQueryResource()
+                .getTableColumnSchema();
+      } else {
+        tableColumnSchema = analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
+      }
       Set<Symbol> sortSymbols = new HashSet<>();
       for (Symbol orderBy : orderingScheme.getOrderBy()) {
         if (tableScanNode.isTimeColumn(orderBy)) {

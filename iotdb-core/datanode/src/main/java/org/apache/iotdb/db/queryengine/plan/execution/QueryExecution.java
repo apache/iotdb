@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -223,11 +222,7 @@ public class QueryExecution implements IQueryExecution {
     // only check query operation's timeout because we will never limit write operation's execution
     // time
     if (isQuery()) {
-      long currentTime = System.currentTimeMillis();
-      if (currentTime - context.getStartTime() >= context.getTimeOut()) {
-        throw new QueryTimeoutRuntimeException(
-            context.getStartTime(), currentTime, context.getTimeOut());
-      }
+      context.checkTimeOut();
     }
   }
 
@@ -392,6 +387,7 @@ public class QueryExecution implements IQueryExecution {
       }
       cleanUpResultHandle();
     }
+    context.releaseExternalTsFileQueryResources();
   }
 
   /**

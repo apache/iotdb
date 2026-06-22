@@ -145,6 +145,19 @@ public class TimeSeriesMetadataCache {
       boolean debug,
       QueryContext queryContext)
       throws IOException {
+    return get(filePath, key, allSensors, ignoreNotExists, debug, queryContext, null);
+  }
+
+  @SuppressWarnings({"squid:S1860", "squid:S6541", "squid:S3776"}) // Suppress synchronize warning
+  public TimeseriesMetadata get(
+      String filePath,
+      TimeSeriesMetadataCacheKey key,
+      Set<String> allSensors,
+      boolean ignoreNotExists,
+      boolean debug,
+      QueryContext queryContext,
+      long[] deviceMetadataIndexNodeOffset)
+      throws IOException {
     long startTime = System.nanoTime();
     long loadBloomFilterTime = 0;
     LongConsumer timeSeriesMetadataIoSizeRecorder =
@@ -152,28 +165,35 @@ public class TimeSeriesMetadataCache {
     LongConsumer bloomFilterIoSizeRecorder =
         queryContext.getQueryStatistics().getLoadBloomFilterActualIOSize()::addAndGet;
     boolean cacheHit = true;
+    boolean externalTsFile = queryContext.isExternalTsFileScan();
     try {
-      if (!CACHE_ENABLE) {
+      if (!CACHE_ENABLE || externalTsFile) {
         String deviceStringFormat = key.device.toString();
         cacheHit = false;
 
         // bloom filter part
         TsFileSequenceReader reader =
             FileReaderManager.getInstance()
-                .get(filePath, key.tsFileID, true, bloomFilterIoSizeRecorder);
-        BloomFilter bloomFilter = reader.readBloomFilter(bloomFilterIoSizeRecorder);
-        queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount().incrementAndGet();
-        if (bloomFilter != null
-            && !bloomFilter.contains(
-                deviceStringFormat + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+                .get(filePath, key.tsFileID, true, bloomFilterIoSizeRecorder, externalTsFile);
+        if (deviceMetadataIndexNodeOffset == null) {
+          BloomFilter bloomFilter = reader.readBloomFilter(bloomFilterIoSizeRecorder);
+          queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount().incrementAndGet();
+          if (bloomFilter != null
+              && !bloomFilter.contains(
+                  deviceStringFormat + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+            loadBloomFilterTime = System.nanoTime() - startTime;
+            return null;
+          }
           loadBloomFilterTime = System.nanoTime() - startTime;
-          return null;
         }
-        loadBloomFilterTime = System.nanoTime() - startTime;
 
         TimeseriesMetadata timeseriesMetadata =
             reader.readTimeseriesMetadata(
-                key.device, key.measurement, ignoreNotExists, timeSeriesMetadataIoSizeRecorder);
+                key.device,
+                deviceMetadataIndexNodeOffset,
+                key.measurement,
+                ignoreNotExists,
+                timeSeriesMetadataIoSizeRecorder);
         return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
             ? null
             : timeseriesMetadata;
@@ -197,35 +217,40 @@ public class TimeSeriesMetadataCache {
           if (timeseriesMetadata == null) {
             cacheHit = false;
 
-            long loadBloomFilterStartTime = System.nanoTime();
-            // bloom filter part
-            BloomFilter bloomFilter =
-                BloomFilterCache.getInstance()
-                    .get(
-                        new BloomFilterCache.BloomFilterCacheKey(filePath, key.tsFileID),
-                        debug,
-                        bloomFilterIoSizeRecorder,
-                        queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()
-                            ::addAndGet,
-                        queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()
-                            ::addAndGet);
-            if (bloomFilter != null
-                && !bloomFilter.contains(
-                    deviceStringFormat + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
-              if (debug) {
-                DEBUG_LOGGER.info(StorageEngineMessages.TS_METADATA_FILTERED_BY_BLOOM_FILTER, key);
+            if (deviceMetadataIndexNodeOffset == null) {
+              long loadBloomFilterStartTime = System.nanoTime();
+              // bloom filter part
+              BloomFilter bloomFilter =
+                  BloomFilterCache.getInstance()
+                      .get(
+                          new BloomFilterCache.BloomFilterCacheKey(filePath, key.tsFileID),
+                          debug,
+                          bloomFilterIoSizeRecorder,
+                          queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()
+                              ::addAndGet,
+                          queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()
+                              ::addAndGet,
+                          false);
+              if (bloomFilter != null
+                  && !bloomFilter.contains(
+                      deviceStringFormat + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
+                if (debug) {
+                  DEBUG_LOGGER.info(
+                      StorageEngineMessages.TS_METADATA_FILTERED_BY_BLOOM_FILTER, key);
+                }
+                loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
+                return null;
               }
-              loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
-              return null;
-            }
 
-            loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
+              loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
+            }
             TsFileSequenceReader reader =
                 FileReaderManager.getInstance()
-                    .get(filePath, key.tsFileID, true, timeSeriesMetadataIoSizeRecorder);
+                    .get(filePath, key.tsFileID, true, timeSeriesMetadataIoSizeRecorder, false);
             List<TimeseriesMetadata> timeSeriesMetadataList =
                 reader.readTimeseriesMetadata(
                     key.device,
+                    deviceMetadataIndexNodeOffset,
                     key.measurement,
                     allSensors,
                     ignoreNotExists,
