@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
@@ -479,6 +480,141 @@ public class TableFunctionTest {
       fail();
     } catch (SemanticException e) {
       assertEquals("TIMECOL should never be null or empty.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testFFTFunction() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM FFT("
+            + "DATA => table1 PARTITION BY tag1 ORDER BY time, "
+            + "SAMPLE_INTERVAL => 1s, "
+            + "N => 4, "
+            + "NORM => 'ortho')";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableMap.<String, String>builder()
+                .put("time", "time")
+                .put("tag1_0", "tag1")
+                .put("s1", "s1")
+                .put("s2", "s2")
+                .put("s3", "s3")
+                .buildOrThrow());
+
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("fft")
+                .properOutputs(
+                    "tag1",
+                    "frequency_index",
+                    "frequency",
+                    "s1_real",
+                    "s1_imag",
+                    "s2_real",
+                    "s2_imag",
+                    "s3_real",
+                    "s3_imag")
+                .requiredSymbols("time", "tag1_0", "s1", "s2", "s3")
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty(FFTTableFunction.SAMPLE_INTERVAL_PARAMETER_NAME, 1000L)
+                        .addProperty(
+                            FFTTableFunction.SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME, true)
+                        .addProperty(FFTTableFunction.N_PARAMETER_NAME, 4L)
+                        .addProperty(FFTTableFunction.NORM_PARAMETER_NAME, "ortho")
+                        .addProperty("__FFT_PARTITION_TYPES", "STRING")
+                        .addProperty("__FFT_VALUE_TYPES", "INT64,INT64,DOUBLE")
+                        .addProperty("__FFT_VALUE_NAMES", "s1,s2,s3")
+                        .build());
+
+    assertPlan(
+        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
+  }
+
+  @Test
+  public void testFFTDefaultArguments() {
+    PlanTester planTester = new PlanTester();
+    String sql = "SELECT * FROM TABLE(FFT(DATA => TABLE(table1) ORDER BY time))";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableMap.<String, String>builder()
+                .put("time", "time")
+                .put("s1", "s1")
+                .put("s2", "s2")
+                .put("s3", "s3")
+                .buildOrThrow());
+
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("fft")
+                .properOutputs(
+                    "frequency_index",
+                    "frequency",
+                    "s1_real",
+                    "s1_imag",
+                    "s2_real",
+                    "s2_imag",
+                    "s3_real",
+                    "s3_imag")
+                .requiredSymbols("time", "s1", "s2", "s3")
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty(
+                            FFTTableFunction.SAMPLE_INTERVAL_PARAMETER_NAME, Long.MIN_VALUE)
+                        .addProperty(
+                            FFTTableFunction.SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME, false)
+                        .addProperty(FFTTableFunction.N_PARAMETER_NAME, -1L)
+                        .addProperty(FFTTableFunction.NORM_PARAMETER_NAME, "backward")
+                        .addProperty("__FFT_PARTITION_TYPES", "")
+                        .addProperty("__FFT_VALUE_TYPES", "INT64,INT64,DOUBLE")
+                        .addProperty("__FFT_VALUE_NAMES", "s1,s2,s3")
+                        .build());
+
+    assertPlan(
+        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
+  }
+
+  @Test
+  public void testFFTRejectsInvalidArguments() {
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1, SAMPLE_INTERVAL => 1ms)",
+        "Table argument with set semantics requires an ORDER BY clause.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time DESC, SAMPLE_INTERVAL => 1ms)",
+        "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY s1, SAMPLE_INTERVAL => 1ms)",
+        "The ORDER BY clause of the DATA argument must contain exactly the time column.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time, SAMPLE_INTERVAL => 1)",
+        "The SAMPLE_INTERVAL argument of FFT must be a duration literal.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time, N => 0)",
+        "Invalid scalar argument N, should be a positive value");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time, N => 65537)",
+        "FFT transform length N must not exceed 65536.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time, NORM => 'bad')",
+        "Invalid NORM value for FFT. Supported values are backward, forward and ortho.");
+    assertAnalyzeFails(
+        "SELECT * FROM FFT(DATA => (SELECT time, tag1 FROM table1) PARTITION BY tag1 ORDER BY time)",
+        "No numeric columns found for FFT calculation.");
+  }
+
+  private void assertAnalyzeFails(String sql, String message) {
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(message, e.getMessage());
     }
   }
 

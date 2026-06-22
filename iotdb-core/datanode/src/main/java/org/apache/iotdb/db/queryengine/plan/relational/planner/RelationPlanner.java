@@ -1564,6 +1564,9 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
       } else if (!TableBuiltinTableFunction.M4
               .getFunctionName()
               .equalsIgnoreCase(functionAnalysis.getFunctionName())
+          && !TableBuiltinTableFunction.FFT
+              .getFunctionName()
+              .equalsIgnoreCase(functionAnalysis.getFunctionName())
           && tableArgument.getPartitionBy().isPresent()) {
         tableArgument.getPartitionBy().get().stream()
             // the original symbols for partitioning columns, not coerced

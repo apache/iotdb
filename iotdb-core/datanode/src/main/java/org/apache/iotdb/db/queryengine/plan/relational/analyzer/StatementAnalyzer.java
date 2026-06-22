@@ -121,6 +121,7 @@ import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -5165,7 +5166,7 @@ public class StatementAnalyzer {
         Scope argumentScope = analysis.getScope(argument.getRelation());
         if (argument.isPassThroughColumns()) {
           argumentScope.getRelationType().getAllFields().forEach(fields::add);
-        } else if (!TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)
+        } else if (!isPartitionColumnsProvidedByProperSchema(functionName)
             && argument.getPartitionBy().isPresent()) {
           argument.getPartitionBy().get().stream()
               .map(expression -> validateAndGetInputField(expression, argumentScope))
@@ -5297,7 +5298,71 @@ public class StatementAnalyzer {
         }
       }
       tryAppendM4ModeArgument(functionName, arguments, parameterSpecifications, passedArguments);
+      tryAppendFFTInternalArguments(
+          functionName, arguments, parameterSpecifications, passedArguments);
       return new ArgumentsAnalysis(passedArguments.buildOrThrow(), tableArgumentAnalyses.build());
+    }
+
+    private boolean isPartitionColumnsProvidedByProperSchema(String functionName) {
+      return TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)
+          || TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName);
+    }
+
+    private void tryAppendFFTInternalArguments(
+        String functionName,
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        ImmutableMap.Builder<String, Argument> passedArguments) {
+      if (!TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName)) {
+        return;
+      }
+
+      Optional<TableFunctionArgument> sampleIntervalArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, FFTTableFunction.SAMPLE_INTERVAL_PARAMETER_NAME);
+      if (sampleIntervalArgument.isPresent()
+          && !(sampleIntervalArgument.get().getValue() instanceof TimeDurationLiteral)) {
+        throw new SemanticException(
+            "The SAMPLE_INTERVAL argument of FFT must be a duration literal.");
+      }
+
+      Optional<TableFunctionArgument> nArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, FFTTableFunction.N_PARAMETER_NAME);
+      if (nArgument.isPresent() && nArgument.get().getValue() instanceof TimeDurationLiteral) {
+        throw new SemanticException("The N argument of FFT must be a positive integer.");
+      }
+
+      validateFFTOrderBySortOrder(arguments, parameterSpecifications);
+      passedArguments.put(
+          FFTTableFunction.SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME,
+          new ScalarArgument(
+              org.apache.iotdb.udf.api.type.Type.BOOLEAN, sampleIntervalArgument.isPresent()));
+    }
+
+    private void validateFFTOrderBySortOrder(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications) {
+      Optional<TableFunctionArgument> dataArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, FFTTableFunction.DATA_PARAMETER_NAME);
+      if (!dataArgument.isPresent()
+          || !(dataArgument.get().getValue() instanceof TableFunctionTableArgument)) {
+        return;
+      }
+
+      Optional<OrderBy> orderBy =
+          ((TableFunctionTableArgument) dataArgument.get().getValue()).getOrderBy();
+      if (!orderBy.isPresent()) {
+        return;
+      }
+
+      for (SortItem sortItem : orderBy.get().getSortItems()) {
+        if (sortItem.getOrdering() != SortItem.Ordering.ASCENDING) {
+          throw new SemanticException(
+              "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+        }
+      }
     }
 
     private void tryAppendM4ModeArgument(
