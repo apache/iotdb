@@ -1216,7 +1216,6 @@ public class TestUtils {
           }
         }
         connectionToUse = null;
-        statement = null;
 
         if (retryCountLeft > 0) {
           try {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.schema;
 
+import org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -26,6 +27,7 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -38,10 +40,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBDatabaseMaxRegionGroupNumIT {
+
+  private static final int SERIES_SLOT_NUM = 8;
+  private static final String TABLE_NAME = "table1";
+  private static final BKDRHashExecutor PARTITION_EXECUTOR = new BKDRHashExecutor(SERIES_SLOT_NUM);
 
   @Before
   public void setUp() throws Exception {
@@ -51,7 +59,10 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
         .setSchemaRegionGroupExtensionPolicy("CUSTOM")
         .setDataRegionGroupExtensionPolicy("CUSTOM")
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
-        .setDefaultDataRegionGroupNumPerDatabase(2);
+        .setDefaultDataRegionGroupNumPerDatabase(2)
+        .setSeriesSlotNum(SERIES_SLOT_NUM)
+        .setSeriesPartitionExecutorClass(BKDRHashExecutor.class.getName())
+        .setTimePartitionInterval(10);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -95,6 +106,89 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
           () ->
               statement.execute(
                   "create database test_deprecated with(schema_region_group_num=4, data_region_group_num=5)"));
+    }
+  }
+
+  @Test
+  public void testCreatePartitionAfterAlterMaxRegionGroupNum() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database test_partition");
+      statement.execute("use test_partition");
+      statement.execute("create table " + TABLE_NAME + "(device string tag, s1 int32 field)");
+
+      final Set<Integer> usedSeriesSlots = new HashSet<>();
+      final String firstDevice = getDeviceInNewSeriesSlot(usedSeriesSlots);
+      final String secondDevice = getDeviceInNewSeriesSlot(usedSeriesSlots);
+
+      insertData(statement, firstDevice, 0, 0);
+      assertRegionGroupNum(statement, "test_partition", 1, 2);
+
+      statement.execute(
+          "alter database test_partition set properties max_schema_region_group_num=3");
+      insertData(statement, secondDevice, 0, 1);
+      assertRegionGroupNum(statement, "test_partition", 3, 2);
+
+      statement.execute("alter database test_partition set properties max_data_region_group_num=4");
+      insertData(statement, secondDevice, 20, 2);
+      assertRegionGroupNum(statement, "test_partition", 3, 4);
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select count(*) from " + TABLE_NAME),
+          "_col0,",
+          Collections.singleton("3,"));
+    }
+  }
+
+  private static void insertData(
+      final Statement statement, final String device, final int time, final int value)
+      throws SQLException {
+    statement.execute(
+        "insert into "
+            + TABLE_NAME
+            + "(time, device, s1) values("
+            + time
+            + ", '"
+            + device
+            + "', "
+            + value
+            + ")");
+  }
+
+  private static String getDeviceInNewSeriesSlot(final Set<Integer> usedSeriesSlots) {
+    for (int i = 0; i < 1_000; i++) {
+      final String device = "d" + i;
+      if (usedSeriesSlots.add(getSeriesSlot(device))) {
+        return device;
+      }
+    }
+    throw new AssertionError("Failed to find a device in a new series partition slot");
+  }
+
+  private static int getSeriesSlot(final String device) {
+    return PARTITION_EXECUTOR
+        .getSeriesPartitionSlot(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {TABLE_NAME, device}))
+        .getSlotId();
+  }
+
+  private static void assertRegionGroupNum(
+      final Statement statement,
+      final String database,
+      final int schemaRegionGroupNum,
+      final int dataRegionGroupNum)
+      throws SQLException {
+    try (final ResultSet resultSet =
+        statement.executeQuery(
+            "select schema_region_group_num, data_region_group_num "
+                + "from information_schema.databases where database = '"
+                + database
+                + "'")) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(schemaRegionGroupNum, resultSet.getInt("schema_region_group_num"));
+      Assert.assertEquals(dataRegionGroupNum, resultSet.getInt("data_region_group_num"));
+      Assert.assertFalse(resultSet.next());
     }
   }
 }
