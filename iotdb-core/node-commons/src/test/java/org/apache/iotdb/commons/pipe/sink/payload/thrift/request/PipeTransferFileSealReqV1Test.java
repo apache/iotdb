@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.commons.pipe.sink.payload.thrift.request;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertVersionAndType;
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.copyOf;
 
 public class PipeTransferFileSealReqV1Test {
 
@@ -37,8 +38,8 @@ public class PipeTransferFileSealReqV1Test {
   public void testFileSealReqV1RoundTripKeepsFileNameAndLength() throws IOException {
     final DummyFileSealReqV1 req = DummyFileSealReqV1.toTPipeTransferReq(FILE_NAME, FILE_LENGTH);
 
-    Assert.assertEquals(IoTDBSinkRequestVersion.VERSION_1.getVersion(), req.version);
-    Assert.assertEquals(PipeRequestType.TRANSFER_TS_FILE_SEAL.getType(), req.type);
+    assertVersionAndType(
+        req, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_TS_FILE_SEAL);
     Assert.assertEquals(FILE_NAME, req.getFileName());
     Assert.assertEquals(FILE_LENGTH, req.getFileLength());
     assertFileSealBody(req.body.duplicate());
@@ -70,14 +71,6 @@ public class PipeTransferFileSealReqV1Test {
     Assert.assertEquals(FILE_NAME, ReadWriteIOUtils.readString(body));
     Assert.assertEquals(FILE_LENGTH, ReadWriteIOUtils.readLong(body));
     Assert.assertFalse(body.hasRemaining());
-  }
-
-  private static TPipeTransferReq copyOf(final TPipeTransferReq req) {
-    final TPipeTransferReq copy = new TPipeTransferReq();
-    copy.version = req.version;
-    copy.type = req.type;
-    copy.body = req.body.duplicate();
-    return copy;
   }
 
   private static class DummyFileSealReqV1 extends PipeTransferFileSealReqV1 {

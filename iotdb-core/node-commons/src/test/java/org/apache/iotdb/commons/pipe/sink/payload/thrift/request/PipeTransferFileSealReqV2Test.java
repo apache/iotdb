@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.sink.payload.thrift.request;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -32,6 +30,9 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertVersionAndType;
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.copyOf;
 
 public class PipeTransferFileSealReqV2Test {
 
@@ -61,8 +62,8 @@ public class PipeTransferFileSealReqV2Test {
     final DummyFileSealReqV2 req =
         DummyFileSealReqV2.toTPipeTransferReq(fileNames, fileLengths, parameters);
 
-    Assert.assertEquals(IoTDBSinkRequestVersion.VERSION_1.getVersion(), req.version);
-    Assert.assertEquals(PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL.getType(), req.type);
+    assertVersionAndType(
+        req, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL);
     Assert.assertEquals(fileNames, req.getFileNames());
     Assert.assertEquals(fileLengths, req.getFileLengths());
     Assert.assertEquals(parameters, req.getParameters());
@@ -151,14 +152,6 @@ public class PipeTransferFileSealReqV2Test {
         markerParameters(PipeTransferFileSealReqV2.TREE, PipeTransferFileSealReqV2.TABLE);
     parameters.put(PipeTransferFileSealReqV2.DATABASE_PATTERN, "root.sg.*");
     return parameters;
-  }
-
-  private static TPipeTransferReq copyOf(final TPipeTransferReq req) {
-    final TPipeTransferReq copy = new TPipeTransferReq();
-    copy.version = req.version;
-    copy.type = req.type;
-    copy.body = req.body.duplicate();
-    return copy;
   }
 
   private static class DummyFileSealReqV2 extends PipeTransferFileSealReqV2 {

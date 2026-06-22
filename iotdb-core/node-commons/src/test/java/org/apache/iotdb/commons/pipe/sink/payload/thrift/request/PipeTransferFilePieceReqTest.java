@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.commons.pipe.sink.payload.thrift.request;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertVersionAndType;
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.copyOf;
 
 public class PipeTransferFilePieceReqTest {
 
@@ -39,8 +40,8 @@ public class PipeTransferFilePieceReqTest {
     final DummyFilePieceReq req =
         DummyFilePieceReq.toTPipeTransferReq(FILE_NAME, START_WRITING_OFFSET, FILE_PIECE);
 
-    Assert.assertEquals(IoTDBSinkRequestVersion.VERSION_1.getVersion(), req.version);
-    Assert.assertEquals(PipeRequestType.TRANSFER_TS_FILE_PIECE.getType(), req.type);
+    assertVersionAndType(
+        req, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_TS_FILE_PIECE);
     Assert.assertEquals(FILE_NAME, req.getFileName());
     Assert.assertEquals(START_WRITING_OFFSET, req.getStartWritingOffset());
     Assert.assertArrayEquals(FILE_PIECE, req.getFilePiece());
@@ -75,14 +76,6 @@ public class PipeTransferFilePieceReqTest {
     Assert.assertEquals(START_WRITING_OFFSET, ReadWriteIOUtils.readLong(body));
     Assert.assertArrayEquals(FILE_PIECE, ReadWriteIOUtils.readBinary(body).getValues());
     Assert.assertFalse(body.hasRemaining());
-  }
-
-  private static TPipeTransferReq copyOf(final TPipeTransferReq req) {
-    final TPipeTransferReq copy = new TPipeTransferReq();
-    copy.version = req.version;
-    copy.type = req.type;
-    copy.body = req.body.duplicate();
-    return copy;
   }
 
   private static class DummyFilePieceReq extends PipeTransferFilePieceReq {

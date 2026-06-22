@@ -38,6 +38,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertVersionAndType;
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.copyOf;
+
 public class PipeTransferSliceReqBuilderTest {
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
@@ -160,22 +163,14 @@ public class PipeTransferSliceReqBuilderTest {
       final byte[] expectedSliceBody,
       final int expectedSliceIndex,
       final int expectedSliceCount) {
-    Assert.assertEquals(IoTDBSinkRequestVersion.VERSION_1.getVersion(), sliceReq.version);
-    Assert.assertEquals(PipeRequestType.TRANSFER_SLICE.getType(), sliceReq.type);
+    assertVersionAndType(
+        sliceReq, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_SLICE);
     Assert.assertEquals(expectedOrderId, sliceReq.getOrderId());
     Assert.assertEquals(expectedOriginReqType, sliceReq.getOriginReqType());
     Assert.assertEquals(expectedOriginBodySize, sliceReq.getOriginBodySize());
     Assert.assertArrayEquals(expectedSliceBody, sliceReq.getSliceBody());
     Assert.assertEquals(expectedSliceIndex, sliceReq.getSliceIndex());
     Assert.assertEquals(expectedSliceCount, sliceReq.getSliceCount());
-  }
-
-  private static TPipeTransferReq copyOf(final TPipeTransferReq req) {
-    final TPipeTransferReq copy = new TPipeTransferReq();
-    copy.version = req.version;
-    copy.type = req.type;
-    copy.body = req.body.duplicate();
-    return copy;
   }
 
   private static TPipeTransferReq createReq(final byte version, final int bodySize) {
