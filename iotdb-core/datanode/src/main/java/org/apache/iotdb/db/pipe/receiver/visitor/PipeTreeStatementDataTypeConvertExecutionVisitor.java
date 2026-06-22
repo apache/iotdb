@@ -112,12 +112,15 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
               true,
               false)) {
         for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
+          final InsertTabletStatement insertTabletStatement =
+              PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                      tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
+                  .constructStatement();
+          if (loadTsFileStatement.getDatabase() != null) {
+            insertTabletStatement.setDatabaseName(loadTsFileStatement.getDatabase());
+          }
           final PipeConvertedInsertTabletStatement statement =
-              new PipeConvertedInsertTabletStatement(
-                  PipeTransferTabletRawReq.toTPipeTransferRawReq(
-                          tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
-                      .constructStatement(),
-                  false);
+              new PipeConvertedInsertTabletStatement(insertTabletStatement, false);
 
           TSStatus result;
           try {

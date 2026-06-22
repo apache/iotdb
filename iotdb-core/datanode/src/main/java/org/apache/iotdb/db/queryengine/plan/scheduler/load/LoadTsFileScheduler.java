@@ -790,6 +790,7 @@ public class LoadTsFileScheduler implements IScheduler {
             .setConvertOnTypeMismatch(true);
     if (database != null) {
       statement.setDatabase(database);
+      statement.updateDatabaseLevelByTreeDatabase();
     }
     if (isGeneratedByPipe) {
       statement.markIsGeneratedByPipe();
