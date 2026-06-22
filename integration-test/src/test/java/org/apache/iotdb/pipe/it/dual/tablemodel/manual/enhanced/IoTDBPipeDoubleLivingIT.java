@@ -173,6 +173,12 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
         TestUtils.executeNonQuery(
             senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
       }
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+
+    try (Connection conn = receiverEnv.getConnection()) {
+      // insertion on receiver
       for (int i = 200; i < 300; ++i) {
         TestUtils.executeNonQuery(
             receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
@@ -182,6 +188,8 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     }
 
     TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
+    TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
 
     TableModelUtils.insertData("test", "test", 200, 300, receiverEnv);
 
