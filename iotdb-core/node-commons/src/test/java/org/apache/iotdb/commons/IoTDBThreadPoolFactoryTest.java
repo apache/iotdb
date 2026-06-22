@@ -32,10 +32,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class IoTDBThreadPoolFactoryTest {
@@ -69,6 +71,21 @@ public class IoTDBThreadPoolFactoryTest {
       assertEquals(count.get(), threadCount);
     } catch (InterruptedException E) {
       fail();
+    }
+  }
+
+  @Test
+  public void testNewFixedThreadPoolWithCoreThreadTimeout() {
+    final ExecutorService exec =
+        IoTDBThreadPoolFactory.newFixedThreadPoolWithCoreThreadTimeout(
+            2, POOL_NAME, 1, TimeUnit.SECONDS);
+    try {
+      assertTrue(exec instanceof ThreadPoolExecutor);
+      final ThreadPoolExecutor threadPoolExecutor = (ThreadPoolExecutor) exec;
+      assertTrue(threadPoolExecutor.allowsCoreThreadTimeOut());
+      assertEquals(1, threadPoolExecutor.getKeepAliveTime(TimeUnit.SECONDS));
+    } finally {
+      exec.shutdownNow();
     }
   }
 

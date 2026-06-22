@@ -80,6 +80,23 @@ public class IoTDBThreadPoolFactory {
         poolName);
   }
 
+  public static ExecutorService newFixedThreadPoolWithCoreThreadTimeout(
+      int nThreads, String poolName, long keepAliveTime, TimeUnit unit) {
+    logger.info(NEW_FIXED_THREAD_POOL_LOGGER_FORMAT, poolName, nThreads);
+
+    final ThreadPoolExecutor executor =
+        new WrappedThreadPoolExecutor(
+            nThreads,
+            nThreads,
+            keepAliveTime,
+            unit,
+            new LinkedBlockingQueue<>(),
+            new IoTThreadFactory(poolName),
+            poolName);
+    executor.allowCoreThreadTimeOut(true);
+    return executor;
+  }
+
   /**
    * see {@link Executors#newFixedThreadPool(int, java.util.concurrent.ThreadFactory)}.
    *

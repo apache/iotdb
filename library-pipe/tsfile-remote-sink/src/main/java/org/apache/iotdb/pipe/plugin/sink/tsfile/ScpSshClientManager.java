@@ -24,10 +24,17 @@ import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
+import org.apache.sshd.client.ClientBuilder;
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.future.ConnectFuture;
 import org.apache.sshd.client.session.ClientSession;
+import org.apache.sshd.client.session.SessionFactory;
+import org.apache.sshd.common.Factory;
 import org.apache.sshd.common.future.CancelOption;
+import org.apache.sshd.common.io.nio2.Nio2ServiceFactoryFactory;
+import org.apache.sshd.common.util.threads.CloseableExecutorService;
+import org.apache.sshd.common.util.threads.SshThreadPoolExecutor;
+import org.apache.sshd.common.util.threads.SshdThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +42,8 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,14 +54,14 @@ class ScpSshClientManager {
 
   private static final long CONNECT_TIMEOUT_MS = 10000L;
   private static final Duration SESSION_EVICTION_INTERVAL = Duration.ofMinutes(1);
+  private static final long SSH_CLIENT_THREAD_KEEP_ALIVE_SECONDS = 60L;
   static final int DEFAULT_MAX_SESSIONS_PER_KEY = 16;
 
   private static volatile SshClient client;
+  private static volatile GenericKeyedObjectPool<ScpConnectionKey, ClientSession> sessionPool;
   private static final ConcurrentHashMap<ScpConnectionKey, AtomicInteger> SESSION_POOL_REFERENCES =
       new ConcurrentHashMap<>();
   private static final AtomicInteger GLOBAL_SESSION_POOL_REFERENCES = new AtomicInteger(0);
-  private static final GenericKeyedObjectPool<ScpConnectionKey, ClientSession> SESSION_POOL =
-      createSessionPool();
 
   private ScpSshClientManager() {}
 
@@ -74,7 +83,11 @@ class ScpSshClientManager {
   private static SshClient createClient() throws IOException {
     try {
       System.setProperty("org.apache.sshd.security.provider.BC.enabled", "false");
-      final SshClient sshClient = SshClient.setUpDefaultClient();
+      final IdleSshClient sshClient =
+          (IdleSshClient) ClientBuilder.builder().factory(IdleSshClient::new).build(true);
+      sshClient.setScheduledExecutorService(createSshScheduledExecutor(), true);
+      sshClient.setIoServiceFactoryFactory(
+          new Nio2ServiceFactoryFactory(newSshClientExecutorFactory()));
       sshClient.start();
       return sshClient;
     } catch (Exception e) {
@@ -87,12 +100,29 @@ class ScpSshClientManager {
     config.setMaxTotal(-1);
     config.setMaxTotalPerKey(DEFAULT_MAX_SESSIONS_PER_KEY);
     config.setMaxIdlePerKey(DEFAULT_MAX_SESSIONS_PER_KEY);
+    config.setMinIdlePerKey(0);
     config.setTestOnBorrow(true);
     config.setTestOnReturn(true);
     config.setTestWhileIdle(true);
+    config.setMinEvictableIdleTime(SESSION_EVICTION_INTERVAL);
     config.setTimeBetweenEvictionRuns(SESSION_EVICTION_INTERVAL);
     config.setBlockWhenExhausted(true);
     return new GenericKeyedObjectPool<>(new ScpSessionFactory(), config);
+  }
+
+  private static GenericKeyedObjectPool<ScpConnectionKey, ClientSession> getSessionPool() {
+    GenericKeyedObjectPool<ScpConnectionKey, ClientSession> currentSessionPool = sessionPool;
+    if (currentSessionPool == null || currentSessionPool.isClosed()) {
+      synchronized (ScpSshClientManager.class) {
+        currentSessionPool = sessionPool;
+        if (currentSessionPool == null || currentSessionPool.isClosed()) {
+          currentSessionPool = createSessionPool();
+          sessionPool = currentSessionPool;
+          LOGGER.info("Created static shared SCP session pool");
+        }
+      }
+    }
+    return currentSessionPool;
   }
 
   static ScpSessionPool acquireSessionPool(
@@ -104,6 +134,11 @@ class ScpSshClientManager {
     final ScpConnectionKey key =
         new ScpConnectionKey(host, port, user, password, sessionKeepAliveSeconds);
     synchronized (ScpSshClientManager.class) {
+      getSessionPool();
+      final int globalReferenceCount = GLOBAL_SESSION_POOL_REFERENCES.incrementAndGet();
+      if (globalReferenceCount == 1) {
+        resumeClientBackgroundTasks();
+      }
       SESSION_POOL_REFERENCES.compute(
           key,
           (ignored, referenceCount) -> {
@@ -114,7 +149,6 @@ class ScpSshClientManager {
             referenceCount.incrementAndGet();
             return referenceCount;
           });
-      GLOBAL_SESSION_POOL_REFERENCES.incrementAndGet();
     }
     return new ScpSessionPool(key);
   }
@@ -130,7 +164,7 @@ class ScpSshClientManager {
 
     ClientSession borrowSession() throws IOException {
       try {
-        return SESSION_POOL.borrowObject(key);
+        return getSessionPool().borrowObject(key);
       } catch (final IOException e) {
         throw e;
       } catch (final Exception e) {
@@ -143,7 +177,7 @@ class ScpSshClientManager {
         return;
       }
       try {
-        SESSION_POOL.returnObject(key, session);
+        getSessionPool().returnObject(key, session);
       } catch (final Exception e) {
         closeSessionQuietly(session);
         LOGGER.warn("Failed to return SCP session for {}", key, e);
@@ -155,15 +189,11 @@ class ScpSshClientManager {
         return;
       }
       try {
-        SESSION_POOL.invalidateObject(key, session);
+        getSessionPool().invalidateObject(key, session);
       } catch (final Exception e) {
         closeSessionQuietly(session);
         LOGGER.warn("Failed to invalidate SCP session for {}", key, e);
       }
-    }
-
-    void invalidate() {
-      SESSION_POOL.clear(key);
     }
 
     void release() {
@@ -177,12 +207,12 @@ class ScpSshClientManager {
               if (referenceCount.decrementAndGet() > 0) {
                 return referenceCount;
               }
-              SESSION_POOL.clear(key);
-              LOGGER.info("Closed static shared SCP session pool for {}", key);
+              clearSessionPoolKey(key);
+              LOGGER.info("Cleared idle SCP sessions for {}", key);
               return null;
             });
         if (GLOBAL_SESSION_POOL_REFERENCES.decrementAndGet() == 0) {
-          stopClient();
+          suspendClientBackgroundTasks();
         }
       }
     }
@@ -302,22 +332,82 @@ class ScpSshClientManager {
     } catch (final Exception cancelException) {
       LOGGER.debug("Failed to cancel SCP connection attempt for {}", key, cancelException);
     }
+    closeConnectedSessionAfterFailedCreation(key, connectFuture);
   }
 
-  private static void stopClient() {
-    synchronized (ScpSshClientManager.class) {
-      if (GLOBAL_SESSION_POOL_REFERENCES.get() > 0 || client == null) {
-        return;
+  private static void closeConnectedSessionAfterFailedCreation(
+      final ScpConnectionKey key, final ConnectFuture connectFuture) {
+    try {
+      if (connectFuture.isConnected()) {
+        closeSessionQuietly(connectFuture.getSession());
       }
-      try {
-        if (client.isStarted()) {
-          client.stop();
-          LOGGER.info("Stopped static shared SCP SSH client");
-        }
-      } catch (final Exception e) {
-        LOGGER.warn("Failed to stop static shared SCP SSH client", e);
-      } finally {
-        client = null;
+    } catch (final Exception closeException) {
+      LOGGER.debug(
+          "Failed to close connected SCP session after failed creation for {}",
+          key,
+          closeException);
+    }
+  }
+
+  private static void clearSessionPoolKey(final ScpConnectionKey key) {
+    final GenericKeyedObjectPool<ScpConnectionKey, ClientSession> currentSessionPool = sessionPool;
+    if (currentSessionPool == null || currentSessionPool.isClosed()) {
+      return;
+    }
+    currentSessionPool.clear(key);
+  }
+
+  private static ScheduledThreadPoolExecutor createSshScheduledExecutor() {
+    final ScheduledThreadPoolExecutor executor =
+        new ScheduledThreadPoolExecutor(1, new SshdThreadFactory("pipe-scp-ssh-timer"));
+    executor.setKeepAliveTime(SSH_CLIENT_THREAD_KEEP_ALIVE_SECONDS, TimeUnit.SECONDS);
+    executor.setRemoveOnCancelPolicy(true);
+    executor.allowCoreThreadTimeOut(true);
+    return executor;
+  }
+
+  private static Factory<CloseableExecutorService> newSshClientExecutorFactory() {
+    return () -> {
+      final SshThreadPoolExecutor executor =
+          new SshThreadPoolExecutor(
+              0,
+              DEFAULT_MAX_SESSIONS_PER_KEY,
+              SSH_CLIENT_THREAD_KEEP_ALIVE_SECONDS,
+              TimeUnit.SECONDS,
+              new SynchronousQueue<>(),
+              new SshdThreadFactory("pipe-scp-ssh-io"));
+      executor.allowCoreThreadTimeOut(true);
+      return executor;
+    };
+  }
+
+  private static void resumeClientBackgroundTasks() {
+    final SshClient currentClient = client;
+    if (currentClient instanceof IdleSshClient) {
+      ((IdleSshClient) currentClient).resumeSessionTimeout();
+    }
+  }
+
+  private static void suspendClientBackgroundTasks() {
+    final SshClient currentClient = client;
+    if (currentClient instanceof IdleSshClient) {
+      ((IdleSshClient) currentClient).suspendSessionTimeout();
+    }
+  }
+
+  private static final class IdleSshClient extends SshClient {
+
+    private void resumeSessionTimeout() {
+      final SessionFactory currentSessionFactory = getSessionFactory();
+      if (isStarted() && currentSessionFactory != null && timeoutListenerFuture == null) {
+        setupSessionTimeout(currentSessionFactory);
+      }
+    }
+
+    private void suspendSessionTimeout() {
+      final SessionFactory currentSessionFactory = getSessionFactory();
+      if (currentSessionFactory != null) {
+        removeSessionTimeout(currentSessionFactory);
       }
     }
   }

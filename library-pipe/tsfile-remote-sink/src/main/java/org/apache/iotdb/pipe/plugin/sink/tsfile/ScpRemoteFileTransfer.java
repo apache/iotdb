@@ -51,7 +51,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_RATE_LIMIT_DEFAULT_VALUE;
@@ -98,8 +97,6 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
   private static final long EXECUTOR_CLOSE_TIMEOUT_SECONDS = 30L;
   private static final Set<ClientChannelEvent> WAIT_FOR_CLOSED =
       EnumSet.of(ClientChannelEvent.CLOSED);
-  private static final AtomicInteger OBJECT_UPLOAD_THREAD_COUNTER = new AtomicInteger(0);
-
   private final String host;
   private final String user;
   private final String password;
@@ -226,7 +223,6 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
       syncModFile(modFile, finalTsName);
       syncTsFile(tsFile, finalTsName);
     } catch (final Exception e) {
-      invalidateSession();
       throw new IOException("Scp transfer failed: " + targetName, e);
     }
   }
@@ -409,7 +405,6 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
       pendingUploads.remove(completedUpload);
       completedUpload.get();
     } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
       throw new IOException("Interrupted while uploading object files via SCP", e);
     } catch (final CancellationException e) {
       LOGGER.debug("An object file upload task was cancelled", e);
@@ -447,9 +442,12 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
     }
   }
 
-  private static ExecutorService createObjectUploadExecutor(final int maximumParallelism) {
-    return IoTDBThreadPoolFactory.newFixedThreadPool(
-        maximumParallelism, "pipe-scp-object-transfer");
+  private ExecutorService createObjectUploadExecutor(final int maximumParallelism) {
+    return IoTDBThreadPoolFactory.newFixedThreadPoolWithCoreThreadTimeout(
+        maximumParallelism,
+        "pipe-scp-object-transfer",
+        objectUploadThreadKeepAliveSeconds,
+        TimeUnit.SECONDS);
   }
 
   private static String computeFinalTsName(final String targetName) {
@@ -565,10 +563,6 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
     }
   }
 
-  private synchronized void invalidateSession() {
-    sessionPool.invalidate();
-  }
-
   @Override
   public void handshake() throws IOException {
     final ClientSession session = getSession();
@@ -590,17 +584,24 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
     try {
       if (!objectUploadExecutor.awaitTermination(
           EXECUTOR_CLOSE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-        objectUploadExecutor.shutdownNow();
-        if (!objectUploadExecutor.awaitTermination(
-            EXECUTOR_CLOSE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-          LOGGER.info("SCP object upload executor did not terminate after forced shutdown");
-        }
+        forceShutdownObjectUploadExecutor();
       }
     } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-      objectUploadExecutor.shutdownNow();
+      forceShutdownObjectUploadExecutor();
+    } finally {
+      sessionPool.release();
     }
-    invalidateSession();
-    sessionPool.release();
+  }
+
+  private void forceShutdownObjectUploadExecutor() throws IOException {
+    objectUploadExecutor.shutdownNow();
+    try {
+      if (!objectUploadExecutor.awaitTermination(
+          EXECUTOR_CLOSE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+        LOGGER.info("SCP object upload executor did not terminate after forced shutdown");
+      }
+    } catch (final InterruptedException e) {
+      throw new IOException("Interrupted while closing SCP object upload executor", e);
+    }
   }
 }
