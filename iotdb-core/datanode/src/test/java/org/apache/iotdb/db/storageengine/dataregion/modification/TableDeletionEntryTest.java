@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -39,6 +40,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class TableDeletionEntryTest {
@@ -63,6 +65,13 @@ public class TableDeletionEntryTest {
     ByteArrayInputStream bis = new ByteArrayInputStream(byteArray);
     ModEntry deserialized2 = ModEntry.createFrom(bis);
     assertEquals(entry, deserialized2);
+  }
+
+  @Test
+  public void testDeserializePredicateTypeFromEmptyStream() {
+    assertThrows(
+        EOFException.class,
+        () -> IDPredicate.IDPredicateType.deserialize(new ByteArrayInputStream(new byte[0])));
   }
 
   @Test

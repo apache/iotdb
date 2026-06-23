@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -165,8 +166,16 @@ public class ProcedureInfo implements SnapshotProcessor {
     try (FileInputStream fis = new FileInputStream(procedureFilePath.toFile())) {
       Procedure procedure = null;
       try (FileChannel channel = fis.getChannel()) {
-        ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_LOAD_BUFFER_SIZE);
-        if (channel.read(byteBuffer) > 0) {
+        final long fileSize = channel.size();
+        if (fileSize > PROCEDURE_LOAD_BUFFER_SIZE) {
+          throw new IOException(
+              String.format(
+                  "Procedure file %s exceeds the load buffer limit %s, actual size %s",
+                  procedureFilePath, PROCEDURE_LOAD_BUFFER_SIZE, fileSize));
+        }
+        ByteBuffer byteBuffer = ByteBuffer.allocate((int) fileSize);
+        if (fileSize > 0) {
+          IOUtils.readFully(channel, byteBuffer);
           byteBuffer.flip();
           procedure = ProcedureFactory.getInstance().create(byteBuffer);
           byteBuffer.clear();

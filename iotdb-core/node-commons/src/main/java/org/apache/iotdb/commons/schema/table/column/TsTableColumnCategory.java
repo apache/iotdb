@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -54,7 +55,11 @@ public enum TsTableColumnCategory {
   }
 
   public static TsTableColumnCategory deserialize(final InputStream stream) throws IOException {
-    return deserialize((byte) stream.read());
+    final int category = stream.read();
+    if (category < 0) {
+      throw new EOFException();
+    }
+    return deserialize((byte) category);
   }
 
   public static TsTableColumnCategory deserialize(final ByteBuffer stream) {

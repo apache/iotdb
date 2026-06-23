@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.log.SchemaFileLogReader;
@@ -107,7 +108,7 @@ public class PageIOChannel {
     if (!readChannel.isOpen()) {
       readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
     }
-    readChannel.read(dst, getPageAddress(pageIndex));
+    IOUtils.readFully(readChannel, dst, getPageAddress(pageIndex));
   }
 
   // region Flush Strategy
