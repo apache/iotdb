@@ -19,43 +19,88 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.Map;
 import java.util.concurrent.Semaphore;
 
 public class DataNodeTableCacheTest {
 
+  private static final String DATABASE = "interrupted_fetch_database";
+  private static final String TABLE_CACHE_TEST_DATABASE = "root.table_cache_test";
+  private static final String TABLE_NAME = "table1";
+
   @Test
-  public void testInterruptedFetchDoesNotReleaseUnacquiredPermit() throws Exception {
-    DataNodeTableCache cache = DataNodeTableCache.getInstance();
-    Semaphore semaphore = getFetchTableSemaphore(cache);
-    int permitsBeforeFetch = semaphore.availablePermits();
-
-    Thread.currentThread().interrupt();
+  public void interruptedFetchDoesNotLeakSemaphorePermit() throws Exception {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    cache.invalid(DATABASE);
     try {
-      getTablesInConfigNode(cache);
+      final Semaphore fetchTableSemaphore = getFetchTableSemaphore(cache);
+      final int permitsBeforeFetch = fetchTableSemaphore.availablePermits();
 
-      Assert.assertEquals(permitsBeforeFetch, semaphore.availablePermits());
-      Assert.assertTrue(Thread.currentThread().isInterrupted());
+      Thread.currentThread().interrupt();
+      try {
+        Assert.assertFalse(cache.isDatabaseExist(DATABASE));
+      } finally {
+        Thread.interrupted();
+      }
+
+      Assert.assertEquals(permitsBeforeFetch, fetchTableSemaphore.availablePermits());
     } finally {
-      Thread.interrupted();
+      cache.invalid(DATABASE);
     }
   }
 
-  private Semaphore getFetchTableSemaphore(DataNodeTableCache cache) throws Exception {
-    Field semaphoreField = DataNodeTableCache.class.getDeclaredField("fetchTableSemaphore");
-    semaphoreField.setAccessible(true);
-    return (Semaphore) semaphoreField.get(cache);
+  @Test
+  public void commitUpdateTableIsIdempotent() {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    try {
+      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
+
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+
+      Assert.assertEquals(
+          TABLE_NAME, cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME).getTableName());
+    } finally {
+      cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    }
   }
 
-  private void getTablesInConfigNode(DataNodeTableCache cache) throws Exception {
-    Method method = DataNodeTableCache.class.getDeclaredMethod("getTablesInConfigNode", Map.class);
-    method.setAccessible(true);
-    method.invoke(cache, Collections.emptyMap());
+  @Test
+  public void commitAfterRollbackUpdateTableIsIgnored() {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    try {
+      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
+
+      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+
+      Assert.assertNull(cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, false));
+    } finally {
+      cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    }
+  }
+
+  private Semaphore getFetchTableSemaphore(final DataNodeTableCache cache) throws Exception {
+    final Field field = DataNodeTableCache.class.getDeclaredField("fetchTableSemaphore");
+    field.setAccessible(true);
+    return (Semaphore) field.get(cache);
+  }
+
+  private TsTable createTable(final String tableName) {
+    final TsTable table = new TsTable(tableName);
+    table.addColumnSchema(
+        new FieldColumnSchema("s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    return table;
   }
 }

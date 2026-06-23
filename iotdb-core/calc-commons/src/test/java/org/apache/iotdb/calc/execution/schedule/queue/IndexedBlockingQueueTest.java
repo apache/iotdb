@@ -59,7 +59,7 @@ public class IndexedBlockingQueueTest {
   public void testRejectDecreaseWithoutReservedSpace() {
     ReserveQueue queue = new ReserveQueue(1);
 
-    Assert.assertThrows(IllegalStateException.class, queue::decreaseReservedSize);
+    Assert.assertFalse(queue.decreaseReservedSize(new Element(1)));
   }
 
   @Test
@@ -69,9 +69,9 @@ public class IndexedBlockingQueueTest {
     queue.push(element);
 
     Assert.assertSame(element, queue.poll());
-    queue.decreaseReservedSize();
+    Assert.assertTrue(queue.decreaseReservedSize(element));
 
-    Assert.assertThrows(IllegalStateException.class, queue::decreaseReservedSize);
+    Assert.assertFalse(queue.decreaseReservedSize(new Element(1)));
   }
 
   @Test

@@ -114,7 +114,7 @@ public abstract class PipeSubtask
     if (totalRetryCount != 0) {
       LOGGER.warn(
           "Successfully executed subtask {}({}) after {} retries.",
-          taskID,
+          getDisplayTaskID(),
           this.getClass().getSimpleName(),
           totalRetryCount);
     }
@@ -193,6 +193,10 @@ public abstract class PipeSubtask
   }
 
   public String getTaskID() {
+    return taskID;
+  }
+
+  public String getDisplayTaskID() {
     return taskID;
   }
 

@@ -171,16 +171,14 @@ public class SingleDeviceViewOperatorTest {
               Arrays.asList(1, 2),
               Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
       int count = 0;
-      int total = 0;
       while (singleDeviceViewOperator.isBlocked().isDone() && singleDeviceViewOperator.hasNext()) {
         TsBlock tsBlock = singleDeviceViewOperator.next();
         if (tsBlock == null || tsBlock.isEmpty()) {
           continue;
         }
         assertEquals(4, tsBlock.getValueColumnCount());
-        total += tsBlock.getPositionCount();
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * (count % 25);
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          long expectedTime = count;
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           assertEquals(
               SINGLE_DEVICE_MERGE_OPERATOR_TEST_SG + ".device0",
@@ -201,9 +199,8 @@ public class SingleDeviceViewOperatorTest {
             assertTrue(tsBlock.getColumn(3).isNull(i));
           }
         }
-        count++;
       }
-      assertEquals(500, total);
+      assertEquals(500, count);
     } catch (Exception e) {
       e.printStackTrace();
       fail();

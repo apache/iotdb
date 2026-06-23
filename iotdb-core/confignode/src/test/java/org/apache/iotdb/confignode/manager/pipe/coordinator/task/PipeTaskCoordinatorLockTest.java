@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -36,49 +37,61 @@ public class PipeTaskCoordinatorLockTest {
     lock.unlock();
     Assert.assertTrue(lock.tryLock());
 
+    CountDownLatch waiting = new CountDownLatch(1);
     AtomicBoolean acquired = new AtomicBoolean(false);
     Thread waiter =
         new Thread(
             () -> {
+              waiting.countDown();
               lock.lock();
               acquired.set(true);
             });
     waiter.start();
-    waitUntilState(waiter, Thread.State.WAITING);
+
+    Assert.assertTrue(waiting.await(3, TimeUnit.SECONDS));
+    TimeUnit.MILLISECONDS.sleep(200);
     Assert.assertFalse(acquired.get());
 
     lock.unlock();
-    waiter.join(TimeUnit.SECONDS.toMillis(5));
+    waiter.join(TimeUnit.SECONDS.toMillis(3));
+
     Assert.assertFalse(waiter.isAlive());
     Assert.assertTrue(acquired.get());
     lock.unlock();
+    Assert.assertFalse(lock.isLocked());
   }
 
   @Test
-  public void testInterruptedLockDoesNotReturnBeforeAcquired() throws Exception {
+  public void testInterruptedThreadDoesNotAcquireWithoutPermit() throws Exception {
     PipeTaskCoordinatorLock lock = new PipeTaskCoordinatorLock();
+    lock.lock();
+
+    CountDownLatch waiting = new CountDownLatch(1);
     AtomicBoolean acquired = new AtomicBoolean(false);
     AtomicBoolean interruptedAfterLock = new AtomicBoolean(false);
-
-    lock.lock();
-    Thread waiter =
+    Thread thread =
         new Thread(
             () -> {
               Thread.currentThread().interrupt();
+              waiting.countDown();
               lock.lock();
               acquired.set(true);
               interruptedAfterLock.set(Thread.currentThread().isInterrupted());
+              lock.unlock();
             });
-    waiter.start();
-    waitUntilState(waiter, Thread.State.WAITING);
+    thread.start();
+
+    Assert.assertTrue(waiting.await(3, TimeUnit.SECONDS));
+    TimeUnit.MILLISECONDS.sleep(200);
     Assert.assertFalse(acquired.get());
 
     lock.unlock();
-    waiter.join(TimeUnit.SECONDS.toMillis(5));
-    Assert.assertFalse(waiter.isAlive());
+    thread.join(TimeUnit.SECONDS.toMillis(3));
+
+    Assert.assertFalse(thread.isAlive());
     Assert.assertTrue(acquired.get());
     Assert.assertTrue(interruptedAfterLock.get());
-    lock.unlock();
+    Assert.assertFalse(lock.isLocked());
   }
 
   @Test
@@ -93,16 +106,5 @@ public class PipeTaskCoordinatorLockTest {
     } finally {
       Thread.interrupted();
     }
-  }
-
-  private void waitUntilState(Thread thread, Thread.State expectedState) throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-    while (System.nanoTime() < deadline) {
-      if (thread.getState() == expectedState) {
-        return;
-      }
-      Thread.sleep(10);
-    }
-    Assert.assertEquals(expectedState, thread.getState());
   }
 }

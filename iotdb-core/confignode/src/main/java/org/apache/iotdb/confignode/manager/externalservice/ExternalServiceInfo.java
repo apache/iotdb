@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -239,7 +240,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
       throws IOException {
     int length = ReadWriteIOUtils.readInt(inputStream);
     byte[] bytes = new byte[length];
-    inputStream.read(bytes);
+    new DataInputStream(inputStream).readFully(bytes);
 
     crc32.reset();
     crc32.update(bytes, 0, length);

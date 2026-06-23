@@ -179,7 +179,14 @@ public class DataNodeTableCache implements ITableCache {
       // If rename table
       if (Objects.nonNull(oldName)) {
         // Equals to commit update
-        final TsTable oldTable = preUpdateTableMap.get(database).get(oldName).getLeft();
+        final TsTable oldTable = getTableFromPreUpdateMap(database, oldName);
+        if (Objects.isNull(oldTable)) {
+          LOGGER.info(
+              "Skip rollback renaming old table {}.{} because it has been handled.",
+              database,
+              oldName);
+          return;
+        }
         // Cannot be rolled back, consider:
         // 1. Fetched a written CN table
         // 2. CN rollback because of timeout
@@ -200,15 +207,25 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   private void removeTableFromPreUpdateMap(final String database, final String tableName) {
-    preUpdateTableMap.compute(
+    preUpdateTableMap.computeIfPresent(
         database,
         (k, v) -> {
-          if (v == null) {
-            throw new IllegalStateException();
+          final Pair<TsTable, Long> tableVersionPair = v.get(tableName);
+          if (Objects.nonNull(tableVersionPair)) {
+            tableVersionPair.setLeft(null);
           }
-          v.get(tableName).setLeft(null);
           return v;
         });
+  }
+
+  private @Nullable TsTable getTableFromPreUpdateMap(
+      final String database, final String tableName) {
+    final Map<String, Pair<TsTable, Long>> tableMap = preUpdateTableMap.get(database);
+    if (Objects.isNull(tableMap)) {
+      return null;
+    }
+    final Pair<TsTable, Long> tableVersionPair = tableMap.get(tableName);
+    return Objects.nonNull(tableVersionPair) ? tableVersionPair.getLeft() : null;
   }
 
   @Override
@@ -217,7 +234,15 @@ public class DataNodeTableCache implements ITableCache {
     database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      final TsTable newTable = preUpdateTableMap.get(database).get(tableName).getLeft();
+      final TsTable newTable = getTableFromPreUpdateMap(database, tableName);
+      if (Objects.isNull(newTable)) {
+        LOGGER.info(
+            "Skip commit-update table {}.{} because it has been handled.", database, tableName);
+        if (Objects.nonNull(oldName)) {
+          removeTableFromPreUpdateMap(database, oldName);
+        }
+        return;
+      }
       // Cannot be committed, consider:
       // 1. Fetched a non-changed CN table
       // 2. CN is changed

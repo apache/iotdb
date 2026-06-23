@@ -114,6 +114,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
@@ -649,6 +650,9 @@ public class ConfigPlanExecutor {
       case ConsumerGroupHandleMetaChange:
         return subscriptionInfo.handleConsumerGroupMetaChanges(
             (ConsumerGroupHandleMetaChangePlan) physicalPlan);
+      case CommitProgressHandleMetaChange:
+        return subscriptionInfo.handleCommitProgressChanges(
+            (CommitProgressHandleMetaChangePlan) physicalPlan);
       case AlterConsumerGroup:
         return subscriptionInfo.alterConsumerGroup((AlterConsumerGroupPlan) physicalPlan);
       case TopicHandleMetaChange:
@@ -768,12 +772,12 @@ public class ConfigPlanExecutor {
     return result.get();
   }
 
-  public void loadSnapshot(final File latestSnapshotRootDir) {
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
     if (!latestSnapshotRootDir.exists()) {
       LOGGER.error(
           ConfigNodeMessages.SNAPSHOT_DIRECTORY_IS_NOT_EXIST_CAN_NOT_LOAD_SNAPSHOT_WITH,
           latestSnapshotRootDir.getAbsolutePath());
-      return;
+      return false;
     }
 
     final AtomicBoolean result = new AtomicBoolean(true);
@@ -797,10 +801,14 @@ public class ConfigPlanExecutor {
               }
             });
     if (result.get()) {
+      pipeInfo.getPipeTaskInfo().enrichPipeMetasWithRootUserForCompatibility();
       LOGGER.info(
           ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_SUCCESS_LATESTSNAPSHOTROOTDIR,
           latestSnapshotRootDir);
     }
+    // Propagate any snapshot-load failure so callers (e.g. the AddPeer flow) do not treat a
+    // partially or wholly failed load as success.
+    return result.get();
   }
 
   private DataSet getSchemaNodeManagementPartition(ConfigPhysicalPlan req) {

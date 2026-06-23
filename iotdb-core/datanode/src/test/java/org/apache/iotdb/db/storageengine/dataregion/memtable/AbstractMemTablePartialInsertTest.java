@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -112,6 +113,20 @@ public class AbstractMemTablePartialInsertTest {
     assertEquals(1, memTable.getTotalPointsNum());
   }
 
+  @Test
+  public void testInsertAlignedRow_markedFailedMeasurementOnly_pointsInsertedMatchesWrittenPoints()
+      throws IllegalPathException {
+    InsertRowNode node =
+        buildAlignedInsertRowNode(
+            new String[] {"s0", "s1"}, new Object[] {1, 2}, -1 /* no failure */);
+    node.markFailedMeasurement(0);
+
+    int points = memTable.insertAlignedRow(node);
+
+    assertEquals(1, points);
+    assertEquals(1, memTable.getTotalPointsNum());
+  }
+
   /** All measurements fail → insertAlignedRow returns 0 early (schemaList is empty). */
   @Test
   public void testInsertAlignedRow_allMeasurementsFailed_pointsInsertedIsZero()
@@ -130,6 +145,67 @@ public class AbstractMemTablePartialInsertTest {
 
     assertEquals(0, points);
     assertEquals(0, memTable.getTotalPointsNum());
+  }
+
+  @Test
+  public void testInsertAlignedRow_tableNonFieldAndFailedMeasurementsNotCountedAsSeries()
+      throws IllegalPathException {
+    InsertRowNode node =
+        buildAlignedInsertRowNode(
+            new String[] {"tag1", "attr1", "s0", "s1"},
+            new Object[] {1, 2, 3, 4},
+            -1 /* no failure */);
+    node.setColumnCategories(
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.ATTRIBUTE,
+          TsTableColumnCategory.FIELD,
+          TsTableColumnCategory.FIELD
+        });
+    node.markFailedMeasurement(3);
+
+    int points = memTable.insertAlignedRow(node);
+
+    assertEquals(1, points);
+    assertEquals(1, memTable.getTotalPointsNum());
+    assertEquals(1, memTable.getSeriesNumber());
+  }
+
+  @Test
+  public void testInsertRow_tableNonFieldAndFailedMeasurementsNotCountedAsSeries()
+      throws IllegalPathException {
+    InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId("test"),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"tag1", "attr1", "s0", "s1"},
+            new TSDataType[] {
+              TSDataType.INT32, TSDataType.INT32, TSDataType.INT32, TSDataType.INT32
+            },
+            new MeasurementSchema[] {
+              new MeasurementSchema("tag1", TSDataType.INT32),
+              new MeasurementSchema("attr1", TSDataType.INT32),
+              new MeasurementSchema("s0", TSDataType.INT32),
+              new MeasurementSchema("s1", TSDataType.INT32)
+            },
+            1L,
+            new Object[] {1, 2, 3, 4},
+            false);
+    node.setColumnCategories(
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.ATTRIBUTE,
+          TsTableColumnCategory.FIELD,
+          TsTableColumnCategory.FIELD
+        });
+    node.markFailedMeasurement(3);
+
+    int points = memTable.insert(node);
+
+    assertEquals(1, points);
+    assertEquals(1, memTable.getTotalPointsNum());
+    assertEquals(1, memTable.getSeriesNumber());
   }
 
   // =========================================================================
@@ -177,6 +253,43 @@ public class AbstractMemTablePartialInsertTest {
 
     assertEquals(3, points);
     assertEquals(3, memTable.getTotalPointsNum());
+  }
+
+  @Test
+  public void testInsertTablet_markedFailedMeasurementOnly_pointsInsertedMatchesWrittenPoints()
+      throws IllegalPathException, WriteProcessException {
+    int rowCount = 3;
+    InsertTabletNode node =
+        buildInsertTabletNode(new String[] {"s0", "s1"}, rowCount, null, -1 /* no failure */);
+    node.markFailedMeasurement(0);
+
+    int points = memTable.insertTablet(node, 0, rowCount);
+
+    assertEquals(3, points);
+    assertEquals(3, memTable.getTotalPointsNum());
+  }
+
+  @Test
+  public void testInsertTablet_tableNonFieldAndFailedMeasurementsNotCountedAsSeries()
+      throws IllegalPathException, WriteProcessException {
+    int rowCount = 3;
+    InsertTabletNode node =
+        buildInsertTabletNode(
+            new String[] {"tag1", "attr1", "s0", "s1"}, rowCount, null, -1 /* no failure */);
+    node.setColumnCategories(
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.ATTRIBUTE,
+          TsTableColumnCategory.FIELD,
+          TsTableColumnCategory.FIELD
+        });
+    node.markFailedMeasurement(3);
+
+    int points = memTable.insertTablet(node, 0, rowCount);
+
+    assertEquals(rowCount, points);
+    assertEquals(rowCount, memTable.getTotalPointsNum());
+    assertEquals(1, memTable.getSeriesNumber());
   }
 
   /** All measurements fail → pointsInserted == 0. formula: (2-2)*3 - 0 = 0 */

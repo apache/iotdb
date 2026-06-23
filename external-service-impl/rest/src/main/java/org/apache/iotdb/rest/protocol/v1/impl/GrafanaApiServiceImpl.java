@@ -48,8 +48,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.google.common.base.Joiner;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
 import java.util.List;
