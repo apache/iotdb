@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational;
 
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
@@ -56,6 +57,10 @@ public interface AggregateFunction extends SQLFunction {
    */
   default void beforeStart(FunctionArguments arguments) throws UDFException {
     // do nothing
+  }
+
+  default void beforeStart(FunctionArguments arguments, IoTDBLocal local) throws UDFException {
+    beforeStart(arguments);
   }
 
   /** Create and initialize state. You may bind some resource in this method. */
@@ -100,5 +105,9 @@ public interface AggregateFunction extends SQLFunction {
   /** This method is mainly used to release the resources used in the SQLFunction. */
   default void beforeDestroy() {
     // do nothing
+  }
+
+  default void beforeDestroy(IoTDBLocal local) {
+    beforeDestroy();
   }
 }

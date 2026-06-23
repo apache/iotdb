@@ -169,6 +169,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 
@@ -313,6 +314,30 @@ public abstract class TableOperatorGenerator<
       Map<Symbol, List<InputLocation>> inputLocations,
       PlanNodeId planNodeId,
       C context) {
+    return constructFilterAndProjectOperator(
+        predicate,
+        inputOperator,
+        projectExpressions,
+        inputDataTypes,
+        inputLocations,
+        planNodeId,
+        context,
+        getIoTDBLocal(context, planNodeId));
+  }
+
+  protected Optional<IoTDBLocal> getIoTDBLocal(C context, PlanNodeId planNodeId) {
+    return Optional.empty();
+  }
+
+  protected Operator constructFilterAndProjectOperator(
+      Optional<Expression> predicate,
+      Operator inputOperator,
+      Expression[] projectExpressions,
+      List<TSDataType> inputDataTypes,
+      Map<Symbol, List<InputLocation>> inputLocations,
+      PlanNodeId planNodeId,
+      C context,
+      Optional<IoTDBLocal> ioTDBLocal) {
 
     final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
 
@@ -341,7 +366,8 @@ public abstract class TableOperatorGenerator<
                           0,
                           context.getTableTypeProvider(),
                           metadata,
-                          context.getMemoryReservationManager());
+                          context.getMemoryReservationManager(),
+                          ioTDBLocal);
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -369,7 +395,8 @@ public abstract class TableOperatorGenerator<
             inputLocations.size(),
             context.getTableTypeProvider(),
             metadata,
-            context.getMemoryReservationManager());
+            context.getMemoryReservationManager(),
+            ioTDBLocal);
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(

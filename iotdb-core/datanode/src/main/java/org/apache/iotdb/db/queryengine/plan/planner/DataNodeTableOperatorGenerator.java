@@ -68,7 +68,6 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
-import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
@@ -132,13 +131,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.udf.IoTDBLocalImpl;
+import org.apache.iotdb.db.queryengine.udf.ScalarUdfExpressionDetector;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.idcolumn.FourOrHigherLevelDBExtractor;
@@ -2100,5 +2101,37 @@ public class DataNodeTableOperatorGenerator
   @Override
   protected SessionInfo getSessionInfo(LocalExecutionPlanContext context) {
     return context.getDriverContext().getFragmentInstanceContext().getSessionInfo();
+  }
+
+  @Override
+  protected Optional<IoTDBLocal> getIoTDBLocal(
+      LocalExecutionPlanContext context, PlanNodeId planNodeId) {
+    return Optional.of(
+        IoTDBLocalImpl.create(
+            getSessionInfo(context), context.getFragmentInstanceId(), planNodeId));
+  }
+
+  @Override
+  protected Operator constructFilterAndProjectOperator(
+      Optional<Expression> predicate,
+      Operator inputOperator,
+      Expression[] projectExpressions,
+      List<TSDataType> inputDataTypes,
+      Map<Symbol, List<InputLocation>> inputLocations,
+      PlanNodeId planNodeId,
+      LocalExecutionPlanContext context) {
+    Optional<IoTDBLocal> ioTDBLocal =
+        ScalarUdfExpressionDetector.contains(predicate, projectExpressions)
+            ? getIoTDBLocal(context, planNodeId)
+            : Optional.empty();
+    return constructFilterAndProjectOperator(
+        predicate,
+        inputOperator,
+        projectExpressions,
+        inputDataTypes,
+        inputLocations,
+        planNodeId,
+        context,
+        ioTDBLocal);
   }
 }

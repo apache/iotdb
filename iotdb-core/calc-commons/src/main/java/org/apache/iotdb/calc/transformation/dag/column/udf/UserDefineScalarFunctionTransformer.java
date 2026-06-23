@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.transformation.dag.column.udf;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.multi.MultiColumnTransformer;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 
@@ -36,13 +37,16 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
 
   private final ScalarFunction scalarFunction;
   private final List<Type> inputTypes;
+  private final IoTDBLocal ioTDBLocal;
 
   public UserDefineScalarFunctionTransformer(
       Type returnType,
       ScalarFunction scalarFunction,
-      List<ColumnTransformer> childrenTransformers) {
+      List<ColumnTransformer> childrenTransformers,
+      IoTDBLocal ioTDBLocal) {
     super(returnType, childrenTransformers);
     this.scalarFunction = scalarFunction;
+    this.ioTDBLocal = ioTDBLocal;
     this.inputTypes =
         childrenTransformers.stream().map(ColumnTransformer::getType).collect(Collectors.toList());
   }
@@ -53,7 +57,10 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
     RecordIterator iterator = new RecordIterator(childrenColumns, inputTypes, positionCount);
     while (iterator.hasNext()) {
       try {
-        Object result = scalarFunction.evaluate(iterator.next());
+        Object result =
+            ioTDBLocal != null
+                ? scalarFunction.evaluate(iterator.next(), ioTDBLocal)
+                : scalarFunction.evaluate(iterator.next());
         if (result == null) {
           builder.appendNull();
         } else {
@@ -80,7 +87,10 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
           builder.appendNull();
           continue;
         }
-        Object result = scalarFunction.evaluate(input);
+        Object result =
+            ioTDBLocal != null
+                ? scalarFunction.evaluate(input, ioTDBLocal)
+                : scalarFunction.evaluate(input);
         if (result == null) {
           builder.appendNull();
         } else {
@@ -98,7 +108,12 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
   @Override
   public void close() {
     super.close();
-    scalarFunction.beforeDestroy();
+    if (ioTDBLocal != null) {
+      scalarFunction.beforeDestroy(ioTDBLocal);
+      ioTDBLocal.close();
+    } else {
+      scalarFunction.beforeDestroy();
+    }
   }
 
   @Override

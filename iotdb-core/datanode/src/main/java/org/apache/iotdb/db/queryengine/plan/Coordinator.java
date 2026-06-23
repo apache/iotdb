@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
@@ -30,6 +29,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
@@ -155,6 +155,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewr
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.queryengine.udf.InternalQueryExecutor;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.apache.thrift.TBase;
@@ -307,6 +308,18 @@ public class Coordinator {
       boolean userQuery,
       boolean debug,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
+    return execution(queryId, session, sql, userQuery, debug, false, iQueryExecutionFactory);
+  }
+
+  private ExecutionResult execution(
+      long queryId,
+      SessionInfo session,
+      String sql,
+      boolean userQuery,
+      boolean debug,
+      boolean readOnlyInternalQuery,
+      BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory)
+      throws IoTDBException {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     MPPQueryContext queryContext = null;
@@ -325,6 +338,9 @@ public class Coordinator {
       queryContext.setUserQuery(userQuery);
       queryContext.setDebug(debug);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
+      if (readOnlyInternalQuery) {
+        InternalQueryExecutor.validateReadOnlyQuery(execution);
+      }
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
       } else {
@@ -488,12 +504,40 @@ public class Coordinator {
       long timeOut,
       boolean userQuery,
       boolean debug) {
+    return executeForTableModel(
+        statement,
+        sqlParser,
+        clientSession,
+        queryId,
+        session,
+        sql,
+        metadata,
+        timeOut,
+        userQuery,
+        debug,
+        false);
+  }
+
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      long timeOut,
+      boolean userQuery,
+      boolean debug,
+      boolean readOnlyInternalQuery)
+      throws IoTDBException {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
         debug,
+        readOnlyInternalQuery,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,

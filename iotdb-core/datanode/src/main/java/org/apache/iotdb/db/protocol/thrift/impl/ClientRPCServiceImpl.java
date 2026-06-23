@@ -562,7 +562,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  private void clearUp(
+  private static void clearUp(
       IClientSession clientSession,
       Long statementId,
       Long queryId,
@@ -572,7 +572,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     clientSession.removeQueryId(statementId, queryId);
   }
 
-  private void clearUp(
+  private static void clearUp(
       IClientSession clientSession,
       Long statementId,
       Long queryId,

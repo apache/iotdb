@@ -198,6 +198,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundExc
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
@@ -1489,11 +1490,16 @@ public class ColumnTransformerBuilder
                     .collect(Collectors.toList()),
                 Collections.emptyMap());
         ScalarFunctionAnalysis analysis = scalarFunction.analyze(parameters);
-        scalarFunction.beforeStart(parameters);
+        Optional<IoTDBLocal> ioTDBLocal = context.getIoTDBLocal();
+        if (ioTDBLocal.isPresent()) {
+          scalarFunction.beforeStart(parameters, ioTDBLocal.get());
+        } else {
+          scalarFunction.beforeStart(parameters);
+        }
         Type returnType =
             UDFDataTypeTransformer.transformUDFDataTypeToReadType(analysis.getOutputDataType());
         return new UserDefineScalarFunctionTransformer(
-            returnType, scalarFunction, childrenColumnTransformer);
+            returnType, scalarFunction, childrenColumnTransformer, ioTDBLocal.orElse(null));
       }
     }
     throw new IllegalArgumentException(
@@ -1954,6 +1960,8 @@ public class ColumnTransformerBuilder
     @SuppressWarnings("unused")
     private final Optional<MemoryReservationManager> memoryReservationManager;
 
+    private final Optional<IoTDBLocal> ioTDBLocal;
+
     public Context(
         SessionInfo sessionInfo,
         List<LeafColumnTransformer> leafList,
@@ -1966,6 +1974,34 @@ public class ColumnTransformerBuilder
         ITableTypeProvider typeProvider,
         ITypeMetadata metadata,
         @Nullable MemoryReservationManager memoryReservationManager) {
+      this(
+          sessionInfo,
+          leafList,
+          inputLocations,
+          cache,
+          hasSeen,
+          commonTransformerList,
+          inputDataTypes,
+          originSize,
+          typeProvider,
+          metadata,
+          memoryReservationManager,
+          Optional.empty());
+    }
+
+    public Context(
+        SessionInfo sessionInfo,
+        List<LeafColumnTransformer> leafList,
+        Map<Symbol, List<InputLocation>> inputLocations,
+        Map<Expression, ColumnTransformer> cache,
+        Map<Expression, ColumnTransformer> hasSeen,
+        List<ColumnTransformer> commonTransformerList,
+        List<TSDataType> inputDataTypes,
+        int originSize,
+        ITableTypeProvider typeProvider,
+        ITypeMetadata metadata,
+        @Nullable MemoryReservationManager memoryReservationManager,
+        Optional<IoTDBLocal> ioTDBLocal) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
       this.inputLocations = inputLocations;
@@ -1977,6 +2013,11 @@ public class ColumnTransformerBuilder
       this.typeProvider = typeProvider;
       this.metadata = metadata;
       this.memoryReservationManager = Optional.ofNullable(memoryReservationManager);
+      this.ioTDBLocal = ioTDBLocal;
+    }
+
+    public Optional<IoTDBLocal> getIoTDBLocal() {
+      return ioTDBLocal;
     }
 
     public Type getType(SymbolReference symbolReference) {
