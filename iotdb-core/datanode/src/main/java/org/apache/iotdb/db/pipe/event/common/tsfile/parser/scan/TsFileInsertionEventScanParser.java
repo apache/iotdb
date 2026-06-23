@@ -106,8 +106,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private final List<Long> timeChunkPageMemorySizeList = new ArrayList<>();
 
   private final Map<String, Integer> measurementIndexMap = new HashMap<>();
-  private int lastIndex = -1;
-  private Chunk firstChunk4NextSequentialValueChunks;
+  private final List<PendingAlignedChunkGroup> pendingAlignedChunkGroups = new ArrayList<>();
+  private long pendingAlignedChunkSize;
+  private CachedAlignedValueChunk cachedAlignedValueChunk;
 
   private byte lastMarker = Byte.MIN_VALUE;
 
@@ -588,14 +589,14 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private void moveToNextChunkReader()
       throws IOException, IllegalStateException, IllegalPathException {
     ChunkHeader chunkHeader;
-    long valueChunkSize = 0;
-    long valueChunkPageMemorySize = 0;
-    final List<Chunk> valueChunkList = new ArrayList<>();
     currentMeasurements.clear();
     modsInfos.clear();
 
     if (lastMarker == MetaMarker.SEPARATOR) {
-      chunkReader = null;
+      if (!recordPendingAlignedChunk(lastMarker)) {
+        clearCachedAlignedChunkData();
+        chunkReader = null;
+      }
       return;
     }
 
@@ -603,8 +604,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     while ((marker =
             lastMarker != Byte.MIN_VALUE
                 ? lastMarker
-                : Objects.nonNull(firstChunk4NextSequentialValueChunks)
-                    ? toValueChunkMarker(firstChunk4NextSequentialValueChunks.getHeader())
+                : Objects.nonNull(cachedAlignedValueChunk)
+                    ? toValueChunkMarker(cachedAlignedValueChunk.chunk.getHeader())
                     : tsFileSequenceReader.readMarker())
         != MetaMarker.SEPARATOR) {
       lastMarker = Byte.MIN_VALUE;
@@ -658,9 +659,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case MetaMarker.VALUE_CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
           {
-            Chunk chunk;
-            long currentValueChunkPageMemorySize = 0;
-            if (Objects.isNull(firstChunk4NextSequentialValueChunks)) {
+            CachedAlignedValueChunk valueChunk = cachedAlignedValueChunk;
+            if (Objects.isNull(valueChunk)) {
               final long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
@@ -668,7 +668,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 break;
               }
 
-              // Increase value index
+              // Increase value index.
               final String measurementID =
                   tabletStringInternPool.intern(chunkHeader.getMeasurementID());
               final int valueIndex =
@@ -676,86 +676,36 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                       measurementID,
                       (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
 
-              // Emit when encountered non-sequential value chunk, or the chunk size exceeds
-              // certain value to avoid OOM
-              // Do not record or end current value chunks when there are empty chunks
+              // Do not record or end current value chunks when there are empty chunks.
               if (chunkHeader.getDataSize() == 0) {
                 break;
               }
-              chunk =
+              final Chunk chunk =
                   new Chunk(
                       chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
-              currentValueChunkPageMemorySize = calculateMaxPageMemorySize(chunk);
-              boolean needReturn = false;
-              final long timeChunkSize =
-                  lastIndex >= 0
-                      ? PipeMemoryWeightUtil.calculateChunkRamBytesUsed(
-                          timeChunkList.get(lastIndex))
-                      : 0;
-              final long timeChunkPageMemorySize =
-                  lastIndex >= 0 ? timeChunkPageMemorySizeList.get(lastIndex) : 0;
-              if (lastIndex >= 0) {
-                if (valueIndex != lastIndex) {
-                  needReturn = recordAlignedChunk(valueChunkList, marker);
-                } else {
-                  final long chunkSize = timeChunkSize + valueChunkSize;
-                  final long pageMemorySize = timeChunkPageMemorySize + valueChunkPageMemorySize;
-                  if (chunkSize + chunkHeader.getDataSize()
-                          > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()
-                      || timeChunkPageMemorySize > 0
-                          && currentValueChunkPageMemorySize > 0
-                          && pageMemorySize + currentValueChunkPageMemorySize
-                              > getPageDataMemoryLimitInBytes()) {
-                    needReturn = recordAlignedChunk(valueChunkList, marker);
-                  }
-                }
-              }
-              lastIndex = valueIndex;
-              if (needReturn) {
-                firstChunk4NextSequentialValueChunks = chunk;
-                return;
-              }
-              resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(valueChunkList, chunkHeader);
-              resizePageDataMemoryBlockIfFirstValueChunkExceedsLimit(
-                  valueChunkList, currentValueChunkPageMemorySize);
+              valueChunk =
+                  new CachedAlignedValueChunk(
+                      valueIndex,
+                      chunk,
+                      chunkHeader.getDataSize(),
+                      calculateMaxPageMemorySize(chunk));
             } else {
-              chunk = firstChunk4NextSequentialValueChunks;
-              chunkHeader = chunk.getHeader();
-              firstChunk4NextSequentialValueChunks = null;
-              currentValueChunkPageMemorySize = calculateMaxPageMemorySize(chunk);
-              resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(valueChunkList, chunkHeader);
-              resizePageDataMemoryBlockIfFirstValueChunkExceedsLimit(
-                  valueChunkList, currentValueChunkPageMemorySize);
+              cachedAlignedValueChunk = null;
             }
 
-            valueChunkSize += chunkHeader.getDataSize();
-            valueChunkPageMemorySize += currentValueChunkPageMemorySize;
-            valueChunkList.add(chunk);
-            final String measurementID =
-                tabletStringInternPool.intern(chunkHeader.getMeasurementID());
-            currentMeasurements.add(
-                new MeasurementSchema(
-                    measurementID,
-                    chunkHeader.getDataType(),
-                    chunkHeader.getEncodingType(),
-                    chunkHeader.getCompressionType()));
-            modsInfos.addAll(
-                ModsOperationUtil.initializeMeasurementMods(
-                    currentDevice, Collections.singletonList(measurementID), currentModifications));
+            if (returnPendingAlignedChunkBeforeCaching(valueChunk)) {
+              return;
+            }
+            cacheAlignedValueChunk(valueChunk);
             break;
           }
         case MetaMarker.CHUNK_GROUP_HEADER:
           {
-            // Return before "currentDevice" changes
-            if (recordAlignedChunk(valueChunkList, marker)) {
+            // Return before "currentDevice" changes.
+            if (recordPendingAlignedChunk(marker)) {
               return;
             }
-            // Clear because the cached data will never be used in the next chunk group
-            lastIndex = -1;
-            timeChunkList.clear();
-            isMultiPageList.clear();
-            timeChunkPageMemorySizeList.clear();
-            measurementIndexMap.clear();
+            clearCachedAlignedChunkData();
             final IDeviceID deviceID = tsFileSequenceReader.readChunkGroupHeader().getDeviceID();
             currentDevice = treePattern.mayOverlapWithDevice(deviceID) ? deviceID : null;
             currentDeviceString =
@@ -775,7 +725,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     lastMarker = marker;
-    if (!recordAlignedChunk(valueChunkList, marker)) {
+    if (!recordPendingAlignedChunk(marker)) {
+      clearCachedAlignedChunkData();
       chunkReader = null;
     }
   }
@@ -859,22 +810,38 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     return false;
   }
 
-  private boolean recordAlignedChunk(final List<Chunk> valueChunkList, final byte marker)
-      throws IOException {
-    if (!valueChunkList.isEmpty()) {
-      final Chunk timeChunk = timeChunkList.get(lastIndex);
+  private boolean recordPendingAlignedChunk(final byte marker) throws IOException {
+    while (!pendingAlignedChunkGroups.isEmpty()) {
+      final PendingAlignedChunkGroup pendingAlignedChunkGroup = pendingAlignedChunkGroups.remove(0);
+      pendingAlignedChunkSize =
+          Math.max(0, pendingAlignedChunkSize - pendingAlignedChunkGroup.chunkSize);
+
+      if (pendingAlignedChunkGroup.valueChunkList.isEmpty()) {
+        continue;
+      }
+
+      final Chunk timeChunk = timeChunkList.get(pendingAlignedChunkGroup.timeChunkIndex);
       timeChunk.getData().rewind();
-      currentIsMultiPage = isMultiPageList.get(lastIndex);
+      for (final Chunk valueChunk : pendingAlignedChunkGroup.valueChunkList) {
+        valueChunk.getData().rewind();
+      }
+
+      currentMeasurements.clear();
+      currentMeasurements.addAll(pendingAlignedChunkGroup.measurements);
+      modsInfos.clear();
+      modsInfos.addAll(pendingAlignedChunkGroup.modsInfos);
+
+      currentIsMultiPage = isMultiPageList.get(pendingAlignedChunkGroup.timeChunkIndex);
       if (!currentIsMultiPage) {
         resizePageDataMemoryIfNeeded(
             AlignedSinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(
-                timeChunk, valueChunkList));
+                timeChunk, pendingAlignedChunkGroup.valueChunkList));
       }
       final List<Long> pageEstimatedMemoryUsageInBytesList =
           currentIsMultiPage
               ? AlignedSinglePageWholeChunkReader
                   .calculatePageEstimatedMemoryUsageInBytesWithBatchDataList(
-                      timeChunk, valueChunkList)
+                      timeChunk, pendingAlignedChunkGroup.valueChunkList)
               : Collections.emptyList();
       final long maxPageEstimatedMemoryUsageInBytes =
           pageEstimatedMemoryUsageInBytesList.isEmpty()
@@ -884,42 +851,193 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       chunkReader =
           currentIsMultiPage
               ? new MemoryControlledChunkReader(
-                  new AlignedChunkReader(timeChunk, valueChunkList, filter),
+                  new AlignedChunkReader(
+                      timeChunk, pendingAlignedChunkGroup.valueChunkList, filter),
                   pageEstimatedMemoryUsageInBytesList)
-              : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList, null);
+              : new AlignedSinglePageWholeChunkReader(
+                  timeChunk, pendingAlignedChunkGroup.valueChunkList, null);
       currentIsAligned = true;
-      lastMarker = marker;
+      if (marker != Byte.MIN_VALUE) {
+        lastMarker = marker;
+      }
       return true;
     }
     return false;
   }
 
+  private boolean shouldReturnPendingAlignedChunkBeforeCaching(
+      final CachedAlignedValueChunk valueChunk) throws IOException {
+    validateAlignedValueChunkTimeIndex(valueChunk.timeChunkIndex);
+
+    final PendingAlignedChunkGroup pendingAlignedChunkGroup =
+        findPendingAlignedChunkGroup(valueChunk.timeChunkIndex);
+    final boolean isFirstValueChunkInGroup =
+        Objects.isNull(pendingAlignedChunkGroup)
+            || pendingAlignedChunkGroup.valueChunkList.isEmpty();
+    final long timeChunkSize =
+        Objects.isNull(pendingAlignedChunkGroup)
+            ? PipeMemoryWeightUtil.calculateChunkRamBytesUsed(
+                timeChunkList.get(valueChunk.timeChunkIndex))
+            : 0;
+    final long chunkSizeAfterCaching =
+        pendingAlignedChunkSize + timeChunkSize + valueChunk.valueChunkSize;
+
+    if (isFirstValueChunkInGroup) {
+      final long firstValueChunkGroupSize =
+          timeChunkSize
+              + (Objects.isNull(pendingAlignedChunkGroup) ? 0 : pendingAlignedChunkGroup.chunkSize)
+              + valueChunk.valueChunkSize;
+      if (firstValueChunkGroupSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+        return !pendingAlignedChunkGroups.isEmpty();
+      }
+    }
+
+    if (!pendingAlignedChunkGroups.isEmpty()
+        && chunkSizeAfterCaching > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+      return true;
+    }
+
+    final long timeChunkPageMemorySize = timeChunkPageMemorySizeList.get(valueChunk.timeChunkIndex);
+    if (timeChunkPageMemorySize <= 0 || valueChunk.valueChunkPageMemorySize <= 0) {
+      return false;
+    }
+
+    final long pageMemorySizeAfterCaching =
+        timeChunkPageMemorySize
+            + (Objects.isNull(pendingAlignedChunkGroup)
+                ? 0
+                : pendingAlignedChunkGroup.valueChunkPageMemorySize)
+            + valueChunk.valueChunkPageMemorySize;
+    if (pageMemorySizeAfterCaching <= getPageDataMemoryLimitInBytes()) {
+      return false;
+    }
+
+    if (isFirstValueChunkInGroup) {
+      final long firstValueChunkPageMemorySize =
+          timeChunkPageMemorySize + valueChunk.valueChunkPageMemorySize;
+      return firstValueChunkPageMemorySize <= getPageDataMemoryLimitInBytes()
+          || !pendingAlignedChunkGroups.isEmpty();
+    }
+
+    return true;
+  }
+
+  private boolean returnPendingAlignedChunkBeforeCaching(final CachedAlignedValueChunk valueChunk)
+      throws IOException {
+    if (!shouldReturnPendingAlignedChunkBeforeCaching(valueChunk)) {
+      return false;
+    }
+
+    cachedAlignedValueChunk = valueChunk;
+    if (recordPendingAlignedChunk(Byte.MIN_VALUE)) {
+      return true;
+    }
+    cachedAlignedValueChunk = null;
+    return false;
+  }
+
+  private void cacheAlignedValueChunk(final CachedAlignedValueChunk valueChunk) throws IOException {
+    validateAlignedValueChunkTimeIndex(valueChunk.timeChunkIndex);
+
+    final PendingAlignedChunkGroup pendingAlignedChunkGroup =
+        getOrCreatePendingAlignedChunkGroup(valueChunk.timeChunkIndex);
+    resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(pendingAlignedChunkGroup, valueChunk);
+    resizePageDataMemoryBlockIfFirstValueChunkExceedsLimit(pendingAlignedChunkGroup, valueChunk);
+
+    pendingAlignedChunkGroup.valueChunkList.add(valueChunk.chunk);
+    pendingAlignedChunkGroup.chunkSize += valueChunk.valueChunkSize;
+    pendingAlignedChunkGroup.valueChunkPageMemorySize += valueChunk.valueChunkPageMemorySize;
+    pendingAlignedChunkSize += valueChunk.valueChunkSize;
+
+    final ChunkHeader chunkHeader = valueChunk.chunk.getHeader();
+    final String measurementID = tabletStringInternPool.intern(chunkHeader.getMeasurementID());
+    pendingAlignedChunkGroup.measurements.add(
+        new MeasurementSchema(
+            measurementID,
+            chunkHeader.getDataType(),
+            chunkHeader.getEncodingType(),
+            chunkHeader.getCompressionType()));
+    pendingAlignedChunkGroup.modsInfos.addAll(
+        ModsOperationUtil.initializeMeasurementMods(
+            currentDevice, Collections.singletonList(measurementID), currentModifications));
+  }
+
+  private PendingAlignedChunkGroup getOrCreatePendingAlignedChunkGroup(final int timeChunkIndex) {
+    final PendingAlignedChunkGroup pendingAlignedChunkGroup =
+        findPendingAlignedChunkGroup(timeChunkIndex);
+    if (Objects.nonNull(pendingAlignedChunkGroup)) {
+      return pendingAlignedChunkGroup;
+    }
+
+    final PendingAlignedChunkGroup newPendingAlignedChunkGroup =
+        new PendingAlignedChunkGroup(
+            timeChunkIndex,
+            PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunkList.get(timeChunkIndex)),
+            timeChunkPageMemorySizeList.get(timeChunkIndex));
+    pendingAlignedChunkSize += newPendingAlignedChunkGroup.chunkSize;
+
+    for (int i = 0; i < pendingAlignedChunkGroups.size(); ++i) {
+      if (pendingAlignedChunkGroups.get(i).timeChunkIndex > timeChunkIndex) {
+        pendingAlignedChunkGroups.add(i, newPendingAlignedChunkGroup);
+        return newPendingAlignedChunkGroup;
+      }
+    }
+    pendingAlignedChunkGroups.add(newPendingAlignedChunkGroup);
+    return newPendingAlignedChunkGroup;
+  }
+
+  private PendingAlignedChunkGroup findPendingAlignedChunkGroup(final int timeChunkIndex) {
+    for (final PendingAlignedChunkGroup pendingAlignedChunkGroup : pendingAlignedChunkGroups) {
+      if (pendingAlignedChunkGroup.timeChunkIndex == timeChunkIndex) {
+        return pendingAlignedChunkGroup;
+      }
+    }
+    return null;
+  }
+
+  private void validateAlignedValueChunkTimeIndex(final int timeChunkIndex) throws IOException {
+    if (timeChunkIndex < 0 || timeChunkIndex >= timeChunkList.size()) {
+      throw new IOException(
+          String.format(
+              "Invalid aligned value chunk index %d, while there are %d time chunks.",
+              timeChunkIndex, timeChunkList.size()));
+    }
+  }
+
+  private void clearCachedAlignedChunkData() {
+    pendingAlignedChunkGroups.clear();
+    pendingAlignedChunkSize = 0;
+    cachedAlignedValueChunk = null;
+    timeChunkList.clear();
+    isMultiPageList.clear();
+    timeChunkPageMemorySizeList.clear();
+    measurementIndexMap.clear();
+  }
+
   private void resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(
-      final List<Chunk> valueChunkList, final ChunkHeader valueChunkHeader) {
-    if (!valueChunkList.isEmpty() || lastIndex < 0) {
+      final PendingAlignedChunkGroup pendingAlignedChunkGroup,
+      final CachedAlignedValueChunk valueChunk) {
+    if (!pendingAlignedChunkGroup.valueChunkList.isEmpty()) {
       return;
     }
 
-    final long chunkSize =
-        PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunkList.get(lastIndex))
-            + valueChunkHeader.getDataSize();
+    final long chunkSize = pendingAlignedChunkGroup.chunkSize + valueChunk.valueChunkSize;
     if (chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
       PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, chunkSize);
     }
   }
 
   private void resizePageDataMemoryBlockIfFirstValueChunkExceedsLimit(
-      final List<Chunk> valueChunkList, final long valueChunkPageMemorySize) {
-    if (!valueChunkList.isEmpty() || lastIndex < 0 || valueChunkPageMemorySize <= 0) {
+      final PendingAlignedChunkGroup pendingAlignedChunkGroup,
+      final CachedAlignedValueChunk valueChunk) {
+    if (!pendingAlignedChunkGroup.valueChunkList.isEmpty()
+        || pendingAlignedChunkGroup.timeChunkPageMemorySize <= 0
+        || valueChunk.valueChunkPageMemorySize <= 0) {
       return;
     }
 
-    final long timeChunkPageMemorySize = timeChunkPageMemorySizeList.get(lastIndex);
-    if (timeChunkPageMemorySize <= 0) {
-      return;
-    }
-
-    final long pageMemorySize = timeChunkPageMemorySize + valueChunkPageMemorySize;
+    final long pageMemorySize =
+        pendingAlignedChunkGroup.timeChunkPageMemorySize + valueChunk.valueChunkPageMemorySize;
     if (pageMemorySize > getPageDataMemoryLimitInBytes()) {
       PipeDataNodeResourceManager.memory()
           .forceResize(allocatedMemoryBlockForBatchData, pageMemorySize);
@@ -979,5 +1097,42 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       }
     }
     return null;
+  }
+
+  private static class PendingAlignedChunkGroup {
+
+    private final int timeChunkIndex;
+    private final List<Chunk> valueChunkList = new ArrayList<>();
+    private final List<IMeasurementSchema> measurements = new ArrayList<>();
+    private final List<ModsOperationUtil.ModsInfo> modsInfos = new ArrayList<>();
+    private final long timeChunkPageMemorySize;
+    private long chunkSize;
+    private long valueChunkPageMemorySize;
+
+    private PendingAlignedChunkGroup(
+        final int timeChunkIndex, final long timeChunkSize, final long timeChunkPageMemorySize) {
+      this.timeChunkIndex = timeChunkIndex;
+      this.chunkSize = timeChunkSize;
+      this.timeChunkPageMemorySize = timeChunkPageMemorySize;
+    }
+  }
+
+  private static class CachedAlignedValueChunk {
+
+    private final int timeChunkIndex;
+    private final Chunk chunk;
+    private final long valueChunkSize;
+    private final long valueChunkPageMemorySize;
+
+    private CachedAlignedValueChunk(
+        final int timeChunkIndex,
+        final Chunk chunk,
+        final long valueChunkSize,
+        final long valueChunkPageMemorySize) {
+      this.timeChunkIndex = timeChunkIndex;
+      this.chunk = chunk;
+      this.valueChunkSize = valueChunkSize;
+      this.valueChunkPageMemorySize = valueChunkPageMemorySize;
+    }
   }
 }
