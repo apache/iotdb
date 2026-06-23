@@ -102,6 +102,21 @@ public class FFTTableFunctionTest {
   }
 
   @Test
+  public void testInfersSampleIntervalFromInputRowsBeyondSpecifiedN() throws UDFException {
+    TableFunctionDataProcessor processor = createProcessor(false, 1L);
+    processor.process(record(0L, 1.0), Collections.emptyList(), null);
+    processor.process(record(2L, 2.0), Collections.emptyList(), null);
+
+    List<ColumnBuilder> builders = createOutputBuilders(1);
+    processor.finish(builders, null);
+
+    assertLongColumn(builders.get(0).build(), 0L);
+    assertDoubleColumn(builders.get(1).build(), 0.0);
+    assertDoubleColumn(builders.get(2).build(), 1.0);
+    assertDoubleColumn(builders.get(3).build(), 0.0);
+  }
+
+  @Test
   public void testRejectsDuplicateTime() throws UDFException {
     TableFunctionDataProcessor processor = createProcessor(false);
     processor.process(record(1L, 1.0), Collections.emptyList(), null);
@@ -155,12 +170,12 @@ public class FFTTableFunctionTest {
   @Test
   public void testRejectsDefaultTransformLengthAboveLimit() throws UDFException {
     TableFunctionDataProcessor processor = createProcessor(true);
-    for (long time = 0; time <= 65_536L; time++) {
+    for (long time = 0; time < 65_536L; time++) {
       processor.process(record(time, 1.0), Collections.emptyList(), null);
     }
 
     assertSemanticException(
-        () -> processor.finish(Collections.emptyList(), null),
+        () -> processor.process(record(65_536L, 1.0), Collections.emptyList(), null),
         "FFT transform length N must not exceed 65536.");
   }
 

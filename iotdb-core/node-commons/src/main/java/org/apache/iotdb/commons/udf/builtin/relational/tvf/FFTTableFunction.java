@@ -557,6 +557,7 @@ public class FFTTableFunction implements TableFunction {
     private final Object[] partitionValues;
     private final boolean[] partitionValueIsNull;
     private final List<double[]> rows = new ArrayList<>();
+    private long inputRowCount;
     private long previousTime;
     private long inferredSampleInterval = UNSPECIFIED_SAMPLE_INTERVAL;
     private boolean initialized;
@@ -595,22 +596,34 @@ public class FFTTableFunction implements TableFunction {
       }
       previousTime = currentTime;
 
-      double[] row = new double[valueColumns.length];
+      if (specifiedTransformLength == UNSPECIFIED_N && inputRowCount >= MAX_TRANSFORM_LENGTH) {
+        throw new SemanticException(
+            String.format("FFT transform length N must not exceed %d.", MAX_TRANSFORM_LENGTH));
+      }
+
+      boolean shouldCacheRow =
+          specifiedTransformLength == UNSPECIFIED_N || rows.size() < specifiedTransformLength;
+      double[] row = shouldCacheRow ? new double[valueColumns.length] : null;
       for (int i = 0; i < valueColumns.length; i++) {
         NumericColumn valueColumn = valueColumns[i];
         if (input.isNull(valueColumn.inputIndex)) {
           throw new SemanticException(
               String.format("FFT does not support null values in column [%s].", valueColumn.name));
         }
-        row[i] = valueColumn.read(input);
+        if (shouldCacheRow) {
+          row[i] = valueColumn.read(input);
+        }
       }
-      rows.add(row);
+      inputRowCount++;
+      if (shouldCacheRow) {
+        rows.add(row);
+      }
     }
 
     @Override
     public void finish(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      if (rows.isEmpty()) {
+      if (inputRowCount == 0) {
         return;
       }
 
@@ -668,7 +681,7 @@ public class FFTTableFunction implements TableFunction {
 
     private int getTransformLength() {
       long transformLength =
-          specifiedTransformLength == UNSPECIFIED_N ? rows.size() : specifiedTransformLength;
+          specifiedTransformLength == UNSPECIFIED_N ? inputRowCount : specifiedTransformLength;
       validateTransformLength(transformLength, valueColumns.length);
       return (int) transformLength;
     }
@@ -678,7 +691,7 @@ public class FFTTableFunction implements TableFunction {
       if (sampleIntervalSpecified) {
         interval = sampleInterval;
       } else {
-        if (rows.size() < 2) {
+        if (inputRowCount < 2) {
           throw new SemanticException("FFT requires at least two rows to infer SAMPLE_INTERVAL.");
         }
         interval = inferredSampleInterval;

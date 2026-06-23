@@ -579,6 +579,14 @@ public class TableFunctionTest {
 
     assertPlan(
         logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                tableFunctionMatcher, mergeSort(exchange(), exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan));
   }
 
   @Test
