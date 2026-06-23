@@ -54,13 +54,11 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractFragmentParallelPlanner.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private final ReadConsistencyLevel readConsistencyLevel;
 
   protected final MPPQueryContext queryContext;
 
   protected AbstractFragmentParallelPlanner(MPPQueryContext queryContext) {
     this.queryContext = queryContext;
-    this.readConsistencyLevel = CONFIG.getReadConsistencyLevel();
   }
 
   protected void selectExecutorAndHost(
@@ -117,7 +115,7 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
       throw new IllegalArgumentException(
           String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
     }
-    boolean selectRandomDataNode = ReadConsistencyLevel.WEAK == this.readConsistencyLevel;
+    boolean selectRandomDataNode = ReadConsistencyLevel.WEAK == CONFIG.getReadConsistencyLevel();
 
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
@@ -138,7 +136,8 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
     if (!selectRandomDataNode || queryContext.getSession() == null) {
       targetIndex = 0;
     } else {
-      targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
+      targetIndex =
+          (int) Math.floorMod(queryContext.getSession().getSessionId(), availableDataNodes.size());
     }
     return availableDataNodes.get(targetIndex);
   }

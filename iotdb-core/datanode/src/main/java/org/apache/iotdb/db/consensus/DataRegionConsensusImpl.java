@@ -170,6 +170,10 @@ public class DataRegionConsensusImpl {
                           .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
                           .setRegionMigrationSpeedLimitBytesPerSecond(
                               CONF.getRegionMigrationSpeedLimitBytesPerSecond())
+                          .setSubscriptionWalRetentionSizeInBytes(
+                              COMMON_CONF.getSubscriptionConsensusWalRetentionSizeInBytes())
+                          .setSubscriptionWalRetentionTimeMs(
+                              COMMON_CONF.getSubscriptionConsensusWalRetentionTimeMs())
                           .build())
                   .build())
           .setIoTConsensusV2Config(
@@ -273,6 +277,8 @@ public class DataRegionConsensusImpl {
                               CONF.getDataRatisConsensusInitialSleepTimeMs())
                           .setClientRetryMaxSleepTimeMs(CONF.getDataRatisConsensusMaxSleepTimeMs())
                           .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                          .setReconfigurationMaxRetryAttempts(
+                              CONF.getDataRatisConsensusReconfigurationMaxRetryAttempts())
                           .build())
                   .setImpl(
                       RatisConfig.Impl.newBuilder()

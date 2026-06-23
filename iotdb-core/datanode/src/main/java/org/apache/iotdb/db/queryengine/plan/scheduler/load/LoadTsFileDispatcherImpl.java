@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
@@ -161,12 +160,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     PlanNode planNode = instance.getFragment().getPlanNodeTree();
 
     if (planNode instanceof LoadTsFilePieceNode) { // split
-      LoadTsFilePieceNode pieceNode =
-          (LoadTsFilePieceNode) PlanNodeType.deserialize(planNode.serializeToByteBuffer());
-      if (pieceNode == null) {
-        throw new FragmentInstanceDispatchException(
-            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
-      }
+      LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) planNode;
       TSStatus resultStatus =
           StorageEngine.getInstance().writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
 

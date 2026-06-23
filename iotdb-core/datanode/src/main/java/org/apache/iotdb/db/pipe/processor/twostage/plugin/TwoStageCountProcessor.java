@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
@@ -146,7 +147,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
       isTableModel = PathUtils.isTableModelDatabase(dataBaseName);
     }
 
-    outputSeries = new PartialPath(parameters.getString(_PROCESSOR_OUTPUT_SERIES_KEY));
+    outputSeries = parseOutputSeries(parameters);
 
     if (Objects.nonNull(pipeTaskMeta) && Objects.nonNull(pipeTaskMeta.getProgressIndex())) {
       if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
@@ -176,6 +177,12 @@ public class TwoStageCountProcessor implements PipeProcessor {
         .register(
             pipeName, creationTime, (combineId) -> new CountOperator(combineId, globalCountQueue));
     twoStageAggregateSender = new TwoStageAggregateSender(pipeName, creationTime);
+  }
+
+  static PartialPath parseOutputSeries(final PipeParameters parameters)
+      throws IllegalPathException {
+    return new PartialPath(
+        parameters.getStringByKeys(PROCESSOR_OUTPUT_SERIES_KEY, _PROCESSOR_OUTPUT_SERIES_KEY));
   }
 
   @Override

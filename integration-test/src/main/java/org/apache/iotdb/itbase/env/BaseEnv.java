@@ -160,6 +160,16 @@ public interface BaseEnv {
       DataNodeWrapper dataNodeWrapper, String username, String password, String sqlDialect)
       throws SQLException;
 
+  // Both the write and the read of the returned connection are pinned to the given DataNode, so it
+  // is useful when some other DataNode has been shut down and a fan-out read would otherwise fail.
+  default Connection getConnection(DataNodeWrapper dataNodeWrapper) throws SQLException {
+    return getConnection(
+        dataNodeWrapper,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        TREE_SQL_DIALECT);
+  }
+
   default Connection getConnection(String username, String password) throws SQLException {
     return getConnection(username, password, TREE_SQL_DIALECT);
   }

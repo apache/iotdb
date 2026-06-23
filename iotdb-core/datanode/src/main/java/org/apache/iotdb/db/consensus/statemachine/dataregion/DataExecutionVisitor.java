@@ -76,6 +76,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertRow(InsertRowNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
+      dataRegion.insertSeparatorToWAL(node);
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
       LOGGER.warn(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE_CAUSED, node, e.getMessage());
@@ -99,6 +100,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertTablet(final InsertTabletNode node, final DataRegion dataRegion) {
     try {
       dataRegion.insertTablet(node);
+      dataRegion.insertSeparatorToWAL(node);
       return StatusUtils.OK;
     } catch (final OutOfTTLException e) {
       LOGGER.debug(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE_CAUSED, node, e.getMessage());
@@ -135,6 +137,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertRows(InsertRowsNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
+      dataRegion.insertSeparatorToWAL(node);
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       LOGGER.warn(DataNodeMiscMessages.REJECT_EXECUTING_PLAN_NODE, node, e.getMessage());
@@ -171,6 +174,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertMultiTablets(InsertMultiTabletsNode node, DataRegion dataRegion) {
     try {
       dataRegion.insertTablets(node);
+      dataRegion.insertSeparatorToWAL(node);
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       LOGGER.warn(DataNodeMiscMessages.REJECT_EXECUTING_PLAN_NODE, node, e.getMessage());
@@ -205,6 +209,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       InsertRowsOfOneDeviceNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
+      dataRegion.insertSeparatorToWAL(node);
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       LOGGER.warn(DataNodeMiscMessages.REJECT_EXECUTING_PLAN_NODE, node, e.getMessage());
@@ -260,7 +265,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
           dataRegion.deleteByDevice(path, node);
         }
       }
-      dataRegion.insertSeparatorToWAL();
+      dataRegion.insertSeparatorToWAL(node);
       return StatusUtils.OK;
     } catch (IOException | IllegalPathException e) {
       LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
@@ -275,7 +280,7 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       final RelationalDeleteDataNode node, final DataRegion dataRegion) {
     try {
       dataRegion.deleteByTable(node);
-      dataRegion.insertSeparatorToWAL();
+      dataRegion.insertSeparatorToWAL(node);
       return StatusUtils.OK;
     } catch (final IOException e) {
       LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
