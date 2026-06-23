@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -157,6 +158,26 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 deviceTableScanNode.containsNonAlignedDevice(),
                 treeDeviceViewScanNode.getTreeDBName(),
                 treeDeviceViewScanNode.getMeasurementColumnNameMap()));
+      } else if (node instanceof ExternalTsFileScanNode externalTsFileScanNode) {
+        ExternalTsFileScanNode prunedNode =
+            new ExternalTsFileScanNode(
+                deviceTableScanNode.getPlanNodeId(),
+                deviceTableScanNode.getQualifiedObjectName(),
+                newOutputs,
+                newAssignments,
+                deviceTableScanNode.getPushDownPredicate(),
+                deviceTableScanNode.getPushDownLimit(),
+                deviceTableScanNode.getPushDownOffset(),
+                deviceTableScanNode.getTimePredicate().orElse(null),
+                deviceTableScanNode.getScanOrder(),
+                deviceTableScanNode.isPushLimitToEachDevice(),
+                deviceTableScanNode.getTagAndAttributeIndexMap(),
+                externalTsFileScanNode.getExternalTsFileQueryResource(),
+                externalTsFileScanNode.getDeviceEntryIndexes(),
+                externalTsFileScanNode.getDeviceTaskPartitionIndex(),
+                externalTsFileScanNode.getSchemaFilter());
+        prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
+        return Optional.of(prunedNode);
       } else {
         DeviceTableScanNode prunedNode =
             new DeviceTableScanNode(

@@ -103,7 +103,7 @@ To run integration tests from IntelliJ: enable the `with-integration-tests` prof
 - **Apache License header**: Every new file committed to the repository MUST include the Apache License 2.0 header. Use the comment syntax appropriate for the file type (e.g., `<!-- -->` for `.md`, `/* */` for `.java`, `#` for `.properties`/`.py`). JSON files are exempt (no comment syntax). Refer to existing files in the repo for the exact format.
 - **Spotless** with Google Java Format (GOOGLE style). Import order: `org.apache.iotdb`, blank, `javax`, `java`, static.
 - **Checkstyle** is also configured (see `checkstyle.xml` at project root).
-- Java source/target level is 1.8 (compiled with `maven.compiler.release=8` on JDK 9+).
+- Java source/target level is 17 (compiled with `maven.compiler.release=17` on JDK 17+).
 
 ## Architecture
 
@@ -186,3 +186,10 @@ The project uses compile-time i18n via the `build-helper-maven-plugin`. The prop
 ## Git Commit
 
 - Do NOT add `Co-Authored-By` trailer to commit messages.
+
+## Security
+
+Security model: [SECURITY.md](./SECURITY.md)
+
+Agents that scan this repository should consult `SECURITY.md` and the
+threat model it links before reporting issues.

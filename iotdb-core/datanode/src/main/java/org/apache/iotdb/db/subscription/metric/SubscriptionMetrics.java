@@ -29,11 +29,13 @@ public class SubscriptionMetrics implements IMetricSet {
   @Override
   public void bindTo(final AbstractMetricService metricService) {
     SubscriptionPrefetchingQueueMetrics.getInstance().bindTo(metricService);
+    ConsensusSubscriptionPrefetchingQueueMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
     SubscriptionPrefetchingQueueMetrics.getInstance().unbindFrom(metricService);
+    ConsensusSubscriptionPrefetchingQueueMetrics.getInstance().unbindFrom(metricService);
   }
 
   //////////////////////////// singleton ////////////////////////////

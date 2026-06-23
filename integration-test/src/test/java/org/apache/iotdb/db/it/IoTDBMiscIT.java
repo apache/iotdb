@@ -55,46 +55,46 @@ public class IoTDBMiscIT {
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.comprssion_ratio_file.d1(timestamp,s1) values(1,1.0)");
       statement.execute("flush");
-      // one global file and two data region file (including one AUDIT region)
+      // one global file and one data region file
       assertEquals(2, collectCompressionRatioFiles(nodeWrapper).size());
 
       statement.execute("drop database root.comprssion_ratio_file");
-      // one global file and system region file
+      // one global file
       // deleting a file may not be sensed by other processes instantly
       Awaitility.await()
           .atMost(10, TimeUnit.SECONDS)
           .pollDelay(100, TimeUnit.MILLISECONDS)
-          .until(() -> collectCompressionRatioFiles(nodeWrapper).size() == 2);
+          .until(() -> collectCompressionRatioFiles(nodeWrapper).size() == 1);
 
       statement.execute("insert into root.comprssion_ratio_file.d1(timestamp,s1) values(1,1.0)");
       statement.execute("flush");
-      assertEquals(3, collectCompressionRatioFiles(nodeWrapper).size());
+      assertEquals(2, collectCompressionRatioFiles(nodeWrapper).size());
 
       statement.execute("drop database root.comprssion_ratio_file");
       Awaitility.await()
           .atMost(10, TimeUnit.SECONDS)
           .pollDelay(100, TimeUnit.MILLISECONDS)
-          .until(() -> collectCompressionRatioFiles(nodeWrapper).size() == 2);
+          .until(() -> collectCompressionRatioFiles(nodeWrapper).size() == 1);
 
       statement.execute("insert into root.comprssion_ratio_file.d1(timestamp,s1) values(1,1.0)");
       statement.execute("flush");
-      assertEquals(3, collectCompressionRatioFiles(nodeWrapper).size());
+      assertEquals(2, collectCompressionRatioFiles(nodeWrapper).size());
 
       statement.execute("insert into root.comprssion_ratio_file_2.d1(timestamp,s1) values(1,1.0)");
       statement.execute("flush");
-      assertEquals(4, collectCompressionRatioFiles(nodeWrapper).size());
+      assertEquals(3, collectCompressionRatioFiles(nodeWrapper).size());
 
       statement.execute("drop database root.comprssion_ratio_file");
       Awaitility.await()
           .atMost(10, TimeUnit.SECONDS)
           .pollDelay(100, TimeUnit.MILLISECONDS)
-          .until(() -> collectCompressionRatioFiles(nodeWrapper).size() == 3);
+          .until(() -> collectCompressionRatioFiles(nodeWrapper).size() == 2);
 
       statement.execute("drop database root.comprssion_ratio_file_2");
       Awaitility.await()
           .atMost(10, TimeUnit.SECONDS)
           .pollDelay(100, TimeUnit.MILLISECONDS)
-          .until(() -> collectCompressionRatioFiles(nodeWrapper).size() == 2);
+          .until(() -> collectCompressionRatioFiles(nodeWrapper).size() == 1);
     } finally {
       simpleEnv.cleanClusterEnvironment();
     }

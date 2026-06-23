@@ -147,16 +147,13 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   }
 
   public int serializedSize() {
-    // table name + id predicate +
+    // table name + id predicate + measurement names
     int size =
-        ReadWriteForEncodingUtils.varIntSize(tableName.length())
-            + tableName.length() * Character.BYTES
+        ModEntry.sizeToWriteVarString(tableName)
             + idPredicate.serializedSize()
             + ReadWriteForEncodingUtils.varIntSize(measurementNames.size());
     for (String measurementName : measurementNames) {
-      size +=
-          ReadWriteForEncodingUtils.varIntSize(
-              measurementName.length() * measurementName.length() * Character.BYTES);
+      size += ModEntry.sizeToWriteVarString(measurementName);
     }
     return size;
   }

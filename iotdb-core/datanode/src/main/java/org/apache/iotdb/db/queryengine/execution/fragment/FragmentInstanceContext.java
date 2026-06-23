@@ -26,11 +26,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -46,6 +46,8 @@ import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryDataSource;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
@@ -56,7 +58,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
@@ -82,6 +83,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
@@ -99,6 +101,7 @@ public class FragmentInstanceContext extends QueryContext {
   private static final long END_TIME_INITIAL_VALUE = -1L;
   // wait over 5s for driver to close is abnormal
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
+  private static final int MODS_MEMORY_ESTIMATE_READ_INTERVAL = 10_000;
   private final FragmentInstanceId id;
 
   private final FragmentInstanceStateMachine stateMachine;
@@ -116,6 +119,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   // Used for region scan, relating methods are to be added.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
+
+  private ExternalTsFileQueryResource externalTsFileQueryResource;
+  private boolean externalTsFileQueryResourceRetained;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
   protected IQueryDataSource sharedQueryDataSource;
@@ -228,6 +234,11 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
     this.queryDataSourceType = queryDataSourceType;
+  }
+
+  @Override
+  public boolean isExternalTsFileScan() {
+    return queryDataSourceType == QueryDataSourceType.EXTERNAL_TSFILE_SCAN;
   }
 
   @TestOnly
@@ -378,41 +389,60 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   @Override
-  protected PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> getAllModifications(
-      TsFileResource resource) {
-    if (isSingleSourcePath() || memoryReservationManager == null) {
-      return loadAllModificationsFromDisk(resource);
+  public List<ModEntry> getPathModifications(
+      TsFileResource tsFileResource, IDeviceID deviceID, String measurement) {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
     }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, deviceID, measurement);
+    }
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification -> modification.affects(deviceID) && modification.affects(measurement),
+            mods -> getPathModifications(mods, deviceID, measurement))) {
+      return modificationLoader.getPathModifications();
+    } catch (IllegalPathException e) {
+      throw new IllegalStateException(e);
+    }
+  }
 
-    AtomicReference<PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
-        atomicReference = new AtomicReference<>();
-    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> cachedResult =
-        fileModCache.computeIfAbsent(
-            resource.getTsFileID(),
-            k -> {
-              PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allMods =
-                  loadAllModificationsFromDisk(resource);
-              atomicReference.set(allMods);
-              if (cachedModEntriesSize.get() >= CONFIG.getModsCacheSizeLimitPerFI()) {
-                return null;
-              }
-              long memCost =
-                  RamUsageEstimator.sizeOfObject(allMods)
-                      + RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY;
-              long alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
-              while (alreadyUsedMemoryForCachedModEntries + memCost
-                  < CONFIG.getModsCacheSizeLimitPerFI()) {
-                if (cachedModEntriesSize.compareAndSet(
-                    alreadyUsedMemoryForCachedModEntries,
-                    alreadyUsedMemoryForCachedModEntries + memCost)) {
-                  memoryReservationManager.reserveMemoryCumulatively(memCost);
-                  return allMods;
-                }
-                alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
-              }
-              return null;
-            });
-    return cachedResult == null ? atomicReference.get() : cachedResult;
+  @Override
+  public List<ModEntry> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
+      throws IllegalPathException {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, deviceID);
+    }
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification ->
+                deviceID.isTableModel()
+                    ? modification.affects(deviceID)
+                    : modification.affectsAll(deviceID),
+            mods -> getPathModifications(mods, deviceID))) {
+      return modificationLoader.getPathModifications();
+    }
+  }
+
+  private QueryModificationLoader getQueryModificationLoader(
+      TsFileResource tsFileResource,
+      Predicate<ModEntry> fallbackModificationMatcher,
+      QueryModificationLoader.ModsTreeMatcher modsTreeMatcher) {
+    return new QueryModificationLoader(
+        this,
+        tsFileResource,
+        memoryReservationManager,
+        CONFIG.getModsCacheSizeLimitPerFI(),
+        MODS_MEMORY_ESTIMATE_READ_INTERVAL,
+        fileModCache,
+        cachedModEntriesSize,
+        fallbackModificationMatcher,
+        modsTreeMatcher);
   }
 
   // the state change listener is added here in a separate initialize() method
@@ -612,6 +642,52 @@ public class FragmentInstanceContext extends QueryContext {
     this.devicePathsToContext = devicePathsToContext;
   }
 
+  public void addExternalTsFileQueryResource(
+      ExternalTsFileQueryResource externalTsFileQueryResource) {
+    if (this.externalTsFileQueryResource != null) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_ALREADY_BEEN_SET);
+    }
+    this.externalTsFileQueryResource = externalTsFileQueryResource;
+  }
+
+  public boolean initExternalTsFileQueryDataSource(
+      ExternalTsFileQueryResource externalTsFileQueryResource) {
+    long startTime = System.nanoTime();
+    try {
+      if (externalTsFileQueryResource == null) {
+        this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
+      } else {
+        if (!externalTsFileQueryResourceRetained) {
+          externalTsFileQueryResource.retainFragmentInstanceUsage();
+          externalTsFileQueryResourceRetained = true;
+        }
+        this.sharedQueryDataSource = new ExternalTsFileQueryDataSource(externalTsFileQueryResource);
+        closedUnseqFileNum = externalTsFileQueryResource.getSharedTsFileResources().size();
+      }
+    } finally {
+      addInitQueryDataSourceCost(System.nanoTime() - startTime);
+    }
+    return true;
+  }
+
+  private void releaseExternalTsFileQueryResource() {
+    if (!externalTsFileQueryResourceRetained || externalTsFileQueryResource == null) {
+      externalTsFileQueryResource = null;
+      externalTsFileQueryResourceRetained = false;
+      return;
+    }
+    try {
+      // This FragmentInstance retained the resource during datasource initialization. Releasing the
+      // last runtime usage closes the shared resource and deletes its temporary run files.
+      externalTsFileQueryResource.closeByFragmentInstance();
+    } catch (Exception e) {
+      LOGGER.warn("Failed to release external TsFile query resource", e);
+    }
+    externalTsFileQueryResource = null;
+    externalTsFileQueryResourceRetained = false;
+  }
+
   public MemoryReservationManager getMemoryReservationContext() {
     return memoryReservationManager;
   }
@@ -801,6 +877,11 @@ public class FragmentInstanceContext extends QueryContext {
           if (initRegionScanQueryDataSource(sourcePaths)) {
             sourcePaths = null;
           } else {
+            return getUnfinishedQueryDataSource();
+          }
+          break;
+        case EXTERNAL_TSFILE_SCAN:
+          if (!initExternalTsFileQueryDataSource(externalTsFileQueryResource)) {
             return getUnfinishedQueryDataSource();
           }
           break;
@@ -1015,6 +1096,8 @@ public class FragmentInstanceContext extends QueryContext {
       }
       unClosedFilePaths = null;
     }
+
+    releaseExternalTsFileQueryResource();
 
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();

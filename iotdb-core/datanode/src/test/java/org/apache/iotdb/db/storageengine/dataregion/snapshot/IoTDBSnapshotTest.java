@@ -184,6 +184,32 @@ public class IoTDBSnapshotTest {
   }
 
   @Test
+  public void testLoadEmptySnapshotWithoutLog() throws IOException {
+    String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
+    TierManager.getInstance().resetFolders();
+    File snapshotDir = new File("target" + File.separator + "empty-snapshot");
+    try {
+      if (snapshotDir.exists()) {
+        FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
+      }
+      Assert.assertTrue(snapshotDir.mkdirs());
+
+      DataRegion dataRegion =
+          new SnapshotLoader(snapshotDir.getAbsolutePath(), testSgName, "0")
+              .loadSnapshotForStateMachine();
+
+      Assert.assertNotNull(dataRegion);
+      assertEquals(0, dataRegion.getTsFileManager().getTsFileList(true).size());
+      assertEquals(0, dataRegion.getTsFileManager().getTsFileList(false).size());
+    } finally {
+      FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
+      TierManager.getInstance().resetFolders();
+    }
+  }
+
+  @Test
   public void testLoadSnapshot()
       throws IOException, WriteProcessException, DataRegionException, DirectoryNotLegalException {
     String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
@@ -217,6 +243,104 @@ public class IoTDBSnapshotTest {
       IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
       TierManager.getInstance().resetFolders();
     }
+  }
+
+  /**
+   * Regression test for the multi-receive-folder snapshot load. IoTConsensus spreads a single
+   * snapshot's fragments across one receive folder per local data dir, so loading must clear the
+   * data dirs once and relink the fragments from every folder. Before the fix each folder was
+   * loaded with its own clear-then-relink, so every folder but the last had its just-linked
+   * fragments wiped by the next folder's clear, losing all but the last folder's data.
+   */
+  @Test
+  public void testLoadSnapshotSpreadAcrossReceiveFolders()
+      throws IOException, WriteProcessException {
+    loadSnapshotSpreadAcrossReceiveFolders(false);
+  }
+
+  /**
+   * The fragments of one snapshot are disjoint across the receive folders, so the order in which
+   * the folders are relinked must not change the loaded data. This loads the same spread snapshot
+   * with the receive folders presented in the opposite order and expects the identical result.
+   */
+  @Test
+  public void testLoadSnapshotFromReceiveFoldersIsOrderIndependent()
+      throws IOException, WriteProcessException {
+    loadSnapshotSpreadAcrossReceiveFolders(true);
+  }
+
+  private void loadSnapshotSpreadAcrossReceiveFolders(boolean reversedOrder)
+      throws IOException, WriteProcessException {
+    String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
+    TierManager.getInstance().resetFolders();
+    String recvBase0 = "target" + File.separator + "recv-snapshot-0";
+    String recvBase1 = "target" + File.separator + "recv-snapshot-1";
+    // Each receive folder holds the snapshot under a "snapshot" subdir, exactly as the IoTConsensus
+    // receiver materializes it, and carries no snapshot log (the log is never transferred).
+    File recvFolder0 = new File(recvBase0, SNAPSHOT_DIR_NAME);
+    File recvFolder1 = new File(recvBase1, SNAPSHOT_DIR_NAME);
+    try {
+      Assert.assertTrue(recvFolder0.mkdirs());
+      Assert.assertTrue(recvFolder1.mkdirs());
+
+      // Spread the fragments across the two receive folders: even-indexed files in the first,
+      // odd-indexed files in the second, so neither folder holds the whole snapshot.
+      int fileNum = 6;
+      for (int i = 0; i < fileNum; i++) {
+        writeSnapshotFragment((i % 2 == 0 ? recvFolder0 : recvFolder1).getAbsolutePath(), i);
+      }
+
+      List<String> snapshotDirs =
+          reversedOrder
+              ? Arrays.asList(recvFolder1.getAbsolutePath(), recvFolder0.getAbsolutePath())
+              : Arrays.asList(recvFolder0.getAbsolutePath(), recvFolder1.getAbsolutePath());
+
+      DataRegion dataRegion =
+          new SnapshotLoader(snapshotDirs, testSgName, "0").loadSnapshotForStateMachine();
+
+      Assert.assertNotNull(dataRegion);
+      // Every fragment from every receive folder must be present, regardless of relink order.
+      assertEquals(fileNum, dataRegion.getTsFileManager().getTsFileList(true).size());
+    } finally {
+      FileUtils.recursivelyDeleteFolder(recvBase0);
+      FileUtils.recursivelyDeleteFolder(recvBase1);
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
+      TierManager.getInstance().resetFolders();
+    }
+  }
+
+  /**
+   * Materialize a single snapshot fragment (a TsFile and its resource) under {@code
+   * <recvSnapshotDir>/sequence/<sg>/0/0/}, i.e. the layout the without-log loader expects from a
+   * received snapshot.
+   */
+  private void writeSnapshotFragment(String recvSnapshotDir, int i)
+      throws IOException, WriteProcessException {
+    String filePath =
+        recvSnapshotDir
+            + File.separator
+            + "sequence"
+            + File.separator
+            + testSgName
+            + File.separator
+            + "0"
+            + File.separator
+            + "0"
+            + File.separator
+            + String.format("%d-%d-0-0.tsfile", i + 1, i + 1);
+    File newFile = new File(filePath);
+    Assert.assertTrue(newFile.getParentFile().exists() || newFile.getParentFile().mkdirs());
+    TsFileGeneratorUtils.generateMixTsFile(filePath, 5, 5, 10, i * 100, (i + 1) * 100, 10, 10);
+    TsFileResource resource = new TsFileResource(new File(filePath));
+    resource.updateStartTime(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(testSgName + PATH_SEPARATOR + "d" + i), i * 100);
+    resource.updateEndTime(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(testSgName + PATH_SEPARATOR + "d" + i),
+        (i + 1) * 100);
+    resource.updatePlanIndexes(i);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    resource.serialize();
   }
 
   @Ignore("Need manual execution to specify different disks")

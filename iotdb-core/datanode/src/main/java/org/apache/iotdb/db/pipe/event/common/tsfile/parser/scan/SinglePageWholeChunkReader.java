@@ -87,7 +87,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
             encryptParam),
         chunkHeader.getDataType(),
         Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType()),
-        defaultTimeDecoder,
+        getConfiguredTimeDecoder(),
         null);
   }
 
