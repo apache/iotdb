@@ -98,4 +98,9 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setDnDataDirs(String dnDataDirs) {
+    return this;
+  }
 }

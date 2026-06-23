@@ -259,6 +259,51 @@ public class IoTDBSnapshotTest {
   }
 
   /**
+   * When IoTConsensus spreads a tsfile and its exclusive mods across different receive folders, the
+   * loader must still relink them to the same data dir. Otherwise the mods file is not found next
+   * to the tsfile and deletion markers are silently ignored.
+   */
+  @Test
+  public void testLoadSnapshotKeepsTsFileAndModsOnSameDataDirWhenFragmentsAreSpread()
+      throws IOException, WriteProcessException {
+    String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
+    TierManager.getInstance().resetFolders();
+    String recvBase0 = "target" + File.separator + "recv-snapshot-mods-0";
+    String recvBase1 = "target" + File.separator + "recv-snapshot-mods-1";
+    File recvFolder0 = new File(recvBase0, SNAPSHOT_DIR_NAME);
+    File recvFolder1 = new File(recvBase1, SNAPSHOT_DIR_NAME);
+    try {
+      Assert.assertTrue(recvFolder0.mkdirs());
+      Assert.assertTrue(recvFolder1.mkdirs());
+
+      writeSnapshotFragmentWithExclusiveModsSpread(recvFolder0.getAbsolutePath(), 0, recvFolder1);
+
+      DataRegion dataRegion =
+          new SnapshotLoader(
+                  Arrays.asList(recvFolder0.getAbsolutePath(), recvFolder1.getAbsolutePath()),
+                  testSgName,
+                  "0")
+              .loadSnapshotForStateMachine();
+
+      Assert.assertNotNull(dataRegion);
+      TsFileResource resource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+      File tsFile = resource.getTsFile();
+      File modsFile =
+          org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile
+              .getExclusiveMods(tsFile);
+      Assert.assertTrue(modsFile.exists());
+      Assert.assertEquals(
+          tsFile.getParentFile().getAbsolutePath(), modsFile.getParentFile().getAbsolutePath());
+    } finally {
+      FileUtils.recursivelyDeleteFolder(recvBase0);
+      FileUtils.recursivelyDeleteFolder(recvBase1);
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
+      TierManager.getInstance().resetFolders();
+    }
+  }
+
+  /**
    * The fragments of one snapshot are disjoint across the receive folders, so the order in which
    * the folders are relinked must not change the loaded data. This loads the same spread snapshot
    * with the receive folders presented in the opposite order and expects the identical result.
@@ -341,6 +386,41 @@ public class IoTDBSnapshotTest {
     resource.updatePlanIndexes(i);
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     resource.serialize();
+  }
+
+  private void writeSnapshotFragmentWithExclusiveModsSpread(
+      String tsFileRecvSnapshotDir, int i, File modsRecvFolder)
+      throws IOException, WriteProcessException {
+    writeSnapshotFragment(tsFileRecvSnapshotDir, i);
+    String tsFileName = String.format("%d-%d-0-0.tsfile", i + 1, i + 1);
+    File tsFile =
+        new File(
+            tsFileRecvSnapshotDir
+                + File.separator
+                + "sequence"
+                + File.separator
+                + testSgName
+                + File.separator
+                + "0"
+                + File.separator
+                + "0"
+                + File.separator
+                + tsFileName);
+    File sourceMods =
+        org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile.getExclusiveMods(
+            tsFile);
+    Assert.assertTrue(sourceMods.exists() || sourceMods.createNewFile());
+
+    File targetModsDir =
+        new File(
+            modsRecvFolder,
+            "sequence" + File.separator + testSgName + File.separator + "0" + File.separator + "0");
+    Assert.assertTrue(targetModsDir.exists() || targetModsDir.mkdirs());
+    Files.copy(
+        sourceMods.toPath(),
+        new File(targetModsDir, sourceMods.getName()).toPath(),
+        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    Files.delete(sourceMods.toPath());
   }
 
   @Ignore("Need manual execution to specify different disks")

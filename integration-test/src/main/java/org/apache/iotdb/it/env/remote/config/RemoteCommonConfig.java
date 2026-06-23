@@ -428,6 +428,18 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
+      long minFolderOccupiedSpaceCacheRefreshIntervalMs) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
+      int minFolderOccupiedSpaceCacheRefreshSelectionThreshold) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     return this;
   }

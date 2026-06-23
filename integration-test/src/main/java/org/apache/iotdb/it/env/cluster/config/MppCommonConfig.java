@@ -585,6 +585,24 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
+      long minFolderOccupiedSpaceCacheRefreshIntervalMs) {
+    setProperty(
+        "min_folder_occupied_space_cache_refresh_interval_ms",
+        String.valueOf(minFolderOccupiedSpaceCacheRefreshIntervalMs));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
+      int minFolderOccupiedSpaceCacheRefreshSelectionThreshold) {
+    setProperty(
+        "min_folder_occupied_space_cache_refresh_selection_threshold",
+        String.valueOf(minFolderOccupiedSpaceCacheRefreshSelectionThreshold));
+    return this;
+  }
+
+  @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     setProperty("chunk_timeseriesmeta_free_memory_proportion", queryMemoryProportion);
     return this;
