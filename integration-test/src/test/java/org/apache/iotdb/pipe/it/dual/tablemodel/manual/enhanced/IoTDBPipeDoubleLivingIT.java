@@ -20,6 +20,7 @@
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual.enhanced;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -337,5 +338,57 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
 
     Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
     Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+  }
+
+  @Test
+  public void testDoubleLivingCreatesSameNamePipesWithSeparateDialects() throws Exception {
+    final String pipeName = "double_living_same_name_pipe";
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s"
+                  + " with source ('mode.double-living'='true')"
+                  + " with sink ('node-urls'='%s')",
+              pipeName, receiverDataNode.getIpAndPortString()));
+    }
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final List<TShowPipeInfo> treePipes = showPipes(client, false);
+      final List<TShowPipeInfo> tablePipes = showPipes(client, true);
+
+      Assert.assertEquals(1, treePipes.size());
+      Assert.assertEquals(1, tablePipes.size());
+      Assert.assertEquals(pipeName, treePipes.get(0).id);
+      Assert.assertEquals(pipeName, tablePipes.get(0).id);
+      Assert.assertNotEquals(treePipes.get(0).creationTime, tablePipes.get(0).creationTime);
+      Assert.assertTrue(
+          treePipes
+              .get(0)
+              .pipeExtractor
+              .contains(
+                  SystemConstant.SQL_DIALECT_KEY + "=" + SystemConstant.SQL_DIALECT_TREE_VALUE));
+      Assert.assertTrue(
+          tablePipes
+              .get(0)
+              .pipeExtractor
+              .contains(
+                  SystemConstant.SQL_DIALECT_KEY + "=" + SystemConstant.SQL_DIALECT_TABLE_VALUE));
+    }
+  }
+
+  private List<TShowPipeInfo> showPipes(
+      final SyncConfigNodeIServiceClient client, final boolean isTableModel) throws Exception {
+    final List<TShowPipeInfo> showPipeResult =
+        client.showPipe(
+                new TShowPipeReq()
+                    .setIsTableModel(isTableModel)
+                    .setUserName(SessionConfig.DEFAULT_USER))
+            .pipeInfoList;
+    showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+    return showPipeResult;
   }
 }
