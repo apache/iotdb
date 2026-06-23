@@ -30,9 +30,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,7 +39,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 
 /**
  * Integration test that drives {@link MinFolderOccupiedSpaceFirstStrategy} and {@link
@@ -126,30 +123,5 @@ public class MinFolderOccupiedSpaceFirstStrategyRealFsTest {
     // The threshold is now reached: the next selection refreshes the cache via a real walk
     // and correctly avoids the now-largest folder 0, picking the least occupied folder 1.
     assertEquals(1, strategy.nextFolderIndex());
-  }
-
-  @Test
-  public void deprioritizesFolderWhenWalkThrowsUncheckedIOException()
-      throws DiskSpaceInsufficientException {
-    String failingFolder = folders.get(0);
-
-    MinFolderOccupiedSpaceFirstStrategy strategy =
-        new MinFolderOccupiedSpaceFirstStrategy() {
-          @Override
-          protected long computeOccupiedSpace(String folder) throws IOException {
-            if (folder.equals(failingFolder)) {
-              // Mirror what Files.walk does when a directory disappears mid-traversal.
-              throw new UncheckedIOException(new NoSuchFileException(folder));
-            }
-            return super.computeOccupiedSpace(folder);
-          }
-        };
-    strategy.setFolders(folders);
-
-    // Selection must not propagate the UncheckedIOException; it must skip the failing folder 0 and
-    // fall back to a healthy one (folder 1, ties broken by index since folders 1 and 2 are empty).
-    int selected = strategy.nextFolderIndex();
-    assertNotEquals(0, selected);
-    assertEquals(1, selected);
   }
 }

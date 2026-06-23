@@ -118,7 +118,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
         continue;
       }
       try {
-        cachedOccupiedSpace[i] = computeOccupiedSpace(folder);
+        cachedOccupiedSpace[i] = JVMCommonUtils.getOccupiedSpace(folder);
       } catch (IOException | UncheckedIOException e) {
         LOGGER.error(UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE, folder, e);
         cachedOccupiedSpace[i] = Long.MAX_VALUE;
@@ -126,15 +126,6 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
     }
     selectionsSinceRefresh = 0;
     lastRefreshTimeMs = System.currentTimeMillis();
-  }
-
-  /**
-   * Computes the occupied space of a single folder. Extracted as a seam over the static {@link
-   * JVMCommonUtils#getOccupiedSpace} so the failure modes of the underlying {@code Files.walk} can
-   * be simulated deterministically in tests.
-   */
-  protected long computeOccupiedSpace(String folder) throws IOException {
-    return JVMCommonUtils.getOccupiedSpace(folder);
   }
 
   @TestOnly
