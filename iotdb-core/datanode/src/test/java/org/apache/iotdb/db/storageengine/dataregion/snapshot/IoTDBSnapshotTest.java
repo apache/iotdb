@@ -52,7 +52,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.consensus.iot.IoTConsensusServerImpl.SNAPSHOT_DIR_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -591,12 +593,23 @@ public class IoTDBSnapshotTest {
 
     Method method =
         SnapshotLoader.class.getDeclaredMethod(
-            "createLinksFromSnapshotToSourceDir", String.class, File[].class, FolderManager.class);
+            "createLinksFromSnapshotToSourceDir",
+            String.class,
+            File[].class,
+            FolderManager.class,
+            Map.class);
     method.setAccessible(true);
 
     SnapshotLoader loader = new SnapshotLoader("dummy", "root.testsg", "0");
 
-    method.invoke(loader, targetSuffix, files, folderManager);
+    // Tracks fileKey -> chosen data dir, so files sharing a fileKey land in the same dir.
+    Map<String, String> fileTarget = new HashMap<>();
+    method.invoke(loader, targetSuffix, files, folderManager, fileTarget);
+
+    // The shared fileKey must be recorded exactly once, pointing at one of the data dirs.
+    String fileKey = tsFile.getName().split("\\.")[0];
+    Assert.assertEquals(1, fileTarget.size());
+    Assert.assertTrue(Arrays.asList(dataDirs).contains(fileTarget.get(fileKey)));
 
     // verify: only ONE dir contains all three files
     int hitDirCount = 0;
