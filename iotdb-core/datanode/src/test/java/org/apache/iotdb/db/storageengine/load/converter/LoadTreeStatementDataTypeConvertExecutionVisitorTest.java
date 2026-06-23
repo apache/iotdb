@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -31,16 +30,16 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -215,7 +214,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       Assert.assertTrue(file.delete());
     }
 
-    final List<IMeasurementSchema> schemaList =
+    final List<MeasurementSchema> schemaList =
         Arrays.asList(
             new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
             new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
@@ -233,14 +232,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       Assert.assertTrue(file.delete());
     }
 
-    final List<IMeasurementSchema> schemaList = new java.util.ArrayList<>();
+    final List<MeasurementSchema> schemaList = new java.util.ArrayList<>();
     for (int measurementIndex = 0; measurementIndex < measurementCount; ++measurementIndex) {
       schemaList.add(
           new MeasurementSchema("s" + measurementIndex, TSDataType.INT64, TSEncoding.PLAIN));
     }
 
     try (final TsFileWriter writer = new TsFileWriter(file)) {
-      writer.registerAlignedTimeseries(new PartialPath(device), schemaList);
+      writer.registerAlignedTimeseries(new Path(device), schemaList);
 
       final Tablet tablet = new Tablet(device, schemaList, ROW_COUNT_PER_DEVICE);
       for (int row = 0; row < ROW_COUNT_PER_DEVICE; ++row) {
@@ -255,7 +254,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
 
   private void writeDevice(
       final TsFileWriter writer,
-      final List<IMeasurementSchema> schemaList,
+      final List<MeasurementSchema> schemaList,
       final String device,
       final long valueBase)
       throws Exception {
@@ -267,7 +266,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       tablet.addValue("s0", row, valueBase + row);
       tablet.addValue("s1", row, valueBase + ROW_COUNT_PER_DEVICE + row);
     }
-    writer.writeTree(tablet);
+    writer.write(tablet);
   }
 
   private void corruptMeasurementChunk(
@@ -275,7 +274,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
       final IDeviceID deviceId = new PlainDeviceID(device);
       final List<IChunkMetadata> chunkMetadataList =
-          reader.getIChunkMetadataList(deviceId, measurement);
+          reader.getIChunkMetadataList(new Path(deviceId, measurement, false));
       Assert.assertFalse(chunkMetadataList.isEmpty());
 
       final long chunkHeaderOffset =
@@ -289,12 +288,12 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
 
   private IChunkMetadata getTargetChunkMetadata(
       final IChunkMetadata chunkMetadata, final String measurement) {
-    if (!(chunkMetadata instanceof AbstractAlignedChunkMetadata)) {
+    if (!(chunkMetadata instanceof AlignedChunkMetadata)) {
       return chunkMetadata;
     }
 
     final IChunkMetadata valueChunkMetadata =
-        ((AbstractAlignedChunkMetadata) chunkMetadata)
+        ((AlignedChunkMetadata) chunkMetadata)
             .getValueChunkMetadataList().stream()
                 .filter(Objects::nonNull)
                 .filter(metadata -> measurement.equals(metadata.getMeasurementUid()))
@@ -332,7 +331,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       for (int row = 0; row < insertTabletStatement.getRowCount(); ++row) {
         for (int column = 0; column < insertTabletStatement.getMeasurements().length; ++column) {
           final String measurement = insertTabletStatement.getMeasurements()[column];
-          if (measurement == null || insertTabletStatement.isNull(row, column)) {
+          if (measurement == null || isNull(insertTabletStatement, row, column)) {
             continue;
           }
           pointCountByTimeseries.merge(
@@ -361,12 +360,26 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     for (int row = 0; row < insertTabletStatement.getRowCount(); ++row) {
       for (int column = 0; column < insertTabletStatement.getMeasurements().length; ++column) {
         if (insertTabletStatement.getMeasurements()[column] != null
-            && !insertTabletStatement.isNull(row, column)) {
+            && !isNull(insertTabletStatement, row, column)) {
           ++pointCount;
         }
       }
     }
     return pointCount;
+  }
+
+  private boolean isNull(
+      final InsertTabletStatement insertTabletStatement, final int row, final int column) {
+    final Object[] columns = insertTabletStatement.getColumns();
+    if (columns == null || column >= columns.length || columns[column] == null) {
+      return true;
+    }
+
+    final BitMap[] bitMaps = insertTabletStatement.getBitMaps();
+    return bitMaps != null
+        && column < bitMaps.length
+        && bitMaps[column] != null
+        && bitMaps[column].isMarked(row);
   }
 
   private static class PipeConfigAccessor {
