@@ -191,6 +191,14 @@
                         <artifactId>jakarta.servlet-api</artifactId>
                     </exclusion>
                     <!--
+                      Thrift generated Java sources suppress @Generated annotations.
+                      IoTDB does not use libthrift APIs that require Jakarta annotations.
+                    -->
+                    <exclusion>
+                        <groupId>jakarta.annotation</groupId>
+                        <artifactId>jakarta.annotation-api</artifactId>
+                    </exclusion>
+                    <!--
                       commons-lang3 is only used by Thrift's partial deserialization runtime.
                       IoTDB does not use org.apache.thrift.partial APIs.
                     -->
