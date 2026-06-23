@@ -2200,14 +2200,35 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
+    final PipeParameters sourcePipeParameters =
+        new PipeParameters(createPipeStatement.getSourceAttributes());
+    final PipeParameters sinkPipeParameters =
+        new PipeParameters(createPipeStatement.getSinkAttributes());
+
     // Validate pipe plugin before creation
     try {
-      PipeDataNodeAgent.plugin()
-          .validate(
-              pipeName,
-              createPipeStatement.getSourceAttributes(),
-              createPipeStatement.getProcessorAttributes(),
-              createPipeStatement.getSinkAttributes());
+      if (isDoubleLivingPipe(sourcePipeParameters)) {
+        validatePipePlugin(
+            pipeName,
+            cloneSourceParametersWithDialect(
+                    sourcePipeParameters, SystemConstant.SQL_DIALECT_TREE_VALUE)
+                .getAttribute(),
+            createPipeStatement.getProcessorAttributes(),
+            createPipeStatement.getSinkAttributes());
+        validatePipePlugin(
+            pipeName,
+            cloneSourceParametersWithDialect(
+                    sourcePipeParameters, SystemConstant.SQL_DIALECT_TABLE_VALUE)
+                .getAttribute(),
+            createPipeStatement.getProcessorAttributes(),
+            createPipeStatement.getSinkAttributes());
+      } else {
+        validatePipePlugin(
+            pipeName,
+            createPipeStatement.getSourceAttributes(),
+            createPipeStatement.getProcessorAttributes(),
+            createPipeStatement.getSinkAttributes());
+      }
     } catch (final Exception e) {
       future.setException(
           new IoTDBException(
@@ -2220,131 +2241,170 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Syntactic sugar: if full-sync mode is detected (i.e. not snapshot mode, or both realtime
     // and history are true), the pipe is split into history-only and realtime–only modes.
-    final PipeParameters sourcePipeParameters =
-        new PipeParameters(createPipeStatement.getSourceAttributes());
-    final PipeParameters sinkPipeParameters =
-        new PipeParameters(createPipeStatement.getSinkAttributes());
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
-          && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)) {
-        // 1. Send request to create the real-time data synchronization pipeline
-        final TCreatePipeReq realtimeReq =
-            new TCreatePipeReq()
-                // Append suffix to the pipeline name for real-time data
-                .setPipeName(pipeName + "_realtime")
-                // NOTE: set if not exists always to true to handle partial failure
-                .setIfNotExistsCondition(true)
-                // Use extractor parameters for real-time data
-                .setExtractorAttributes(
-                    sourcePipeParameters
-                        .addOrReplaceEquivalentAttributesWithClone(
-                            new PipeParameters(
-                                ImmutableMap.of(
-                                    SystemConstant.SQL_DIALECT_KEY,
-                                    sourcePipeParameters.getStringOrDefault(
-                                        SystemConstant.SQL_DIALECT_KEY,
-                                        SystemConstant.SQL_DIALECT_TREE_VALUE),
-                                    PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
-                                    Boolean.toString(true),
-                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
-                                    Boolean.toString(false))))
-                        .getAttribute())
-                .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(createPipeStatement.getSinkAttributes());
-
-        final TSStatus realtimeTsStatus = configNodeClient.createPipe(realtimeReq);
-        // If creation fails, immediately return with exception
-        // If the procedure is still running, it's probably stuck on DataNode
-        // The pipe creation can ignore this situation and succeed, thus we do not need to skip in
-        // this case
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != realtimeTsStatus.getCode()
-            && TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
-                != realtimeTsStatus.getCode()) {
-          future.setException(new IoTDBException(realtimeTsStatus));
-          return future;
-        }
-
-        // 2. Send request to create the historical data synchronization pipeline
-        final Map<String, String> historySinkAttributes =
-            sinkPipeParameters.hasAnyAttributes(
-                    PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
-                    PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT)
-                ? createPipeStatement.getSinkAttributes()
-                : sinkPipeParameters
-                    .addOrReplaceEquivalentAttributesWithClone(
-                        new PipeParameters(
-                            Collections.singletonMap(
-                                PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
-                                Boolean.TRUE.toString())))
-                    .getAttribute();
-
-        final TCreatePipeReq historyReq =
-            new TCreatePipeReq()
-                // Append suffix to the pipeline name for historical data
-                .setPipeName(pipeName + "_history")
-                .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
-                // Use source parameters for historical data
-                .setExtractorAttributes(
-                    sourcePipeParameters
-                        .addOrReplaceEquivalentAttributesWithClone(
-                            new PipeParameters(
-                                ImmutableMap.of(
-                                    SystemConstant.SQL_DIALECT_KEY,
-                                    sourcePipeParameters.getStringOrDefault(
-                                        SystemConstant.SQL_DIALECT_KEY,
-                                        SystemConstant.SQL_DIALECT_TREE_VALUE),
-                                    PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
-                                    Boolean.toString(false),
-                                    PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
-                                    Boolean.toString(true),
-                                    PipeSourceConstant.EXTRACTOR_MODE_KEY,
-                                    PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE,
-                                    // We force the historical pipe to transfer data (and maybe
-                                    // deletion) only
-                                    // Thus we can transfer schema only once
-                                    // And may drop the historical pipe on successfully transferred
-                                    PipeSourceConstant.SOURCE_INCLUSION_KEY,
-                                    DataRegionListeningFilter
-                                            .parseInsertionDeletionListeningOptionPair(
-                                                sourcePipeParameters)
-                                            .getRight()
-                                        ? "data"
-                                        : PipeSourceConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE,
-                                    PipeSourceConstant.SOURCE_EXCLUSION_KEY,
-                                    PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE)))
-                        .getAttribute())
-                .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(historySinkAttributes);
-
-        final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
-        // If creation fails, immediately return with exception
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != historyTsStatus.getCode()) {
-          future.setException(new IoTDBException(historyTsStatus));
-          return future;
-        }
-
-        // 3. Set success status only if both pipelines are created successfully
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      final TSStatus tsStatus =
+          createPipeInternal(
+              configNodeClient, createPipeStatement, sourcePipeParameters, sinkPipeParameters);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        future.setException(new IoTDBException(tsStatus));
       } else {
-        final TCreatePipeReq req =
-            new TCreatePipeReq()
-                .setPipeName(pipeName)
-                .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
-                .setExtractorAttributes(createPipeStatement.getSourceAttributes())
-                .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(createPipeStatement.getSinkAttributes());
-        final TSStatus tsStatus = configNodeClient.createPipe(req);
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-          future.setException(new IoTDBException(tsStatus));
-        } else {
-          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-        }
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final Exception e) {
       future.setException(e);
     }
     return future;
+  }
+
+  private void validatePipePlugin(
+      final String pipeName,
+      final Map<String, String> sourceAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> sinkAttributes)
+      throws Exception {
+    PipeDataNodeAgent.plugin()
+        .validate(
+            pipeName,
+            cloneAttributes(sourceAttributes),
+            cloneAttributes(processorAttributes),
+            cloneAttributes(sinkAttributes));
+  }
+
+  private boolean isDoubleLivingPipe(final PipeParameters sourcePipeParameters) {
+    return sourcePipeParameters.getBooleanOrDefault(
+        Arrays.asList(
+            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+            PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+        PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+  }
+
+  private PipeParameters cloneSourceParametersWithDialect(
+      final PipeParameters sourcePipeParameters, final String sqlDialect) {
+    final Map<String, String> sourceAttributes = new HashMap<>(sourcePipeParameters.getAttribute());
+    sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, sqlDialect);
+    return new PipeParameters(sourceAttributes);
+  }
+
+  private Map<String, String> cloneAttributes(final Map<String, String> attributes) {
+    return new HashMap<>(attributes == null ? Collections.emptyMap() : attributes);
+  }
+
+  private TSStatus createPipeInternal(
+      final ConfigNodeClient configNodeClient,
+      final CreatePipeStatement createPipeStatement,
+      final PipeParameters sourcePipeParameters,
+      final PipeParameters sinkPipeParameters)
+      throws TException, IllegalPathException {
+    final String pipeName = createPipeStatement.getPipeName();
+    if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
+        && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)) {
+      // 1. Send request to create the real-time data synchronization pipeline
+      final TCreatePipeReq realtimeReq =
+          new TCreatePipeReq()
+              // Append suffix to the pipeline name for real-time data
+              .setPipeName(pipeName + "_realtime")
+              // NOTE: set if not exists always to true to handle partial failure
+              .setIfNotExistsCondition(true)
+              // Use extractor parameters for real-time data
+              .setExtractorAttributes(
+                  sourcePipeParameters
+                      .addOrReplaceEquivalentAttributesWithClone(
+                          new PipeParameters(
+                              ImmutableMap.of(
+                                  SystemConstant.SQL_DIALECT_KEY,
+                                  sourcePipeParameters.getStringOrDefault(
+                                      SystemConstant.SQL_DIALECT_KEY,
+                                      SystemConstant.SQL_DIALECT_TREE_VALUE),
+                                  PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
+                                  Boolean.toString(true),
+                                  PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
+                                  Boolean.toString(false))))
+                      .getAttribute())
+              .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
+              .setConnectorAttributes(createPipeStatement.getSinkAttributes());
+
+      final TSStatus realtimeTsStatus = configNodeClient.createPipe(realtimeReq);
+      // If creation fails, immediately return with exception
+      // If the procedure is still running, it's probably stuck on DataNode
+      // The pipe creation can ignore this situation and succeed, thus we do not need to skip in
+      // this case
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != realtimeTsStatus.getCode()
+          && TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
+              != realtimeTsStatus.getCode()) {
+        return realtimeTsStatus;
+      }
+
+      // 2. Send request to create the historical data synchronization pipeline
+      final Map<String, String> historySinkAttributes =
+          sinkPipeParameters.hasAnyAttributes(
+                  PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
+                  PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT)
+              ? createPipeStatement.getSinkAttributes()
+              : sinkPipeParameters
+                  .addOrReplaceEquivalentAttributesWithClone(
+                      new PipeParameters(
+                          Collections.singletonMap(
+                              PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
+                              Boolean.TRUE.toString())))
+                  .getAttribute();
+
+      final TCreatePipeReq historyReq =
+          new TCreatePipeReq()
+              // Append suffix to the pipeline name for historical data
+              .setPipeName(pipeName + "_history")
+              .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
+              // Use source parameters for historical data
+              .setExtractorAttributes(
+                  sourcePipeParameters
+                      .addOrReplaceEquivalentAttributesWithClone(
+                          new PipeParameters(
+                              ImmutableMap.of(
+                                  SystemConstant.SQL_DIALECT_KEY,
+                                  sourcePipeParameters.getStringOrDefault(
+                                      SystemConstant.SQL_DIALECT_KEY,
+                                      SystemConstant.SQL_DIALECT_TREE_VALUE),
+                                  PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
+                                  Boolean.toString(false),
+                                  PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
+                                  Boolean.toString(true),
+                                  PipeSourceConstant.EXTRACTOR_MODE_KEY,
+                                  PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE,
+                                  // We force the historical pipe to transfer data (and maybe
+                                  // deletion) only
+                                  // Thus we can transfer schema only once
+                                  // And may drop the historical pipe on successfully transferred
+                                  PipeSourceConstant.SOURCE_INCLUSION_KEY,
+                                  DataRegionListeningFilter
+                                          .parseInsertionDeletionListeningOptionPair(
+                                              sourcePipeParameters)
+                                          .getRight()
+                                      ? "data"
+                                      : PipeSourceConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE,
+                                  PipeSourceConstant.SOURCE_EXCLUSION_KEY,
+                                  PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE)))
+                      .getAttribute())
+              .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
+              .setConnectorAttributes(historySinkAttributes);
+
+      final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
+      // If creation fails, immediately return with exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != historyTsStatus.getCode()) {
+        return historyTsStatus;
+      }
+
+      // 3. Set success status only if both pipelines are created successfully
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+
+    final TCreatePipeReq req =
+        new TCreatePipeReq()
+            .setPipeName(pipeName)
+            .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
+            .setExtractorAttributes(sourcePipeParameters.getAttribute())
+            .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
+            .setConnectorAttributes(createPipeStatement.getSinkAttributes());
+    return configNodeClient.createPipe(req);
   }
 
   @Override

@@ -60,7 +60,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
   }
 
   @Test
-  public void testDoubleLivingInvalidParameter() throws Exception {
+  public void testDoubleLivingInvalidForwardingParameter() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -74,8 +74,6 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
                   + " with sink ("
                   + "'node-urls'='%s')",
               "p1", receiverDataNode.getIpAndPortString()));
-      fail();
-    } catch (final SQLException ignored) {
     }
 
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -89,8 +87,6 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
                   + " with sink ("
                   + "'node-urls'='%s')",
               "p2", receiverDataNode.getIpAndPortString()));
-      fail();
-    } catch (final SQLException ignored) {
     }
 
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -115,7 +111,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
                   new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
               .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(0, showPipeResult.size());
+      Assert.assertEquals(2, showPipeResult.size());
     }
   }
 
@@ -338,5 +334,8 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
               .dropPipeExtended(new TDropPipeReq(tablePipeName).setIsTableModel(false))
               .getCode());
     }
+
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
   }
 }

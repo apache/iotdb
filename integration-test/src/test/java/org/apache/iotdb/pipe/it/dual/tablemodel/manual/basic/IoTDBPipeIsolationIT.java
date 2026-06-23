@@ -245,7 +245,7 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
-  public void testCaptureTreeAndTableIsolation() throws Exception {
+  public void testCaptureTreeAndTableIgnoredByDialectIsolation() throws Exception {
     final String treePipeName = "tree_a2b";
     final String tablePipeName = "table_a2b";
 
@@ -272,7 +272,7 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelDualManualIT {
     Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
 
     // Show table pipe by table session
-    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+    Assert.assertEquals(0, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
 
     // 2. Create table pipe by table session
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -292,22 +292,20 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelDualManualIT {
     }
 
     // Show tree pipe by tree session
-    Assert.assertEquals(2, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
 
     // Show table pipe by table session
-    Assert.assertEquals(2, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
 
     // 3. Drop pipe
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.dropPipeExtended(new TDropPipeReq(treePipeName).setIsTableModel(true)).getCode());
+          client.dropPipeExtended(new TDropPipeReq(treePipeName).setIsTableModel(false)).getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client
-              .dropPipeExtended(new TDropPipeReq(tablePipeName).setIsTableModel(false))
-              .getCode());
+          client.dropPipeExtended(new TDropPipeReq(tablePipeName).setIsTableModel(true)).getCode());
     }
   }
 
@@ -362,7 +360,7 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
-  public void testSameNamePipeWithOverlappedVisibilityConflicts() throws Exception {
+  public void testSameNamePipeWithCaptureAttributesStillIsolated() throws Exception {
     final String pipeName = "same_name_conflict_pipe";
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -382,20 +380,17 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelDualManualIT {
                   + " with source ('capture.tree'='true','capture.table'='true')"
                   + " with sink ('node-urls'='%s')",
               pipeName, receiverDataNode.getIpAndPortString()));
-      fail("Creating a both-visible pipe should conflict with an existing same-name tree pipe.");
-    } catch (final SQLException ignored) {
-      // expected
     }
 
     Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
-    Assert.assertEquals(0, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
   }
 
   @Test
-  public void testCaptureCornerCases() {
+  public void testCaptureAttributesAreIgnoredByDialect() {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    // 1. Create tree pipe but capture table data
+    // 1. Create tree pipe with capture attributes pointing to table data
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
@@ -413,12 +408,12 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelDualManualIT {
     }
 
     // Show tree pipe by tree session
-    Assert.assertEquals(0, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
 
     // Show table pipe by table session
-    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+    Assert.assertEquals(0, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
 
-    // 2. Create table pipe but capture tree data
+    // 2. Create table pipe with capture attributes pointing to tree data
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
@@ -453,12 +448,13 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelDualManualIT {
                   + " with sink ("
                   + "'node-urls'='%s')",
               "p3", receiverDataNode.getIpAndPortString()));
-      fail();
-    } catch (final SQLException ignored) {
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
 
     // Show tree pipe by tree session
-    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+    Assert.assertEquals(2, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
 
     // Show table pipe by table session
     Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));

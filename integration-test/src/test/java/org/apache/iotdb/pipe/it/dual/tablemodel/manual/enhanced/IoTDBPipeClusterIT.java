@@ -144,6 +144,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("source", "iotdb-source");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
@@ -212,6 +213,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("source", "iotdb-source");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("start-time", "0");
@@ -290,6 +292,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
           sourceAttributes.put("source", "iotdb-source");
           sourceAttributes.put("database-name", "test");
           sourceAttributes.put("capture.table", "true");
+          sourceAttributes.put("__system.sql-dialect", "table");
           sourceAttributes.put("table-name", "test");
           sourceAttributes.put("start-time", "0");
           sourceAttributes.put("end-time", "300");
@@ -350,6 +353,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
           sourceAttributes.put("database-name", "test1");
           sourceAttributes.put("capture.table", "true");
+          sourceAttributes.put("__system.sql-dialect", "table");
           sourceAttributes.put("table-name", "test1");
           sourceAttributes.put("start-time", "0");
           sourceAttributes.put("end-time", "300");
@@ -554,6 +558,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("user", "root");
 
@@ -607,6 +612,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test1");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test1");
       sourceAttributes.put("user", "root");
 
@@ -650,6 +656,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test1");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test1");
       sourceAttributes.put("user", "root");
 
@@ -721,6 +728,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("user", "root");
 
@@ -800,6 +808,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("user", "root");
 
@@ -867,6 +876,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("user", "root");
 
@@ -917,6 +927,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
     sourceAttributes.put("database-name", "test");
     sourceAttributes.put("capture.table", "true");
+    sourceAttributes.put("__system.sql-dialect", "table");
     sourceAttributes.put("table-name", "test");
     sourceAttributes.put("user", "root");
 
@@ -1026,6 +1037,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
     sourceAttributes.put("database-name", "test");
     sourceAttributes.put("capture.table", "true");
+    sourceAttributes.put("__system.sql-dialect", "table");
     sourceAttributes.put("table-name", "test");
     sourceAttributes.put("user", "root");
 
@@ -1108,6 +1120,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       sourceAttributes.put("source", "iotdb-source");
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("user", "root");
 

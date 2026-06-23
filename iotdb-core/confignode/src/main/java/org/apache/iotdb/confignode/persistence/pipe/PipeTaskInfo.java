@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -273,6 +274,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 .getAttribute());
       }
     }
+    keepExtractorDialectConsistentWithTargetModel(alterPipeRequest);
 
     if (!alterPipeRequest.isReplaceAllProcessorAttributes) { // modify mode
       if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
@@ -318,6 +320,16 @@ public class PipeTaskInfo implements SnapshotProcessor {
       LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
+  }
+
+  private void keepExtractorDialectConsistentWithTargetModel(final TAlterPipeReq alterPipeRequest) {
+    alterPipeRequest
+        .getExtractorAttributes()
+        .put(
+            SystemConstant.SQL_DIALECT_KEY,
+            alterPipeRequest.isTableModel
+                ? SystemConstant.SQL_DIALECT_TABLE_VALUE
+                : SystemConstant.SQL_DIALECT_TREE_VALUE);
   }
 
   public void checkBeforeStartPipe(final String pipeName) throws PipeException {
