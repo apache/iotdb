@@ -156,8 +156,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             path,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-            tsFileManager.getTsFileList(true),
-            tsFileManager.getTsFileList(false),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+            tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
             true);
 
     count = 0;
@@ -240,7 +240,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
+    List<TsFileResource> targetResources = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG);
     validateSeqFiles(true);
 
     assertEquals(
@@ -308,8 +308,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -411,7 +411,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
+    List<TsFileResource> targetResources = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG);
     validateSeqFiles(true);
 
     assertEquals(
@@ -479,8 +479,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -555,7 +555,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    List<TsFileResource> targetResources = tsFileManager.getTsFileList(false);
+    List<TsFileResource> targetResources = tsFileManager.getTsFileList(false, COMPACTION_TEST_SG);
     validateSeqFiles(false);
 
     for (int i = 0; i < 2; i++) {
@@ -570,8 +570,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -679,8 +679,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -818,8 +818,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -947,8 +947,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1062,8 +1062,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1134,7 +1134,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
+    List<TsFileResource> targetResources = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG);
     validateSeqFiles(true);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1154,8 +1154,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1269,8 +1269,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1394,8 +1394,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 false);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1524,8 +1524,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1704,8 +1704,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1864,8 +1864,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1976,8 +1976,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
-                tsFileManager.getTsFileList(false),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2059,7 +2059,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
 
-    TsFileResource targetResource = tsFileManager.getTsFileList(false).get(0);
+    TsFileResource targetResource = tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(targetResource.getTsFilePath())) {
       List<AbstractAlignedChunkMetadata> chunkMetadataList =
           reader.getAlignedChunkMetadata(

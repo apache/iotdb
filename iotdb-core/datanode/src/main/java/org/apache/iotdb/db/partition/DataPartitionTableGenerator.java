@@ -155,14 +155,16 @@ public class DataPartitionTableGenerator {
                         new ConcurrentHashMap<>();
 
                     tsFileManager.readLock();
-                    List<TsFileResource> seqTsFileList = tsFileManager.getTsFileList(true);
-                    List<TsFileResource> unseqTsFileList = tsFileManager.getTsFileList(false);
+                    List<TsFileResource> seqTsFileList =
+                        tsFileManager.getTsFileList(true, databaseName);
+                    List<TsFileResource> unseqTsFileList =
+                        tsFileManager.getTsFileList(false, databaseName);
                     tsFileManager.readUnlock();
 
                     constructDataPartitionMap(
-                        seqTsFileList, seriesPartitionExecutor, dataPartitionMap);
+                        seqTsFileList, seriesPartitionExecutor, dataPartitionMap, databaseName);
                     constructDataPartitionMap(
-                        unseqTsFileList, seriesPartitionExecutor, dataPartitionMap);
+                        unseqTsFileList, seriesPartitionExecutor, dataPartitionMap, databaseName);
 
                     if (dataPartitionMap.isEmpty()) {
                       LOG.error(DataNodeMiscMessages.FAILED_GENERATE_DATA_PARTITION_TABLE);
@@ -214,7 +216,8 @@ public class DataPartitionTableGenerator {
   private void constructDataPartitionMap(
       List<TsFileResource> seqTsFileList,
       SeriesPartitionExecutor seriesPartitionExecutor,
-      Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap) {
+      Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap,
+      String database) {
     Set<Long> timeSlotIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     for (TsFileResource tsFileResource : seqTsFileList) {
@@ -231,10 +234,12 @@ public class DataPartitionTableGenerator {
           TSeriesPartitionSlot seriesSlotId =
               seriesPartitionExecutor.getSeriesPartitionSlot(deviceId);
           TTimePartitionSlot timePartitionSlot =
-              new TTimePartitionSlot(TimePartitionUtils.getStartTimeByPartitionId(timeSlotId));
+              new TTimePartitionSlot(
+                  TimePartitionUtils.getStartTimeByPartitionId(timeSlotId, database));
           dataPartitionMap
               .computeIfAbsent(
-                  seriesSlotId, empty -> newSeriesPartitionTable(consensusGroupId, timeSlotId))
+                  seriesSlotId,
+                  empty -> newSeriesPartitionTable(consensusGroupId, timeSlotId, database))
               .putDataPartition(timePartitionSlot, consensusGroupId);
         }
         if (!timeSlotIds.contains(timeSlotId)) {
@@ -257,10 +262,10 @@ public class DataPartitionTableGenerator {
   }
 
   private static SeriesPartitionTable newSeriesPartitionTable(
-      TConsensusGroupId consensusGroupId, long timeSlotId) {
+      TConsensusGroupId consensusGroupId, long timeSlotId, String database) {
     SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
     TTimePartitionSlot timePartitionSlot =
-        new TTimePartitionSlot(TimePartitionUtils.getStartTimeByPartitionId(timeSlotId));
+        new TTimePartitionSlot(TimePartitionUtils.getStartTimeByPartitionId(timeSlotId, database));
     seriesPartitionTable.putDataPartition(timePartitionSlot, consensusGroupId);
     return seriesPartitionTable;
   }

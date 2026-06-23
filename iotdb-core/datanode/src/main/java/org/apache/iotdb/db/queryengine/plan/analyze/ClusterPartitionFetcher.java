@@ -33,8 +33,13 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -58,6 +63,7 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -318,6 +324,49 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
+  public void ensureDatabaseTimePartitionConfig(Set<String> databases) {
+    if (databases == null) {
+      return;
+    }
+    final Set<String> missingDatabases =
+        databases.stream()
+            .filter(Objects::nonNull)
+            .filter(database -> !TimePartitionUtils.hasDatabaseTimePartitionConfig(database))
+            .collect(Collectors.toSet());
+    if (missingDatabases.isEmpty()) {
+      return;
+    }
+    final boolean needFetchTableModelDatabase =
+        missingDatabases.stream().anyMatch(PathUtils::isTableModelDatabase);
+    final boolean needFetchTreeModelDatabase =
+        missingDatabases.stream().anyMatch(database -> !PathUtils.isTableModelDatabase(database));
+    try (final ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      if (needFetchTreeModelDatabase) {
+        updateDatabaseCache(client, false);
+      }
+      if (needFetchTableModelDatabase) {
+        updateDatabaseCache(client, true);
+      }
+    } catch (final ClientManagerException | TException e) {
+      throw new StatementAnalyzeException(
+          "An error occurred when fetching database time partition config:" + e.getMessage());
+    }
+  }
+
+  private void updateDatabaseCache(final ConfigNodeClient client, final boolean isTableModel)
+      throws TException {
+    final TDatabaseSchemaResp databaseSchemaResp =
+        client.getMatchedDatabaseSchemas(
+            new TGetDatabaseReq(Arrays.asList("root", "**"), SchemaConstant.ALL_MATCH_SCOPE_BINARY)
+                .setIsTableModel(isTableModel)
+                .setCanSeeAuditDB(true));
+    if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      partitionCache.updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
+    }
+  }
+
+  @Override
   public SchemaPartition getOrCreateSchemaPartition(
       final String database, final List<IDeviceID> deviceIDs, final String userName) {
     return getOrCreateSchemaPartition(database, deviceIDs, true, userName);
@@ -401,7 +450,22 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         database = dataPartitionQueryParam.getDatabaseName();
       }
       if (database != null) {
-        result.computeIfAbsent(database, key -> new ArrayList<>()).add(dataPartitionQueryParam);
+        if (PathUtils.isTableModelDatabase(database)) {
+          partitionCache.checkAndAutoCreateDatabase(database, isAutoCreate, userName);
+        }
+        ensureDatabaseTimePartitionConfig(Collections.singleton(database));
+        final String finalDatabase = database;
+        if (dataPartitionQueryParam.hasTimeList()) {
+          dataPartitionQueryParam.setTimePartitionSlotList(
+              dataPartitionQueryParam.getTimeList().stream()
+                  .map(time -> TimePartitionUtils.getTimePartitionSlot(time, finalDatabase))
+                  .distinct()
+                  .collect(Collectors.toList()));
+          dataPartitionQueryParam.setDatabaseName(finalDatabase);
+        }
+        result
+            .computeIfAbsent(finalDatabase, key -> new ArrayList<>())
+            .add(dataPartitionQueryParam);
       }
     }
     return result;
@@ -490,11 +554,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private TDataPartitionReq constructDataPartitionReqForQuery(
       final Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
-    TTimeSlotList sharedTTimeSlotList = null;
     for (final Map.Entry<String, List<DataPartitionQueryParam>> entry :
         sgNameToQueryParamsMap.entrySet()) {
       // for each sg
       final Map<TSeriesPartitionSlot, TTimeSlotList> deviceToTimePartitionMap = new HashMap<>();
+      TTimeSlotList sharedTTimeSlotList = null;
 
       for (final DataPartitionQueryParam queryParam : entry.getValue()) {
         if (sharedTTimeSlotList == null) {

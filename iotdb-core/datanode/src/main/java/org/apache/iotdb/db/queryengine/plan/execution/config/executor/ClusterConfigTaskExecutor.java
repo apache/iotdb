@@ -120,6 +120,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
@@ -474,12 +475,43 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
 
       } else {
+        refreshDatabaseTimePartitionConfig(configNodeClient, databaseSchema);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final ClientManagerException | TException e) {
+    } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
+  }
+
+  private void refreshDatabaseTimePartitionConfig(
+      final ConfigNodeClient configNodeClient, final TDatabaseSchema databaseSchema)
+      throws IOException, TException {
+    TDatabaseSchema completeDatabaseSchema = databaseSchema;
+    if (!databaseSchema.isSetTimePartitionOrigin()
+        || !databaseSchema.isSetTimePartitionInterval()) {
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(
+                  Arrays.asList(ROOT, MULTI_LEVEL_PATH_WILDCARD), ALL_MATCH_SCOPE.serialize())
+              .setIsTableModel(
+                  databaseSchema.isSetIsTableModel() && databaseSchema.isIsTableModel())
+              .setCanSeeAuditDB(true);
+      final TDatabaseSchemaResp resp = configNodeClient.getMatchedDatabaseSchemas(req);
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && resp.getDatabaseSchemaMap() != null) {
+        completeDatabaseSchema = resp.getDatabaseSchemaMap().get(databaseSchema.getName());
+      }
+    }
+
+    if (completeDatabaseSchema == null) {
+      TimePartitionUtils.removeDatabaseTimePartitionConfig(databaseSchema.getName());
+      LOGGER.warn(
+          "Failed to refresh time partition config for database {} after creation.",
+          databaseSchema.getName());
+      return;
+    }
+    TimePartitionUtils.updateDatabaseTimePartitionConfig(
+        completeDatabaseSchema.getName(), completeDatabaseSchema);
   }
 
   @Override
@@ -3412,9 +3444,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tGetRegionIdReq.setDatabase(getRegionIdStatement.getDatabase());
       }
       tGetRegionIdReq.setStartTimeSlot(
-          TimePartitionUtils.getTimePartitionSlot(getRegionIdStatement.getStartTimeStamp()));
+          TimePartitionUtils.getTimePartitionSlot(
+              getRegionIdStatement.getStartTimeStamp(), getRegionIdStatement.getDatabase()));
       tGetRegionIdReq.setEndTimeSlot(
-          TimePartitionUtils.getTimePartitionSlot(getRegionIdStatement.getEndTimeStamp()));
+          TimePartitionUtils.getTimePartitionSlot(
+              getRegionIdStatement.getEndTimeStamp(), getRegionIdStatement.getDatabase()));
       resp = configNodeClient.getRegionId(tGetRegionIdReq);
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(resp.getStatus()));
@@ -3481,7 +3515,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (final Exception e) {
       future.setException(e);
     }
-    GetTimeSlotListTask.buildTSBlock(resp, future);
+    GetTimeSlotListTask.buildTSBlock(resp, future, getTimeSlotListStatement.getDatabase());
     return future;
   }
 
@@ -4295,6 +4329,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        refreshDatabaseTimePartitionConfig(configNodeClient, databaseSchema);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
         if (ifExists) {
@@ -4308,7 +4343,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.setException(new IoTDBException(tsStatus));
       }
-    } catch (final ClientManagerException | TException e) {
+    } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;

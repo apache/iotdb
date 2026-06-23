@@ -276,7 +276,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
                 new ArrayList<>(),
                 true);
         int count = 0;
@@ -506,7 +506,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
                 path,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-                tsFileManager.getTsFileList(true),
+                tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
                 new ArrayList<>(),
                 true);
         int count = 0;

@@ -123,13 +123,13 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(seqResource2, tsFileManager.getTsFileList(true).get(2));
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(1);
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0));
+    Assert.assertEquals(seqResource2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(2));
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(2, timestamp);
-    Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
+    Assert.assertTrue(tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).isEmpty());
     Assert.assertEquals(
         tsFileManager.size(true) + tsFileManager.size(false),
         TsFileResourceManager.getInstance().getPriorityQueueSize());
@@ -168,10 +168,10 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(0));
-    Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(1);
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0));
+    Assert.assertTrue(tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).isEmpty());
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(2, timestamp);
     Assert.assertEquals(
@@ -212,10 +212,10 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(1));
-    Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1));
+    Assert.assertTrue(tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).isEmpty());
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(0, timestamp);
     Assert.assertEquals(
@@ -261,13 +261,13 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(seqResource2, tsFileManager.getTsFileList(true).get(2));
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(1);
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0));
+    Assert.assertEquals(seqResource2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(2));
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(4, timestamp);
-    Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
+    Assert.assertTrue(tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).isEmpty());
     Assert.assertEquals(
         tsFileManager.size(true) + tsFileManager.size(false),
         TsFileResourceManager.getInstance().getPriorityQueueSize());
@@ -301,9 +301,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertTrue(tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).isEmpty());
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(2, timestamp);
     Assert.assertEquals(
@@ -349,13 +349,13 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     Assert.assertEquals(2, dataRegion.executeInsertionCompaction());
-    Assert.assertEquals(4, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(4, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
 
-    TsFileResource targetFile1 = tsFileManager.getTsFileList(true).get(1);
+    TsFileResource targetFile1 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile1.getTsFile().getName()).getTime();
     Assert.assertEquals(4, timestamp);
-    TsFileResource targetFile2 = tsFileManager.getTsFileList(true).get(2);
+    TsFileResource targetFile2 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(2);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
     Assert.assertEquals(6, timestamp);
     Assert.assertEquals(
@@ -388,15 +388,15 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     Assert.assertEquals(3, dataRegion.executeInsertionCompaction());
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
 
-    TsFileResource targetFile1 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetFile1 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile1.getTsFile().getName()).getTime();
     Assert.assertEquals(2, timestamp);
-    TsFileResource targetFile2 = tsFileManager.getTsFileList(true).get(1);
+    TsFileResource targetFile2 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
     Assert.assertEquals(3, timestamp);
-    TsFileResource targetFile3 = tsFileManager.getTsFileList(true).get(2);
+    TsFileResource targetFile3 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(2);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile3.getTsFile().getName()).getTime();
     Assert.assertEquals(4, timestamp);
     Assert.assertEquals(
@@ -439,12 +439,12 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     Assert.assertEquals(2, dataRegion.executeInsertionCompaction());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
 
-    TsFileResource targetFile1 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetFile1 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile1.getTsFile().getName()).getTime();
     Assert.assertEquals(1, timestamp);
-    TsFileResource targetFile2 = tsFileManager.getTsFileList(true).get(1);
+    TsFileResource targetFile2 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
     Assert.assertEquals(2, timestamp);
     Assert.assertEquals(
@@ -487,7 +487,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     tsFileManager.getOrCreateUnsequenceListByTimePartition(2808).keepOrderInsert(unseqResource3);
 
     Assert.assertEquals(3, dataRegion.executeInsertionCompaction());
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
     Assert.assertEquals(2, tsFileManager.getOrCreateSequenceListByTimePartition(0).size());
     Assert.assertEquals(1, tsFileManager.getOrCreateSequenceListByTimePartition(2808).size());
 

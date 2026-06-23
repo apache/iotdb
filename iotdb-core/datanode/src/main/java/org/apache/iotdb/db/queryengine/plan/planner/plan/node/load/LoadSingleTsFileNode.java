@@ -101,9 +101,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     for (final IDeviceID device : resource.getDevices()) {
       // iterating the index, must present
       final TTimePartitionSlot startSlot =
-          TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(device).get());
+          TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(device).get(), database);
       final TTimePartitionSlot endSlot =
-          TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(device).get());
+          TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(device).get(), database);
       slotList.add(new Pair<>(device, startSlot));
       if (!startSlot.equals(endSlot)) {
         slotList.add(new Pair<>(device, endSlot));

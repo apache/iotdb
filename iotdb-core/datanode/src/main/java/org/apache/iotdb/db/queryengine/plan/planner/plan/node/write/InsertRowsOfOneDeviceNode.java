@@ -40,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -188,18 +189,17 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     Map<TRegionReplicaSet, Map<TTimePartitionSlot, List<InsertRowNode>>> splitMap = new HashMap<>();
     Map<TRegionReplicaSet, Map<TTimePartitionSlot, List<Integer>>> splitMapForIndex =
         new HashMap<>();
+    final IDeviceID deviceID = targetPath.getIDeviceIDAsFullDevice();
+    final String databaseName = getDatabaseName(analysis, deviceID);
 
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       TTimePartitionSlot timePartitionSlot =
-          TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime());
+          TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime(), databaseName);
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
-              .getDataRegionReplicaSetForWriting(
-                  targetPath.getIDeviceIDAsFullDevice(),
-                  timePartitionSlot,
-                  analysis.getDatabaseName());
+              .getDataRegionReplicaSetForWriting(deviceID, timePartitionSlot, databaseName);
       Map<TTimePartitionSlot, List<InsertRowNode>> tmpMap =
           splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new HashMap<>());
       Map<TTimePartitionSlot, List<Integer>> tmpIndexMap =

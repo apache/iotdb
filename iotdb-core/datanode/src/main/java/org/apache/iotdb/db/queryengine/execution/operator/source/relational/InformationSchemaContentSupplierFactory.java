@@ -345,11 +345,12 @@ public class InformationSchemaContentSupplierFactory {
       }
       columnBuilders[2].writeInt(currentDatabase.getSchemaReplicationFactor());
       columnBuilders[3].writeInt(currentDatabase.getDataReplicationFactor());
-      columnBuilders[4].writeLong(currentDatabase.getTimePartitionInterval());
-      columnBuilders[5].writeInt(currentDatabase.getSchemaRegionNum());
-      columnBuilders[6].writeInt(currentDatabase.getMaxSchemaRegionNum());
-      columnBuilders[7].writeInt(currentDatabase.getDataRegionNum());
-      columnBuilders[8].writeInt(currentDatabase.getMaxDataRegionNum());
+      columnBuilders[4].writeLong(currentDatabase.getTimePartitionOrigin());
+      columnBuilders[5].writeLong(currentDatabase.getTimePartitionInterval());
+      columnBuilders[6].writeInt(currentDatabase.getSchemaRegionNum());
+      columnBuilders[7].writeInt(currentDatabase.getMaxSchemaRegionNum());
+      columnBuilders[8].writeInt(currentDatabase.getDataRegionNum());
+      columnBuilders[9].writeInt(currentDatabase.getMaxDataRegionNum());
       resultBuilder.declarePosition();
       currentDatabase = null;
     }
@@ -1455,7 +1456,10 @@ public class InformationSchemaContentSupplierFactory {
 
     private String getTableTypeName(final TTableInfo tableInfo) {
       if (tableInfo.isSetType()) {
-        return TableType.values()[tableInfo.getType()].getName();
+        final int tableType = tableInfo.getType();
+        if (tableType >= 0 && tableType < TableType.values().length) {
+          return TableType.values()[tableType].getName();
+        }
       }
       return TableType.BASE_TABLE.getName();
     }

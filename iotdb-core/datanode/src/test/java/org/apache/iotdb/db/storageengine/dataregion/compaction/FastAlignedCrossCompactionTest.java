@@ -301,7 +301,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -606,7 +606,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -910,7 +910,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -1231,7 +1231,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -1667,7 +1667,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -2111,7 +2111,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -2568,7 +2568,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -3006,7 +3006,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -3445,7 +3445,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -3898,7 +3898,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -4410,7 +4410,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -4925,7 +4925,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -5440,7 +5440,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -6015,7 +6015,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -6527,7 +6527,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -6788,7 +6788,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -7119,7 +7119,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -7601,7 +7601,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -8040,7 +8040,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -8345,7 +8345,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -8512,7 +8512,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -8738,7 +8738,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);
@@ -9009,7 +9009,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0);

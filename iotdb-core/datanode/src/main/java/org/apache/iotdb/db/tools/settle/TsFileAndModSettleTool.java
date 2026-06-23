@@ -216,7 +216,8 @@ public class TsFileAndModSettleTool {
     }
     try (TsFileSplitByPartitionTool tsFileRewriteTool =
         new TsFileSplitByPartitionTool(resourceToBeSettled)) {
-      tsFileRewriteTool.parseAndRewriteFile(settledResources);
+      tsFileRewriteTool.parseAndRewriteFile(
+          settledResources, resourceToBeSettled.getDatabaseName());
     }
   }
 
