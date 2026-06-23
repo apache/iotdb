@@ -604,26 +604,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
-      long minFolderOccupiedSpaceCacheRefreshIntervalMs) {
-    dnConfig.setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
-        minFolderOccupiedSpaceCacheRefreshIntervalMs);
-    cnConfig.setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
-        minFolderOccupiedSpaceCacheRefreshIntervalMs);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
-      int minFolderOccupiedSpaceCacheRefreshSelectionThreshold) {
-    dnConfig.setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
-        minFolderOccupiedSpaceCacheRefreshSelectionThreshold);
-    cnConfig.setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
-        minFolderOccupiedSpaceCacheRefreshSelectionThreshold);
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     dnConfig.setQueryMemoryProportion(queryMemoryProportion);
     cnConfig.setQueryMemoryProportion(queryMemoryProportion);

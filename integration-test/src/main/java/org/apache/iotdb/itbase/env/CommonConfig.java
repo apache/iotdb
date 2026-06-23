@@ -185,12 +185,6 @@ public interface CommonConfig {
 
   CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled);
 
-  CommonConfig setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
-      long minFolderOccupiedSpaceCacheRefreshIntervalMs);
-
-  CommonConfig setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
-      int minFolderOccupiedSpaceCacheRefreshSelectionThreshold);
-
   CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
 
   CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
