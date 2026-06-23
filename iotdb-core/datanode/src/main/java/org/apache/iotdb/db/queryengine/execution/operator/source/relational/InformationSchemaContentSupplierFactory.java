@@ -86,6 +86,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -133,6 +134,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_STATE_AVAILABLE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_AGG_FUNC;
@@ -959,7 +961,11 @@ public class InformationSchemaContentSupplierFactory {
               TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName().iterator();
         } else if (functionType.equals(BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_AGG_FUNC))) {
           functionType = BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC);
-          nameIterator = TableBuiltinTableFunction.getBuiltInTableFunctionName().iterator();
+          nameIterator =
+              Stream.concat(
+                      TableBuiltinTableFunction.getBuiltInTableFunctionName().stream(),
+                      DataNodeTableBuiltinTableFunction.getBuiltInTableFunctionName().stream())
+                  .iterator();
         } else {
           return false;
         }

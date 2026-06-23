@@ -43,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -463,8 +464,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     outputStream.flush();
 
     final byte[] response = new byte[1];
-    final int size = socket.getInputStream().read(response);
-    return size > 0 && Arrays.equals(AirGapOneByteResponse.OK, response);
+    new DataInputStream(socket.getInputStream()).readFully(response);
+    return Arrays.equals(AirGapOneByteResponse.OK, response);
   }
 
   private boolean sendBytesByUdp(final AirGapSocket socket, final byte[] bytes) throws IOException {

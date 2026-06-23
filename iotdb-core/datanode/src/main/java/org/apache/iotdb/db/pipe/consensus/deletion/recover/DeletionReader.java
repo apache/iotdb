@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.consensus.deletion.recover;
 
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
@@ -60,7 +61,7 @@ public class DeletionReader implements Closeable {
     try {
       // Read magic string
       ByteBuffer magicStringBuffer = ByteBuffer.allocate(MAGIC_STRING_BYTES_SIZE);
-      fileChannel.read(magicStringBuffer);
+      IOUtils.readFully(fileChannel, magicStringBuffer);
       magicStringBuffer.flip();
       String magicVersion = new String(magicStringBuffer.array(), StandardCharsets.UTF_8);
       if (LOGGER.isDebugEnabled()) {
@@ -70,7 +71,7 @@ public class DeletionReader implements Closeable {
       // Read deletions
       long remainingBytes = fileChannel.size() - fileChannel.position();
       ByteBuffer byteBuffer = ByteBuffer.allocate((int) remainingBytes);
-      fileChannel.read(byteBuffer);
+      IOUtils.readFully(fileChannel, byteBuffer);
       byteBuffer.flip();
 
       List<DeletionResource> deletions = new ArrayList<>();

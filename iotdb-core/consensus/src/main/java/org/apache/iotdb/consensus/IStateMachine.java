@@ -119,6 +119,29 @@ public interface IStateMachine {
   boolean loadSnapshot(File latestSnapshotRootDir);
 
   /**
+   * Load the latest snapshot whose fragments are spread across several root dirs. A single snapshot
+   * may be received into more than one folder (e.g. IoTConsensus spreads a snapshot's fragments
+   * across one receive folder per local data dir), so the whole snapshot must be loaded in one call
+   * rather than once per folder: a state machine whose load wipes its data dirs before relinking
+   * (such as the DataRegion one) would otherwise have each per-folder load erase the fragments
+   * linked by the previous folders, leaving only the last folder's data.
+   *
+   * <p>The default implementation simply loads each dir in turn, which is correct only for state
+   * machines whose per-dir load is independent; such state machines should override this when their
+   * load is destructive across dirs.
+   *
+   * @param latestSnapshotRootDirs the dirs that actually hold fragments of the snapshot
+   * @return {@code true} if the snapshot was loaded successfully, {@code false} otherwise.
+   */
+  default boolean loadSnapshot(List<File> latestSnapshotRootDirs) {
+    boolean success = true;
+    for (File dir : latestSnapshotRootDirs) {
+      success = loadSnapshot(dir) && success;
+    }
+    return success;
+  }
+
+  /**
    * given a snapshot dir, ask statemachine to provide all snapshot files. By default, it will list
    * all files recursively under latestSnapshotDir
    *
