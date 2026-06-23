@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.utils.LogThrottler;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -53,7 +53,6 @@ public class PipeMetaSyncer {
       PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes();
 
   private final ConfigManager configManager;
-  private final LogThrottler syncFailureLogThrottler = new LogThrottler();
 
   private Future<?> metaSyncFuture;
 
@@ -97,13 +96,11 @@ public class PipeMetaSyncer {
     isLastPipeSyncSuccessful = false;
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
-      if (syncFailureLogThrottler.shouldLog("coordinator-lock-held", "locked")) {
-        LOGGER.warn(
-            ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF_2);
-      }
+      PipeLogger.log(
+          LOGGER::warn,
+          ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF_2);
       return;
     }
-    syncFailureLogThrottler.reset("coordinator-lock-held");
 
     final ProcedureManager procedureManager = configManager.getProcedureManager();
 
@@ -114,7 +111,9 @@ public class PipeMetaSyncer {
             == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
       somePipesNeedRestarting = autoRestartWithLock();
       if (somePipesNeedRestarting) {
-        LOGGER.info(ManagerMessages.SOME_PIPES_NEED_RESTARTING_WILL_RESTART_THEM_AFTER_THIS_SYNC);
+        PipeLogger.log(
+            LOGGER::info,
+            ManagerMessages.SOME_PIPES_NEED_RESTARTING_WILL_RESTART_THEM_AFTER_THIS_SYNC);
       }
       pipeAutoRestartRoundCounter.set(0);
     }
@@ -134,38 +133,30 @@ public class PipeMetaSyncer {
             procedureManager.pipeHandleMetaChangeWithBlock(true, false);
         if (handleMetaChangeStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           successfulSync = true;
-          syncFailureLogThrottler.reset("handle-pipe-meta-change");
         } else {
-          if (syncFailureLogThrottler.shouldLog(
-              "handle-pipe-meta-change", getStatusFailureSignature(handleMetaChangeStatus))) {
-            LOGGER.warn(
-                ManagerMessages.FAILED_TO_HANDLE_PIPE_META_CHANGE_RESULT_STATUS,
-                handleMetaChangeStatus);
-          }
+          PipeLogger.log(
+              LOGGER::warn,
+              ManagerMessages.FAILED_TO_HANDLE_PIPE_META_CHANGE_RESULT_STATUS,
+              handleMetaChangeStatus);
         }
       }
 
       if (successfulSync) {
-        syncFailureLogThrottler.reset();
-        LOGGER.info(
+        PipeLogger.log(
+            LOGGER::info,
             ManagerMessages.AFTER_THIS_SUCCESSFUL_SYNC_IF_PIPETASKINFO_IS_EMPTY_DURING_THIS);
         isLastPipeSyncSuccessful = true;
       }
     } else {
-      if (syncFailureLogThrottler.shouldLog(
-          "pipe-meta-sync", getStatusFailureSignature(metaSyncStatus))) {
-        LOGGER.warn(ManagerMessages.FAILED_TO_SYNC_PIPE_META_RESULT_STATUS, metaSyncStatus);
-      }
-      return;
+      PipeLogger.log(
+          LOGGER::warn, ManagerMessages.FAILED_TO_SYNC_PIPE_META_RESULT_STATUS, metaSyncStatus);
     }
-    syncFailureLogThrottler.reset("pipe-meta-sync");
   }
 
   public synchronized void stop() {
     if (metaSyncFuture != null) {
       metaSyncFuture.cancel(false);
       metaSyncFuture = null;
-      syncFailureLogThrottler.reset();
       LOGGER.info(ManagerMessages.PIPEMETASYNCER_IS_STOPPED_SUCCESSFULLY);
     }
   }
@@ -174,12 +165,10 @@ public class PipeMetaSyncer {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
-      if (syncFailureLogThrottler.shouldLog("auto-restart-lock", "locked")) {
-        LOGGER.warn(ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_AUTO_RESTART_PIPE_TASK);
-      }
+      PipeLogger.log(
+          LOGGER::warn, ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_AUTO_RESTART_PIPE_TASK);
       return false;
     }
-    syncFailureLogThrottler.reset("auto-restart-lock");
     try {
       return pipeTaskInfo.get().autoRestart();
     } finally {
@@ -194,12 +183,8 @@ public class PipeMetaSyncer {
           .getEnv()
           .getRegionMaintainHandler()
           .checkAndRepairConsensusPipes();
-      syncFailureLogThrottler.reset("check-and-repair-consensus-pipes");
     } catch (Exception e) {
-      if (syncFailureLogThrottler.shouldLog(
-          "check-and-repair-consensus-pipes", LogThrottler.getFailureSignature(e))) {
-        LOGGER.warn(ManagerMessages.FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES, e);
-      }
+      PipeLogger.log(LOGGER::warn, e, ManagerMessages.FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES);
     }
   }
 
@@ -207,21 +192,16 @@ public class PipeMetaSyncer {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
-      if (syncFailureLogThrottler.shouldLog("handle-successful-restart-lock", "locked")) {
-        LOGGER.warn(ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_HANDLING_SUCCESSFUL_RESTART);
-      }
+      PipeLogger.log(
+          LOGGER::warn,
+          ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_HANDLING_SUCCESSFUL_RESTART);
       return false;
     }
-    syncFailureLogThrottler.reset("handle-successful-restart-lock");
     try {
       pipeTaskInfo.get().handleSuccessfulRestart();
       return true;
     } finally {
       configManager.getPipeManager().getPipeTaskCoordinator().unlock();
     }
-  }
-
-  private static String getStatusFailureSignature(TSStatus status) {
-    return status.getCode() + ":" + status.getMessage();
   }
 }

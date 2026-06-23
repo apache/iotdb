@@ -36,10 +36,13 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.BloomFilter;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +73,14 @@ public class TimeSeriesMetadataCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
   private static final boolean CACHE_ENABLE = memoryConfig.isMetaDataCacheEnable();
+  private static final TimeseriesMetadata NULL_EXISTS_CACHE_PLACE_HOLDER =
+      new TimeseriesMetadata(
+          (byte) 0,
+          0,
+          "",
+          TSDataType.INT32,
+          Statistics.getStatsByType(TSDataType.INT32),
+          new PublicBAOS());
 
   private final Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
@@ -78,6 +89,9 @@ public class TimeSeriesMetadataCache {
   private final Map<String, WeakReference<String>> devices =
       Collections.synchronizedMap(new WeakHashMap<>());
   private static final String SEPARATOR = "$";
+
+  private final AtomicLong evictedExistingEntryCount = new AtomicLong(0);
+  private final AtomicLong evictedNonExistingEntryCount = new AtomicLong(0);
 
   static {
     CACHE_MEMORY_BLOCK =
@@ -99,8 +113,20 @@ public class TimeSeriesMetadataCache {
             .weigher(
                 (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
                     (key, value) ->
-                        (int) (key.getRetainedSizeInBytes() + value.getRetainedSizeInBytes()))
+                        (int)
+                            (key.getRetainedSizeInBytes()
+                                + (value == NULL_EXISTS_CACHE_PLACE_HOLDER
+                                    ? 0
+                                    : value.getRetainedSizeInBytes())))
             .recordStats()
+            .evictionListener(
+                (k, v, c) -> {
+                  if (v == NULL_EXISTS_CACHE_PLACE_HOLDER) {
+                    evictedNonExistingEntryCount.incrementAndGet();
+                  } else {
+                    evictedExistingEntryCount.incrementAndGet();
+                  }
+                })
             .build();
     // add metrics
     MetricService.getInstance().addMetricSet(new TimeSeriesMetadataCacheMetrics(this));
@@ -119,6 +145,19 @@ public class TimeSeriesMetadataCache {
       boolean debug,
       QueryContext queryContext)
       throws IOException {
+    return get(filePath, key, allSensors, ignoreNotExists, debug, queryContext, null);
+  }
+
+  @SuppressWarnings({"squid:S1860", "squid:S6541", "squid:S3776"}) // Suppress synchronize warning
+  public TimeseriesMetadata get(
+      String filePath,
+      TimeSeriesMetadataCacheKey key,
+      Set<String> allSensors,
+      boolean ignoreNotExists,
+      boolean debug,
+      QueryContext queryContext,
+      long[] deviceMetadataIndexNodeOffset)
+      throws IOException {
     long startTime = System.nanoTime();
     long loadBloomFilterTime = 0;
     LongConsumer timeSeriesMetadataIoSizeRecorder =
@@ -126,28 +165,35 @@ public class TimeSeriesMetadataCache {
     LongConsumer bloomFilterIoSizeRecorder =
         queryContext.getQueryStatistics().getLoadBloomFilterActualIOSize()::addAndGet;
     boolean cacheHit = true;
+    boolean externalTsFile = queryContext.isExternalTsFileScan();
     try {
-      if (!CACHE_ENABLE) {
+      if (!CACHE_ENABLE || externalTsFile) {
         String deviceStringFormat = key.device.toString();
         cacheHit = false;
 
         // bloom filter part
         TsFileSequenceReader reader =
             FileReaderManager.getInstance()
-                .get(filePath, key.tsFileID, true, bloomFilterIoSizeRecorder);
-        BloomFilter bloomFilter = reader.readBloomFilter(bloomFilterIoSizeRecorder);
-        queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount().incrementAndGet();
-        if (bloomFilter != null
-            && !bloomFilter.contains(
-                deviceStringFormat + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+                .get(filePath, key.tsFileID, true, bloomFilterIoSizeRecorder, externalTsFile);
+        if (deviceMetadataIndexNodeOffset == null) {
+          BloomFilter bloomFilter = reader.readBloomFilter(bloomFilterIoSizeRecorder);
+          queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount().incrementAndGet();
+          if (bloomFilter != null
+              && !bloomFilter.contains(
+                  deviceStringFormat + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+            loadBloomFilterTime = System.nanoTime() - startTime;
+            return null;
+          }
           loadBloomFilterTime = System.nanoTime() - startTime;
-          return null;
         }
-        loadBloomFilterTime = System.nanoTime() - startTime;
 
         TimeseriesMetadata timeseriesMetadata =
             reader.readTimeseriesMetadata(
-                key.device, key.measurement, ignoreNotExists, timeSeriesMetadataIoSizeRecorder);
+                key.device,
+                deviceMetadataIndexNodeOffset,
+                key.measurement,
+                ignoreNotExists,
+                timeSeriesMetadataIoSizeRecorder);
         return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
             ? null
             : timeseriesMetadata;
@@ -171,35 +217,40 @@ public class TimeSeriesMetadataCache {
           if (timeseriesMetadata == null) {
             cacheHit = false;
 
-            long loadBloomFilterStartTime = System.nanoTime();
-            // bloom filter part
-            BloomFilter bloomFilter =
-                BloomFilterCache.getInstance()
-                    .get(
-                        new BloomFilterCache.BloomFilterCacheKey(filePath, key.tsFileID),
-                        debug,
-                        bloomFilterIoSizeRecorder,
-                        queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()
-                            ::addAndGet,
-                        queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()
-                            ::addAndGet);
-            if (bloomFilter != null
-                && !bloomFilter.contains(
-                    deviceStringFormat + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
-              if (debug) {
-                DEBUG_LOGGER.info(StorageEngineMessages.TS_METADATA_FILTERED_BY_BLOOM_FILTER, key);
+            if (deviceMetadataIndexNodeOffset == null) {
+              long loadBloomFilterStartTime = System.nanoTime();
+              // bloom filter part
+              BloomFilter bloomFilter =
+                  BloomFilterCache.getInstance()
+                      .get(
+                          new BloomFilterCache.BloomFilterCacheKey(filePath, key.tsFileID),
+                          debug,
+                          bloomFilterIoSizeRecorder,
+                          queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()
+                              ::addAndGet,
+                          queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()
+                              ::addAndGet,
+                          false);
+              if (bloomFilter != null
+                  && !bloomFilter.contains(
+                      deviceStringFormat + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
+                if (debug) {
+                  DEBUG_LOGGER.info(
+                      StorageEngineMessages.TS_METADATA_FILTERED_BY_BLOOM_FILTER, key);
+                }
+                loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
+                return null;
               }
-              loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
-              return null;
-            }
 
-            loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
+              loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
+            }
             TsFileSequenceReader reader =
                 FileReaderManager.getInstance()
-                    .get(filePath, key.tsFileID, true, timeSeriesMetadataIoSizeRecorder);
+                    .get(filePath, key.tsFileID, true, timeSeriesMetadataIoSizeRecorder, false);
             List<TimeseriesMetadata> timeSeriesMetadataList =
                 reader.readTimeseriesMetadata(
                     key.device,
+                    deviceMetadataIndexNodeOffset,
                     key.measurement,
                     allSensors,
                     ignoreNotExists,
@@ -216,10 +267,15 @@ public class TimeSeriesMetadataCache {
                 timeseriesMetadata = metadata.getStatistics().getCount() == 0 ? null : metadata;
               }
             }
+            if (timeseriesMetadata == null
+                && !ignoreNotExists
+                && memoryConfig.isMayCacheNonExistSeries()) {
+              lruCache.put(key, NULL_EXISTS_CACHE_PLACE_HOLDER);
+            }
           }
         }
       }
-      if (timeseriesMetadata == null) {
+      if (timeseriesMetadata == null || timeseriesMetadata == NULL_EXISTS_CACHE_PLACE_HOLDER) {
         if (debug) {
           DEBUG_LOGGER.info(StorageEngineMessages.FILE_NO_SUCH_TIME_SERIES, key);
         }
@@ -285,8 +341,16 @@ public class TimeSeriesMetadataCache {
 
   /** clear LRUCache. */
   public void clear() {
+    logger.info(
+        "Evicted non-existing/existing series count: {}/{}({}), total request: {}",
+        evictedNonExistingEntryCount.get(),
+        evictedExistingEntryCount.get(),
+        ((double) evictedNonExistingEntryCount.get()) / evictedExistingEntryCount.get(),
+        lruCache.stats().requestCount());
     lruCache.invalidateAll();
     lruCache.cleanUp();
+    evictedNonExistingEntryCount.set(0);
+    evictedExistingEntryCount.set(0);
   }
 
   public void remove(TimeSeriesMetadataCacheKey key) {

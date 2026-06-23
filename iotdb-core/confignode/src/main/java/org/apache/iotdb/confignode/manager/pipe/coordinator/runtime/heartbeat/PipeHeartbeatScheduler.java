@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.utils.LogThrottler;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -52,6 +52,7 @@ public class PipeHeartbeatScheduler {
       PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled();
   private static final long HEARTBEAT_INTERVAL_SECONDS =
       PipeConfig.getInstance().getPipeHeartbeatIntervalSecondsForCollectingPipeMeta();
+  private static final int PIPE_HEARTBEAT_RETRY_NUM = 1;
 
   private static final ScheduledExecutorService HEARTBEAT_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -59,7 +60,6 @@ public class PipeHeartbeatScheduler {
 
   private final ConfigManager configManager;
   private final PipeHeartbeatParser pipeHeartbeatParser;
-  private final LogThrottler heartbeatFailureLogThrottler = new LogThrottler();
 
   private Future<?> heartbeatFuture;
 
@@ -83,18 +83,15 @@ public class PipeHeartbeatScheduler {
 
   private synchronized void heartbeat() {
     if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
-      heartbeatFailureLogThrottler.reset();
       return;
     }
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
-      if (heartbeatFailureLogThrottler.shouldLog("coordinator-lock-held", "locked")) {
-        LOGGER.warn(
-            ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF);
-      }
+      PipeLogger.log(
+          LOGGER::warn,
+          ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF);
       return;
     }
-    heartbeatFailureLogThrottler.reset("coordinator-lock-held");
 
     // Data node heartbeat
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
@@ -106,12 +103,8 @@ public class PipeHeartbeatScheduler {
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.PIPE_HEARTBEAT, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
-            clientHandler,
-            PipeConfig.getInstance().getPipeHeartbeatIntervalSecondsForCollectingPipeMeta()
-                * 1000L
-                * 2
-                / 3);
+        .sendAsyncRequest(
+            clientHandler, PIPE_HEARTBEAT_RETRY_NUM, getPipeHeartbeatRequestTimeoutInMs(), true);
     clientHandler
         .getResponseMap()
         .forEach(
@@ -135,20 +128,20 @@ public class PipeHeartbeatScheduler {
               null,
               configNodeResp.getPipeRemainingEventCountList(),
               configNodeResp.getPipeRemainingTimeList()));
-      heartbeatFailureLogThrottler.reset("config-node-pipe-meta-collect");
     } catch (final Exception e) {
-      if (heartbeatFailureLogThrottler.shouldLog(
-          "config-node-pipe-meta-collect", LogThrottler.getFailureSignature(e))) {
-        LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK, e);
-      }
+      PipeLogger.log(
+          LOGGER::warn, e, ManagerMessages.FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK);
     }
+  }
+
+  private static long getPipeHeartbeatRequestTimeoutInMs() {
+    return TimeUnit.SECONDS.toMillis(HEARTBEAT_INTERVAL_SECONDS) * 2 / 3;
   }
 
   public synchronized void stop() {
     if (IS_SEPERATED_PIPE_HEARTBEAT_ENABLED && heartbeatFuture != null) {
       heartbeatFuture.cancel(false);
       heartbeatFuture = null;
-      heartbeatFailureLogThrottler.reset();
       LOGGER.info(ManagerMessages.PIPEHEARTBEAT_IS_STOPPED_SUCCESSFULLY);
     }
   }

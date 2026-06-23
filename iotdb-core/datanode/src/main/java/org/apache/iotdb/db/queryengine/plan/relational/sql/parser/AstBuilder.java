@@ -159,6 +159,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
@@ -194,6 +195,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
@@ -317,6 +319,7 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.APPROX_PERCENTILE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.PERCENTILE;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_END;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_START;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
@@ -1391,6 +1394,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new CreateTopic(topicName, hasIfNotExistsCondition, topicAttributes);
   }
 
+  @Override
+  public Node visitAlterTopicStatement(RelationalSqlParser.AlterTopicStatementContext ctx) {
+    final String topicName = ((Identifier) visit(ctx.identifier())).getValue();
+    return new AlterTopic(
+        topicName, parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause()));
+  }
+
   private Map<String, String> parseTopicAttributesClause(
       List<RelationalSqlParser.TopicAttributeClauseContext> contexts) {
     final Map<String, String> tppicMap = new HashMap<>();
@@ -1821,7 +1831,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else {
       innerStatement = (Statement) visit(ctx.executeImmediateStatement());
     }
-    return new Explain(getLocation(ctx), innerStatement);
+    ExplainOutputFormat format = ExplainOutputFormat.GRAPHVIZ;
+    if (ctx.identifier() != null) {
+      String formatStr = ((Identifier) visit(ctx.identifier())).getValue().toUpperCase();
+      switch (formatStr) {
+        case "GRAPHVIZ":
+          format = ExplainOutputFormat.GRAPHVIZ;
+          break;
+        case "JSON":
+          format = ExplainOutputFormat.JSON;
+          break;
+        default:
+          throw new SemanticException(
+              "Invalid EXPLAIN format: " + formatStr + ". Supported formats: GRAPHVIZ, JSON");
+      }
+    }
+    return new Explain(getLocation(ctx), innerStatement, format);
   }
 
   @Override
@@ -1834,7 +1859,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else {
       innerStatement = (Statement) visit(ctx.executeImmediateStatement());
     }
-    return new ExplainAnalyze(getLocation(ctx), ctx.VERBOSE() != null, innerStatement);
+    ExplainOutputFormat format = ExplainOutputFormat.TEXT;
+    if (ctx.identifier() != null) {
+      String formatStr = ((Identifier) visit(ctx.identifier())).getValue().toUpperCase();
+      switch (formatStr) {
+        case "TEXT":
+          format = ExplainOutputFormat.TEXT;
+          break;
+        case "JSON":
+          format = ExplainOutputFormat.JSON;
+          break;
+        default:
+          throw new SemanticException(
+              "Invalid EXPLAIN ANALYZE format: " + formatStr + ". Supported formats: TEXT, JSON");
+      }
+    }
+    return new ExplainAnalyze(getLocation(ctx), ctx.VERBOSE() != null, innerStatement, format);
   }
 
   // ********************** author expressions ********************
@@ -2595,10 +2635,24 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitGroupBy(RelationalSqlParser.GroupByContext ctx) {
+  public Node visitAllGroupBy(RelationalSqlParser.AllGroupByContext ctx) {
+    return new GroupBy(getLocation(ctx), false, true, ImmutableList.of());
+  }
+
+  @Override
+  public Node visitExplicitGroupBy(RelationalSqlParser.ExplicitGroupByContext ctx) {
+    if (ctx.setQuantifier() == null && ctx.groupingElement().size() > 1) {
+      for (RelationalSqlParser.GroupingElementContext element : ctx.groupingElement()) {
+        if (element.getText().equalsIgnoreCase("ALL")) {
+          throw new SemanticException(
+              "GROUP BY ALL cannot be combined with explicit grouping elements");
+        }
+      }
+    }
     return new GroupBy(
         getLocation(ctx),
         isDistinct(ctx.setQuantifier()),
+        false,
         visit(ctx.groupingElement(), GroupingElement.class));
   }
 
@@ -3655,6 +3709,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       } else if (arguments.size() == 3 && !(arguments.get(2) instanceof DoubleLiteral)) {
         throw new SemanticException(
             "The third argument of 'approx_percentile' function percentage must be a double literal");
+      }
+    } else if (name.toString().equalsIgnoreCase(PERCENTILE)) {
+      if (arguments.size() == 2 && !(arguments.get(1) instanceof DoubleLiteral)) {
+        throw new SemanticException(
+            "The second argument of 'percentile' function percentage must be a double literal");
       }
     }
 

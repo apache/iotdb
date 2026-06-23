@@ -240,7 +240,10 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
       String[] measurements = insertRowNode.getMeasurements();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
-      for (int i = 0; i < measurements.length; i++) {
+      for (int i = 0; measurements != null && i < measurements.length; i++) {
+        if (measurements[i] == null || dataTypes == null || i >= dataTypes.length) {
+          continue;
+        }
         if (!measurementSet.contains(measurements[i])) {
           measurementList.add(measurements[i]);
           dataTypeList.add(dataTypes[i]);

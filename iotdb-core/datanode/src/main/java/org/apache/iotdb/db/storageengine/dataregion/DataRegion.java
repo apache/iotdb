@@ -2219,7 +2219,9 @@ public class DataRegion implements IDataRegionForQuery {
         databaseName + "-" + dataRegionIdString,
         systemDir);
     int regionId = dataRegionId.getId();
-    TableDiskUsageIndex.getInstance().remove(databaseName, regionId);
+    if (isTableModel) {
+      TableDiskUsageIndex.getInstance().remove(databaseName, regionId);
+    }
     FileTimeIndexCacheRecorder.getInstance().removeFileTimeIndexCache(regionId);
     writeLock("deleteFolder");
     try {
@@ -4787,7 +4789,8 @@ public class DataRegion implements IDataRegionForQuery {
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(
                               CommonDateTimeUtils.currentTime() - ttl))));
-          insertRowNode.setFailedMeasurementNumber(insertRowNode.getMeasurements().length);
+          insertRowNode.setFailedMeasurementNumber(
+              insertRowNode.getMeasurements() == null ? 0 : insertRowNode.getMeasurements().length);
           insertRowNode.setMeasurements(null);
           continue;
         }

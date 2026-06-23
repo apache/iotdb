@@ -483,14 +483,15 @@ public class TreeSchemaAutoCreatorAndVerifier {
         }
 
         // check datatype
-        if (LOGGER.isDebugEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
-          LOGGER.debug(
-              "Measurement {}{}{} datatype not match, TsFile: {}, IoTDB: {}",
-              device,
-              TsFileConstant.PATH_SEPARATOR,
-              iotdbSchema.getMeasurementName(),
-              tsFileSchema.getType(),
-              iotdbSchema.getType());
+        if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
+          throw new LoadAnalyzeTypeMismatchException(
+              String.format(
+                  "Data type mismatch for measurement %s%s%s, type in TsFile: %s, type in IoTDB: %s",
+                  device,
+                  TsFileConstant.PATH_SEPARATOR,
+                  iotdbSchema.getMeasurementName(),
+                  tsFileSchema.getType(),
+                  iotdbSchema.getType()));
         }
 
         // check encoding

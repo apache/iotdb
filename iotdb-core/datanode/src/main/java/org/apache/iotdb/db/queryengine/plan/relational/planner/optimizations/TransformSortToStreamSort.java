@@ -35,11 +35,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode.isTimeColumn;
+import static org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode.isTimeColumn;
 
 /**
  * <b>Optimization phase:</b> Logical plan planning.
@@ -92,8 +94,21 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       context.setCanTransform(false);
 
       DeviceTableScanNode deviceTableScanNode = context.getTableScanNode();
-      Map<Symbol, ColumnSchema> tableColumnSchema =
-          analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
+      Map<Symbol, ColumnSchema> tableColumnSchema;
+      if (deviceTableScanNode instanceof ExternalTsFileScanNode) {
+        tableColumnSchema =
+            ((ExternalTsFileScanNode) deviceTableScanNode)
+                .getExternalTsFileQueryResource()
+                .getTableColumnSchema();
+      } else if (deviceTableScanNode instanceof ExternalTsFileAggregationScanNode) {
+        tableColumnSchema =
+            ((ExternalTsFileAggregationScanNode) deviceTableScanNode)
+                .getExternalTsFileQueryResource()
+                .getTableColumnSchema();
+      } else {
+        tableColumnSchema =
+            analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
+      }
 
       OrderingScheme orderingScheme = node.getOrderingScheme();
       int streamSortIndex = -1;
@@ -140,6 +155,12 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
     @Override
     public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
+      context.setTableScanNode(node);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitExternalTsFileScan(ExternalTsFileScanNode node, Context context) {
       context.setTableScanNode(node);
       return node;
     }

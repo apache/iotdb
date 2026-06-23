@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableFunctionFactory;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.AdditionResolver;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.DivisionResolver;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.ModulusResolver;
@@ -52,6 +53,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
@@ -62,6 +64,7 @@ import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.ObjectType;
@@ -76,6 +79,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isDecimalType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
 import static org.apache.iotdb.calc.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -94,6 +99,14 @@ public class TableMetadataImpl implements Metadata {
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
+
+  @Override
+  public TableFunction getTableFunction(String functionName) {
+    if (DataNodeTableBuiltinTableFunction.isBuiltInTableFunction(functionName)) {
+      return DataNodeTableBuiltinTableFunction.getBuiltinTableFunction(functionName);
+    }
+    return TableFunctionFactory.getTableFunction(functionName);
+  }
 
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
@@ -217,7 +230,7 @@ public class TableMetadataImpl implements Metadata {
     if (TableBuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!CommonMetadataUtils.isOneNumericType(argumentTypes)
           && !(argumentTypes.size() == 2
-              && CommonMetadataUtils.isNumericType(argumentTypes.get(0))
+              && isNumericType(argumentTypes.get(0))
               && BOOLEAN.equals(argumentTypes.get(1)))) {
         throw new SemanticException(
             "Scalar function "
@@ -1265,7 +1278,7 @@ public class TableMetadataImpl implements Metadata {
         }
 
         Type valueColumnType = argumentTypes.get(0);
-        if (!CommonMetadataUtils.isNumericType(valueColumnType)) {
+        if (!isNumericType(valueColumnType)) {
           throw new SemanticException(
               String.format(
                   "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
@@ -1273,7 +1286,7 @@ public class TableMetadataImpl implements Metadata {
         }
 
         Type percentageType = argumentTypes.get(argumentSize - 1);
-        if (!CommonMetadataUtils.isDecimalType(percentageType)) {
+        if (!isDecimalType(percentageType)) {
           throw new SemanticException(
               String.format(
                   "Aggregation functions [%s] should have percentage as decimal type",
@@ -1288,7 +1301,26 @@ public class TableMetadataImpl implements Metadata {
                     functionName, weightType.getDisplayName()));
           }
         }
+        break;
+      case SqlConstant.PERCENTILE:
+        if (argumentTypes.size() != 2) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should only have two arguments", functionName));
+        }
 
+        if (!isNumericType(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName));
+        }
+        if (!isDecimalType(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have percentage as decimal type",
+                  functionName));
+        }
         break;
       case SqlConstant.COUNT:
         break;
@@ -1314,6 +1346,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
       case SqlConstant.APPROX_PERCENTILE:
+      case SqlConstant.PERCENTILE:
         return argumentTypes.get(0);
       case SqlConstant.AVG:
       case SqlConstant.SUM:

@@ -60,6 +60,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   private static final long ACTIVE_LOAD_FAILURE_LOG_INTERVAL_MS = TimeUnit.HOURS.toMillis(1);
 
   private final AtomicReference<String[]> listeningDirsConfig = new AtomicReference<>();
+  private final AtomicReference<String> pipeListeningDirConfig = new AtomicReference<>();
   private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
 
   private final Set<String> noPermissionDirs = new CopyOnWriteArraySet<>();
@@ -228,8 +229,20 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       } else {
         listeningDirs.clear();
       }
-      // Hot reload active load listening dir for pipe data sync
-      // Active load is always enabled for pipe data sync
+      if (!Objects.equals(
+          IOTDB_CONFIG.getLoadActiveListeningPipeDir(), pipeListeningDirConfig.get())) {
+        synchronized (this) {
+          if (!Objects.equals(
+              IOTDB_CONFIG.getLoadActiveListeningPipeDir(), pipeListeningDirConfig.get())) {
+            if (pipeListeningDirConfig.get() != null) {
+              listeningDirs.remove(pipeListeningDirConfig.get());
+            }
+            pipeListeningDirConfig.set(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
+          }
+        }
+      }
+
+      // Active load is always enabled for pipe data sync.
       listeningDirs.add(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
 
       // Create directories if not exists

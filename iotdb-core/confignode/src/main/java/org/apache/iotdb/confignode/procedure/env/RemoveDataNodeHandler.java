@@ -567,19 +567,25 @@ public class RemoveDataNodeHandler {
     // when the configuration is one replication, it will be failed if the data node is not in
     // running state.
     if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
-      for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
-        // check whether removed data node is in running state
-        if (!NodeStatus.Running.equals(
-            configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId()))) {
-          removedDataNodes.remove(dataNodeLocation);
-          LOGGER.error(
-              ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN, dataNodeLocation);
-        }
-        if (removedDataNodes.isEmpty()) {
-          status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
-          status.setMessage(ProcedureMessages.FAILED_TO_REMOVE_ALL_REQUESTED_DATA_NODES);
-          return status;
-        }
+      final List<TDataNodeLocation> notRunningDataNodes =
+          removedDataNodes.stream()
+              .filter(
+                  dataNodeLocation ->
+                      !NodeStatus.Running.equals(
+                          configManager
+                              .getLoadManager()
+                              .getNodeStatus(dataNodeLocation.getDataNodeId())))
+              .collect(Collectors.toList());
+      notRunningDataNodes.forEach(
+          dataNodeLocation ->
+              LOGGER.error(
+                  ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN,
+                  dataNodeLocation));
+      removedDataNodes.removeAll(notRunningDataNodes);
+      if (removedDataNodes.isEmpty()) {
+        status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+        status.setMessage(ProcedureMessages.FAILED_TO_REMOVE_ALL_REQUESTED_DATA_NODES);
+        return status;
       }
     }
 
@@ -593,13 +599,25 @@ public class RemoveDataNodeHandler {
                 .count();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
-      status.setMessage(
+      // Report the concrete numbers so operators can see the gap: how many DataNodes are being
+      // removed, how many are available, the minimum that must remain (the larger of the schema and
+      // data replication factors) and how many would be left.
+      String message =
           String.format(
-              "Can't remove datanode due to the limit of replication factor, "
-                  + "availableDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s",
+              ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_WOULD_LEAVE_TOO_FEW,
+              removedDataNodeSize,
               availableDatanodeSize,
               NodeInfo.getMinimumDataNode(),
-              (availableDatanodeSize - NodeInfo.getMinimumDataNode())));
+              CONF.getSchemaReplicationFactor(),
+              CONF.getDataReplicationFactor(),
+              availableDatanodeSize - removedDataNodeSize);
+      if (NodeInfo.getMinimumDataNode() == 1) {
+        // With a single replica (schema_replication_factor and data_replication_factor are both 1)
+        // the only copy of each region lives on one DataNode, so at least one DataNode must always
+        // remain: there is nowhere to migrate its regions to.
+        message += ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_SINGLE_REPLICA_HINT;
+      }
+      status.setMessage(message);
     }
     return status;
   }

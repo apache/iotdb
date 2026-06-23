@@ -104,6 +104,12 @@ struct TRatisConfig {
   34: required i64 dataRegionPeriodicSnapshotInterval
 
   35: required i32 ratisTransferLeaderTimeoutMs;
+
+  // Bound the retry attempts of a Ratis configuration change (add/remove peer) so a killed ADDING
+  // peer cannot block the reconfiguration forever. Optional for rolling-upgrade compatibility: an
+  // old ConfigNode will not set them and the DataNode falls back to its local default.
+  36: optional i32 schemaReconfigurationMaxRetryAttempts
+  37: optional i32 dataReconfigurationMaxRetryAttempts
 }
 
 struct TCQConfig {
@@ -730,10 +736,8 @@ struct TDatabaseInfo {
   4: required i32 dataReplicationFactor
   5: required i64 timePartitionInterval
   6: required i32 schemaRegionNum
-  7: required i32 minSchemaRegionNum
   8: required i32 maxSchemaRegionNum
   9: required i32 dataRegionNum
-  10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
 }
@@ -1941,6 +1945,9 @@ service IConfigNodeRPCService {
   // ======================================================
   /** Create Topic */
   common.TSStatus createTopic(TCreateTopicReq req)
+
+  /** Alter Topic */
+  common.TSStatus alterTopic(TAlterTopicReq req)
 
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)

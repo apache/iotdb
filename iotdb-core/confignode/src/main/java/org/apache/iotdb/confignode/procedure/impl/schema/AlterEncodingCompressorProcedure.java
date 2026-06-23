@@ -311,7 +311,7 @@ public class AlterEncodingCompressorProcedure
     }
     final AlterEncodingCompressorProcedure that = (AlterEncodingCompressorProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(this.getCurrentState(), that.getCurrentState())
         && this.getCycles() == getCycles()
         && Objects.equals(this.queryId, that.queryId)
         && this.isGeneratedByPipe == that.isGeneratedByPipe

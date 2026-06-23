@@ -54,8 +54,8 @@ public class AsyncAINodeHeartbeatClientPool {
       client = clientManager.borrowClient(endPoint);
       client.getAIHeartbeat(req, handler);
       dispatched = true;
-    } catch (Exception ignore) {
-      // Just ignore
+    } catch (Exception e) {
+      handleError(handler, e);
     } finally {
       // After the async call is dispatched, the client's onComplete/onError callback is
       // responsible for returning the client. If the RPC was not dispatched (exception
@@ -64,6 +64,14 @@ public class AsyncAINodeHeartbeatClientPool {
         ((ClientManager<TEndPoint, AsyncAINodeInternalServiceClient>) clientManager)
             .returnClient(endPoint, client);
       }
+    }
+  }
+
+  private void handleError(final AINodeHeartbeatHandler handler, final Exception e) {
+    try {
+      handler.onError(e);
+    } catch (final Exception ignore) {
+      // Ignore handler failures in heartbeat best-effort path.
     }
   }
 

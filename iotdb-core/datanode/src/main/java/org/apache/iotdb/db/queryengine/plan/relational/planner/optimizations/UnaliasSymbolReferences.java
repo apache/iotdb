@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -273,6 +274,43 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     }
 
     @Override
+    public PlanAndMappings visitExternalTsFileScan(
+        ExternalTsFileScanNode node, UnaliasContext context) {
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> newOutputs = mapper.map(node.getOutputSymbols());
+
+      Map<Symbol, ColumnSchema> newAssignments = new HashMap<>();
+      node.getAssignments()
+          .forEach(
+              (symbol, handle) -> {
+                Symbol newSymbol = mapper.map(symbol);
+                newAssignments.put(newSymbol, handle);
+              });
+
+      ExternalTsFileScanNode rewrittenNode =
+          new ExternalTsFileScanNode(
+              node.getPlanNodeId(),
+              node.getQualifiedObjectName(),
+              newOutputs,
+              newAssignments,
+              node.getPushDownPredicate() == null ? null : mapper.map(node.getPushDownPredicate()),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              node.getTimePredicate().map(mapper::map).orElse(null),
+              node.getScanOrder(),
+              node.isPushLimitToEachDevice(),
+              node.getTagAndAttributeIndexMap(),
+              node.getExternalTsFileQueryResource(),
+              node.getDeviceEntryIndexes(),
+              node.getDeviceTaskPartitionIndex(),
+              node.getSchemaFilter());
+      rewrittenNode.setRegionReplicaSet(node.getRegionReplicaSet());
+      return new PlanAndMappings(rewrittenNode, mapping);
+    }
+
+    @Override
     public PlanAndMappings visitCteScan(CteScanNode node, UnaliasContext context) {
       Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
       return new PlanAndMappings(node, mapping);
@@ -418,7 +456,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getQueryId(),
               node.getTimeout(),
               node.getOutputSymbols().get(0),
-              newChildPermittedOutputs),
+              newChildPermittedOutputs,
+              node.getOutputFormat()),
           mapping);
     }
 
