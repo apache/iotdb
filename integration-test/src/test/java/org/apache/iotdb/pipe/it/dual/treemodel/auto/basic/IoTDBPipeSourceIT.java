@@ -812,11 +812,10 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
+      final Map<String, String> expectedCountResult = new HashMap<>();
+      expectedCountResult.put("count(root.db.d1.at1)", "3");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.db.**",
-          "count(root.db.d1.at1),",
-          Collections.singleton("3,"));
+          receiverEnv, "select count(*) from root.db.**", expectedCountResult);
 
       // Insert realtime data that overlapped with time range
       TestUtils.executeNonQueries(
@@ -827,11 +826,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
               "flush"),
           null);
 
+      expectedCountResult.put("count(root.db.d3.at1)", "3");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.db.**",
-          "count(root.db.d1.at1),count(root.db.d3.at1),",
-          Collections.singleton("3,3,"));
+          receiverEnv, "select count(*) from root.db.**", expectedCountResult);
 
       // Session Tablet can have unused timestamp slots when rowSize is smaller than maxRowNumber.
       // The pipe source time range filter should ignore the unused zero tail.
@@ -849,11 +846,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         session.insertTablet(tabletWithUnusedTail);
       }
 
+      expectedCountResult.put("count(root.db.d5.at1)", "3");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.db.**",
-          "count(root.db.d1.at1),count(root.db.d3.at1),count(root.db.d5.at1),",
-          Collections.singleton("3,3,3,"));
+          receiverEnv, "select count(*) from root.db.**", expectedCountResult);
 
       // Insert realtime data that does not overlap with time range
       TestUtils.executeNonQueries(
@@ -866,9 +861,19 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
-          "select count(*) from root.db.**",
+          "select count(at1) from root.db.d1, root.db.d3, root.db.d5",
           "count(root.db.d1.at1),count(root.db.d3.at1),count(root.db.d5.at1),",
           Collections.singleton("3,3,3,"));
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show timeseries root.db.d2.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.emptySet());
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show timeseries root.db.d4.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.emptySet());
     }
   }
 
