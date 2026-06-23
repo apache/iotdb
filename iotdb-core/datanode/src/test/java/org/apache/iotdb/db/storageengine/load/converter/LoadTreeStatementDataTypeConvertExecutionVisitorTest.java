@@ -248,6 +248,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
           tablet.addValue("s" + measurementIndex, row, (long) measurementIndex * 10_000 + row);
         }
       }
+      tablet.rowSize = ROW_COUNT_PER_DEVICE;
       writer.writeAligned(tablet);
     }
   }
@@ -266,6 +267,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       tablet.addValue("s0", row, valueBase + row);
       tablet.addValue("s1", row, valueBase + ROW_COUNT_PER_DEVICE + row);
     }
+    tablet.rowSize = ROW_COUNT_PER_DEVICE;
     writer.write(tablet);
   }
 
