@@ -25,6 +25,7 @@
 - Data Query: Added list display for available DataNode nodes
 - Data Query: Added a system table for statistics on query latency in the table model
 - Data Query: Python SessionDataset supported converting TsBlock to DataFrame and returning DataFrame in batches
+- Data Query: Added the built-in FFT/fft table-valued function for the table model. SAMPLE_INTERVAL must be a positive duration literal when specified; N defaults to the partition row count and is capped at 65,536; null numeric values are rejected; timestamps must be strictly ascending and evenly spaced unless SAMPLE_INTERVAL is explicitly provided, in which case input gaps must match it.
 - Storage Management: Supported custom column names for the TIME column
 - Storage Management: Supported viewing the complete definition statement of created tables/views via SQL
 - System Management: Added a system table for DataNode node connection status in the table model

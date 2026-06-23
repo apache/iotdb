@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
@@ -28,6 +29,10 @@ import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
+import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Test;
 
@@ -36,6 +41,7 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -44,7 +50,56 @@ import static org.junit.Assert.fail;
 
 public class FFTTableFunctionTest {
 
+  private static final double DELTA = 1e-9;
+
   private final FFTTableFunction function = new FFTTableFunction();
+
+  @Test
+  public void testWritesFullSpectrumAndZeroPadsToSpecifiedN() throws UDFException {
+    TableFunctionDataProcessor processor = createProcessor(true, 4L);
+    processor.process(record(0L, 1.0), Collections.emptyList(), null);
+
+    List<ColumnBuilder> builders = createOutputBuilders(4);
+    processor.finish(builders, null);
+
+    double intervalSeconds = TimestampPrecisionUtils.currPrecision.toNanos(1L) / 1_000_000_000.0;
+    assertLongColumn(builders.get(0).build(), 0L, 1L, 2L, 3L);
+    assertDoubleColumn(
+        builders.get(1).build(),
+        0.0,
+        1.0 / (4.0 * intervalSeconds),
+        -2.0 / (4.0 * intervalSeconds),
+        -1.0 / (4.0 * intervalSeconds));
+    assertDoubleColumn(builders.get(2).build(), 1.0, 1.0, 1.0, 1.0);
+    assertDoubleColumn(builders.get(3).build(), 0.0, 0.0, 0.0, 0.0);
+  }
+
+  @Test
+  public void testTruncatesInputRowsToSpecifiedN() throws UDFException {
+    TableFunctionDataProcessor processor = createProcessor(true, 2L);
+    processor.process(record(0L, 1.0), Collections.emptyList(), null);
+    processor.process(record(1L, 2.0), Collections.emptyList(), null);
+    processor.process(record(2L, 100.0), Collections.emptyList(), null);
+    processor.process(record(3L, 200.0), Collections.emptyList(), null);
+
+    List<ColumnBuilder> builders = createOutputBuilders(2);
+    processor.finish(builders, null);
+
+    assertLongColumn(builders.get(0).build(), 0L, 1L);
+    assertDoubleColumn(builders.get(2).build(), 3.0, -1.0);
+    assertDoubleColumn(builders.get(3).build(), 0.0, 0.0);
+  }
+
+  @Test
+  public void testRejectsInvalidRowsEvenWhenBeyondTruncatedN() throws UDFException {
+    TableFunctionDataProcessor processor = createProcessor(true, 2L);
+    processor.process(record(0L, 1.0), Collections.emptyList(), null);
+    processor.process(record(1L, 2.0), Collections.emptyList(), null);
+
+    assertSemanticException(
+        () -> processor.process(nullValueRecord(2L), Collections.emptyList(), null),
+        "FFT does not support null values in column [value].");
+  }
 
   @Test
   public void testRejectsDuplicateTime() throws UDFException {
@@ -111,6 +166,11 @@ public class FFTTableFunctionTest {
 
   private TableFunctionDataProcessor createProcessor(boolean sampleIntervalSpecified)
       throws UDFException {
+    return createProcessor(sampleIntervalSpecified, -1L);
+  }
+
+  private TableFunctionDataProcessor createProcessor(
+      boolean sampleIntervalSpecified, long transformLength) throws UDFException {
     Map<String, Argument> arguments = new HashMap<>();
     arguments.put(
         FFTTableFunction.DATA_PARAMETER_NAME,
@@ -126,7 +186,8 @@ public class FFTTableFunctionTest {
     arguments.put(
         FFTTableFunction.SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME,
         new ScalarArgument(Type.BOOLEAN, sampleIntervalSpecified));
-    arguments.put(FFTTableFunction.N_PARAMETER_NAME, new ScalarArgument(Type.INT64, -1L));
+    arguments.put(
+        FFTTableFunction.N_PARAMETER_NAME, new ScalarArgument(Type.INT64, transformLength));
     arguments.put(
         FFTTableFunction.NORM_PARAMETER_NAME, new ScalarArgument(Type.STRING, "backward"));
 
@@ -137,6 +198,32 @@ public class FFTTableFunctionTest {
 
   private Record record(long time, double value) {
     return new SimpleRecord(time, value);
+  }
+
+  private Record nullValueRecord(long time) {
+    return new SimpleRecord(time, null);
+  }
+
+  private List<ColumnBuilder> createOutputBuilders(int expectedPositionCount) {
+    return Arrays.asList(
+        new LongColumnBuilder(null, expectedPositionCount),
+        new DoubleColumnBuilder(null, expectedPositionCount),
+        new DoubleColumnBuilder(null, expectedPositionCount),
+        new DoubleColumnBuilder(null, expectedPositionCount));
+  }
+
+  private void assertLongColumn(Column column, long... expected) {
+    assertEquals(expected.length, column.getPositionCount());
+    for (int i = 0; i < expected.length; i++) {
+      assertEquals(expected[i], column.getLong(i));
+    }
+  }
+
+  private void assertDoubleColumn(Column column, double... expected) {
+    assertEquals(expected.length, column.getPositionCount());
+    for (int i = 0; i < expected.length; i++) {
+      assertEquals(expected[i], column.getDouble(i), DELTA);
+    }
   }
 
   private void assertSemanticException(Runnable runnable, String message) {
@@ -150,9 +237,9 @@ public class FFTTableFunctionTest {
 
   private static class SimpleRecord implements Record {
     private final long time;
-    private final double value;
+    private final Double value;
 
-    private SimpleRecord(long time, double value) {
+    private SimpleRecord(long time, Double value) {
       this.time = time;
       this.value = value;
     }
@@ -177,7 +264,7 @@ public class FFTTableFunctionTest {
 
     @Override
     public double getDouble(int columnIndex) {
-      if (columnIndex == 1) {
+      if (columnIndex == 1 && value != null) {
         return value;
       }
       throw new UnsupportedOperationException();
@@ -235,6 +322,9 @@ public class FFTTableFunctionTest {
 
     @Override
     public boolean isNull(int columnIndex) {
+      if (columnIndex == 1) {
+        return value == null;
+      }
       return false;
     }
 
