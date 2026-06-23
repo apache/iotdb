@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
@@ -78,6 +79,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
@@ -453,14 +455,34 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
     }
 
+    if (databaseSchema.isSetMaxSchemaRegionGroupNum()) {
+      TSStatus status =
+          ClusterSchemaManager.validateMaxRegionGroupNumOnCreation(
+              databaseSchema, TConsensusGroupType.SchemaRegion);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        errorResp = status;
+      }
+    }
+    if (databaseSchema.isSetMaxDataRegionGroupNum()) {
+      TSStatus status =
+          ClusterSchemaManager.validateMaxRegionGroupNumOnCreation(
+              databaseSchema, TConsensusGroupType.DataRegion);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        errorResp = status;
+      }
+    }
+
     if (errorResp != null) {
       LOGGER.warn("Execute SetDatabase: {} with result: {}", databaseSchema, errorResp);
       return errorResp;
     }
 
-    // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize
-    databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
-    databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
+    if (!databaseSchema.isSetMaxSchemaRegionGroupNum()) {
+      databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
+    }
+    if (!databaseSchema.isSetMaxDataRegionGroupNum()) {
+      databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
+    }
 
     DatabaseSchemaPlan setPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);

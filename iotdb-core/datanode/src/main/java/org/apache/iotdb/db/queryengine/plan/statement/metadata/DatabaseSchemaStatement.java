@@ -42,8 +42,8 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private Integer schemaReplicationFactor = null;
   private Integer dataReplicationFactor = null;
   private Long timePartitionInterval = null;
-  private Integer schemaRegionGroupNum = null;
-  private Integer dataRegionGroupNum = null;
+  private Integer maxSchemaRegionGroupNum = null;
+  private Integer maxDataRegionGroupNum = null;
   private boolean enablePrintExceptionLog = true;
 
   public DatabaseSchemaStatement(DatabaseSchemaStatementType subType) {
@@ -96,20 +96,20 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     this.timePartitionInterval = timePartitionInterval;
   }
 
-  public Integer getSchemaRegionGroupNum() {
-    return schemaRegionGroupNum;
+  public Integer getMaxSchemaRegionGroupNum() {
+    return maxSchemaRegionGroupNum;
   }
 
-  public void setSchemaRegionGroupNum(Integer schemaRegionGroupNum) {
-    this.schemaRegionGroupNum = schemaRegionGroupNum;
+  public void setMaxSchemaRegionGroupNum(Integer maxSchemaRegionGroupNum) {
+    this.maxSchemaRegionGroupNum = maxSchemaRegionGroupNum;
   }
 
-  public Integer getDataRegionGroupNum() {
-    return dataRegionGroupNum;
+  public Integer getMaxDataRegionGroupNum() {
+    return maxDataRegionGroupNum;
   }
 
-  public void setDataRegionGroupNum(Integer dataRegionGroupNum) {
-    this.dataRegionGroupNum = dataRegionGroupNum;
+  public void setMaxDataRegionGroupNum(Integer maxDataRegionGroupNum) {
+    this.maxDataRegionGroupNum = maxDataRegionGroupNum;
   }
 
   public boolean getEnablePrintExceptionLog() {
@@ -164,10 +164,10 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
         + dataReplicationFactor
         + ", timePartitionInterval="
         + timePartitionInterval
-        + ", schemaRegionGroupNum="
-        + schemaRegionGroupNum
-        + ", dataRegionGroupNum="
-        + dataRegionGroupNum
+        + ", maxSchemaRegionGroupNum="
+        + maxSchemaRegionGroupNum
+        + ", maxDataRegionGroupNum="
+        + maxDataRegionGroupNum
         + '}';
   }
 
