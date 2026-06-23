@@ -151,6 +151,28 @@ public class PipeTableRespTest {
         filteredTreePipeTableResp.getAllPipeMeta().get(0).getStaticMeta().visibleUnderTableModel());
   }
 
+  @Test
+  public void testFilterWithoutModelKeepsLegacyVisibility() {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<PipeMeta> pipeMetaList = new ArrayList<>();
+
+    pipeMetaList.add(constructPipeMeta("sameNamePipe", 121, new HashMap<>(), "127.0.0.1"));
+
+    Map<String, String> tableExtractorAttributes = new HashMap<>();
+    tableExtractorAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    pipeMetaList.add(
+        constructPipeMeta("sameNamePipe", 122, tableExtractorAttributes, "172.30.30.30"));
+    pipeMetaList.add(
+        constructPipeMeta("tablePeerPipe", 123, tableExtractorAttributes, "172.30.30.30"));
+
+    PipeTableResp pipeTableResp = new PipeTableResp(status, pipeMetaList);
+
+    Assert.assertEquals(
+        2, pipeTableResp.filter(false, "sameNamePipe", null).getAllPipeMeta().size());
+    Assert.assertEquals(3, pipeTableResp.filter(null, null, null).getAllPipeMeta().size());
+  }
+
   private PipeMeta constructPipeMeta(
       final String pipeName,
       final long creationTime,

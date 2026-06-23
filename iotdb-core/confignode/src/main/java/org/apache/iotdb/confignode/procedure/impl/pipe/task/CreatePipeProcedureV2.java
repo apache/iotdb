@@ -92,7 +92,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   public CreatePipeProcedureV2(final TCreatePipeReq createPipeRequest) throws PipeException {
     super();
-    this.createPipeRequest = createPipeRequest;
+    this.createPipeRequest = normalizeCreatePipeRequest(createPipeRequest);
   }
 
   /** This is only used when the pipe task info lock is held by another procedure. */
@@ -101,7 +101,20 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException {
     super();
     this.pipeTaskInfo = pipeTaskInfo;
-    this.createPipeRequest = createPipeRequest;
+    this.createPipeRequest = normalizeCreatePipeRequest(createPipeRequest);
+  }
+
+  private TCreatePipeReq normalizeCreatePipeRequest(final TCreatePipeReq createPipeRequest) {
+    if (createPipeRequest.getExtractorAttributes() == null) {
+      createPipeRequest.setExtractorAttributes(new HashMap<>());
+    }
+    if (createPipeRequest.getProcessorAttributes() == null) {
+      createPipeRequest.setProcessorAttributes(new HashMap<>());
+    }
+    if (createPipeRequest.getConnectorAttributes() == null) {
+      createPipeRequest.setConnectorAttributes(new HashMap<>());
+    }
+    return createPipeRequest;
   }
 
   /**

@@ -119,6 +119,16 @@ public class PipeTableResp implements DataSet {
         .filter(whereClause, pipeName);
   }
 
+  public PipeTableResp filter(
+      final Boolean whereClause, final String pipeName, final String userName) {
+    return new PipeTableResp(
+            status,
+            allPipeMeta.stream()
+                .filter(meta -> isVisible4User(userName, meta.getStaticMeta()))
+                .collect(Collectors.toList()))
+        .filter(whereClause, pipeName);
+  }
+
   public boolean isVisible4User(final String userName, final PipeStaticMeta meta) {
     try {
       return Objects.isNull(userName)

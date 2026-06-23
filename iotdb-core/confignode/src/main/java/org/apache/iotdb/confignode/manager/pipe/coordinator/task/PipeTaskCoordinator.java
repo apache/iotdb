@@ -323,8 +323,11 @@ public class PipeTaskCoordinator {
 
   public TShowPipeResp showPipes(final TShowPipeReq req) {
     try {
-      return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
-          .filter(req.whereClause, req.pipeName, req.isTableModel, req.userName)
+      final PipeTableResp pipeTableResp =
+          (PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2());
+      return (req.isSetIsTableModel()
+              ? pipeTableResp.filter(req.whereClause, req.pipeName, req.isTableModel, req.userName)
+              : pipeTableResp.filter(req.whereClause, req.pipeName, req.userName))
           .convertToTShowPipeResp();
     } catch (final ConsensusException e) {
       PipeLogger.log(
