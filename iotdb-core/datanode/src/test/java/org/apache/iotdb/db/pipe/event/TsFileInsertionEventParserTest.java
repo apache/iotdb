@@ -483,12 +483,79 @@ public class TsFileInsertionEventParserTest {
           final Tablet tablet = tabletWithIsAligned.getLeft();
           ++tabletCount;
           Assert.assertEquals(measurementCount, tablet.getSchemas().size());
+          Assert.assertEquals(rowCount / 2, tablet.getRowSize());
           pointCount += getNonNullSize(tablet);
         }
       }
 
       Assert.assertEquals(measurementCount * rowCount, pointCount);
-      Assert.assertTrue(tabletCount > 0);
+      Assert.assertEquals(2, tabletCount);
+    } finally {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeMaxReaderChunkSize(originalPipeMaxReaderChunkSize);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeDataStructureTabletRowSize(originalPipeDataStructureTabletRowSize);
+      sourceTsFile.delete();
+    }
+  }
+
+  @Test
+  public void testScanParserFlushesBatchedAlignedValueChunkGroupsByMemoryLimit() throws Exception {
+    final long originalPipeMaxReaderChunkSize =
+        CommonDescriptor.getInstance().getConfig().getPipeMaxReaderChunkSize();
+    final int originalPipeDataStructureTabletRowSize =
+        CommonDescriptor.getInstance().getConfig().getPipeDataStructureTabletRowSize();
+
+    final int measurementCount = 20;
+    final int batchSize = 10;
+    final int rowCount = 4;
+    final File sourceTsFile = new File("aligned-source-for-batched-layout-memory-limit.tsfile");
+    alignedTsFile = new File("aligned-batched-layout-memory-limit.tsfile");
+
+    try {
+      CommonDescriptor.getInstance().getConfig().setPipeDataStructureTabletRowSize(0);
+
+      final List<IMeasurementSchema> schemaList = new ArrayList<>();
+      for (int i = 0; i < measurementCount; ++i) {
+        schemaList.add(new MeasurementSchema("s" + i, TSDataType.INT64));
+      }
+
+      writeAlignedSourceTsFile(sourceTsFile, schemaList, rowCount);
+      rewriteAlignedTsFileWithBatchedValueChunks(
+          sourceTsFile, alignedTsFile, measurementCount, batchSize);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeMaxReaderChunkSize(
+              calculateFirstBatchedAlignedValueChunkGroupMemoryLimit(alignedTsFile, batchSize));
+
+      int tabletCount = 0;
+      int maxMeasurementCount = 0;
+      int pointCount = 0;
+      try (final TsFileInsertionEventScanParser parser =
+          new TsFileInsertionEventScanParser(
+              alignedTsFile,
+              new PrefixTreePattern("root"),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE,
+              null,
+              null,
+              false)) {
+        for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
+          Assert.assertTrue(tabletWithIsAligned.getRight());
+          final Tablet tablet = tabletWithIsAligned.getLeft();
+          ++tabletCount;
+          maxMeasurementCount = Math.max(maxMeasurementCount, tablet.getSchemas().size());
+          Assert.assertTrue(tablet.getSchemas().size() <= batchSize);
+          Assert.assertEquals(rowCount / 2, tablet.getRowSize());
+          pointCount += getNonNullSize(tablet);
+        }
+      }
+
+      Assert.assertEquals(batchSize, maxMeasurementCount);
+      Assert.assertEquals(measurementCount * rowCount, pointCount);
+      Assert.assertEquals(measurementCount / batchSize * 2, tabletCount);
     } finally {
       CommonDescriptor.getInstance()
           .getConfig()
@@ -523,6 +590,11 @@ public class TsFileInsertionEventParserTest {
       final int rowCountWithoutLimit =
           PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(batchData).getLeft();
 
+      CommonDescriptor.getInstance().getConfig().setPipeDataStructureTabletRowSize(-1);
+      final int rowCountWithNegativeLimit =
+          PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(batchData).getLeft();
+
+      Assert.assertEquals(rowCountWithoutLimit, rowCountWithNegativeLimit);
       Assert.assertEquals(2, rowCountWithLimit);
       Assert.assertTrue(rowCountWithoutLimit > rowCountWithLimit);
     } finally {
@@ -1983,6 +2055,50 @@ public class TsFileInsertionEventParserTest {
 
       Assert.assertTrue(estimatedMaxPageMemorySize > chunkSizeLimit);
       return chunkSizeLimit;
+    }
+  }
+
+  private long calculateFirstBatchedAlignedValueChunkGroupMemoryLimit(
+      final File tsFile, final int batchSize) throws Exception {
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      final IDeviceID deviceID = reader.getDeviceMeasurementsMap().keySet().iterator().next();
+      final List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
+          reader.getAlignedChunkMetadata(deviceID, true);
+      Assert.assertEquals(2, alignedChunkMetadataList.size());
+
+      final AbstractAlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
+      final Chunk timeChunk =
+          reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
+      final List<IChunkMetadata> valueChunkMetadataList =
+          alignedChunkMetadata.getValueChunkMetadataList();
+      Assert.assertTrue(valueChunkMetadataList.size() >= batchSize * 2);
+
+      final List<Chunk> firstValueChunkBatch = new ArrayList<>();
+      final List<Chunk> firstTwoValueChunkBatches = new ArrayList<>();
+      long firstBatchChunkSize = PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunk);
+      long firstTwoBatchChunkSize = firstBatchChunkSize;
+      for (int index = 0; index < batchSize * 2; ++index) {
+        final Chunk valueChunk =
+            reader.readMemChunk((ChunkMetadata) valueChunkMetadataList.get(index));
+        if (index < batchSize) {
+          firstValueChunkBatch.add(valueChunk);
+          firstBatchChunkSize += valueChunk.getHeader().getDataSize();
+        }
+        firstTwoValueChunkBatches.add(valueChunk);
+        firstTwoBatchChunkSize += valueChunk.getHeader().getDataSize();
+      }
+
+      final long firstBatchPageMemorySize =
+          AlignedSinglePageWholeChunkReader
+              .calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(
+                  timeChunk, firstValueChunkBatch);
+      final long firstTwoBatchPageMemorySize =
+          AlignedSinglePageWholeChunkReader
+              .calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(
+                  timeChunk, firstTwoValueChunkBatches);
+      Assert.assertTrue(firstTwoBatchChunkSize > firstBatchChunkSize);
+      Assert.assertTrue(firstTwoBatchPageMemorySize > firstBatchPageMemorySize);
+      return Math.max(firstBatchChunkSize, firstBatchPageMemorySize);
     }
   }
 
