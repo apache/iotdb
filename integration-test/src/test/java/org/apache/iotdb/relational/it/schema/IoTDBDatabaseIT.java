@@ -27,6 +27,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -203,8 +204,7 @@ public class IoTDBDatabaseIT {
       statement.execute("drop database IF EXISTS test");
 
       // Test create database with properties
-      statement.execute(
-          "create database test_prop with (ttl=300, schema_region_group_num=DEFAULT, time_partition_interval=100000)");
+      statement.execute("create database test_prop with (ttl=300, time_partition_interval=100000)");
       databaseNames = new String[] {"test_prop"};
       TTLs = new String[] {"300"};
       timePartitionInterval = new int[] {100000};
@@ -811,8 +811,11 @@ public class IoTDBDatabaseIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("create database root.test");
-      statement.execute(
-          "alter database root.test WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3");
+      Assert.assertThrows(
+          IoTDBSQLException.class,
+          () ->
+              statement.execute(
+                  "alter database root.test WITH MAX_SCHEMA_REGION_GROUP_NUM=2, MAX_DATA_REGION_GROUP_NUM=3"));
       statement.execute("insert into root.test.d1 (s1) values(1)");
       statement.execute("drop database root.test");
     }
@@ -879,6 +882,34 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("select count(*) from information_schema.databases"),
           "_col0,",
           Collections.singleton("3,"));
+    }
+  }
+
+  @Test
+  public void testMaxRegionGroupNumRejectedInAutoPolicy() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("create database test_max with(max_data_region_group_num=4)");
+        fail("max_data_region_group_num should be rejected under AUTO policy");
+      } catch (final SQLException e) {
+        assertTrue(
+            e.getMessage()
+                .contains(
+                    "max_data_region_group_num can only be set when data_region_group_extension_policy is CUSTOM"));
+      }
+
+      statement.execute("create database test_max");
+      try {
+        statement.execute("alter database test_max set properties max_data_region_group_num=4");
+        fail("max_data_region_group_num should be rejected under AUTO policy");
+      } catch (final SQLException e) {
+        assertTrue(
+            e.getMessage()
+                .contains(
+                    "max_data_region_group_num can only be set when data_region_group_extension_policy is CUSTOM"));
+      }
     }
   }
 
