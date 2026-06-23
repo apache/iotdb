@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
@@ -29,6 +33,8 @@ import org.junit.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Map;
 
 public class IoTDBDataNodeReceiverTest {
@@ -149,5 +155,54 @@ public class IoTDBDataNodeReceiverTest {
     } finally {
       Files.deleteIfExists(tsFile);
     }
+  }
+
+  @Test
+  public void testClearTreeDatabaseNameForLoadTsFileStatement() throws Exception {
+    final Path tsFile = Files.createTempFile("pipe-load-clear-tree-database", ".tsfile");
+    try {
+      final LoadTsFileStatement statement =
+          IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(
+              "root.test.sg_0", tsFile.toString(), true, true);
+
+      IoTDBDataNodeReceiver.clearTreeDatabaseName(statement);
+
+      Assert.assertNull(statement.getDatabase());
+      Assert.assertEquals(
+          IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel(),
+          statement.getDatabaseLevel());
+    } finally {
+      Files.deleteIfExists(tsFile);
+    }
+  }
+
+  @Test
+  public void testClearTreeDatabaseNameForBatchInsertStatements() {
+    final InsertRowStatement rowStatement1 = new InsertRowStatement();
+    rowStatement1.setDatabaseName("root.test.sg_0");
+    final InsertRowStatement rowStatement2 = new InsertRowStatement();
+    rowStatement2.setDatabaseName("root.test.sg_0");
+    final InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+    insertRowsStatement.setDatabaseName("root.test.sg_0");
+    insertRowsStatement.setInsertRowStatementList(Arrays.asList(rowStatement1, rowStatement2));
+
+    IoTDBDataNodeReceiver.clearTreeDatabaseName(insertRowsStatement);
+
+    Assert.assertFalse(insertRowsStatement.getDatabaseName().isPresent());
+    Assert.assertFalse(rowStatement1.getDatabaseName().isPresent());
+    Assert.assertFalse(rowStatement2.getDatabaseName().isPresent());
+
+    final InsertTabletStatement tabletStatement = new InsertTabletStatement();
+    tabletStatement.setDatabaseName("root.test.sg_0");
+    final InsertMultiTabletsStatement insertMultiTabletsStatement =
+        new InsertMultiTabletsStatement();
+    insertMultiTabletsStatement.setDatabaseName("root.test.sg_0");
+    insertMultiTabletsStatement.setInsertTabletStatementList(
+        Collections.singletonList(tabletStatement));
+
+    IoTDBDataNodeReceiver.clearTreeDatabaseName(insertMultiTabletsStatement);
+
+    Assert.assertFalse(insertMultiTabletsStatement.getDatabaseName().isPresent());
+    Assert.assertFalse(tabletStatement.getDatabaseName().isPresent());
   }
 }

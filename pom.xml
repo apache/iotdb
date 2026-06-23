@@ -88,7 +88,7 @@
       This is the version of the thrift binary, that we release separately from here:
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
-        <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
+        <iotdb-tools-thrift.version>0.23.0.0</iotdb-tools-thrift.version>
         <jackson.version>2.18.6</jackson.version>
         <jakarta.annotation-api.version>3.0.0</jakarta.annotation-api.version>
         <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
@@ -119,7 +119,7 @@
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
         <powermock.version>2.0.9</powermock.version>
         <ratis-thirdparty-misc.version>1.0.11</ratis-thirdparty-misc.version>
-        <ratis.version>3.2.2</ratis.version>
+        <ratis.version>3.3.0-adac7ef-SNAPSHOT</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.2.9</reactor-netty.version>
         <reactor.version>3.7.9</reactor.version>
@@ -142,16 +142,10 @@
         <swagger.version>2.2.50</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
-        <!--
-      Thrift 0.17.0 was the last version that could be used in Java 8 applications,
-      However Thrift 0.17.0 has an invalid entry in the META-INF/MANIFEST.mf file.
-      All versions between 0.17.0 and 0.14.1 have know vulnerabilities, so for now
-      we'll stay at 0.14.1.
-    -->
-        <thrift.version>0.14.1</thrift.version>
+        <thrift.version>0.23.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.3.2-260608-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.3.2-260616-SNAPSHOT</tsfile.version>
         <i18n.locale>en</i18n.locale>
         <tsfile.locale.opt/>
     </properties>
@@ -179,24 +173,30 @@
                 <artifactId>libthrift</artifactId>
                 <version>${thrift.version}</version>
                 <exclusions>
-                    <!-- Seemed suspicious to have this dependency in -->
+                    <!-- We don't use thrift HTTP client or servlet transports. -->
                     <exclusion>
-                        <groupId>org.apache.tomcat.embed</groupId>
-                        <artifactId>tomcat-embed-core</artifactId>
-                    </exclusion>
-                    <!-- We don't want the old javax packages -->
-                    <exclusion>
-                        <groupId>javax.annotation</groupId>
-                        <artifactId>javax.annotation-api</artifactId>
-                    </exclusion>
-                    <!-- We don't use thrift http connection -->
-                    <exclusion>
-                        <groupId>org.apache.httpcomponents</groupId>
-                        <artifactId>httpclient</artifactId>
+                        <groupId>org.apache.httpcomponents.client5</groupId>
+                        <artifactId>httpclient5</artifactId>
                     </exclusion>
                     <exclusion>
-                        <groupId>org.apache.httpcomponents</groupId>
-                        <artifactId>httpcore</artifactId>
+                        <groupId>org.apache.httpcomponents.core5</groupId>
+                        <artifactId>httpcore5</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.httpcomponents.core5</groupId>
+                        <artifactId>httpcore5-h2</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>jakarta.servlet</groupId>
+                        <artifactId>jakarta.servlet-api</artifactId>
+                    </exclusion>
+                    <!--
+                      commons-lang3 is only used by Thrift's partial deserialization runtime.
+                      IoTDB does not use org.apache.thrift.partial APIs.
+                    -->
+                    <exclusion>
+                        <groupId>org.apache.commons</groupId>
+                        <artifactId>commons-lang3</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -331,6 +331,16 @@
                 <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-common</artifactId>
                 <version>${ratis.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>io.opentelemetry</groupId>
+                        <artifactId>opentelemetry-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>io.opentelemetry</groupId>
+                        <artifactId>opentelemetry-context</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.apache.ratis</groupId>

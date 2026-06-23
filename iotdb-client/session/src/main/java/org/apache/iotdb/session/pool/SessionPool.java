@@ -116,6 +116,9 @@ public class SessionPool implements ISessionPool {
   private String trustStore;
 
   private String trustStorePwd;
+
+  private String sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
+
   private ZoneId zoneId;
   // this field only take effect in write request, nothing to do with any other type requests,
   // like query, load and so on.
@@ -466,6 +469,7 @@ public class SessionPool implements ISessionPool {
     this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
+    this.sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
     initThreadPool();
     initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
@@ -536,6 +540,7 @@ public class SessionPool implements ISessionPool {
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
+    this.sslProtocol = builder.sslProtocol;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
@@ -593,6 +598,7 @@ public class SessionPool implements ISessionPool {
               .useSSL(useSSL)
               .trustStore(trustStore)
               .trustStorePwd(trustStorePwd)
+              .sslProtocol(sslProtocol)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
@@ -618,6 +624,7 @@ public class SessionPool implements ISessionPool {
               .useSSL(useSSL)
               .trustStore(trustStore)
               .trustStorePwd(trustStorePwd)
+              .sslProtocol(sslProtocol)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
@@ -662,6 +669,7 @@ public class SessionPool implements ISessionPool {
             useSSL,
             trustStore,
             trustStorePwd,
+            sslProtocol,
             enableThriftCompression,
             version.toString());
   }
@@ -3634,6 +3642,11 @@ public class SessionPool implements ISessionPool {
 
     public Builder trustStorePwd(String trustStorePwd) {
       this.trustStorePwd = trustStorePwd;
+      return this;
+    }
+
+    public Builder sslProtocol(String sslProtocol) {
+      this.sslProtocol = sslProtocol;
       return this;
     }
 
