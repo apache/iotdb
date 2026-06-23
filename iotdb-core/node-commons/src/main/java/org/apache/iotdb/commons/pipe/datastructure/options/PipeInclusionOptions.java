@@ -125,7 +125,7 @@ public class PipeInclusionOptions {
                 Arrays.asList(
                     "data.delete",
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.delete",
+                    "schema.timeseries.ordinary.drop",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
                     "schema.timeseries.template.unset",
@@ -140,7 +140,7 @@ public class PipeInclusionOptions {
             new HashSet<>(
                 Arrays.asList(
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.delete",
+                    "schema.timeseries.ordinary.drop",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
                     "schema.timeseries.template.unset",
