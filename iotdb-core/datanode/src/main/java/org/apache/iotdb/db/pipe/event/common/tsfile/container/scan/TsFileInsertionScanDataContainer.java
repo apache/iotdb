@@ -45,6 +45,7 @@ import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -96,6 +97,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   private boolean currentIsAligned;
   private final List<MeasurementSchema> currentMeasurements = new ArrayList<>();
   private final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
+  private Exception deferredException;
 
   private final List<ModsOperationUtil.ModsInfo> modsInfos = new ArrayList<>();
   // Cached time chunk
@@ -187,6 +189,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
                 @Override
                 public boolean hasNext() {
+                  throwIfDeferredException();
                   final boolean hasNext = Objects.nonNull(chunkReader);
                   if (hasNext && !parseStartTimeRecorded) {
                     // Record start time on first hasNext() that returns true
@@ -205,7 +208,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                     throw new NoSuchElementException();
                   }
 
-                  // currentIsAligned is initialized when TsFileInsertionEventScanParser is
+                  // currentIsAligned is initialized when TsFileInsertionScanDataContainer is
                   // constructed.
                   // When the getNextTablet function is called, currentIsAligned may be updated,
                   // causing
@@ -215,7 +218,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                   final Tablet tablet = getNextTablet();
                   // Record tablet metrics
                   recordTabletMetrics(tablet);
-                  final boolean hasNext = hasNext();
+                  final boolean isLast = isLastTabletWithoutDeferredException();
                   try {
                     return new PipeRawTabletInsertionEvent(
                         tablet,
@@ -224,9 +227,10 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                         sourceEvent != null ? sourceEvent.getCreationTime() : 0,
                         pipeTaskMeta,
                         sourceEvent,
-                        !hasNext);
+                        isLast);
                   } finally {
-                    if (!hasNext) {
+                    if (isLast) {
+                      recordParseEndTimeIfNecessary();
                       close();
                     }
                   }
@@ -241,6 +245,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         new Iterator<Pair<Tablet, Boolean>>() {
           @Override
           public boolean hasNext() {
+            throwIfDeferredException();
             return Objects.nonNull(chunkReader);
           }
 
@@ -251,22 +256,37 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
               throw new NoSuchElementException();
             }
 
-            // currentIsAligned is initialized when TsFileInsertionEventScanParser is constructed.
+            // currentIsAligned is initialized when TsFileInsertionScanDataContainer is constructed.
             // When the getNextTablet function is called, currentIsAligned may be updated, causing
             // the currentIsAligned information to be inconsistent with the current Tablet
             // information.
             final boolean isAligned = currentIsAligned;
             final Tablet tablet = getNextTablet();
-            final boolean hasNext = hasNext();
             try {
               return new Pair<>(tablet, isAligned);
             } finally {
-              if (!hasNext) {
+              if (isLastTabletWithoutDeferredException()) {
                 close();
               }
             }
           }
         };
+  }
+
+  public IDeviceID getCurrentDevice() {
+    return Objects.nonNull(currentDevice) ? new PlainDeviceID(currentDevice) : null;
+  }
+
+  public boolean isCurrentAligned() {
+    return currentIsAligned;
+  }
+
+  public List<String> getCurrentMeasurements() {
+    final List<String> measurementIds = new ArrayList<>(currentMeasurements.size());
+    for (final MeasurementSchema schema : currentMeasurements) {
+      measurementIds.add(schema.getMeasurementId());
+    }
+    return measurementIds;
   }
 
   private Tablet getNextTablet() {
@@ -321,13 +341,37 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
       // Switch chunk reader iff current chunk is all consumed
       if (!data.hasCurrent()) {
-        prepareData();
+        try {
+          prepareData();
+        } catch (final Exception e) {
+          deferredException = e;
+        }
       }
       PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
     } catch (final Exception e) {
       close();
       throw new PipeException("Failed to get next tablet insertion event.", e);
+    }
+  }
+
+  private void throwIfDeferredException() {
+    if (Objects.isNull(deferredException)) {
+      return;
+    }
+
+    final Exception exception = deferredException;
+    deferredException = null;
+    throw new PipeException("Failed to prepare next tablet insertion event.", exception);
+  }
+
+  private boolean isLastTabletWithoutDeferredException() {
+    return Objects.isNull(deferredException) && Objects.isNull(chunkReader);
+  }
+
+  private void recordParseEndTimeIfNecessary() {
+    if (parseStartTimeRecorded && !parseEndTimeRecorded) {
+      recordParseEndTime();
     }
   }
 

@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -90,17 +88,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
     try {
       for (final File file : loadTsFileStatement.getTsFiles()) {
-        try (final TsFileInsertionScanDataContainer container =
-            new TsFileInsertionScanDataContainer(
-                file,
-                new IoTDBPipePattern(null),
-                Long.MIN_VALUE,
-                Long.MAX_VALUE,
-                null,
-                null,
-                true)) {
-          for (final Pair<Tablet, Boolean> tabletWithIsAligned :
-              container.toTabletWithIsAligneds()) {
+        try (final LoadTreeTsFileTabletIterator tabletIterator =
+            new LoadTreeTsFileTabletIterator(file, true)) {
+          for (final Pair<Tablet, Boolean> tabletWithIsAligned : tabletIterator) {
             final PipeTransferTabletRawReq tabletRawReq =
                 PipeTransferTabletRawReq.toTPipeTransferRawReq(
                     tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight());
