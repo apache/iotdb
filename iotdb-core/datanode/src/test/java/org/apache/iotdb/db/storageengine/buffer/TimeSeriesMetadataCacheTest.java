@@ -243,6 +243,7 @@ public class TimeSeriesMetadataCacheTest {
       Mockito.when(
               reader.readTimeseriesMetadata(
                   Mockito.eq(deviceID),
+                  Mockito.<long[]>isNull(),
                   Mockito.eq(measurement),
                   Mockito.eq(allSensors),
                   Mockito.eq(true),
@@ -251,6 +252,7 @@ public class TimeSeriesMetadataCacheTest {
       Mockito.when(
               reader.readTimeseriesMetadata(
                   Mockito.eq(deviceID),
+                  Mockito.<long[]>isNull(),
                   Mockito.eq(measurement),
                   Mockito.eq(allSensors),
                   Mockito.eq(false),
@@ -264,6 +266,7 @@ public class TimeSeriesMetadataCacheTest {
       Mockito.verify(reader)
           .readTimeseriesMetadata(
               Mockito.eq(deviceID),
+              Mockito.<long[]>isNull(),
               Mockito.eq(measurement),
               Mockito.eq(allSensors),
               Mockito.eq(false),

@@ -230,7 +230,6 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           senderEnv,
           Arrays.asList(
               "create database root.test",
-              "alter database root.test with schema_region_group_num=2, data_region_group_num=3",
               "create timeSeries root.test.d1.s1 int32",
               "insert into root.test.d1 (s1) values (1)"));
 

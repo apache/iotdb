@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableFunctionFactory;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.AdditionResolver;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.DivisionResolver;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.ModulusResolver;
@@ -52,6 +53,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
@@ -62,6 +64,7 @@ import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.ObjectType;
@@ -96,6 +99,14 @@ public class TableMetadataImpl implements Metadata {
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
+
+  @Override
+  public TableFunction getTableFunction(String functionName) {
+    if (DataNodeTableBuiltinTableFunction.isBuiltInTableFunction(functionName)) {
+      return DataNodeTableBuiltinTableFunction.getBuiltinTableFunction(functionName);
+    }
+    return TableFunctionFactory.getTableFunction(functionName);
+  }
 
   @Override
   public boolean tableExists(final QualifiedObjectName name) {

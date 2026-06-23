@@ -30,7 +30,6 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -70,9 +69,7 @@ public class FakeCRC32Deserializer<T> implements IDeserializer<T> {
     }
 
     byte[] logBuffer = new byte[logLength];
-    if (logLength < inputStream.read(logBuffer, 0, logLength)) {
-      throw new EOFException();
-    }
+    dataInputStream.readFully(logBuffer, 0, logLength);
 
     T result = deserializer.deserialize(ByteBuffer.wrap(logBuffer));
 
