@@ -38,9 +38,6 @@ public class StatisticsService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsService.class);
 
-  public static final long STATISTICS_UPDATE_INTERVAL =
-      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
-
   private final LoadCache loadCache;
 
   public StatisticsService(LoadCache loadCache) {
@@ -64,7 +61,7 @@ public class StatisticsService {
                 loadStatisticsExecutor,
                 this::updateLoadStatistics,
                 0,
-                STATISTICS_UPDATE_INTERVAL,
+                ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
                 TimeUnit.MILLISECONDS);
         LOGGER.info(ManagerMessages.LOADSTATISTICS_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
@@ -79,6 +76,24 @@ public class StatisticsService {
         currentLoadStatisticsFuture = null;
         LOGGER.info(ManagerMessages.LOADSTATISTICS_SERVICE_IS_STOPPED_SUCCESSFULLY);
       }
+    }
+  }
+
+  /** Reload the statistics update interval without rebuilding the service instance. */
+  public void reloadHeartbeatInterval() {
+    synchronized (statisticsScheduleMonitor) {
+      if (currentLoadStatisticsFuture == null) {
+        return;
+      }
+      currentLoadStatisticsFuture.cancel(false);
+      currentLoadStatisticsFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              loadStatisticsExecutor,
+              this::updateLoadStatistics,
+              0,
+              ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
+              TimeUnit.MILLISECONDS);
+      LOGGER.info(ManagerMessages.LOADSTATISTICS_SERVICE_IS_STARTED_SUCCESSFULLY);
     }
   }
 

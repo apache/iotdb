@@ -131,10 +131,6 @@ public class PartitionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final RegionGroupExtensionPolicy SCHEMA_REGION_GROUP_EXTENSION_POLICY =
-      CONF.getSchemaRegionGroupExtensionPolicy();
-  private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
-      CONF.getDataRegionGroupExtensionPolicy();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
@@ -582,7 +578,7 @@ public class PartitionManager {
 
     try {
       if (TConsensusGroupType.SchemaRegion.equals(consensusGroupType)) {
-        switch (SCHEMA_REGION_GROUP_EXTENSION_POLICY) {
+        switch (CONF.getSchemaRegionGroupExtensionPolicy()) {
           case CUSTOM:
             return customExtendRegionGroupIfNecessary(
                 unassignedPartitionSlotsCountMap, consensusGroupType);
@@ -592,7 +588,7 @@ public class PartitionManager {
                 unassignedPartitionSlotsCountMap, consensusGroupType);
         }
       } else {
-        switch (DATA_REGION_GROUP_EXTENSION_POLICY) {
+        switch (CONF.getDataRegionGroupExtensionPolicy()) {
           case CUSTOM:
             return customExtendRegionGroupIfNecessary(
                 unassignedPartitionSlotsCountMap, consensusGroupType);
@@ -625,14 +621,14 @@ public class PartitionManager {
 
     for (final Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
       final String database = entry.getKey();
-      final int minRegionGroupNum =
-          getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
+      final int maxRegionGroupNum =
+          getClusterSchemaManager().getMaxRegionGroupNum(database, consensusGroupType);
       final int allocatedRegionGroupCount =
           partitionInfo.getRegionGroupCount(database, consensusGroupType);
 
-      // Extend RegionGroups until allocatedRegionGroupCount == minRegionGroupNum
-      if (allocatedRegionGroupCount < minRegionGroupNum) {
-        allotmentMap.put(database, minRegionGroupNum - allocatedRegionGroupCount);
+      // Extend RegionGroups until allocatedRegionGroupCount == maxRegionGroupNum
+      if (allocatedRegionGroupCount < maxRegionGroupNum) {
+        allotmentMap.put(database, maxRegionGroupNum - allocatedRegionGroupCount);
       }
     }
 

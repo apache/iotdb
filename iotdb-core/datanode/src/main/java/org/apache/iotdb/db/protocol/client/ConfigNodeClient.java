@@ -283,7 +283,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
                 commonConfig.getTrustStorePath(),
                 commonConfig.getTrustStorePwd(),
                 commonConfig.getKeyStorePath(),
-                commonConfig.getKeyStorePwd())
+                commonConfig.getKeyStorePwd(),
+                commonConfig.getSslProtocol())
             : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 // As there is a try-catch already, we do not need to use TSocket.wrap
                 endpoint.getIp(), endpoint.getPort(), timeoutMs);

@@ -46,6 +46,8 @@ import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryDataSource;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
@@ -117,6 +119,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   // Used for region scan, relating methods are to be added.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
+
+  private ExternalTsFileQueryResource externalTsFileQueryResource;
+  private boolean externalTsFileQueryResourceRetained;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
   protected IQueryDataSource sharedQueryDataSource;
@@ -229,6 +234,11 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
     this.queryDataSourceType = queryDataSourceType;
+  }
+
+  @Override
+  public boolean isExternalTsFileScan() {
+    return queryDataSourceType == QueryDataSourceType.EXTERNAL_TSFILE_SCAN;
   }
 
   @TestOnly
@@ -632,6 +642,52 @@ public class FragmentInstanceContext extends QueryContext {
     this.devicePathsToContext = devicePathsToContext;
   }
 
+  public void addExternalTsFileQueryResource(
+      ExternalTsFileQueryResource externalTsFileQueryResource) {
+    if (this.externalTsFileQueryResource != null) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_ALREADY_BEEN_SET);
+    }
+    this.externalTsFileQueryResource = externalTsFileQueryResource;
+  }
+
+  public boolean initExternalTsFileQueryDataSource(
+      ExternalTsFileQueryResource externalTsFileQueryResource) {
+    long startTime = System.nanoTime();
+    try {
+      if (externalTsFileQueryResource == null) {
+        this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
+      } else {
+        if (!externalTsFileQueryResourceRetained) {
+          externalTsFileQueryResource.retainFragmentInstanceUsage();
+          externalTsFileQueryResourceRetained = true;
+        }
+        this.sharedQueryDataSource = new ExternalTsFileQueryDataSource(externalTsFileQueryResource);
+        closedUnseqFileNum = externalTsFileQueryResource.getSharedTsFileResources().size();
+      }
+    } finally {
+      addInitQueryDataSourceCost(System.nanoTime() - startTime);
+    }
+    return true;
+  }
+
+  private void releaseExternalTsFileQueryResource() {
+    if (!externalTsFileQueryResourceRetained || externalTsFileQueryResource == null) {
+      externalTsFileQueryResource = null;
+      externalTsFileQueryResourceRetained = false;
+      return;
+    }
+    try {
+      // This FragmentInstance retained the resource during datasource initialization. Releasing the
+      // last runtime usage closes the shared resource and deletes its temporary run files.
+      externalTsFileQueryResource.closeByFragmentInstance();
+    } catch (Exception e) {
+      LOGGER.warn("Failed to release external TsFile query resource", e);
+    }
+    externalTsFileQueryResource = null;
+    externalTsFileQueryResourceRetained = false;
+  }
+
   public MemoryReservationManager getMemoryReservationContext() {
     return memoryReservationManager;
   }
@@ -821,6 +877,11 @@ public class FragmentInstanceContext extends QueryContext {
           if (initRegionScanQueryDataSource(sourcePaths)) {
             sourcePaths = null;
           } else {
+            return getUnfinishedQueryDataSource();
+          }
+          break;
+        case EXTERNAL_TSFILE_SCAN:
+          if (!initExternalTsFileQueryDataSource(externalTsFileQueryResource)) {
             return getUnfinishedQueryDataSource();
           }
           break;
@@ -1035,6 +1096,8 @@ public class FragmentInstanceContext extends QueryContext {
       }
       unClosedFilePaths = null;
     }
+
+    releaseExternalTsFileQueryResource();
 
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();

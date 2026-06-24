@@ -113,9 +113,6 @@ public interface CommonConfig {
   CommonConfig setEnableAutoLeaderBalanceForRatisConsensus(
       boolean enableAutoLeaderBalanceForRatisConsensus);
 
-  CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus);
-
   CommonConfig setQueryThreadCount(int queryThreadCount);
 
   CommonConfig setWalBufferSize(int walBufferSize);
@@ -152,9 +149,9 @@ public interface CommonConfig {
 
   CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte);
 
-  CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
+  CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode);
 
-  CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
+  CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode);
 
   CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled);
 
@@ -204,6 +201,8 @@ public interface CommonConfig {
 
   CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword);
 
+  CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL);
+
   CommonConfig setEnableInternalSSL(boolean enableInternalSSL);
 
   CommonConfig setKeyStorePath(String keyStorePath);
@@ -213,6 +212,8 @@ public interface CommonConfig {
   CommonConfig setTrustStorePath(String trustStorePath);
 
   CommonConfig setTrustStorePwd(String trustStorePwd);
+
+  CommonConfig setSslProtocol(String sslProtocol);
 
   CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion);
 

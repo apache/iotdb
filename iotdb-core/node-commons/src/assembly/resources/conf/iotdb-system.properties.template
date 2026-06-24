@@ -474,6 +474,14 @@ trust_store_path=
 # Datatype: String
 trust_store_pwd=
 
+# SSL protocol used by server-side SSL services.
+# The protocol is passed to the current JSSE provider, such as TLS, TLSv1.2,
+# TLSv1.3, or another provider-specific SSL protocol name.
+# effectiveMode: restart
+# Datatype: String
+# Privilege: SECURITY
+ssl_protocol=TLS
+
 ####################
 ### Connection Configuration
 ####################
@@ -512,7 +520,7 @@ cn_max_client_count_for_each_node_in_client_manager=1000
 # 0 means no idle clients will be retained, connections are destroyed immediately upon return.
 # effectiveMode: restart
 # Datatype: int
-# cn_max_idle_client_count_for_each_node_in_client_manager=1000
+cn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
@@ -571,7 +579,7 @@ dn_max_client_count_for_each_node_in_client_manager=1000
 # 0 means no idle clients will be retained, connections are destroyed immediately upon return.
 # effectiveMode: restart
 # Datatype: int
-# dn_max_idle_client_count_for_each_node_in_client_manager=1000
+dn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 ####################
 ### REST Service Configuration
@@ -634,7 +642,7 @@ series_partition_executor_class=org.apache.iotdb.commons.partition.executor.hash
 # These policies are currently supported:
 # 1. CUSTOM(Each Database will allocate schema_region_group_per_database RegionGroups as soon as created)
 # 2. AUTO(Each Database will automatically extend SchemaRegionGroups based on the data it has)
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: String
 schema_region_group_extension_policy=AUTO
 
@@ -642,7 +650,7 @@ schema_region_group_extension_policy=AUTO
 # this parameter is the default number of SchemaRegionGroups for each Database.
 # When set schema_region_group_extension_policy=AUTO,
 # this parameter is the default minimal number of SchemaRegionGroups for each Database.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: Integer
 default_schema_region_group_num_per_database=1
 
@@ -650,7 +658,7 @@ default_schema_region_group_num_per_database=1
 # This parameter is the maximum number of SchemaRegions expected to be managed by each DataNode.
 # Notice: Since each Database requires at least one SchemaRegionGroup to manage its schema,
 # this parameter doesn't limit the upper bound of cluster SchemaRegions when there are too many Databases.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: Integer
 schema_region_per_data_node=1
 
@@ -658,7 +666,7 @@ schema_region_per_data_node=1
 # These policies are currently supported:
 # 1. CUSTOM(Each Database will allocate data_region_group_per_database DataRegionGroups as soon as created)
 # 2. AUTO(Each Database will automatically extend DataRegionGroups based on the data it has)
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: String
 data_region_group_extension_policy=AUTO
 
@@ -666,7 +674,7 @@ data_region_group_extension_policy=AUTO
 # this parameter is the default number of DataRegionGroups for each Database.
 # When set data_region_group_extension_policy=AUTO,
 # this parameter is the default minimal number of DataRegionGroups for each Database.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: Integer
 default_data_region_group_num_per_database=2
 
@@ -675,7 +683,7 @@ default_data_region_group_num_per_database=2
 # Set to 0 means that each node automatically has the number of CPU cores / 2 regions
 # Notice: Since each Database requires at least two DataRegionGroups to manage its data,
 # this parameter doesn't limit the upper bound of cluster DataRegions when there are too many Databases.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: Integer
 data_region_per_data_node=0
 
@@ -686,7 +694,7 @@ data_region_per_data_node=0
 # 3. PGP (Partite-Graph Placement; based on the PGP paper, with database-aware balance)
 # effectiveMode: restart
 # Datatype: String
-# region_group_allocate_policy=GCR
+region_group_allocate_policy=GCR
 
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
@@ -694,13 +702,6 @@ data_region_per_data_node=0
 # effectiveMode: restart
 # Datatype: Boolean
 enable_auto_leader_balance_for_ratis_consensus=true
-
-# Whether to enable auto leader balance for IoTConsensus protocol.
-# The ConfigNode-leader will balance the leader of IoTConsensus-RegionGroups by leader_distribution_policy if set true.
-# Notice: Default is true because the IoTConsensus depends on this function to distribute leader.
-# effectiveMode: restart
-# Datatype: Boolean
-enable_auto_leader_balance_for_iot_consensus=true
 
 ####################
 ### Cluster management
@@ -720,7 +721,7 @@ time_partition_origin=0
 time_partition_interval=604800000
 
 # The heartbeat interval in milliseconds, default is 1000ms
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: long
 heartbeat_interval_in_ms=1000
 
@@ -747,22 +748,34 @@ failure_detector_phi_acceptable_pause_in_ms=10000
 # Whether to enable topology probing between DataNodes
 # effectiveMode: hot_reload
 # Datatype: Boolean
-# enable_topology_probing=false
+enable_topology_probing=false
 
 # Base interval in ms for topology probing between DataNodes
 # effectiveMode: restart
 # Datatype: long
-# topology_probing_base_interval_in_ms=5000
+topology_probing_base_interval_in_ms=5000
 
 # Ratio of probing timeout to probing interval (must be less than 1.0)
 # effectiveMode: restart
 # Datatype: double
-# topology_probing_timeout_ratio=0.5
+topology_probing_timeout_ratio=0.5
 
 # Disk remaining threshold at which DataNode is set to ReadOnly status
 # effectiveMode: restart
 # Datatype: double(percentage)
 disk_space_warning_threshold=0.05
+
+# The refresh interval in milliseconds for the occupied-space cache used by
+# MinFolderOccupiedSpaceFirstStrategy. The default is 60000 (60 seconds).
+# effectiveMode: restart
+# Datatype: long
+min_folder_occupied_space_cache_refresh_interval_ms=60000
+
+# The number of folder selections after which MinFolderOccupiedSpaceFirstStrategy refreshes its
+# occupied-space cache. The default is 1000.
+# effectiveMode: restart
+# Datatype: int
+min_folder_occupied_space_cache_refresh_selection_threshold=1000
 
 # Purpose: for data partition repair
 # The number of threads used for parallel scanning in the partition table recovery
@@ -1071,7 +1084,7 @@ text_compressor=LZ4
 # These consistency levels are currently supported:
 # 1. strong(Default, read from the leader replica)
 # 2. weak(Read from a random replica)
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: string
 read_consistency_level=strong
 
@@ -1918,7 +1931,7 @@ into_operation_execution_thread_count=2
 continuous_query_submit_thread_count=2
 
 # The minimum value of the continuous query execution time interval
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: long(duration)
 continuous_query_min_every_interval_in_ms=1000
 
@@ -2256,6 +2269,18 @@ load_active_listening_enable=true
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 load_active_listening_dirs=ext/load/pending
+
+# The directory to be actively listened for tsfile loading from Pipe.
+# Only one directory can be configured.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_pipe_dir=ext\\load\\pipe
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_pipe_dir=ext/load/pipe
 
 # The directory where tsfile are moved if the active listening mode fails to load them.
 # Only one directory can be configured.

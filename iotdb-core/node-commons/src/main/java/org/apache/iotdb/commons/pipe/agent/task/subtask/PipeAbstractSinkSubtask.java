@@ -199,7 +199,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
           PipeMessages.HANDSHAKE_FAILED_STOPPING,
           outputPipeSink.getClass().getName(),
           MAX_RETRY_TIMES,
-          taskID,
+          getDisplayTaskID(),
           creationTime,
           this.getClass().getSimpleName(),
           throwable);
@@ -287,7 +287,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         throw new PipeException(
             String.format(
                 PipeMessages.EXCEPTION_IN_PIPE_TRANSFER_FORMAT,
-                taskID,
+                getDisplayTaskID(),
                 event instanceof EnrichedEvent
                     ? ((EnrichedEvent) event).coreReportMessage()
                     : event,

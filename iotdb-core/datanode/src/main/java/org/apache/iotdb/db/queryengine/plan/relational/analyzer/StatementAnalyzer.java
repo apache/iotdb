@@ -138,6 +138,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ar
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ReadTsFileTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
@@ -2773,12 +2774,23 @@ public class StatementAnalyzer {
         FunctionCall gapFillColumn = null;
         ImmutableList.Builder<Expression> gapFillGroupingExpressions = ImmutableList.builder();
 
-        checkGroupingSetsCount(node.getGroupBy().get());
-        for (GroupingElement groupingElement : node.getGroupBy().get().getGroupingElements()) {
+        GroupBy groupBy = node.getGroupBy().get();
+        List<Expression> allGroupByExpressions = ImmutableList.of();
+        List<GroupingElement> groupingElements;
+
+        if (groupBy.isAll()) {
+          allGroupByExpressions = inferAllGroupByExpressions(outputExpressions);
+          groupingElements = ImmutableList.of(new SimpleGroupBy(allGroupByExpressions));
+        } else {
+          checkGroupingSetsCount(groupBy);
+          groupingElements = groupBy.getGroupingElements();
+        }
+
+        for (GroupingElement groupingElement : groupingElements) {
           if (groupingElement instanceof SimpleGroupBy) {
             for (Expression column : groupingElement.getExpressions()) {
               // simple GROUP BY expressions allow ordinals or arbitrary expressions
-              if (column instanceof LongLiteral) {
+              if (!groupBy.isAll() && column instanceof LongLiteral) {
                 long ordinal = ((LongLiteral) column).getParsedValue();
                 if (ordinal < 1 || ordinal > outputExpressions.size()) {
                   throw new SemanticException(
@@ -2917,6 +2929,17 @@ public class StatementAnalyzer {
       return resolveSelectAlias(identifier, selectAliases)
           .map(alias -> outputExpressions.get(alias.getPosition() - 1))
           .orElse(expression);
+    }
+
+    private List<Expression> inferAllGroupByExpressions(List<Expression> outputExpressions) {
+      ImmutableList.Builder<Expression> groupingExpressions = ImmutableList.builder();
+      for (Expression expression : outputExpressions) {
+        if (extractAggregateFunctions(ImmutableList.of(expression)).isEmpty()
+            && extractWindowFunctions(ImmutableList.of(expression)).isEmpty()) {
+          groupingExpressions.add(expression);
+        }
+      }
+      return groupingExpressions.build();
     }
 
     private boolean isDateBinGapFill(Expression column) {
@@ -5030,6 +5053,9 @@ public class StatementAnalyzer {
 
       TableFunctionAnalysis functionAnalysis;
       try {
+        if (function instanceof ReadTsFileTableFunction) {
+          ((ReadTsFileTableFunction) function).setMPPQueryContext(queryContext);
+        }
         functionAnalysis = function.analyze(argumentsAnalysis.getPassedArguments());
       } catch (UDFException e) {
         throw new SemanticException(e.getMessage());

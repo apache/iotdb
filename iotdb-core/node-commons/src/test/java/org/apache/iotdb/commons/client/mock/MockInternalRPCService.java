@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.client.mock;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
+import org.apache.iotdb.commons.service.NoopServerContext;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
@@ -30,7 +31,9 @@ import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 
 import org.apache.thrift.server.TServerEventHandler;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class MockInternalRPCService extends ThriftService implements MockInternalRPCServiceMBean {
 
@@ -60,6 +63,8 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
   @Override
   public void initThriftServiceThread() throws IllegalAccessException {
     try {
+      TServerEventHandler serverEventHandler = mock(TServerEventHandler.class);
+      when(serverEventHandler.createContext(any(), any())).thenReturn(NoopServerContext.INSTANCE);
       thriftServiceThread =
           new ThriftServiceThread(
               processor,
@@ -69,7 +74,7 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
               getBindPort(),
               65535,
               60,
-              mock(TServerEventHandler.class),
+              serverEventHandler,
               false,
               DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
