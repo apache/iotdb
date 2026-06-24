@@ -22,5 +22,27 @@ public enum DirectoryStrategyType {
   SEQUENCE_STRATEGY,
   MAX_DISK_USABLE_SPACE_FIRST_STRATEGY,
   MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY,
-  RANDOM_ON_DISK_USABLE_SPACE_STRATEGY,
+  RANDOM_ON_DISK_USABLE_SPACE_STRATEGY;
+
+  /**
+   * Resolves the strategy type from a multi-dir strategy class name as configured by {@code
+   * dn_multi_dir_strategy}. Accepts either a simple class name (e.g. {@code SequenceStrategy}) or a
+   * fully-qualified one. Returns {@link #SEQUENCE_STRATEGY} for a null or unrecognized value, which
+   * matches the configured default.
+   */
+  public static DirectoryStrategyType fromClassName(String className) {
+    if (className != null) {
+      String simpleName = className.substring(className.lastIndexOf('.') + 1);
+      if (simpleName.equals(MaxDiskUsableSpaceFirstStrategy.class.getSimpleName())) {
+        return MAX_DISK_USABLE_SPACE_FIRST_STRATEGY;
+      } else if (simpleName.equals(MinFolderOccupiedSpaceFirstStrategy.class.getSimpleName())) {
+        return MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY;
+      } else if (simpleName.equals(RandomOnDiskUsableSpaceStrategy.class.getSimpleName())) {
+        return RANDOM_ON_DISK_USABLE_SPACE_STRATEGY;
+      } else if (simpleName.equals(SequenceStrategy.class.getSimpleName())) {
+        return SEQUENCE_STRATEGY;
+      }
+    }
+    return SEQUENCE_STRATEGY;
+  }
 }

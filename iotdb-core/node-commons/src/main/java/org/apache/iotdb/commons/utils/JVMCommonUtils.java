@@ -111,6 +111,9 @@ public class JVMCommonUtils {
 
   public static long getOccupiedSpace(String folderPath) throws IOException {
     Path folder = Paths.get(folderPath);
+    if (!Files.exists(folder)) {
+      return 0;
+    }
     try (Stream<Path> s = Files.walk(folder)) {
       return s.filter(p -> p.toFile().isFile()).mapToLong(p -> p.toFile().length()).sum();
     }
