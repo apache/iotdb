@@ -119,6 +119,8 @@ public final class UtilMessages {
       "Disk space is insufficient, change system mode to read-only.";
   public static final String CANNOT_CALCULATE_OCCUPIED_SPACE =
       "Cannot calculate occupied space of folder {}";
+  public static final String UNRECOGNIZED_MULTI_DIR_STRATEGY =
+      "Unrecognized multi-dir strategy '{}', falling back to {}.";
 
   // ======================== NodeUrlUtils ========================
 
