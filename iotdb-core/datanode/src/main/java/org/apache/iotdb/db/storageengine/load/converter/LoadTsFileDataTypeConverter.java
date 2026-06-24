@@ -21,10 +21,12 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -109,6 +111,33 @@ public class LoadTsFileDataTypeConverter {
                 StorageEngineMessages.INTERRUPTED_WAITING_TABLET_CONVERSION_SLOT + e.getMessage()));
   }
 
+  public static boolean isMemoryPressureException(final Throwable throwable) {
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof LoadRuntimeOutOfMemoryException
+          || current instanceof PipeRuntimeOutOfMemoryCriticalException) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
+  public static TSStatus getMemoryPressureStatus(final Throwable throwable) {
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof LoadRuntimeOutOfMemoryException
+          || current instanceof PipeRuntimeOutOfMemoryCriticalException) {
+        return new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+            .setMessage(current.getMessage());
+      }
+      current = current.getCause();
+    }
+
+    return new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+        .setMessage(throwable == null ? null : throwable.getMessage());
+  }
+
   private static class TabletConversionSemaphoreHolder {
     private static final Semaphore INSTANCE = new Semaphore(getTabletConversionPermitCount());
   }
@@ -152,6 +181,9 @@ public class LoadTsFileDataTypeConverter {
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
+      if (isMemoryPressureException(e)) {
+        return Optional.of(getMemoryPressureStatus(e));
+      }
       LOGGER.warn(
           "Failed to convert data types for table model statement {}.",
           loadTsFileTableStatement,
@@ -213,6 +245,9 @@ public class LoadTsFileDataTypeConverter {
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
+      if (isMemoryPressureException(e)) {
+        return Optional.of(getMemoryPressureStatus(e));
+      }
       LOGGER.warn(
           "Failed to convert data types for tree model statement {}.", loadTsFileTreeStatement, e);
       return Optional.of(
