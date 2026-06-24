@@ -103,4 +103,9 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setDnDataDirs(String dnDataDirs) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy) {
+    return this;
+  }
 }

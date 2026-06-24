@@ -55,4 +55,6 @@ public interface DataNodeConfig {
   DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow);
 
   DataNodeConfig setDnDataDirs(String dnDataDirs);
+
+  DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy);
 }

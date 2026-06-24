@@ -149,4 +149,10 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("dn_data_dirs", dnDataDirs);
     return this;
   }
+
+  @Override
+  public DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy) {
+    setProperty("dn_multi_dir_strategy", multiDirStrategy);
+    return this;
+  }
 }

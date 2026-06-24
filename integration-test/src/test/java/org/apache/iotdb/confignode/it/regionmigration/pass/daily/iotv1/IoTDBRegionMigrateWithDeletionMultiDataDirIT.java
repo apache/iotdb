@@ -61,7 +61,11 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
         .getCommonConfig()
         .setDataReplicationFactor(2)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
-    EnvFactory.getEnv().getConfig().getDataNodeConfig().setDnDataDirs(MULTI_DATA_DIRS);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getDataNodeConfig()
+        .setDnDataDirs(MULTI_DATA_DIRS)
+        .setDnMultiDirStrategy("MinFolderOccupiedSpaceFirstStrategy");
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }
 
