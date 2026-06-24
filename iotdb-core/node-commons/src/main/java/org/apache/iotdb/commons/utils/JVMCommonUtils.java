@@ -115,7 +115,16 @@ public class JVMCommonUtils {
       return 0;
     }
     try (Stream<Path> s = Files.walk(folder)) {
-      return s.filter(p -> p.toFile().isFile()).mapToLong(p -> p.toFile().length()).sum();
+      // filter() and mapToLong() are not evaluated atomically: a file can disappear between the
+      // isFile() check and length(). Re-check existence before reading the length so a concurrently
+      // deleted file contributes 0 rather than a stale/undefined size.
+      return s.filter(p -> p.toFile().isFile())
+          .mapToLong(
+              p -> {
+                File file = p.toFile();
+                return file.exists() ? file.length() : 0L;
+              })
+          .sum();
     }
   }
 

@@ -18,11 +18,16 @@
  */
 package org.apache.iotdb.commons.disk.strategy;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public enum DirectoryStrategyType {
   SEQUENCE_STRATEGY,
   MAX_DISK_USABLE_SPACE_FIRST_STRATEGY,
   MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY,
   RANDOM_ON_DISK_USABLE_SPACE_STRATEGY;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DirectoryStrategyType.class);
 
   /**
    * Resolves the strategy type from a multi-dir strategy class name as configured by {@code
@@ -42,6 +47,10 @@ public enum DirectoryStrategyType {
       } else if (simpleName.equals(SequenceStrategy.class.getSimpleName())) {
         return SEQUENCE_STRATEGY;
       }
+      LOGGER.warn(
+          "Unrecognized multi-dir strategy '{}', falling back to {}.",
+          className,
+          SEQUENCE_STRATEGY);
     }
     return SEQUENCE_STRATEGY;
   }
