@@ -82,6 +82,11 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
   // All available DataNode IDs (used for variance computation)
   private Set<Integer> allAvailableNodeIds;
 
+  // Log tag for the current pass, e.g. "LoadBalance-DataRegion" / "LoadBalance-SchemaRegion".
+  // LOAD BALANCE runs this migrator once for DataRegions and once for SchemaRegions; the region
+  // type suffix distinguishes the two passes in the log (V2-1016).
+  private String logTag = "LoadBalance";
+
   // ===== Incremental variance state for DFS =====
   private long incrRegionSum;
   private long incrRegionSumSq;
@@ -163,6 +168,7 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
       List<Integer> targetNodeIds) {
     this.regionGroupStatisticsMap = regionGroupStatisticsMap;
     this.replicationFactor = replicationFactor;
+    this.logTag = "LoadBalance-" + MigratorLogHelper.regionTypeTag(allocatedRegionGroups);
     this.replicaNodesIdMap =
         allocatedRegionGroups.stream()
             .collect(
@@ -220,7 +226,7 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
       }
     }
     if (availableToDataNodeSet.isEmpty()) {
-      LOGGER.warn("[LoadBalance] No valid target nodes, returning empty migration plan");
+      LOGGER.warn("[{}] No valid target nodes, returning empty migration plan", logTag);
       Map<TConsensusGroupId, MigrateOption> result = new HashMap<>();
       for (TConsensusGroupId regionId : regionKeys) {
         result.put(regionId, new MigrateOption(false, -1, -1));
@@ -249,7 +255,7 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       List<TConsensusGroupId> regionKeys) {
 
-    LOGGER.info("[LoadBalance] Entering bidirectional mode (LOAD BALANCE ALL)");
+    LOGGER.info("[{}] Entering bidirectional mode (LOAD BALANCE ALL)", logTag);
 
     Map<TConsensusGroupId, MigrateOption> result = new HashMap<>();
     for (TConsensusGroupId regionId : regionKeys) {
@@ -289,13 +295,14 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
     int idealCeil = idealFloor + (totalRegions % nodeCount == 0 ? 0 : 1);
 
     LOGGER.info(
-        "[LoadBalance] Phase 1: Region balance. totalRegions={}, nodeCount={}, ideal=[{}, {}]",
+        "[{}] Phase 1: Region balance. totalRegions={}, nodeCount={}, ideal=[{}, {}]",
+        logTag,
         totalRegions,
         nodeCount,
         idealFloor,
         idealCeil);
     if (!needsRegionBalance(idealFloor, idealCeil)) {
-      LOGGER.info("[LoadBalance] Phase 1: Skipped, regions already balanced");
+      LOGGER.info("[{}] Phase 1: Skipped, regions already balanced", logTag);
       return migratedRegions;
     }
 
@@ -320,7 +327,7 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
     for (int start = 0; start < phase1Regions.size(); start += BATCH_SIZE) {
       // Refresh from/to sets before each batch
       if (!refreshPhase1CandidateSets(idealFloor, idealCeil)) {
-        LOGGER.info("[LoadBalance] Phase 1: Region balance achieved, stopping");
+        LOGGER.info("[{}] Phase 1: Region balance achieved, stopping", logTag);
         break;
       }
 
@@ -351,18 +358,20 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
     for (TConsensusGroupId regionId : migratedRegions) {
       MigrateOption option = result.get(regionId);
       LOGGER.info(
-          "[LoadBalance] Phase 1: Region {} : Node {} -> Node {} (disk={})",
+          "[{}] Phase 1: Region {} : Node {} -> Node {} (disk={})",
+          logTag,
           regionId,
           option.fromNodeId,
           option.toNodeId,
           toMB(regionGroupStatisticsMap.get(regionId).getDiskUsage()));
     }
     LOGGER.info(
-        "[LoadBalance] Phase 1 completed. Migrations: {}, Var(region)={}, Var(disk)={}",
+        "[{}] Phase 1 completed. Migrations: {}, Var(region)={}, Var(disk)={}",
+        logTag,
         migratedRegions.size(),
         computeRegionVariance(),
         computeDiskVariance());
-    LOGGER.info("[LoadBalance] Phase 1 distribution: {}", getNodeDistribution());
+    LOGGER.info("[{}] Phase 1 distribution: {}", logTag, getNodeDistribution());
 
     return migratedRegions;
   }
@@ -431,14 +440,16 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
 
     if (participantSet.isEmpty()) {
       LOGGER.info(
-          "[LoadBalance] Phase 2: Skipped, disk usage within threshold (δ={})",
+          "[{}] Phase 2: Skipped, disk usage within threshold (δ={})",
+          logTag,
           DISK_DEVIATION_THRESHOLD);
       return;
     }
 
     long phase2StartDiskVariance = computeDiskVariance();
     LOGGER.info(
-        "[LoadBalance] Phase 2: Disk balance (swap). participants={}, Var(disk)={}",
+        "[{}] Phase 2: Disk balance (swap). participants={}, Var(disk)={}",
+        logTag,
         participantSet.size(),
         phase2StartDiskVariance);
 
@@ -654,10 +665,11 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
     }
 
     for (String log : swapLog) {
-      LOGGER.info("[LoadBalance] Phase 2: {}", log);
+      LOGGER.info("[{}] Phase 2: {}", logTag, log);
     }
     LOGGER.info(
-        "[LoadBalance] Phase 2 completed. Swaps: {}, Var(disk): {} -> {}",
+        "[{}] Phase 2 completed. Swaps: {}, Var(disk): {} -> {}",
+        logTag,
         phase2Swaps,
         phase2StartDiskVariance,
         computeDiskVariance());
@@ -1380,7 +1392,7 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
 
     MigratorLogHelper.logSummary(
         LOGGER,
-        "LoadBalance",
+        logTag,
         label,
         allAvailableNodeIds,
         regionCounterMap,

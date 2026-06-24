@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.load.balancer.region.migrator;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -38,6 +40,24 @@ public class MigratorLogHelper {
 
   private MigratorLogHelper() {
     // utility class
+  }
+
+  /**
+   * Resolve the consensus group type (e.g. "DataRegion" / "SchemaRegion") of a batch of regions
+   * being balanced, so the log tag can tell the two LOAD BALANCE passes apart.
+   *
+   * <p>LOAD BALANCE runs the migrator once for DataRegions and once for SchemaRegions, and each
+   * pass emits its own summary log. Without this suffix the two passes are indistinguishable in the
+   * log, which is exactly the ambiguity reported in V2-1016.
+   *
+   * @param regions the regions being balanced in this pass (all of the same type)
+   * @return the group type name, or "UnknownRegion" if the list is empty
+   */
+  public static String regionTypeTag(List<TRegionReplicaSet> regions) {
+    if (regions == null || regions.isEmpty()) {
+      return "UnknownRegion";
+    }
+    return regions.get(0).getRegionId().getType().name();
   }
 
   /**
