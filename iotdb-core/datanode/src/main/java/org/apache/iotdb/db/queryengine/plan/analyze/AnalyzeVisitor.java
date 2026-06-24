@@ -210,6 +210,7 @@ import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushD
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseNodeString;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory.getReadableDataNodeLocations;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
@@ -3059,7 +3060,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
 
-    String viewPath = viewDevicePath.concatNode(viewSchemaInfo.getName()).getFullPath();
+    String viewPath =
+        getFullPathWithNecessaryBackQuotes(viewDevicePath.concatNode(viewSchemaInfo.getName()));
     String viewDataType = getLogicalViewDataType(logicalViewSchema, schemaTree);
     String viewDatabase = schemaTree.getBelongedDatabase(viewDevicePath);
     for (PartialPath sourcePath : getSourcePaths(logicalViewSchema.getExpression())) {

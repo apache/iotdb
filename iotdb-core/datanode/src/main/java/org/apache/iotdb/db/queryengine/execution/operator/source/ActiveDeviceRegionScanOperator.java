@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSourceOperator {
   // The devices which need to be checked.
   private final Map<IDeviceID, DeviceContext> deviceContextMap;
+  private final Map<IDeviceID, String> deviceIDToDisplayPath;
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ActiveDeviceRegionScanOperator.class)
@@ -56,6 +57,7 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
       OperatorContext operatorContext,
       PlanNodeId sourceId,
       Map<IDeviceID, DeviceContext> deviceContextMap,
+      Map<IDeviceID, String> deviceIDToDisplayPath,
       Filter timeFilter,
       Map<IDeviceID, Long> ttlCache,
       boolean outputCount) {
@@ -63,6 +65,7 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.deviceContextMap = deviceContextMap;
+    this.deviceIDToDisplayPath = deviceIDToDisplayPath;
     this.regionScanUtil = new RegionScanForActiveDeviceUtil(timeFilter, ttlCache);
   }
 
@@ -96,7 +99,10 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
         String ttlStr = ttl == Long.MAX_VALUE ? IoTDBConstant.TTL_INFINITE : String.valueOf(ttl);
 
         timeColumnBuilder.writeLong(-1);
-        columnBuilders[0].writeBinary(new Binary(deviceID.toString(), TSFileConfig.STRING_CHARSET));
+        columnBuilders[0].writeBinary(
+            new Binary(
+                deviceIDToDisplayPath.getOrDefault(deviceID, deviceID.toString()),
+                TSFileConfig.STRING_CHARSET));
         columnBuilders[1].writeBinary(
             new Binary(
                 String.valueOf(deviceContextMap.get(deviceID).isAligned()),

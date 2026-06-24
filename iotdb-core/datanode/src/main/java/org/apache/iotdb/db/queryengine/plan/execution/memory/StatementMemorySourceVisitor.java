@@ -21,8 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.execution.memory;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
@@ -57,6 +55,8 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.common.header.DatasetHeader.EMPTY_HEADER;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getTailNodeWithNecessaryBackQuotes;
 
 public class StatementMemorySourceVisitor
     extends StatementVisitor<StatementMemorySource, StatementMemorySourceContext> {
@@ -142,7 +142,10 @@ public class StatementMemorySourceVisitor
           tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
           tsBlockBuilder
               .getColumnBuilder(0)
-              .writeBinary(new Binary(node.getNodeName(), TSFileConfig.STRING_CHARSET));
+              .writeBinary(
+                  new Binary(
+                      getFullPathWithNecessaryBackQuotes(node.getNodeName()),
+                      TSFileConfig.STRING_CHARSET));
           tsBlockBuilder
               .getColumnBuilder(1)
               .writeBinary(
@@ -169,17 +172,13 @@ public class StatementMemorySourceVisitor
             .collect(Collectors.toCollection(TreeSet::new));
     matchedChildNodes.forEach(
         node -> {
-          try {
-            PartialPath nodePath = new PartialPath(node);
-            String nodeName = nodePath.getTailNode();
-            tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-            tsBlockBuilder
-                .getColumnBuilder(0)
-                .writeBinary(new Binary(nodeName, TSFileConfig.STRING_CHARSET));
-            tsBlockBuilder.declarePosition();
-          } catch (IllegalPathException ignored) {
-            // definitely won't happen
-          }
+          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+          tsBlockBuilder
+              .getColumnBuilder(0)
+              .writeBinary(
+                  new Binary(
+                      getTailNodeWithNecessaryBackQuotes(node), TSFileConfig.STRING_CHARSET));
+          tsBlockBuilder.declarePosition();
         });
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());

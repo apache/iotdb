@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSourceOperator {
   // Timeseries which need to be checked.
   private final Map<IDeviceID, Map<String, TimeseriesContext>> timeSeriesToSchemasInfo;
+  private final Map<IDeviceID, Map<String, String>> timeSeriesToDisplayPath;
   private final Set<String> countedLogicalViews;
   private static final Binary BASE_VIEW_TYPE =
       new Binary("BASE".getBytes(TSFileConfig.STRING_CHARSET));
@@ -60,6 +61,7 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
       OperatorContext operatorContext,
       PlanNodeId sourceId,
       Map<IDeviceID, Map<String, TimeseriesContext>> timeSeriesToSchemasInfo,
+      Map<IDeviceID, Map<String, String>> timeSeriesToDisplayPath,
       Filter timeFilter,
       Map<IDeviceID, Long> ttlCache,
       boolean isOutputCount) {
@@ -67,6 +69,7 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.timeSeriesToSchemasInfo = timeSeriesToSchemasInfo;
+    this.timeSeriesToDisplayPath = timeSeriesToDisplayPath;
     this.countedLogicalViews = new HashSet<>();
     this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter, ttlCache);
     this.dataBaseNameString =
@@ -122,22 +125,20 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
 
     for (Map.Entry<IDeviceID, List<String>> entry : activeTimeSeries.entrySet()) {
       IDeviceID deviceID = entry.getKey();
-      String deviceStr = deviceID.toString();
+      Map<String, String> displayPathMap = timeSeriesToDisplayPath.get(deviceID);
       List<String> timeSeriesList = entry.getValue();
       Map<String, TimeseriesContext> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
       for (String timeSeries : timeSeriesList) {
         TimeseriesContext schemaInfo = timeSeriesInfo.get(timeSeries);
         if (schemaInfo.getActiveCountMultiplier() > 0) {
           appendTimeseries(
-              contactDeviceAndMeasurement(deviceStr, timeSeries), schemaInfo, BASE_VIEW_TYPE);
+              getDisplayPath(deviceID, displayPathMap, timeSeries), schemaInfo, BASE_VIEW_TYPE);
         }
         for (Map.Entry<String, TimeseriesContext> logicalViewEntry :
             schemaInfo.getActiveLogicalViewContextMap().entrySet()) {
           if (countedLogicalViews.add(logicalViewEntry.getKey())) {
             appendTimeseries(
-                logicalViewEntry.getKey().getBytes(TSFileConfig.STRING_CHARSET),
-                logicalViewEntry.getValue(),
-                LOGICAL_VIEW_TYPE);
+                logicalViewEntry.getKey(), logicalViewEntry.getValue(), LOGICAL_VIEW_TYPE);
           }
         }
       }
@@ -146,12 +147,12 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
   }
 
   private void appendTimeseries(
-      byte[] timeseriesPath, TimeseriesContext schemaInfo, Binary viewType) {
+      String timeseriesPath, TimeseriesContext schemaInfo, Binary viewType) {
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
 
     timeColumnBuilder.writeLong(-1);
-    columnBuilders[0].writeBinary(new Binary(timeseriesPath));
+    columnBuilders[0].writeBinary(new Binary(timeseriesPath, TSFileConfig.STRING_CHARSET));
 
     checkAndAppend(schemaInfo.getAlias(), columnBuilders[1]); // Measurement
     if (schemaInfo.getDatabase() == null || dataBaseNameString.equals(schemaInfo.getDatabase())) {
@@ -180,8 +181,12 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
     }
   }
 
-  private byte[] contactDeviceAndMeasurement(String deviceStr, String measurementId) {
-    return (deviceStr + "." + measurementId).getBytes(TSFileConfig.STRING_CHARSET);
+  private String getDisplayPath(
+      IDeviceID deviceID, Map<String, String> displayPathMap, String measurementId) {
+    if (displayPathMap == null) {
+      return deviceID + "." + measurementId;
+    }
+    return displayPathMap.getOrDefault(measurementId, deviceID + "." + measurementId);
   }
 
   @Override

@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
 
 public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements SourceOperator {
 
@@ -198,7 +199,9 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
       tsBlockBuilder
           .getColumnBuilder(0)
-          .writeBinary(new Binary(entry.getKey().getFullPath(), TSFileConfig.STRING_CHARSET));
+          .writeBinary(
+              new Binary(
+                  getFullPathWithNecessaryBackQuotes(entry.getKey()), TSFileConfig.STRING_CHARSET));
       tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
       tsBlockBuilder.declarePosition();
     }

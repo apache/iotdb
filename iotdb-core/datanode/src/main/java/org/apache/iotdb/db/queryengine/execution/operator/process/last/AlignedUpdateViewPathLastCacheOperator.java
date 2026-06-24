@@ -31,6 +31,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
 
 public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCacheOperator {
   // Now not only a view path will be set here, but also the measurement path with alias will be set
@@ -66,7 +67,7 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
     LastQueryUtil.appendLastValueRespectBlob(
         tsBlockBuilder,
         lastTime,
-        outputPath == null ? measurementPath.getFullPath() : outputPath,
+        outputPath == null ? getFullPathWithNecessaryBackQuotes(measurementPath) : outputPath,
         lastValue,
         type);
     outputPathIndex++;

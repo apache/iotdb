@@ -305,6 +305,7 @@ import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOper
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
 public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -3678,12 +3679,14 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     Filter filter = context.getGlobalTimeFilter();
 
     Map<IDeviceID, DeviceContext> deviceIDToContext = new HashMap<>();
+    Map<IDeviceID, String> deviceIDToDisplayPath = new HashMap<>();
     Map<IDeviceID, Long> ttlCache = new HashMap<>();
     for (Map.Entry<PartialPath, DeviceContext> entry :
         node.getDevicePathToContextMap().entrySet()) {
       PartialPath devicePath = entry.getKey();
       IDeviceID deviceID = devicePath.getIDeviceID();
       deviceIDToContext.put(deviceID, entry.getValue());
+      deviceIDToDisplayPath.put(deviceID, getFullPathWithNecessaryBackQuotes(devicePath));
       ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTLForTree(deviceID));
     }
     ActiveDeviceRegionScanOperator regionScanOperator =
@@ -3691,6 +3694,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             operatorContext,
             node.getPlanNodeId(),
             deviceIDToContext,
+            deviceIDToDisplayPath,
             filter,
             ttlCache,
             node.isOutputCount());
@@ -3717,6 +3721,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
 
     Map<IDeviceID, Map<String, TimeseriesContext>> timeseriesToSchemaInfo = new HashMap<>();
+    Map<IDeviceID, Map<String, String>> timeseriesToDisplayPath = new HashMap<>();
     Map<IDeviceID, Long> ttlCache = new HashMap<>();
     for (Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesContext>>> entryMap :
         node.getDeviceToTimeseriesSchemaInfo().entrySet()) {
@@ -3725,6 +3730,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       Map<String, TimeseriesContext> timeseriesSchemaInfoMap =
           getTimeseriesSchemaInfoMap(entryMap, dataDriverContext);
       timeseriesToSchemaInfo.put(deviceID, timeseriesSchemaInfoMap);
+      timeseriesToDisplayPath.put(deviceID, getTimeseriesDisplayPathMap(entryMap));
       ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTLForTree(deviceID));
     }
     ActiveTimeSeriesRegionScanOperator regionScanOperator =
@@ -3732,6 +3738,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             operatorContext,
             node.getPlanNodeId(),
             timeseriesToSchemaInfo,
+            timeseriesToDisplayPath,
             filter,
             ttlCache,
             node.isOutputCount());
@@ -3740,6 +3747,26 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     dataDriverContext.setQueryDataSourceType(QueryDataSourceType.TIME_SERIES_REGION_SCAN);
 
     return regionScanOperator;
+  }
+
+  private static Map<String, String> getTimeseriesDisplayPathMap(
+      Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesContext>>> entryMap) {
+    Map<String, String> timeseriesDisplayPathMap = new HashMap<>();
+    for (PartialPath path : entryMap.getValue().keySet()) {
+      if (path instanceof MeasurementPath) {
+        timeseriesDisplayPathMap.put(
+            path.getMeasurement(), getFullPathWithNecessaryBackQuotes(path));
+      } else if (path instanceof AlignedPath) {
+        AlignedPath alignedPath = (AlignedPath) path;
+        PartialPath devicePath = alignedPath.getDevicePath();
+        for (String measurement : alignedPath.getMeasurementList()) {
+          timeseriesDisplayPathMap.put(
+              measurement,
+              getFullPathWithNecessaryBackQuotes(devicePath.concatAsMeasurementPath(measurement)));
+        }
+      }
+    }
+    return timeseriesDisplayPathMap;
   }
 
   private static Map<String, TimeseriesContext> getTimeseriesSchemaInfoMap(

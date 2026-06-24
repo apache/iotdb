@@ -134,6 +134,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
 
 public class LogicalPlanBuilder {
 
@@ -260,10 +261,10 @@ public class LogicalPlanBuilder {
           TSDataType outputViewPathType = null;
           // the path is view, use the view path as the output path
           if (sourceExpression.isViewExpression()) {
-            outputPath = sourceExpression.getViewPath().getFullPath();
+            outputPath = getFullPathWithNecessaryBackQuotes(sourceExpression.getViewPath());
             outputViewPathType = selectedPath.getSeriesType();
           } else {
-            outputPath = selectedPath.getFullPath();
+            outputPath = getFullPathWithNecessaryBackQuotes(selectedPath);
           }
           // the path has alias, use alias as the output path
           if (selectedPath.isMeasurementAliasExists()) {
@@ -392,7 +393,7 @@ public class LogicalPlanBuilder {
           new LastQueryTransformNode(
               context.getQueryId().genPlanNodeId(),
               planBuilder.getRoot(),
-              expression.getViewPath().getFullPath(),
+              getFullPathWithNecessaryBackQuotes(expression.getViewPath()),
               analysis.getType(expression).toString());
       lastQueryNode.addChild(transformNode);
     }

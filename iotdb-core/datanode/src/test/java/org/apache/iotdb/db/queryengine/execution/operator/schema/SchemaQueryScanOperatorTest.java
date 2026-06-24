@@ -52,6 +52,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -84,6 +85,8 @@ public class SchemaQueryScanOperatorTest {
           driverContext.addOperatorContext(
               1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
+      PartialPath reservedDevicePath =
+          new PartialPath(new String[] {"root", "MetaScanOperatorTest", "root"});
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
       Mockito.when(schemaRegion.getDatabaseFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
       IDeviceSchemaInfo deviceSchemaInfo = Mockito.mock(IDeviceSchemaInfo.class);
@@ -92,6 +95,12 @@ public class SchemaQueryScanOperatorTest {
       Mockito.when(deviceSchemaInfo.isAligned()).thenReturn(false);
       Mockito.when(deviceSchemaInfo.getTemplateId()).thenReturn(-1);
       Mockito.when(deviceSchemaInfo.getPartialPath()).thenReturn(partialPath);
+      IDeviceSchemaInfo reservedDeviceSchemaInfo = Mockito.mock(IDeviceSchemaInfo.class);
+      Mockito.when(reservedDeviceSchemaInfo.getFullPath())
+          .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".root");
+      Mockito.when(reservedDeviceSchemaInfo.isAligned()).thenReturn(false);
+      Mockito.when(reservedDeviceSchemaInfo.getTemplateId()).thenReturn(-1);
+      Mockito.when(reservedDeviceSchemaInfo.getPartialPath()).thenReturn(reservedDevicePath);
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<IDeviceSchemaInfo> deviceSchemaSource =
@@ -99,7 +108,7 @@ public class SchemaQueryScanOperatorTest {
               partialPath, false, 10, 0, true, null, SchemaConstant.ALL_MATCH_SCOPE);
       SchemaOperatorTestUtil.mockGetSchemaReader(
           deviceSchemaSource,
-          Collections.singletonList(deviceSchemaInfo).iterator(),
+          Arrays.asList(deviceSchemaInfo, reservedDeviceSchemaInfo).iterator(),
           schemaRegion,
           true);
       //
@@ -113,7 +122,7 @@ public class SchemaQueryScanOperatorTest {
         TsBlock tsBlock = devicesSchemaScanOperator.next();
         assertEquals(5, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BinaryColumn);
-        assertEquals(1, tsBlock.getPositionCount());
+        assertEquals(2, tsBlock.getPositionCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           Assert.assertEquals(0, tsBlock.getTimeByIndex(i));
           for (int j = 0; j < columns.size(); j++) {
@@ -121,7 +130,9 @@ public class SchemaQueryScanOperatorTest {
               case 0:
                 assertEquals(
                     tsBlock.getColumn(j).getBinary(i).toString(),
-                    META_SCAN_OPERATOR_TEST_SG + ".device0");
+                    i == 0
+                        ? META_SCAN_OPERATOR_TEST_SG + ".device0"
+                        : META_SCAN_OPERATOR_TEST_SG + ".`root`");
                 break;
               case 1:
                 assertEquals(
@@ -146,7 +157,7 @@ public class SchemaQueryScanOperatorTest {
       // Assert failure if exception occurs
       SchemaOperatorTestUtil.mockGetSchemaReader(
           deviceSchemaSource,
-          Collections.singletonList(deviceSchemaInfo).iterator(),
+          Arrays.asList(deviceSchemaInfo, reservedDeviceSchemaInfo).iterator(),
           schemaRegion,
           false);
       try {
@@ -190,8 +201,11 @@ public class SchemaQueryScanOperatorTest {
       List<ITimeSeriesSchemaInfo> showTimeSeriesResults = new ArrayList<>();
       for (int i = 0; i < 10; i++) {
         ITimeSeriesSchemaInfo timeSeriesSchemaInfo = Mockito.mock(ITimeSeriesSchemaInfo.class);
+        PartialPath timeSeriesPath =
+            new PartialPath(new String[] {"root", "MetaScanOperatorTest", "device0", "s" + i});
         Mockito.when(timeSeriesSchemaInfo.getFullPath())
             .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".device0." + "s" + i);
+        Mockito.when(timeSeriesSchemaInfo.getPartialPath()).thenReturn(timeSeriesPath);
         Mockito.when(timeSeriesSchemaInfo.getAlias()).thenReturn(null);
         Mockito.when(timeSeriesSchemaInfo.getSchema())
             .thenReturn(
@@ -201,6 +215,20 @@ public class SchemaQueryScanOperatorTest {
         Mockito.when(timeSeriesSchemaInfo.getAttributes()).thenReturn(null);
         showTimeSeriesResults.add(timeSeriesSchemaInfo);
       }
+      ITimeSeriesSchemaInfo reservedTimeSeriesSchemaInfo =
+          Mockito.mock(ITimeSeriesSchemaInfo.class);
+      Mockito.when(reservedTimeSeriesSchemaInfo.getFullPath())
+          .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".root.s0");
+      Mockito.when(reservedTimeSeriesSchemaInfo.getPartialPath())
+          .thenReturn(new PartialPath(new String[] {"root", "MetaScanOperatorTest", "root", "s0"}));
+      Mockito.when(reservedTimeSeriesSchemaInfo.getAlias()).thenReturn(null);
+      Mockito.when(reservedTimeSeriesSchemaInfo.getSchema())
+          .thenReturn(
+              new MeasurementSchema(
+                  "s0", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+      Mockito.when(reservedTimeSeriesSchemaInfo.getTags()).thenReturn(null);
+      Mockito.when(reservedTimeSeriesSchemaInfo.getAttributes()).thenReturn(null);
+      showTimeSeriesResults.add(reservedTimeSeriesSchemaInfo);
 
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
       Mockito.when(schemaRegion.getDatabaseFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
@@ -228,7 +256,7 @@ public class SchemaQueryScanOperatorTest {
         assertEquals(
             ColumnHeaderConstant.showTimeSeriesColumnHeaders.size(), tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BinaryColumn);
-        assertEquals(10, tsBlock.getPositionCount());
+        assertEquals(11, tsBlock.getPositionCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           Assert.assertEquals(0, tsBlock.getTimeByIndex(i));
           for (int j = 0; j < ColumnHeaderConstant.showTimeSeriesColumnHeaders.size(); j++) {
@@ -237,7 +265,11 @@ public class SchemaQueryScanOperatorTest {
             String value = binary == null ? "null" : binary.toString();
             switch (j) {
               case 0:
-                Assert.assertTrue(value.startsWith(META_SCAN_OPERATOR_TEST_SG + ".device0"));
+                assertEquals(
+                    i < 10
+                        ? META_SCAN_OPERATOR_TEST_SG + ".device0.s" + i
+                        : META_SCAN_OPERATOR_TEST_SG + ".`root`.s0",
+                    value);
                 break;
               case 1:
                 assertEquals("null", value);

@@ -1276,7 +1276,10 @@ public class MTreeBelowSGMemoryImpl {
             final PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
             final ShowDevicesResult result =
                 new ShowDevicesResult(
-                    device.getFullPath(), node.isAlignedNullable(), node.getSchemaTemplateId());
+                    device.getFullPath(),
+                    node.isAlignedNullable(),
+                    node.getSchemaTemplateId(),
+                    device.getNodes());
             result.setAttributeProvider(
                 k ->
                     attributeProvider.apply(
@@ -1749,8 +1752,8 @@ public class MTreeBelowSGMemoryImpl {
 
           @Override
           protected INodeSchemaInfo collectMNode(final IMemMNode node) {
-            return new ShowNodesResult(
-                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType());
+            final PartialPath path = getPartialPathFromRootToNode(node);
+            return new ShowNodesResult(path.getFullPath(), node.getMNodeType(), path);
           }
         };
     collector.setTargetLevel(showNodesPlan.getLevel());

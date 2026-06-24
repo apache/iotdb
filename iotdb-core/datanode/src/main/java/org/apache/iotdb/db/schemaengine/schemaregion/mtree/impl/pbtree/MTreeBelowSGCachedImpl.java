@@ -1450,7 +1450,10 @@ public class MTreeBelowSGCachedImpl {
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<ICachedMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
             return new ShowDevicesResult(
-                device.getFullPath(), node.isAlignedNullable(), node.getSchemaTemplateId());
+                device.getFullPath(),
+                node.isAlignedNullable(),
+                node.getSchemaTemplateId(),
+                device.getNodes());
           }
         };
     if (showDevicesPlan.usingSchemaTemplate()) {
@@ -1738,8 +1741,8 @@ public class MTreeBelowSGCachedImpl {
             showNodesPlan.getScope()) {
 
           protected INodeSchemaInfo collectMNode(ICachedMNode node) {
-            return new ShowNodesResult(
-                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType());
+            final PartialPath path = getPartialPathFromRootToNode(node);
+            return new ShowNodesResult(path.getFullPath(), node.getMNodeType(), path);
           }
         };
     collector.setTargetLevel(showNodesPlan.getLevel());

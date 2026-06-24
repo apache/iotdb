@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
 
 public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
 
@@ -113,7 +114,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   public void transformToTsBlockColumns(
       ITimeSeriesSchemaInfo series, TsBlockBuilder builder, String database) {
     builder.getTimeColumnBuilder().writeLong(0);
-    builder.writeNullableText(0, series.getFullPath());
+    builder.writeNullableText(0, getFullPathWithNecessaryBackQuotes(series.getPartialPath()));
     builder.writeNullableText(1, series.getAlias());
     builder.writeNullableText(2, database);
     builder.writeNullableText(3, series.getSchema().getType().toString());

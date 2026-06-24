@@ -40,6 +40,8 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
+
 public class ShowPathSetTemplateTask implements IConfigTask {
 
   private final ShowPathSetTemplateStatement showPathSetTemplateStatement;
@@ -67,7 +69,8 @@ public class ShowPathSetTemplateTask implements IConfigTask {
         builder.getTimeColumnBuilder().writeLong(0L);
         builder
             .getColumnBuilder(0)
-            .writeBinary(new Binary(path.getFullPath(), TSFileConfig.STRING_CHARSET));
+            .writeBinary(
+                new Binary(getFullPathWithNecessaryBackQuotes(path), TSFileConfig.STRING_CHARSET));
         builder.declarePosition();
       }
     }

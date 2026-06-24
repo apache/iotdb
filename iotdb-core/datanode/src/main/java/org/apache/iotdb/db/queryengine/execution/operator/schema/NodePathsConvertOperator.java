@@ -21,12 +21,9 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -36,17 +33,14 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getTailNodeWithNecessaryBackQuotes;
 
 public class NodePathsConvertOperator implements ProcessOperator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(NodePathsConvertOperator.class);
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(NodePathsConvertOperator.class);
@@ -85,17 +79,11 @@ public class NodePathsConvertOperator implements ProcessOperator {
 
     for (int i = 0; i < block.getPositionCount(); i++) {
       String path = block.getColumn(0).getBinary(i).toString();
-      PartialPath partialPath;
-      try {
-        partialPath = new PartialPath(path);
-      } catch (IllegalPathException e) {
-        LOGGER.warn(DataNodeQueryMessages.FAILED_TO_CONVERT_NODE_PATH_TO_PARTIALPATH, path);
-        continue;
-      }
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
       tsBlockBuilder
           .getColumnBuilder(0)
-          .writeBinary(new Binary(partialPath.getTailNode(), TSFileConfig.STRING_CHARSET));
+          .writeBinary(
+              new Binary(getTailNodeWithNecessaryBackQuotes(path), TSFileConfig.STRING_CHARSET));
       tsBlockBuilder.declarePosition();
     }
 

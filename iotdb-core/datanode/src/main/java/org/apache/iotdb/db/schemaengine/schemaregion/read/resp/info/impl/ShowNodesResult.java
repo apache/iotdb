@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 
@@ -27,10 +28,21 @@ import java.util.Objects;
 public class ShowNodesResult extends ShowSchemaResult implements INodeSchemaInfo {
 
   private final MNodeType nodeType;
+  private final PartialPath partialPath;
 
   public ShowNodesResult(String path, MNodeType nodeType) {
+    this(path, nodeType, null);
+  }
+
+  public ShowNodesResult(String path, MNodeType nodeType, PartialPath partialPath) {
     super(path);
     this.nodeType = nodeType;
+    this.partialPath = partialPath;
+  }
+
+  @Override
+  public PartialPath getPartialPath() {
+    return partialPath == null ? super.getPartialPath() : partialPath;
   }
 
   @Override

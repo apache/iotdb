@@ -38,6 +38,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
+
 public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   private final List<PartialPath> pathPatternList;
@@ -68,7 +70,10 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
     builder.getTimeColumnBuilder().writeLong(0L);
     builder
         .getColumnBuilder(0)
-        .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
+        .writeBinary(
+            new Binary(
+                getFullPathWithNecessaryBackQuotes(device.getPartialPath()),
+                TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
   }
 

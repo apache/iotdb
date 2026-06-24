@@ -41,6 +41,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
+
 public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
 
   private final PartialPath pathPattern;
@@ -95,7 +97,7 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   public void transformToTsBlockColumns(
       ITimeSeriesSchemaInfo series, TsBlockBuilder builder, String database) {
     builder.getTimeColumnBuilder().writeLong(0);
-    builder.writeNullableText(0, series.getFullPath());
+    builder.writeNullableText(0, getFullPathWithNecessaryBackQuotes(series.getPartialPath()));
     builder.writeNullableText(1, database);
 
     builder.writeNullableText(2, series.getSchema().getType().toString());

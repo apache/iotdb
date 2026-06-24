@@ -32,6 +32,8 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
+
 /** update last cache for aligned series. */
 public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 
@@ -104,7 +106,11 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
   protected void appendLastValueToTsBlockBuilder(
       long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath, String type) {
     LastQueryUtil.appendLastValueRespectBlob(
-        tsBlockBuilder, lastTime, measurementPath.getFullPath(), lastValue, type);
+        tsBlockBuilder,
+        lastTime,
+        getFullPathWithNecessaryBackQuotes(measurementPath),
+        lastValue,
+        type);
   }
 
   @Override

@@ -42,6 +42,7 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
 
 public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -97,9 +98,8 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
   public void transformToTsBlockColumns(
       IDeviceSchemaInfo device, TsBlockBuilder builder, String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder
-        .getColumnBuilder(0)
-        .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
+    String devicePath = getFullPathWithNecessaryBackQuotes(device.getPartialPath());
+    builder.getColumnBuilder(0).writeBinary(new Binary(devicePath, TSFileConfig.STRING_CHARSET));
     int templateId = device.getTemplateId();
     long ttl = DataNodeTTLCache.getInstance().getTTLInMSForTree(device.getPartialPath().getNodes());
     // TODO: make it more readable, like "30 days" or "10 hours"

@@ -44,6 +44,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
 
 public class NodeManageMemoryMergeOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
@@ -125,7 +126,10 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
           tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
           tsBlockBuilder
               .getColumnBuilder(0)
-              .writeBinary(new Binary(node.getNodeName(), TSFileConfig.STRING_CHARSET));
+              .writeBinary(
+                  new Binary(
+                      getFullPathWithNecessaryBackQuotes(node.getNodeName()),
+                      TSFileConfig.STRING_CHARSET));
           tsBlockBuilder
               .getColumnBuilder(1)
               .writeBinary(

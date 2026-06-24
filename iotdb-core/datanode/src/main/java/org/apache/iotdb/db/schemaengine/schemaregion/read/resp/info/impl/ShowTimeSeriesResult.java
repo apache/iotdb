@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -40,6 +41,8 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
 
   private boolean isUnderAlignedDevice;
 
+  private PartialPath partialPath;
+
   public ShowTimeSeriesResult(
       String path,
       String alias,
@@ -47,16 +50,33 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
       Map<String, String> tags,
       Map<String, String> attributes,
       boolean isUnderAlignedDevice) {
+    this(path, alias, measurementSchema, tags, attributes, isUnderAlignedDevice, null);
+  }
+
+  public ShowTimeSeriesResult(
+      String path,
+      String alias,
+      IMeasurementSchema measurementSchema,
+      Map<String, String> tags,
+      Map<String, String> attributes,
+      boolean isUnderAlignedDevice,
+      PartialPath partialPath) {
     super(path);
     this.alias = alias;
     this.measurementSchema = measurementSchema;
     this.tags = tags;
     this.attributes = attributes;
     this.isUnderAlignedDevice = isUnderAlignedDevice;
+    this.partialPath = partialPath;
   }
 
   public ShowTimeSeriesResult() {
     super();
+  }
+
+  @Override
+  public PartialPath getPartialPath() {
+    return partialPath == null ? super.getPartialPath() : partialPath;
   }
 
   public String getAlias() {

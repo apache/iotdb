@@ -383,7 +383,8 @@ public class SchemaRegionTestUtil {
                 timeSeriesSchemaInfo.getSchema(),
                 timeSeriesSchemaInfo.getTags(),
                 timeSeriesSchemaInfo.getAttributes(),
-                timeSeriesSchemaInfo.isUnderAlignedDevice()));
+                timeSeriesSchemaInfo.isUnderAlignedDevice(),
+                timeSeriesSchemaInfo.getPartialPath()));
       }
     } catch (Exception e) {
       throw new RuntimeException(e);

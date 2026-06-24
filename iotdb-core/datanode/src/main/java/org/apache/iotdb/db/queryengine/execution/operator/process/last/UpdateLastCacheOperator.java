@@ -31,6 +31,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.utils.SchemaPathUtils.getFullPathWithNecessaryBackQuotes;
 
 public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 
@@ -116,7 +117,11 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 
   protected void appendLastValueToTsBlockBuilder(long lastTime, TsPrimitiveType lastValue) {
     LastQueryUtil.appendLastValueRespectBlob(
-        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue, dataType);
+        tsBlockBuilder,
+        lastTime,
+        getFullPathWithNecessaryBackQuotes(fullPath),
+        lastValue,
+        dataType);
   }
 
   @Override

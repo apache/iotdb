@@ -322,7 +322,8 @@ public class TagManager {
                         node.getSchema(),
                         tagAndAttributePair.left,
                         tagAndAttributePair.right,
-                        node.getParent().getAsDeviceMNode().isAligned());
+                        node.getParent().getAsDeviceMNode().isAligned(),
+                        node.getPartialPath());
                 break;
               }
             }
