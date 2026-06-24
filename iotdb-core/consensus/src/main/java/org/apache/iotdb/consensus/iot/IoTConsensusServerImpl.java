@@ -370,33 +370,42 @@ public class IoTConsensusServerImpl {
   public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<File> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
-    AtomicLong snapshotSizeSumAtomic = new AtomicLong();
-    StringBuilder allFilesStr = new StringBuilder();
-    snapshotPaths.forEach(
-        file -> {
-          long fileSize = file.length();
-          snapshotSizeSumAtomic.addAndGet(fileSize);
-          allFilesStr
-              .append("\n")
-              .append(file.getName())
-              .append(" ")
-              .append(humanReadableByteCountSI(fileSize));
-        });
-    final long snapshotSizeSum = snapshotSizeSumAtomic.get();
+    long snapshotSizeSum = 0;
+    for (File file : snapshotPaths) {
+      snapshotSizeSum += file.length();
+    }
     long transitedSnapshotSizeSum = 0;
     long transitedFilesNum = 0;
     long startTime = System.nanoTime();
+    long lastProgressLogTime = startTime;
+    // Throttle the per-file progress log to at most once per this interval; a snapshot may contain
+    // hundreds of thousands of files, so one INFO line per file is itself a heavy cost.
+    long progressLogIntervalNs =
+        TimeUnit.MILLISECONDS.toNanos(
+            config.getReplication().getSnapshotTransmissionProgressLogIntervalMs());
     logger.info(
         IoTConsensusMessages.SNAPSHOT_TRANSMISSION_START,
         snapshotPaths.size(),
         humanReadableByteCountSI(snapshotSizeSum),
         snapshotDir);
-    logger.info(IoTConsensusMessages.SNAPSHOT_TRANSMISSION_ALL_FILES, allFilesStr);
+    if (logger.isDebugEnabled()) {
+      StringBuilder allFilesStr = new StringBuilder();
+      for (File file : snapshotPaths) {
+        allFilesStr
+            .append("\n")
+            .append(file.getName())
+            .append(" ")
+            .append(humanReadableByteCountSI(file.length()));
+      }
+      logger.debug(IoTConsensusMessages.SNAPSHOT_TRANSMISSION_ALL_FILES, allFilesStr);
+    }
+    ByteBuffer fragmentBuffer =
+        ByteBuffer.allocate(SnapshotFragmentReader.DEFAULT_FILE_FRAGMENT_SIZE);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (File file : snapshotPaths) {
         SnapshotFragmentReader reader =
-            new SnapshotFragmentReader(newSnapshotDirName, file.toPath());
+            new SnapshotFragmentReader(newSnapshotDirName, file.toPath(), fragmentBuffer);
         try {
           while (reader.hasNext()) {
             // TODO: zero copy ?
@@ -411,16 +420,20 @@ public class IoTConsensusServerImpl {
           }
           transitedSnapshotSizeSum += reader.getTotalReadSize();
           transitedFilesNum++;
-          logger.info(
-              IoTConsensusMessages.SNAPSHOT_TRANSMISSION_PROGRESS,
-              newSnapshotDirName,
-              transitedFilesNum,
-              snapshotPaths.size(),
-              humanReadableByteCountSI(transitedSnapshotSizeSum),
-              humanReadableByteCountSI(snapshotSizeSum),
-              CommonDateTimeUtils.convertMillisecondToDurationStr(
-                  (System.nanoTime() - startTime) / 1_000_000),
-              file);
+          long now = System.nanoTime();
+          if (now - lastProgressLogTime >= progressLogIntervalNs
+              || transitedFilesNum == snapshotPaths.size()) {
+            lastProgressLogTime = now;
+            logger.info(
+                IoTConsensusMessages.SNAPSHOT_TRANSMISSION_PROGRESS,
+                newSnapshotDirName,
+                transitedFilesNum,
+                snapshotPaths.size(),
+                humanReadableByteCountSI(transitedSnapshotSizeSum),
+                humanReadableByteCountSI(snapshotSizeSum),
+                CommonDateTimeUtils.convertMillisecondToDurationStr((now - startTime) / 1_000_000),
+                file);
+          }
         } finally {
           reader.close();
         }

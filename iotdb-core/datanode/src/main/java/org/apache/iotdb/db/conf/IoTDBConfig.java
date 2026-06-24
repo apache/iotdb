@@ -1099,6 +1099,9 @@ public class IoTDBConfig {
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
+  // Throttle the per-file snapshot-transmission progress log in IoTConsensus to at most once per
+  // this interval (ms). A value <= 0 logs every file.
+  private long dataRegionIotSnapshotTransmissionProgressLogIntervalMs = 5000L;
 
   // IoTConsensusV2 Config
   private int iotConsensusV2PipelineSize = 5;
@@ -1271,6 +1274,16 @@ public class IoTDBConfig {
   public void setRegionMigrationSpeedLimitBytesPerSecond(
       long regionMigrationSpeedLimitBytesPerSecond) {
     this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
+  }
+
+  public long getDataRegionIotSnapshotTransmissionProgressLogIntervalMs() {
+    return dataRegionIotSnapshotTransmissionProgressLogIntervalMs;
+  }
+
+  public void setDataRegionIotSnapshotTransmissionProgressLogIntervalMs(
+      long dataRegionIotSnapshotTransmissionProgressLogIntervalMs) {
+    this.dataRegionIotSnapshotTransmissionProgressLogIntervalMs =
+        dataRegionIotSnapshotTransmissionProgressLogIntervalMs;
   }
 
   public int getIotConsensusV2PipelineSize() {

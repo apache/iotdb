@@ -177,6 +177,8 @@ public class DataRegionConsensusImpl {
                               COMMON_CONF.getSubscriptionConsensusWalRetentionSizeInBytes())
                           .setSubscriptionWalRetentionTimeMs(
                               COMMON_CONF.getSubscriptionConsensusWalRetentionTimeMs())
+                          .setSnapshotTransmissionProgressLogIntervalMs(
+                              CONF.getDataRegionIotSnapshotTransmissionProgressLogIntervalMs())
                           .build())
                   .build())
           .setIoTConsensusV2Config(
