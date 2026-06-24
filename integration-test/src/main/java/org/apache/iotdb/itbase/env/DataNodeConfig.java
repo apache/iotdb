@@ -53,4 +53,6 @@ public interface DataNodeConfig {
   DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
 
   DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow);
+
+  DataNodeConfig setDnDataDirs(String dnDataDirs);
 }
