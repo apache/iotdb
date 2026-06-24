@@ -393,7 +393,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
         StatementGenerator.createStatement(
             "CREATE DATABASE "
                 + SystemConstant.AUDIT_DATABASE
-                + " WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=1",
+                + " WITH MAX_SCHEMA_REGION_GROUP_NUM=1, MAX_DATA_REGION_GROUP_NUM=1",
             ZoneId.systemDefault());
     ExecutionResult result =
         coordinator.executeForTreeModel(
