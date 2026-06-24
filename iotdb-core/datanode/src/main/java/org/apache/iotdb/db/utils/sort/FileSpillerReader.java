@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils.sort;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -93,10 +94,11 @@ public class FileSpillerReader implements SortReader {
       if (readLen == -1) {
         return -1;
       }
+      IOUtils.readFully(fileChannel, bytes);
       bytes.flip();
       int capacity = bytes.getInt();
       ByteBuffer tsBlockBytes = ByteBuffer.allocate(capacity);
-      fileChannel.read(tsBlockBytes);
+      IOUtils.readFully(fileChannel, tsBlockBytes);
       tsBlockBytes.flip();
       TsBlock cachedTsBlock = serde.deserialize(tsBlockBytes);
       cacheBlocks.add(cachedTsBlock);

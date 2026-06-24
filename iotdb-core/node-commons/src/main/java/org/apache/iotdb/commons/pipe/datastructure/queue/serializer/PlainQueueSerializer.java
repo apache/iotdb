@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.datastructure.queue.serializer;
 
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
+import org.apache.iotdb.commons.utils.IOUtils;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -68,7 +69,7 @@ public class PlainQueueSerializer<E> implements QueueSerializer<E> {
         }
         int capacity = ReadWriteIOUtils.readInt(inputStream);
         ByteBuffer buffer = ByteBuffer.allocate(capacity);
-        channel.read(buffer);
+        IOUtils.readFully(channel, buffer);
         buffer.flip();
         E element = elementDeserializationFunction.apply(buffer);
         if (element == null) {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
 
@@ -60,7 +61,7 @@ public interface SerializableList {
     }
     init();
     ByteBuffer byteBuffer = ByteBuffer.allocate(recorder.getSerializedByteLength());
-    recorder.getFileChannel().read(byteBuffer);
+    IOUtils.readFully(recorder.getFileChannel(), byteBuffer);
     byteBuffer.flip();
     deserialize(byteBuffer);
     recorder.closeFile();
