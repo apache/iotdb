@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.load.balancer.region.migrator;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -44,6 +45,14 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
 
   /** Disk deviation threshold δ for Phase 2 bidirectional migration (default 20%). */
   private static final double DISK_DEVIATION_THRESHOLD = 0.2;
+
+  /**
+   * True when the regions being balanced never report disk usage (i.e. SchemaRegions, which store
+   * metadata rather than TsFiles). For these regions diskCounter is always 0, so disk-based steps
+   * (Phase 2) are intentionally inactive and balancing is driven purely by region count. This flag
+   * only annotates the logs so operators don't mistake the constant 0MB for a sampling failure.
+   */
+  private boolean diskUsageUnreported;
 
   private int replicationFactor;
   // The number of allocated Regions in each DataNode
@@ -103,6 +112,18 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
       this.fromNodeId = fromNodeId;
       this.toNodeId = toNodeId;
     }
+  }
+
+  /**
+   * Determine whether the regions being balanced never report disk usage. A single LOAD BALANCE
+   * invocation only ever handles one consensus group type (DataRegion or SchemaRegion), so checking
+   * the first region's type is sufficient. SchemaRegions store metadata (mtree/mlog/pbtree) rather
+   * than TsFiles and therefore always report disk usage 0.
+   */
+  private boolean isDiskUsageUnreported(List<TRegionReplicaSet> allocatedRegionGroups) {
+    return !allocatedRegionGroups.isEmpty()
+        && TConsensusGroupType.SchemaRegion.equals(
+            allocatedRegionGroups.get(0).getRegionId().getType());
   }
 
   /**
@@ -178,9 +199,19 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
                         regionReplicaSet.getDataNodeLocations().stream()
                             .map(TDataNodeLocation::getDataNodeId)
                             .collect(Collectors.toList())));
+    // SchemaRegions never report disk usage (they hold metadata, not TsFiles), so their diskCounter
+    // is always 0. Detect this up-front so the logs can clarify that disk-based balancing is
+    // intentionally inactive rather than broken.
+    this.diskUsageUnreported = isDiskUsageUnreported(allocatedRegionGroups);
+
     // 1. Initialize counters
     initializeCounters(availableDataNodeMap, allocatedRegionGroups, Collections.emptyList());
     logSummary("Initial", null);
+    if (diskUsageUnreported) {
+      LOGGER.info(
+          "[LoadBalance] These RegionGroups do not report disk usage (e.g. SchemaRegions); "
+              + "diskCounter is expectedly 0MB and balancing is driven by region count only.");
+    }
 
     // 2. Build allowed migration set for each region.
     // No migration: 1 option.
@@ -420,6 +451,16 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
    */
   private void executePhase2DiskBalance(
       List<TConsensusGroupId> regionKeys, Map<TConsensusGroupId, MigrateOption> result) {
+
+    // SchemaRegions never report disk usage, so disk-based balancing is meaningless here. Skip with
+    // an explicit reason rather than letting the all-zero diskCounter fall through to the generic
+    // "within threshold" message, which reads like a sampling problem.
+    if (diskUsageUnreported) {
+      LOGGER.info(
+          "[LoadBalance] Phase 2: Skipped, RegionGroups do not report disk usage (e.g. "
+              + "SchemaRegions); region-count balance from Phase 1 is the final result.");
+      return;
+    }
 
     // Compute mean disk usage
     long totalDisk = 0;
