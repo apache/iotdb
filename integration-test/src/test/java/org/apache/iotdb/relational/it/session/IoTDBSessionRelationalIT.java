@@ -258,16 +258,17 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
-          "create table wrong_time(color string tag, device_id string tag,city string attribute)");
+          "create table wrong_time(color string tag, device_id string tag,city string attribute,"
+              + " value int32 field)");
       try {
-        session.executeNonQueryStatement("insert into wrong_time values('aa','bb','cc','dd')");
+        session.executeNonQueryStatement("insert into wrong_time values('aa','bb','cc','dd',1)");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
         assertEquals(
             "701: Input time format aa error. Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or refer to user document for more info.",
             e.getMessage());
       }
-      session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd')");
+      session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd',1)");
       try (SessionDataSet dataSet =
           session.executeQueryStatement("select * from wrong_time where time = 2")) {
         assertTrue(dataSet.hasNext());
@@ -276,16 +277,17 @@ public class IoTDBSessionRelationalIT {
         assertEquals("bb", rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("cc", rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals("dd", rowRecord.getFields().get(3).getBinaryV().toString());
+        assertEquals(1, rowRecord.getFields().get(4).getIntV());
         assertFalse(dataSet.hasNext());
       }
       try {
-        session.executeNonQueryStatement("insert into wrong_time values(1.0,'bb','cc','dd')");
+        session.executeNonQueryStatement("insert into wrong_time values(1.0,'bb','cc','dd',1)");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
         assertEquals("701: Unsupported expression: 1E0", e.getMessage());
       }
       try {
-        session.executeNonQueryStatement("insert into wrong_time values(true,'bb','cc','dd')");
+        session.executeNonQueryStatement("insert into wrong_time values(true,'bb','cc','dd',1)");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
         assertEquals("701: Unsupported expression: true", e.getMessage());
