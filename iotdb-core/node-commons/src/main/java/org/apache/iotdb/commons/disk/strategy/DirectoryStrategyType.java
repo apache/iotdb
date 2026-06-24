@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.disk.strategy;
 
+import org.apache.iotdb.commons.i18n.UtilMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,10 +49,7 @@ public enum DirectoryStrategyType {
       } else if (simpleName.equals(SequenceStrategy.class.getSimpleName())) {
         return SEQUENCE_STRATEGY;
       }
-      LOGGER.warn(
-          "Unrecognized multi-dir strategy '{}', falling back to {}.",
-          className,
-          SEQUENCE_STRATEGY);
+      LOGGER.warn(UtilMessages.UNRECOGNIZED_MULTI_DIR_STRATEGY, className, SEQUENCE_STRATEGY);
     }
     return SEQUENCE_STRATEGY;
   }
