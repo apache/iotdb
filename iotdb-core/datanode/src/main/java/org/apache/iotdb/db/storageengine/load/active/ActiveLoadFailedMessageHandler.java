@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -103,7 +104,7 @@ public class ActiveLoadFailedMessageHandler {
     if (status != null
         && status.getCode() == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
       LOGGER.info(
-          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to temporary unavailability, will retry later. Status: {}",
+          StorageEngineMessages.ACTIVE_LOAD_TEMPORARILY_UNAVAILABLE,
           entry.getFile(),
           entry.isGeneratedByPipe(),
           status);

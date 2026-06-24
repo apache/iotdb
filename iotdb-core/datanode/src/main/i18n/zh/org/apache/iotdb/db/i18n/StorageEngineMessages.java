@@ -523,6 +523,8 @@ public final class StorageEngineMessages {
   public static final String ERROR_EXECUTING_ACTIVE_LOAD_JOB = "执行 Active 加载定期任务时发生错误。";
   public static final String ACTIVE_LOAD_EXECUTOR_STARTED = "Active 加载定期任务执行器已成功启动。";
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active 加载定期任务执行器已成功停止。";
+  public static final String ACTIVE_LOAD_TEMPORARILY_UNAVAILABLE =
+      "拒绝自动加载 TsFile {} (isGeneratedByPipe = {})，原因是系统暂时不可用，将稍后重试。状态: {}";
   public static final String ERROR_MOVING_FILE_TO_FAIL_DIR = "将文件 {} 移动到失败目录时发生错误。";
   public static final String FAILED_COUNT_FILES_IN_FAIL_DIR = "统计失败目录中的失败文件数量失败。";
 
