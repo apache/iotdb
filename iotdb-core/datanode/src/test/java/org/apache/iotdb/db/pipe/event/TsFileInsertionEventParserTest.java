@@ -89,6 +89,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1511,8 +1512,8 @@ public class TsFileInsertionEventParserTest {
         Assert.assertTrue(iterator.hasNext());
         Tablet parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
         if (parsedTablet.getSchemas().size() > 1) {
-          assertBitMapExistence(parsedTablet, false, true);
-          Assert.assertTrue(parsedTablet.isNull(1, 1));
+          assertBitMapExistenceByMeasurement(parsedTablet, Map.of("dense", false, "sparse", true));
+          Assert.assertTrue(parsedTablet.isNull(1, getColumnIndex(parsedTablet, "sparse")));
           Assert.assertFalse(iterator.hasNext());
         } else {
           Assert.assertNull(parsedTablet.getBitMaps());
@@ -1542,6 +1543,33 @@ public class TsFileInsertionEventParserTest {
         Assert.assertNull(bitMaps[i]);
       }
     }
+  }
+
+  private void assertBitMapExistenceByMeasurement(
+      final Tablet tablet, final Map<String, Boolean> expectedMeasurementHasBitMap) {
+    final BitMap[] bitMaps = tablet.getBitMaps();
+    Assert.assertNotNull(bitMaps);
+    Assert.assertEquals(tablet.getSchemas().size(), bitMaps.length);
+    Assert.assertEquals(expectedMeasurementHasBitMap.size(), tablet.getSchemas().size());
+    for (int i = 0; i < tablet.getSchemas().size(); ++i) {
+      final String measurement = tablet.getSchemas().get(i).getMeasurementName();
+      Assert.assertTrue(expectedMeasurementHasBitMap.containsKey(measurement));
+      if (expectedMeasurementHasBitMap.get(measurement)) {
+        Assert.assertNotNull(bitMaps[i]);
+      } else {
+        Assert.assertNull(bitMaps[i]);
+      }
+    }
+  }
+
+  private int getColumnIndex(final Tablet tablet, final String measurement) {
+    for (int i = 0; i < tablet.getSchemas().size(); ++i) {
+      if (tablet.getSchemas().get(i).getMeasurementName().equals(measurement)) {
+        return i;
+      }
+    }
+    fail(String.format("Measurement %s does not exist in tablet.", measurement));
+    return -1;
   }
 
   private void generateLargeAlignedTsFile(
