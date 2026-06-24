@@ -211,12 +211,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
   }
 
   @Test
-  public void testPipeOutOfMemoryIsTemporaryUnavailable() {
+  public void testPipeOutOfMemoryIsTemporaryUnavailable() throws Exception {
+    tsFile = File.createTempFile("oom", ".tsfile");
+
     final LoadTreeConvertedInsertTabletStatementExceptionVisitor visitor =
         new LoadTreeConvertedInsertTabletStatementExceptionVisitor();
     final TSStatus status =
         visitor.visitLoadFile(
-            LoadTsFileStatement.createUnchecked("oom.tsfile"),
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
             new IllegalStateException(
                 "wrapped memory pressure",
                 new PipeRuntimeOutOfMemoryCriticalException("pipe tablet memory is not enough")));
