@@ -153,6 +153,31 @@ public class ConsensusLogToTabletConverterTest {
   }
 
   @Test
+  public void testConvertRelationalInsertTabletNodeSkipsMalformedColumns()
+      throws IllegalPathException {
+    final ConsensusLogToTabletConverter converter = createConverter("id1");
+    final RelationalInsertTabletNode node =
+        new RelationalInsertTabletNode(
+            new PlanNodeId("malformed"),
+            new PartialPath(new String[] {StatementTestUtils.tableName()}),
+            true,
+            new String[] {"id1", "m1"},
+            new TSDataType[] {TSDataType.STRING},
+            new long[] {1L},
+            null,
+            new Object[] {new Binary[] {new Binary("id:1".getBytes(StandardCharsets.UTF_8))}},
+            1,
+            StatementTestUtils.genColumnCategories());
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals(1, tablet.getSchemas().size());
+    Assert.assertEquals("id1", tablet.getSchemas().get(0).getMeasurementName());
+  }
+
+  @Test
   public void testConvertRelationalInsertRowNodeKeepsTagColumnsForMatchedField() {
     final ConsensusLogToTabletConverter converter = createConverter("m1");
 

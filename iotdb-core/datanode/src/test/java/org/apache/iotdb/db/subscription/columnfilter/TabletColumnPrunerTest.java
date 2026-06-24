@@ -82,6 +82,30 @@ public class TabletColumnPrunerTest {
     Assert.assertTrue(pruned.getBitMaps()[1].isMarked(0));
   }
 
+  @Test
+  public void testMatchAllReturnsOriginalTablet() {
+    final Tablet tablet = createTablet();
+
+    Assert.assertSame(
+        tablet,
+        TabletColumnPruner.pruneTableModelTablet(tablet, "db", ColumnFilterMatcher.matchAll()));
+  }
+
+  @Test
+  public void testPruneKeepsRowsForTimeOnlySelection() {
+    final ColumnFilterMatcher matcher =
+        ColumnFilterMatcher.fromTopicConfig(createTableTopicConfig("column_name = \"time\""));
+
+    final Tablet pruned =
+        TabletColumnPruner.pruneTableModelTablet(createTaglessTablet(), "db", matcher);
+
+    Assert.assertNotNull(pruned);
+    Assert.assertEquals(0, pruned.getSchemas().size());
+    Assert.assertEquals(0, pruned.getValues().length);
+    Assert.assertEquals(1, pruned.getRowSize());
+    Assert.assertEquals(1L, pruned.getTimestamp(0));
+  }
+
   private static TopicConfig createTableTopicConfig(final String columnFilter) {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put("__system.sql-dialect", "table");
@@ -105,6 +129,19 @@ public class TabletColumnPrunerTest {
     tablet.addValue(0, 1, "north");
     tablet.addValue(0, 2, 36.5);
     tablet.addValue(0, 3, "ok");
+    tablet.setRowSize(1);
+    return tablet;
+  }
+
+  private static Tablet createTaglessTablet() {
+    final List<String> columnNames = Arrays.asList("temperature", "status");
+    final List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.STRING);
+    final List<ColumnCategory> categories =
+        Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD);
+    final Tablet tablet = new Tablet("tagless", columnNames, dataTypes, categories, 1);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue(0, 0, 36.5);
+    tablet.addValue(0, 1, "ok");
     tablet.setRowSize(1);
     return tablet;
   }

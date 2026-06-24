@@ -107,6 +107,21 @@ public class SubscriptionPollResponseTest {
     assertFalse(parsed.getTimeSelectedByTable().get("root.sg").containsKey("table1"));
   }
 
+  @Test
+  public void testTimeSelectedByTableKeysAreNormalized() {
+    final Map<String, Map<String, Boolean>> timeSelectedByTable = new HashMap<>();
+    timeSelectedByTable.put("Root.SG", Collections.singletonMap("Table1", false));
+    final SubscriptionPollResponse response =
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.TABLETS.getType(),
+            new TabletsPayload(Collections.emptyMap(), 0),
+            new SubscriptionCommitContext(1, 2, "topic", "group", 3L),
+            false,
+            timeSelectedByTable);
+
+    assertFalse(response.getTimeSelectedByTable().get("root.sg").get("table1"));
+  }
+
   private static ByteBuffer serializeWithoutTimeSelected(
       final short responseType,
       final SubscriptionPollPayload payload,

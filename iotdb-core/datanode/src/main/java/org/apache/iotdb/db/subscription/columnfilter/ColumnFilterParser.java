@@ -138,6 +138,10 @@ public class ColumnFilterParser {
     }
     for (int i = 0; i < rawColumnFilter.length(); i++) {
       final char ch = rawColumnFilter.charAt(i);
+      if (ch == '"') {
+        i = skipQuotedIdentifier(rawColumnFilter, i);
+        continue;
+      }
       if (ch == '<') {
         if (i + 1 < rawColumnFilter.length() && rawColumnFilter.charAt(i + 1) == '>') {
           i++;
@@ -152,6 +156,19 @@ public class ColumnFilterParser {
         throw new ParsingException("unexpected character '+'", null, 1, i + 1);
       }
     }
+  }
+
+  private static int skipQuotedIdentifier(final String text, final int quoteIndex) {
+    for (int i = quoteIndex + 1; i < text.length(); i++) {
+      if (text.charAt(i) == '"') {
+        if (i + 1 < text.length() && text.charAt(i + 1) == '"') {
+          i++;
+          continue;
+        }
+        return i;
+      }
+    }
+    return text.length();
   }
 
   private static class AstBuilder extends ColumnFilterBaseVisitor<Expression> {

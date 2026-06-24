@@ -46,15 +46,20 @@ public class TabletColumnPruner {
 
     final ColumnFilterMatcher effectiveMatcher =
         Objects.nonNull(matcher) ? matcher : ColumnFilterMatcher.matchAll();
+    if (effectiveMatcher.isMatchAll()) {
+      return tablet;
+    }
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.getValues();
     if (Objects.isNull(schemas) || schemas.isEmpty() || Objects.isNull(values)) {
       return null;
     }
+    final boolean timeSelected =
+        effectiveMatcher.isTimeSelected(databaseName, tablet.getTableName());
 
     final List<ColumnCategory> categories = getColumnCategories(tablet, schemas.size());
     final boolean[] selectedColumns = new boolean[schemas.size()];
-    boolean hasMatchedColumn = false;
+    boolean hasMatchedColumn = timeSelected;
 
     for (int i = 0; i < schemas.size(); i++) {
       if (!isValidColumn(schemas, values, i)) {
@@ -91,7 +96,7 @@ public class TabletColumnPruner {
 
     final List<Integer> selectedIndices = getSelectedIndices(selectedColumns);
     if (selectedIndices.isEmpty()) {
-      return null;
+      return timeSelected ? pruneAllPhysicalColumns(tablet) : null;
     }
     if (selectedIndices.size() == schemas.size()) {
       return tablet;
@@ -123,6 +128,17 @@ public class TabletColumnPruner {
         tablet.getTimestamps(),
         prunedValues,
         prunedBitMaps,
+        tablet.getRowSize());
+  }
+
+  private static Tablet pruneAllPhysicalColumns(final Tablet tablet) {
+    return new Tablet(
+        tablet.getTableName(),
+        Collections.emptyList(),
+        Collections.emptyList(),
+        tablet.getTimestamps(),
+        new Object[0],
+        null,
         tablet.getRowSize());
   }
 

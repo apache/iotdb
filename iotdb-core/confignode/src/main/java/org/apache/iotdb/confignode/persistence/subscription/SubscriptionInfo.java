@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
@@ -66,7 +67,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -86,6 +89,27 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private static final String SNAPSHOT_FILE_NAME = "subscription_info.bin";
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS_KEY =
       "data_region_consensus_protocol_class";
+  private static final Set<String> CASE_INSENSITIVE_TOPIC_ATTRIBUTE_KEYS =
+      Set.of(
+          SystemConstant.SQL_DIALECT_KEY,
+          TopicConstant.PATH_KEY,
+          TopicConstant.PATTERN_KEY,
+          TopicConstant.DATABASE_KEY,
+          TopicConstant.TABLE_KEY,
+          TopicConstant.COLUMN_FILTER_KEY,
+          TopicConstant.RETENTION_BYTES_KEY,
+          TopicConstant.RETENTION_MS_KEY,
+          TopicConstant.START_TIME_KEY,
+          TopicConstant.END_TIME_KEY,
+          TopicConstant.MODE_KEY,
+          TopicConstant.ORDER_MODE_KEY,
+          TopicConstant.FORMAT_KEY,
+          TopicConstant.LOOSE_RANGE_KEY,
+          TopicConstant.STRICT_KEY,
+          TopicConstant.OWNER_ID_KEY,
+          TopicConstant.OWNER_EPOCH_KEY,
+          TopicConstant.MAX_OWNER_EPOCH_KEY,
+          TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
 
   private final TopicMetaKeeper topicMetaKeeper;
   private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper;
@@ -289,6 +313,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private void validateTopicConfig(final TopicConfig topicConfig) throws SubscriptionException {
+    validateDuplicateTopicAttributes(topicConfig);
+
     final String mode = topicConfig.getMode();
     if (!TopicConfig.isValidMode(mode)) {
       final String exceptionMessage =
@@ -372,22 +398,29 @@ public class SubscriptionInfo implements SnapshotProcessor {
     throw new SubscriptionException(exceptionMessage);
   }
 
-  private void validateColumnFilter(final TopicConfig topicConfig) throws SubscriptionException {
-    int columnFilterKeyCount = 0;
+  private void validateDuplicateTopicAttributes(final TopicConfig topicConfig)
+      throws SubscriptionException {
+    final Set<String> seenKeys = new HashSet<>();
     for (final String key : topicConfig.getAttribute().keySet()) {
-      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(key)) {
-        columnFilterKeyCount++;
+      if (Objects.isNull(key)) {
+        continue;
+      }
+      final String normalizedKey = key.trim().toLowerCase(Locale.ROOT);
+      if (!CASE_INSENSITIVE_TOPIC_ATTRIBUTE_KEYS.contains(normalizedKey)) {
+        continue;
+      }
+      if (!seenKeys.add(normalizedKey)) {
+        final String exceptionMessage =
+            String.format(
+                "Failed to create or alter topic, duplicate %s attributes are not allowed",
+                normalizedKey);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
       }
     }
-    if (columnFilterKeyCount > 1) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to create or alter topic, duplicate %s attributes are not allowed",
-              TopicConstant.COLUMN_FILTER_KEY);
-      LOGGER.warn(exceptionMessage);
-      throw new SubscriptionException(exceptionMessage);
-    }
+  }
 
+  private void validateColumnFilter(final TopicConfig topicConfig) throws SubscriptionException {
     if (!topicConfig.hasColumnFilter()) {
       return;
     }

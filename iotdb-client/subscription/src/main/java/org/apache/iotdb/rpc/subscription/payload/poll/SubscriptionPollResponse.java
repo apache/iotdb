@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -38,15 +39,15 @@ public class SubscriptionPollResponse {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPollResponse.class);
 
-  private final transient short responseType;
+  private final short responseType;
 
-  private final transient SubscriptionPollPayload payload;
+  private final SubscriptionPollPayload payload;
 
-  private final transient SubscriptionCommitContext commitContext;
+  private final SubscriptionCommitContext commitContext;
 
-  private final transient boolean timeSelected;
+  private final boolean timeSelected;
 
-  private final transient Map<String, Map<String, Boolean>> timeSelectedByTable;
+  private final Map<String, Map<String, Boolean>> timeSelectedByTable;
 
   public SubscriptionPollResponse(
       final short responseType,
@@ -199,15 +200,16 @@ public class SubscriptionPollResponse {
           if (Objects.isNull(databaseName) || Objects.isNull(tableMap) || tableMap.isEmpty()) {
             return;
           }
+          final String normalizedDatabaseName = databaseName.trim().toLowerCase(Locale.ROOT);
           final Map<String, Boolean> copiedTableMap = new HashMap<>();
           tableMap.forEach(
               (tableName, timeSelected) -> {
                 if (Objects.nonNull(tableName) && Objects.nonNull(timeSelected)) {
-                  copiedTableMap.put(tableName, timeSelected);
+                  copiedTableMap.put(tableName.trim().toLowerCase(Locale.ROOT), timeSelected);
                 }
               });
           if (!copiedTableMap.isEmpty()) {
-            copied.put(databaseName, Collections.unmodifiableMap(copiedTableMap));
+            copied.put(normalizedDatabaseName, Collections.unmodifiableMap(copiedTableMap));
           }
         });
     if (copied.isEmpty()) {

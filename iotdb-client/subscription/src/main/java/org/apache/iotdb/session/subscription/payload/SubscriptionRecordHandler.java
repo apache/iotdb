@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -114,37 +115,23 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
     if (Objects.isNull(timeSelectedByTable) || timeSelectedByTable.isEmpty()) {
       return defaultTimeSelected;
     }
-    final Map<String, Boolean> tableMap = timeSelectedByTable.get(databaseName);
-    if (Objects.isNull(tablet)) {
+    if (Objects.isNull(tablet)
+        || Objects.isNull(databaseName)
+        || Objects.isNull(tablet.getTableName())) {
       return defaultTimeSelected;
     }
-    final Map<String, Boolean> resolvedTableMap =
-        Objects.nonNull(tableMap)
-            ? tableMap
-            : getIgnoreCase(timeSelectedByTable, databaseName, null);
-    if (Objects.isNull(resolvedTableMap)) {
+
+    final Map<String, Boolean> tableMap =
+        timeSelectedByTable.get(databaseName.trim().toLowerCase(Locale.ROOT));
+    if (Objects.isNull(tableMap)) {
       return defaultTimeSelected;
     }
+
     final Boolean tableTimeSelected =
-        resolvedTableMap.containsKey(tablet.getTableName())
-            ? resolvedTableMap.get(tablet.getTableName())
-            : getIgnoreCase(resolvedTableMap, tablet.getTableName(), null);
+        tableMap.get(tablet.getTableName().trim().toLowerCase(Locale.ROOT));
     return Objects.nonNull(tableTimeSelected)
         ? Boolean.TRUE.equals(tableTimeSelected)
         : defaultTimeSelected;
-  }
-
-  private static <T> T getIgnoreCase(
-      final Map<String, T> map, final String key, final T defaultValue) {
-    if (Objects.isNull(map) || Objects.isNull(key)) {
-      return defaultValue;
-    }
-    for (final Map.Entry<String, T> entry : map.entrySet()) {
-      if (Objects.nonNull(entry.getKey()) && entry.getKey().equalsIgnoreCase(key)) {
-        return entry.getValue();
-      }
-    }
-    return defaultValue;
   }
 
   public static class SubscriptionResultSet extends AbstractResultSet {

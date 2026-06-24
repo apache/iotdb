@@ -504,13 +504,38 @@ public class ConsensusLogToTabletConverter {
     if (Objects.isNull(measurements)
         || Objects.isNull(dataTypes)
         || Objects.isNull(node.getColumns())) {
+      LOGGER.warn(
+          "Malformed RelationalInsertTabletNode with null measurements/dataTypes/columns, "
+              + "skipping conversion");
       return Collections.emptyList();
     }
+    final Object[] columns = node.getColumns();
+    final BitMap[] bitMaps = node.getBitMaps();
     final List<IMeasurementSchema> schemas = new ArrayList<>(measurements.length);
     final List<ColumnCategory> columnTypes = new ArrayList<>(measurements.length);
+    final List<Object> validColumns = new ArrayList<>(measurements.length);
+    final List<BitMap> validBitMaps =
+        Objects.nonNull(bitMaps) ? new ArrayList<>(measurements.length) : null;
     for (int i = 0; i < measurements.length; i++) {
+      if (!isValidColumn(measurements, dataTypes, columns, i, false)) {
+        LOGGER.warn(
+            "Skipping malformed RelationalInsertTabletNode column at index {} "
+                + "(measurements={}, dataTypes={}, columns={})",
+            i,
+            measurements.length,
+            dataTypes.length,
+            columns.length);
+        continue;
+      }
       schemas.add(new MeasurementSchema(measurements[i], dataTypes[i]));
       columnTypes.add(toTsFileColumnCategory(node.getColumnCategories(), i));
+      validColumns.add(columns[i]);
+      if (Objects.nonNull(validBitMaps)) {
+        validBitMaps.add(i < bitMaps.length ? bitMaps[i] : null);
+      }
+    }
+    if (schemas.isEmpty()) {
+      return Collections.emptyList();
     }
     final Tablet tablet =
         new Tablet(
@@ -518,8 +543,8 @@ public class ConsensusLogToTabletConverter {
             schemas,
             columnTypes,
             node.getTimes(),
-            node.getColumns(),
-            node.getBitMaps(),
+            validColumns.toArray(new Object[0]),
+            Objects.nonNull(validBitMaps) ? validBitMaps.toArray(new BitMap[0]) : null,
             node.getRowCount());
 
     final Tablet prunedTablet =

@@ -159,10 +159,8 @@ public class ColumnFilterMatcher {
       return Collections.emptyMap();
     }
 
-    final Map<String, Map<String, Boolean>> copied = new HashMap<>();
-    result.forEach(
-        (database, tableMap) -> copied.put(database, Collections.unmodifiableMap(tableMap)));
-    return Collections.unmodifiableMap(copied);
+    result.replaceAll((database, tableMap) -> Collections.unmodifiableMap(tableMap));
+    return Collections.unmodifiableMap(result);
   }
 
   public boolean match(final String databaseName, final String tableName, final String columnName) {

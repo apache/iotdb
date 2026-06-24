@@ -19,19 +19,10 @@
 
 package org.apache.iotdb.subscription.it.dual.tablemodel;
 
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
-import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.db.subscription.columnfilter.BoundColumnFilter;
-import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterBinder;
-import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionTableArchVerification;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
@@ -44,7 +35,6 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.junit.Assert;
@@ -400,34 +390,13 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
   }
 
   @Test
-  public void testTreeViewColumnFilterBindingUsesSourceFieldName() throws Exception {
-    final String database = databaseName("view");
-    final String viewName = TABLE_NAME + "_view";
-    final Map<String, String> attributes = new LinkedHashMap<>();
-    attributes.put("__system.sql-dialect", "table");
-    attributes.put(TopicConstant.DATABASE_KEY, database);
-    attributes.put(TopicConstant.TABLE_KEY, viewName);
-    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"s_view\"");
-
-    final BoundColumnFilter boundColumnFilter =
-        new ColumnFilterBinder()
-            .bind(
-                new TopicConfig(attributes),
-                Map.of(database, Map.of(viewName, createTreeViewSchema(viewName))));
-    final ColumnFilterMatcher matcher =
-        ColumnFilterMatcher.fromBoundColumnFilter(boundColumnFilter);
-
-    Assert.assertTrue(matcher.match(database, viewName, "tag1"));
-    Assert.assertTrue(matcher.match(database, viewName, "s_src"));
-    Assert.assertFalse(matcher.match(database, viewName, "s_view"));
-  }
-
-  @Test
   public void testCreateTopicWithTreeViewColumnFilterUsesViewFieldName() throws Exception {
     final String database = databaseName("view_topic");
     final String treeDatabase = database + "_tree";
     final String viewName = TABLE_NAME + "_view";
     final String topicName = topicName("view_topic");
+    final String consumerId = consumerName("view_topic");
+    final String consumerGroupId = consumerGroupName("view_topic");
 
     try {
       createTreeView(senderEnv, database, treeDatabase, viewName);
@@ -437,6 +406,20 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
           viewName,
           TopicConstant.FORMAT_RECORD_HANDLER_VALUE,
           "column_name = \"s_view\"");
+
+      try (final ISubscriptionTablePullConsumer consumer =
+          createConsumer(consumerId, consumerGroupId)) {
+        consumer.subscribe(topicName);
+        insertTreeRows(senderEnv, treeDatabase, 400, 403);
+
+        final ConsumedRecordStats stats =
+            pollRecordMessagesForTimestamps(
+                consumer, new LinkedHashSet<>(Arrays.asList(400L, 401L, 402L)), false);
+
+        Assert.assertEquals(new LinkedHashSet<>(Arrays.asList("tag1", "s_src")), stats.columnNames);
+        Assert.assertFalse(stats.columnNames.contains("s_view"));
+        Assert.assertFalse(stats.columnNames.contains("s_other"));
+      }
     } finally {
       cleanup(topicName, database);
       dropTreeDatabase(senderEnv, treeDatabase);
@@ -980,17 +963,6 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
     }
   }
 
-  private static TsTable createTreeViewSchema(final String viewName) {
-    final TsTable table = new TsTable(viewName);
-    table.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.view.**");
-    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
-    table.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
-    final FieldColumnSchema sourceField = new FieldColumnSchema("s_view", TSDataType.DOUBLE);
-    TreeViewSchema.setOriginalName(sourceField, "s_src");
-    table.addColumnSchema(sourceField);
-    return table;
-  }
-
   private static void createTreeView(
       final BaseEnv env, final String database, final String treeDatabase, final String viewName)
       throws Exception {
@@ -1014,6 +986,24 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
                   + "s_other double field from s_other) as root.%s.**",
               viewName,
               treeDatabase));
+    }
+  }
+
+  private static void insertTreeRows(
+      final BaseEnv env, final String treeDatabase, final int start, final int end)
+      throws Exception {
+    try (final Connection connection = env.getConnection();
+        final Statement statement = connection.createStatement()) {
+      for (int i = start; i < end; i++) {
+        statement.execute(
+            String.format(
+                Locale.ROOT,
+                "insert into root.%s.d1(timestamp,s_src,s_other) values(%d,%f,%f)",
+                treeDatabase,
+                i,
+                i * 1.0,
+                i * 10.0));
+      }
     }
   }
 

@@ -86,6 +86,15 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
+  public void testRejectDuplicateTopicConfigKeys() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    attributes.put("Mode", TopicConstant.MODE_SNAPSHOT_VALUE);
+
+    assertCreateRejected(subscriptionInfo, attributes, "duplicate mode");
+  }
+
+  @Test
   public void testAcceptColumnFilterOnLiveTsFileTableTopic() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newLiveTableTopicAttributes();

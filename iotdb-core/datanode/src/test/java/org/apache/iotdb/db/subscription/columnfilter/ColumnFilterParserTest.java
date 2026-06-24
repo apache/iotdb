@@ -86,6 +86,20 @@ public class ColumnFilterParserTest {
   }
 
   @Test
+  public void testSpecialCharactersInsideStringLiterals() throws Exception {
+    final ColumnMetadata plusColumn =
+        new ColumnMetadata("db1", "weather", "a+b", "DOUBLE", "FIELD");
+    final ColumnMetadata greaterColumn =
+        new ColumnMetadata("db1", "weather", "a>b", "DOUBLE", "FIELD");
+    final ColumnMetadata regexpColumn =
+        new ColumnMetadata("db1", "weather", "s9", "DOUBLE", "FIELD");
+
+    Assert.assertTrue(evaluate("column_name = \"a+b\"", plusColumn));
+    Assert.assertTrue(evaluate("column_name LIKE \"a>%\"", greaterColumn));
+    Assert.assertTrue(evaluate("column_name REGEXP \"s[0-9]+\"", regexpColumn));
+  }
+
+  @Test
   public void testRejectInvalidExpressions() {
     assertRejected("temperature > 10", "unsupported comparison operator");
     assertRejected("column_name = \"s1\" + \"s2\"", "unexpected character '+'");

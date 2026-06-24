@@ -327,9 +327,9 @@ public class DataNodeTableCache implements ITableCache {
                                   Map.Entry::getKey,
                                   tableEntry -> new TsTable(tableEntry.getValue()),
                                   (left, right) -> right,
-                                  ConcurrentHashMap::new)),
+                                  HashMap::new)),
                   (left, right) -> right,
-                  ConcurrentHashMap::new));
+                  HashMap::new));
     } finally {
       readWriteLock.readLock().unlock();
     }
