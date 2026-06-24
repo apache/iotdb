@@ -39,16 +39,20 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_KEY;
 
 public abstract class PipePattern {
@@ -139,30 +143,13 @@ public abstract class PipePattern {
    */
   public static PipePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
-    final PipePattern pipePattern = parsePipePatternFromSourceParametersInternal(sourceParameters);
-    if (!pipePattern.isSingle()) {
-      final String msg =
-          String.format(
-              "Pipe: The provided pattern should be single now. Inclusion: %s, Exclusion: %s",
-              sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
-              sourceParameters.getStringByKeys(
-                  EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY));
-      LOGGER.warn(msg);
-      throw new PipeException(msg);
-    }
-    return pipePattern;
+    return parsePipePatternFromSourceParametersInternal(sourceParameters);
   }
 
   public static PipePattern parsePipePatternFromSourceParametersInternal(
       final PipeParameters sourceParameters) {
     // 1. Parse INCLUSION patterns into a list
-    List<PipePattern> inclusionPatterns =
-        parsePatternList(
-            sourceParameters,
-            EXTRACTOR_PATH_KEY,
-            SOURCE_PATH_KEY,
-            EXTRACTOR_PATTERN_KEY,
-            SOURCE_PATTERN_KEY);
+    List<PipePattern> inclusionPatterns = parseInclusionPatternList(sourceParameters);
 
     // If no inclusion patterns are specified, use default "root.**"
     if (inclusionPatterns.isEmpty()) {
@@ -192,9 +179,20 @@ public abstract class PipePattern {
               "Pipe: The provided exclusion pattern fully covers the inclusion pattern. "
                   + "This pipe pattern will match nothing. "
                   + "Inclusion: %s, Exclusion: %s",
-              sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
               sourceParameters.getStringByKeys(
-                  EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY));
+                  EXTRACTOR_PATTERN_INCLUSION_KEY,
+                  SOURCE_PATTERN_INCLUSION_KEY,
+                  EXTRACTOR_PATH_INCLUSION_KEY,
+                  SOURCE_PATH_INCLUSION_KEY,
+                  EXTRACTOR_PATH_KEY,
+                  SOURCE_PATH_KEY,
+                  EXTRACTOR_PATTERN_KEY,
+                  SOURCE_PATTERN_KEY),
+              sourceParameters.getStringByKeys(
+                  EXTRACTOR_PATH_EXCLUSION_KEY,
+                  SOURCE_PATH_EXCLUSION_KEY,
+                  EXTRACTOR_PATTERN_EXCLUSION_KEY,
+                  SOURCE_PATTERN_EXCLUSION_KEY));
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
@@ -296,20 +294,50 @@ public abstract class PipePattern {
       final String extractorPatternKey,
       final String sourcePatternKey) {
 
-    final String path = sourceParameters.getStringByKeys(extractorPathKey, sourcePathKey);
-    final String pattern = sourceParameters.getStringByKeys(extractorPatternKey, sourcePatternKey);
-
     final List<PipePattern> result = new ArrayList<>();
 
-    if (path != null) {
-      result.addAll(parseMultiplePatterns(path, IoTDBPipePattern::new));
-    }
+    addIoTDBPatternsIfPresent(result, sourceParameters, extractorPathKey, sourcePathKey);
+    addPatternParameterPatternsIfPresent(
+        result, sourceParameters, extractorPatternKey, sourcePatternKey);
 
+    return result;
+  }
+
+  private static List<PipePattern> parseInclusionPatternList(
+      final PipeParameters sourceParameters) {
+    final List<PipePattern> result = new ArrayList<>();
+
+    addPatternParameterPatternsIfPresent(
+        result, sourceParameters, EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
+    addIoTDBPatternsIfPresent(
+        result, sourceParameters, EXTRACTOR_PATTERN_INCLUSION_KEY, SOURCE_PATTERN_INCLUSION_KEY);
+    addIoTDBPatternsIfPresent(result, sourceParameters, EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
+    addIoTDBPatternsIfPresent(
+        result, sourceParameters, EXTRACTOR_PATH_INCLUSION_KEY, SOURCE_PATH_INCLUSION_KEY);
+
+    return result;
+  }
+
+  private static void addIoTDBPatternsIfPresent(
+      final List<PipePattern> result,
+      final PipeParameters sourceParameters,
+      final String extractorKey,
+      final String sourceKey) {
+    final String pattern = sourceParameters.getStringByKeys(extractorKey, sourceKey);
+    if (pattern != null) {
+      result.addAll(parseMultiplePatterns(pattern, IoTDBPipePattern::new));
+    }
+  }
+
+  private static void addPatternParameterPatternsIfPresent(
+      final List<PipePattern> result,
+      final PipeParameters sourceParameters,
+      final String extractorPatternKey,
+      final String sourcePatternKey) {
+    final String pattern = sourceParameters.getStringByKeys(extractorPatternKey, sourcePatternKey);
     if (pattern != null) {
       result.addAll(parsePatternsFromPatternParameter(pattern, sourceParameters));
     }
-
-    return result;
   }
 
   /**
