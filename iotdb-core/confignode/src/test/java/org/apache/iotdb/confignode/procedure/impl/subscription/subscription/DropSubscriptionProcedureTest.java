@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
@@ -144,6 +145,8 @@ public class DropSubscriptionProcedureTest {
         .thenReturn(consumerGroupMeta);
     Mockito.when(subscriptionInfo.deepCopyConsumerGroupMeta("test_consumer_group"))
         .thenAnswer(invocation -> consumerGroupMeta.deepCopy());
+    Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic"))
+        .thenReturn(new TopicMeta("test_topic", 1, Collections.emptyMap()));
 
     final PipeTaskInfo pipeTaskInfo = Mockito.mock(PipeTaskInfo.class);
 

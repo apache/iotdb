@@ -597,6 +597,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
     try {
       statement.execute("alter pipe a2b modify source ('password'='fake')");
+      fail();
     } catch (final SQLException e) {
       Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
     }

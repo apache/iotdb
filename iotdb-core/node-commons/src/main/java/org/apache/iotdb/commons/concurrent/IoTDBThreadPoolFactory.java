@@ -127,6 +127,23 @@ public class IoTDBThreadPoolFactory {
         poolName);
   }
 
+  public static ExecutorService newFixedThreadPoolWithIdleThreadTimeout(
+      int nThreads, long keepAliveTime, TimeUnit unit, String poolName) {
+    logger.info(NEW_FIXED_THREAD_POOL_LOGGER_FORMAT, poolName, nThreads);
+
+    WrappedThreadPoolExecutor executor =
+        new WrappedThreadPoolExecutor(
+            nThreads,
+            nThreads,
+            keepAliveTime,
+            unit,
+            new LinkedBlockingQueue<>(),
+            new IoTThreadFactory(poolName),
+            poolName);
+    executor.allowCoreThreadTimeOut(true);
+    return executor;
+  }
+
   /**
    * see {@link Executors#newSingleThreadExecutor(java.util.concurrent.ThreadFactory)}.
    *

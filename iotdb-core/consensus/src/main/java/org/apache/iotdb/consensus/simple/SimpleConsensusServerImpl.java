@@ -89,7 +89,7 @@ public class SimpleConsensusServerImpl implements IStateMachine {
   }
 
   @Override
-  public synchronized void loadSnapshot(File latestSnapshotRootDir) {
-    stateMachine.loadSnapshot(latestSnapshotRootDir);
+  public synchronized boolean loadSnapshot(File latestSnapshotRootDir) {
+    return stateMachine.loadSnapshot(latestSnapshotRootDir);
   }
 }

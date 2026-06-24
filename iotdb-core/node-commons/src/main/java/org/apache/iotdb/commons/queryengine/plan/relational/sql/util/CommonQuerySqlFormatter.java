@@ -158,7 +158,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                           elements.stream()
                               .map(CommonQuerySqlFormatter::formatExpression)
                               .collect(joining(", "))));
-    } else if (node.getFillMethod() == FillPolicy.PREVIOUS) {
+    } else if (node.getFillMethod() == FillPolicy.PREVIOUS
+        || node.getFillMethod() == FillPolicy.NEXT) {
       node.getTimeBound()
           .ifPresent(timeBound -> builder.append(" TIME_BOUND ").append(timeBound.toString()));
       node.getTimeColumnIndex()
@@ -403,14 +404,19 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
 
     node.getGroupBy()
         .ifPresent(
-            groupBy ->
+            groupBy -> {
+              if (groupBy.isAll()) {
+                append(indent, "GROUP BY ALL").append('\n');
+              } else {
                 append(
                         indent,
                         "GROUP BY "
                             + (groupBy.isDistinct() ? " DISTINCT " : "")
                             + org.apache.iotdb.commons.queryengine.plan.relational.sql.util
                                 .ExpressionFormatter.formatGroupBy(groupBy.getGroupingElements()))
-                    .append('\n'));
+                    .append('\n');
+              }
+            });
 
     node.getHaving()
         .ifPresent(having -> append(indent, "HAVING " + formatExpression(having)).append('\n'));
