@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
@@ -29,7 +30,6 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
@@ -318,8 +318,7 @@ public class Coordinator {
       boolean userQuery,
       boolean debug,
       boolean readOnlyInternalQuery,
-      BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory)
-      throws IoTDBException {
+      BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     MPPQueryContext queryContext = null;
@@ -504,40 +503,12 @@ public class Coordinator {
       long timeOut,
       boolean userQuery,
       boolean debug) {
-    return executeForTableModel(
-        statement,
-        sqlParser,
-        clientSession,
-        queryId,
-        session,
-        sql,
-        metadata,
-        timeOut,
-        userQuery,
-        debug,
-        false);
-  }
-
-  public ExecutionResult executeForTableModel(
-      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
-      SqlParser sqlParser,
-      IClientSession clientSession,
-      long queryId,
-      SessionInfo session,
-      String sql,
-      Metadata metadata,
-      long timeOut,
-      boolean userQuery,
-      boolean debug,
-      boolean readOnlyInternalQuery)
-      throws IoTDBException {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
         debug,
-        readOnlyInternalQuery,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,

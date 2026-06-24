@@ -369,6 +369,23 @@ public class SessionManager implements SessionManagerMBean {
     return currSession.get();
   }
 
+  /**
+   * Swap the ThreadLocal session and return the previous one. Used by UDF internal queries to
+   * temporarily install an internal session without removing the previous session from the session
+   * map.
+   */
+  public IClientSession exchangeCurrSession(IClientSession session) {
+    IClientSession previous = currSession.get();
+    if (session != null) {
+      currSession.set(session);
+      sessions.putIfAbsent(session, placeHolder);
+    } else {
+      currSession.remove();
+      currSessionIdleTime.remove();
+    }
+    return previous;
+  }
+
   /** get current session and update session idle time. */
   public IClientSession getCurrSessionAndUpdateIdleTime() {
     IClientSession clientSession = getCurrSession();

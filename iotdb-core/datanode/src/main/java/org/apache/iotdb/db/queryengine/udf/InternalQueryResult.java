@@ -19,25 +19,47 @@
 
 package org.apache.iotdb.db.queryengine.udf;
 
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 
-/** Internal query result holding {@link IQueryExecution} and a cleanup action. */
+/** Internal query result holding {@link IQueryExecution} and cleanup metadata. */
 public final class InternalQueryResult implements AutoCloseable {
 
   private final IQueryExecution queryExecution;
-  private final Runnable releaseAction;
+  private final IClientSession internalSession;
+  private final long statementId;
+  private final long queryId;
+  private final String sql;
 
-  public InternalQueryResult(IQueryExecution queryExecution, Runnable releaseAction) {
+  public InternalQueryResult(
+      IQueryExecution queryExecution,
+      IClientSession internalSession,
+      long statementId,
+      long queryId,
+      String sql) {
     this.queryExecution = queryExecution;
-    this.releaseAction = releaseAction;
+    this.internalSession = internalSession;
+    this.statementId = statementId;
+    this.queryId = queryId;
+    this.sql = sql;
   }
 
   public IQueryExecution getQueryExecution() {
     return queryExecution;
   }
 
+  public long getQueryId() {
+    return queryId;
+  }
+
+  public DatasetHeader getDatasetHeader() {
+    return queryExecution.getDatasetHeader();
+  }
+
   @Override
   public void close() {
-    releaseAction.run();
+    ClientRPCServiceImpl.clearUp(internalSession, statementId, queryId, () -> sql, null);
   }
 }

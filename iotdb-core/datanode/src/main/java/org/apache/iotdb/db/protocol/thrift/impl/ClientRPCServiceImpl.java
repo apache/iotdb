@@ -562,7 +562,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  private static void clearUp(
+  public static void clearUp(
       IClientSession clientSession,
       Long statementId,
       Long queryId,

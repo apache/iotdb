@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.relational;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.IoTDBLocalFactory;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
@@ -198,7 +199,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundExc
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
@@ -1490,16 +1490,10 @@ public class ColumnTransformerBuilder
                     .collect(Collectors.toList()),
                 Collections.emptyMap());
         ScalarFunctionAnalysis analysis = scalarFunction.analyze(parameters);
-        Optional<IoTDBLocal> ioTDBLocal = context.getIoTDBLocal();
-        if (ioTDBLocal.isPresent()) {
-          scalarFunction.beforeStart(parameters, ioTDBLocal.get());
-        } else {
-          scalarFunction.beforeStart(parameters);
-        }
         Type returnType =
             UDFDataTypeTransformer.transformUDFDataTypeToReadType(analysis.getOutputDataType());
         return new UserDefineScalarFunctionTransformer(
-            returnType, scalarFunction, childrenColumnTransformer, ioTDBLocal.orElse(null));
+            returnType, scalarFunction, childrenColumnTransformer, parameters, context);
       }
     }
     throw new IllegalArgumentException(
@@ -1960,7 +1954,11 @@ public class ColumnTransformerBuilder
     @SuppressWarnings("unused")
     private final Optional<MemoryReservationManager> memoryReservationManager;
 
-    private final Optional<IoTDBLocal> ioTDBLocal;
+    private final String fragmentInstanceId;
+
+    private final String outerQueryId;
+
+    @Nullable private final IoTDBLocalFactory ioTDBLocalFactory;
 
     public Context(
         SessionInfo sessionInfo,
@@ -1986,7 +1984,9 @@ public class ColumnTransformerBuilder
           typeProvider,
           metadata,
           memoryReservationManager,
-          Optional.empty());
+          null,
+          null,
+          null);
     }
 
     public Context(
@@ -2001,7 +2001,9 @@ public class ColumnTransformerBuilder
         ITableTypeProvider typeProvider,
         ITypeMetadata metadata,
         @Nullable MemoryReservationManager memoryReservationManager,
-        Optional<IoTDBLocal> ioTDBLocal) {
+        String fragmentInstanceId,
+        String outerQueryId,
+        @Nullable IoTDBLocalFactory ioTDBLocalFactory) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
       this.inputLocations = inputLocations;
@@ -2013,11 +2015,26 @@ public class ColumnTransformerBuilder
       this.typeProvider = typeProvider;
       this.metadata = metadata;
       this.memoryReservationManager = Optional.ofNullable(memoryReservationManager);
-      this.ioTDBLocal = ioTDBLocal;
+      this.fragmentInstanceId = fragmentInstanceId;
+      this.outerQueryId = outerQueryId;
+      this.ioTDBLocalFactory = ioTDBLocalFactory;
     }
 
-    public Optional<IoTDBLocal> getIoTDBLocal() {
-      return ioTDBLocal;
+    public SessionInfo getSessionInfo() {
+      return sessionInfo;
+    }
+
+    public String getFragmentInstanceId() {
+      return fragmentInstanceId;
+    }
+
+    public String getOuterQueryId() {
+      return outerQueryId;
+    }
+
+    @Nullable
+    public IoTDBLocalFactory getIoTDBLocalFactory() {
+      return ioTDBLocalFactory;
     }
 
     public Type getType(SymbolReference symbolReference) {

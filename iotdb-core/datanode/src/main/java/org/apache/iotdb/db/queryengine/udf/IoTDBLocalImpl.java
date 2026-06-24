@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.udf;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.IoTDBLocalFactory;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.protocol.session.InternalClientSession;
-import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.udf.api.IoTDBLocal;
@@ -41,74 +40,35 @@ import java.util.List;
 /** Server-side implementation of {@link IoTDBLocal}. */
 public class IoTDBLocalImpl implements IoTDBLocal {
 
+  public static final IoTDBLocalFactory FACTORY = IoTDBLocalImpl::new;
+
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLocalImpl.class);
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
   private final SessionInfo sessionInfo;
-  private final InternalClientSession internalSession;
-  private final long outerQueryStartTimeMs;
-  private final long outerQueryTimeoutMs;
+  private final String fragmentInstanceId;
+  private final QueryId outerQueryId;
   private final List<UDFResultSetImpl> openResultSets = new ArrayList<>();
-  private boolean closed;
 
-  public IoTDBLocalImpl(
-      SessionInfo sessionInfo,
-      String internalClientId,
-      long outerQueryStartTimeMs,
-      long outerQueryTimeoutMs) {
+  public IoTDBLocalImpl(SessionInfo sessionInfo, String fragmentInstanceId, String outerQueryId) {
     this.sessionInfo = sessionInfo;
-    this.outerQueryStartTimeMs = outerQueryStartTimeMs;
-    this.outerQueryTimeoutMs = outerQueryTimeoutMs;
-    this.internalSession = new InternalClientSession(internalClientId);
-    internalSession.setSqlDialect(sessionInfo.getSqlDialect());
-    sessionInfo.getDatabaseName().ifPresent(internalSession::setDatabaseName);
-    SESSION_MANAGER.supplySession(
-        internalSession,
-        sessionInfo.getUserId(),
-        sessionInfo.getUserName(),
-        sessionInfo.getZoneId(),
-        ClientVersion.V_1_0);
-  }
-
-  public static String formatInternalClientId(
-      FragmentInstanceId fragmentInstanceId, PlanNodeId planNodeId) {
-    return "udf-local-" + fragmentInstanceId + "-" + planNodeId;
-  }
-
-  public static IoTDBLocalImpl create(
-      SessionInfo sessionInfo, FragmentInstanceId fragmentInstanceId, PlanNodeId planNodeId) {
-    long outerStart = System.currentTimeMillis();
-    long outerTimeout =
-        org.apache.iotdb.db.conf.IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getQueryTimeoutThreshold();
-    String globalQueryId = fragmentInstanceId.getQueryId().getId();
-    for (IQueryExecution execution : COORDINATOR.getAllQueryExecutions()) {
-      if (globalQueryId.equals(execution.getQueryId())) {
-        outerStart = execution.getStartExecutionTime();
-        outerTimeout = execution.getTimeout();
-        break;
-      }
-    }
-    return new IoTDBLocalImpl(
-        sessionInfo,
-        formatInternalClientId(fragmentInstanceId, planNodeId),
-        outerStart,
-        outerTimeout);
+    this.fragmentInstanceId = fragmentInstanceId;
+    this.outerQueryId = QueryId.valueOf(outerQueryId);
   }
 
   @Override
   public UDFResultSet query(String sql) throws UDFException {
-    if (closed) {
-      throw new UDFException("IoTDBLocal is already closed");
-    }
     try {
+      long timeoutMs = computeRemainingTimeoutMs();
+      if (timeoutMs <= 0) {
+        throw new QueryTimeoutException(
+            "Outer query timeout exceeded before IoTDBLocal query starts");
+      }
       InternalQueryResult result =
           InternalQueryExecutor.executeInternalQuery(
-              internalSession, sessionInfo, sql, outerQueryStartTimeMs, outerQueryTimeoutMs);
+              sessionInfo, fragmentInstanceId, outerQueryId, sql, timeoutMs);
       int index = openResultSets.size();
-      UDFResultSetImpl rs = new UDFResultSetImpl(result, this, index);
+      UDFResultSetImpl rs = new UDFResultSetImpl(openResultSets, index, result);
       openResultSets.add(rs);
       return rs;
     } catch (IoTDBException e) {
@@ -116,29 +76,32 @@ public class IoTDBLocalImpl implements IoTDBLocal {
     }
   }
 
-  void markResultSetClosed(int index) {
-    if (index >= 0 && index < openResultSets.size()) {
-      openResultSets.set(index, null);
-    }
-  }
-
-  public void closeAllResultSets() {
-    for (UDFResultSetImpl rs : openResultSets) {
+  @Override
+  public void close() {
+    for (int i = 0; i < openResultSets.size(); i++) {
+      UDFResultSetImpl rs = openResultSets.get(i);
       if (rs != null) {
-        rs.close();
+        try {
+          rs.close();
+        } catch (UDFException e) {
+          LOGGER.warn("Failed to close UDF result set at index {}", i, e);
+        }
       }
     }
     openResultSets.clear();
   }
 
-  @Override
-  public void close() {
-    if (closed) {
-      return;
+  private long computeRemainingTimeoutMs() {
+    long outerStart = System.currentTimeMillis();
+    long outerTimeout = IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
+    for (IQueryExecution execution : COORDINATOR.getAllQueryExecutions()) {
+      if (outerQueryId.getId().equals(execution.getQueryId())) {
+        outerStart = execution.getStartExecutionTime();
+        outerTimeout = execution.getTimeout();
+        break;
+      }
     }
-    closed = true;
-    closeAllResultSets();
-    SESSION_MANAGER.closeSession(internalSession, COORDINATOR::cleanupQueryExecution);
+    return outerTimeout - (System.currentTimeMillis() - outerStart);
   }
 
   @Override

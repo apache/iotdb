@@ -20,9 +20,13 @@
 package org.apache.iotdb.calc.transformation.dag.column.udf;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.RecordIterator;
+import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.IoTDBLocalFactory;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.multi.MultiColumnTransformer;
 import org.apache.iotdb.udf.api.IoTDBLocal;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 
@@ -43,12 +47,36 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
       Type returnType,
       ScalarFunction scalarFunction,
       List<ColumnTransformer> childrenTransformers,
-      IoTDBLocal ioTDBLocal) {
+      FunctionArguments parameters,
+      ColumnTransformerBuilder.Context context) {
     super(returnType, childrenTransformers);
     this.scalarFunction = scalarFunction;
-    this.ioTDBLocal = ioTDBLocal;
+    this.ioTDBLocal = createIoTDBLocal(context);
     this.inputTypes =
         childrenTransformers.stream().map(ColumnTransformer::getType).collect(Collectors.toList());
+    try {
+      if (ioTDBLocal != null) {
+        scalarFunction.beforeStart(parameters, ioTDBLocal);
+      } else {
+        scalarFunction.beforeStart(parameters);
+      }
+    } catch (UDFException e) {
+      throw new RuntimeException(
+          "Error occurs when starting user-defined scalar function "
+              + scalarFunction.getClass().getName(),
+          e);
+    }
+  }
+
+  private static IoTDBLocal createIoTDBLocal(ColumnTransformerBuilder.Context context) {
+    IoTDBLocalFactory factory = context.getIoTDBLocalFactory();
+    if (factory == null
+        || context.getFragmentInstanceId() == null
+        || context.getOuterQueryId() == null) {
+      return null;
+    }
+    return factory.create(
+        context.getSessionInfo(), context.getFragmentInstanceId(), context.getOuterQueryId());
   }
 
   @Override
@@ -109,8 +137,8 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
   public void close() {
     super.close();
     if (ioTDBLocal != null) {
-      scalarFunction.beforeDestroy(ioTDBLocal);
       ioTDBLocal.close();
+      scalarFunction.beforeDestroy(ioTDBLocal);
     } else {
       scalarFunction.beforeDestroy();
     }

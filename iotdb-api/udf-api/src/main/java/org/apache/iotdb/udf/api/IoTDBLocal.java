@@ -65,9 +65,6 @@ public interface IoTDBLocal {
   /** Log at ERROR level with exception stack. */
   void error(String msg, Throwable t);
 
-  /**
-   * Release internal session and other resources. Called by the framework after beforeDestroy
-   * method.
-   */
+  /** Close internal session. Called by the framework after beforeDestroy method. */
   void close();
 }

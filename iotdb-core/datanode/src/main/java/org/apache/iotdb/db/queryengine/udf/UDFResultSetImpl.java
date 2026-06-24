@@ -23,7 +23,6 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Re
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.udf.api.UDFResultSet;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -41,19 +40,20 @@ import java.util.stream.Collectors;
 /** Server-side implementation of {@link UDFResultSet}. */
 public class UDFResultSetImpl implements UDFResultSet {
 
-  private final InternalQueryResult queryResult;
-  private final IoTDBLocalImpl owner;
+  private final List<UDFResultSetImpl> openResultSets;
   private final int index;
+  private final InternalQueryResult queryResult;
+  private final List<Type> columnTypes;
 
   private Iterator<Record> rowIterator;
-  private final List<Type> columnTypes;
   private boolean closed;
 
-  public UDFResultSetImpl(InternalQueryResult queryResult, IoTDBLocalImpl owner, int index) {
-    this.queryResult = queryResult;
-    this.owner = owner;
+  public UDFResultSetImpl(
+      List<UDFResultSetImpl> openResultSets, int index, InternalQueryResult queryResult) {
+    this.openResultSets = openResultSets;
     this.index = index;
-    this.columnTypes = buildColumnTypes(queryResult.getQueryExecution());
+    this.queryResult = queryResult;
+    this.columnTypes = buildColumnTypes(queryResult.getDatasetHeader().getColumnHeaders());
   }
 
   @Override
@@ -68,7 +68,7 @@ public class UDFResultSetImpl implements UDFResultSet {
       try {
         batch = queryResult.getQueryExecution().getBatchResult();
       } catch (IoTDBException e) {
-        throw new UDFException(e.getMessage());
+        throw new UDFException(e.getMessage(), e);
       }
       if (!batch.isPresent()) {
         return false;
@@ -85,9 +85,7 @@ public class UDFResultSetImpl implements UDFResultSet {
 
   @Override
   public Record next() throws UDFException {
-    ensureOpen();
-
-    if (rowIterator == null || !rowIterator.hasNext()) {
+    if (!hasNext()) {
       throw new NoSuchElementException();
     }
     return rowIterator.next();
@@ -99,12 +97,12 @@ public class UDFResultSetImpl implements UDFResultSet {
       return;
     }
     closed = true;
+    openResultSets.set(index, null);
     try {
       queryResult.close();
     } catch (RuntimeException e) {
       throw new UDFException("Failed to close internal query result", e);
     }
-    owner.markResultSetClosed(index);
   }
 
   private void ensureOpen() throws UDFException {
@@ -113,8 +111,8 @@ public class UDFResultSetImpl implements UDFResultSet {
     }
   }
 
-  private static List<Type> buildColumnTypes(IQueryExecution queryExecution) {
-    return queryExecution.getDatasetHeader().getColumnHeaders().stream()
+  private static List<Type> buildColumnTypes(List<ColumnHeader> columnHeaders) {
+    return columnHeaders.stream()
         .map(ColumnHeader::getColumnType)
         .map(UDFDataTypeTransformer::transformToUDFDataType)
         .map(UDFDataTypeTransformer::transformUDFDataTypeToReadType)

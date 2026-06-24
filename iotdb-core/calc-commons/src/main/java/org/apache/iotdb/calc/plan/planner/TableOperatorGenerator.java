@@ -314,30 +314,10 @@ public abstract class TableOperatorGenerator<
       Map<Symbol, List<InputLocation>> inputLocations,
       PlanNodeId planNodeId,
       C context) {
-    return constructFilterAndProjectOperator(
-        predicate,
-        inputOperator,
-        projectExpressions,
-        inputDataTypes,
-        inputLocations,
-        planNodeId,
-        context,
-        getIoTDBLocal(context, planNodeId));
-  }
 
-  protected Optional<IoTDBLocal> getIoTDBLocal(C context, PlanNodeId planNodeId) {
-    return Optional.empty();
-  }
-
-  protected Operator constructFilterAndProjectOperator(
-      Optional<Expression> predicate,
-      Operator inputOperator,
-      Expression[] projectExpressions,
-      List<TSDataType> inputDataTypes,
-      Map<Symbol, List<InputLocation>> inputLocations,
-      PlanNodeId planNodeId,
-      C context,
-      Optional<IoTDBLocal> ioTDBLocal) {
+    String fragmentInstanceId = getFragmentInstanceId(context);
+    String outerQueryId = getQueryId(context);
+    IoTDBLocalFactory ioTDBLocalFactory = getIoTDBLocalFactory(context);
 
     final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
 
@@ -367,7 +347,9 @@ public abstract class TableOperatorGenerator<
                           context.getTableTypeProvider(),
                           metadata,
                           context.getMemoryReservationManager(),
-                          ioTDBLocal);
+                          fragmentInstanceId,
+                          outerQueryId,
+                          ioTDBLocalFactory);
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -396,7 +378,9 @@ public abstract class TableOperatorGenerator<
             context.getTableTypeProvider(),
             metadata,
             context.getMemoryReservationManager(),
-            ioTDBLocal);
+            fragmentInstanceId,
+            outerQueryId,
+            ioTDBLocalFactory);
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(
@@ -418,6 +402,18 @@ public abstract class TableOperatorGenerator<
         projectOutputTransformerList,
         false,
         predicate.isPresent());
+  }
+
+  protected String getFragmentInstanceId(C context) {
+    return null;
+  }
+
+  protected String getQueryId(C context) {
+    return null;
+  }
+
+  protected IoTDBLocalFactory getIoTDBLocalFactory(C context) {
+    return null;
   }
 
   @Override
@@ -2494,4 +2490,11 @@ public abstract class TableOperatorGenerator<
   }
 
   protected abstract SessionInfo getSessionInfo(C context);
+
+  /** Factory for creating {@link IoTDBLocal} inside UDF column transformers. */
+  @FunctionalInterface
+  public interface IoTDBLocalFactory {
+
+    IoTDBLocal create(SessionInfo sessionInfo, String fragmentInstanceId, String queryId);
+  }
 }

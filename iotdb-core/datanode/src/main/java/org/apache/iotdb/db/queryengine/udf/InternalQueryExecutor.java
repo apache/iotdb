@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.queryengine.udf;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -45,82 +47,79 @@ public final class InternalQueryExecutor {
 
   private InternalQueryExecutor() {}
 
-  public static long computeRemainingTimeoutMs(
-      long outerQueryStartTimeMs, long outerQueryTimeoutMs) {
-    return outerQueryTimeoutMs - (System.currentTimeMillis() - outerQueryStartTimeMs);
-  }
-
   public static InternalQueryResult executeInternalQuery(
-      IClientSession internalSession,
       SessionInfo sessionInfo,
+      String fragmentInstanceId,
+      QueryId outerQueryId,
       String sql,
-      long outerQueryStartTimeMs,
-      long outerQueryTimeoutMs)
+      long timeoutMs)
       throws IoTDBException {
 
-    long timeoutMs = computeRemainingTimeoutMs(outerQueryStartTimeMs, outerQueryTimeoutMs);
-    if (timeoutMs <= 0) {
-      throw new QueryTimeoutException(
-          "Outer query timeout exceeded before UDF internal query starts");
-    }
+    IClientSession previousSession = SESSION_MANAGER.getCurrSession();
 
-    Statement parsedStatement = parseTableStatement(internalSession, sessionInfo, sql);
+    InternalClientSession internalSession =
+        new InternalClientSession(formatInternalClientId(fragmentInstanceId, outerQueryId));
+    internalSession.setSqlDialect(sessionInfo.getSqlDialect());
+    sessionInfo.getDatabaseName().ifPresent(internalSession::setDatabaseName);
 
-    long statementId = SESSION_MANAGER.requestStatementId(internalSession);
-    long queryId = SESSION_MANAGER.requestQueryId(internalSession, statementId);
+    SESSION_MANAGER.supplySession(
+        internalSession,
+        sessionInfo.getUserId(),
+        sessionInfo.getUserName(),
+        sessionInfo.getZoneId(),
+        sessionInfo.getVersion());
 
-    ExecutionResult result =
-        COORDINATOR.executeForTableModel(
-            parsedStatement,
-            RELATION_SQL_PARSER,
-            internalSession,
-            queryId,
-            sessionInfo,
-            sql,
-            METADATA,
-            timeoutMs,
-            false,
-            false,
-            true);
-
-    if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      COORDINATOR.cleanupQueryExecution(queryId, () -> sql, null);
-      internalSession.removeQueryId(statementId, queryId);
-      throw new IoTDBException(result.status.message, result.status.code);
-    }
-
-    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-    if (queryExecution == null) {
-      COORDINATOR.cleanupQueryExecution(queryId, () -> sql, null);
-      internalSession.removeQueryId(statementId, queryId);
-      throw new IoTDBException(
-          "Internal query execution not found", TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-    }
-
-    return new InternalQueryResult(
-        queryExecution,
-        () -> {
-          COORDINATOR.cleanupQueryExecution(queryId, () -> sql, null);
-          internalSession.removeQueryId(statementId, queryId);
-        });
-  }
-
-  static void validateReadOnlyQuery(IQueryExecution execution) throws IoTDBException {
-    if (execution.getQueryType() != QueryType.READ) {
-      execution.stopAndCleanup(null);
-      throw new SemanticException("Only query is allowed when used IoTDBLocal in UDF");
-    }
-  }
-
-  private static Statement parseTableStatement(
-      IClientSession internalSession, SessionInfo sessionInfo, String sql) throws IoTDBException {
+    long statementId = -1;
+    long queryId = -1;
     try {
-      Statement statement =
+      SESSION_MANAGER.exchangeCurrSession(internalSession);
+
+      statementId = SESSION_MANAGER.requestStatementId(internalSession);
+      queryId = SESSION_MANAGER.requestQueryId(internalSession, statementId);
+
+      Statement parsedStatement =
           RELATION_SQL_PARSER.createStatement(sql, sessionInfo.getZoneId(), internalSession);
-      return statement;
+
+      ExecutionResult result =
+          COORDINATOR.executeForTableModel(
+              parsedStatement,
+              RELATION_SQL_PARSER,
+              internalSession,
+              queryId,
+              sessionInfo,
+              sql,
+              METADATA,
+              timeoutMs,
+              false,
+              false);
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBException(result.status.message, result.status.code);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+      if (queryExecution == null) {
+        throw new IoTDBException(
+            "Internal query execution not found",
+            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      }
+
+      return new InternalQueryResult(queryExecution, internalSession, statementId, queryId, sql);
     } catch (Exception e) {
-      throw new IoTDBException(e.getMessage(), TSStatusCode.SQL_PARSE_ERROR.getStatusCode());
+      ClientRPCServiceImpl.clearUp(internalSession, statementId, queryId, () -> sql, e);
+      throw new IoTDBException(e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    } finally {
+      SESSION_MANAGER.exchangeCurrSession(previousSession);
+    }
+  }
+
+  static String formatInternalClientId(String fragmentInstanceId, QueryId outerQueryId) {
+    return String.format("udf-local-%s-%s", fragmentInstanceId, outerQueryId);
+  }
+
+  public static void validateReadOnlyQuery(IQueryExecution execution) {
+    if (execution.getQueryType() != QueryType.READ) {
+      throw new SemanticException("Only query is supported for IoTDBLocal query interface");
     }
   }
 }
