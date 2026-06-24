@@ -150,78 +150,83 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   @SuppressWarnings({"squid:S3776", "squid:S135"})
   private boolean calculateFromRawData() {
-    // if window is not initialized, we should init window status and reset aggregators
-    if (!windowManager.isCurWindowInit() && !skipPreviousWindowAndInitCurWindow()) {
-      return false;
-    }
+    long startTime = System.nanoTime();
+    try {
+      // if window is not initialized, we should init window status and reset aggregators
+      if (!windowManager.isCurWindowInit() && !skipPreviousWindowAndInitCurWindow()) {
+        return false;
+      }
 
-    // If current window has been initialized, we should judge whether inputTsBlock is empty
-    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
-      return false;
-    }
+      // If current window has been initialized, we should judge whether inputTsBlock is empty
+      if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+        return false;
+      }
 
-    if (windowManager.satisfiedCurWindow(inputTsBlock)) {
+      if (windowManager.satisfiedCurWindow(inputTsBlock)) {
 
-      // Get the indexes in tsBlock which needs to be processed by aggregator, and the last row
-      // needed to be processed.
-      int tsBlockSize = inputTsBlock.getPositionCount();
-      IWindow curWindow = windowManager.getCurWindow();
+        // Get the indexes in tsBlock which needs to be processed by aggregator, and the last row
+        // needed to be processed.
+        int tsBlockSize = inputTsBlock.getPositionCount();
+        IWindow curWindow = windowManager.getCurWindow();
 
-      Column[] controlAndTimeColumn = new Column[2];
-      controlAndTimeColumn[0] = curWindow.getControlColumn(inputTsBlock);
-      controlAndTimeColumn[1] = inputTsBlock.getTimeColumn();
+        Column[] controlAndTimeColumn = new Column[2];
+        controlAndTimeColumn[0] = curWindow.getControlColumn(inputTsBlock);
+        controlAndTimeColumn[1] = inputTsBlock.getTimeColumn();
 
-      BitMap needProcess = new BitMap(tsBlockSize);
-      int lastIndexToProcess = -1;
-      boolean hasSkip = false;
+        BitMap needProcess = new BitMap(tsBlockSize);
+        int lastIndexToProcess = -1;
+        boolean hasSkip = false;
 
-      for (int i = 0; i < tsBlockSize; i++) {
-        if (windowManager.isIgnoringNull() && controlAndTimeColumn[0].isNull(i)) {
+        for (int i = 0; i < tsBlockSize; i++) {
+          if (windowManager.isIgnoringNull() && controlAndTimeColumn[0].isNull(i)) {
+            lastIndexToProcess = i;
+            hasSkip = true;
+            continue;
+          }
+          if (!curWindow.satisfy(controlAndTimeColumn[0], i)) {
+            break;
+          }
+          needProcess.mark(i);
+          curWindow.mergeOnePoint(controlAndTimeColumn, i);
           lastIndexToProcess = i;
-          hasSkip = true;
-          continue;
-        }
-        if (!curWindow.satisfy(controlAndTimeColumn[0], i)) {
-          break;
-        }
-        needProcess.mark(i);
-        curWindow.mergeOnePoint(controlAndTimeColumn, i);
-        lastIndexToProcess = i;
-      }
-
-      // if no row needs to skip, just send a null parameter.
-      if (!hasSkip) {
-        needProcess = null;
-      }
-
-      TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
-      for (TreeAggregator aggregator : aggregators) {
-        // Current agg method has been calculated
-        if (aggregator.hasFinalResult()) {
-          continue;
         }
 
-        aggregator.processTsBlock(inputRegion, needProcess);
+        // if no row needs to skip, just send a null parameter.
+        if (!hasSkip) {
+          needProcess = null;
+        }
+
+        TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
+        for (TreeAggregator aggregator : aggregators) {
+          // Current agg method has been calculated
+          if (aggregator.hasFinalResult()) {
+            continue;
+          }
+
+          aggregator.processTsBlock(inputRegion, needProcess);
+        }
+        int lastReadRowIndex = lastIndexToProcess + 1;
+        // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in
+        // aggregators.
+        if (lastReadRowIndex != 0) {
+          hasCachedDataInAggregator = true;
+        }
+        if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+          inputTsBlock = null;
+          // For the last index of TsBlock, if we can know the aggregation calculation is over
+          // we can directly updateResultTsBlock and return true
+          return isAllAggregatorsHasFinalResult(aggregators);
+        } else {
+          inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
+          return true;
+        }
       }
-      int lastReadRowIndex = lastIndexToProcess + 1;
-      // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in
-      // aggregators.
-      if (lastReadRowIndex != 0) {
-        hasCachedDataInAggregator = true;
-      }
-      if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
-        inputTsBlock = null;
-        // For the last index of TsBlock, if we can know the aggregation calculation is over
-        // we can directly updateResultTsBlock and return true
-        return isAllAggregatorsHasFinalResult(aggregators);
-      } else {
-        inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
-        return true;
-      }
+
+      boolean isTsBlockOutOfBound = windowManager.isTsBlockOutOfBound(inputTsBlock);
+      return isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound;
+    } finally {
+      operatorContext.recordAggregationOperatorFromRawDataCost(System.nanoTime() - startTime);
     }
-
-    boolean isTsBlockOutOfBound = windowManager.isTsBlockOutOfBound(inputTsBlock);
-    return isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound;
   }
 
   @Override

@@ -140,8 +140,13 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
       operatorContext.recordSpecifiedInfo(MAX_GROUP_NUMBER, Long.toString(groupCount));
       maxGroupNumber = groupCount;
     }
-    for (GroupedAggregator groupedAggregator : groupedAggregators) {
-      groupedAggregator.processBlock(groupCount, groupByIdBlock, block);
+    long startTime = System.nanoTime();
+    try {
+      for (GroupedAggregator groupedAggregator : groupedAggregators) {
+        groupedAggregator.processBlock(groupCount, groupByIdBlock, block);
+      }
+    } finally {
+      operatorContext.recordAggregationOperatorFromRawDataCost(System.nanoTime() - startTime);
     }
   }
 
