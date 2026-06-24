@@ -154,19 +154,24 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
 
   private void calculateNextAggregationResult() {
     // Consume current input tsBlocks
-    for (TreeAggregator aggregator : aggregators) {
-      aggregator.processTsBlocks(inputTsBlocks);
-    }
-
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      inputTsBlocks[i] = inputTsBlocks[i].skipFirst();
-      if (inputTsBlocks[i].isEmpty()) {
-        inputTsBlocks[i] = null;
+    long startTime = System.nanoTime();
+    try {
+      for (TreeAggregator aggregator : aggregators) {
+        aggregator.processTsBlocks(inputTsBlocks);
       }
-    }
 
-    // Update result using aggregators
-    updateResultTsBlock();
+      for (int i = 0; i < inputOperatorsCount; i++) {
+        inputTsBlocks[i] = inputTsBlocks[i].skipFirst();
+        if (inputTsBlocks[i].isEmpty()) {
+          inputTsBlocks[i] = null;
+        }
+      }
+
+      // Update result using aggregators
+      updateResultTsBlock();
+    } finally {
+      operatorContext.recordAggregationOperatorFromRawDataCost(System.nanoTime() - startTime);
+    }
   }
 
   private void updateResultTsBlock() {

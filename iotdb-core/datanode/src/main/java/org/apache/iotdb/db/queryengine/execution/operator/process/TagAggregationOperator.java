@@ -123,12 +123,17 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   }
 
   private void aggregate(List<TreeAggregator> aggregators, TsBlock[] rowBlocks) {
-    for (TreeAggregator aggregator : aggregators) {
-      if (aggregator == null) {
-        continue;
+    long startTime = System.nanoTime();
+    try {
+      for (TreeAggregator aggregator : aggregators) {
+        if (aggregator == null) {
+          continue;
+        }
+        aggregator.reset();
+        aggregator.processTsBlocks(rowBlocks);
       }
-      aggregator.reset();
-      aggregator.processTsBlocks(rowBlocks);
+    } finally {
+      operatorContext.recordAggregationOperatorFromRawDataCost(System.nanoTime() - startTime);
     }
   }
 

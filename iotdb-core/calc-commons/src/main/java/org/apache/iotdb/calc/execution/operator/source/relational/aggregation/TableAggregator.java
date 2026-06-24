@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
-import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 
@@ -36,12 +35,8 @@ import java.util.OptionalInt;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
 
 public class TableAggregator {
-
-  public static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
-      QueryExecutionMetricSet.getInstance();
 
   private final TableAccumulator accumulator;
   private final AggregationNode.Step step;
@@ -70,34 +65,28 @@ public class TableAggregator {
   }
 
   public void processBlock(TsBlock block) {
-    long startTime = System.nanoTime();
-    try {
-      Column[] arguments = block.getColumns(inputChannels);
+    Column[] arguments = block.getColumns(inputChannels);
 
-      // process count(*)
-      if (arguments.length == 0) {
-        arguments =
-            new Column[] {
-              new RunLengthEncodedColumn(
-                  CommonOperatorUtils.TIME_COLUMN_TEMPLATE, block.getPositionCount())
-            };
+    // process count(*)
+    if (arguments.length == 0) {
+      arguments =
+          new Column[] {
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, block.getPositionCount())
+          };
+    }
+
+    if (step.isInputRaw()) {
+      // Use select-all AggregationMask here because filter of Agg-Function is not supported now
+      AggregationMask mask = AggregationMask.createSelectAll(block.getPositionCount());
+
+      if (maskChannel.isPresent()) {
+        mask.applyMaskBlock(block.getColumn(maskChannel.getAsInt()));
       }
 
-      if (step.isInputRaw()) {
-        // Use select-all AggregationMask here because filter of Agg-Function is not supported now
-        AggregationMask mask = AggregationMask.createSelectAll(block.getPositionCount());
-
-        if (maskChannel.isPresent()) {
-          mask.applyMaskBlock(block.getColumn(maskChannel.getAsInt()));
-        }
-
-        accumulator.addInput(arguments, mask);
-      } else {
-        accumulator.addIntermediate(arguments[0]);
-      }
-    } finally {
-      QUERY_EXECUTION_METRICS.recordExecutionCost(
-          AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
+      accumulator.addInput(arguments, mask);
+    } else {
+      accumulator.addIntermediate(arguments[0]);
     }
   }
 

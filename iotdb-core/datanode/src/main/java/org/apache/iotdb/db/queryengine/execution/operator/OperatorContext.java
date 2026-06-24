@@ -72,6 +72,33 @@ public class OperatorContext extends CommonOperatorContext {
   }
 
   @Override
+  public void recordScanAggregationFromRawDataCost(long costTimeInNanos) {
+    if (driverContext != null && driverContext.getFragmentInstanceContext() != null) {
+      driverContext
+          .getFragmentInstanceContext()
+          .recordScanAggregationFromRawDataCost(costTimeInNanos);
+    }
+  }
+
+  @Override
+  public void recordScanAggregationFromStatisticsCost(long costTimeInNanos) {
+    if (driverContext != null && driverContext.getFragmentInstanceContext() != null) {
+      driverContext
+          .getFragmentInstanceContext()
+          .recordScanAggregationFromStatisticsCost(costTimeInNanos);
+    }
+  }
+
+  @Override
+  public void recordAggregationOperatorFromRawDataCost(long costTimeInNanos) {
+    if (driverContext != null && driverContext.getFragmentInstanceContext() != null) {
+      driverContext
+          .getFragmentInstanceContext()
+          .recordAggregationOperatorFromRawDataCost(costTimeInNanos);
+    }
+  }
+
+  @Override
   public MemoryReservationManager getMemoryReservationContext() {
     return getInstanceContext().getMemoryReservationContext();
   }

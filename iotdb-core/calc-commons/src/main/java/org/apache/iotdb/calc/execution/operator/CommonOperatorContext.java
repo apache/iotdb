@@ -103,6 +103,21 @@ public abstract class CommonOperatorContext implements Accountable {
     this.totalExecutionTimeInNanos += executionTimeInNanos;
   }
 
+  public void recordScanAggregationFromRawDataCost(long costTimeInNanos) {
+    // calc-commons operators can run in tests or standalone contexts that are not backed by a
+    // DataNode FragmentInstanceContext. DataNode OperatorContext overrides this to forward costs.
+  }
+
+  public void recordScanAggregationFromStatisticsCost(long costTimeInNanos) {
+    // calc-commons operators can run in tests or standalone contexts that are not backed by a
+    // DataNode FragmentInstanceContext. DataNode OperatorContext overrides this to forward costs.
+  }
+
+  public void recordAggregationOperatorFromRawDataCost(long costTimeInNanos) {
+    // calc-commons operators can run in tests or standalone contexts that are not backed by a
+    // DataNode FragmentInstanceContext. DataNode OperatorContext overrides this to forward costs.
+  }
+
   public void recordNextCalled() {
     this.nextCalledCount++;
   }
