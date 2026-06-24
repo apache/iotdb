@@ -172,6 +172,7 @@ public class IoTConsensusServerImpl {
   public IoTConsensusServerImpl(
       String storageDir,
       List<String> recvSnapshotDirs,
+      DirectoryStrategyType recvFolderStrategyType,
       Peer thisNode,
       TreeSet<Peer> configuration,
       IStateMachine stateMachine,
@@ -191,9 +192,7 @@ public class IoTConsensusServerImpl {
       snapshotDirs.add(storageDir);
     }
 
-    this.recvFolderManager =
-        new FolderManager(
-            snapshotDirs, DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY);
+    this.recvFolderManager = new FolderManager(snapshotDirs, recvFolderStrategyType);
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
     this.cacheQueueMap = new ConcurrentHashMap<>();

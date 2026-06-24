@@ -20,9 +20,18 @@
 package org.apache.iotdb.commons.utils;
 
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 public class JVMCommonUtilsTest {
+
+  @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Test
   public void getJdkVersionTest() {
@@ -38,5 +47,23 @@ public class JVMCommonUtilsTest {
     } catch (Exception e) {
       Assert.fail();
     }
+  }
+
+  @Test
+  public void getOccupiedSpaceMissingFolderReturnsZero() throws IOException {
+    File missing = new File(tempFolder.getRoot(), "does-not-exist");
+    Assert.assertFalse(missing.exists());
+    // A non-existent folder must be treated as empty rather than throwing NoSuchFileException.
+    Assert.assertEquals(0L, JVMCommonUtils.getOccupiedSpace(missing.getAbsolutePath()));
+  }
+
+  @Test
+  public void getOccupiedSpaceSumsFileSizes() throws IOException {
+    File dir = tempFolder.newFolder("data");
+    byte[] payload = "hello-iotdb".getBytes(StandardCharsets.UTF_8);
+    Files.write(new File(dir, "a.txt").toPath(), payload);
+    Files.write(new File(dir, "b.txt").toPath(), payload);
+    Assert.assertEquals(
+        2L * payload.length, JVMCommonUtils.getOccupiedSpace(dir.getAbsolutePath()));
   }
 }

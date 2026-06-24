@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.request.IConsensusRequest;
@@ -97,6 +98,7 @@ public class IoTConsensus implements IConsensus {
   private final int thisNodeId;
   private final File storageDir;
   private final List<String> recvSnapshotDirs;
+  private final DirectoryStrategyType recvFolderStrategyType;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, IoTConsensusServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
@@ -127,6 +129,7 @@ public class IoTConsensus implements IConsensus {
     this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
     this.recvSnapshotDirs = config.getRecvSnapshotDirs();
+    this.recvFolderStrategyType = config.getDirectoryStrategyType();
     this.config = config.getIotConsensusConfig();
     this.registry = registry;
     this.service = new IoTConsensusRPCService(thisNode, config.getIotConsensusConfig());
@@ -195,6 +198,7 @@ public class IoTConsensus implements IConsensus {
               new IoTConsensusServerImpl(
                   path.toString(),
                   recvSnapshotDirs,
+                  recvFolderStrategyType,
                   new Peer(consensusGroupId, thisNodeId, thisNode),
                   new TreeSet<>(),
                   registry.apply(consensusGroupId),
@@ -309,6 +313,7 @@ public class IoTConsensus implements IConsensus {
                         new IoTConsensusServerImpl(
                             path,
                             recvSnapshotDirs,
+                            recvFolderStrategyType,
                             new Peer(groupId, thisNodeId, thisNode),
                             new TreeSet<>(peers),
                             registry.apply(groupId),

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
@@ -141,6 +142,8 @@ public class DataRegionConsensusImpl {
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
           .setStorageDir(CONF.getDataRegionConsensusDir())
           .setRecvSnapshotDirs(Arrays.asList(CONF.getLocalDataDirs()))
+          .setDirectoryStrategyType(
+              DirectoryStrategyType.fromClassName(CONF.getMultiDirStrategyClassName()))
           .setConsensusGroupType(TConsensusGroupType.DataRegion)
           .setIoTConsensusConfig(
               IoTConsensusConfig.newBuilder()

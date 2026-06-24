@@ -143,4 +143,10 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("query_cost_stat_window", String.valueOf(queryCostStatWindow));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setDnDataDirs(String dnDataDirs) {
+    setProperty("dn_data_dirs", dnDataDirs);
+    return this;
+  }
 }

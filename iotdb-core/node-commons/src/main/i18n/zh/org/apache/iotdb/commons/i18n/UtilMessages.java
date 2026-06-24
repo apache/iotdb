@@ -117,6 +117,8 @@ public final class UtilMessages {
       "磁盘空间不足，系统切换为只读模式。";
   public static final String CANNOT_CALCULATE_OCCUPIED_SPACE =
       "无法计算文件夹 {} 的已占用空间";
+  public static final String UNRECOGNIZED_MULTI_DIR_STRATEGY =
+      "无法识别的多目录策略 '{}'，回退为 {}。";
 
   // ======================== NodeUrlUtils ========================
 
