@@ -17,51 +17,88 @@
   specific language governing permissions and limitations
   under the License.
   -->
+<!--
+  The CMake build installs the SDK into ${cmake.install.prefix} = target/install.
+  Package layout:
+  iotdb-session-cpp-<version>-<classifier>.zip ->
+  iotdb-session-cpp-<version>-<classifier>/{include,lib,cmake,pkgconfig,examples,...}.
+-->
 <assembly>
-    <id>cpp-${os.classifier}</id>
+    <id>${client.cpp.package.classifier}</id>
     <formats>
         <format>zip</format>
         <format>dir</format>
     </formats>
-    <includeBaseDirectory>false</includeBaseDirectory>
+    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>${client.cpp.package.name}</baseDirectory>
     <fileSets>
         <fileSet>
-            <directory>${project.build.directory}/build/main/generated-sources-cpp</directory>
+            <directory>${project.basedir}/../..</directory>
             <includes>
-                <include>**/*.h</include>
+                <include>LICENSE</include>
+                <include>NOTICE</include>
             </includes>
-            <outputDirectory>include</outputDirectory>
+            <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>${project.build.directory}/thrift/include</directory>
+            <directory>${project.basedir}</directory>
+            <includes>
+                <include>README.md</include>
+                <include>README_zh.md</include>
+            </includes>
+            <outputDirectory>${file.separator}</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/package-metadata</directory>
+            <includes>
+                <include>third_party/DEPENDENCIES.md</include>
+            </includes>
+            <outputDirectory>${file.separator}</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/install</directory>
+            <includes>
+                <include>VERSION</include>
+                <include>BUILD-INFO.txt</include>
+            </includes>
+            <outputDirectory>${file.separator}</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/install/include</directory>
             <includes>
                 <include>**</include>
             </includes>
             <outputDirectory>include</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>${project.build.directory}/thrift/lib</directory>
+            <directory>${project.build.directory}/install/lib</directory>
             <includes>
                 <include>**</include>
             </includes>
             <outputDirectory>lib</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>${project.build.directory}/build/main</directory>
+            <directory>${project.build.directory}/install/cmake</directory>
             <includes>
-                <include>*.so</include>
-                <include>*.dylib</include>
-                <include>**/*.dll</include>
-                <include>**/*.lib</include>
+                <include>**</include>
             </includes>
-            <outputDirectory>lib</outputDirectory>
+            <outputDirectory>cmake</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>${project.basedir}/../compile-tools/thrift/target/build/lib/Release</directory>
+            <directory>${project.build.directory}/install/pkgconfig</directory>
             <includes>
-                <include>**/*.lib</include>
+                <include>**</include>
             </includes>
-            <outputDirectory>lib</outputDirectory>
+            <outputDirectory>pkgconfig</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/examples</directory>
+            <includes>
+                <include>CMakeLists.txt</include>
+                <include>*.c</include>
+                <include>*.cpp</include>
+            </includes>
+            <outputDirectory>examples</outputDirectory>
         </fileSet>
     </fileSets>
 </assembly>

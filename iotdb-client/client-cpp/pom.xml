@@ -30,15 +30,38 @@
     <packaging>pom</packaging>
     <name>IoTDB: Client: Client for CPP</name>
     <description>C++ client</description>
-    <!-- TODO: The tests don't run, if distribution has not been built locally and fails without reasoning -->
+    <!--
+        The C++ client build is now driven entirely by the top-level
+        CMakeLists.txt in this directory. Maven only:
+          1. Runs cmake configure + build (cmake-maven-plugin)
+          2. Optionally starts/stops an IoTDB server (process-exec-maven-plugin)
+          3. Packages the produced install tree (maven-assembly-plugin)
+
+        Everything else - thrift download, code generation, Boost/m4/flex/bison
+        bootstrap, OpenSSL discovery - lives in CMake modules under cmake/.
+    -->
     <properties>
         <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
         <cmake.build.type>Release</cmake.build.type>
-        <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
-        <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
+        <cmake.source.dir>${project.basedir}</cmake.source.dir>
+        <cmake.project.dir>${project.build.directory}/build</cmake.project.dir>
+        <cmake.install.prefix>${project.build.directory}/install</cmake.install.prefix>
+        <iotdb.deps.dir>${project.basedir}/third-party</iotdb.deps.dir>
+        <iotdb.offline>OFF</iotdb.offline>
+        <with.ssl>OFF</with.ssl>
+        <iotdb.cxx11.abi/>
+        <!-- Switched to OFF by the .skipTests profile below. -->
+        <build.tests>ON</build.tests>
         <maven.test.skip>${ctest.skip.tests}</maven.test.skip>
-        <with.ssl>false</with.ssl>
+        <!-- Optional convenience: when a user still passes -Dboost.include.dir=...
+             (legacy CLI from the old build), feed it to CMake as BOOST_INCLUDEDIR. -->
+        <boost.include.dir/>
+        <iotdb.extra.cxx.flags/>
+        <!-- Override via -Dclient.cpp.package.classifier=... for per-toolchain release zips. -->
+        <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
+        <client.cpp.package.name>iotdb-session-cpp-${project.version}-${client.cpp.package.classifier}</client.cpp.package.name>
+        <client.cpp.ci.build.id>${env.GITHUB_RUN_ID}</client.cpp.ci.build.id>
     </properties>
     <dependencies>
         <dependency>
@@ -50,153 +73,21 @@
     </dependencies>
     <build>
         <plugins>
-            <!-- Build and do session integration test -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-cpp-files</id>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <phase>validate</phase>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/build/main/generated-sources-cpp</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/src/main</directory>
-                                    <includes>
-                                        <include>**/*.h</include>
-                                        <include>**/*.cpp</include>
-                                        <include>**/*.cc</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>copy-test-resources</id>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <phase>validate</phase>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/build/test</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/src/test</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>get-thrift</id>
-                        <goals>
-                            <goal>unpack</goal>
-                        </goals>
-                        <phase>generate-sources</phase>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>org.apache.iotdb.tools</groupId>
-                                    <artifactId>iotdb-tools-thrift</artifactId>
-                                    <version>${iotdb-tools-thrift.version}</version>
-                                    <classifier>${os.classifier}</classifier>
-                                    <type>zip</type>
-                                    <overWrite>true</overWrite>
-                                    <outputDirectory>${project.build.directory}/thrift</outputDirectory>
-                                </artifactItem>
-                            </artifactItems>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>com.googlecode.maven-download-plugin</groupId>
                 <artifactId>download-maven-plugin</artifactId>
                 <executions>
-                    <!-- Download the Catch2 header file. -->
-                    <!-- <execution>
+                    <execution>
                         <id>get-catch2</id>
                         <goals>
                             <goal>wget</goal>
                         </goals>
-                        <phase>generate-test-resources</phase>
+                        <phase>generate-resources</phase>
                         <configuration>
                             <url>${catch2.url}</url>
                             <unpack>false</unpack>
-                            <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
+                            <outputDirectory>${project.build.directory}/test/catch2</outputDirectory>
                             <skip>${ctest.skip.tests}</skip>
-                        </configuration>
-                    </execution> -->
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>com.coderplus.maven.plugins</groupId>
-                <artifactId>copy-rename-maven-plugin</artifactId>
-                <executions>
-                    <!-- TODO: Do this differently using the artifact downloader -->
-                    <execution>
-                        <id>copy-protocol-thrift-source</id>
-                        <goals>
-                            <goal>copy</goal>
-                        </goals>
-                        <configuration>
-                            <fileSets>
-                                <fileSet>
-                                    <sourceFile>../../iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift</sourceFile>
-                                    <destinationFile>${project.build.directory}/protocols/client.thrift</destinationFile>
-                                </fileSet>
-                                <fileSet>
-                                    <sourceFile>../../iotdb-protocol/thrift-commons/src/main/thrift/common.thrift</sourceFile>
-                                    <destinationFile>${project.build.directory}/protocols/common.thrift</destinationFile>
-                                </fileSet>
-                            </fileSets>
-                        </configuration>
-                    </execution>
-                    <!-- TODO: Do this differently using the maven-resources-plugin -->
-                    <execution>
-                        <!-- Copy source file and CmakeLists.txt into target directory -->
-                        <id>copy-cmakelist-file</id>
-                        <goals>
-                            <goal>copy</goal>
-                        </goals>
-                        <phase>compile</phase>
-                        <configuration>
-                            <fileSets>
-                                <fileSet>
-                                    <sourceFile>${project.basedir}/src/main/CMakeLists.txt</sourceFile>
-                                    <destinationFile>${project.build.directory}/build/main/CMakeLists.txt</destinationFile>
-                                </fileSet>
-                            </fileSets>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.thrift</groupId>
-                <artifactId>thrift-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>generate-thrift-sources-cpp</id>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <!-- Move from generate-sources to generate-resources to avoid double executions -->
-                        <phase>generate-resources</phase>
-                        <configuration>
-                            <generator>cpp:no_skeleton</generator>
-                            <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                            <thriftSourceRoot>${project.build.directory}/protocols</thriftSourceRoot>
-                            <outputDirectory>${project.build.directory}/build/main/generated-sources-cpp</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
@@ -205,7 +96,7 @@
                 <groupId>io.github.cmake-maven-plugin</groupId>
                 <artifactId>cmake-maven-plugin</artifactId>
                 <executions>
-                    <!-- Uses a CMake generator to generate the build using the build tool of choice -->
+                    <!-- Configure: top-level CMakeLists.txt of this module -->
                     <execution>
                         <id>cmake-generate</id>
                         <goals>
@@ -214,32 +105,25 @@
                         <phase>compile</phase>
                         <configuration>
                             <generator>${cmake.generator}</generator>
-                            <sourcePath>${project.build.directory}/build/main</sourcePath>
-                            <projectDirectory>${project.build.directory}/build/main</projectDirectory>
+                            <sourcePath>${cmake.source.dir}</sourcePath>
+                            <projectDirectory>${cmake.project.dir}</projectDirectory>
                             <options>
-                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DCMAKE_BUILD_TYPE=${cmake.build.type}</option>
+                                <option>-DCMAKE_INSTALL_PREFIX=${cmake.install.prefix}</option>
+                                <option>-DBUILD_TESTING=${build.tests}</option>
                                 <option>-DWITH_SSL=${with.ssl}</option>
+                                <option>-DIOTDB_OFFLINE=${iotdb.offline}</option>
+                                <option>-DIOTDB_DEPS_DIR=${iotdb.deps.dir}</option>
+                                <option>-DIOTDB_USE_CXX11_ABI=${iotdb.cxx11.abi}</option>
+                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DCMAKE_POLICY_DEFAULT_CMP0091=NEW</option>
+                                <option>-DIOTDB_EXTRA_CXX_FLAGS=${iotdb.extra.cxx.flags}</option>
+                                <option>-DIOTDB_SESSION_VERSION=${project.version}</option>
+                                <option>-DCATCH2_INCLUDE_DIR=${project.build.directory}/test/catch2</option>
                             </options>
                         </configuration>
                     </execution>
-                    <!-- Generate Cmake build directory to compile testing program -->
-                    <execution>
-                        <id>cmake-generate-test</id>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <phase>test-compile</phase>
-                        <configuration>
-                            <generator>${cmake.generator}</generator>
-                            <sourcePath>${project.build.directory}/build/test</sourcePath>
-                            <projectDirectory>${project.build.directory}/build/test</projectDirectory>
-                            <options>
-                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
-                                <option>-DWITH_SSL=${with.ssl}</option>
-                            </options>
-                        </configuration>
-                    </execution>
-                    <!-- Actually executes the build -->
+                    <!-- Build + install: drops headers/libs into target/install/{include,lib} -->
                     <execution>
                         <id>cmake-compile</id>
                         <goals>
@@ -248,24 +132,11 @@
                         <phase>compile</phase>
                         <configuration>
                             <config>${cmake.build.type}</config>
-                            <!-- The directory where the "generate" step generated the build configuration -->
-                            <projectDirectory>${project.build.directory}/build/main</projectDirectory>
+                            <projectDirectory>${cmake.project.dir}</projectDirectory>
+                            <target>install</target>
                         </configuration>
                     </execution>
-                    <!-- Actually executes the testing compilation -->
-                    <execution>
-                        <id>cmake-compile-test</id>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <phase>test-compile</phase>
-                        <configuration>
-                            <config>${cmake.build.type}</config>
-                            <projectDirectory>${project.build.directory}/build/test</projectDirectory>
-                        </configuration>
-                    </execution>
-                    <!-- Run the integration test cases -->
-                    <!-- TODO: This execution doesn't seem to respect the "skipTests" config -->
+                    <!-- Run ctest against the test binaries built in cmake-compile -->
                     <execution>
                         <id>cmake-run-test</id>
                         <goals>
@@ -274,13 +145,75 @@
                         <phase>integration-test</phase>
                         <configuration>
                             <config>${cmake.build.type}</config>
-                            <projectDirectory>${project.build.directory}/build/test</projectDirectory>
+                            <projectDirectory>${cmake.project.dir}</projectDirectory>
                             <skipTests>${maven.test.skip}</skipTests>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
-            <!--Package all C++ header files and client library-->
+            <!-- Start a local IoTDB server before integration-test, stop it after. -->
+            <plugin>
+                <groupId>com.bazaarvoice.maven.plugins</groupId>
+                <artifactId>process-exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>start-iotdb</id>
+                        <goals>
+                            <goal>start</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <skip>${ctest.skip.tests}</skip>
+                            <name>iotdb-server</name>
+                            <waitForInterrupt>false</waitForInterrupt>
+                            <waitAfterLaunch>45</waitAfterLaunch>
+                            <processLogFile>${cmake.project.dir}/test.log</processLogFile>
+                            <arguments>
+                                <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.start.script}</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>stop-iotdb</id>
+                        <goals>
+                            <goal>stop-all</goal>
+                        </goals>
+                        <phase>post-integration-test</phase>
+                        <configuration>
+                            <skip>${ctest.skip.tests}</skip>
+                            <name>iotdb-server</name>
+                            <waitForInterrupt>false</waitForInterrupt>
+                            <waitAfterLaunch>5</waitAfterLaunch>
+                            <processLogFile>${cmake.project.dir}/stop.log</processLogFile>
+                            <arguments>
+                                <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.stop.script}</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>prepare-client-cpp-package-metadata</id>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>prepare-package</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/package-metadata</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/src/assembly/package-metadata</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- zip: iotdb-session-cpp-<version>-<classifier>.zip with a package root directory. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -292,7 +225,7 @@
                         </goals>
                         <phase>package</phase>
                         <configuration>
-                            <finalName>${project.artifactId}-${project.version}</finalName>
+                            <finalName>iotdb-session-cpp-${project.version}</finalName>
                             <descriptors>
                                 <descriptor>src/assembly/client-cpp.xml</descriptor>
                             </descriptors>
@@ -300,49 +233,29 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Create SHA512 checksum files for the release zip. -->
             <plugin>
-                <groupId>com.bazaarvoice.maven.plugins</groupId>
-                <artifactId>process-exec-maven-plugin</artifactId>
+                <groupId>net.nicoulaj.maven.plugins</groupId>
+                <artifactId>checksum-maven-plugin</artifactId>
                 <executions>
-                    <!-- Start a local IoTDB server to run integration test cases -->
                     <execution>
-                        <id>start-iotdb</id>
+                        <id>checksum-client-cpp-package</id>
                         <goals>
-                            <goal>start</goal>
+                            <goal>files</goal>
                         </goals>
-                        <phase>pre-integration-test</phase>
+                        <phase>package</phase>
                         <configuration>
-                            <skip>${ctest.skip.tests}</skip>
-                            <name>iotdb-server</name>
-                            <waitForInterrupt>false</waitForInterrupt>
-                            <!-- Maximum time in seconds to wait after launching IoTDB (JVM cold start on Windows can exceed 15s) -->
-                            <waitAfterLaunch>45</waitAfterLaunch>
-                            <!-- Redirect IoTDB server log to /dev/null -->
-                            <processLogFile>${project.build.directory}/build/test/test.log</processLogFile>
-                            <arguments>
-                                <!-- TODO: This depends on distribution being build first and it being available in unpacked form ... unpacking the distribution locally will be the better option -->
-                                <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.start.script}</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Stop the IoTDB server when integration test finishes -->
-                    <execution>
-                        <id>stop-iotdb</id>
-                        <goals>
-                            <goal>stop-all</goal>
-                        </goals>
-                        <phase>post-integration-test</phase>
-                        <configuration>
-                            <skip>${ctest.skip.tests}</skip>
-                            <name>iotdb-server</name>
-                            <waitForInterrupt>false</waitForInterrupt>
-                            <!-- Maximum time in seconds to wait after launching IoTDB -->
-                            <waitAfterLaunch>5</waitAfterLaunch>
-                            <!-- Redirect IoTDB server log to /dev/null -->
-                            <processLogFile>${project.build.directory}/build/test/test1.log</processLogFile>
-                            <arguments>
-                                <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.stop.script}</argument>
-                            </arguments>
+                            <algorithms>
+                                <algorithm>SHA-512</algorithm>
+                            </algorithms>
+                            <fileSets>
+                                <fileSet>
+                                    <directory>${project.build.directory}</directory>
+                                    <includes>
+                                        <include>${client.cpp.package.name}.zip</include>
+                                    </includes>
+                                </fileSet>
+                            </fileSets>
                         </configuration>
                     </execution>
                 </executions>
@@ -363,6 +276,7 @@
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>linux</os.suffix>
+                <client.cpp.package.classifier>linux-x86_64-glibc2.28</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
@@ -378,6 +292,7 @@
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>linux</os.suffix>
+                <client.cpp.package.classifier>linux-aarch64-glibc2.28</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
@@ -392,6 +307,7 @@
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>mac</os.suffix>
+                <client.cpp.package.classifier>macos-x86_64</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
@@ -406,6 +322,7 @@
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>mac</os.suffix>
+                <client.cpp.package.classifier>macos-aarch64</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
@@ -419,14 +336,16 @@
                 <iotdb.start.script>windows/start-standalone.bat</iotdb.start.script>
                 <iotdb.stop.script>windows/stop-standalone.bat</iotdb.stop.script>
                 <os.suffix>win</os.suffix>
+                <client.cpp.package.classifier>windows-x86_64-msvc14.3</client.cpp.package.classifier>
             </properties>
         </profile>
+        <!-- Windows: default to x64 (VS2017 and older default to Win32 without -A x64). -->
         <profile>
-            <id>.skipTests</id>
+            <id>client-cpp-vs-x64</id>
             <activation>
-                <property>
-                    <name>skipTests</name>
-                </property>
+                <os>
+                    <family>windows</family>
+                </os>
             </activation>
             <build>
                 <plugins>
@@ -435,20 +354,34 @@
                         <artifactId>cmake-maven-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>cmake-compile-test</id>
-                                <phase>none</phase>
-                                <!-- This effectively skips the execution -->
+                                <id>cmake-generate</id>
+                                <configuration>
+                                    <options combine.children="append">
+                                        <option>-DCMAKE_GENERATOR_PLATFORM=x64</option>
+                                    </options>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
                 </plugins>
             </build>
         </profile>
-        <!-- Spotless &lt;clangFormat&gt; needs Spotless 2.44+; root POM downgrades to 2.27.1 on JDK8 and cannot parse cpp config. Only register C++ rules when JDK 11+. -->
+        <profile>
+            <id>.skipTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                </property>
+            </activation>
+            <properties>
+                <build.tests>OFF</build.tests>
+            </properties>
+        </profile>
+        <!-- Spotless <clangFormat> needs Spotless 2.44+; only register C++ rules on the repository baseline, JDK 17+. -->
         <profile>
             <id>spotless-cpp</id>
             <activation>
-                <jdk>[11,)</jdk>
+                <jdk>[17,)</jdk>
             </activation>
             <build>
                 <plugins>
@@ -464,9 +397,12 @@
                                     <include>src/**/*.c</include>
                                     <include>src/**/*.cc</include>
                                     <include>src/**/*.cpp</include>
+                                    <include>examples/**/*.c</include>
+                                    <include>examples/**/*.cc</include>
+                                    <include>examples/**/*.cpp</include>
                                 </includes>
                                 <excludes>
-                                    <exclude>src/test/catch2/**</exclude>
+                                    <exclude>test/catch2/**</exclude>
                                 </excludes>
                                 <clangFormat>
                                     <version>${clang.format.version}</version>

@@ -98,6 +98,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
@@ -154,6 +155,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewr
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.apache.thrift.TBase;
@@ -400,13 +402,19 @@ public class Coordinator {
       long startTime) {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
-    if (statement instanceof IConfigStatement) {
-      queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
+    final Statement configStatement =
+        statement instanceof PipeEnrichedStatement
+                && ((PipeEnrichedStatement) statement).getInnerStatement()
+                    instanceof IConfigStatement
+            ? ((PipeEnrichedStatement) statement).getInnerStatement()
+            : statement;
+    if (configStatement instanceof IConfigStatement) {
+      queryContext.setQueryType(((IConfigStatement) configStatement).getQueryType());
       return new ConfigExecution(
           queryContext,
-          statement.getType(),
+          configStatement.getType(),
           executor,
-          statement.accept(new TreeConfigTaskVisitor(), queryContext));
+          configStatement.accept(new TreeConfigTaskVisitor(), queryContext));
     }
     TreeModelPlanner treeModelPlanner =
         new TreeModelPlanner(
@@ -442,6 +450,7 @@ public class Coordinator {
       Metadata metadata,
       Map<NodeRef<Table>, Query> cteQueries,
       ExplainType explainType,
+      ExplainOutputFormat explainOutputFormat,
       long timeOut,
       boolean userQuery,
       boolean debug,
@@ -456,6 +465,7 @@ public class Coordinator {
           queryContext.setInnerTriggeredQuery(true);
           queryContext.setCteQueries(cteQueries);
           queryContext.setExplainType(explainType);
+          queryContext.setExplainOutputFormat(explainOutputFormat);
           queryContext.setVerbose(isVerbose);
           return createQueryExecutionForTableModel(
               statement,
@@ -722,9 +732,12 @@ public class Coordinator {
       parameters = new ArrayList<>(executeStatement.getParameters());
 
       if (statement instanceof Explain) {
-        statementToUse = new Explain(resolvedSql);
+        statementToUse = new Explain(resolvedSql, ((Explain) statement).getOutputFormat());
       } else if (statement instanceof ExplainAnalyze) {
-        statementToUse = new ExplainAnalyze(resolvedSql, ((ExplainAnalyze) statement).isVerbose());
+        ExplainAnalyze explainAnalyze = (ExplainAnalyze) statement;
+        statementToUse =
+            new ExplainAnalyze(
+                resolvedSql, explainAnalyze.isVerbose(), explainAnalyze.getOutputFormat());
       } else {
         statementToUse = resolvedSql;
       }
@@ -744,9 +757,12 @@ public class Coordinator {
       }
 
       if (statement instanceof Explain) {
-        statementToUse = new Explain(resolvedSql);
+        statementToUse = new Explain(resolvedSql, ((Explain) statement).getOutputFormat());
       } else if (statement instanceof ExplainAnalyze) {
-        statementToUse = new ExplainAnalyze(resolvedSql, ((ExplainAnalyze) statement).isVerbose());
+        ExplainAnalyze explainAnalyze = (ExplainAnalyze) statement;
+        statementToUse =
+            new ExplainAnalyze(
+                resolvedSql, explainAnalyze.isVerbose(), explainAnalyze.getOutputFormat());
       } else {
         statementToUse = resolvedSql;
       }

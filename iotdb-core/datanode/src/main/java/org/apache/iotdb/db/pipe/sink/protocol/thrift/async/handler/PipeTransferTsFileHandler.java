@@ -161,8 +161,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.client = client;
 
     if (client == null) {
-      LOGGER.warn(
-          DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
+      PipeLogger.log(
+          ignored ->
+              LOGGER.warn(
+                  DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
+                  sink.isClosed() ? "CLOSED" : "NOT CLOSED",
+                  tsFile),
+          "Client has been returned to the pool. Connector is %s. TsFile: %s.",
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;
@@ -429,7 +434,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.returnSelf(
         (e) -> {
           if (e instanceof IllegalStateException) {
-            LOGGER.info(DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO);
+            PipeLogger.log(
+                ignored ->
+                    LOGGER.info(DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO),
+                DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO);
             return true;
           }
           return false;
@@ -442,8 +450,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
     if (client == null) {
-      LOGGER.warn(
-          DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
+      PipeLogger.log(
+          ignored ->
+              LOGGER.warn(
+                  DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
+                  sink.isClosed() ? "CLOSED" : "NOT CLOSED",
+                  tsFile),
+          "Client has been returned to the pool. Connector is %s. TsFile: %s.",
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;

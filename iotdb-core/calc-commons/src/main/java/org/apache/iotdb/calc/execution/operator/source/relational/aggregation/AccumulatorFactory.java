@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.execution.aggregation.CentralMomentAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.CovarianceAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.RegressionAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.BinaryGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.BlobGroupedApproxMostFrequentAccumulator;
@@ -30,9 +33,12 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedApproxPercentileAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedApproxPercentileWithWeightAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedCentralMomentAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedCorrelationAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedCountAllAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedCountIfAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedCovarianceAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedExtremeAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedFirstAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedFirstByAccumulator;
@@ -43,12 +49,15 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedMinAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedMinByAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedModeAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedPercentileAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedRegressionAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedUserDefinedAggregateAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedVarianceAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.IntGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.LongGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
@@ -99,7 +108,8 @@ public class AccumulatorFactory {
       boolean isAggTableScan,
       String timeColumnName,
       Set<String> measurementColumnNames,
-      boolean distinct) {
+      boolean distinct,
+      MemoryReservationManager memoryReservationManager) {
     TableAccumulator result;
 
     // Input expression size of 1 indicates aggregation split has occurred and this is a final
@@ -159,7 +169,7 @@ public class AccumulatorFactory {
               ? new FirstAccumulator(inputDataTypes.get(0), isAggTableScan)
               : new FirstDescAccumulator(inputDataTypes.get(0));
     } else {
-      result = createBuiltinAccumulator(aggregationType, inputDataTypes);
+      result = createBuiltinAccumulator(aggregationType, inputDataTypes, memoryReservationManager);
     }
 
     if (distinct) {
@@ -181,7 +191,8 @@ public class AccumulatorFactory {
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
       boolean ascending,
-      boolean distinct) {
+      boolean distinct,
+      MemoryReservationManager memoryReservationManager) {
     GroupedAccumulator result;
 
     if (aggregationType == TAggregationType.UDAF) {
@@ -190,7 +201,12 @@ public class AccumulatorFactory {
     } else {
       result =
           createBuiltinGroupedAccumulator(
-              aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
+              aggregationType,
+              inputDataTypes,
+              inputExpressions,
+              inputAttributes,
+              ascending,
+              memoryReservationManager);
     }
 
     if (distinct) {
@@ -235,7 +251,8 @@ public class AccumulatorFactory {
       List<TSDataType> inputDataTypes,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
-      boolean ascending) {
+      boolean ascending,
+      MemoryReservationManager memoryReservationManager) {
     switch (aggregationType) {
       case COUNT:
         return new GroupedCountAccumulator();
@@ -291,6 +308,36 @@ public class AccumulatorFactory {
         } else {
           return new GroupedApproxPercentileWithWeightAccumulator(inputDataTypes.get(0));
         }
+      case CORR:
+        return new GroupedCorrelationAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case COVAR_POP:
+        return new GroupedCovarianceAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CovarianceAccumulator.CovarianceType.COVAR_POP);
+      case COVAR_SAMP:
+        return new GroupedCovarianceAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CovarianceAccumulator.CovarianceType.COVAR_SAMP);
+      case REGR_SLOPE:
+        return new GroupedRegressionAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            RegressionAccumulator.RegressionType.REGR_SLOPE);
+      case REGR_INTERCEPT:
+        return new GroupedRegressionAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            RegressionAccumulator.RegressionType.REGR_INTERCEPT);
+      case SKEWNESS:
+        return new GroupedCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.SKEWNESS);
+      case KURTOSIS:
+        return new GroupedCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
+      case PERCENTILE:
+        return new GroupedPercentileAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
@@ -298,7 +345,9 @@ public class AccumulatorFactory {
   }
 
   public static TableAccumulator createBuiltinAccumulator(
-      TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      MemoryReservationManager memoryReservationManager) {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
@@ -355,6 +404,36 @@ public class AccumulatorFactory {
         } else {
           return new ApproxPercentileWithWeightAccumulator(inputDataTypes.get(0));
         }
+      case CORR:
+        return new TableCorrelationAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case COVAR_POP:
+        return new TableCovarianceAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CovarianceAccumulator.CovarianceType.COVAR_POP);
+      case COVAR_SAMP:
+        return new TableCovarianceAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CovarianceAccumulator.CovarianceType.COVAR_SAMP);
+      case REGR_SLOPE:
+        return new TableRegressionAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            RegressionAccumulator.RegressionType.REGR_SLOPE);
+      case REGR_INTERCEPT:
+        return new TableRegressionAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            RegressionAccumulator.RegressionType.REGR_INTERCEPT);
+      case SKEWNESS:
+        return new TableCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.SKEWNESS);
+      case KURTOSIS:
+        return new TableCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
+      case PERCENTILE:
+        return new PercentileAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
@@ -417,6 +496,12 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case MAX_BY:
       case MIN_BY:
+        return true;
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
         return true;
       default:
         return false;

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
@@ -114,12 +115,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ReadTsFileTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.rowpattern.RowPatternToIrRewriter;
@@ -150,6 +154,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -342,17 +347,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     final ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     final ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     final Collection<Field> fields = scope.getRelationType().getAllFields();
-    final QualifiedName qualifiedName = analysis.getRelationName(table);
-
-    if (!qualifiedName.getPrefix().isPresent()) {
-      throw new IllegalStateException(
-          DataNodeQueryMessages.TABLE + table.getName() + " has no prefix!");
-    }
-
-    final QualifiedObjectName qualifiedObjectName =
-        new QualifiedObjectName(
-            qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
-            qualifiedName.getSuffix());
+    final QualifiedObjectName qualifiedObjectName = getQualifiedObjectName(table, analysis);
 
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
@@ -408,6 +403,19 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
               tagAndAttributeIndexMap);
     }
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
+  }
+
+  public static QualifiedObjectName getQualifiedObjectName(Table table, Analysis analysis) {
+    final QualifiedName qualifiedName = analysis.getRelationName(table);
+    if (!qualifiedName.getPrefix().isPresent()) {
+      throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
+    }
+
+    final QualifiedObjectName qualifiedObjectName =
+        new QualifiedObjectName(
+            qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
+            qualifiedName.getSuffix());
+    return qualifiedObjectName;
   }
 
   @Override
@@ -1455,6 +1463,11 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   @Override
   public RelationPlan visitTableFunctionInvocation(TableFunctionInvocation node, Void context) {
     TableFunctionInvocationAnalysis functionAnalysis = analysis.getTableFunctionAnalysis(node);
+    if (DataNodeTableBuiltinTableFunction.READ_TSFILE
+        .getFunctionName()
+        .equalsIgnoreCase(functionAnalysis.getFunctionName())) {
+      return planExternalTsFileScan(node, functionAnalysis);
+    }
 
     ImmutableList.Builder<PlanNode> sources = ImmutableList.builder();
     ImmutableList.Builder<TableFunctionNode.TableArgumentProperties> sourceProperties =
@@ -1548,7 +1561,10 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
                 symbol ->
                     new TableFunctionNode.PassThroughColumn(symbol, partitionBy.contains(symbol)))
             .forEach(passThroughColumns::add);
-      } else if (tableArgument.getPartitionBy().isPresent()) {
+      } else if (!TableBuiltinTableFunction.M4
+              .getFunctionName()
+              .equalsIgnoreCase(functionAnalysis.getFunctionName())
+          && tableArgument.getPartitionBy().isPresent()) {
         tableArgument.getPartitionBy().get().stream()
             // the original symbols for partitioning columns, not coerced
             .map(sourcePlanBuilder::translate)
@@ -1581,6 +1597,66 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
             sourceProperties.build());
 
     return new RelationPlan(root, analysis.getScope(node), outputSymbols.build(), outerContext);
+  }
+
+  private RelationPlan planExternalTsFileScan(
+      TableFunctionInvocation node, TableFunctionInvocationAnalysis functionAnalysis) {
+    if (!(functionAnalysis.getTableFunctionHandle()
+        instanceof ReadTsFileTableFunction.ReadTsFileTableFunctionHandle)) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.READ_TSFILE_TABLE_FUNCTION_HANDLE_IS_INVALID);
+    }
+
+    ReadTsFileTableFunction.ReadTsFileTableFunctionHandle handle =
+        (ReadTsFileTableFunction.ReadTsFileTableFunctionHandle)
+            functionAnalysis.getTableFunctionHandle();
+    Scope scope = analysis.getScope(node);
+    RelationType relationType = scope.getRelationType();
+
+    ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<Symbol, ColumnSchema> assignmentsBuilder = ImmutableMap.builder();
+    Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
+    int tagIndex = 0;
+    for (int i = 0; i < relationType.getAllFieldCount(); i++) {
+      Field field = relationType.getFieldByIndex(i);
+      Symbol symbol = symbolAllocator.newSymbol(field);
+      TsTableColumnCategory columnCategory = handle.getOutputColumnCategories().get(i);
+      outputSymbolsBuilder.add(symbol);
+      assignmentsBuilder.put(
+          symbol,
+          new ColumnSchema(
+              field.getName().orElse(null), field.getType(), field.isHidden(), columnCategory));
+      if (columnCategory == TsTableColumnCategory.TAG) {
+        tagAndAttributeIndexMap.put(symbol, tagIndex++);
+      }
+    }
+
+    List<Symbol> outputSymbols = outputSymbolsBuilder.build();
+    Map<Symbol, ColumnSchema> assignments = assignmentsBuilder.build();
+    QualifiedObjectName qualifiedObjectName =
+        createExternalTsFileQualifiedObjectName(handle.getTableName());
+
+    ExternalTsFileScanNode scanNode =
+        new ExternalTsFileScanNode(
+            idAllocator.genPlanNodeId(),
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            tagAndAttributeIndexMap,
+            queryContext.createExternalTsFileQueryResource(
+                handle.getTableName(), handle.getTsFilePaths(), assignments));
+
+    return new RelationPlan(scanNode, scope, outputSymbols, outerContext);
+  }
+
+  private QualifiedObjectName createExternalTsFileQualifiedObjectName(String tableName) {
+    String normalizedTableName = tableName.toLowerCase(Locale.ENGLISH);
+    if (normalizedTableName.indexOf('.') >= 0) {
+      return QualifiedObjectName.valueOf(normalizedTableName);
+    }
+    String databaseName =
+        sessionInfo.getDatabaseName().orElse("external").toLowerCase(Locale.ENGLISH);
+    return new QualifiedObjectName(databaseName, normalizedTableName);
   }
 
   private static void stayConsistent(

@@ -36,6 +36,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +75,9 @@ public class TableDeviceSchemaValidator {
     // High-cost operations, shall only be called once
     final List<Object[]> deviceIdList = schemaValidation.getDeviceIdList();
     final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
-    final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
+    // In normal inserts, null attributes mean no-op. Raw null is reserved for explicit clears.
+    final List<Object[]> attributeValueList =
+        normalizeNullAttributeValuesForInsert(schemaValidation.getAttributeValueList());
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -194,11 +197,50 @@ public class TableDeviceSchemaValidator {
     for (int j = 0, size = attributeKeyList.size(); j < size; j++) {
       final Object inputValue =
           deviceAttributeValueList.length > j ? deviceAttributeValueList[j] : null;
+      if (inputValue == null || inputValue == Constants.NONE) {
+        continue;
+      }
       if (!Objects.equals(attributeMap.get(attributeKeyList.get(j)), inputValue)) {
         return true;
       }
     }
     return false;
+  }
+
+  private List<Object[]> normalizeNullAttributeValuesForInsert(
+      final List<Object[]> attributeValueList) {
+    List<Object[]> result = null;
+    for (int i = 0; i < attributeValueList.size(); i++) {
+      final Object[] deviceAttributeValueList = attributeValueList.get(i);
+      final Object[] normalizedAttributeValueList =
+          normalizeNullAttributeValuesForInsert(deviceAttributeValueList);
+      if (result != null) {
+        result.add(normalizedAttributeValueList);
+      } else if (normalizedAttributeValueList != deviceAttributeValueList) {
+        result = new ArrayList<>(attributeValueList.size());
+        for (int j = 0; j < i; j++) {
+          result.add(attributeValueList.get(j));
+        }
+        result.add(normalizedAttributeValueList);
+      }
+    }
+    return result == null ? attributeValueList : result;
+  }
+
+  private Object[] normalizeNullAttributeValuesForInsert(final Object[] deviceAttributeValueList) {
+    for (int i = 0; i < deviceAttributeValueList.length; i++) {
+      if (deviceAttributeValueList[i] == null) {
+        final Object[] result =
+            Arrays.copyOf(deviceAttributeValueList, deviceAttributeValueList.length);
+        for (int j = i; j < result.length; j++) {
+          if (result[j] == null) {
+            result[j] = Constants.NONE;
+          }
+        }
+        return result;
+      }
+    }
+    return deviceAttributeValueList;
   }
 
   private void autoCreateOrUpdateDeviceSchema(

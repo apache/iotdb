@@ -28,11 +28,11 @@ public final class ManagerMessages {
   public static final String AFTER_THIS_SUCCESSFUL_SYNC_IF_SUBSCRIPTIONINFO_IS_EMPTY_DURING_THIS =
       "After this successful sync, if SubscriptionInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped";
   public static final String ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A_NULL_PIPETASKMETA =
-      "Attempt to report pipe exception to a null PipeTaskMeta.";
+      "尝试向空的 PipeTaskMeta 上报 pipe 异常。";
   public static final String AUTH_RUN_AUTH_PLAN = "Auth: run auth plan: {}";
   public static final String CLUSTERID = "clusterID: {}";
   public static final String COLLECTING_PIPE_HEARTBEAT_FROM_DATA_NODES =
-      "Collecting pipe heartbeat {} from data nodes";
+      "正在从 data nodes 收集 pipe 心跳 {}";
   public static final String CONNECTION_FROM_DATANODE_TO_DATANODE_IS_BROKEN =
       "Connection from DataNode {} to DataNode {} is broken";
   public static final String CONSENSUSGROUPSTATISTICS = "[ConsensusGroupStatistics]\t {}: {} -> {}";
@@ -63,10 +63,16 @@ public final class ManagerMessages {
   public static final String DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR =
       "Decrease reference count for snapshot {} error.";
   public static final String DELETING_REGIONS_COSTS_MS = "Deleting regions costs {}ms";
+  public static final String DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE =
+      "检测到来自 DataNode {} 的历史 pipe 完成上报，pipe {}。remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
-      "Detected completion of pipe {}, static meta: {}, remove it.";
+      "检测到 pipe {} 已完成，static meta: {}，将其移除。";
+  public static final String ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED =
+      "所有 DataNode 均已上报历史 pipe {} 完成。globalRemainingEventCount: {}, globalRemainingTime: {}, staticMeta: {}";
   public static final String DETECT_PIPERUNTIMECRITICALEXCEPTION_FROM_AGENT_STOP_PIPE =
-      "Detect PipeRuntimeCriticalException {} from agent, stop pipe {}.";
+      "检测到 agent 上报 PipeRuntimeCriticalException {}，停止 pipe {}。";
+  public static final String DETECT_PIPERUNTIMESINKCRITICALEXCEPTION_FROM_AGENT_STOP_PIPE =
+      "检测到 agent 上报 PipeRuntimeSinkCriticalException {}，停止 pipe {}。";
   public static final String ENABLE_SEPARATION_OF_POWERS_IS_NOT_SUPPORTED = "不支持启用权力分离";
   public static final String ENDEXECUTECQ_TIME_RANGE_IS_CURRENT_TIME_IS =
       "[EndExecuteCQ] {}, time range is [{}, {}), current time is {}";
@@ -112,9 +118,9 @@ public final class ManagerMessages {
   public static final String FAILED_TO_CLOSE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
       "Failed to close consumer {} in consumer group {}. Result status: {}.";
   public static final String FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR =
-      "Failed to close extractor after failed to initialize extractor. ";
+      "初始化 extractor 失败后关闭 extractor 失败，忽略此异常。";
   public static final String FAILED_TO_CLOSE_SINK_AFTER_FAILED_TO_INITIALIZE_IT_IGNORE =
-      "Failed to close sink after failed to initialize it. Ignore this exception.";
+      "初始化 sink 失败后关闭 sink 失败，忽略此异常。";
   public static final String FAILED_TO_COLLECT_COMMITCREATETABLEPLAN =
       "Failed to collect CommitCreateTablePlan";
   public static final String FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK =
@@ -128,11 +134,17 @@ public final class ManagerMessages {
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "Failed to create peer for consensus group";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
-      "Failed to create pipe {}. Result status: {}.";
+      "创建 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_CREATE_SUBTASK_FOR_PIPE_CREATION_TIME =
       "Failed to create subtask for pipe %s, creation time %d";
   public static final String FAILED_TO_CREATE_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS =
       "Failed to create topic {} with attributes {}. Result status: {}.";
+  public static final String FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED =
+      "修改 topic %s 失败，该 topic 不存在";
+  public static final String FAILED_TO_ALTER_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS =
+      "修改 topic {} 失败，属性：{}。结果状态：{}。";
+  public static final String OWNER_LEASE_DURATION_BELOW_MIN =
+      "创建或修改 topic 失败，owner-lease-duration-ms %s 小于允许的最小值 %s ms。";
   public static final String FAILED_TO_DEEP_COPY_PIPEMETA = "深拷贝 pipeMeta 失败";
   public static final String FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_CONNECTOR =
       "Failed to deregister pipe config region connector metrics, PipeConfigNodeSubtask({}) does not exist";
@@ -143,7 +155,7 @@ public final class ManagerMessages {
   public static final String FAILED_TO_DEREGISTER_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_DOES_NOT =
       "Failed to deregister pipe temporary meta metrics, PipeTemporaryMeta({}) does not exist";
   public static final String FAILED_TO_DROP_PIPE_RESULT_STATUS =
-      "Failed to drop pipe {}. Result status: {}.";
+      "删除 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_GET_ALL_PIPE_INFO = "Failed to get all pipe info.";
   public static final String FAILED_TO_GET_ALL_SUBSCRIPTION_INFO =
       "Failed to get all subscription info.";
@@ -162,9 +174,9 @@ public final class ManagerMessages {
   public static final String FAILED_TO_SHOW_SUBSCRIPTION_INFO = "Failed to show subscription info.";
   public static final String FAILED_TO_SHOW_TOPIC_INFO = "Failed to show topic info.";
   public static final String FAILED_TO_START_PIPE_RESULT_STATUS =
-      "Failed to start pipe {}. Result status: {}.";
+      "启动 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_STOP_PIPE_RESULT_STATUS =
-      "Failed to stop pipe {}. Result status: {}.";
+      "停止 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_SUBMIT_ASYNC_CONSENSUS_PIPE_CREATION_FOR =
       "Failed to submit async consensus pipe creation for {}: {}";
   public static final String FAILED_TO_SUBMIT_ASYNC_CONSENSUS_PIPE_DROP_FOR =
@@ -172,7 +184,7 @@ public final class ManagerMessages {
   public static final String FAILED_TO_SYNC_CONSUMER_GROUP_META_RESULT_STATUS =
       "Failed to sync consumer group meta. Result status: {}.";
   public static final String FAILED_TO_SYNC_PIPE_META_RESULT_STATUS =
-      "Failed to sync pipe meta. Result status: {}.";
+      "同步 pipe 元数据失败。结果状态：{}。";
   public static final String FAILED_TO_SYNC_TEMPLATE_EXTENSION_INFO_TO_DATANODE =
       "Failed to sync template {} extension info to DataNode {}";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =

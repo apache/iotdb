@@ -1023,7 +1023,7 @@ class RatisConsensus implements IConsensus {
       GenericKeyedObjectPool<RaftGroup, RatisClient> clientPool =
           new GenericKeyedObjectPool<>(
               isReconfiguration
-                  ? new RatisClient.EndlessRetryFactory(
+                  ? new RatisClient.ReconfigurationRetryFactory(
                       manager, properties, clientRpc, config.getClient(), parameters)
                   : new RatisClient.Factory(
                       manager, properties, clientRpc, config.getClient(), parameters),

@@ -135,6 +135,18 @@ public class InsertNodeMemoryEstimatorTest {
   }
 
   @Test
+  public void testInsertTabletNodeWithNullColumnIsEstimated() throws IllegalPathException {
+    InsertTabletNode tablet = createTextInsertTabletNode("tablet", "root.sg.d1", 2, 4, 8);
+
+    long fullSize = InsertNodeMemoryEstimator.sizeOf(tablet);
+    tablet.getColumns()[1] = null;
+    long sizeWithNullColumn = InsertNodeMemoryEstimator.sizeOf(tablet);
+
+    Assert.assertTrue(sizeWithNullColumn > 0);
+    Assert.assertTrue(sizeWithNullColumn < fullSize);
+  }
+
+  @Test
   public void testPlanNodeIdIsEstimated() throws IllegalPathException {
     InsertRowNode shortPlanNodeIdRow =
         createTextInsertRowNode("id", "root.sg.d1", new String[] {"s1"}, new String[] {"v1"});

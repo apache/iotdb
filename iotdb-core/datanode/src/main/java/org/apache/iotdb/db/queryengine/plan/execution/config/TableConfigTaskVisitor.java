@@ -142,6 +142,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.DropPipeTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StartPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StopPipeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.AlterTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
@@ -157,6 +158,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
@@ -289,8 +291,8 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSign
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_DATA_REGION_GROUP_NUM_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_SCHEMA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -355,8 +357,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       if (property.isSetToDefault()) {
         switch (key) {
           case TIME_PARTITION_INTERVAL_KEY:
-          case SCHEMA_REGION_GROUP_NUM_KEY:
-          case DATA_REGION_GROUP_NUM_KEY:
+          case MAX_SCHEMA_REGION_GROUP_NUM_KEY:
+          case MAX_DATA_REGION_GROUP_NUM_KEY:
             break;
           case TTL_KEY:
             if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
@@ -390,12 +392,13 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         case TIME_PARTITION_INTERVAL_KEY:
           schema.setTimePartitionInterval(parseLongFromLiteral(value, TIME_PARTITION_INTERVAL_KEY));
           break;
-        case SCHEMA_REGION_GROUP_NUM_KEY:
-          schema.setMinSchemaRegionGroupNum(
-              parseIntFromLiteral(value, SCHEMA_REGION_GROUP_NUM_KEY));
+        case MAX_SCHEMA_REGION_GROUP_NUM_KEY:
+          schema.setMaxSchemaRegionGroupNum(
+              parseIntFromLiteral(value, MAX_SCHEMA_REGION_GROUP_NUM_KEY));
           break;
-        case DATA_REGION_GROUP_NUM_KEY:
-          schema.setMinDataRegionGroupNum(parseIntFromLiteral(value, DATA_REGION_GROUP_NUM_KEY));
+        case MAX_DATA_REGION_GROUP_NUM_KEY:
+          schema.setMaxDataRegionGroupNum(
+              parseIntFromLiteral(value, MAX_DATA_REGION_GROUP_NUM_KEY));
           break;
         default:
           throw new SemanticException(
@@ -1455,6 +1458,17 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
 
     return new CreateTopicTask(node);
+  }
+
+  @Override
+  public IConfigTask visitAlterTopic(AlterTopic node, MPPQueryContext context) {
+    context.setQueryType(QueryType.OTHER);
+    accessControl.checkUserGlobalSysPrivilege(context);
+
+    node.getTopicAttributes()
+        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+
+    return new AlterTopicTask(node);
   }
 
   @Override

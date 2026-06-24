@@ -68,6 +68,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNullOrEmpty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -203,7 +204,7 @@ public class HorizontallyConcatOperatorTest {
       int count = 0;
       while (horizontallyConcatOperator.isBlocked().isDone()
           && horizontallyConcatOperator.hasNext()) {
-        TsBlock tsBlock = horizontallyConcatOperator.next();
+        TsBlock tsBlock = nextNonNullOrEmpty(horizontallyConcatOperator);
         assertEquals(6, tsBlock.getValueColumnCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
           assertEquals(count, tsBlock.getTimeByIndex(i));
