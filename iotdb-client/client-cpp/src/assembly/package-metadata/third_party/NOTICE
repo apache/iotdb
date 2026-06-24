@@ -25,6 +25,10 @@ Copyright 1999-2025 The OpenSSL Project Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (see the top-level LICENSE).
 
 ------------------------------------------------------------------------------
-Boost  (statically linked / header-only)
+Boost C++ Libraries  (header-only; used at build time to compile Apache Thrift
+and the iotdb_session library, so portions may be inlined into the shipped
+binary)
 Distributed under the Boost Software License, Version 1.0
-(see third_party/licenses/LICENSE-Boost-1.0).
+(see third_party/licenses/LICENSE-Boost-1.0). Here "Version 1.0" is the license
+version -- the Boost Software License has only ever had this single version --
+and is unrelated to the Boost library release that was compiled in.

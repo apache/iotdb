@@ -194,6 +194,13 @@ if(EXISTS "${_iotdb_runtime}")
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${_iotdb_runtime}" "${_example_dist_dir}/")
 endif()
+# Stage the bundled OpenSSL runtime too, so a copied dist/ runs on a machine
+# without a system OpenSSL.
+foreach(_ssl_lib IN LISTS _iotdb_sdk_ssl_runtime)
+    add_custom_command(TARGET example-dist POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_ssl_lib}" "${_example_dist_dir}/")
+endforeach()
 
 if(IOTDB_EXAMPLES_REGISTER_TESTS)
     set(_runnable_example_targets
