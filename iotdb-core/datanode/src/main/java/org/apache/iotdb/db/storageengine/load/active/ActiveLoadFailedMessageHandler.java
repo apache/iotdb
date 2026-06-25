@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.load.active;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,6 +97,20 @@ public class ActiveLoadFailedMessageHandler {
   @FunctionalInterface
   private interface ExceptionMessageHandler {
     void handle(final ActiveLoadPendingQueue.ActiveLoadEntry entry);
+  }
+
+  public static boolean isStatusShouldRetry(
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry, final TSStatus status) {
+    if (status != null
+        && status.getCode() == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
+      LOGGER.info(
+          StorageEngineMessages.ACTIVE_LOAD_TEMPORARILY_UNAVAILABLE,
+          entry.getFile(),
+          entry.isGeneratedByPipe(),
+          status);
+      return true;
+    }
+    return isExceptionMessageShouldRetry(entry, status == null ? null : status.getMessage());
   }
 
   public static boolean isExceptionMessageShouldRetry(
