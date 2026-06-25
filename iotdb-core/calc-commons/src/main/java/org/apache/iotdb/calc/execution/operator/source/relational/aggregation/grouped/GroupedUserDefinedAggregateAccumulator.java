@@ -27,6 +27,7 @@ import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
@@ -53,6 +54,7 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
   private final ObjectBigArray<State> stateArray;
   private final List<Type> inputDataTypes;
   private final IoTDBLocal ioTDBLocal;
+  private boolean init = false;
 
   public GroupedUserDefinedAggregateAccumulator(
       AggregateFunction aggregateFunction,
@@ -65,6 +67,21 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
     this.stateArray = new ObjectBigArray<>();
     this.inputDataTypes = inputDataTypes;
     this.ioTDBLocal = ioTDBLocal;
+  }
+
+  private void initIfNeeded() {
+    if (init) {
+      return;
+    }
+    init = true;
+    try {
+      aggregateFunction.beforeStart(functionArguments, ioTDBLocal);
+    } catch (UDFException e) {
+      throw new RuntimeException(
+          "Error occurs when starting user-defined aggregate function "
+              + aggregateFunction.getClass().getName(),
+          e);
+    }
   }
 
   @Override
@@ -88,6 +105,7 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
+    initIfNeeded();
     RecordIterator iterator =
         mask.isSelectAll()
             ? new RecordIterator(
@@ -115,6 +133,7 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
 
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
+    initIfNeeded();
     checkArgument(
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
@@ -146,6 +165,7 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
+    initIfNeeded();
     ResultValue resultValue = new ResultValue(columnBuilder);
     aggregateFunction.outputFinal(getOrCreateState(groupId), resultValue, ioTDBLocal);
   }

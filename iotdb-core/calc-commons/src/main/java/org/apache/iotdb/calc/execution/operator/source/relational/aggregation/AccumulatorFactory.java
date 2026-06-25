@@ -67,7 +67,6 @@ import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
-import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 
 import com.google.common.collect.ImmutableList;
@@ -287,14 +286,6 @@ public class AccumulatorFactory {
     FunctionArguments functionArguments =
         new FunctionArguments(
             UDFDataTypeTransformer.transformToUDFDataTypeList(inputDataTypes), inputAttributes);
-    try {
-      aggregateFunction.beforeStart(functionArguments, ioTDBLocal);
-    } catch (UDFException e) {
-      throw new RuntimeException(
-          "Error occurs when starting user-defined aggregate function "
-              + aggregateFunction.getClass().getName(),
-          e);
-    }
     return new UserDefinedAggregateFunctionAccumulator(
         aggregateFunction.analyze(functionArguments),
         aggregateFunction,
@@ -313,14 +304,6 @@ public class AccumulatorFactory {
     FunctionArguments functionArguments =
         new FunctionArguments(
             UDFDataTypeTransformer.transformToUDFDataTypeList(inputDataTypes), inputAttributes);
-    try {
-      aggregateFunction.beforeStart(functionArguments, ioTDBLocal);
-    } catch (UDFException e) {
-      throw new RuntimeException(
-          "Error occurs when starting user-defined aggregate function "
-              + aggregateFunction.getClass().getName(),
-          e);
-    }
     return new GroupedUserDefinedAggregateAccumulator(
         aggregateFunction,
         functionArguments,

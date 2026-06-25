@@ -37,11 +37,15 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer {
 
   private final ScalarFunction scalarFunction;
+  private final FunctionArguments parameters;
   private final List<Type> inputTypes;
   private final IoTDBLocal ioTDBLocal;
+  private boolean init = false;
 
   public UserDefineScalarFunctionTransformer(
       Type returnType,
@@ -51,15 +55,35 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
       ColumnTransformerBuilder.Context context) {
     super(returnType, childrenTransformers);
     this.scalarFunction = scalarFunction;
+    this.parameters = parameters;
     this.ioTDBLocal = createIoTDBLocal(context);
     this.inputTypes =
         childrenTransformers.stream().map(ColumnTransformer::getType).collect(Collectors.toList());
+  }
+
+  private static IoTDBLocal createIoTDBLocal(ColumnTransformerBuilder.Context context) {
+    IoTDBLocalFactory factory = context.getIoTDBLocalFactory();
+    String fragmentInstanceId = context.getFragmentInstanceId();
+    String outerGlobalQueryId = context.getOuterGlobalQueryId();
+    long outerLocalQueryId = context.getOuterLocalQueryId();
+    checkArgument(factory != null, "IoTDBLocalFactory must not be null for UDF execution");
+    checkArgument(
+        fragmentInstanceId != null, "fragmentInstanceId must not be null for UDF execution");
+    checkArgument(
+        outerGlobalQueryId != null, "outerGlobalQueryId must not be null for UDF execution");
+    checkArgument(
+        outerLocalQueryId >= 0, "outerLocalQueryId must not be negative for UDF execution");
+    return factory.create(
+        context.getSessionInfo(), fragmentInstanceId, outerLocalQueryId, outerGlobalQueryId);
+  }
+
+  private void initIfNeeded() {
+    if (init) {
+      return;
+    }
+    init = true;
     try {
-      if (ioTDBLocal != null) {
-        scalarFunction.beforeStart(parameters, ioTDBLocal);
-      } else {
-        scalarFunction.beforeStart(parameters);
-      }
+      scalarFunction.beforeStart(parameters, ioTDBLocal);
     } catch (UDFException e) {
       throw new RuntimeException(
           "Error occurs when starting user-defined scalar function "
@@ -68,31 +92,14 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
     }
   }
 
-  private static IoTDBLocal createIoTDBLocal(ColumnTransformerBuilder.Context context) {
-    IoTDBLocalFactory factory = context.getIoTDBLocalFactory();
-    if (factory == null
-        || context.getFragmentInstanceId() == null
-        || context.getOuterGlobalQueryId() == null
-        || context.getOuterLocalQueryId() < 0) {
-      return null;
-    }
-    return factory.create(
-        context.getSessionInfo(),
-        context.getFragmentInstanceId(),
-        context.getOuterLocalQueryId(),
-        context.getOuterGlobalQueryId());
-  }
-
   @Override
   protected void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount) {
+    initIfNeeded();
     RecordIterator iterator = new RecordIterator(childrenColumns, inputTypes, positionCount);
     while (iterator.hasNext()) {
       try {
-        Object result =
-            ioTDBLocal != null
-                ? scalarFunction.evaluate(iterator.next(), ioTDBLocal)
-                : scalarFunction.evaluate(iterator.next());
+        Object result = scalarFunction.evaluate(iterator.next(), ioTDBLocal);
         if (result == null) {
           builder.appendNull();
         } else {
@@ -110,6 +117,7 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
   @Override
   protected void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
+    initIfNeeded();
     RecordIterator iterator = new RecordIterator(childrenColumns, inputTypes, positionCount);
     int i = 0;
     while (iterator.hasNext()) {
@@ -119,10 +127,7 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
           builder.appendNull();
           continue;
         }
-        Object result =
-            ioTDBLocal != null
-                ? scalarFunction.evaluate(input, ioTDBLocal)
-                : scalarFunction.evaluate(input);
+        Object result = scalarFunction.evaluate(input, ioTDBLocal);
         if (result == null) {
           builder.appendNull();
         } else {
@@ -140,12 +145,8 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
   @Override
   public void close() {
     super.close();
-    if (ioTDBLocal != null) {
-      ioTDBLocal.close();
-      scalarFunction.beforeDestroy(ioTDBLocal);
-    } else {
-      scalarFunction.beforeDestroy();
-    }
+    scalarFunction.beforeDestroy(ioTDBLocal);
+    ioTDBLocal.close();
   }
 
   @Override

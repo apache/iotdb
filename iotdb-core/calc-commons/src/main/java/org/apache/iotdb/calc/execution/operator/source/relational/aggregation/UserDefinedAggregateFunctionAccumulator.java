@@ -24,6 +24,7 @@ import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
@@ -52,6 +53,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   private final List<Type> inputDataTypes;
   private final State state;
   private final IoTDBLocal ioTDBLocal;
+  private boolean init;
 
   public UserDefinedAggregateFunctionAccumulator(
       AggregateFunctionAnalysis analysis,
@@ -59,6 +61,16 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
       FunctionArguments functionArguments,
       List<Type> inputDataTypes,
       IoTDBLocal ioTDBLocal) {
+    this(analysis, aggregateFunction, functionArguments, inputDataTypes, ioTDBLocal, false);
+  }
+
+  private UserDefinedAggregateFunctionAccumulator(
+      AggregateFunctionAnalysis analysis,
+      AggregateFunction aggregateFunction,
+      FunctionArguments functionArguments,
+      List<Type> inputDataTypes,
+      IoTDBLocal ioTDBLocal,
+      boolean init) {
     checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for UDAF");
     this.analysis = analysis;
     this.aggregateFunction = aggregateFunction;
@@ -66,6 +78,22 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
     this.inputDataTypes = inputDataTypes;
     this.state = aggregateFunction.createState();
     this.ioTDBLocal = ioTDBLocal;
+    this.init = init;
+  }
+
+  private void initIfNeeded() {
+    if (init) {
+      return;
+    }
+    init = true;
+    try {
+      aggregateFunction.beforeStart(functionArguments, ioTDBLocal);
+    } catch (UDFException e) {
+      throw new RuntimeException(
+          "Error occurs when starting user-defined aggregate function "
+              + aggregateFunction.getClass().getName(),
+          e);
+    }
   }
 
   @Override
@@ -76,11 +104,12 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   @Override
   public TableAccumulator copy() {
     return new UserDefinedAggregateFunctionAccumulator(
-        analysis, aggregateFunction, functionArguments, inputDataTypes, ioTDBLocal);
+        analysis, aggregateFunction, functionArguments, inputDataTypes, ioTDBLocal, true);
   }
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
+    initIfNeeded();
     RecordIterator iterator =
         mask.isSelectAll()
             ? new RecordIterator(
@@ -93,6 +122,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public void addIntermediate(Column argument) {
+    initIfNeeded();
     checkArgument(
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
@@ -118,6 +148,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
+    initIfNeeded();
     ResultValue resultValue = new ResultValue(columnBuilder);
     aggregateFunction.outputFinal(state, resultValue, ioTDBLocal);
   }

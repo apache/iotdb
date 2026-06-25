@@ -78,12 +78,6 @@ public class IoTDBLocalIT {
         "CLEAR ATTRIBUTE CACHE",
       };
 
-  public static void main(String[] args) {
-    for (String sql : SETUP_SQLS) {
-      System.out.println(sql + ";");
-    }
-  }
-
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
