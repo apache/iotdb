@@ -49,7 +49,6 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.nio.file.Files;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -60,11 +59,6 @@ import java.util.List;
 @Category({LocalStandaloneIT.class})
 public class IoTDBAutoResizingBufferMemoryIT {
 
-  private static final String DATANODE_MEMORY_PROPORTION = "3331:3331:1111:1111:1110:6";
-  private static final int AUTO_RESIZING_BUFFER_MEMORY_PROPORTION_SUM = 10000;
-  private static final int AUTO_RESIZING_BUFFER_FREE_MEMORY_PROPORTION = 6;
-  private static final String CONFIG_FILE_ENTRY =
-      "datanode_memory_proportion=" + DATANODE_MEMORY_PROPORTION;
   private static final int DATANODE_MAX_HEAP_SIZE_IN_MB = 256;
   private static final int AUTO_RESIZING_BUFFER_COUNT_PER_CONNECTION = 2;
   private static final int CONNECTION_COUNT_OVERFLOW_MARGIN = 1;
@@ -76,10 +70,6 @@ public class IoTDBAutoResizingBufferMemoryIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
-        .getCommonConfig()
-        .setDatanodeMemoryProportion(DATANODE_MEMORY_PROPORTION);
-    EnvFactory.getEnv()
-        .getConfig()
         .getDataNodeJVMConfig()
         .setMaxHeapSize(DATANODE_MAX_HEAP_SIZE_IN_MB);
     EnvFactory.getEnv().initClusterEnvironment();
@@ -88,29 +78,6 @@ public class IoTDBAutoResizingBufferMemoryIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
-  @Test
-  public void testDatanodeMemoryProportionConfigTakesEffect() throws Exception {
-    Assert.assertTrue(
-        EnvFactory.getEnv().getNodeWrapperList().stream()
-            .allMatch(nodeWrapper -> checkConfigFileContains(nodeWrapper, CONFIG_FILE_ENTRY)));
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.auto_resizing_buffer_memory");
-      statement.execute(
-          "CREATE TIMESERIES root.auto_resizing_buffer_memory.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
-      statement.execute(
-          "INSERT INTO root.auto_resizing_buffer_memory.d1(time, s1) VALUES (1, 100)");
-
-      try (ResultSet resultSet =
-          statement.executeQuery("SELECT s1 FROM root.auto_resizing_buffer_memory.d1")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(100, resultSet.getInt("root.auto_resizing_buffer_memory.d1.s1"));
-        Assert.assertFalse(resultSet.next());
-      }
-    }
   }
 
   @Test
@@ -209,13 +176,7 @@ public class IoTDBAutoResizingBufferMemoryIT {
   }
 
   private static long calculateAutoResizingBufferMemorySizeInBytes() {
-    return (long)
-        (DATANODE_MAX_HEAP_SIZE_IN_MB
-            * 1024L
-            * 1024L
-            * AUTO_RESIZING_BUFFER_FREE_MEMORY_PROPORTION
-            / AUTO_RESIZING_BUFFER_MEMORY_PROPORTION_SUM
-            / 2);
+    return (DATANODE_MAX_HEAP_SIZE_IN_MB * 1024L * 1024L * 5 / 100); // 5% of the max heap size;
   }
 
   private static int calculateNextPowerOfTwo(long value) {
