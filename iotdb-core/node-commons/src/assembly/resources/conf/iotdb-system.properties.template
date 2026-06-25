@@ -444,6 +444,13 @@ dn_metric_internal_reporter_type=MEMORY
 # Privilege: SECURITY
 enable_thrift_ssl=false
 
+# Whether client authentication is required for Thrift SSL connections.
+# This only takes effect when enable_thrift_ssl=true.
+# effectiveMode: restart
+# Datatype: boolean
+# Privilege: SECURITY
+thrift_ssl_client_auth=false
+
 # Whether enable SSL for Rest Service
 # effectiveMode: restart
 # Datatype: boolean

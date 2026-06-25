@@ -138,6 +138,12 @@ public class Utils {
     if (info.containsKey(Config.TRUST_STORE_PWD)) {
       params.setTrustStorePwd(info.getProperty(Config.TRUST_STORE_PWD));
     }
+    if (info.containsKey(Config.KEY_STORE)) {
+      params.setKeyStore(info.getProperty(Config.KEY_STORE));
+    }
+    if (info.containsKey(Config.KEY_STORE_PWD)) {
+      params.setKeyStorePwd(info.getProperty(Config.KEY_STORE_PWD));
+    }
     if (info.containsKey(Config.SSL_PROTOCOL)) {
       params.setSslProtocol(RpcSslUtils.normalizeProtocol(info.getProperty(Config.SSL_PROTOCOL)));
     }

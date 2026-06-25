@@ -163,11 +163,19 @@ public class UtilsTest {
   @Test
   public void testParseSslConfig() throws IoTDBURLException {
     Properties properties = new Properties();
+    properties.setProperty(Config.TRUST_STORE, "/tmp/truststore.p12");
+    properties.setProperty(Config.TRUST_STORE_PWD, "trust_pass");
+    properties.setProperty(Config.KEY_STORE, "/tmp/keystore.p12");
+    properties.setProperty(Config.KEY_STORE_PWD, "key_pass");
     IoTDBConnectionParams params =
         Utils.parseUrl(
             "jdbc:iotdb://127.0.0.1:6667?use_ssl=true&ssl_protocol=ProviderProtocol", properties);
 
     assertTrue(params.isUseSSL());
     assertEquals("ProviderProtocol", params.getSslProtocol());
+    assertEquals("/tmp/truststore.p12", params.getTrustStore());
+    assertEquals("trust_pass", params.getTrustStorePwd());
+    assertEquals("/tmp/keystore.p12", params.getKeyStore());
+    assertEquals("key_pass", params.getKeyStorePwd());
   }
 }
