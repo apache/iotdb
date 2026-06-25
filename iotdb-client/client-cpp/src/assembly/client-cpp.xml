@@ -52,6 +52,8 @@
             <directory>${project.build.directory}/package-metadata</directory>
             <includes>
                 <include>third_party/DEPENDENCIES.md</include>
+                <include>third_party/NOTICE</include>
+                <include>third_party/licenses/**</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>

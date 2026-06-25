@@ -58,6 +58,8 @@ public class IoTDBDatabaseRegionControlIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
+        .setSchemaRegionGroupExtensionPolicy("CUSTOM")
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
         .setDefaultSchemaRegionGroupNumPerDatabase(testDefaultSchemaRegionGroupNumPerDatabase)
         .setDefaultDataRegionGroupNumPerDatabase(testDefaultDataRegionGroupNumPerDatabase);
 
@@ -132,7 +134,7 @@ public class IoTDBDatabaseRegionControlIT {
       final int testDataRegionGroupNum = 3;
       String createDatabaseSQL =
           String.format(
-              "CREATE DATABASE %s WITH SCHEMA_REGION_GROUP_NUM=%d, DATA_REGION_GROUP_NUM=%d;",
+              "CREATE DATABASE %s WITH MAX_SCHEMA_REGION_GROUP_NUM=%d, MAX_DATA_REGION_GROUP_NUM=%d;",
               database, testSchemaRegionGroupNum, testDataRegionGroupNum);
       statement.execute(createDatabaseSQL);
       insertBatchData(statement, database, 0);
@@ -204,7 +206,7 @@ public class IoTDBDatabaseRegionControlIT {
       final int testDataRegionGroupNum = 3;
       String alterDatabaseSQL =
           String.format(
-              "ALTER DATABASE %s WITH SCHEMA_REGION_GROUP_NUM=%d, DATA_REGION_GROUP_NUM=%d;",
+              "ALTER DATABASE %s WITH MAX_SCHEMA_REGION_GROUP_NUM=%d, MAX_DATA_REGION_GROUP_NUM=%d;",
               database, testSchemaRegionGroupNum, testDataRegionGroupNum);
       statement.execute(alterDatabaseSQL);
       insertBatchData(statement, database, batchSize);
@@ -231,6 +233,18 @@ public class IoTDBDatabaseRegionControlIT {
               });
       Assert.assertEquals(testSchemaRegionGroupNum, schemaRegionGroupNum.get());
       Assert.assertEquals(testDataRegionGroupNum, dataRegionGroupNum.get());
+    }
+  }
+
+  @Test
+  public void testDeprecatedRegionGroupNumSqlRejected() throws SQLException {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class,
+          () ->
+              statement.execute(
+                  "CREATE DATABASE root.paradise3 WITH SCHEMA_REGION_GROUP_NUM=3, DATA_REGION_GROUP_NUM=4;"));
     }
   }
 }

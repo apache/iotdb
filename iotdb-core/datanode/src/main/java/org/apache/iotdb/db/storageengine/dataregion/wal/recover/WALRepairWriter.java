@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover;
 
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
@@ -65,7 +66,7 @@ public class WALRepairWriter {
     }
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ)) {
       ByteBuffer magicStringBytes = ByteBuffer.allocate(size);
-      channel.read(magicStringBytes, channel.size() - size);
+      IOUtils.readFully(channel, magicStringBytes, channel.size() - size);
       magicStringBytes.flip();
       return new String(magicStringBytes.array(), StandardCharsets.UTF_8);
     }
