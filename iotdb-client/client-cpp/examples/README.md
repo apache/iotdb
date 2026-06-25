@@ -53,7 +53,7 @@ publishes one zip per platform/toolchain:
 | macOS arm64 | `macos-aarch64` |
 | Windows (match your Visual Studio version) | `windows-x86_64-msvc14.1` ... `msvc14.4` |
 
-The current build compiles Thrift 0.21 from source at CMake configure time.
+The current build compiles Thrift 0.23 from source at CMake configure time.
 Legacy `-Diotdb-tools-thrift.version=...` flags applied to the **old**
 pre-built Thrift workflow only. Linux release packages are built in the
 `manylinux_2_28` container and require glibc 2.28 or newer. See

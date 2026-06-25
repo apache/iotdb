@@ -19,22 +19,12 @@
 
 #include "catch.hpp"
 #include "SessionC.h"
-#include "TestCredentials.h"
-#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <string>
 #include <cmath>
 
 extern CTableSession* g_table_session;
-
-static bool tsErrorIndicatesPreparedUnsupported(const char* err) {
-  if (!err) {
-    return false;
-  }
-  return std::strstr(err, "prepareStatement") != nullptr ||
-         std::strstr(err, "Invalid method name") != nullptr;
-}
 
 static int global_test_tag = 0;
 
@@ -186,110 +176,6 @@ TEST_CASE("C API Table - Query with timeout", "[c_table_queryTimeout][c_table_qu
   ts_dataset_destroy(dataSet);
 }
 
-TEST_CASE("C API Table - Prepared statement all supported parameter types",
-          "[c_table_prepared_all_types][c_table_query]") {
-  CaseReporter cr("c_table_prepared_all_types");
-
-  ts_table_session_execute_non_query(g_table_session, "DROP DATABASE IF EXISTS c_db_prep_types");
-  ts_table_session_execute_non_query(g_table_session, "CREATE DATABASE c_db_prep_types");
-  ts_table_session_execute_non_query(g_table_session, "USE \"c_db_prep_types\"");
-  ts_table_session_execute_non_query(g_table_session, "CREATE TABLE c_t_ps_types ("
-                                                      "tag1 string tag,"
-                                                      "b boolean field,"
-                                                      "i32 int32 field,"
-                                                      "i64 int64 field,"
-                                                      "f float field,"
-                                                      "d double field,"
-                                                      "s string field)");
-
-  const char* columnNames[] = {"tag1", "b", "i32", "i64", "f", "d", "s"};
-  TSDataType_C dataTypes[] = {TS_TYPE_STRING, TS_TYPE_BOOLEAN, TS_TYPE_INT32, TS_TYPE_INT64,
-                              TS_TYPE_FLOAT,  TS_TYPE_DOUBLE,  TS_TYPE_STRING};
-  TSColumnCategory_C colCategories[] = {TS_COL_TAG,   TS_COL_FIELD, TS_COL_FIELD, TS_COL_FIELD,
-                                        TS_COL_FIELD, TS_COL_FIELD, TS_COL_FIELD};
-  CTablet* tablet =
-      ts_tablet_new_with_category("c_t_ps_types", 7, columnNames, dataTypes, colCategories, 10);
-  REQUIRE(tablet != nullptr);
-
-  ts_tablet_add_timestamp(tablet, 0, 1);
-  ts_tablet_add_value_string(tablet, 0, 0, "dev1");
-  ts_tablet_add_value_bool(tablet, 1, 0, true);
-  ts_tablet_add_value_int32(tablet, 2, 0, 123);
-  ts_tablet_add_value_int64(tablet, 3, 0, 123456789LL);
-  ts_tablet_add_value_float(tablet, 4, 0, 1.5f);
-  ts_tablet_add_value_double(tablet, 5, 0, 2.5);
-  ts_tablet_add_value_string(tablet, 6, 0, "alpha");
-
-  ts_tablet_add_timestamp(tablet, 1, 2);
-  ts_tablet_add_value_string(tablet, 0, 1, "dev2");
-  ts_tablet_add_value_bool(tablet, 1, 1, false);
-  ts_tablet_add_value_int32(tablet, 2, 1, 456);
-  ts_tablet_add_value_int64(tablet, 3, 1, 987654321LL);
-  ts_tablet_add_value_float(tablet, 4, 1, 3.5f);
-  ts_tablet_add_value_double(tablet, 5, 1, 4.5);
-  ts_tablet_add_value_string(tablet, 6, 1, "beta");
-  ts_tablet_set_row_count(tablet, 2);
-
-  REQUIRE(ts_table_session_insert(g_table_session, tablet) == TS_OK);
-  ts_tablet_destroy(tablet);
-
-  int pc = 0;
-  CTablePreparedStmt* ps =
-      ts_table_prepared_statement_new(g_table_session,
-                                      "SELECT i64 FROM c_t_ps_types WHERE tag1 = ? AND b = ? AND "
-                                      "i32 = ? AND i64 = ? AND f = ? AND d = ? AND s = ?",
-                                      "c_ps_all_types", &pc);
-  if (!ps && tsErrorIndicatesPreparedUnsupported(ts_get_last_error())) {
-    WARN("Skipping: server does not expose prepareStatement RPC (use a build that includes "
-         "table-model prepared "
-         "statements)");
-    return;
-  }
-  REQUIRE(ps != nullptr);
-  REQUIRE(pc == 7);
-  REQUIRE(ts_table_prepared_statement_set_string(ps, 0, "dev1") == TS_OK);
-  REQUIRE(ts_table_prepared_statement_set_bool(ps, 1, true) == TS_OK);
-  REQUIRE(ts_table_prepared_statement_set_int32(ps, 2, 123) == TS_OK);
-  REQUIRE(ts_table_prepared_statement_set_int64(ps, 3, 123456789LL) == TS_OK);
-  REQUIRE(ts_table_prepared_statement_set_float(ps, 4, 1.5f) == TS_OK);
-  REQUIRE(ts_table_prepared_statement_set_double(ps, 5, 2.5) == TS_OK);
-  REQUIRE(ts_table_prepared_statement_set_string(ps, 6, "alpha") == TS_OK);
-
-  CSessionDataSet* dataSet = nullptr;
-  REQUIRE(ts_table_prepared_statement_execute_query(ps, -1, &dataSet) == TS_OK);
-  REQUIRE(dataSet != nullptr);
-  int count = 0;
-  while (ts_dataset_has_next(dataSet)) {
-    CRowRecord* record = ts_dataset_next(dataSet);
-    REQUIRE(record != nullptr);
-    bool foundI64 = false;
-    int n = ts_row_record_get_field_count(record);
-    for (int i = 0; i < n; i++) {
-      if (ts_row_record_get_data_type(record, i) == TS_TYPE_INT64) {
-        REQUIRE_FALSE(ts_row_record_is_null(record, i));
-        REQUIRE(ts_row_record_get_int64(record, i) == 123456789LL);
-        foundI64 = true;
-        break;
-      }
-    }
-    REQUIRE(foundI64);
-    ts_row_record_destroy(record);
-    count++;
-  }
-  REQUIRE(count == 1);
-  ts_dataset_destroy(dataSet);
-  ts_table_prepared_statement_free(ps);
-
-  // Smoke-check NULL parameter binding path on client side.
-  CTablePreparedStmt* psNull = ts_table_prepared_statement_new(
-      g_table_session, "SELECT s FROM c_t_ps_types WHERE s = ?", "c_ps_null_type", &pc);
-  REQUIRE(psNull != nullptr);
-  REQUIRE(pc == 1);
-  REQUIRE(ts_table_prepared_statement_set_null(psNull, 0) == TS_OK);
-  REQUIRE(ts_table_prepared_statement_clear_parameters(psNull) == TS_OK);
-  ts_table_prepared_statement_free(psNull);
-}
-
 /* ============================================================
  *  Multi-type tablet insert
  * ============================================================ */
@@ -356,8 +242,7 @@ TEST_CASE("C API Table - Multi-node table session", "[c_table_multiNode][c_table
   CaseReporter cr("c_table_multiNode");
 
   const char* urls[] = {"127.0.0.1:6667"};
-  CTableSession* localSession = ts_table_session_new_multi_node(
-      urls, 1, iotdb::integration_test::kUsername, iotdb::integration_test::kPassword, "");
+  CTableSession* localSession = ts_table_session_new_multi_node(urls, 1, "root", "root", "");
   REQUIRE(localSession != nullptr);
 
   TsStatus status =
@@ -433,68 +318,5 @@ TEST_CASE("C API Table - Dataset column info", "[c_table_datasetColumns][c_table
     ts_row_record_destroy(record);
   }
 
-  ts_dataset_destroy(dataSet);
-}
-
-/* ============================================================
- *  OBJECT column (requires server/table model OBJECT support)
- * ============================================================ */
-
-TEST_CASE("C API Table - OBJECT tablet insert and read", "[c_table_object][c_table_write]") {
-  CaseReporter cr("c_table_object");
-
-  ts_table_session_execute_non_query(g_table_session, "DROP DATABASE IF EXISTS c_db_object");
-  TsStatus status =
-      ts_table_session_execute_non_query(g_table_session, "CREATE DATABASE c_db_object");
-  REQUIRE(status == TS_OK);
-  ts_table_session_execute_non_query(g_table_session, "USE \"c_db_object\"");
-  status = ts_table_session_execute_non_query(
-      g_table_session, "CREATE TABLE c_table_obj (tag1 string tag, payload object field)");
-  REQUIRE(status == TS_OK);
-
-  const char* columnNames[] = {"tag1", "payload"};
-  TSDataType_C dataTypes[] = {TS_TYPE_STRING, TS_TYPE_OBJECT};
-  TSColumnCategory_C colCategories[] = {TS_COL_TAG, TS_COL_FIELD};
-
-  CTablet* tablet =
-      ts_tablet_new_with_category("c_table_obj", 2, columnNames, dataTypes, colCategories, 10);
-  REQUIRE(tablet != nullptr);
-
-  const uint8_t blob[] = {'h', 'e', 'l', 'l', 'o', '-', 'o', 'b', 'j'};
-  ts_tablet_add_timestamp(tablet, 0, 1000LL);
-  ts_tablet_add_value_string(tablet, 0, 0, "dev1");
-  status = ts_tablet_add_value_object(tablet, 1, 0, true, 0, blob, sizeof(blob));
-  REQUIRE(status == TS_OK);
-  ts_tablet_set_row_count(tablet, 1);
-
-  status = ts_table_session_insert(g_table_session, tablet);
-  REQUIRE(status == TS_OK);
-  ts_tablet_destroy(tablet);
-
-  CSessionDataSet* dataSet = nullptr;
-  status = ts_table_session_execute_query(g_table_session, "SELECT * FROM c_table_obj", &dataSet);
-  REQUIRE(status == TS_OK);
-  REQUIRE(dataSet != nullptr);
-
-  REQUIRE(ts_dataset_has_next(dataSet));
-  CRowRecord* record = ts_dataset_next(dataSet);
-  REQUIRE(record != nullptr);
-
-  bool foundObject = false;
-  int n = ts_row_record_get_field_count(record);
-  for (int i = 0; i < n; i++) {
-    if (ts_row_record_get_data_type(record, i) == TS_TYPE_OBJECT) {
-      foundObject = true;
-      REQUIRE_FALSE(ts_row_record_is_null(record, i));
-      const char* s = ts_row_record_get_string(record, i);
-      REQUIRE(s != nullptr);
-      /* OBJECT payloads are binary; do not use strlen (embedded NUL bytes are valid). */
-      REQUIRE(ts_row_record_get_string_byte_length(record, i) > 0);
-      break;
-    }
-  }
-  REQUIRE(foundObject);
-
-  ts_row_record_destroy(record);
   ts_dataset_destroy(dataSet);
 }

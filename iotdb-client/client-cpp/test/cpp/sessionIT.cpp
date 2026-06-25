@@ -24,7 +24,6 @@
 #include "Session.h"
 #include "SessionBuilder.h"
 #include "SessionPool.h"
-#include "TestCredentials.h"
 #include "TsBlock.h"
 #include "common_types.h"
 
@@ -78,8 +77,7 @@ TEST_CASE("Login Test - Authentication failed with error code 801", "[Authentica
   CaseReporter cr("Login Test");
 
   try {
-    Session session("127.0.0.1", 6667, iotdb::integration_test::kUsername,
-                    iotdb::integration_test::kWrongPassword);
+    Session session("127.0.0.1", 6667, "root", "wrong-password");
     session.open(false);
     FAIL("Expected authentication exception"); // Test fails if no exception
   } catch (const std::exception& e) {
@@ -92,8 +90,7 @@ TEST_CASE("Test Session constructor with nodeUrls", "[SessionInitAndOperate]") {
   CaseReporter cr("SessionInitWithNodeUrls");
 
   std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
-  std::shared_ptr<Session> localSession = std::make_shared<Session>(
-      nodeUrls, iotdb::integration_test::kUsername, iotdb::integration_test::kPassword);
+  std::shared_ptr<Session> localSession = std::make_shared<Session>(nodeUrls, "root", "root");
   localSession->open();
   if (!localSession->checkTimeseriesExists("root.test.d1.s1")) {
     localSession->createTimeseries("root.test.d1.s1", TSDataType::INT64, TSEncoding::RLE,
@@ -109,11 +106,8 @@ TEST_CASE("Test Session builder with nodeUrls", "[SessionBuilderInit]") {
 
   std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
   auto builder = std::unique_ptr<SessionBuilder>(new SessionBuilder());
-  std::shared_ptr<Session> session =
-      std::shared_ptr<Session>(builder->username(iotdb::integration_test::kUsername)
-                                   ->password(iotdb::integration_test::kPassword)
-                                   ->nodeUrls(nodeUrls)
-                                   ->build());
+  std::shared_ptr<Session> session = std::shared_ptr<Session>(
+      builder->username("root")->password("root")->nodeUrls(nodeUrls)->build());
   session->open();
   if (!session->checkTimeseriesExists("root.test.d1.s1")) {
     session->createTimeseries("root.test.d1.s1", TSDataType::INT64, TSEncoding::RLE,

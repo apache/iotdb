@@ -144,10 +144,13 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          brew install boost openssl llvm@17 bison
+          # Pin openssl@3 (Apache-2.0); the default formula will move to OpenSSL 4.0.
+          brew install boost openssl@3 llvm@17 bison
           ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
+          # Homebrew OpenSSL is keg-only, so point find_package(OpenSSL) at it.
+          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
           clang-format --version
           bison --version
           sudo rm -rf /Applications/Xcode_14.3.1.app
@@ -163,8 +166,14 @@ jobs:
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
           
-          choco install openssl -y
-          $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
+          # Pinned OpenSSL 3.x (Apache-2.0): 'choco install openssl' now installs
+          # OpenSSL 4.0, which removed the legacy TLS-method APIs Thrift uses.
+          $sslZip = "$env:RUNNER_TEMP\openssl-3.5.3.zip"
+          $sslDir = "$env:RUNNER_TEMP\openssl-3"
+          curl.exe -L --fail --retry 3 -o $sslZip 'https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.3.zip'
+          Expand-Archive -Path $sslZip -DestinationPath $sslDir -Force
+          $sslPath = (Get-ChildItem $sslDir -Recurse -Directory -Filter 'x64' | Select-Object -First 1).FullName
+          if (-not $sslPath) { throw "OpenSSL x64 dir not found under $sslDir" }
           echo "$sslPath\bin" >> $env:GITHUB_PATH
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
           choco install llvm --version=17.0.6 --force -y

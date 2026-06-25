@@ -21,7 +21,6 @@
 
 #include <catch.hpp>
 #include "SessionC.h"
-#include "TestCredentials.h"
 
 // Global session handle used by the C API tree-model tests
 CSession* g_session = nullptr;
@@ -30,8 +29,7 @@ struct CSessionListener : Catch::TestEventListenerBase {
   using TestEventListenerBase::TestEventListenerBase;
 
   void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
-    g_session = ts_session_new("127.0.0.1", 6667, iotdb::integration_test::kUsername,
-                               iotdb::integration_test::kPassword);
+    g_session = ts_session_new("127.0.0.1", 6667, "root", "root");
     REQUIRE(g_session != nullptr);
     TsStatus st = ts_session_open(g_session);
     if (st != TS_OK) {

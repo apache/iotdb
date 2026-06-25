@@ -118,6 +118,21 @@ set(_example_targets
     tree_example
     table_example)
 
+# OpenSSL runtime libraries bundled in the SDK lib/ (libssl / libcrypto). When
+# building against an unpacked package, copy them next to each example binary so
+# the examples run without a system OpenSSL - libiotdb_session records them as
+# NEEDED and resolves them via its $ORIGIN runtime path.
+set(_iotdb_sdk_ssl_runtime "")
+if(NOT _iotdb_examples_in_tree)
+    file(GLOB _iotdb_sdk_ssl_runtime
+        "${IOTDB_SDK_ROOT}/lib/libssl*.so*"
+        "${IOTDB_SDK_ROOT}/lib/libcrypto*.so*"
+        "${IOTDB_SDK_ROOT}/lib/libssl*.dylib"
+        "${IOTDB_SDK_ROOT}/lib/libcrypto*.dylib"
+        "${IOTDB_SDK_ROOT}/lib/libssl*.dll"
+        "${IOTDB_SDK_ROOT}/lib/libcrypto*.dll")
+endif()
+
 foreach(_t IN LISTS _example_targets)
   IF(WITH_SSL)
       TARGET_LINK_LIBRARIES(${_t} PRIVATE "${_iotdb_link_lib}" OpenSSL::SSL OpenSSL::Crypto)
@@ -127,6 +142,13 @@ foreach(_t IN LISTS _example_targets)
   IF(UNIX)
       TARGET_LINK_LIBRARIES(${_t} PRIVATE pthread)
   ENDIF()
+
+  # The packaged libiotdb_session records the bundled OpenSSL libs as DT_NEEDED;
+  # point the linker at the SDK lib/ so it can resolve them without a system
+  # OpenSSL present.
+  if(UNIX AND NOT _iotdb_examples_in_tree)
+      target_link_directories(${_t} PRIVATE "${IOTDB_SDK_ROOT}/lib")
+  endif()
 
   # Run from the build output directory without setting LD_LIBRARY_PATH / PATH.
   if(UNIX)
@@ -145,6 +167,12 @@ foreach(_t IN LISTS _example_targets)
           COMMAND ${CMAKE_COMMAND} -E copy_if_different
                   "${_iotdb_runtime}" $<TARGET_FILE_DIR:${_t}>
           COMMENT "Copy IoTDB runtime library next to ${_t}")
+      foreach(_ssl_lib IN LISTS _iotdb_sdk_ssl_runtime)
+          add_custom_command(TARGET ${_t} POST_BUILD
+              COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                      "${_ssl_lib}" $<TARGET_FILE_DIR:${_t}>
+              COMMENT "Copy bundled OpenSSL runtime next to ${_t}")
+      endforeach()
   elseif(WIN32)
       message(WARNING "Missing ${_iotdb_runtime}; copy iotdb_session.dll manually before running ${_t}.")
   endif()
@@ -166,6 +194,13 @@ if(EXISTS "${_iotdb_runtime}")
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${_iotdb_runtime}" "${_example_dist_dir}/")
 endif()
+# Stage the bundled OpenSSL runtime too, so a copied dist/ runs on a machine
+# without a system OpenSSL.
+foreach(_ssl_lib IN LISTS _iotdb_sdk_ssl_runtime)
+    add_custom_command(TARGET example-dist POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_ssl_lib}" "${_example_dist_dir}/")
+endforeach()
 
 if(IOTDB_EXAMPLES_REGISTER_TESTS)
     set(_runnable_example_targets

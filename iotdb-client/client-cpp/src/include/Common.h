@@ -183,7 +183,6 @@ public:
     case TSDataType::TEXT:
     case TSDataType::STRING:
     case TSDataType::BLOB:
-    case TSDataType::OBJECT:
       return !stringV.is_initialized();
     case TSDataType::DATE:
       return !dateV.is_initialized();

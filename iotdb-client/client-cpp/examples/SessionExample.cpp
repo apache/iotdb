@@ -391,7 +391,7 @@ void queryLast() {
 int main() {
   LOG_LEVEL = LEVEL_DEBUG;
 
-  session = new Session("127.0.0.1", 6667, "root", "TimechoDB@2021");
+  session = new Session("127.0.0.1", 6667, "root", "root");
   session->open(false);
 
   cout << "setStorageGroup: root.sg1\n" << endl;

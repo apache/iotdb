@@ -21,7 +21,6 @@
 
 #include <catch.hpp>
 #include "TableSessionBuilder.h"
-#include "TestCredentials.h"
 
 std::shared_ptr<TableSession> session;
 
@@ -31,11 +30,8 @@ struct SessionListener : Catch::TestEventListenerBase {
   void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
     if (!session) {
       TableSessionBuilder builder;
-      session = builder.host("127.0.0.1")
-                    ->rpcPort(6667)
-                    ->username(iotdb::integration_test::kUsername)
-                    ->password(iotdb::integration_test::kPassword)
-                    ->build();
+      session =
+          builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
     } else {
       session->open();
     }

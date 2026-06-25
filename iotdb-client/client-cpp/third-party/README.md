@@ -68,8 +68,8 @@ Alternatively copy files manually from the URLs listed in
 
 | Platform   | Typical files |
 |------------|---------------|
-| `linux/`   | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (+ `openssl-3.5.0.tar.gz` when `WITH_SSL=ON`) |
-| `mac/`     | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz` (Xcode CLT usually provides m4/flex/bison) |
-| `windows/` | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz`, `win_flex_bison-2.5.25.zip` (or any `win_flex_bison*.zip`; skip if flex/bison already on `PATH`) |
+| `linux/`   | `thrift-0.23.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (+ `openssl-3.5.0.tar.gz` only when `WITH_SSL=ON` and no system OpenSSL is present) |
+| `mac/`     | `thrift-0.23.0.tar.gz`, `boost_1_60_0.tar.gz` (Xcode CLT usually provides m4/flex/bison) |
+| `windows/` | `thrift-0.23.0.tar.gz`, `boost_1_60_0.tar.gz`, `win_flex_bison-2.5.25.zip` (or any `win_flex_bison*.zip`; skip if flex/bison already on `PATH`) |
 
 Download URLs: see the *Offline build* table in [`README.md`](../README.md).
