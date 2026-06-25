@@ -141,6 +141,53 @@ public class TagManagerTest {
     Assert.assertEquals(0, regionStatistics.getRegionMemoryUsage());
   }
 
+  @Test
+  public void concurrentAddAndRemoveIndexEventuallyReleasesAllMemory() throws Exception {
+    initTagManager();
+    final String tagKey = "key";
+    final String tagValue = "value";
+    final IMeasurementMNode<?> node = newMeasurementMNode("s0");
+
+    final int workerCount = 16;
+    final int roundCount = 1000;
+    final ExecutorService executorService = Executors.newFixedThreadPool(workerCount);
+    final CountDownLatch readyLatch = new CountDownLatch(workerCount);
+    final CountDownLatch startLatch = new CountDownLatch(1);
+    final List<Future<?>> futures = new ArrayList<>();
+    for (int i = 0; i < workerCount; i++) {
+      futures.add(
+          executorService.submit(
+              () -> {
+                readyLatch.countDown();
+                startLatch.await();
+                for (int round = 0; round < roundCount; round++) {
+                  tagManager.addIndex(tagKey, tagValue, node);
+                  tagManager.removeIndex(tagKey, tagValue, node);
+                }
+                return null;
+              }));
+    }
+
+    try {
+      Assert.assertTrue(readyLatch.await(10, TimeUnit.SECONDS));
+      startLatch.countDown();
+      for (final Future<?> future : futures) {
+        future.get(10, TimeUnit.SECONDS);
+      }
+    } finally {
+      executorService.shutdownNow();
+    }
+    Assert.assertTrue(executorService.awaitTermination(10, TimeUnit.SECONDS));
+
+    Assert.assertEquals(0, regionStatistics.getRegionMemoryUsage());
+
+    tagManager.addIndex(tagKey, tagValue, node);
+    Assert.assertEquals(indexMemory(tagKey, tagValue, 1), regionStatistics.getRegionMemoryUsage());
+
+    tagManager.removeIndex(tagKey, tagValue, node);
+    Assert.assertEquals(0, regionStatistics.getRegionMemoryUsage());
+  }
+
   private void initTagManager() throws Exception {
     tempDir = Files.createTempDirectory("tag-manager").toFile();
     regionStatistics = new MemSchemaRegionStatistics(0, new MemSchemaEngineStatistics());
