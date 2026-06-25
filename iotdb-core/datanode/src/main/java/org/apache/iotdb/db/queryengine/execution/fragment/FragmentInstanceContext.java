@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
+import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -77,6 +78,9 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
+import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
+import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
+import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_OPERATOR_FROM_RAW_DATA;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
 
@@ -149,6 +153,9 @@ public class FragmentInstanceContext extends QueryContext {
   private int initQueryDataSourceRetryCount = 0;
   private final AtomicLong readyQueueTime = new AtomicLong(0);
   private final AtomicLong blockQueueTime = new AtomicLong(0);
+  private final AtomicLong scanAggregationFromRawDataCost = new AtomicLong(0);
+  private final AtomicLong scanAggregationFromStatisticsCost = new AtomicLong(0);
+  private final AtomicLong aggregationOperatorFromRawDataCost = new AtomicLong(0);
   private long unclosedSeqFileNum = 0;
   private long unclosedUnseqFileNum = 0;
   private long closedSeqFileNum = 0;
@@ -970,6 +977,8 @@ public class FragmentInstanceContext extends QueryContext {
 
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
 
+    recordAggregationCostToMetric();
+
     QueryResourceMetricSet.getInstance()
         .recordInitQueryResourceRetryCount(getInitQueryDataSourceRetryCount());
 
@@ -1113,6 +1122,49 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void addBlockQueuedTime(long time) {
     blockQueueTime.addAndGet(time);
+  }
+
+  public void recordScanAggregationFromRawDataCost(long costTimeInNanos) {
+    addCost(scanAggregationFromRawDataCost, costTimeInNanos);
+  }
+
+  public void recordScanAggregationFromStatisticsCost(long costTimeInNanos) {
+    addCost(scanAggregationFromStatisticsCost, costTimeInNanos);
+  }
+
+  public void recordAggregationOperatorFromRawDataCost(long costTimeInNanos) {
+    addCost(aggregationOperatorFromRawDataCost, costTimeInNanos);
+  }
+
+  private void addCost(AtomicLong cost, long costTimeInNanos) {
+    if (costTimeInNanos > 0) {
+      cost.addAndGet(costTimeInNanos);
+    }
+  }
+
+  long drainScanAggregationFromRawDataCost() {
+    return scanAggregationFromRawDataCost.getAndSet(0);
+  }
+
+  long drainScanAggregationFromStatisticsCost() {
+    return scanAggregationFromStatisticsCost.getAndSet(0);
+  }
+
+  long drainAggregationOperatorFromRawDataCost() {
+    return aggregationOperatorFromRawDataCost.getAndSet(0);
+  }
+
+  void recordAggregationCostToMetric() {
+    recordAggregationCost(AGGREGATION_FROM_RAW_DATA, drainScanAggregationFromRawDataCost());
+    recordAggregationCost(AGGREGATION_FROM_STATISTICS, drainScanAggregationFromStatisticsCost());
+    recordAggregationCost(
+        AGGREGATION_OPERATOR_FROM_RAW_DATA, drainAggregationOperatorFromRawDataCost());
+  }
+
+  private void recordAggregationCost(String stage, long costTimeInNanos) {
+    if (costTimeInNanos > 0) {
+      QueryExecutionMetricSet.getInstance().recordExecutionCost(stage, costTimeInNanos);
+    }
   }
 
   public long getReadyQueueTime() {
