@@ -231,6 +231,11 @@ public class TreeSchemaAutoCreatorAndVerifier {
       }
     } catch (AuthException e) {
       throw e;
+    } catch (LoadAnalyzeMissingSchemaException e) {
+      if (loadTsFileAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
+        throw e;
+      }
+      handleException(e, loadTsFileAnalyzer.getStatementString());
     } catch (LoadAnalyzeException e) {
       if (e instanceof LoadAnalyzeTypeMismatchException
           && !loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
@@ -238,11 +243,6 @@ public class TreeSchemaAutoCreatorAndVerifier {
       } else {
         throw e;
       }
-    } catch (LoadAnalyzeMissingSchemaException e) {
-      if (loadTsFileAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
-        throw e;
-      }
-      handleException(e, loadTsFileAnalyzer.getStatementString());
     } catch (Exception e) {
       if (e.getCause() instanceof LoadAnalyzeTypeMismatchException
           && loadTsFileAnalyzer.isConvertOnTypeMismatch()) {

@@ -856,10 +856,6 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(CREATE_DATABASE, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> LIST_USER_COLUMN_HEADERS =
-      ImmutableList.of(
-          new ColumnHeader(USER_ID, TSDataType.INT64), new ColumnHeader(USER, TSDataType.TEXT));
-
   public static final List<ColumnHeader> showTablesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TABLE_NAME, TSDataType.TEXT),

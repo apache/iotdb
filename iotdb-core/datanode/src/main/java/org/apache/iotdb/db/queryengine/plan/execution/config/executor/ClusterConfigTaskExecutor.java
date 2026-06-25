@@ -4564,7 +4564,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       ShowCreateDatabaseTask.buildTsBlock(databaseInfo, future);
-    } catch (final IOException | ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;

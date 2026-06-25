@@ -602,7 +602,8 @@ public class PipeTabletInsertionEventTest {
             null,
             true,
             111L,
-            112L);
+            112L,
+            null);
     Assert.assertTrue(insertNodeEvent.mayEventTimeOverlappedWithTimeRange());
     insertNodeEvent =
         new PipeInsertNodeTabletInsertionEvent(
@@ -619,7 +620,8 @@ public class PipeTabletInsertionEventTest {
             null,
             true,
             113L,
-            Long.MAX_VALUE);
+            Long.MAX_VALUE,
+            null);
     Assert.assertFalse(insertNodeEvent.mayEventTimeOverlappedWithTimeRange());
   }
 
