@@ -567,9 +567,10 @@ public class DataNodeAuthUtils {
       insertRowStatement.setAligned(true);
     } catch (IllegalPathException e) {
       LOGGER.warn(
-          "Cannot create password history for {} ,  because the path will be illegal:{}",
+          "Cannot create login history for {}, because the path will be illegal: {}",
           username,
           e.getMessage());
+      return;
     }
     long queryId = -1;
     try {
@@ -583,14 +584,20 @@ public class DataNodeAuthUtils {
               ZoneId.systemDefault());
 
       queryId = SessionManager.getInstance().requestQueryId();
-      Coordinator.getInstance()
-          .executeForTreeModel(
-              insertRowStatement,
-              queryId,
-              sessionInfo,
-              "",
-              ClusterPartitionFetcher.getInstance(),
-              ClusterSchemaFetcher.getInstance());
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .executeForTreeModel(
+                  insertRowStatement,
+                  queryId,
+                  sessionInfo,
+                  "",
+                  ClusterPartitionFetcher.getInstance(),
+                  ClusterSchemaFetcher.getInstance());
+      if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn("Fail to record login history for {}: {}", username, result.status);
+        return;
+      }
+      DNAuditLogger.getInstance().createLoginHistoryViewIfNecessary();
     } catch (Exception e) {
       LOGGER.error("Cannot record login history for {}", username, e);
     } finally {

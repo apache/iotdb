@@ -2898,6 +2898,7 @@ public class IoTDBDescriptor {
       if (commonDescriptor.getConfig().isEnableAuditLog() && !beforeEnableAuditLog) {
         DNAuditLogger.getInstance().setCoordinator(Coordinator.getInstance());
         DNAuditLogger.getInstance().start();
+        DNAuditLogger.getInstance().createLoginHistoryViewIfNecessary();
         AuditLogFields fields =
             new AuditLogFields(
                 AuthorityChecker.INTERNAL_AUDIT_USER_ID,
