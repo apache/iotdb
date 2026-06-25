@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -195,6 +197,38 @@ public class LoadTsFileAnalyzerTest {
       if (tsFile.exists()) {
         Assert.assertTrue(tsFile.delete());
       }
+    }
+  }
+
+  @Test
+  public void testPipeGeneratedLoadMissingSchemaShouldBeTemporaryWhenAutoCreateDisabled()
+      throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked("missing-schema.tsfile"),
+            true,
+            new MPPQueryContext(new QueryId("load_pipe_test")))) {
+      Assert.assertTrue(
+          analyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+              new LoadAnalyzeException(
+                  "Device root.sg.d1 does not exist in IoTDB and can not be created. "
+                      + "Please check weather auto-create-schema is enabled.")));
+      Assert.assertTrue(
+          analyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+              new SemanticException(
+                  "Auto create or verify schema error. Detail: Measurement root.sg.d1.s1 "
+                      + "does not exist in IoTDB and can not be created. "
+                      + "Please check weather auto-create-schema is enabled.")));
+      Assert.assertFalse(
+          analyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+              new LoadAnalyzeException("Data type mismatch for measurement root.sg.d1.s1")));
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
     }
   }
 

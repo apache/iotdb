@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -61,6 +62,18 @@ public class PipeStatementTsStatusVisitorTest {
                     .setSubStatus(
                         Arrays.asList(
                             StatusUtils.OK, new TSStatus(TSStatusCode.OUT_OF_TTL.getStatusCode()))))
+            .getCode());
+  }
+
+  @Test
+  public void testLoadTemporaryUnavailableClassification() throws Exception {
+    Assert.assertEquals(
+        TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
+        IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR
+            .process(
+                LoadTsFileStatement.createUnchecked("temporary-unavailable.tsfile"),
+                new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+                    .setMessage("schema is not ready"))
             .getCode());
   }
 

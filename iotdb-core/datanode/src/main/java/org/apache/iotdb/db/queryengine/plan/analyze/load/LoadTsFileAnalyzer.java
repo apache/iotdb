@@ -83,6 +83,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAnalyzer.class);
 
+  private static final String MISSING_SCHEMA_MESSAGE =
+      "does not exist in IoTDB and can not be created";
+  private static final String AUTO_CREATE_SCHEMA_HINT_MESSAGE =
+      "Please check weather auto-create-schema is enabled";
+
   private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
       LoadTsFileCostMetricsSet.getInstance();
 
@@ -222,6 +227,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       executeTabletConversionOnException(analysis, e);
       return analysis;
     } catch (Exception e) {
+      if (isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
+        setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, e);
+        return analysis;
+      }
       final String exceptionMessage =
           String.format(
               "Auto create or verify schema error when executing statement %s. Detail: %s.",
@@ -346,6 +355,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 "The file %s is not a valid tsfile. Please check the input file.",
                 tsFile.getPath()));
       } catch (Exception e) {
+        if (isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
+          setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, e);
+          return false;
+        }
         final String exceptionMessage =
             String.format(
                 "Loading file %s failed. Detail: %s",
@@ -681,8 +694,27 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
   }
 
+  private void setFailAnalysisForTemporaryUnavailablePipeSchema(
+      final IAnalysis analysis, final Throwable throwable) {
+    final String exceptionMessage =
+        String.format(
+            "Pipe generated LoadTsFile is waiting for schema metadata to be transferred. Detail: %s",
+            throwable.getMessage() == null
+                ? throwable.getClass().getName()
+                : throwable.getMessage());
+    analysis.setFinishQueryAfterAnalyze(true);
+    analysis.setFailStatus(
+        RpcUtils.getStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION, exceptionMessage));
+    setRealStatement(analysis);
+  }
+
   private void executeTabletConversionOnException(
       final IAnalysis analysis, final LoadAnalyzeException e) {
+    if (isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
+      setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, e);
+      return;
+    }
+
     if (shouldSkipConversion(e)) {
       analysis.setFailStatus(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
@@ -762,6 +794,26 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     analysis.setFinishQueryAfterAnalyze(true);
     setRealStatement(analysis);
+  }
+
+  boolean isTemporaryUnavailableDueToPipeSchemaNotReady(final Throwable throwable) {
+    if (!isGeneratedByPipe
+        || !isVerifySchema
+        || IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+      return false;
+    }
+
+    Throwable current = throwable;
+    while (current != null) {
+      final String message = current.getMessage();
+      if (message != null
+          && message.contains(MISSING_SCHEMA_MESSAGE)
+          && message.contains(AUTO_CREATE_SCHEMA_HINT_MESSAGE)) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {

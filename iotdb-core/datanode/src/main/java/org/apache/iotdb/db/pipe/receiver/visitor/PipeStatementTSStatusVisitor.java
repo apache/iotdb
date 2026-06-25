@@ -74,6 +74,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   public TSStatus visitLoadFile(
       final LoadTsFileStatement loadTsFileStatement, final TSStatus status) {
     if (status.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
+        || status.getCode() == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()
         || status.getCode() == TSStatusCode.LOAD_FILE_ERROR.getStatusCode()
             && status.getMessage() != null
             && status.getMessage().contains("memory")) {
