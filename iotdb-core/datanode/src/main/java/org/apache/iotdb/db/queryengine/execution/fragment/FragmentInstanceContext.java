@@ -69,8 +69,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -162,6 +164,9 @@ public class FragmentInstanceContext extends QueryContext {
   private long closedUnseqFileNum = 0;
   private boolean highestPriority = false;
 
+  // accessed value columns on each referenced AlignedTVList.
+  private final Map<TVList, Set<Integer>> alignedTVListColumnAccessMap = new ConcurrentHashMap<>();
+
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     FragmentInstanceContext instanceContext =
@@ -210,6 +215,43 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
     this.queryDataSourceType = queryDataSourceType;
+  }
+
+  /**
+   * Record columns of the AlignedTVList accessed by the query. This method is called from
+   * prepareTvListMapForQuery with tvList.lockQueryList() held. Even though the HashSet inside
+   * alignedTVListColumnAccessMap is not thread-safe, the calling pattern guarantees thread safety
+   * without requiring additional synchronization.
+   *
+   * @param tvList the TVList being accessed
+   * @param columnIndexList list of column indices being accessed
+   */
+  public void putAccessedColumns(TVList tvList, List<Integer> columnIndexList) {
+    Set<Integer> accessedColumns =
+        alignedTVListColumnAccessMap.computeIfAbsent(tvList, ignored -> new HashSet<>());
+    columnIndexList.stream()
+        .filter(Objects::nonNull)
+        .forEach(
+            index -> {
+              if (index >= 0) {
+                accessedColumns.add(index);
+              }
+            });
+  }
+
+  /**
+   * Get columns of the AlignedTVList accessed by the query. This method is called from
+   * prepareTvListMapForQuery with tvList.lockQueryList() held, ensuring that no other thread can
+   * change accessed columns for the same TVList concurrently.
+   *
+   * @param tvList the TVList being accessed
+   * @return set of column indices being accessed
+   */
+  public Set<Integer> getAccessedAlignedColumns(TVList tvList) {
+    Set<Integer> accessedColumns = alignedTVListColumnAccessMap.get(tvList);
+    return accessedColumns == null
+        ? Collections.emptySet()
+        : Collections.unmodifiableSet(accessedColumns);
   }
 
   @TestOnly
@@ -878,12 +920,12 @@ public class FragmentInstanceContext extends QueryContext {
    */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
-      long tvListRamSize = tvList.calculateRamSize().getRamSize();
       tvList.lockQueryList();
       Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
         queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
+          long tvListRamSize = tvList.calculateRamSize().getRamSize();
           if (tvList.getReservedMemoryBytes() != tvListRamSize) {
             LOGGER.warn(
                 "Release TVList owned by query: allocate size {}, release size {}",
@@ -961,6 +1003,7 @@ public class FragmentInstanceContext extends QueryContext {
 
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();
+    alignedTVListColumnAccessMap.clear();
 
     fileModCache = null;
     nonExistentModFiles = null;

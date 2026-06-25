@@ -225,12 +225,12 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public AlignedTVList getWorkingTVList() {
+  public synchronized AlignedTVList getWorkingTVList() {
     return list;
   }
 
   @Override
-  public void setWorkingTVList(TVList list) {
+  public synchronized void setWorkingTVList(TVList list) {
     this.list = (AlignedTVList) list;
   }
 
