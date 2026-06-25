@@ -376,11 +376,12 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     final long[] timestamps = tablet.getTimestamps();
-    if (Objects.isNull(timestamps) || timestamps.length == 0) {
+    final int rowSize = tablet.getRowSize();
+    if (Objects.isNull(timestamps) || rowSize <= 0) {
       return false;
     }
     // We assume that `timestamps` is ordered.
-    return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
+    return startTime <= timestamps[rowSize - 1] && timestamps[0] <= endTime;
   }
 
   @Override
