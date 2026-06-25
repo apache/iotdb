@@ -17,34 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.single;
+package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.it.env.MultiEnvFactory;
-import org.apache.iotdb.itbase.env.BaseEnv;
+/** Memory accounting hook for {@link AutoResizingBuffer}. */
+public interface AutoResizingBufferMemoryControl {
 
-import org.junit.After;
-import org.junit.Before;
+  boolean allocate(long sizeInBytes);
 
-abstract class AbstractPipeSingleIT {
-
-  protected BaseEnv env;
-
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(1);
-    env = MultiEnvFactory.getEnv(0);
-    env.getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setDatanodeMemoryProportion("3:3:1:1:1:0")
-        .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false)
-        .setPipeAutoSplitFullEnabled(false);
-    env.initClusterEnvironment();
-  }
-
-  @After
-  public final void tearDown() {
-    env.cleanClusterEnvironment();
-  }
+  void release(long sizeInBytes);
 }
