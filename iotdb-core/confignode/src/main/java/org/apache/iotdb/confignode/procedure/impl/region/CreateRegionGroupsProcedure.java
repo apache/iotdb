@@ -31,18 +31,14 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -51,7 +47,9 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -106,7 +104,12 @@ public class CreateRegionGroupsProcedure
         break;
       case SHUNT_REGION_REPLICAS:
         persistPlan = new CreateRegionGroupsPlan();
-        final OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
+        // Recreate-failed-replica and delete-redundant-replica tasks were previously offered to the
+        // RegionMaintainer queue. They are now run as child procedures (CreateRegionProcedure /
+        // DeleteRegionProcedure) so they are persisted, retried across leader changes, and — for
+        // the
+        // delete case — polled to completion instead of being fire-and-forget.
+        final List<Procedure<ConfigNodeProcedureEnv>> shuntProcedures = new ArrayList<>();
         // Filter those RegionGroups that created successfully
         createRegionGroupsPlan
             .getRegionGroupMap()
@@ -138,16 +141,14 @@ public class CreateRegionGroupsProcedure
                               // half of the RegionReplicas created successfully
                               persistPlan.addRegionGroup(database, regionReplicaSet);
 
-                              // Build recreate tasks
+                              // Build recreate tasks for the replicas that failed to create
                               failedRegionReplicas
                                   .getDataNodeLocations()
                                   .forEach(
-                                      targetDataNode -> {
-                                        RegionCreateTask createTask =
-                                            new RegionCreateTask(
-                                                targetDataNode, database, regionReplicaSet);
-                                        offerPlan.appendRegionMaintainTask(createTask);
-                                      });
+                                      targetDataNode ->
+                                          shuntProcedures.add(
+                                              new CreateRegionProcedure(
+                                                  database, regionReplicaSet, targetDataNode)));
 
                               LOGGER.info(
                                   ProcedureMessages
@@ -162,10 +163,9 @@ public class CreateRegionGroupsProcedure
                                         if (!failedRegionReplicas
                                             .getDataNodeLocations()
                                             .contains(targetDataNode)) {
-                                          RegionDeleteTask deleteTask =
-                                              new RegionDeleteTask(
-                                                  targetDataNode, regionReplicaSet.getRegionId());
-                                          offerPlan.appendRegionMaintainTask(deleteTask);
+                                          shuntProcedures.add(
+                                              new DeleteRegionProcedure(
+                                                  regionReplicaSet.getRegionId(), targetDataNode));
                                         }
                                       });
 
@@ -182,12 +182,7 @@ public class CreateRegionGroupsProcedure
           setFailure(new ProcedureException(new IoTDBException(persistStatus)));
           return Flow.NO_MORE_STATE;
         }
-        try {
-          env.getConfigManager().getConsensusManager().write(offerPlan);
-        } catch (final ConsensusException e) {
-          LOGGER.warn(
-              ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
-        }
+        shuntProcedures.forEach(this::addChildProcedure);
         setNextState(CreateRegionGroupsState.REBALANCE_DATA_PARTITION_POLICY);
         break;
       case REBALANCE_DATA_PARTITION_POLICY:

@@ -2998,6 +2998,28 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return status;
   }
 
+  @Override
+  public TSStatus deleteRegionAsync(TMaintainPeerReq req) {
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      return consensusStatus;
+    }
+    TConsensusGroupId regionId = req.getRegionId();
+    String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
+    boolean submitSucceed = RegionMigrateService.getInstance().submitDeleteRegionTask(req);
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (submitSucceed) {
+      LOGGER.info(
+          "Successfully submit deleteRegion task for region: {}, target DataNode: {}",
+          regionId,
+          selectedDataNodeIP);
+      return status;
+    }
+    status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
+    status.setMessage(DataNodeMiscMessages.SUBMIT_DELETE_REGION_TASK_FAILED_REGION + regionId);
+    return status;
+  }
+
   // TODO: return which DataNode fail
   @Override
   public TSStatus resetPeerList(TResetPeerListReq req) throws TException {

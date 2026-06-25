@@ -53,7 +53,9 @@ import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHe
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
@@ -219,6 +221,37 @@ public class RegionMaintainHandler {
   }
 
   /**
+   * Synchronously create a single region replica on the target DataNode.
+   *
+   * <p>Used by {@code CreateRegionProcedure}. Unlike region deletion, creating a region returns a
+   * final, unambiguous status from a single RPC (it does not remove large amounts of data), so it
+   * is kept synchronous; wrapping it in a procedure only adds persistence and retry across leader
+   * changes.
+   *
+   * @param regionReplicaSet the region (carries the regionId and its type)
+   * @param storageGroup the database the region belongs to
+   * @param targetDataNode the DataNode on which to create the replica
+   * @return the TSStatus of the create RPC
+   */
+  public TSStatus createRegion(
+      TRegionReplicaSet regionReplicaSet, String storageGroup, TDataNodeLocation targetDataNode) {
+    final TConsensusGroupId regionId = regionReplicaSet.getRegionId();
+    final Object req;
+    final CnToDnSyncRequestType requestType;
+    if (TConsensusGroupType.SchemaRegion.equals(regionId.getType())) {
+      req = new TCreateSchemaRegionReq(regionReplicaSet, storageGroup);
+      requestType = CnToDnSyncRequestType.CREATE_SCHEMA_REGION;
+    } else {
+      req = new TCreateDataRegionReq(regionReplicaSet, storageGroup);
+      requestType = CnToDnSyncRequestType.CREATE_DATA_REGION;
+    }
+    return (TSStatus)
+        SyncDataNodeClientPool.getInstance()
+            .sendSyncRequestToDataNodeWithRetry(
+                targetDataNode.getInternalEndPoint(), req, requestType);
+  }
+
+  /**
    * Order the specific ConsensusGroup to add peer for the new RegionReplica.
    *
    * <p>The add peer interface could be invoked at any DataNode who contains one of the
@@ -329,6 +362,52 @@ public class RegionMaintainHandler {
         REGION_MIGRATE_PROCESS,
         regionId,
         originalDataNode.getInternalEndPoint());
+    return status;
+  }
+
+  /**
+   * Order the specified DataNode to asynchronously delete a region replica and all of its data.
+   *
+   * <p>The DataNode submits the deletion as a background task keyed by {@code procedureId} and
+   * returns immediately. The caller (a {@code DeleteRegionProcedure}) then polls progress via
+   * {@link #waitTaskFinish(long, TDataNodeLocation)}. This is the replacement for the old
+   * synchronous {@code deleteRegion} RPC, which could time out on slow deletions and let the
+   * ConfigNode's retry be wrongly reported as success.
+   *
+   * @param procedureId used as the taskId so the DataNode can dedup retried submits and the
+   *     ConfigNode can poll the result
+   * @param targetDataNode the DataNode that holds the replica to be deleted
+   * @param regionId region id
+   * @return TSStatus of the submit (not of the deletion itself)
+   */
+  public TSStatus submitDeleteRegionTask(
+      long procedureId, TDataNodeLocation targetDataNode, TConsensusGroupId regionId) {
+    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, targetDataNode, procedureId);
+
+    // The target DataNode may be down (e.g. while deleting a database whose replica sits on an
+    // unreachable node). Fall back to a single-shot retry in that case, mirroring
+    // submitDeleteOldRegionPeerTask, so we do not block on an endless retry of a dead node.
+    final NodeStatus nodeStatus = getDataNodeStatus(targetDataNode.getDataNodeId());
+    final boolean useFullRetry = !NodeStatus.Unknown.equals(nodeStatus);
+    if (!useFullRetry) {
+      LOGGER.info(
+          ProcedureMessages.DATANODE_IS_SUBMIT_DELETE_OLD_REGION_PEER_WITH_A_SINGLE,
+          REGION_MIGRATE_PROCESS,
+          simplifiedLocation(targetDataNode),
+          nodeStatus);
+    }
+
+    TSStatus status =
+        submitDataNodeSyncRequest(
+            targetDataNode.getInternalEndPoint(),
+            maintainPeerReq,
+            CnToDnSyncRequestType.DELETE_REGION_ASYNC,
+            useFullRetry);
+    LOGGER.info(
+        ProcedureMessages.SEND_ACTION_DELETEOLDREGIONPEER_FINISHED_REGIONID_DATANODEID,
+        REGION_MIGRATE_PROCESS,
+        regionId,
+        targetDataNode.getInternalEndPoint());
     return status;
   }
 

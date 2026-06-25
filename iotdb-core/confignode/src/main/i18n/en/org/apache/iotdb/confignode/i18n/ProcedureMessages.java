@@ -616,6 +616,28 @@ public final class ProcedureMessages {
   public static final String PID_ADDREGION_STATE_FAILED = "[pid{}][AddRegion] state {} failed";
   public static final String PID_ADDREGION_SUCCESS_HAS_BEEN_ADDED_TO_DATANODE_PROCEDURE_TOOK =
       "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).";
+  public static final String PID_CREATEREGION_STARTED_WILL_BE_CREATED_ON_DATANODE =
+      "[pid{}][CreateRegion] started, region {} will be created on DataNode {}.";
+  public static final String PID_CREATEREGION_STATE_COMPLETE =
+      "[pid{}][CreateRegion] state {} complete";
+  public static final String PID_CREATEREGION_STATE_FAILED =
+      "[pid{}][CreateRegion] state {} failed";
+  public static final String PID_CREATEREGION_CREATE_FAILED_WILL_RETRY =
+      "[pid{}][CreateRegion] failed to create region {} on DataNode {} (attempt {}), will retry. status: {}";
+  public static final String PID_CREATEREGION_SUCCESS_HAS_BEEN_CREATED_ON_DATANODE_PROCEDURE_TOOK =
+      "[pid{}][CreateRegion] success, region {} has been created on DataNode {}. Procedure took {} (started at {}).";
+  public static final String PID_DELETEREGION_STARTED_WILL_BE_DELETED_FROM_DATANODE =
+      "[pid{}][DeleteRegion] started, region {} will be deleted from DataNode {}.";
+  public static final String PID_DELETEREGION_STATE_COMPLETE =
+      "[pid{}][DeleteRegion] state {} complete";
+  public static final String PID_DELETEREGION_STATE_FAILED =
+      "[pid{}][DeleteRegion] state {} failed";
+  public static final String PID_DELETEREGION_SUBMIT_TASK_FAILED =
+      "[pid{}][DeleteRegion] failed to submit the delete task for region {} to DataNode {}. status: {}";
+  public static final String PID_DELETEREGION_EXECUTED_FAILED =
+      "[pid{}][DeleteRegion] failed to delete region {} from DataNode {}, task status is {}. You may need to manually clean up the region files.";
+  public static final String PID_DELETEREGION_SUCCESS_REGION_HAS_BEEN_DELETED_FROM_DATANODE_PROCEDURE =
+      "[pid{}][DeleteRegion] success, region {} has been deleted from DataNode {}. Procedure took {} (started at {}).";
   public static final String PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO =
       "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.";
   public static final String PID_MIGRATEREGION_STATE_COMPLETE =

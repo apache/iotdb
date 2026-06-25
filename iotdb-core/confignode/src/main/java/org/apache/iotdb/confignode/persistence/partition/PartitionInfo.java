@@ -131,9 +131,13 @@ public class PartitionInfo implements SnapshotProcessor {
   // For table model databases: The databaseName is a full name without "root."
   private final Map<String, DatabasePartitionTable> databasePartitionTables;
 
-  /** For Region-Maintainer. */
-  // For RegionReplicas' asynchronous management
-  private final List<RegionMaintainTask> regionMaintainTaskList;
+  /**
+   * Legacy RegionMaintainer queue. The queue has been replaced by {@code CreateRegionProcedure} /
+   * {@code DeleteRegionProcedure}; this list is now always empty (offer/poll are no-op shims kept
+   * for consensus-log replay during upgrade) and is retained only so {@link #equals}/{@link
+   * #hashCode}/{@link #clear} keep working without touching the snapshot byte layout.
+   */
+  @Deprecated private final List<RegionMaintainTask> regionMaintainTaskList;
 
   private static final String SNAPSHOT_FILENAME = "partition_info.bin";
 
@@ -228,63 +232,40 @@ public class PartitionInfo implements SnapshotProcessor {
    * Offer a batch of RegionMaintainTasks for the RegionMaintainer.
    *
    * @return {@link TSStatusCode#SUCCESS_STATUS}
+   * @deprecated The RegionMaintainer queue has been replaced by {@code CreateRegionProcedure} /
+   *     {@code DeleteRegionProcedure}. This method is retained only so that an
+   *     OfferRegionMaintainTasksPlan still present in an old ConfigNode consensus log can be
+   *     replayed during an upgrade; it intentionally does nothing now (the tasks are no longer
+   *     drained by anyone).
    */
+  @Deprecated
   public TSStatus offerRegionMaintainTasks(
       OfferRegionMaintainTasksPlan offerRegionMaintainTasksPlan) {
-    synchronized (regionMaintainTaskList) {
-      regionMaintainTaskList.addAll(offerRegionMaintainTasksPlan.getRegionMaintainTaskList());
-      return RpcUtils.SUCCESS_STATUS;
-    }
+    // No-op: tasks are no longer queued. See @deprecated note above.
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   /**
-   * Poll the head of RegionMaintainTasks from the regionMaintainTaskList after it's executed
-   * successfully.
-   *
    * @return {@link TSStatusCode#SUCCESS_STATUS}
+   * @deprecated Retained only for replaying old PollRegionMaintainTaskPlan consensus-log entries
+   *     during an upgrade. See {@link #offerRegionMaintainTasks}.
    */
+  @Deprecated
   public TSStatus pollRegionMaintainTask() {
-    synchronized (regionMaintainTaskList) {
-      regionMaintainTaskList.remove(0);
-      return RpcUtils.SUCCESS_STATUS;
-    }
+    // No-op: the queue is always empty now. See @deprecated note above.
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   /**
-   * Poll the head of RegionMaintainTasks of target regions from regionMaintainTaskList after they
-   * are executed successfully. Tasks of each region group are treated as single independent queue.
-   *
    * @param plan provides target region ids
    * @return {@link TSStatusCode#SUCCESS_STATUS}
+   * @deprecated Retained only for replaying old PollSpecificRegionMaintainTaskPlan consensus-log
+   *     entries during an upgrade. See {@link #offerRegionMaintainTasks}.
    */
+  @Deprecated
   public TSStatus pollSpecificRegionMaintainTask(PollSpecificRegionMaintainTaskPlan plan) {
-    synchronized (regionMaintainTaskList) {
-      Set<TConsensusGroupId> removingRegionIdSet = new HashSet<>(plan.getRegionIdSet());
-      TConsensusGroupId regionId;
-      for (int i = 0; i < regionMaintainTaskList.size(); i++) {
-        regionId = regionMaintainTaskList.get(i).getRegionId();
-        if (removingRegionIdSet.contains(regionId)) {
-          regionMaintainTaskList.remove(i);
-          removingRegionIdSet.remove(regionId);
-          i--;
-        }
-        if (removingRegionIdSet.isEmpty()) {
-          break;
-        }
-      }
-      return RpcUtils.SUCCESS_STATUS;
-    }
-  }
-
-  /**
-   * Get a deep copy of RegionCleanList for RegionCleaner to maintain cluster RegionReplicas.
-   *
-   * @return A deep copy of RegionCleanList
-   */
-  public List<RegionMaintainTask> getRegionMaintainEntryList() {
-    synchronized (regionMaintainTaskList) {
-      return new ArrayList<>(regionMaintainTaskList);
-    }
+    // No-op: the queue is always empty now. See @deprecated note above.
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   /**
@@ -1010,11 +991,11 @@ public class PartitionInfo implements SnapshotProcessor {
         databasePartitionTableEntry.getValue().serialize(bufferedOutputStream, protocol);
       }
 
-      // serialize regionCleanList
-      ReadWriteIOUtils.write(regionMaintainTaskList.size(), bufferedOutputStream);
-      for (RegionMaintainTask task : regionMaintainTaskList) {
-        task.serialize(bufferedOutputStream, protocol);
-      }
+      // The trailing RegionMaintainer queue block is kept in the snapshot format for backward
+      // compatibility, but the queue itself has been replaced by Create/DeleteRegionProcedure.
+      // Always write an empty list so the byte layout is unchanged and an old ConfigNode reading
+      // this snapshot still finds a well-formed (empty) block.
+      ReadWriteIOUtils.write(0, bufferedOutputStream);
 
       // write to file
       tioStreamTransport.flush();
@@ -1073,12 +1054,31 @@ public class PartitionInfo implements SnapshotProcessor {
         databasePartitionTables.put(database, databasePartitionTable);
       }
 
-      // restore deletedRegionSet
+      // Read the trailing RegionMaintainer queue block. The queue has been replaced by
+      // Create/DeleteRegionProcedure, but an OLD snapshot (taken before the upgrade) may have
+      // written pending tasks here, so we must still consume exactly those bytes to keep the stream
+      // aligned. The tasks are discarded because nothing drains the queue anymore. To make any such
+      // loss observable, we log a WARN naming the dropped tasks; an operator can then re-trigger
+      // the
+      // corresponding region creation/deletion if it did not otherwise converge.
       length = ReadWriteIOUtils.readInt(fileInputStream);
+      final List<RegionMaintainTask> droppedTasks = new ArrayList<>();
       for (int i = 0; i < length; i++) {
-        final RegionMaintainTask task =
-            RegionMaintainTask.Factory.create(fileInputStream, protocol);
-        regionMaintainTaskList.add(task);
+        // Advance the stream past one serialized task and drop it.
+        droppedTasks.add(RegionMaintainTask.Factory.create(fileInputStream, protocol));
+      }
+      if (!droppedTasks.isEmpty()) {
+        final List<String> droppedTaskDescriptions = new ArrayList<>();
+        for (final RegionMaintainTask task : droppedTasks) {
+          droppedTaskDescriptions.add(task.getType() + " " + task.getRegionId());
+        }
+        LOGGER.warn(
+            "Dropped {} legacy RegionMaintainTask(s) while loading the snapshot; the RegionMaintainer "
+                + "queue has been replaced by Create/DeleteRegionProcedure and these pending tasks are "
+                + "no longer executed: {}. Please verify the affected regions and re-trigger their "
+                + "creation/deletion manually if needed.",
+            droppedTasks.size(),
+            droppedTaskDescriptions);
       }
     }
   }

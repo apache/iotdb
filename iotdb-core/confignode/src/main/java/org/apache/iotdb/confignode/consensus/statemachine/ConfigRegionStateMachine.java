@@ -380,8 +380,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         new LeaderServiceStartup(
             "RetryFailedTasksService",
             () -> configManager.getRetryFailedTasksThread().startRetryFailedTasksService()),
-        new LeaderServiceStartup(
-            "RegionCleaner", () -> configManager.getPartitionManager().startRegionCleaner()),
         // Add metrics after leader ready.
         new LeaderServiceStartup("Metrics", () -> configManager.addMetrics()),
         // Activate leader related service for config pipe.
@@ -426,7 +424,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.getLoadManager().stopLoadServices();
     configManager.getProcedureManager().stopExecutor();
     configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
-    configManager.getPartitionManager().stopRegionCleaner();
     configManager.getCQManager().stopCQScheduler();
     configManager.getClusterSchemaManager().clearSchemaQuotaCache();
     // Remove Metric after leader change

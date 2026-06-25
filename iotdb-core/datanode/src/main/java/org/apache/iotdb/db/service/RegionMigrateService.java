@@ -236,6 +236,43 @@ public class RegionMigrateService implements IService {
     return submitSucceed;
   }
 
+  /**
+   * Submit a {@link DeleteRegionTask} that asynchronously deletes a region replica on this
+   * DataNode.
+   *
+   * <p>Used by the ConfigNode's {@code DeleteRegionProcedure} to replace the old synchronous {@code
+   * deleteRegion} RPC. The deletion can outlive the RPC timeout (it removes TsFiles and the
+   * consensus peer), so it is run in the background and the ConfigNode polls {@link
+   * #getRegionMaintainResult} for progress. The {@link #addToTaskResultMap} guard makes a retried
+   * submit (after an RPC timeout or a ConfigNode leader change) a no-op, so the task is executed
+   * exactly once.
+   *
+   * @param req TMaintainPeerReq, whose destNode is the DataNode to delete the replica from
+   * @return whether the submit succeeded
+   */
+  public synchronized boolean submitDeleteRegionTask(TMaintainPeerReq req) {
+    boolean submitSucceed = true;
+    try {
+      if (!addToTaskResultMap(req.getTaskId())) {
+        LOGGER.warn(
+            "{} The DeleteRegionTask {} has already been submitted and will not be submitted again.",
+            REGION_MIGRATE_PROCESS,
+            req.getTaskId());
+        return true;
+      }
+      regionMigratePool.submit(
+          new DeleteRegionTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
+    } catch (Exception e) {
+      LOGGER.error(
+          "{}, Submit DeleteRegionTask error for Region: {}",
+          REGION_MIGRATE_PROCESS,
+          req.getRegionId(),
+          e);
+      submitSucceed = false;
+    }
+    return submitSucceed;
+  }
+
   public synchronized TSStatus resetPeerList(TResetPeerListReq req) {
     List<Peer> correctPeers =
         req.getCorrectLocations().stream()
@@ -582,6 +619,131 @@ public class RegionMigrateService implements IService {
       }
       status.setMessage(String.format(DataNodeMiscMessages.DELETE_REGION_SUCCEED, regionId));
       taskLogger.info("{}, Succeed to deleteRegion {}", REGION_MIGRATE_PROCESS, regionId);
+      return status;
+    }
+  }
+
+  /**
+   * Asynchronously deletes a region replica (the consensus peer and all of its data) on this
+   * DataNode.
+   *
+   * <p>This is the background worker behind {@link #submitDeleteRegionTask}. It mirrors the logic
+   * of the synchronous {@code deleteRegion} RPC (delete the local consensus peer, then delete the
+   * region data), but records its terminal state in {@link #taskResultMap} so the ConfigNode can
+   * poll for completion instead of relying on a single RPC response.
+   *
+   * <p>Note: unlike {@link DeleteOldRegionPeerTask}, this task returns immediately after recording
+   * a failure via {@link #taskFail}; it never falls through to {@link #taskSucceed}. A failed
+   * deletion must never be reported as success, otherwise the ConfigNode would forget the task
+   * while the data is still present.
+   */
+  private static class DeleteRegionTask implements Runnable {
+
+    private static final Logger taskLogger = LoggerFactory.getLogger(DeleteRegionTask.class);
+    private final long taskId;
+    private final TConsensusGroupId tRegionId;
+    private final TDataNodeLocation targetDataNode;
+
+    public DeleteRegionTask(
+        long taskId, TConsensusGroupId tRegionId, TDataNodeLocation targetDataNode) {
+      this.taskId = taskId;
+      this.tRegionId = tRegionId;
+      this.targetDataNode = targetDataNode;
+    }
+
+    @Override
+    public void run() {
+      // deletePeer: remove the local consensus peer from the consensus group
+      TSStatus runResult = deletePeer();
+      if (isFailed(runResult)) {
+        taskFail(
+            taskId,
+            tRegionId,
+            targetDataNode,
+            TRegionMigrateFailedType.RemoveConsensusGroupFailed,
+            runResult);
+        return;
+      }
+
+      // deleteRegion: delete the region data (TsFiles, schema, etc.)
+      runResult = deleteRegion();
+      if (isFailed(runResult)) {
+        taskFail(
+            taskId,
+            tRegionId,
+            targetDataNode,
+            TRegionMigrateFailedType.DeleteRegionFailed,
+            runResult);
+        return;
+      }
+
+      taskSucceed(taskId, tRegionId, "DeleteRegion");
+    }
+
+    private TSStatus deletePeer() {
+      taskLogger.info(
+          "{}, Start to delete the local peer of region {} on datanode {}",
+          REGION_MIGRATE_PROCESS,
+          tRegionId,
+          targetDataNode);
+      ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
+      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      try {
+        if (regionId instanceof DataRegionId) {
+          DataRegionConsensusImpl.getInstance().deleteLocalPeer(regionId);
+        } else {
+          SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(regionId);
+        }
+      } catch (ConsensusGroupNotExistException e) {
+        // The peer is already absent. This is expected when the task is retried after a previous
+        // attempt already removed the peer, so treat it as success and continue to delete the data.
+        taskLogger.info(
+            "{}, The local peer of region {} does not exist, skip deleting it",
+            REGION_MIGRATE_PROCESS,
+            regionId);
+      } catch (ConsensusException e) {
+        String errorMsg =
+            String.format(
+                "delete local peer error, regionId: %s, errorMessage: %s",
+                regionId, e.getMessage());
+        taskLogger.error(errorMsg);
+        status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
+        status.setMessage(errorMsg);
+        return status;
+      } catch (Exception e) {
+        taskLogger.error(
+            "{}, delete local peer error, regionId: {}", REGION_MIGRATE_PROCESS, regionId, e);
+        status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
+        status.setMessage(
+            "delete local peer for region: " + regionId + " error. exception: " + e.getMessage());
+        return status;
+      }
+      return status;
+    }
+
+    private TSStatus deleteRegion() {
+      taskLogger.info(
+          "{}, Start to delete the data of region {} on datanode {}",
+          REGION_MIGRATE_PROCESS,
+          tRegionId,
+          targetDataNode);
+      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
+      try {
+        if (regionId instanceof DataRegionId) {
+          DataNodeRegionManager.getInstance().deleteDataRegion((DataRegionId) regionId);
+        } else {
+          DataNodeRegionManager.getInstance().deleteSchemaRegion((SchemaRegionId) regionId);
+        }
+      } catch (Exception e) {
+        taskLogger.error("{}, delete region {} error", REGION_MIGRATE_PROCESS, regionId, e);
+        status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
+        status.setMessage(
+            String.format(DataNodeMiscMessages.DELETE_REGION_ERROR, regionId, e.getMessage()));
+        return status;
+      }
+      status.setMessage(String.format(DataNodeMiscMessages.DELETE_REGION_SUCCEED, regionId));
+      taskLogger.info("{}, Succeed to delete region {}", REGION_MIGRATE_PROCESS, regionId);
       return status;
     }
   }

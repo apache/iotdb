@@ -614,6 +614,24 @@ public final class ProcedureMessages {
   public static final String PID_ADDREGION_STATE_FAILED = "[pid{}][AddRegion] state {} failed";
   public static final String PID_ADDREGION_SUCCESS_HAS_BEEN_ADDED_TO_DATANODE_PROCEDURE_TOOK =
       "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).";
+  public static final String PID_CREATEREGION_STARTED_WILL_BE_CREATED_ON_DATANODE =
+      "[pid{}][CreateRegion] 开始，region {} 将在 DataNode {} 上创建。";
+  public static final String PID_CREATEREGION_STATE_COMPLETE = "[pid{}][CreateRegion] 状态 {} 完成";
+  public static final String PID_CREATEREGION_STATE_FAILED = "[pid{}][CreateRegion] 状态 {} 失败";
+  public static final String PID_CREATEREGION_CREATE_FAILED_WILL_RETRY =
+      "[pid{}][CreateRegion] 创建 region {} 到 DataNode {} 失败（第 {} 次尝试），将重试。status: {}";
+  public static final String PID_CREATEREGION_SUCCESS_HAS_BEEN_CREATED_ON_DATANODE_PROCEDURE_TOOK =
+      "[pid{}][CreateRegion] 成功，region {} 已在 DataNode {} 上创建。过程耗时 {}（开始于 {}）。";
+  public static final String PID_DELETEREGION_STARTED_WILL_BE_DELETED_FROM_DATANODE =
+      "[pid{}][DeleteRegion] 开始，region {} 将从 DataNode {} 上删除。";
+  public static final String PID_DELETEREGION_STATE_COMPLETE = "[pid{}][DeleteRegion] 状态 {} 完成";
+  public static final String PID_DELETEREGION_STATE_FAILED = "[pid{}][DeleteRegion] 状态 {} 失败";
+  public static final String PID_DELETEREGION_SUBMIT_TASK_FAILED =
+      "[pid{}][DeleteRegion] 提交 region {} 的删除任务到 DataNode {} 失败。status: {}";
+  public static final String PID_DELETEREGION_EXECUTED_FAILED =
+      "[pid{}][DeleteRegion] 从 DataNode {} 删除 region {} 失败，任务状态为 {}。你可能需要手动清理 region 文件。";
+  public static final String PID_DELETEREGION_SUCCESS_REGION_HAS_BEEN_DELETED_FROM_DATANODE_PROCEDURE =
+      "[pid{}][DeleteRegion] 成功，region {} 已从 DataNode {} 上删除。过程耗时 {}（开始于 {}）。";
   public static final String PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO =
       "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.";
   public static final String PID_MIGRATEREGION_STATE_COMPLETE =
