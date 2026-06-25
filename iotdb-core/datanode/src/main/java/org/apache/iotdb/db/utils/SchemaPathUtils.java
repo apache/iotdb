@@ -23,15 +23,17 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
-import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public final class SchemaPathUtils {
+
+  private static final Pattern SQL_NUMERIC_NODE_PATTERN = Pattern.compile("\\d+([eE][+-]?\\d+)?");
 
   private SchemaPathUtils() {}
 
@@ -133,7 +135,7 @@ public final class SchemaPathUtils {
       return node;
     }
     if (IoTDBConstant.reservedWords.contains(node.toUpperCase(Locale.ENGLISH))
-        || PathUtils.isRealNumber(node)
+        || isSqlNumericNode(node)
         || !TsFileConstant.IDENTIFIER_PATTERN.matcher(node).matches()) {
       return TsFileConstant.BACK_QUOTE_STRING
           + node.replace(TsFileConstant.BACK_QUOTE_STRING, TsFileConstant.DOUBLE_BACK_QUOTE_STRING)
@@ -148,5 +150,9 @@ public final class SchemaPathUtils {
       return node;
     }
     return getNodeWithNecessaryBackQuotes(node, isFirst);
+  }
+
+  private static boolean isSqlNumericNode(final String node) {
+    return SQL_NUMERIC_NODE_PATTERN.matcher(node).matches();
   }
 }
