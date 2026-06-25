@@ -109,6 +109,7 @@ import org.apache.iotdb.calc.plan.relational.planner.CastToTimestampLiteralVisit
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
@@ -1352,7 +1353,8 @@ public abstract class TableOperatorGenerator<
                         false,
                         null,
                         Collections.emptySet(),
-                        operatorContext.getMemoryReservationContext())));
+                        operatorContext.getMemoryReservationContext(),
+                        context)));
     return createAggregationOperator(operatorContext, child, aggregatorBuilder.build());
   }
 
@@ -1367,7 +1369,8 @@ public abstract class TableOperatorGenerator<
       boolean isAggTableScan,
       String timeColumnName,
       Set<String> measurementColumnNames,
-      MemoryReservationManager memoryReservationManager) {
+      MemoryReservationManager memoryReservationManager,
+      C context) {
     List<Integer> argumentChannels = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
@@ -1379,6 +1382,10 @@ public abstract class TableOperatorGenerator<
         aggregation.getResolvedFunction().getSignature().getArgumentTypes().stream()
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
+    IoTDBLocal ioTDBLocal =
+        getAggregationTypeByFuncName(functionName) == TAggregationType.UDAF
+            ? createIoTDBLocal(context)
+            : null;
     TableAccumulator accumulator =
         createAccumulator(
             functionName,
@@ -1391,7 +1398,8 @@ public abstract class TableOperatorGenerator<
             timeColumnName,
             measurementColumnNames,
             aggregation.isDistinct(),
-            memoryReservationManager);
+            memoryReservationManager,
+            ioTDBLocal);
 
     OptionalInt maskChannel = OptionalInt.empty();
     if (aggregation.hasMask()) {
@@ -1434,7 +1442,8 @@ public abstract class TableOperatorGenerator<
                             false,
                             null,
                             Collections.emptySet(),
-                            context.getMemoryReservationManager())));
+                            context.getMemoryReservationManager(),
+                            context)));
 
         CommonOperatorContext operatorContext =
             addOperatorContext(
@@ -1462,7 +1471,8 @@ public abstract class TableOperatorGenerator<
                           v,
                           node.getStep(),
                           typeProvider,
-                          context.getMemoryReservationManager())));
+                          context.getMemoryReservationManager(),
+                          context)));
 
       Set<Symbol> preGroupedKeys = ImmutableSet.copyOf(node.getPreGroupedSymbols());
       List<Symbol> groupingKeys = node.getGroupingKeys();
@@ -1519,7 +1529,8 @@ public abstract class TableOperatorGenerator<
                         v,
                         node.getStep(),
                         typeProvider,
-                        context.getMemoryReservationManager())));
+                        context.getMemoryReservationManager(),
+                        context)));
     CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), HashAggregationOperator.class.getSimpleName());
@@ -1644,7 +1655,8 @@ public abstract class TableOperatorGenerator<
       AggregationNode.Aggregation aggregation,
       AggregationNode.Step step,
       ITableTypeProvider typeProvider,
-      MemoryReservationManager memoryReservationManager) {
+      MemoryReservationManager memoryReservationManager,
+      C context) {
     List<Integer> argumentChannels = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
@@ -1656,6 +1668,10 @@ public abstract class TableOperatorGenerator<
         aggregation.getResolvedFunction().getSignature().getArgumentTypes().stream()
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
+    IoTDBLocal ioTDBLocal =
+        getAggregationTypeByFuncName(functionName) == TAggregationType.UDAF
+            ? createIoTDBLocal(context)
+            : null;
     GroupedAccumulator accumulator =
         createGroupedAccumulator(
             functionName,
@@ -1665,7 +1681,8 @@ public abstract class TableOperatorGenerator<
             Collections.emptyMap(),
             true,
             aggregation.isDistinct(),
-            memoryReservationManager);
+            memoryReservationManager,
+            ioTDBLocal);
 
     OptionalInt maskChannel = OptionalInt.empty();
     if (aggregation.hasMask()) {
@@ -1694,7 +1711,9 @@ public abstract class TableOperatorGenerator<
       CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), TableFunctionLeafOperator.class.getSimpleName());
-      return new TableFunctionLeafOperator(operatorContext, processorProvider, outputDataTypes);
+      IoTDBLocal ioTDBLocal = createIoTDBLocal(context);
+      return new TableFunctionLeafOperator(
+          operatorContext, processorProvider, outputDataTypes, ioTDBLocal);
     } else {
       Operator operator = node.getChild().accept(this, context);
       CommonOperatorContext operatorContext =
@@ -1739,6 +1758,7 @@ public abstract class TableOperatorGenerator<
       } else {
         partitionChannels = Collections.emptyList();
       }
+      IoTDBLocal ioTDBLocal = createIoTDBLocal(context);
       return new TableFunctionOperator(
           operatorContext,
           processorProvider,
@@ -1752,7 +1772,8 @@ public abstract class TableOperatorGenerator<
               .map(TableFunctionNode.PassThroughSpecification::isDeclaredAsPassThrough)
               .orElse(false),
           partitionChannels,
-          node.isRequireRecordSnapshot());
+          node.isRequireRecordSnapshot(),
+          ioTDBLocal);
     }
   }
 
@@ -2490,6 +2511,17 @@ public abstract class TableOperatorGenerator<
   }
 
   protected abstract SessionInfo getSessionInfo(C context);
+
+  protected IoTDBLocal createIoTDBLocal(C context) {
+    IoTDBLocalFactory factory = getIoTDBLocalFactory(context);
+    String fragmentInstanceId = getFragmentInstanceId(context);
+    String queryId = getQueryId(context);
+    checkArgument(factory != null, "IoTDBLocalFactory must not be null for UDF execution");
+    checkArgument(
+        fragmentInstanceId != null, "fragmentInstanceId must not be null for UDF execution");
+    checkArgument(queryId != null, "queryId must not be null for UDF execution");
+    return factory.create(getSessionInfo(context), fragmentInstanceId, queryId);
+  }
 
   /** Factory for creating {@link IoTDBLocal} inside UDF column transformers. */
   @FunctionalInterface

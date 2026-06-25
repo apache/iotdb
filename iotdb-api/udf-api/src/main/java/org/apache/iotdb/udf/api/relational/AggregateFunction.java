@@ -63,6 +63,22 @@ public interface AggregateFunction extends SQLFunction {
     beforeStart(arguments);
   }
 
+  /**
+   * Same as {@link #addInput(State, Record)} with access to {@link IoTDBLocal} for embedded
+   * queries.
+   */
+  default void addInput(State state, Record input, IoTDBLocal local) {
+    addInput(state, input);
+  }
+
+  /**
+   * Same as {@link #combineState(State, State)} with access to {@link IoTDBLocal} for embedded
+   * queries.
+   */
+  default void combineState(State state, State rhs, IoTDBLocal local) {
+    combineState(state, rhs);
+  }
+
   /** Create and initialize state. You may bind some resource in this method. */
   State createState();
 
@@ -89,6 +105,14 @@ public interface AggregateFunction extends SQLFunction {
    * @param resultValue used to collect output data points
    */
   void outputFinal(State state, ResultValue resultValue);
+
+  /**
+   * Same as {@link #outputFinal(State, ResultValue)} with access to {@link IoTDBLocal} for embedded
+   * queries.
+   */
+  default void outputFinal(State state, ResultValue resultValue, IoTDBLocal local) {
+    outputFinal(state, resultValue);
+  }
 
   /**
    * Remove input data from state. This method is used to remove the data points that have been

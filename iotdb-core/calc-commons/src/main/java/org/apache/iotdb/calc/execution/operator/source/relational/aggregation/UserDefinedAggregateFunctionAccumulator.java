@@ -20,8 +20,10 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
@@ -46,17 +48,24 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
       RamUsageEstimator.shallowSizeOfInstance(UserDefinedAggregateFunctionAccumulator.class);
   private final AggregateFunctionAnalysis analysis;
   private final AggregateFunction aggregateFunction;
+  private final FunctionArguments functionArguments;
   private final List<Type> inputDataTypes;
   private final State state;
+  private final IoTDBLocal ioTDBLocal;
 
   public UserDefinedAggregateFunctionAccumulator(
       AggregateFunctionAnalysis analysis,
       AggregateFunction aggregateFunction,
-      List<Type> inputDataTypes) {
+      FunctionArguments functionArguments,
+      List<Type> inputDataTypes,
+      IoTDBLocal ioTDBLocal) {
+    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for UDAF");
     this.analysis = analysis;
     this.aggregateFunction = aggregateFunction;
+    this.functionArguments = functionArguments;
     this.inputDataTypes = inputDataTypes;
     this.state = aggregateFunction.createState();
+    this.ioTDBLocal = ioTDBLocal;
   }
 
   @Override
@@ -66,7 +75,8 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public TableAccumulator copy() {
-    return new UserDefinedAggregateFunctionAccumulator(analysis, aggregateFunction, inputDataTypes);
+    return new UserDefinedAggregateFunctionAccumulator(
+        analysis, aggregateFunction, functionArguments, inputDataTypes, ioTDBLocal);
   }
 
   @Override
@@ -77,7 +87,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
                 Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount())
             : new MaskedRecordIterator(Arrays.asList(arguments), inputDataTypes, mask);
     while (iterator.hasNext()) {
-      aggregateFunction.addInput(state, iterator.next());
+      aggregateFunction.addInput(state, iterator.next(), ioTDBLocal);
     }
   }
 
@@ -93,7 +103,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
       otherState.reset();
       Binary otherStateBinary = argument.getBinary(i);
       otherState.deserialize(otherStateBinary.getValues());
-      aggregateFunction.combineState(state, otherState);
+      aggregateFunction.combineState(state, otherState, ioTDBLocal);
     }
   }
 
@@ -109,7 +119,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
     ResultValue resultValue = new ResultValue(columnBuilder);
-    aggregateFunction.outputFinal(state, resultValue);
+    aggregateFunction.outputFinal(state, resultValue, ioTDBLocal);
   }
 
   @Override
@@ -150,7 +160,8 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public void close() {
-    aggregateFunction.beforeDestroy();
+    aggregateFunction.beforeDestroy(ioTDBLocal);
+    ioTDBLocal.close();
     state.destroyState();
   }
 }

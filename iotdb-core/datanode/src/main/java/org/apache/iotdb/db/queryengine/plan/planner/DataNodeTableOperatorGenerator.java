@@ -1466,7 +1466,8 @@ public class DataNodeTableOperatorGenerator
               true,
               timeColumnName,
               measurementColumnsIndexMap.keySet(),
-              context.getMemoryReservationManager()));
+              context.getMemoryReservationManager(),
+              context));
     }
 
     ITableTimeRangeIterator timeRangeIterator = null;
