@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -126,7 +127,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
       try {
         cachedOccupiedSpace[i] = JVMCommonUtils.getOccupiedSpace(folder);
         resetCannotCalculateOccupiedSpaceLogTime(folder);
-      } catch (IOException e) {
+      } catch (IOException | UncheckedIOException e) {
         logCannotCalculateOccupiedSpaceIfNecessary(folder, e);
         cachedOccupiedSpace[i] = Long.MAX_VALUE;
       }
@@ -135,7 +136,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
     lastRefreshTimeMs = System.currentTimeMillis();
   }
 
-  private static void logCannotCalculateOccupiedSpaceIfNecessary(String folder, IOException e) {
+  private static void logCannotCalculateOccupiedSpaceIfNecessary(String folder, Exception e) {
     AtomicLong lastLogTime =
         CANNOT_CALCULATE_OCCUPIED_SPACE_LAST_LOG_TIME_MAP.computeIfAbsent(
             folder, key -> new AtomicLong(0L));
