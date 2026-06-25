@@ -243,6 +243,8 @@ import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrusted
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUser;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUser;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.markSinkAuthenticationAsExplicitIfNecessary;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.markSourceAuthenticationAsExplicitIfNecessary;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -698,6 +700,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
           sourceAttributes,
           new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
           true);
+    } else {
+      markSourceAuthenticationAsExplicitIfNecessary(sourceAttributes);
     }
 
     if (alterPipeStatement.isReplaceAllSinkAttributes()) {
@@ -706,6 +710,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
           alterPipeStatement.getSinkAttributes(),
           context.getSession().getUserEntity(),
           true);
+    } else {
+      markSinkAuthenticationAsExplicitIfNecessary(alterPipeStatement.getSinkAttributes());
     }
 
     return new AlterPipeTask(alterPipeStatement);
