@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.CommonQuery
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
@@ -69,6 +70,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
@@ -184,6 +188,14 @@ public class DataNodeSqlFormatter extends CommonQuerySqlFormatter
   @Override
   public Void visitCountDB(CountDB node, Integer indent) {
     builder.append("COUNT DATABASES");
+    return null;
+  }
+
+  @Override
+  public Void visitShowCreateDatabase(ShowCreateDatabase node, Integer indent) {
+    builder
+        .append("SHOW CREATE DATABASE ")
+        .append(ShowCreateTableTask.getIdentifier(node.getDatabase()));
     return null;
   }
 
@@ -830,6 +842,14 @@ public class DataNodeSqlFormatter extends CommonQuerySqlFormatter
   }
 
   @Override
+  public Void visitShowCreatePipe(ShowCreatePipe node, Integer context) {
+    builder
+        .append("SHOW CREATE PIPE ")
+        .append(ShowCreateTableTask.getIdentifier(node.getPipeName()));
+    return null;
+  }
+
+  @Override
   public Void visitCreatePipePlugin(CreatePipePlugin node, Integer context) {
     builder.append("CREATE PIPEPLUGIN ");
     if (node.hasIfNotExistsCondition()) {
@@ -939,6 +959,15 @@ public class DataNodeSqlFormatter extends CommonQuerySqlFormatter
     } else {
       builder.append("SHOW TOPIC ").append(node.getTopicName());
     }
+
+    return null;
+  }
+
+  @Override
+  public Void visitShowCreateTopic(ShowCreateTopic node, Integer context) {
+    builder
+        .append("SHOW CREATE TOPIC ")
+        .append(ShowCreateTableTask.getIdentifier(node.getTopicName()));
 
     return null;
   }

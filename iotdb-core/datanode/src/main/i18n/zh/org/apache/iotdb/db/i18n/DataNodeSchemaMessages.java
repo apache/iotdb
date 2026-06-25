@@ -395,6 +395,8 @@ public final class DataNodeSchemaMessages {
 
   public static final String SYSTEM_VIEW_NOT_SUPPORT_SHOW_CREATE =
       "系统视图不支持 show create。";
+  public static final String SYSTEM_DATABASE_NOT_SUPPORT_SHOW_CREATE =
+      "系统数据库不支持 show create。";
 
   // ======================== 附加 SchemaRegion 相关消息 ========================
 

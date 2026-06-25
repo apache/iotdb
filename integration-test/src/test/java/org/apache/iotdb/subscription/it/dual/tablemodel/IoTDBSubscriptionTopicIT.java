@@ -28,6 +28,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionTableArchVerification;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -52,6 +53,9 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
+import java.sql.Statement;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -98,6 +102,29 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         .setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(64 * 1024 * 1024)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
+  }
+
+  @Ignore
+  @Test
+  public void testShowCreateTopic() throws Exception {
+    TableModelUtils.createDataBaseAndTable(
+        senderEnv, "test_show_create_topic_db", "test_show_create_topic_table");
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create topic test_show_create_topic with ('database'='test_show_create_topic_db','table'='test_show_create_topic_table','format'='"
+              + TopicConstant.FORMAT_TS_FILE_VALUE
+              + "')");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create topic test_show_create_topic"),
+          "Topic,Create Topic,",
+          Collections.singleton(
+              "test_show_create_topic,CREATE TOPIC \"test_show_create_topic\" WITH ('database'='test_show_create_topic_db','format'='"
+                  + TopicConstant.FORMAT_TS_FILE_VALUE
+                  + "','table'='test_show_create_topic_table'),"));
+    }
   }
 
   @Ignore
