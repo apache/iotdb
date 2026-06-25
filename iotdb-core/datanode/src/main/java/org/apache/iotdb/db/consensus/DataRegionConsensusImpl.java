@@ -142,8 +142,9 @@ public class DataRegionConsensusImpl {
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
           .setStorageDir(CONF.getDataRegionConsensusDir())
           .setRecvSnapshotDirs(Arrays.asList(CONF.getLocalDataDirs()))
-          .setDirectoryStrategyType(
-              DirectoryStrategyType.fromClassName(CONF.getMultiDirStrategyClassName()))
+          // IoTConsensus always balances received snapshot files by least occupied space,
+          // independent of the global dn_multi_dir_strategy.
+          .setDirectoryStrategyType(DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY)
           .setConsensusGroupType(TConsensusGroupType.DataRegion)
           .setIoTConsensusConfig(
               IoTConsensusConfig.newBuilder()

@@ -441,7 +441,8 @@ public class IoTDBDescriptor {
     try {
       conf.checkMultiDirStrategyClassName();
     } catch (Exception e) {
-      conf.setMultiDirStrategyClassName(oldMultiDirStrategyClassName.trim());
+      conf.setMultiDirStrategyClassName(
+          oldMultiDirStrategyClassName == null ? null : oldMultiDirStrategyClassName.trim());
       throw e;
     }
 
