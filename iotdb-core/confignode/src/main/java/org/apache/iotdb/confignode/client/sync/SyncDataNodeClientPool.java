@@ -134,9 +134,6 @@ public class SyncDataNodeClientPool {
         CnToDnSyncRequestType.DELETE_OLD_REGION_PEER,
         (req, client) -> client.deleteOldRegionPeer((TMaintainPeerReq) req));
     actionMapBuilder.put(
-        CnToDnSyncRequestType.DELETE_REGION_ASYNC,
-        (req, client) -> client.deleteRegionAsync((TMaintainPeerReq) req));
-    actionMapBuilder.put(
         CnToDnSyncRequestType.RESET_PEER_LIST,
         (req, client) -> client.resetPeerList((TResetPeerListReq) req));
     actionMapBuilder.put(

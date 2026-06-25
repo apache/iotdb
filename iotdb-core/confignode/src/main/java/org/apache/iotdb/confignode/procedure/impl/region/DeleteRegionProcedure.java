@@ -94,8 +94,12 @@ public class DeleteRegionProcedure extends RegionOperationProcedure<DeleteRegion
           // The DataNode also dedups by taskId (= procId), so a duplicate submit would be a no-op,
           // but skipping it here avoids the useless RPC and keeps the re-poll cheap.
           if (!this.isStateDeserialized() && getCycles() == 0) {
+            // Reuse the existing async delete plumbing (deleteOldRegionPeer ->
+            // DeleteOldRegionPeerTask):
+            // it already does deleteLocalPeer + delete region data on a background thread keyed by
+            // taskId, exactly what deleting a whole region replica needs.
             TSStatus submitStatus =
-                handler.submitDeleteRegionTask(this.getProcId(), targetDataNode, regionId);
+                handler.submitDeleteOldRegionPeerTask(this.getProcId(), targetDataNode, regionId);
             setKillPoint(state);
             if (submitStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
               // Submit failed (e.g. the DataNode is unreachable). End the procedure; the parent

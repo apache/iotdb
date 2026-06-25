@@ -35,7 +35,6 @@ public enum CnToDnSyncRequestType {
   ADD_REGION_PEER,
   REMOVE_REGION_PEER,
   DELETE_OLD_REGION_PEER,
-  DELETE_REGION_ASYNC,
   RESET_PEER_LIST,
 
   // Data Partition Table Maintenance

@@ -975,8 +975,6 @@ public final class DataNodeMiscMessages {
       "提交 removeRegionPeer 任务失败，region: ";
   public static final String SUBMIT_DELETE_OLD_REGION_PEER_TASK_FAILED_REGION =
       "提交 deleteOldRegionPeer 任务失败，region: ";
-  public static final String SUBMIT_DELETE_REGION_TASK_FAILED_REGION =
-      "提交 deleteRegion 任务失败，region: ";
   public static final String CREATE_NEW_REGION_PEER_SUCCEED_REGION_ID =
       "createNewRegionPeer 成功，regionId: ";
   public static final String DISABLE_DATANODE_SUCCEED = "禁用 DataNode 成功";

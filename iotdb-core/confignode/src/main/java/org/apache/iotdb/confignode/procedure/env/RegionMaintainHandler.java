@@ -365,52 +365,6 @@ public class RegionMaintainHandler {
     return status;
   }
 
-  /**
-   * Order the specified DataNode to asynchronously delete a region replica and all of its data.
-   *
-   * <p>The DataNode submits the deletion as a background task keyed by {@code procedureId} and
-   * returns immediately. The caller (a {@code DeleteRegionProcedure}) then polls progress via
-   * {@link #waitTaskFinish(long, TDataNodeLocation)}. This is the replacement for the old
-   * synchronous {@code deleteRegion} RPC, which could time out on slow deletions and let the
-   * ConfigNode's retry be wrongly reported as success.
-   *
-   * @param procedureId used as the taskId so the DataNode can dedup retried submits and the
-   *     ConfigNode can poll the result
-   * @param targetDataNode the DataNode that holds the replica to be deleted
-   * @param regionId region id
-   * @return TSStatus of the submit (not of the deletion itself)
-   */
-  public TSStatus submitDeleteRegionTask(
-      long procedureId, TDataNodeLocation targetDataNode, TConsensusGroupId regionId) {
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, targetDataNode, procedureId);
-
-    // The target DataNode may be down (e.g. while deleting a database whose replica sits on an
-    // unreachable node). Fall back to a single-shot retry in that case, mirroring
-    // submitDeleteOldRegionPeerTask, so we do not block on an endless retry of a dead node.
-    final NodeStatus nodeStatus = getDataNodeStatus(targetDataNode.getDataNodeId());
-    final boolean useFullRetry = !NodeStatus.Unknown.equals(nodeStatus);
-    if (!useFullRetry) {
-      LOGGER.info(
-          ProcedureMessages.DATANODE_IS_SUBMIT_DELETE_OLD_REGION_PEER_WITH_A_SINGLE,
-          REGION_MIGRATE_PROCESS,
-          simplifiedLocation(targetDataNode),
-          nodeStatus);
-    }
-
-    TSStatus status =
-        submitDataNodeSyncRequest(
-            targetDataNode.getInternalEndPoint(),
-            maintainPeerReq,
-            CnToDnSyncRequestType.DELETE_REGION_ASYNC,
-            useFullRetry);
-    LOGGER.info(
-        ProcedureMessages.SEND_ACTION_DELETEOLDREGIONPEER_FINISHED_REGIONID_DATANODEID,
-        REGION_MIGRATE_PROCESS,
-        regionId,
-        targetDataNode.getInternalEndPoint());
-    return status;
-  }
-
   protected NodeStatus getDataNodeStatus(int dataNodeId) {
     return configManager.getLoadManager().getNodeStatus(dataNodeId);
   }

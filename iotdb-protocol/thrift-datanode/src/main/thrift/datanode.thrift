@@ -945,20 +945,6 @@ service IDataNodeRPCService {
   common.TSStatus deleteRegion(common.TConsensusGroupId consensusGroupId)
 
   /**
-   * Config node asks the DataNode to asynchronously delete a data/schema region replica.
-   *
-   * <p>Unlike the synchronous {@link #deleteRegion}, the DataNode submits the deletion as a
-   * background task keyed by {@code taskId} and returns immediately. The ConfigNode then polls
-   * {@link #getRegionMaintainResult} until the task reaches a terminal state. This avoids the
-   * "ghost task" problem where a slow deletion outlives the RPC timeout and the ConfigNode's
-   * retry is wrongly reported as success.
-   *
-   * @param TMaintainPeerReq which contains the RegionId, the DataNodeLocation to delete the
-   *     replica from (destNode) and the taskId (procedureId)
-   */
-  common.TSStatus deleteRegionAsync(TMaintainPeerReq req)
-
-  /**
    * Change the leader of specified RegionGroup to another DataNode
    *
    * @param The specified RegionGroup and the new leader DataNode
