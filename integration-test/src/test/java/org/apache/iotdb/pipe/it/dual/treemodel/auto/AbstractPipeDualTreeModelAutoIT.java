@@ -59,26 +59,27 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
-    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:9:1");
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:9:0");
     senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
-
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeMemoryManagementEnabled(false)
         .setEnforceStrongPassword(false)
         .setPipeAutoSplitFullEnabled(false);
-    receiverEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:9:1");
+    receiverEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:9:0");
     receiverEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     // 10 min, assert that the operations will not time out

@@ -168,6 +168,7 @@ public class DataNodeMemoryConfig {
     long schemaEngineMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long consensusMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long pipeMemorySize = Runtime.getRuntime().maxMemory() / 10;
+    long autoResizingBufferMemorySize = Runtime.getRuntime().maxMemory() / 20;
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -189,6 +190,11 @@ public class DataNodeMemoryConfig {
         if (proportions.length >= 6) {
           pipeMemorySize =
               maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum;
+          autoResizingBufferMemorySize =
+              maxMemoryAvailable
+                  * Integer.parseInt(proportions[proportions.length - 1].trim())
+                  / proportionSum
+                  / 2;
         } else {
           pipeMemorySize =
               (maxMemoryAvailable
@@ -211,6 +217,8 @@ public class DataNodeMemoryConfig {
     consensusMemoryManager =
         onHeapMemoryManager.getOrCreateMemoryManager("Consensus", consensusMemorySize);
     pipeMemoryManager = onHeapMemoryManager.getOrCreateMemoryManager("Pipe", pipeMemorySize);
+    MemoryConfig.getInstance()
+        .setAutoResizingBufferMemoryControl(onHeapMemoryManager, autoResizingBufferMemorySize);
     LOGGER.info(
         "initial allocateMemoryForWrite = {}",
         storageEngineMemoryManager.getTotalMemorySizeInBytes());
@@ -224,6 +232,7 @@ public class DataNodeMemoryConfig {
         consensusMemoryManager.getTotalMemorySizeInBytes());
     LOGGER.info(
         "initial allocateMemoryForPipe = {}", pipeMemoryManager.getTotalMemorySizeInBytes());
+    LOGGER.info("initial allocateMemoryForAutoResizingBuffer = {}", autoResizingBufferMemorySize);
 
     initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
     initStorageEngineAllocate(storageEngineMemoryManager, properties);

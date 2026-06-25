@@ -44,6 +44,12 @@ public final class RpcMessages {
   // BaseRpcTransportFactory
   public static final String COULD_NOT_LOAD_KEYSTORE = "无法加载密钥库或信任库文件";
 
+  // AutoResizingBuffer
+  public static final String AUTO_RESIZING_BUFFER_ALLOCATE_INTERRUPTED =
+      "AutoResizingBuffer 分配 %d 字节内存时被中断";
+  public static final String AUTO_RESIZING_BUFFER_ALLOCATE_FAILED =
+      "AutoResizingBuffer 在 %d 次重试后仍无法分配 %d 字节内存";
+
   // IoTDBRpcDataSet / IoTDBJDBCDataSet
   public static final String CLOSE_OPERATION_SERVER_ERROR = "服务端关闭操作失败，原因：";
   public static final String CLOSE_OPERATION_CONNECTION_ERROR = "连接服务端执行关闭操作时出错 ";

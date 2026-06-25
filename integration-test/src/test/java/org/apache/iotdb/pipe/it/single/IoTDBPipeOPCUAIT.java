@@ -74,6 +74,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
     env.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setPipeMemoryManagementEnabled(false)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1)

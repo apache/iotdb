@@ -58,8 +58,10 @@ import javax.net.ssl.TrustManager;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.AccessDeniedException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -184,10 +186,23 @@ public class Utils {
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
     AutoScalingBufferWriteTransport byteBuffer =
-        new AutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
-    TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
-    status.write(protocol);
-    return ByteBuffer.wrap(byteBuffer.getBuffer());
+        createAutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
+    try {
+      TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
+      status.write(protocol);
+      return ByteBuffer.wrap(Arrays.copyOf(byteBuffer.getBuffer(), byteBuffer.getPos()));
+    } finally {
+      byteBuffer.close();
+    }
+  }
+
+  private static AutoScalingBufferWriteTransport createAutoScalingBufferWriteTransport(
+      int initialCapacity) throws TException {
+    try {
+      return new AutoScalingBufferWriteTransport(initialCapacity);
+    } catch (IOException e) {
+      throw new TException(e);
+    }
   }
 
   public static TSStatus deserializeFrom(ByteBuffer buffer) throws TException {

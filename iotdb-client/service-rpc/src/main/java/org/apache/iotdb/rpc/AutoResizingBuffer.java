@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.rpc;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 /**
@@ -31,33 +32,38 @@ import java.util.Arrays;
  * required size < current capacity * 0.6, and such small requests last for more than 5 times,
  * shrink to the middle of the required size and current capacity.
  */
-class AutoResizingBuffer {
+class AutoResizingBuffer implements AutoCloseable {
 
   private byte[] array;
   private int bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
   private final int initialCapacity;
   private long lastShrinkTime;
+  private int accountedCapacity;
+  private boolean closed;
 
-  public AutoResizingBuffer(int initialCapacity) {
+  public AutoResizingBuffer(int initialCapacity) throws IOException {
+    AutoResizingBufferMemoryManager.allocate(initialCapacity);
     this.array = new byte[initialCapacity];
     this.initialCapacity = initialCapacity;
+    this.accountedCapacity = initialCapacity;
   }
 
-  public void resizeIfNecessary(int size) {
+  public void resizeIfNecessary(int size) throws IOException {
+    reserveCurrentCapacityIfReleased();
     final int currentCapacity = this.array.length;
     final double loadFactor = 0.6;
     if (currentCapacity < size) {
       // Increase by a factor of 1.5x
       int growCapacity = currentCapacity + (currentCapacity >> 1);
       int newCapacity = Math.max(growCapacity, size);
-      this.array = Arrays.copyOf(array, newCapacity);
+      resize(newCapacity);
       bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
     } else if (size > initialCapacity
         && currentCapacity * loadFactor > size
         && bufTooLargeCounter-- <= 0
         && System.currentTimeMillis() - lastShrinkTime > RpcUtils.MIN_SHRINK_INTERVAL) {
       // do not resize if it is reading the request size and do not shrink too often
-      array = Arrays.copyOf(array, size + (currentCapacity - size) / 2);
+      resize(size + (currentCapacity - size) / 2);
       bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
       lastShrinkTime = System.currentTimeMillis();
     }
@@ -65,5 +71,42 @@ class AutoResizingBuffer {
 
   public byte[] array() {
     return this.array;
+  }
+
+  @Override
+  public void close() {
+    if (!closed) {
+      AutoResizingBufferMemoryManager.release(accountedCapacity);
+      accountedCapacity = 0;
+      closed = true;
+    }
+  }
+
+  private void resize(int newCapacity) throws IOException {
+    final int currentCapacity = array.length;
+    if (newCapacity > currentCapacity) {
+      final int delta = newCapacity - currentCapacity;
+      AutoResizingBufferMemoryManager.allocate(delta);
+      try {
+        array = Arrays.copyOf(array, newCapacity);
+        accountedCapacity += delta;
+      } catch (RuntimeException | Error e) {
+        AutoResizingBufferMemoryManager.release(delta);
+        throw e;
+      }
+    } else if (newCapacity < currentCapacity) {
+      array = Arrays.copyOf(array, newCapacity);
+      final int delta = currentCapacity - newCapacity;
+      AutoResizingBufferMemoryManager.release(delta);
+      accountedCapacity -= delta;
+    }
+  }
+
+  private void reserveCurrentCapacityIfReleased() throws IOException {
+    if (closed) {
+      AutoResizingBufferMemoryManager.allocate(array.length);
+      accountedCapacity = array.length;
+      closed = false;
+    }
   }
 }
