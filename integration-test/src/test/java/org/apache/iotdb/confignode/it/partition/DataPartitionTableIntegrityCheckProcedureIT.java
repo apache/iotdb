@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.it.partition;
 
+import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -34,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -127,5 +129,39 @@ public class DataPartitionTableIntegrityCheckProcedureIT {
         "Only one procedure should be submitted successfully", 1, successCount.get());
     Assert.assertEquals(
         "The other concurrent submissions should be rejected", threadCount - 1, failCount.get());
+  }
+
+  @Test
+  public void testShowRepairDataPartitionTableProgress() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      assertRepairProgress(statement, RepairDataPartitionTableProgressState.IDLE.name(), 0.0, 0.0);
+
+      statement.execute("REPAIR DATA PARTITION TABLE");
+      assertRepairProgress(statement, null, 0.0, 100.0);
+    }
+  }
+
+  private static void assertRepairProgress(
+      final Statement statement,
+      final String expectedStatus,
+      final double minProgress,
+      final double maxProgress)
+      throws SQLException {
+    try (final ResultSet resultSet =
+        statement.executeQuery("SHOW REPAIR DATA PARTITION TABLE PROGRESS")) {
+      Assert.assertTrue(resultSet.next());
+      if (expectedStatus != null) {
+        Assert.assertEquals(expectedStatus, resultSet.getString("Status"));
+      } else {
+        Assert.assertNotEquals(
+            RepairDataPartitionTableProgressState.UNKNOWN.name(), resultSet.getString("Status"));
+      }
+      final double progress = resultSet.getDouble("Progress(%)");
+      Assert.assertTrue(progress >= minProgress);
+      Assert.assertTrue(progress <= maxProgress);
+      Assert.assertNotNull(resultSet.getString("Message"));
+      Assert.assertFalse(resultSet.next());
+    }
   }
 }

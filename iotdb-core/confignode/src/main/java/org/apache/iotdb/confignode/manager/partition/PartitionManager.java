@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -548,11 +549,13 @@ public class PartitionManager {
     return configManager
         .getProcedureManager()
         .getUnfinishedDataPartitionTableIntegrityCheckProcedure()
-        .map(procedure -> procedure.getProgress(configManager.getProcedureManager().getEnv()))
+        .map(DataPartitionTableIntegrityCheckProcedure::getProgress)
         .orElseGet(
             () ->
                 new TShowRepairDataPartitionTableProgressResp(
-                        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), "IDLE", 100.0)
+                        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
+                        RepairDataPartitionTableProgressState.IDLE.name(),
+                        0.0)
                     .setMessage("No running DataPartitionTable integrity check procedure"));
   }
 
