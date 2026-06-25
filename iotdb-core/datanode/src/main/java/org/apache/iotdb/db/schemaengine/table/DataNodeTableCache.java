@@ -571,18 +571,21 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  public boolean isDatabaseExist(final String database) {
+  public boolean isDatabaseExist(String database) {
+    database = PathUtils.unQualifyDatabaseName(database);
     if (databaseTableMap.containsKey(database)) {
       return true;
     }
     if (getTablesInConfigNode(Collections.singletonMap(database, Collections.emptyMap()))
         .containsKey(database)) {
-      readWriteLock.readLock().lock();
+      readWriteLock.writeLock().lock();
       try {
-        databaseTableMap.computeIfAbsent(database, k -> new ConcurrentHashMap<>());
+        if (Objects.isNull(databaseTableMap.putIfAbsent(database, new ConcurrentHashMap<>()))) {
+          instanceVersion.incrementAndGet();
+        }
         return true;
       } finally {
-        readWriteLock.readLock().unlock();
+        readWriteLock.writeLock().unlock();
       }
     }
     return false;

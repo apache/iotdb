@@ -59,6 +59,23 @@ public class DataNodeTableCacheTest {
   }
 
   @Test
+  public void isDatabaseExistAcceptsQualifiedDatabaseName() {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    try {
+      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      final long versionBeforeCheck = cache.getInstanceVersion();
+
+      Assert.assertTrue(cache.isDatabaseExist(TABLE_CACHE_TEST_DATABASE));
+
+      Assert.assertEquals(versionBeforeCheck, cache.getInstanceVersion());
+    } finally {
+      cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    }
+  }
+
+  @Test
   public void commitUpdateTableIsIdempotent() {
     final DataNodeTableCache cache = DataNodeTableCache.getInstance();
     cache.invalid(TABLE_CACHE_TEST_DATABASE);
