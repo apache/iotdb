@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
+import java.util.concurrent.ExecutorService;
 
 public class IoTDBDataNodeAsyncClientManagerTest {
 
@@ -71,10 +72,59 @@ public class IoTDBDataNodeAsyncClientManagerTest {
     }
   }
 
+  @Test
+  public void testClientResourcesShouldDifferentiateEndPoints() throws Exception {
+    final IoTDBDataNodeAsyncClientManager firstManager =
+        new IoTDBDataNodeAsyncClientManager(
+            Collections.singletonList(new TEndPoint("127.0.0.1", 6667)),
+            false,
+            "round-robin",
+            new UserEntity(1L, "user", "cli-host"),
+            "password",
+            true,
+            "sync",
+            true,
+            true,
+            true,
+            true);
+    final IoTDBDataNodeAsyncClientManager secondManager =
+        new IoTDBDataNodeAsyncClientManager(
+            Collections.singletonList(new TEndPoint("127.0.0.2", 6667)),
+            false,
+            "round-robin",
+            new UserEntity(1L, "user", "cli-host"),
+            "password",
+            true,
+            "sync",
+            true,
+            true,
+            true,
+            true);
+
+    try {
+      Assert.assertEquals(
+          getReceiverAttributes(firstManager), getReceiverAttributes(secondManager));
+      Assert.assertNotEquals(
+          getClientResourceKey(firstManager), getClientResourceKey(secondManager));
+      Assert.assertNotSame(getEndPoint2Client(firstManager), getEndPoint2Client(secondManager));
+      Assert.assertNotSame(getExecutor(firstManager), getExecutor(secondManager));
+    } finally {
+      firstManager.close();
+      secondManager.close();
+    }
+  }
+
   private static String getReceiverAttributes(final IoTDBDataNodeAsyncClientManager manager)
       throws Exception {
     final Field field =
         IoTDBDataNodeAsyncClientManager.class.getDeclaredField("receiverAttributes");
+    field.setAccessible(true);
+    return (String) field.get(manager);
+  }
+
+  private static String getClientResourceKey(final IoTDBDataNodeAsyncClientManager manager)
+      throws Exception {
+    final Field field = IoTDBDataNodeAsyncClientManager.class.getDeclaredField("clientResourceKey");
     field.setAccessible(true);
     return (String) field.get(manager);
   }
@@ -84,5 +134,12 @@ public class IoTDBDataNodeAsyncClientManagerTest {
     final Field field = IoTDBDataNodeAsyncClientManager.class.getDeclaredField("endPoint2Client");
     field.setAccessible(true);
     return field.get(manager);
+  }
+
+  private static ExecutorService getExecutor(final IoTDBDataNodeAsyncClientManager manager)
+      throws Exception {
+    final Field field = IoTDBDataNodeAsyncClientManager.class.getDeclaredField("executor");
+    field.setAccessible(true);
+    return (ExecutorService) field.get(manager);
   }
 }
