@@ -27,7 +27,7 @@ import java.nio.file.Path;
 
 public class SnapshotFragmentReader {
 
-  private static final int DEFAULT_FILE_FRAGMENT_SIZE = 10 * 1024 * 1024;
+  public static final int DEFAULT_FILE_FRAGMENT_SIZE = 10 * 1024 * 1024;
   private final String snapshotId;
   private final String filePath;
   private final SeekableByteChannel fileChannel;
@@ -36,12 +36,20 @@ public class SnapshotFragmentReader {
   private long totalReadSize;
   private SnapshotFragment cachedSnapshotFragment;
 
-  public SnapshotFragmentReader(String snapshotId, Path path) throws IOException {
+  /**
+   * The {@code buf} is supplied (and owned) by the caller so a single 10MB buffer can be reused
+   * across every file of a snapshot transmission. Allocating a fresh 10MB buffer per file is
+   * extremely wasteful when a snapshot contains hundreds of thousands of tiny files, multiplying GC
+   * pressure and allocation cost. The buffer is fully reset via {@link ByteBuffer#clear()} on each
+   * {@link #hasNext()} call, and each fragment is serialized synchronously before the next read, so
+   * sharing it across files (and across readers) is safe.
+   */
+  public SnapshotFragmentReader(String snapshotId, Path path, ByteBuffer buf) throws IOException {
     this.snapshotId = snapshotId;
     this.filePath = path.toAbsolutePath().toString();
     this.fileSize = Files.size(path);
     this.fileChannel = Files.newByteChannel(path);
-    this.buf = ByteBuffer.allocate(DEFAULT_FILE_FRAGMENT_SIZE);
+    this.buf = buf;
   }
 
   public boolean hasNext() throws IOException {

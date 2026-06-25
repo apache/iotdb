@@ -325,6 +325,7 @@ public class IoTConsensusConfig {
     private final long regionMigrationSpeedLimitBytesPerSecond;
     private final long subscriptionWalRetentionSizeInBytes;
     private final long subscriptionWalRetentionTimeMs;
+    private final long snapshotTransmissionProgressLogIntervalMs;
 
     private Replication(
         int maxLogEntriesNumPerBatch,
@@ -342,7 +343,8 @@ public class IoTConsensusConfig {
         double maxMemoryRatioForQueue,
         long regionMigrationSpeedLimitBytesPerSecond,
         long subscriptionWalRetentionSizeInBytes,
-        long subscriptionWalRetentionTimeMs) {
+        long subscriptionWalRetentionTimeMs,
+        long snapshotTransmissionProgressLogIntervalMs) {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
@@ -359,6 +361,7 @@ public class IoTConsensusConfig {
       this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
       this.subscriptionWalRetentionSizeInBytes = subscriptionWalRetentionSizeInBytes;
       this.subscriptionWalRetentionTimeMs = subscriptionWalRetentionTimeMs;
+      this.snapshotTransmissionProgressLogIntervalMs = snapshotTransmissionProgressLogIntervalMs;
     }
 
     public int getMaxLogEntriesNumPerBatch() {
@@ -425,6 +428,10 @@ public class IoTConsensusConfig {
       return subscriptionWalRetentionTimeMs;
     }
 
+    public long getSnapshotTransmissionProgressLogIntervalMs() {
+      return snapshotTransmissionProgressLogIntervalMs;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
@@ -450,6 +457,11 @@ public class IoTConsensusConfig {
       private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
       private long subscriptionWalRetentionSizeInBytes = 0;
       private long subscriptionWalRetentionTimeMs = -1L;
+      // Throttle the per-file snapshot-transmission progress log to at most once per this interval;
+      // a snapshot may contain hundreds of thousands of files, so one INFO line per file is itself
+      // a
+      // heavy IO/string-building cost. A value <= 0 logs every file.
+      private long snapshotTransmissionProgressLogIntervalMs = 5000L;
 
       public Replication.Builder setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
         this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
@@ -535,6 +547,12 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public Builder setSnapshotTransmissionProgressLogIntervalMs(
+          long snapshotTransmissionProgressLogIntervalMs) {
+        this.snapshotTransmissionProgressLogIntervalMs = snapshotTransmissionProgressLogIntervalMs;
+        return this;
+      }
+
       public Replication build() {
         return new Replication(
             maxLogEntriesNumPerBatch,
@@ -552,7 +570,8 @@ public class IoTConsensusConfig {
             maxMemoryRatioForQueue,
             regionMigrationSpeedLimitBytesPerSecond,
             subscriptionWalRetentionSizeInBytes,
-            subscriptionWalRetentionTimeMs);
+            subscriptionWalRetentionTimeMs,
+            snapshotTransmissionProgressLogIntervalMs);
       }
     }
   }

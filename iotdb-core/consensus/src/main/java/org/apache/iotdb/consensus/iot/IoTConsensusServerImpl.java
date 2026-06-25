@@ -383,81 +383,88 @@ public class IoTConsensusServerImpl {
     ConsensusGroupId groupId = thisNode.getGroupId();
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<File> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
-    AtomicLong snapshotSizeSumAtomic = new AtomicLong();
-    StringBuilder allFilesStr = new StringBuilder();
-    snapshotPaths.forEach(
-        file -> {
-          long fileSize = file.length();
-          snapshotSizeSumAtomic.addAndGet(fileSize);
-          allFilesStr
-              .append("\n")
-              .append(file.getName())
-              .append(" ")
-              .append(humanReadableByteCountSI(fileSize));
-        });
-    final long snapshotSizeSum = snapshotSizeSumAtomic.get();
+    long snapshotSizeSum = 0;
+    for (File file : snapshotPaths) {
+      snapshotSizeSum += file.length();
+    }
     long transitedSnapshotSizeSum = 0;
     long transitedFilesNum = 0;
     long startTime = System.nanoTime();
     RegionMigrationProgressHolder.setTotal(groupId, snapshotPaths.size(), snapshotSizeSum);
-    try {
-      logger.info(
-          "[SNAPSHOT TRANSMISSION] Start to transmit snapshots ({} files, total size {}) from dir {}",
-          snapshotPaths.size(),
-          humanReadableByteCountSI(snapshotSizeSum),
-          snapshotDir);
-      logger.info(
-          "[SNAPSHOT TRANSMISSION] All the files below shell be transmitted: {}", allFilesStr);
-      try (SyncIoTConsensusServiceClient client =
-          syncClientManager.borrowClient(targetPeer.getEndpoint())) {
-        for (File file : snapshotPaths) {
-          SnapshotFragmentReader reader =
-              new SnapshotFragmentReader(newSnapshotDirName, file.toPath());
-          try {
-            while (reader.hasNext()) {
-              // TODO: zero copy ?
-              TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
-              req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
-              ioTConsensusRateLimiter.acquireTransitDataSizeWithRateLimiter(req.getChunkLength());
-              TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
-              if (!isSuccess(res.getStatus())) {
-                throw new ConsensusGroupModifyPeerException(
-                    String.format(
-                        "[SNAPSHOT TRANSMISSION] Error when transmitting snapshot fragment to %s",
-                        targetPeer));
-              }
+    long lastProgressLogTime = startTime;
+    // Throttle the per-file progress log to at most once per this interval; a snapshot may contain
+    // hundreds of thousands of files, so one INFO line per file is itself a heavy cost.
+    long progressLogIntervalNs =
+        TimeUnit.MILLISECONDS.toNanos(
+            config.getReplication().getSnapshotTransmissionProgressLogIntervalMs());
+    logger.info(
+        IoTConsensusMessages.SNAPSHOT_TRANSMISSION_START,
+        snapshotPaths.size(),
+        humanReadableByteCountSI(snapshotSizeSum),
+        snapshotDir);
+    if (logger.isDebugEnabled()) {
+      StringBuilder allFilesStr = new StringBuilder();
+      for (File file : snapshotPaths) {
+        allFilesStr
+            .append("\n")
+            .append(file.getName())
+            .append(" ")
+            .append(humanReadableByteCountSI(file.length()));
+      }
+      logger.debug(IoTConsensusMessages.SNAPSHOT_TRANSMISSION_ALL_FILES, allFilesStr);
+    }
+    ByteBuffer fragmentBuffer =
+        ByteBuffer.allocate(SnapshotFragmentReader.DEFAULT_FILE_FRAGMENT_SIZE);
+    try (SyncIoTConsensusServiceClient client =
+        syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      for (File file : snapshotPaths) {
+        SnapshotFragmentReader reader =
+            new SnapshotFragmentReader(newSnapshotDirName, file.toPath(), fragmentBuffer);
+        try {
+          while (reader.hasNext()) {
+            // TODO: zero copy ?
+            TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
+            req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
+            ioTConsensusRateLimiter.acquireTransitDataSizeWithRateLimiter(req.getChunkLength());
+            TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
+            if (!isSuccess(res.getStatus())) {
+              throw new ConsensusGroupModifyPeerException(
+                  String.format(IoTConsensusMessages.SNAPSHOT_TRANSMISSION_ERROR, targetPeer));
             }
-            transitedSnapshotSizeSum += reader.getTotalReadSize();
-            transitedFilesNum++;
-            RegionMigrationProgressHolder.setMigrated(
-                groupId, (int) transitedFilesNum, transitedSnapshotSizeSum);
+          }
+          transitedSnapshotSizeSum += reader.getTotalReadSize();
+          transitedFilesNum++;
+          RegionMigrationProgressHolder.setMigrated(
+              groupId, (int) transitedFilesNum, transitedSnapshotSizeSum);
+          long now = System.nanoTime();
+          if (now - lastProgressLogTime >= progressLogIntervalNs
+              || transitedFilesNum == snapshotPaths.size()) {
+            lastProgressLogTime = now;
             logger.info(
-                "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed. File {} done.",
+                IoTConsensusMessages.SNAPSHOT_TRANSMISSION_PROGRESS,
                 newSnapshotDirName,
                 transitedFilesNum,
                 snapshotPaths.size(),
                 humanReadableByteCountSI(transitedSnapshotSizeSum),
                 humanReadableByteCountSI(snapshotSizeSum),
-                CommonDateTimeUtils.convertMillisecondToDurationStr(
-                    (System.nanoTime() - startTime) / 1_000_000),
+                CommonDateTimeUtils.convertMillisecondToDurationStr((now - startTime) / 1_000_000),
                 file);
-          } finally {
-            reader.close();
           }
+        } finally {
+          reader.close();
         }
       }
-      logger.info(
-          "[SNAPSHOT TRANSMISSION] After {}, successfully transmit all snapshots from dir {}",
-          CommonDateTimeUtils.convertMillisecondToDurationStr(
-              (System.nanoTime() - startTime) / 1_000_000),
-          snapshotDir);
     } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
-          String.format("[SNAPSHOT TRANSMISSION] Error when send snapshot file to %s", targetPeer),
-          e);
+          String.format(IoTConsensusMessages.SNAPSHOT_TRANSMISSION_SEND_ERROR, targetPeer), e);
     } finally {
       RegionMigrationProgressHolder.clear(groupId);
     }
+    logger.info(
+        IoTConsensusMessages.SNAPSHOT_TRANSMISSION_COMPLETE,
+        CommonDateTimeUtils.convertMillisecondToDurationStr(
+            (System.nanoTime() - startTime) / 1_000_000),
+        snapshotDir);
   }
 
   public void receiveSnapshotFragment(
