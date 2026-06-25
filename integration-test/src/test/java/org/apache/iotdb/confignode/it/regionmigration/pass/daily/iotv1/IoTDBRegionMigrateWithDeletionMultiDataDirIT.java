@@ -108,23 +108,38 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
               "migrate region %d from %d to %d", dataRegionIdForTest, leaderId, destDataNodeId));
 
       final int finalDestDataNodeId = destDataNodeId;
+      final int finalLeaderId = leaderId;
       Awaitility.await()
           .atMost(10, TimeUnit.MINUTES)
           .pollDelay(1, TimeUnit.SECONDS)
           .pollInterval(2, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
+                Set<Integer> replicaDataNodeIds = new HashSet<>();
+                boolean destRunning = false;
                 try (ResultSet showRegions = statement.executeQuery("SHOW REGIONS")) {
-                  boolean migrated = false;
                   while (showRegions.next()) {
-                    if (showRegions.getInt("RegionId") == dataRegionIdForTest
-                        && showRegions.getInt("DataNodeId") == finalDestDataNodeId) {
-                      migrated = true;
-                      break;
+                    if (!"DataRegion".equals(showRegions.getString("Type"))
+                        || showRegions.getInt("RegionId") != dataRegionIdForTest) {
+                      continue;
+                    }
+                    int dataNodeId = showRegions.getInt("DataNodeId");
+                    replicaDataNodeIds.add(dataNodeId);
+                    if (dataNodeId == finalDestDataNodeId) {
+                      Assert.assertEquals("Running", showRegions.getString("Status"));
+                      destRunning = true;
                     }
                   }
-                  Assert.assertTrue(migrated);
                 }
+                Assert.assertTrue(
+                    "Destination DataNode should host the migrated region", destRunning);
+                Assert.assertEquals(
+                    "Region should have exactly 2 replicas after migration",
+                    2,
+                    replicaDataNodeIds.size());
+                Assert.assertFalse(
+                    "Source DataNode should no longer host the region",
+                    replicaDataNodeIds.contains(finalLeaderId));
               });
 
       assertDeletionVisibleOnAllReplicas(statement, dataRegionIdForTest, 1);
