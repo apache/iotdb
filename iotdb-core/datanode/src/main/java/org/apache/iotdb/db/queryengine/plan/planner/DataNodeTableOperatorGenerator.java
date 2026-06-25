@@ -2116,8 +2116,8 @@ public class DataNodeTableOperatorGenerator
   }
 
   @Override
-  protected long getLocalQueryId(LocalExecutionPlanContext context) {
-    return context.getLocalQueryId();
+  protected long getOuterQueryDeadlineMs(LocalExecutionPlanContext context) {
+    return context.getOuterQueryDeadlineMs();
   }
 
   @Override

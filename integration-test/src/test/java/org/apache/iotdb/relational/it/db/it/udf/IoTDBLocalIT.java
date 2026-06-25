@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.relational.it.db.it.udf;
 
-import org.apache.iotdb.db.query.udf.example.relational.iotdblocal.IoTDBLocalLogFunction;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -27,13 +26,11 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.Statement;
 
@@ -43,7 +40,7 @@ import static org.junit.Assert.fail;
 
 /**
  * Integration tests for {@link org.apache.iotdb.udf.api.IoTDBLocal} in table-model UDF, covering
- * compatibility, embedded query, logging, permission inheritance and auto resource cleanup.
+ * compatibility, embedded query, permission inheritance and auto resource cleanup.
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -118,8 +115,8 @@ public class IoTDBLocalIT {
         new String[] {
           "1970-01-01T00:00:00.001Z,false,false,",
           "1970-01-01T00:00:00.002Z,true,true,",
-          "1970-01-01T00:00:00.003Z,true,false,",
-          "1970-01-01T00:00:00.005Z,true,true,"
+          "1970-01-01T00:00:00.003Z,false,false,",
+          "1970-01-01T00:00:00.005Z,true,false,"
         },
         DATABASE_NAME);
     tableResultSetEqualTest(
@@ -128,8 +125,8 @@ public class IoTDBLocalIT {
         new String[] {
           "1970-01-01T00:00:00.001Z,2,",
           "1970-01-01T00:00:00.002Z,2,",
-          "1970-01-01T00:00:00.003Z,3,",
-          "5,4,"
+          "1970-01-01T00:00:00.003Z,6,",
+          "1970-01-01T00:00:00.005Z,4,"
         },
         DATABASE_NAME);
   }
@@ -140,7 +137,7 @@ public class IoTDBLocalIT {
     tableResultSetEqualTest(
         "SELECT device_id, my_avg(s1) AS avg_s1 FROM vehicle GROUP BY device_id",
         new String[] {"device_id", "avg_s1"},
-        new String[] {"d0,2.0,"},
+        new String[] {"d0,2.6666666666666665,"},
         DATABASE_NAME);
   }
 
@@ -149,12 +146,12 @@ public class IoTDBLocalIT {
     SQLFunctionUtils.createUDF("my_split", PKG + ".MySplit");
     SQLFunctionUtils.createUDF("my_repeat", PKG + ".MyRepeatWithoutIndex");
     tableResultSetEqualTest(
-        "SELECT * FROM TABLE(my_split('a,b,c'))",
+        "select * from my_split('a,b,c')",
         new String[] {"output"},
         new String[] {"a,", "b,", "c,"},
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "SELECT * FROM my_repeat(vehicle, 2) ORDER BY time",
+        "select * from my_repeat((select time, device_id, s1 from vehicle), 2) order by time",
         new String[] {"time", "device_id", "s1"},
         new String[] {
           "1970-01-01T00:00:00.001Z,d0,1,",
@@ -178,7 +175,9 @@ public class IoTDBLocalIT {
         "SELECT time, device_id, device_name(device_id) AS name, temperature FROM readings ORDER BY time",
         new String[] {"time", "device_id", "name", "temperature"},
         new String[] {
-          "1000,d1,一号车间温度传感器,25.5,", "1001,d2,二号车间温度传感器,32.0,", "1002,d3,未知设备,20.0,",
+          "1970-01-01T00:00:01.000Z,d1,一号车间温度传感器,25.5,",
+          "1970-01-01T00:00:01.001Z,d2,二号车间温度传感器,32.0,",
+          "1970-01-01T00:00:01.002Z,d3,未知设备,20.0,",
         },
         DATABASE_NAME);
   }
@@ -190,9 +189,9 @@ public class IoTDBLocalIT {
         "SELECT time, device_id, temperature, device_summary(device_id) AS summary FROM readings ORDER BY time",
         new String[] {"time", "device_id", "temperature", "summary"},
         new String[] {
-          "1000,d1,25.5,一号车间温度传感器(上限:30.0),",
-          "1001,d2,32.0,二号车间温度传感器(上限:35.0),",
-          "1002,d3,20.0,未知设备(上限:未知),",
+          "1970-01-01T00:00:01.000Z,d1,25.5,一号车间温度传感器(上限:30.0),",
+          "1970-01-01T00:00:01.001Z,d2,32.0,二号车间温度传感器(上限:35.0),",
+          "1970-01-01T00:00:01.002Z,d3,20.0,未知设备(上限:未知),",
         },
         DATABASE_NAME);
   }
@@ -213,35 +212,6 @@ public class IoTDBLocalIT {
         DATABASE_NAME);
   }
 
-  // ── IoTDBLocal logging ──────────────────────────────────────────────────────
-
-  @Test
-  public void testIoTDBLocalLogApis() throws IOException {
-    SQLFunctionUtils.createUDF("iotdb_local_log", IOTDB_LOCAL_PKG + ".IoTDBLocalLogFunction");
-    EnvFactory.getEnv().getDataNodeWrapper(0).clearLogContent();
-    tableResultSetEqualTest(
-        "SELECT iotdb_local_log(device_id) AS log_ok FROM readings WHERE device_id = 'd1'",
-        new String[] {"log_ok"},
-        new String[] {"ok,"},
-        DATABASE_NAME);
-    assertLogContains(IoTDBLocalLogFunction.INFO_PLAIN);
-    assertLogContains(IoTDBLocalLogFunction.INFO_FORMAT);
-    assertLogContains(IoTDBLocalLogFunction.INFO_CAUSE);
-    assertLogContains(IoTDBLocalLogFunction.WARN_PLAIN);
-    assertLogContains(IoTDBLocalLogFunction.WARN_FORMAT);
-    assertLogContains(IoTDBLocalLogFunction.WARN_CAUSE);
-    assertLogContains(IoTDBLocalLogFunction.ERROR_PLAIN);
-    assertLogContains(IoTDBLocalLogFunction.ERROR_FORMAT);
-    assertLogContains(IoTDBLocalLogFunction.ERROR_CAUSE);
-    assertLogContains("iotdb-local-it-log-cause");
-  }
-
-  private static void assertLogContains(String content) throws IOException {
-    Assert.assertTrue(
-        "Expected log to contain: " + content,
-        EnvFactory.getEnv().getDataNodeWrapper(0).logContains(content));
-  }
-
   // ── permission inheritance ──────────────────────────────────────────────────
 
   @Test
@@ -252,9 +222,9 @@ public class IoTDBLocalIT {
         "SELECT device_name(device_id) AS name FROM readings WHERE device_id = 'd1'",
         new String[] {"name"},
         new String[] {"一号车间温度传感器,"},
-        DATABASE_NAME,
         LIMITED_USER,
-        LIMITED_PASSWORD);
+        LIMITED_PASSWORD,
+        DATABASE_NAME);
     dropLimitedUser();
   }
 

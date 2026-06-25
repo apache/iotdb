@@ -186,7 +186,8 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
             queryContext.isDebug(),
             fragment.isRoot(),
             queryContext.isVerbose());
-    fragmentInstance.setLocalQueryId(queryContext.getLocalQueryId());
+    fragmentInstance.setOuterQueryDeadlineMs(
+        queryContext.getStartTime() + queryContext.getTimeOut());
 
     selectExecutorAndHost(
         fragment,

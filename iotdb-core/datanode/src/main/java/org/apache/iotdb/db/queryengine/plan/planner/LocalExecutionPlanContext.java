@@ -198,8 +198,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     return driverContext.getFragmentInstanceContext().getId();
   }
 
-  public long getLocalQueryId() {
-    return driverContext.getFragmentInstanceContext().getLocalQueryId();
+  public long getOuterQueryDeadlineMs() {
+    return driverContext.getFragmentInstanceContext().getOuterQueryDeadlineMs();
   }
 
   public List<PipelineDriverFactory> getPipelineDriverFactories() {

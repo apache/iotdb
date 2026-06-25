@@ -167,7 +167,7 @@ public class FragmentInstanceManager {
                               dataRegion,
                               instance.getGlobalTimePredicate(),
                               dataNodeQueryContextMap,
-                              instance.getLocalQueryId(),
+                              instance.getOuterQueryDeadlineMs(),
                               instance.isDebug(),
                               instance.isVerbose());
                         });

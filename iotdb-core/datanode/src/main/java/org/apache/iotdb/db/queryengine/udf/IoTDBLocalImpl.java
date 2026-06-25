@@ -24,8 +24,6 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.UDFResultSet;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -42,23 +40,22 @@ public class IoTDBLocalImpl implements IoTDBLocal {
   public static final IoTDBLocalFactory FACTORY = IoTDBLocalImpl::new;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLocalImpl.class);
-  private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
   private final SessionInfo sessionInfo;
   private final String fragmentInstanceId;
-  private final long outerLocalQueryId;
   private final QueryId outerGlobalQueryId;
+  private final long outerQueryDeadlineMs;
   private final List<UDFResultSetImpl> openResultSets = new ArrayList<>();
 
   public IoTDBLocalImpl(
       SessionInfo sessionInfo,
       String fragmentInstanceId,
-      long outerLocalQueryId,
-      String outerGlobalQueryId) {
+      String outerGlobalQueryId,
+      long outerQueryDeadlineMs) {
     this.sessionInfo = sessionInfo;
     this.fragmentInstanceId = fragmentInstanceId;
-    this.outerLocalQueryId = outerLocalQueryId;
     this.outerGlobalQueryId = QueryId.valueOf(outerGlobalQueryId);
+    this.outerQueryDeadlineMs = outerQueryDeadlineMs;
   }
 
   @Override
@@ -97,12 +94,10 @@ public class IoTDBLocalImpl implements IoTDBLocal {
   }
 
   private long computeRemainingTimeoutMs() {
-    IQueryExecution execution = COORDINATOR.getQueryExecution(outerLocalQueryId);
-    if (execution == null) {
+    if (outerQueryDeadlineMs <= 0) {
       return 0;
     }
-    return execution.getTimeout()
-        - (System.currentTimeMillis() - execution.getStartExecutionTime());
+    return outerQueryDeadlineMs - System.currentTimeMillis();
   }
 
   @Override

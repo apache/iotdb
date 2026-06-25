@@ -152,8 +152,8 @@ public class FragmentInstanceContext extends QueryContext {
   // session info
   private SessionInfo sessionInfo;
 
-  // Coordinator-local query id of the outer query, used by IoTDBLocal UDF
-  private long localQueryId = -1L;
+  // Outer query deadline (startTime + timeout) for IoTDBLocal UDF
+  private long outerQueryDeadlineMs = -1L;
 
   private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
   private DataNodeQueryContext dataNodeQueryContext;
@@ -209,7 +209,7 @@ public class FragmentInstanceContext extends QueryContext {
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
-      long localQueryId,
+      long outerQueryDeadlineMs,
       boolean debug,
       boolean isVerbose) {
     FragmentInstanceContext instanceContext =
@@ -220,7 +220,7 @@ public class FragmentInstanceContext extends QueryContext {
             dataRegion,
             globalTimePredicate,
             dataNodeQueryContextMap,
-            localQueryId,
+            outerQueryDeadlineMs,
             debug,
             isVerbose);
     instanceContext.initialize();
@@ -276,7 +276,7 @@ public class FragmentInstanceContext extends QueryContext {
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
-      long localQueryId,
+      long outerQueryDeadlineMs,
       boolean debug,
       boolean verbose) {
     super(debug, verbose);
@@ -284,7 +284,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
-    this.localQueryId = localQueryId;
+    this.outerQueryDeadlineMs = outerQueryDeadlineMs;
     this.dataRegion = dataRegion;
     this.globalTimeFilter =
         globalTimePredicate == null
@@ -574,8 +574,8 @@ public class FragmentInstanceContext extends QueryContext {
     return sessionInfo;
   }
 
-  public long getLocalQueryId() {
-    return localQueryId;
+  public long getOuterQueryDeadlineMs() {
+    return outerQueryDeadlineMs;
   }
 
   public Optional<Throwable> getFailureCause() {

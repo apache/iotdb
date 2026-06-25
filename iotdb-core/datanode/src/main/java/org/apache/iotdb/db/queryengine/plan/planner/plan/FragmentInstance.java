@@ -83,8 +83,8 @@ public class FragmentInstance implements IConsensusRequest {
   private final boolean debug;
   private final boolean verbose;
 
-  // Coordinator-local query id, used to look up IQueryExecution on DataNode
-  private long localQueryId = -1L;
+  // Outer query deadline (startTime + timeout) for IoTDBLocal on remote DataNodes.
+  private long outerQueryDeadlineMs = -1L;
 
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
@@ -272,9 +272,7 @@ public class FragmentInstance implements IConsensusRequest {
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
     fragmentInstance.isExplainAnalyze = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.setHighestPriority(ReadWriteIOUtils.readBool(buffer));
-    if (buffer.hasRemaining()) {
-      fragmentInstance.setLocalQueryId(ReadWriteIOUtils.readLong(buffer));
-    }
+    fragmentInstance.setOuterQueryDeadlineMs(ReadWriteIOUtils.readLong(buffer));
     return fragmentInstance;
   }
 
@@ -302,7 +300,7 @@ public class FragmentInstance implements IConsensusRequest {
       }
       ReadWriteIOUtils.write(isExplainAnalyze, outputStream);
       ReadWriteIOUtils.write(isHighestPriority, outputStream);
-      ReadWriteIOUtils.write(localQueryId, outputStream);
+      ReadWriteIOUtils.write(outerQueryDeadlineMs, outputStream);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
       LOGGER.error(
@@ -349,12 +347,12 @@ public class FragmentInstance implements IConsensusRequest {
     return sessionInfo;
   }
 
-  public long getLocalQueryId() {
-    return localQueryId;
+  public long getOuterQueryDeadlineMs() {
+    return outerQueryDeadlineMs;
   }
 
-  public void setLocalQueryId(long localQueryId) {
-    this.localQueryId = localQueryId;
+  public void setOuterQueryDeadlineMs(long outerQueryDeadlineMs) {
+    this.outerQueryDeadlineMs = outerQueryDeadlineMs;
   }
 
   public boolean isExplainAnalyze() {

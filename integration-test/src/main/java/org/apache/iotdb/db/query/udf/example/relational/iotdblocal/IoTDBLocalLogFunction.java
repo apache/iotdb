@@ -27,18 +27,14 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
-/** Exercises all IoTDBLocal log APIs with distinctive markers for integration tests. */
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.utils.Binary;
+
+/** Exercises IoTDBLocal log APIs at each scalar-function lifecycle hook. */
 public class IoTDBLocalLogFunction implements ScalarFunction {
 
-  public static final String INFO_PLAIN = "IOTDB_LOCAL_IT_INFO_PLAIN";
-  public static final String INFO_FORMAT = "IOTDB_LOCAL_IT_INFO_FORMAT loaded 3 rows";
-  public static final String INFO_CAUSE = "IOTDB_LOCAL_IT_INFO_CAUSE";
-  public static final String WARN_PLAIN = "IOTDB_LOCAL_IT_WARN_PLAIN";
-  public static final String WARN_FORMAT = "IOTDB_LOCAL_IT_WARN_FORMAT warn ab";
-  public static final String WARN_CAUSE = "IOTDB_LOCAL_IT_WARN_CAUSE";
-  public static final String ERROR_PLAIN = "IOTDB_LOCAL_IT_ERROR_PLAIN";
-  public static final String ERROR_FORMAT = "IOTDB_LOCAL_IT_ERROR_FORMAT error code=500";
-  public static final String ERROR_CAUSE = "IOTDB_LOCAL_IT_ERROR_CAUSE";
+  private boolean evaluateLogged;
+  private boolean destroyLogged;
 
   @Override
   public ScalarFunctionAnalysis analyze(FunctionArguments arguments)
@@ -48,20 +44,28 @@ public class IoTDBLocalLogFunction implements ScalarFunction {
 
   @Override
   public void beforeStart(FunctionArguments arguments, IoTDBLocal local) {
-    RuntimeException cause = new RuntimeException("iotdb-local-it-log-cause");
-    local.info(INFO_PLAIN);
-    local.info("IOTDB_LOCAL_IT_INFO_FORMAT loaded {} rows", 3);
-    local.info(INFO_CAUSE, cause);
-    local.warn(WARN_PLAIN);
-    local.warn("IOTDB_LOCAL_IT_WARN_FORMAT warn {} {}", "a", "b");
-    local.warn(WARN_CAUSE, cause);
-    local.error(ERROR_PLAIN);
-    local.error("IOTDB_LOCAL_IT_ERROR_FORMAT error code={}", 500);
-    local.error(ERROR_CAUSE, cause);
+    IoTDBLocalLogHelper.logAllApis(local, IoTDBLocalLogHelper.SCALAR_BEFORE_START);
   }
 
   @Override
   public Object evaluate(Record input) {
-    return "ok";
+    return new Binary("ok", TSFileConfig.STRING_CHARSET);
+  }
+
+  @Override
+  public Object evaluate(Record input, IoTDBLocal local) {
+    if (!evaluateLogged) {
+      evaluateLogged = true;
+      IoTDBLocalLogHelper.logAllApis(local, IoTDBLocalLogHelper.SCALAR_EVALUATE);
+    }
+    return evaluate(input);
+  }
+
+  @Override
+  public void beforeDestroy(IoTDBLocal local) {
+    if (!destroyLogged) {
+      destroyLogged = true;
+      IoTDBLocalLogHelper.logAllApis(local, IoTDBLocalLogHelper.SCALAR_BEFORE_DESTROY);
+    }
   }
 }

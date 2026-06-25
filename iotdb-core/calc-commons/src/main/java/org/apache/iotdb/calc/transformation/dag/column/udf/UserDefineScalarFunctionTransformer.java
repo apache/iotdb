@@ -37,8 +37,6 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer {
 
   private final ScalarFunction scalarFunction;
@@ -56,25 +54,15 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
     super(returnType, childrenTransformers);
     this.scalarFunction = scalarFunction;
     this.parameters = parameters;
-    this.ioTDBLocal = createIoTDBLocal(context);
+    this.ioTDBLocal =
+        IoTDBLocalFactory.createIoTDBLocal(
+            context.getIoTDBLocalFactory(),
+            context.getSessionInfo(),
+            context.getFragmentInstanceId(),
+            context.getOuterGlobalQueryId(),
+            context.getOuterQueryDeadlineMs());
     this.inputTypes =
         childrenTransformers.stream().map(ColumnTransformer::getType).collect(Collectors.toList());
-  }
-
-  private static IoTDBLocal createIoTDBLocal(ColumnTransformerBuilder.Context context) {
-    IoTDBLocalFactory factory = context.getIoTDBLocalFactory();
-    String fragmentInstanceId = context.getFragmentInstanceId();
-    String outerGlobalQueryId = context.getOuterGlobalQueryId();
-    long outerLocalQueryId = context.getOuterLocalQueryId();
-    checkArgument(factory != null, "IoTDBLocalFactory must not be null for UDF execution");
-    checkArgument(
-        fragmentInstanceId != null, "fragmentInstanceId must not be null for UDF execution");
-    checkArgument(
-        outerGlobalQueryId != null, "outerGlobalQueryId must not be null for UDF execution");
-    checkArgument(
-        outerLocalQueryId >= 0, "outerLocalQueryId must not be negative for UDF execution");
-    return factory.create(
-        context.getSessionInfo(), fragmentInstanceId, outerLocalQueryId, outerGlobalQueryId);
   }
 
   private void initIfNeeded() {
