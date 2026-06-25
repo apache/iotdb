@@ -48,13 +48,13 @@ public class ShowCreateTaskTest {
     databaseInfo.setName("test_db");
     databaseInfo.setTTL(Long.MAX_VALUE);
     databaseInfo.setTimePartitionInterval(604800000L);
-    databaseInfo.setMinSchemaRegionNum(0);
-    databaseInfo.setMinDataRegionNum(1);
+    databaseInfo.setMaxSchemaRegionNum(0);
+    databaseInfo.setMaxDataRegionNum(1);
 
     assertEquals(
         "CREATE DATABASE \"test_db\" WITH (ttl='"
             + IoTDBConstant.TTL_INFINITE
-            + "',time_partition_interval=604800000,schema_region_group_num=0,data_region_group_num=1)",
+            + "',time_partition_interval=604800000,max_schema_region_group_num=0,max_data_region_group_num=1)",
         ShowCreateDatabaseTask.getShowCreateDatabaseSQL(databaseInfo));
   }
 
@@ -64,11 +64,11 @@ public class ShowCreateTaskTest {
     databaseInfo.setName("test\"db");
     databaseInfo.setTTL(123L);
     databaseInfo.setTimePartitionInterval(1000L);
-    databaseInfo.setMinSchemaRegionNum(2);
-    databaseInfo.setMinDataRegionNum(3);
+    databaseInfo.setMaxSchemaRegionNum(2);
+    databaseInfo.setMaxDataRegionNum(3);
 
     assertEquals(
-        "CREATE DATABASE \"test\"\"db\" WITH (ttl=123,time_partition_interval=1000,schema_region_group_num=2,data_region_group_num=3)",
+        "CREATE DATABASE \"test\"\"db\" WITH (ttl=123,time_partition_interval=1000,max_schema_region_group_num=2,max_data_region_group_num=3)",
         ShowCreateDatabaseTask.getShowCreateDatabaseSQL(databaseInfo));
   }
 

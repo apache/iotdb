@@ -86,10 +86,10 @@ public class ShowCreateDatabaseTask implements IConfigTask {
                 : databaseInfo.getTTL())
         .append(",time_partition_interval=")
         .append(databaseInfo.getTimePartitionInterval())
-        .append(",schema_region_group_num=")
-        .append(databaseInfo.getMinSchemaRegionNum())
-        .append(",data_region_group_num=")
-        .append(databaseInfo.getMinDataRegionNum())
+        .append(",max_schema_region_group_num=")
+        .append(databaseInfo.getMaxSchemaRegionNum())
+        .append(",max_data_region_group_num=")
+        .append(databaseInfo.getMaxDataRegionNum())
         .append(")")
         .toString();
   }

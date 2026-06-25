@@ -299,7 +299,7 @@ public class IoTDBDatabaseIT {
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create database test_show_create_db with (ttl=300, schema_region_group_num=DEFAULT, data_region_group_num=DEFAULT, time_partition_interval=100000)");
+          "create database test_show_create_db with (ttl=300, max_schema_region_group_num=DEFAULT, max_data_region_group_num=DEFAULT, time_partition_interval=100000)");
 
       try (final ResultSet resultSet =
           statement.executeQuery("show create database test_show_create_db")) {
@@ -311,8 +311,8 @@ public class IoTDBDatabaseIT {
             createDatabaseSQL.startsWith("CREATE DATABASE \"test_show_create_db\" WITH ("));
         assertTrue(createDatabaseSQL, createDatabaseSQL.contains("ttl=300"));
         assertTrue(createDatabaseSQL, createDatabaseSQL.contains("time_partition_interval=100000"));
-        assertTrue(createDatabaseSQL, createDatabaseSQL.contains("schema_region_group_num="));
-        assertTrue(createDatabaseSQL, createDatabaseSQL.contains("data_region_group_num="));
+        assertTrue(createDatabaseSQL, createDatabaseSQL.contains("max_schema_region_group_num="));
+        assertTrue(createDatabaseSQL, createDatabaseSQL.contains("max_data_region_group_num="));
         assertFalse(resultSet.next());
       }
     }
