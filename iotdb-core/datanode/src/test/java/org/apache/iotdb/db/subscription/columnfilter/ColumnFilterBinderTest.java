@@ -30,6 +30,8 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
@@ -127,6 +129,67 @@ public class ColumnFilterBinderTest {
   }
 
   @Test
+  public void testProjectTreeTabletToTreeViewTabletBeforePruning() {
+    final TsTable viewSchema = createTreeViewSchema();
+    final Tablet projectedTablet =
+        new TreeViewTabletProjector("db", viewSchema).project(createTreeTabletForView());
+
+    Assert.assertNotNull(projectedTablet);
+    Assert.assertEquals("sensors_view", projectedTablet.getTableName());
+    Assert.assertEquals(3, projectedTablet.getSchemas().size());
+    Assert.assertEquals("device_alias", projectedTablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("temperature", projectedTablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals("status", projectedTablet.getSchemas().get(2).getMeasurementName());
+    Assert.assertEquals(ColumnCategory.TAG, projectedTablet.getColumnTypes().get(0));
+    Assert.assertEquals(ColumnCategory.FIELD, projectedTablet.getColumnTypes().get(1));
+    Assert.assertEquals(ColumnCategory.FIELD, projectedTablet.getColumnTypes().get(2));
+
+    final BoundColumnFilter boundFilter =
+        new ColumnFilterBinder()
+            .bind(
+                createTableTopicConfig("column_name = \"temp_alias\""),
+                Collections.singletonMap(
+                    "db", Collections.singletonMap("sensors_view", viewSchema)));
+    final Tablet prunedTablet =
+        TabletColumnPruner.pruneTableModelTablet(
+            projectedTablet, "db", ColumnFilterMatcher.fromBoundColumnFilter(boundFilter));
+
+    Assert.assertNotNull(prunedTablet);
+    Assert.assertEquals(2, prunedTablet.getSchemas().size());
+    Assert.assertEquals("device_alias", prunedTablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("temperature", prunedTablet.getSchemas().get(1).getMeasurementName());
+  }
+
+  @Test
+  public void testProjectTreeTabletSkipsDeviceOutsideTreeViewPattern() {
+    final Tablet projectedTablet =
+        new TreeViewTabletProjector("db", createTreeViewSchema())
+            .project(createTreeTablet("root.other.d1"));
+
+    Assert.assertNull(projectedTablet);
+  }
+
+  @Test
+  public void testProjectTreeTabletMarksMissingTreeViewTagAsNull() {
+    final Tablet projectedTablet =
+        new TreeViewTabletProjector("db", createTreeViewSchemaWithExtraTag())
+            .project(createTreeTabletForView());
+
+    Assert.assertNotNull(projectedTablet);
+    Assert.assertEquals(4, projectedTablet.getSchemas().size());
+    Assert.assertEquals("device_alias", projectedTablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("sensor_alias", projectedTablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals(ColumnCategory.TAG, projectedTablet.getColumnTypes().get(1));
+    Assert.assertNotNull(projectedTablet.getValues()[1]);
+
+    final BitMap[] bitMaps = projectedTablet.getBitMaps();
+    Assert.assertNotNull(bitMaps);
+    Assert.assertNull(bitMaps[0]);
+    Assert.assertNotNull(bitMaps[1]);
+    Assert.assertTrue(bitMaps[1].isMarked(0));
+  }
+
+  @Test
   public void testRuntimeExpressionTimeSelectionUsesTimestampDatatype() {
     final ColumnFilterMatcher matcher =
         ColumnFilterMatcher.fromTopicConfig(createTableTopicConfig("datatype = \"TIMESTAMP\""));
@@ -182,6 +245,22 @@ public class ColumnFilterBinderTest {
     return table;
   }
 
+  private static TsTable createTreeViewSchemaWithExtraTag() {
+    final TsTable table = new TsTable("sensors_view");
+    table.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.test.**");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+    table.addColumnSchema(new TagColumnSchema("device_alias", TSDataType.STRING));
+    table.addColumnSchema(new TagColumnSchema("sensor_alias", TSDataType.STRING));
+    table.addColumnSchema(new AttributeColumnSchema("site", TSDataType.STRING));
+    final FieldColumnSchema temperature = new FieldColumnSchema("temp_alias", TSDataType.DOUBLE);
+    TreeViewSchema.setOriginalName(temperature, "temperature");
+    table.addColumnSchema(temperature);
+    final FieldColumnSchema status = new FieldColumnSchema("status_alias", TSDataType.STRING);
+    TreeViewSchema.setOriginalName(status, "status");
+    table.addColumnSchema(status);
+    return table;
+  }
+
   private static Tablet createRuntimeTabletWithNewTag() {
     final Tablet tablet =
         new Tablet(
@@ -206,6 +285,24 @@ public class ColumnFilterBinderTest {
     tablet.addValue(0, 2, "north");
     tablet.addValue(0, 3, 36.5);
     tablet.addValue(0, 4, "ok");
+    tablet.setRowSize(1);
+    return tablet;
+  }
+
+  private static Tablet createTreeTabletForView() {
+    return createTreeTablet("root.test.d1");
+  }
+
+  private static Tablet createTreeTablet(final String deviceId) {
+    final Tablet tablet =
+        new Tablet(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
+            Arrays.asList("temperature", "status"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.STRING),
+            1);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue(0, 0, 36.5);
+    tablet.addValue(0, 1, "ok");
     tablet.setRowSize(1);
     return tablet;
   }

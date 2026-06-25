@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPref
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -72,6 +74,9 @@ import java.util.function.Supplier;
 public class SubscriptionBrokerAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBrokerAgent.class);
+
+  private static final ColumnFilterMatcher EMPTY_COLUMN_FILTER_MATCHER =
+      ColumnFilterMatcher.ofSelectedColumnNames(Collections.emptySet());
 
   /** Subscription brokers grouped by consumer group. */
   private final Map<String, List<ISubscriptionBroker>> consumerGroupIdToBrokers =
@@ -660,17 +665,24 @@ public class SubscriptionBrokerAgent {
   public void refreshColumnFilter(final String topicName, final TopicConfig topicConfig) {
     final ColumnFilterMatcher matcher;
     try {
+      final Map<String, Map<String, TsTable>> bindingTables =
+          getColumnFilterBindingTables(topicConfig);
+      if (Objects.isNull(bindingTables)) {
+        topicNameToColumnFilterMatcher.remove(topicName);
+        LOGGER.info(
+            "SubscriptionBrokerAgent: postpone refreshing column-filter matcher for topic [{}] because its table schema is not available locally",
+            topicName);
+        return;
+      }
       matcher =
           ColumnFilterMatcher.fromBoundColumnFilter(
-              columnFilterBinder.bind(
-                  topicConfig, DataNodeTableCache.getInstance().getTableSnapshot()));
+              columnFilterBinder.bind(topicConfig, bindingTables));
     } catch (final Exception e) {
       LOGGER.warn(
           "SubscriptionBrokerAgent: failed to refresh column-filter matcher for topic [{}], use empty matcher to fail closed",
           topicName,
           e);
-      topicNameToColumnFilterMatcher.put(
-          topicName, ColumnFilterMatcher.ofSelectedColumnNames(Collections.emptySet()));
+      topicNameToColumnFilterMatcher.put(topicName, EMPTY_COLUMN_FILTER_MATCHER);
       return;
     }
     topicNameToColumnFilterMatcher.put(topicName, matcher);
@@ -692,14 +704,59 @@ public class SubscriptionBrokerAgent {
 
     try {
       refreshColumnFilter(topicName, topicConfig);
-      return topicNameToColumnFilterMatcher.getOrDefault(topicName, ColumnFilterMatcher.matchAll());
+      return topicNameToColumnFilterMatcher.getOrDefault(
+          topicName, getDefaultColumnFilterMatcher(topicConfig));
     } catch (final Exception e) {
       LOGGER.warn(
           "SubscriptionBrokerAgent: failed to lazily refresh column-filter matcher for topic [{}]",
           topicName,
           e);
-      return ColumnFilterMatcher.ofSelectedColumnNames(Collections.emptySet());
+      return EMPTY_COLUMN_FILTER_MATCHER;
     }
+  }
+
+  private static ColumnFilterMatcher getDefaultColumnFilterMatcher(final TopicConfig topicConfig) {
+    return Objects.nonNull(topicConfig)
+            && topicConfig.isTableTopic()
+            && !topicConfig.isColumnFilterTrivial()
+        ? EMPTY_COLUMN_FILTER_MATCHER
+        : ColumnFilterMatcher.matchAll();
+  }
+
+  private static Map<String, Map<String, TsTable>> getColumnFilterBindingTables(
+      final TopicConfig topicConfig) {
+    if (Objects.isNull(topicConfig)
+        || !topicConfig.isTableTopic()
+        || topicConfig.isColumnFilterTrivial()) {
+      return Collections.emptyMap();
+    }
+
+    final String database =
+        topicConfig.getStringOrDefault(
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
+    final String tableName =
+        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
+    if (isDefaultTopicPattern(database, TopicConstant.DATABASE_DEFAULT_VALUE)
+        || isDefaultTopicPattern(tableName, TopicConstant.TABLE_DEFAULT_VALUE)
+        || !isLiteralTopicPattern(database)
+        || !isLiteralTopicPattern(tableName)) {
+      return DataNodeTableCache.getInstance().getTableSnapshot();
+    }
+
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName, false);
+    return Objects.isNull(table)
+        ? null
+        : Collections.singletonMap(database, Collections.singletonMap(tableName, table));
+  }
+
+  private static boolean isLiteralTopicPattern(final String pattern) {
+    final String regexMetaCharacters = ".*+?[](){}\\|^$";
+    return Objects.nonNull(pattern)
+        && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
+  }
+
+  private static boolean isDefaultTopicPattern(final String pattern, final String defaultPattern) {
+    return Objects.isNull(pattern) || defaultPattern.equals(pattern.trim());
   }
 
   public void dropColumnFilter(final String topicName) {
