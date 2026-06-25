@@ -593,7 +593,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     modsInfos.clear();
 
     if (lastMarker == MetaMarker.SEPARATOR) {
-      if (!recordPendingAlignedChunk(lastMarker)) {
+      if (!useNextPendingAlignedChunk(lastMarker)) {
         clearCachedAlignedChunkData();
         chunkReader = null;
       }
@@ -698,7 +698,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case MetaMarker.CHUNK_GROUP_HEADER:
           {
             // Return before "currentDevice" changes.
-            if (recordPendingAlignedChunk(marker)) {
+            if (useNextPendingAlignedChunk(marker)) {
               return;
             }
             clearCachedAlignedChunkData();
@@ -721,7 +721,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     lastMarker = marker;
-    if (!recordPendingAlignedChunk(marker)) {
+    if (!useNextPendingAlignedChunk(marker)) {
       clearCachedAlignedChunkData();
       chunkReader = null;
     }
@@ -808,7 +808,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     return false;
   }
 
-  private boolean recordPendingAlignedChunk(final byte marker) throws IOException {
+  private boolean useNextPendingAlignedChunk(final byte marker) throws IOException {
     while (!pendingAlignedChunkGroups.isEmpty()) {
       final PendingAlignedChunkGroup pendingAlignedChunkGroup = pendingAlignedChunkGroups.remove(0);
       pendingAlignedChunkSize =
@@ -909,7 +909,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     cachedAlignedValueChunk = valueChunk;
-    if (recordPendingAlignedChunk(Byte.MIN_VALUE)) {
+    if (useNextPendingAlignedChunk(Byte.MIN_VALUE)) {
       return true;
     }
     cachedAlignedValueChunk = null;
