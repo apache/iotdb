@@ -70,6 +70,7 @@ public class TagManager {
   private static final String PREVIOUS_CONDITION =
       "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
+  private static final long COLLECTION_SIZE_FIELD_BYTES = Integer.BYTES;
   private static final Logger logger = LoggerFactory.getLogger(TagManager.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
@@ -171,21 +172,18 @@ public class TagManager {
           long memorySize = 0;
           if (tagValueMap == null) {
             tagValueMap = new ConcurrentHashMap<>();
-            // the last 4 is the memory occupied by the size of tagvaluemap
-            memorySize += RamUsageEstimator.sizeOf(tagKey) + 4;
+            memorySize += RamUsageEstimator.sizeOf(tagKey) + COLLECTION_SIZE_FIELD_BYTES;
           }
 
           Set<IMeasurementMNode<?>> measurementsSet = tagValueMap.get(tagValue);
           if (measurementsSet == null) {
             measurementsSet = ConcurrentHashMap.newKeySet();
             tagValueMap.put(tagValue, measurementsSet);
-            // the last 4 is the memory occupied by the size of measurementsSet
-            memorySize += RamUsageEstimator.sizeOf(tagValue) + 4;
+            memorySize += RamUsageEstimator.sizeOf(tagValue) + COLLECTION_SIZE_FIELD_BYTES;
           }
 
           if (measurementsSet.add(measurementMNode)) {
-            // 8 is the memory occupied by the length of the IMeasurementMNode
-            memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
+            memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + COLLECTION_SIZE_FIELD_BYTES;
           }
           if (memorySize > 0) {
             requestMemory(memorySize);
@@ -216,17 +214,15 @@ public class TagManager {
           }
 
           if (measurementsSet.remove(measurementMNode)) {
-            memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
+            memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + COLLECTION_SIZE_FIELD_BYTES;
           }
           if (measurementsSet.isEmpty()) {
             if (tagValueMap.remove(tagValue, measurementsSet)) {
-              // the last 4 is the memory occupied by the size of IMeasurementMNodeSet
-              memorySize += RamUsageEstimator.sizeOf(tagValue) + 4;
+              memorySize += RamUsageEstimator.sizeOf(tagValue) + COLLECTION_SIZE_FIELD_BYTES;
             }
           }
           if (tagValueMap.isEmpty()) {
-            // the last 4 is the memory occupied by the size of tagValueMap
-            memorySize += RamUsageEstimator.sizeOf(tagKey) + 4;
+            memorySize += RamUsageEstimator.sizeOf(tagKey) + COLLECTION_SIZE_FIELD_BYTES;
             if (memorySize > 0) {
               releaseMemory(memorySize);
             }
