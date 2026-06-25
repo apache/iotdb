@@ -22,6 +22,12 @@ public final class RpcMessages {
 
   public static final String EXCEPTION_THIS_DATASET_IS_ALREADY_CLOSED_826EDCDB = "该数据集已关闭";
   public static final String EXCEPTION_UNKNOWN_TIME_PRECISION_ARG_F550A691 = "未知时间精度：%s";
+  public static final String
+      EXCEPTION_AUTO_RESIZING_BUFFER_WAS_INTERRUPTED_WHILE_ALLOCATING_ARG_BYTES_516F5DA1 =
+      "AutoResizingBuffer 分配 %d 字节内存时被中断";
+  public static final String
+      EXCEPTION_AUTO_RESIZING_BUFFER_FAILED_TO_ALLOCATE_ARG_BYTES_AFTER_ARG_RETRIES_836DB2FD =
+      "AutoResizingBuffer 申请 %d 字节内存失败，已重试 %d 次";
 
   private RpcMessages() {}
 }

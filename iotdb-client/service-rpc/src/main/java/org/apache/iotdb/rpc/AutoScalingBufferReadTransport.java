@@ -23,18 +23,24 @@ import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
+import java.io.IOException;
+
 public class AutoScalingBufferReadTransport extends NonOpenTransport {
 
   private final AutoResizingBuffer buf;
   private int pos = 0;
   private int limit = 0;
 
-  public AutoScalingBufferReadTransport(int initialCapacity) {
+  public AutoScalingBufferReadTransport(int initialCapacity) throws IOException {
     this.buf = new AutoResizingBuffer(initialCapacity);
   }
 
   public void fill(TTransport inTrans, int length) throws TTransportException {
-    buf.resizeIfNecessary(length);
+    try {
+      buf.resizeIfNecessary(length);
+    } catch (IOException e) {
+      throw new TTransportException(e);
+    }
     inTrans.readAll(buf.array(), 0, length);
     pos = 0;
     limit = length;
@@ -89,8 +95,14 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
     return limit - pos;
   }
 
-  public void resizeIfNecessary(int size) {
+  public void resizeIfNecessary(int size) throws IOException {
     buf.resizeIfNecessary(size);
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    buf.close();
   }
 
   public void limit(int newLimit) {

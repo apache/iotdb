@@ -48,7 +48,9 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -171,11 +173,19 @@ public class Utils {
   }
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
-    AutoScalingBufferWriteTransport byteBuffer =
-        new AutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
-    TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
-    status.write(protocol);
-    return ByteBuffer.wrap(byteBuffer.getBuffer());
+    AutoScalingBufferWriteTransport byteBuffer;
+    try {
+      byteBuffer = new AutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
+    } catch (IOException e) {
+      throw new TException(e);
+    }
+    try {
+      TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
+      status.write(protocol);
+      return ByteBuffer.wrap(Arrays.copyOf(byteBuffer.getBuffer(), byteBuffer.getPos()));
+    } finally {
+      byteBuffer.close();
+    }
   }
 
   public static TSStatus deserializeFrom(ByteBuffer buffer) throws TException {

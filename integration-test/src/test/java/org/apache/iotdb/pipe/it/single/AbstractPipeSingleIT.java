@@ -38,6 +38,7 @@ abstract class AbstractPipeSingleIT {
     env.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     env.getConfig()
         .getCommonConfig()
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);

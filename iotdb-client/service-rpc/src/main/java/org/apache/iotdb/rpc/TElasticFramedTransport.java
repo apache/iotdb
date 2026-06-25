@@ -30,6 +30,7 @@ import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 
 import java.io.EOFException;
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -71,7 +72,7 @@ public class TElasticFramedTransport extends TTransport {
     }
 
     @Override
-    public TTransport getTransport(TTransport trans) {
+    public TTransport getTransport(TTransport trans) throws TTransportException {
       return new TElasticFramedTransport(
           trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
     }
@@ -81,17 +82,23 @@ public class TElasticFramedTransport extends TTransport {
       TTransport underlying,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean copyBinary) {
+      boolean copyBinary)
+      throws TTransportException {
     this.underlying = underlying;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.copyBinary = copyBinary;
-    readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
-    writeBuffer =
-        new AutoScalingBufferWriteTransport(
-            Math.min(
-                thriftDefaultBufferSize,
-                Math.min(thriftMaxFrameSize, AutoResizingBuffer.MAX_ARRAY_SIZE)));
+    try {
+      readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
+      writeBuffer =
+          new AutoScalingBufferWriteTransport(
+              Math.min(
+                  thriftDefaultBufferSize,
+                  Math.min(thriftMaxFrameSize, AutoResizingBuffer.MAX_ARRAY_SIZE)));
+    } catch (IOException e) {
+      closeAllocatedBuffers();
+      throw new TTransportException(e);
+    }
   }
 
   protected final int thriftDefaultBufferSize;
@@ -115,7 +122,20 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void close() {
-    underlying.close();
+    try {
+      underlying.close();
+    } finally {
+      closeAllocatedBuffers();
+    }
+  }
+
+  protected void closeAllocatedBuffers() {
+    if (readBuffer != null) {
+      readBuffer.close();
+    }
+    if (writeBuffer != null) {
+      writeBuffer.close();
+    }
   }
 
   @Override
@@ -263,7 +283,11 @@ public class TElasticFramedTransport extends TTransport {
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuffer(), 0, length);
     writeBuffer.reset();
-    writeBuffer.resizeIfNecessary(length);
+    try {
+      writeBuffer.resizeIfNecessary(length);
+    } catch (IOException e) {
+      throw new TTransportException(e);
+    }
     underlying.flush();
   }
 

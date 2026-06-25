@@ -24,6 +24,12 @@ public final class RpcMessages {
       "This DataSet is already closed";
   public static final String EXCEPTION_UNKNOWN_TIME_PRECISION_ARG_F550A691 =
       "Unknown time precision: %s";
+  public static final String
+      EXCEPTION_AUTO_RESIZING_BUFFER_WAS_INTERRUPTED_WHILE_ALLOCATING_ARG_BYTES_516F5DA1 =
+      "AutoResizingBuffer was interrupted while allocating %d bytes";
+  public static final String
+      EXCEPTION_AUTO_RESIZING_BUFFER_FAILED_TO_ALLOCATE_ARG_BYTES_AFTER_ARG_RETRIES_836DB2FD =
+      "AutoResizingBuffer failed to allocate %d bytes after %d retries";
 
   private RpcMessages() {}
 }

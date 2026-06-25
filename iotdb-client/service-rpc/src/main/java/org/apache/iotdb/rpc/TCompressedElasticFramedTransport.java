@@ -34,10 +34,27 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       TTransport underlying,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean copyBinary) {
+      boolean copyBinary)
+      throws TTransportException {
     super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
-    writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
-    readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
+    try {
+      writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+      readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
+    } catch (IOException e) {
+      closeAllocatedBuffers();
+      throw new TTransportException(e);
+    }
+  }
+
+  @Override
+  protected void closeAllocatedBuffers() {
+    super.closeAllocatedBuffers();
+    if (writeCompressBuffer != null) {
+      writeCompressBuffer.close();
+    }
+    if (readCompressBuffer != null) {
+      readCompressBuffer.close();
+    }
   }
 
   @Override
@@ -88,7 +105,11 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     }
 
     writeBuffer.reset();
-    writeBuffer.resizeIfNecessary(length);
+    try {
+      writeBuffer.resizeIfNecessary(length);
+    } catch (IOException e) {
+      throw new TTransportException(e);
+    }
     underlying.flush();
   }
 

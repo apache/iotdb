@@ -109,7 +109,7 @@ public class IoTDBLoadTsFileIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setDatanodeMemoryProportion("100:1000:100:100:100:100");
+        .setDatanodeMemoryProportion("100:1000:100:100:100:0");
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
