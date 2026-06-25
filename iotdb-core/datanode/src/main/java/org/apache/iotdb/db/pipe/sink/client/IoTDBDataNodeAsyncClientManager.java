@@ -56,6 +56,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY;
@@ -69,11 +70,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private final Set<TEndPoint> endPointSet;
 
-  private static final Map<String, Integer> RECEIVER_ATTRIBUTES_REF_COUNT =
-      new ConcurrentHashMap<>();
+  private static final Map<String, Integer> CLIENT_RESOURCE_REF_COUNT = new ConcurrentHashMap<>();
   private final String receiverAttributes;
+  private final String clientResourceKey;
 
-  // receiverAttributes -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
+  // clientResourceKey -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
   private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new ConcurrentHashMap<>();
   private static final Map<String, ExecutorService> TS_FILE_ASYNC_EXECUTOR_HOLDER =
@@ -123,10 +124,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             validateTsFile,
             shouldMarkAsPipeRequest,
             isTSFileUsed);
+    clientResourceKey = generateClientResourceKey(receiverAttributes, endPoints);
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
-      if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
+      if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(clientResourceKey)) {
         ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(
-            receiverAttributes,
+            clientResourceKey,
             new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
                 .createClientManager(
                     isTSFileUsed
@@ -134,21 +136,21 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
                             .AsyncPipeTsFileDataTransferServiceClientPoolFactory()
                         : new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
       }
-      endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
+      endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(clientResourceKey);
 
       if (isTSFileUsed) {
-        if (!TS_FILE_ASYNC_EXECUTOR_HOLDER.containsKey(receiverAttributes)) {
+        if (!TS_FILE_ASYNC_EXECUTOR_HOLDER.containsKey(clientResourceKey)) {
           TS_FILE_ASYNC_EXECUTOR_HOLDER.putIfAbsent(
-              receiverAttributes,
+              clientResourceKey,
               IoTDBThreadPoolFactory.newFixedThreadPool(
                   PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize(),
                   ThreadName.PIPE_TSFILE_ASYNC_SEND_POOL.getName() + "-" + id.getAndIncrement()));
         }
-        executor = TS_FILE_ASYNC_EXECUTOR_HOLDER.get(receiverAttributes);
+        executor = TS_FILE_ASYNC_EXECUTOR_HOLDER.get(clientResourceKey);
       }
 
-      RECEIVER_ATTRIBUTES_REF_COUNT.compute(
-          receiverAttributes, (attributes, refCount) -> refCount == null ? 1 : refCount + 1);
+      CLIENT_RESOURCE_REF_COUNT.compute(
+          clientResourceKey, (attributes, refCount) -> refCount == null ? 1 : refCount + 1);
     }
 
     switch (loadBalanceStrategy) {
@@ -394,28 +396,28 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   public void close() {
     isClosed = true;
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
-      RECEIVER_ATTRIBUTES_REF_COUNT.computeIfPresent(
-          receiverAttributes,
+      CLIENT_RESOURCE_REF_COUNT.computeIfPresent(
+          clientResourceKey,
           (attributes, refCount) -> {
             if (refCount <= 1) {
               final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager =
-                  ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(receiverAttributes);
+                  ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(clientResourceKey);
               if (clientManager != null) {
                 try {
                   clientManager.close();
                   LOGGER.info(
-                      "Closed AsyncPipeDataTransferServiceClientManager for receiver attributes: {}",
-                      receiverAttributes);
+                      "Closed AsyncPipeDataTransferServiceClientManager for client resource key: {}",
+                      clientResourceKey);
                 } catch (final Exception e) {
                   LOGGER.warn(
-                      "Failed to close AsyncPipeDataTransferServiceClientManager for receiver attributes: {}",
-                      receiverAttributes,
+                      "Failed to close AsyncPipeDataTransferServiceClientManager for client resource key: {}",
+                      clientResourceKey,
                       e);
                 }
               }
 
               final ExecutorService executor =
-                  TS_FILE_ASYNC_EXECUTOR_HOLDER.remove(receiverAttributes);
+                  TS_FILE_ASYNC_EXECUTOR_HOLDER.remove(clientResourceKey);
               if (executor != null) {
                 try {
                   executor.shutdown();
@@ -522,5 +524,17 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private void markHealthy(TEndPoint endPoint) {
     unhealthyEndPointMap.remove(endPoint);
+  }
+
+  private static String generateClientResourceKey(
+      final String receiverAttributes, final List<TEndPoint> endPoints) {
+    return String.format(
+        "%s-%s",
+        receiverAttributes,
+        endPoints.stream()
+            .map(endPoint -> String.format("%s:%s", endPoint.getIp(), endPoint.getPort()))
+            .distinct()
+            .sorted()
+            .collect(Collectors.joining(",", "[", "]")));
   }
 }
