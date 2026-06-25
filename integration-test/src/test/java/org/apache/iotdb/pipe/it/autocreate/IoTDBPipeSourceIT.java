@@ -36,7 +36,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Before;
@@ -816,7 +815,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualAutoIT {
 
       // Session Tablet can have unused timestamp slots when rowSize is smaller than maxRowNumber.
       // The pipe source time range filter should ignore the unused zero tail.
-      final List<IMeasurementSchema> schemas =
+      final List<MeasurementSchema> schemas =
           Collections.singletonList(new MeasurementSchema("at1", TSDataType.INT32));
       final Tablet tabletWithUnusedTail = new Tablet("root.db.d5", schemas, 5);
       for (int time = 2000; time <= 4000; time += 1000) {
