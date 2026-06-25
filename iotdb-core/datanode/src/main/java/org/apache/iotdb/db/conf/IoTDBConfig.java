@@ -89,7 +89,9 @@ public class IoTDBConfig {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX = "org.apache.iotdb.commons.disk.strategy.";
   private static final String[] CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES =
-      new String[] {"SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy"};
+      new String[] {
+        "SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy", "MinFolderOccupiedSpaceFirstStrategy"
+      };
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9`_.\\-\\u2E80-\\u9FFF]+)";

@@ -597,14 +597,15 @@ public class IoTDBSnapshotTest {
             String.class,
             File[].class,
             FolderManager.class,
-            Map.class);
+            Map.class,
+            boolean.class);
     method.setAccessible(true);
 
     SnapshotLoader loader = new SnapshotLoader("dummy", "root.testsg", "0");
 
     // Tracks fileKey -> chosen data dir, so files sharing a fileKey land in the same dir.
     Map<String, String> fileTarget = new HashMap<>();
-    method.invoke(loader, targetSuffix, files, folderManager, fileTarget);
+    method.invoke(loader, targetSuffix, files, folderManager, fileTarget, true);
 
     // The shared fileKey must be recorded exactly once, pointing at one of the data dirs.
     String fileKey = tsFile.getName().split("\\.")[0];
