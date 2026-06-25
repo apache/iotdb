@@ -283,7 +283,11 @@ public class WALManager implements IService {
   }
 
   public long getThrottleThreshold() {
-    return (long) (config.getThrottleThreshold() * 0.8);
+    long configuredThrottleThreshold = config.getThrottleThreshold();
+    if (configuredThrottleThreshold <= 0) {
+      return Long.MAX_VALUE;
+    }
+    return Math.max((long) (configuredThrottleThreshold * 0.8), 1);
   }
 
   public long getTotalDiskUsage() {
