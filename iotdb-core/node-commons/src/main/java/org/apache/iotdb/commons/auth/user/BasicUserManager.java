@@ -258,7 +258,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void validCheckForNewUser(String username, String password, boolean enableEncrypt)
       throws AuthException {
     if (!CommonDescriptor.getInstance().getConfig().getDefaultAdminName().equals(username)) {
-      if (username.equals(password)
+      if (enableEncrypt
+          && username.equals(password)
           && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
         throw new AuthException(
             TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_SAME_AS_USERNAME);
@@ -273,7 +274,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void validCheckForBuiltinUser(
       String username, String password, boolean enableEncrypt, long userId) throws AuthException {
     if (!CommonDescriptor.getInstance().getConfig().getDefaultAdminName().equals(username)) {
-      if (username.equals(password)
+      if (enableEncrypt
+          && username.equals(password)
           && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
         throw new AuthException(
             TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_SAME_AS_USERNAME);
