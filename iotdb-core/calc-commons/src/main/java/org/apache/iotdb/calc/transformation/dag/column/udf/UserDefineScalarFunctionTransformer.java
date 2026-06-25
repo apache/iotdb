@@ -72,11 +72,15 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
     IoTDBLocalFactory factory = context.getIoTDBLocalFactory();
     if (factory == null
         || context.getFragmentInstanceId() == null
-        || context.getOuterQueryId() == null) {
+        || context.getOuterGlobalQueryId() == null
+        || context.getOuterLocalQueryId() < 0) {
       return null;
     }
     return factory.create(
-        context.getSessionInfo(), context.getFragmentInstanceId(), context.getOuterQueryId());
+        context.getSessionInfo(),
+        context.getFragmentInstanceId(),
+        context.getOuterLocalQueryId(),
+        context.getOuterGlobalQueryId());
   }
 
   @Override

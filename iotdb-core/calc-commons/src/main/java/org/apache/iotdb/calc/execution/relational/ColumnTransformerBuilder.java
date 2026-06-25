@@ -1956,7 +1956,9 @@ public class ColumnTransformerBuilder
 
     private final String fragmentInstanceId;
 
-    private final String outerQueryId;
+    private final String outerGlobalQueryId;
+
+    private final long outerLocalQueryId;
 
     @Nullable private final IoTDBLocalFactory ioTDBLocalFactory;
 
@@ -1986,6 +1988,7 @@ public class ColumnTransformerBuilder
           memoryReservationManager,
           null,
           null,
+          -1L,
           null);
     }
 
@@ -2002,7 +2005,8 @@ public class ColumnTransformerBuilder
         ITypeMetadata metadata,
         @Nullable MemoryReservationManager memoryReservationManager,
         String fragmentInstanceId,
-        String outerQueryId,
+        String outerGlobalQueryId,
+        long outerLocalQueryId,
         @Nullable IoTDBLocalFactory ioTDBLocalFactory) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
@@ -2016,7 +2020,8 @@ public class ColumnTransformerBuilder
       this.metadata = metadata;
       this.memoryReservationManager = Optional.ofNullable(memoryReservationManager);
       this.fragmentInstanceId = fragmentInstanceId;
-      this.outerQueryId = outerQueryId;
+      this.outerGlobalQueryId = outerGlobalQueryId;
+      this.outerLocalQueryId = outerLocalQueryId;
       this.ioTDBLocalFactory = ioTDBLocalFactory;
     }
 
@@ -2028,8 +2033,12 @@ public class ColumnTransformerBuilder
       return fragmentInstanceId;
     }
 
-    public String getOuterQueryId() {
-      return outerQueryId;
+    public String getOuterGlobalQueryId() {
+      return outerGlobalQueryId;
+    }
+
+    public long getOuterLocalQueryId() {
+      return outerLocalQueryId;
     }
 
     @Nullable

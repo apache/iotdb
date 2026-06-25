@@ -2116,6 +2116,11 @@ public class DataNodeTableOperatorGenerator
   }
 
   @Override
+  protected long getLocalQueryId(LocalExecutionPlanContext context) {
+    return context.getLocalQueryId();
+  }
+
+  @Override
   protected IoTDBLocalFactory getIoTDBLocalFactory(LocalExecutionPlanContext context) {
     return IoTDBLocalImpl.FACTORY;
   }

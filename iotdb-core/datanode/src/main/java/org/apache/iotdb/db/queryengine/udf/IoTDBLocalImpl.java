@@ -23,7 +23,6 @@ import org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.IoTDBLocalFacto
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
@@ -47,13 +46,19 @@ public class IoTDBLocalImpl implements IoTDBLocal {
 
   private final SessionInfo sessionInfo;
   private final String fragmentInstanceId;
-  private final QueryId outerQueryId;
+  private final long outerLocalQueryId;
+  private final QueryId outerGlobalQueryId;
   private final List<UDFResultSetImpl> openResultSets = new ArrayList<>();
 
-  public IoTDBLocalImpl(SessionInfo sessionInfo, String fragmentInstanceId, String outerQueryId) {
+  public IoTDBLocalImpl(
+      SessionInfo sessionInfo,
+      String fragmentInstanceId,
+      long outerLocalQueryId,
+      String outerGlobalQueryId) {
     this.sessionInfo = sessionInfo;
     this.fragmentInstanceId = fragmentInstanceId;
-    this.outerQueryId = QueryId.valueOf(outerQueryId);
+    this.outerLocalQueryId = outerLocalQueryId;
+    this.outerGlobalQueryId = QueryId.valueOf(outerGlobalQueryId);
   }
 
   @Override
@@ -66,7 +71,7 @@ public class IoTDBLocalImpl implements IoTDBLocal {
       }
       InternalQueryResult result =
           InternalQueryExecutor.executeInternalQuery(
-              sessionInfo, fragmentInstanceId, outerQueryId, sql, timeoutMs);
+              sessionInfo, fragmentInstanceId, outerGlobalQueryId, sql, timeoutMs);
       int index = openResultSets.size();
       UDFResultSetImpl rs = new UDFResultSetImpl(openResultSets, index, result);
       openResultSets.add(rs);
@@ -92,16 +97,12 @@ public class IoTDBLocalImpl implements IoTDBLocal {
   }
 
   private long computeRemainingTimeoutMs() {
-    long outerStart = System.currentTimeMillis();
-    long outerTimeout = IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
-    for (IQueryExecution execution : COORDINATOR.getAllQueryExecutions()) {
-      if (outerQueryId.getId().equals(execution.getQueryId())) {
-        outerStart = execution.getStartExecutionTime();
-        outerTimeout = execution.getTimeout();
-        break;
-      }
+    IQueryExecution execution = COORDINATOR.getQueryExecution(outerLocalQueryId);
+    if (execution == null) {
+      return 0;
     }
-    return outerTimeout - (System.currentTimeMillis() - outerStart);
+    return execution.getTimeout()
+        - (System.currentTimeMillis() - execution.getStartExecutionTime());
   }
 
   @Override

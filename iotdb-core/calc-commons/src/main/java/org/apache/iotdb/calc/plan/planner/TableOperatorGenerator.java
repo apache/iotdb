@@ -317,7 +317,8 @@ public abstract class TableOperatorGenerator<
       C context) {
 
     String fragmentInstanceId = getFragmentInstanceId(context);
-    String outerQueryId = getQueryId(context);
+    String outerGlobalQueryId = getQueryId(context);
+    long outerLocalQueryId = getLocalQueryId(context);
     IoTDBLocalFactory ioTDBLocalFactory = getIoTDBLocalFactory(context);
 
     final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
@@ -349,7 +350,8 @@ public abstract class TableOperatorGenerator<
                           metadata,
                           context.getMemoryReservationManager(),
                           fragmentInstanceId,
-                          outerQueryId,
+                          outerGlobalQueryId,
+                          outerLocalQueryId,
                           ioTDBLocalFactory);
 
                   return visitor.process(p, filterColumnTransformerContext);
@@ -380,7 +382,8 @@ public abstract class TableOperatorGenerator<
             metadata,
             context.getMemoryReservationManager(),
             fragmentInstanceId,
-            outerQueryId,
+            outerGlobalQueryId,
+            outerLocalQueryId,
             ioTDBLocalFactory);
 
     for (Expression expression : projectExpressions) {
@@ -411,6 +414,10 @@ public abstract class TableOperatorGenerator<
 
   protected String getQueryId(C context) {
     return null;
+  }
+
+  protected long getLocalQueryId(C context) {
+    return -1L;
   }
 
   protected IoTDBLocalFactory getIoTDBLocalFactory(C context) {
@@ -2515,18 +2522,26 @@ public abstract class TableOperatorGenerator<
   protected IoTDBLocal createIoTDBLocal(C context) {
     IoTDBLocalFactory factory = getIoTDBLocalFactory(context);
     String fragmentInstanceId = getFragmentInstanceId(context);
-    String queryId = getQueryId(context);
+    String outerGlobalQueryId = getQueryId(context);
+    long outerLocalQueryId = getLocalQueryId(context);
     checkArgument(factory != null, "IoTDBLocalFactory must not be null for UDF execution");
     checkArgument(
         fragmentInstanceId != null, "fragmentInstanceId must not be null for UDF execution");
-    checkArgument(queryId != null, "queryId must not be null for UDF execution");
-    return factory.create(getSessionInfo(context), fragmentInstanceId, queryId);
+    checkArgument(outerGlobalQueryId != null, "queryId must not be null for UDF execution");
+    checkArgument(
+        outerLocalQueryId >= 0, "outerLocalQueryId must not be negative for UDF execution");
+    return factory.create(
+        getSessionInfo(context), fragmentInstanceId, outerLocalQueryId, outerGlobalQueryId);
   }
 
   /** Factory for creating {@link IoTDBLocal} inside UDF column transformers. */
   @FunctionalInterface
   public interface IoTDBLocalFactory {
 
-    IoTDBLocal create(SessionInfo sessionInfo, String fragmentInstanceId, String queryId);
+    IoTDBLocal create(
+        SessionInfo sessionInfo,
+        String fragmentInstanceId,
+        long outerLocalQueryId,
+        String outerGlobalQueryId);
   }
 }
