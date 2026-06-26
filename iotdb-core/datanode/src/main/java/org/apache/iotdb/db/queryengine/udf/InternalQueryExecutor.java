@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.udf;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
@@ -106,6 +107,12 @@ public final class InternalQueryExecutor {
       }
 
       return new InternalQueryResult(queryExecution, internalSession, statementId, queryId, sql);
+    } catch (IoTDBException e) {
+      ClientRPCServiceImpl.clearUp(internalSession, statementId, queryId, () -> sql, e);
+      throw e;
+    } catch (IoTDBRuntimeException e) {
+      ClientRPCServiceImpl.clearUp(internalSession, statementId, queryId, () -> sql, e);
+      throw e;
     } catch (Exception e) {
       ClientRPCServiceImpl.clearUp(internalSession, statementId, queryId, () -> sql, e);
       throw new IoTDBException(e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

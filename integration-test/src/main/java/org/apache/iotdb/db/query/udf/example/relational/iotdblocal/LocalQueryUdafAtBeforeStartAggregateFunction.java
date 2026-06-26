@@ -45,7 +45,6 @@ public class LocalQueryUdafAtBeforeStartAggregateFunction implements AggregateFu
     @Override
     public void reset() {
       count = 0;
-      extraCount = 0;
     }
 
     @Override

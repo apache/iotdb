@@ -24,6 +24,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ma
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.ObjectBigArray;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
@@ -44,6 +45,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.rpc.TSStatusCode.EXECUTE_UDF_ERROR;
 
 public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulator {
 
@@ -73,14 +75,11 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
     if (init) {
       return;
     }
-    init = true;
     try {
       aggregateFunction.beforeStart(functionArguments, ioTDBLocal);
+      init = true;
     } catch (UDFException e) {
-      throw new RuntimeException(
-          "Error occurs when starting user-defined aggregate function "
-              + aggregateFunction.getClass().getName(),
-          e);
+      throw new IoTDBRuntimeException(e, EXECUTE_UDF_ERROR.getStatusCode());
     }
   }
 
@@ -152,6 +151,7 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
+    initIfNeeded();
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of UDAF should be BinaryColumn");
@@ -182,6 +182,7 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
 
   @Override
   public void close() {
+    initIfNeeded();
     aggregateFunction.beforeDestroy(ioTDBLocal);
     ioTDBLocal.close();
     stateArray.forEach(

@@ -220,7 +220,7 @@ public class IoTDBLocalIT {
     SQLFunctionUtils.createUDF("insert_probe", IOTDB_LOCAL_PKG + ".InsertProbeFunction");
     tableAssertTestFail(
         "SELECT insert_probe(device_id) FROM readings WHERE device_id = 'd1'",
-        "305: Only query is supported for IoTDBLocal query interface",
+        "701: Only query is supported for IoTDBLocal query interface",
         DATABASE_NAME);
     tableResultSetEqualTest(
         "SELECT COUNT(*) AS cnt FROM probe_table",
@@ -231,7 +231,7 @@ public class IoTDBLocalIT {
     SQLFunctionUtils.createUDF("create_table_probe", IOTDB_LOCAL_PKG + ".CreateTableProbeFunction");
     tableAssertTestFail(
         "SELECT create_table_probe(device_id) FROM readings WHERE device_id = 'd1'",
-        "305: Only query is supported for IoTDBLocal query interface",
+        "701: Only query is supported for IoTDBLocal query interface",
         DATABASE_NAME);
     tableAssertTestFail(
         "SELECT * FROM should_not_exist_local_probe", "does not exist", DATABASE_NAME);
@@ -239,7 +239,7 @@ public class IoTDBLocalIT {
     SQLFunctionUtils.createUDF("drop_table_probe", IOTDB_LOCAL_PKG + ".DropTableProbeFunction");
     tableAssertTestFail(
         "SELECT drop_table_probe(device_id) FROM readings WHERE device_id = 'd1'",
-        "305: Only query is supported for IoTDBLocal query interface",
+        "701: Only query is supported for IoTDBLocal query interface",
         DATABASE_NAME);
     tableResultSetEqualTest(
         "SELECT device_id FROM device_info ORDER BY device_id",
@@ -257,6 +257,35 @@ public class IoTDBLocalIT {
         "SELECT local_query_udaf_before_start(temperature) AS total FROM readings",
         new String[] {"total"},
         new String[] {"5,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryGroupedUdafAtBeforeStart() {
+    SQLFunctionUtils.createUDF(
+        "local_query_grouped_udaf_before_start",
+        IOTDB_LOCAL_PKG + ".LocalQueryUdafAtBeforeStartAggregateFunction");
+    // GROUP BY device_id, temperature disables agg pushdown and exercises
+    // GroupedUserDefinedAggregateAccumulator (hash aggregation path).
+    tableResultSetEqualTest(
+        "SELECT device_id, local_query_grouped_udaf_before_start(temperature) AS total "
+            + "FROM readings GROUP BY device_id, temperature ORDER BY device_id",
+        new String[] {"device_id", "total"},
+        new String[] {"d1,3,", "d2,3,", "d3,3,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryGroupedUdafAtBeforeStartViaAggPushdown() {
+    SQLFunctionUtils.createUDF(
+        "local_query_grouped_udaf_agg_pushdown",
+        IOTDB_LOCAL_PKG + ".LocalQueryUdafAtBeforeStartAggregateFunction");
+    // GROUP BY tag only: aggregation is pushed into AggTableScan, one device per group.
+    tableResultSetEqualTest(
+        "SELECT device_id, local_query_grouped_udaf_agg_pushdown(temperature) AS total "
+            + "FROM readings GROUP BY device_id ORDER BY device_id",
+        new String[] {"device_id", "total"},
+        new String[] {"d1,3,", "d2,3,", "d3,3,"},
         DATABASE_NAME);
   }
 
@@ -338,7 +367,7 @@ public class IoTDBLocalIT {
         "enrich_device_name_at_before_start",
         IOTDB_LOCAL_PKG + ".DeviceNameEnrichBeforeStartTableFunction");
     tableResultSetEqualTest(
-        "SELECT device_name FROM enrich_device_name_at_before_start((SELECT device_id FROM readings ORDER BY time))",
+        "SELECT device_name FROM enrich_device_name_at_before_start((SELECT device_id FROM readings ORDER BY time)) order by device_name",
         new String[] {"device_name"},
         new String[] {
           "一号车间温度传感器,", "二号车间温度传感器,", "未知设备,",
@@ -352,7 +381,7 @@ public class IoTDBLocalIT {
         "enrich_device_name_in_process",
         IOTDB_LOCAL_PKG + ".DeviceNameEnrichInProcessTableFunction");
     tableResultSetEqualTest(
-        "SELECT device_name FROM enrich_device_name_in_process((SELECT device_id FROM readings ORDER BY time))",
+        "SELECT device_name FROM enrich_device_name_in_process((SELECT device_id FROM readings ORDER BY time)) order by device_name",
         new String[] {"device_name"},
         new String[] {
           "一号车间温度传感器,", "二号车间温度传感器,", "未知设备,",

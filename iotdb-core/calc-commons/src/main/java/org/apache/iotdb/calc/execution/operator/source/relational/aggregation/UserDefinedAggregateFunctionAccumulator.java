@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
@@ -42,6 +43,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.rpc.TSStatusCode.EXECUTE_UDF_ERROR;
 
 public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator {
 
@@ -51,7 +53,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   private final AggregateFunction aggregateFunction;
   private final FunctionArguments functionArguments;
   private final List<Type> inputDataTypes;
-  private final State state;
+  private State state;
   private final IoTDBLocal ioTDBLocal;
   private boolean init;
 
@@ -76,23 +78,22 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
     this.aggregateFunction = aggregateFunction;
     this.functionArguments = functionArguments;
     this.inputDataTypes = inputDataTypes;
-    this.state = aggregateFunction.createState();
     this.ioTDBLocal = ioTDBLocal;
     this.init = init;
+    this.state = init ? aggregateFunction.createState() : null;
   }
 
   private void initIfNeeded() {
     if (init) {
       return;
     }
-    init = true;
     try {
       aggregateFunction.beforeStart(functionArguments, ioTDBLocal);
+      init = true;
+      // create State after beforeStart
+      state = aggregateFunction.createState();
     } catch (UDFException e) {
-      throw new RuntimeException(
-          "Error occurs when starting user-defined aggregate function "
-              + aggregateFunction.getClass().getName(),
-          e);
+      throw new IoTDBRuntimeException(e, EXECUTE_UDF_ERROR.getStatusCode());
     }
   }
 
@@ -168,6 +169,9 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public void reset() {
+    if (!init) {
+      return;
+    }
     state.reset();
   }
 
@@ -192,6 +196,8 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public void close() {
+    // ensure beforeStart was called
+    initIfNeeded();
     aggregateFunction.beforeDestroy(ioTDBLocal);
     ioTDBLocal.close();
     state.destroyState();

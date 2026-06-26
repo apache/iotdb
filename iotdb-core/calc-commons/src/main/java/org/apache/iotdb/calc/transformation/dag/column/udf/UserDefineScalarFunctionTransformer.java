@@ -24,6 +24,7 @@ import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.IoTDBLocalFactory;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.multi.MultiColumnTransformer;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -36,6 +37,8 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.rpc.TSStatusCode.EXECUTE_UDF_ERROR;
 
 public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer {
 
@@ -73,10 +76,7 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
     try {
       scalarFunction.beforeStart(parameters, ioTDBLocal);
     } catch (UDFException e) {
-      throw new RuntimeException(
-          "Error occurs when starting user-defined scalar function "
-              + scalarFunction.getClass().getName(),
-          e);
+      throw new IoTDBRuntimeException(e, EXECUTE_UDF_ERROR.getStatusCode());
     }
   }
 
@@ -132,6 +132,8 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
 
   @Override
   public void close() {
+    // ensure beforeStart was called
+    initIfNeeded();
     super.close();
     scalarFunction.beforeDestroy(ioTDBLocal);
     ioTDBLocal.close();
