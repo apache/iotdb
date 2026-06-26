@@ -143,9 +143,6 @@ public class PartitionInfoTest {
                 testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
     partitionInfo.createDataPartition(createDataPartitionPlan);
 
-    // The RegionMaintainer queue has been replaced by Create/DeleteRegionProcedure;
-    // offerRegionMaintainTasks is now a no-op kept only for consensus-log replay. Calling it here
-    // verifies it does not corrupt the snapshot (the maintain-task block is written as empty).
     partitionInfo.offerRegionMaintainTasks(generateOfferRegionMaintainTasksPlan());
 
     Assert.assertTrue(partitionInfo.processTakeSnapshot(snapshotDir));
@@ -153,46 +150,6 @@ public class PartitionInfoTest {
     PartitionInfo partitionInfo1 = new PartitionInfo();
     partitionInfo1.processLoadSnapshot(snapshotDir);
     Assert.assertEquals(partitionInfo, partitionInfo1);
-  }
-
-  /**
-   * An old ConfigNode could take a snapshot while its RegionMaintainer queue was non-empty, writing
-   * a trailing block of serialized tasks (count {@literal >} 0). The new code no longer drains that
-   * queue, but it must still consume exactly those bytes so the snapshot stream stays aligned, and
-   * then discard the tasks. This test writes such a legacy snapshot by hand and verifies the new
-   * loader reads it without error and ends up with an empty maintain list.
-   */
-  @Test
-  public void testLoadLegacySnapshotWithRegionMaintainTasksIsDrained()
-      throws TException, IOException {
-    partitionInfo.generateNextRegionGroupId();
-    partitionInfo.createDatabase(
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test")));
-
-    // Produce a baseline snapshot with the new (empty) maintain block, then rewrite its trailing
-    // block with two legacy tasks so it mimics a snapshot taken by an old node.
-    Assert.assertTrue(partitionInfo.processTakeSnapshot(snapshotDir));
-    File snapshotFile = new File(snapshotDir, "partition_info.bin");
-    byte[] base = java.nio.file.Files.readAllBytes(snapshotFile.toPath());
-    // The new snapshot ends with an int "0" (the empty maintain-task count). Strip those last 4
-    // bytes and append a legacy block: count=2 followed by two serialized RegionMaintainTasks.
-    java.io.ByteArrayOutputStream legacy = new java.io.ByteArrayOutputStream();
-    legacy.write(base, 0, base.length - Integer.BYTES);
-    org.apache.tsfile.utils.ReadWriteIOUtils.write(2, legacy);
-    org.apache.thrift.protocol.TProtocol protocol =
-        new org.apache.thrift.protocol.TBinaryProtocol(
-            new org.apache.thrift.transport.TIOStreamTransport(legacy));
-    OfferRegionMaintainTasksPlan tasks = generateOfferRegionMaintainTasksPlan();
-    tasks.getRegionMaintainTaskList().get(0).serialize(legacy, protocol);
-    tasks.getRegionMaintainTaskList().get(1).serialize(legacy, protocol);
-    protocol.getTransport().flush();
-    java.nio.file.Files.write(snapshotFile.toPath(), legacy.toByteArray());
-
-    PartitionInfo loaded = new PartitionInfo();
-    // Must not throw, and the legacy tasks must be drained (not retained).
-    loaded.processLoadSnapshot(snapshotDir);
-    Assert.assertEquals(partitionInfo, loaded);
   }
 
   @Test

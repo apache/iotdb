@@ -40,11 +40,10 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.region.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
-import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionProcedure;
-import org.apache.iotdb.confignode.procedure.impl.region.DeleteRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.NotifyRegionMigrationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
@@ -147,11 +146,8 @@ public class ProcedureFactory implements IProcedureFactory {
       case NOTIFY_REGION_MIGRATION_PROCEDURE:
         procedure = new NotifyRegionMigrationProcedure();
         break;
-      case DELETE_REGION_PROCEDURE:
-        procedure = new DeleteRegionProcedure();
-        break;
-      case CREATE_REGION_PROCEDURE:
-        procedure = new CreateRegionProcedure();
+      case REMOVE_REGION_GROUP_PROCEDURE:
+        procedure = new RemoveRegionGroupProcedure();
         break;
       case ALTER_ENCODING_COMPRESSOR_PROCEDURE:
         procedure = new AlterEncodingCompressorProcedure(false);
@@ -471,10 +467,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.RECONSTRUCT_REGION_PROCEDURE;
     } else if (procedure instanceof NotifyRegionMigrationProcedure) {
       return ProcedureType.NOTIFY_REGION_MIGRATION_PROCEDURE;
-    } else if (procedure instanceof DeleteRegionProcedure) {
-      return ProcedureType.DELETE_REGION_PROCEDURE;
-    } else if (procedure instanceof CreateRegionProcedure) {
-      return ProcedureType.CREATE_REGION_PROCEDURE;
+    } else if (procedure instanceof RemoveRegionGroupProcedure) {
+      return ProcedureType.REMOVE_REGION_GROUP_PROCEDURE;
     } else if (procedure instanceof CreateTriggerProcedure) {
       return ProcedureType.CREATE_TRIGGER_PROCEDURE;
     } else if (procedure instanceof DropTriggerProcedure) {

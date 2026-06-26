@@ -19,6 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.state;
 
-public enum DeleteRegionState {
-  DELETE_REGION,
+public enum RemoveRegionGroupState {
+  DELETE_REGION_REPLICAS,
 }

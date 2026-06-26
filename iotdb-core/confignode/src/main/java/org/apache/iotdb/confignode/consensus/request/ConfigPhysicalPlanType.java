@@ -62,17 +62,11 @@ public enum ConfigPhysicalPlanType {
   GetRegionInfoList((short) 302),
   @Deprecated
   UpdateRegionLocation((short) 303),
-  // Deprecated: the RegionMaintainer queue has been replaced by Create/DeleteRegionProcedure. These
-  // plan types are kept (and still deserialized + applied as no-ops) only so an old ConfigNode
-  // consensus log can be replayed during an upgrade.
-  @Deprecated
   OfferRegionMaintainTasks((short) 304),
-  @Deprecated
   PollRegionMaintainTask((short) 305),
   GetRegionId((short) 306),
   GetSeriesSlotList((short) 307),
   GetTimeSlotList((short) 308),
-  @Deprecated
   PollSpecificRegionMaintainTask((short) 309),
   CountTimeSlotList((short) 310),
   AddRegionLocation((short) 311),

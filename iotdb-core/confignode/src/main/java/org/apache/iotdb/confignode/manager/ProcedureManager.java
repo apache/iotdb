@@ -316,8 +316,6 @@ public class ProcedureManager {
     }
     List<TSStatus> results = new ArrayList<>(procedures.size());
     procedures.forEach(procedure -> results.add(waitingProcedureFinished(procedure)));
-    // Region deletion is now handled by the DeleteRegionProcedure children spawned inside each
-    // DeleteDatabaseProcedure, so there is no longer a RegionMaintainer queue to kick here.
     if (results.stream()
         .allMatch(result -> result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
       return StatusUtils.OK;

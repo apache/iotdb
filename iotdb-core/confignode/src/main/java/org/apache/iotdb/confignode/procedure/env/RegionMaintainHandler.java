@@ -53,9 +53,7 @@ import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHe
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
@@ -218,37 +216,6 @@ public class RegionMaintainHandler {
     }
 
     return status;
-  }
-
-  /**
-   * Synchronously create a single region replica on the target DataNode.
-   *
-   * <p>Used by {@code CreateRegionProcedure}. Unlike region deletion, creating a region returns a
-   * final, unambiguous status from a single RPC (it does not remove large amounts of data), so it
-   * is kept synchronous; wrapping it in a procedure only adds persistence and retry across leader
-   * changes.
-   *
-   * @param regionReplicaSet the region (carries the regionId and its type)
-   * @param storageGroup the database the region belongs to
-   * @param targetDataNode the DataNode on which to create the replica
-   * @return the TSStatus of the create RPC
-   */
-  public TSStatus createRegion(
-      TRegionReplicaSet regionReplicaSet, String storageGroup, TDataNodeLocation targetDataNode) {
-    final TConsensusGroupId regionId = regionReplicaSet.getRegionId();
-    final Object req;
-    final CnToDnSyncRequestType requestType;
-    if (TConsensusGroupType.SchemaRegion.equals(regionId.getType())) {
-      req = new TCreateSchemaRegionReq(regionReplicaSet, storageGroup);
-      requestType = CnToDnSyncRequestType.CREATE_SCHEMA_REGION;
-    } else {
-      req = new TCreateDataRegionReq(regionReplicaSet, storageGroup);
-      requestType = CnToDnSyncRequestType.CREATE_DATA_REGION;
-    }
-    return (TSStatus)
-        SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithRetry(
-                targetDataNode.getInternalEndPoint(), req, requestType);
   }
 
   /**

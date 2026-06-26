@@ -30,7 +30,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.impl.region.DeleteRegionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionGroupProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDatabaseState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -103,10 +103,10 @@ public class DeleteDatabaseProcedure
               "[DeleteDatabaseProcedure] Delete DatabaseSchema: {}",
               deleteDatabaseSchema.getName());
 
-          // Delete every region replica (both schema and data regions) of this database via a
-          // DeleteRegionProcedure child. Unlike the old fire-and-forget RegionMaintainer queue, the
-          // DatabasePartitionTable (handled in the next state) is only removed once these children
-          // have finished, so a slow region deletion can no longer become a forgotten "ghost task".
+          // Delete every region group (both schema and data regions) of this database via a
+          // RemoveRegionGroupProcedure child. The DatabasePartitionTable (handled in the next
+          // state) is only removed once these children have finished, so a slow region deletion is
+          // always completed before the coordinator forgets about it.
           final List<TRegionReplicaSet> regionReplicaSets =
               env.getAllReplicaSets(deleteDatabaseSchema.getName());
           regionReplicaSets.forEach(
@@ -115,13 +115,7 @@ public class DeleteDatabaseProcedure
                 env.getConfigManager()
                     .getLoadManager()
                     .removeRegionGroupRelatedCache(regionReplicaSet.getRegionId());
-                regionReplicaSet
-                    .getDataNodeLocations()
-                    .forEach(
-                        targetDataNode ->
-                            addChildProcedure(
-                                new DeleteRegionProcedure(
-                                    regionReplicaSet.getRegionId(), targetDataNode)));
+                addChildProcedure(new RemoveRegionGroupProcedure(regionReplicaSet));
               });
           setNextState(DeleteDatabaseState.DELETE_DATABASE_CONFIG);
           break;
