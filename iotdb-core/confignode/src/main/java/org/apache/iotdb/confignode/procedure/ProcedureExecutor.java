@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -229,7 +230,8 @@ public class ProcedureExecutor<Env> {
 
   private void releaseLock(Procedure<Env> procedure, boolean force) {
     if (force || !procedure.holdLock(this.environment) || procedure.isFinished()) {
-      procedure.doReleaseLock(this.environment, store);
+      RetryUtils.executeWithEndlessBackoffRetry(
+          () -> procedure.doReleaseLock(this.environment, store), "procedure release lock");
     }
   }
 
@@ -498,7 +500,11 @@ public class ProcedureExecutor<Env> {
     }
     if (parent != null && parent.tryRunnable()) {
       // If success, means all its children have completed, move parent to front of the queue.
-      store.update(parent);
+      // Must endless retry here, since this step is not idempotent and can not be re-execute
+      // correctly in new CN leader.
+      RetryUtils.executeWithEndlessBackoffRetry(
+          () -> store.update(parent), "count down children procedure");
+      // do not add this procedure when exception occurred
       scheduler.addFront(parent);
       LOG.info(
           "Finished subprocedure pid={}, resume processing ppid={}",
@@ -527,21 +533,44 @@ public class ProcedureExecutor<Env> {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Stored {}, children {}", proc, Arrays.toString(subprocs));
       }
-      store.update(subprocs);
+      try {
+        store.update(subprocs);
+      } catch (Exception e) {
+        // Do nothing since this step is idempotent. New CN leader can converge to the correct
+        // state when restore this procedure.
+        LOG.warn("Failed to update subprocs on execution", e);
+      }
     } else {
       LOG.debug("Store update {}", proc);
       if (proc.isFinished() && !proc.hasParent()) {
         final long[] childProcIds = rootProcStack.getSubprocedureIds();
         if (childProcIds != null) {
-          store.delete(childProcIds);
-          for (long childProcId : childProcIds) {
-            procedures.remove(childProcId);
+          try {
+            store.delete(childProcIds);
+            // do not remove these procedures when exception occurred
+            for (long childProcId : childProcIds) {
+              procedures.remove(childProcId);
+            }
+          } catch (Exception e) {
+            // Do nothing since this step is idempotent. New CN leader can converge to the correct
+            // state when restore this procedure.
+            LOG.warn("Failed to delete subprocedures on execution", e);
           }
         } else {
-          store.update(proc);
+          try {
+            store.update(proc);
+          } catch (Exception e) {
+            LOG.warn("Failed to update procedure on execution", e);
+          }
         }
       } else {
-        store.update(proc);
+        try {
+          store.update(proc);
+        } catch (Exception e) {
+          // Do nothing since this step is idempotent. New CN leader can converge to the correct
+          // state when restore this procedure.
+          LOG.warn("Failed to update procedure on execution", e);
+        }
       }
     }
   }
@@ -598,7 +627,9 @@ public class ProcedureExecutor<Env> {
     if (exception == null) {
       exception = procedureStack.getException();
       rootProcedure.setFailure(exception);
-      store.update(rootProcedure);
+      // Endless retry since this step is not idempotent.
+      RetryUtils.executeWithEndlessBackoffRetry(
+          () -> store.update(rootProcedure), "root procedure rollback");
     }
     List<Procedure<Env>> subprocStack = procedureStack.getSubproceduresStack();
     int stackTail = subprocStack.size();
@@ -674,18 +705,37 @@ public class ProcedureExecutor<Env> {
       procedure.updateMetricsOnFinish(getEnvironment(), procedure.elapsedTime(), false);
 
       if (procedure.hasParent()) {
-        store.delete(procedure.getProcId());
-        procedures.remove(procedure.getProcId());
+        try {
+          store.delete(procedure.getProcId());
+          // do not remove this procedure when exception occurred
+          procedures.remove(procedure.getProcId());
+        } catch (Exception e) {
+          // Do nothing since this step is idempotent. New CN leader can converge to the correct
+          // state when restore this procedure.
+          LOG.warn("Failed to delete procedure on rollback", e);
+        }
       } else {
         final long[] childProcIds = rollbackStack.get(procedure.getProcId()).getSubprocedureIds();
-        if (childProcIds != null) {
-          store.delete(childProcIds);
-        } else {
-          store.update(procedure);
+        try {
+          if (childProcIds != null) {
+            store.delete(childProcIds);
+          } else {
+            store.update(procedure);
+          }
+        } catch (Exception e) {
+          // Do nothing since this step is idempotent. New CN leader can converge to the correct
+          // state when restore this procedure.
+          LOG.warn("Failed to delete procedure on rollback", e);
         }
       }
     } else {
-      store.update(procedure);
+      try {
+        store.update(procedure);
+      } catch (Exception e) {
+        // Do nothing since this step is idempotent. New CN leader can converge to the correct
+        // state when restore this procedure.
+        LOG.warn("Failed to update procedure on rollback", e);
+      }
     }
   }
 
@@ -955,7 +1005,11 @@ public class ProcedureExecutor<Env> {
     procedure.setProcId(store.getNextProcId());
     procedure.setProcRunnable();
     // Commit the transaction
-    store.update(procedure);
+    try {
+      store.update(procedure);
+    } catch (Exception e) {
+      LOG.error("Failed to update store procedure {}", procedure, e);
+    }
     LOG.debug("{} is stored.", procedure);
     // Add the procedure to the executor
     return pushProcedure(procedure);
