@@ -87,6 +87,8 @@ class Session(object):
         use_ssl=False,
         ca_certs=None,
         connection_timeout_in_ms=None,
+        client_cert=None,
+        client_key=None,
     ):
         self.__host = host
         self.__port = port
@@ -117,6 +119,8 @@ class Session(object):
         self.database = None
         self.__use_ssl = use_ssl
         self.__ca_certs = ca_certs
+        self.__client_cert = client_cert
+        self.__client_key = client_key
         self.__connection_timeout_in_ms = connection_timeout_in_ms
         self.__time_precision = "ms"
 
@@ -132,6 +136,8 @@ class Session(object):
         use_ssl=False,
         ca_certs=None,
         connection_timeout_in_ms=None,
+        client_cert=None,
+        client_key=None,
     ):
         if node_urls is None:
             raise RuntimeError("node urls is empty")
@@ -145,6 +151,8 @@ class Session(object):
             enable_redirection,
             use_ssl=use_ssl,
             ca_certs=ca_certs,
+            client_cert=client_cert,
+            client_key=client_key,
             connection_timeout_in_ms=connection_timeout_in_ms,
         )
         session.__hosts = []
@@ -259,7 +267,21 @@ class Session(object):
                 context = ssl.SSLContext(ssl.PROTOCOL_TLS)
                 context.verify_mode = ssl.CERT_REQUIRED
                 context.check_hostname = True
-            context.load_verify_locations(cafile=self.__ca_certs)
+                context.load_default_certs(ssl.Purpose.SERVER_AUTH)
+            if self.__has_text(self.__ca_certs):
+                context.load_verify_locations(cafile=self.__ca_certs)
+            if self.__has_text(self.__client_cert) or self.__has_text(
+                self.__client_key
+            ):
+                if not self.__has_text(self.__client_cert) or not self.__has_text(
+                    self.__client_key
+                ):
+                    raise TTransport.TTransportException(
+                        message="client_cert and client_key must be set together."
+                    )
+                context.load_cert_chain(
+                    certfile=self.__client_cert, keyfile=self.__client_key
+                )
             socket = TSSLSocket.TSSLSocket(
                 host=endpoint.ip, port=endpoint.port, ssl_context=context
             )
@@ -274,6 +296,10 @@ class Session(object):
             except TTransport.TTransportException as e:
                 raise IoTDBConnectionException(e) from None
         return transport
+
+    @staticmethod
+    def __has_text(value):
+        return value is not None and str(value).strip() != ""
 
     def is_open(self):
         return not self.__is_close
