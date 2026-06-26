@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -67,11 +68,14 @@ public class PipeStatementTsStatusVisitorTest {
 
   @Test
   public void testLoadTemporaryUnavailableClassification() throws Exception {
+    final File tsFile = File.createTempFile("temporary-unavailable", ".tsfile");
+    tsFile.deleteOnExit();
+
     Assert.assertEquals(
         TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
         IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR
             .process(
-                LoadTsFileStatement.createUnchecked("temporary-unavailable.tsfile"),
+                LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
                 new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
                     .setMessage("schema is not ready"))
             .getCode());
@@ -79,11 +83,14 @@ public class PipeStatementTsStatusVisitorTest {
 
   @Test
   public void testLoadFileErrorWithMemoryMessageIsNotClassifiedByMessage() throws Exception {
+    final File tsFile = File.createTempFile("memory-error", ".tsfile");
+    tsFile.deleteOnExit();
+
     Assert.assertEquals(
         TSStatusCode.LOAD_FILE_ERROR.getStatusCode(),
         IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR
             .process(
-                LoadTsFileStatement.createUnchecked("memory-error.tsfile"),
+                LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
                 new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
                     .setMessage("memory pressure"))
             .getCode());

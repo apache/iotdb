@@ -206,9 +206,12 @@ public class LoadTsFileAnalyzerTest {
     final boolean originalAutoCreateSchemaEnabled =
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    final File tsFile = File.createTempFile("missing-schema", ".tsfile");
+    tsFile.deleteOnExit();
+
     try (final LoadTsFileAnalyzer analyzer =
         new LoadTsFileAnalyzer(
-            LoadTsFileStatement.createUnchecked("missing-schema.tsfile"),
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
             true,
             new MPPQueryContext(new QueryId("load_pipe_test")))) {
       Assert.assertTrue(
