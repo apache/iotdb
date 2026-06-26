@@ -68,6 +68,8 @@ public class ConsensusSubscriptionSetupHandler {
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private static final long FIRST_CONSENSUS_SEARCH_INDEX = 1L;
+
   /** Last-known preferred writer node ID per region, used to detect routing changes. */
   private static final ConcurrentHashMap<TConsensusGroupId, Integer> lastKnownPreferredWriter =
       new ConcurrentHashMap<>();
@@ -188,7 +190,10 @@ public class ConsensusSubscriptionSetupHandler {
                   commitManager, consumerGroupId, topicName, groupId);
           final boolean hasLocalPersistedState =
               commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
-          final long tailStartSearchIndex = serverImpl.getSearchIndex() + 1;
+          // This region is created after the subscription already exists. Its first WAL entry may
+          // already be visible by the time this callback runs, so start from the beginning of this
+          // new region instead of tail+1 to avoid skipping the first write.
+          final long tailStartSearchIndex = FIRST_CONSENSUS_SEARCH_INDEX;
           final long initialRuntimeVersion =
               regionRuntimeVersion.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
           final boolean initialActive =
