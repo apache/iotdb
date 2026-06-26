@@ -148,8 +148,6 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
             queryContext.isDebug(),
             fragment.isRoot(),
             queryContext.isVerbose());
-    fragmentInstance.setOuterQueryDeadlineMs(
-        queryContext.getStartTime() + queryContext.getTimeOut());
 
     selectExecutorAndHost(
         fragment,
