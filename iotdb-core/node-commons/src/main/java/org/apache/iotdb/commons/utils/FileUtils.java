@@ -89,6 +89,33 @@ public class FileUtils {
     }
   }
 
+  public static void createLink(Path link, Path existing, boolean fallBackToCopy)
+      throws IOException {
+    try {
+      Files.createLink(link, existing);
+    } catch (IOException e) {
+      if (!fallBackToCopy) {
+        throw e;
+      }
+      try {
+        Files.copy(existing, link);
+      } catch (IOException copyException) {
+        copyException.addSuppressed(e);
+        throw copyException;
+      }
+    } catch (UnsupportedOperationException e) {
+      if (!fallBackToCopy) {
+        throw e;
+      }
+      try {
+        Files.copy(existing, link);
+      } catch (IOException copyException) {
+        copyException.addSuppressed(e);
+        throw copyException;
+      }
+    }
+  }
+
   public static void deleteFileOrDirectory(File file) {
     deleteFileOrDirectory(file, false);
   }

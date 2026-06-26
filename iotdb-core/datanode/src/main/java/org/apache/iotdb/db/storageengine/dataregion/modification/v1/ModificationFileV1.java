@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification.v1;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.ModificationReader;
@@ -35,7 +36,6 @@ import javax.annotation.concurrent.GuardedBy;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -181,7 +181,7 @@ public class ModificationFileV1 implements AutoCloseable {
       File hardlink = new File(filePath + hardlinkSuffix);
 
       try {
-        Files.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(filePath));
+        FileUtils.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(filePath), true);
         return new ModificationFileV1(hardlink.getAbsolutePath());
       } catch (FileAlreadyExistsException e) {
         // retry a different name if the file is already created
