@@ -768,6 +768,16 @@ public final class DataNodeMiscMessages {
       "订阅：绑定到消费者组 [{}] 的共识 Broker 不存在，为绑定共识预取队列创建新 Broker";
   public static final String SUBSCRIPTION_CONSENSUS_UNEXPECTED_IN_FLIGHT_RESPONSE_FMT =
       "ConsensusPrefetchingQueue %s：消费者 %s 的处理中响应不符合预期，提交上下文 %s，偏移量 %s";
+  public static final String SUBSCRIPTION_COLUMN_FILTER_SCHEMA_NOT_AVAILABLE =
+      "\u8ba2\u9605\uff1a\u5ef6\u8fdf\u5237\u65b0\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668\uff0c\u56e0\u4e3a\u672c\u5730\u8868\u7ed3\u6784\u4e0d\u53ef\u7528";
+  public static final String SUBSCRIPTION_REFRESH_COLUMN_FILTER_FAILED =
+      "\u8ba2\u9605\uff1a\u5237\u65b0\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668\u5931\u8d25\uff0c\u4f7f\u7528\u7a7a\u5339\u914d\u5668\u4ee5\u5b89\u5168\u5931\u8d25";
+  public static final String SUBSCRIPTION_REFRESH_COLUMN_FILTER_SUCCESS =
+      "\u8ba2\u9605\uff1a\u5df2\u5237\u65b0\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668";
+  public static final String SUBSCRIPTION_LAZY_REFRESH_COLUMN_FILTER_FAILED =
+      "\u8ba2\u9605\uff1a\u61d2\u52a0\u8f7d\u5237\u65b0\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668\u5931\u8d25";
+  public static final String SUBSCRIPTION_DROP_COLUMN_FILTER =
+      "\u8ba2\u9605\uff1a\u5220\u9664\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668";
   public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
       "不支持的共识订阅进度文件版本 %s";
 

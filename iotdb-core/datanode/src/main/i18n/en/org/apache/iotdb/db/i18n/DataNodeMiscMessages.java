@@ -769,6 +769,16 @@ public final class DataNodeMiscMessages {
       "Subscription: consensus broker bound to consumer group [{}] does not exist, create new for binding consensus prefetching queue";
   public static final String SUBSCRIPTION_CONSENSUS_UNEXPECTED_IN_FLIGHT_RESPONSE_FMT =
       "ConsensusPrefetchingQueue %s: unexpected in-flight response for consumer %s, commit context %s, offset %s";
+  public static final String SUBSCRIPTION_COLUMN_FILTER_SCHEMA_NOT_AVAILABLE =
+      "Subscription: postpone refreshing column-filter matcher for topic [{}] because its table schema is not available locally";
+  public static final String SUBSCRIPTION_REFRESH_COLUMN_FILTER_FAILED =
+      "Subscription: failed to refresh column-filter matcher for topic [{}], use empty matcher to fail closed";
+  public static final String SUBSCRIPTION_REFRESH_COLUMN_FILTER_SUCCESS =
+      "Subscription: refreshed column-filter matcher for topic [{}]";
+  public static final String SUBSCRIPTION_LAZY_REFRESH_COLUMN_FILTER_FAILED =
+      "Subscription: failed to lazily refresh column-filter matcher for topic [{}]";
+  public static final String SUBSCRIPTION_DROP_COLUMN_FILTER =
+      "Subscription: dropped column-filter matcher for topic [{}]";
   public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
       "Unsupported consensus subscription progress file version %s";
 

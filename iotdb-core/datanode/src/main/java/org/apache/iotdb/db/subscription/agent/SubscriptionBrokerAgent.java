@@ -670,24 +670,19 @@ public class SubscriptionBrokerAgent {
       if (Objects.isNull(bindingTables)) {
         topicNameToColumnFilterMatcher.remove(topicName);
         LOGGER.info(
-            "SubscriptionBrokerAgent: postpone refreshing column-filter matcher for topic [{}] because its table schema is not available locally",
-            topicName);
+            DataNodeMiscMessages.SUBSCRIPTION_COLUMN_FILTER_SCHEMA_NOT_AVAILABLE, topicName);
         return;
       }
       matcher =
           ColumnFilterMatcher.fromBoundColumnFilter(
               columnFilterBinder.bind(topicConfig, bindingTables));
     } catch (final Exception e) {
-      LOGGER.warn(
-          "SubscriptionBrokerAgent: failed to refresh column-filter matcher for topic [{}], use empty matcher to fail closed",
-          topicName,
-          e);
+      LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_REFRESH_COLUMN_FILTER_FAILED, topicName, e);
       topicNameToColumnFilterMatcher.put(topicName, EMPTY_COLUMN_FILTER_MATCHER);
       return;
     }
     topicNameToColumnFilterMatcher.put(topicName, matcher);
-    LOGGER.info(
-        "SubscriptionBrokerAgent: refreshed column-filter matcher for topic [{}]", topicName);
+    LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_REFRESH_COLUMN_FILTER_SUCCESS, topicName);
   }
 
   public ColumnFilterMatcher getColumnFilterMatcher(final String topicName) {
@@ -708,9 +703,7 @@ public class SubscriptionBrokerAgent {
           topicName, getDefaultColumnFilterMatcher(topicConfig));
     } catch (final Exception e) {
       LOGGER.warn(
-          "SubscriptionBrokerAgent: failed to lazily refresh column-filter matcher for topic [{}]",
-          topicName,
-          e);
+          DataNodeMiscMessages.SUBSCRIPTION_LAZY_REFRESH_COLUMN_FILTER_FAILED, topicName, e);
       return EMPTY_COLUMN_FILTER_MATCHER;
     }
   }
@@ -761,7 +754,7 @@ public class SubscriptionBrokerAgent {
 
   public void dropColumnFilter(final String topicName) {
     topicNameToColumnFilterMatcher.remove(topicName);
-    LOGGER.info("SubscriptionBrokerAgent: dropped column-filter matcher for topic [{}]", topicName);
+    LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_DROP_COLUMN_FILTER, topicName);
   }
 
   public void unbindConsensusPrefetchingQueue(
