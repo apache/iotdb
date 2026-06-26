@@ -93,17 +93,7 @@ public class FileUtils {
       throws IOException {
     try {
       Files.createLink(link, existing);
-    } catch (IOException e) {
-      if (!fallBackToCopy) {
-        throw e;
-      }
-      try {
-        Files.copy(existing, link);
-      } catch (IOException copyException) {
-        copyException.addSuppressed(e);
-        throw copyException;
-      }
-    } catch (UnsupportedOperationException e) {
+    } catch (IOException | UnsupportedOperationException e) {
       if (!fallBackToCopy) {
         throw e;
       }
