@@ -38,6 +38,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidTimeSeriesException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
@@ -237,6 +238,11 @@ public class TreeSchemaAutoCreatorAndVerifier {
       } else {
         throw e;
       }
+    } catch (LoadAnalyzeMissingSchemaException e) {
+      if (loadTsFileAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
+        throw e;
+      }
+      handleException(e, loadTsFileAnalyzer.getStatementString());
     } catch (Exception e) {
       if (e.getCause() instanceof LoadAnalyzeTypeMismatchException
           && loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
@@ -451,10 +457,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
                   .collect(Collectors.toList()));
 
       if (iotdbDeviceSchemaInfo == null) {
-        throw new LoadAnalyzeException(
+        throw new LoadAnalyzeMissingSchemaException(
             String.format(
-                "Device %s does not exist in IoTDB and can not be created. "
-                    + "Please check weather auto-create-schema is enabled.",
+                DataNodeQueryMessages.LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED,
                 device));
       }
 
@@ -477,10 +482,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
         final IMeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
         final IMeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
         if (iotdbSchema == null) {
-          throw new LoadAnalyzeException(
+          throw new LoadAnalyzeMissingSchemaException(
               String.format(
-                  "Measurement %s does not exist in IoTDB and can not be created. "
-                      + "Please check weather auto-create-schema is enabled.",
+                  DataNodeQueryMessages.LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED,
                   device + TsFileConstant.PATH_SEPARATOR + tsfileTimeseriesSchemas.get(i)));
         }
 

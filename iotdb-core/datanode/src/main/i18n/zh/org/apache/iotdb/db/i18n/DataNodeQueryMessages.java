@@ -312,6 +312,12 @@ public final class DataNodeQueryMessages {
       "检测到空文件，将跳过加载此文件：{}";
   public static final String AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR =
       "自动创建或验证 schema 出错。";
+  public static final String LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
+      "设备 %s 在 IoTDB 中不存在且无法被创建。请检查是否启用了 auto-create-schema。";
+  public static final String LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
+      "时间序列 %s 在 IoTDB 中不存在且无法被创建。请检查是否启用了 auto-create-schema。";
+  public static final String PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA =
+      "Pipe 生成的 LoadTsFile 正在等待 schema 元数据传输完成。详情：%s";
   public static final String FAILED_TO_FIND_TAG_COLUMN_MAPPING_FOR_TABLE =
       "未找到表 {} 的标签列映射";
   public static final String AUTO_CREATE_DATABASE_FAILED_BECAUSE =
