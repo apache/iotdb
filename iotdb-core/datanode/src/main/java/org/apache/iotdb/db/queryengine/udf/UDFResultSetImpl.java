@@ -23,10 +23,12 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Re
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.udf.api.UDFResultSet;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.access.Record;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 
@@ -45,6 +47,9 @@ public class UDFResultSetImpl implements UDFResultSet {
   private final InternalQueryResult queryResult;
   private final List<Type> columnTypes;
 
+  /** null when output columns align with TsBlock value columns without index mapping */
+  private final int[] columnIndexes;
+
   private Iterator<Record> rowIterator;
   private boolean closed;
 
@@ -53,7 +58,9 @@ public class UDFResultSetImpl implements UDFResultSet {
     this.openResultSets = openResultSets;
     this.index = index;
     this.queryResult = queryResult;
-    this.columnTypes = buildColumnTypes(queryResult.getDatasetHeader().getColumnHeaders());
+    DatasetHeader datasetHeader = queryResult.getDatasetHeader();
+    this.columnTypes = buildColumnTypes(datasetHeader.getColumnHeaders());
+    this.columnIndexes = buildColumnIndexes(datasetHeader.getColumnIndex2TsBlockColumnIndexList());
   }
 
   @Override
@@ -74,11 +81,12 @@ public class UDFResultSetImpl implements UDFResultSet {
         return false;
       }
       TsBlock currentBlock = batch.get();
+      if (currentBlock.getPositionCount() == 0) {
+        continue;
+      }
       rowIterator =
           new RecordIterator(
-              Arrays.asList(currentBlock.getValueColumns()),
-              columnTypes,
-              currentBlock.getPositionCount());
+              extractColumns(currentBlock), columnTypes, currentBlock.getPositionCount());
     }
     return true;
   }
@@ -117,5 +125,30 @@ public class UDFResultSetImpl implements UDFResultSet {
         .map(UDFDataTypeTransformer::transformToUDFDataType)
         .map(UDFDataTypeTransformer::transformUDFDataTypeToReadType)
         .collect(Collectors.toList());
+  }
+
+  private static int[] buildColumnIndexes(List<Integer> columnIndex2TsBlockColumnIndexList) {
+    if (columnIndex2TsBlockColumnIndexList == null
+        || columnIndex2TsBlockColumnIndexList.isEmpty()) {
+      return null;
+    }
+    int size = columnIndex2TsBlockColumnIndexList.size();
+    int[] indexes = new int[size];
+    for (int i = 0; i < size; i++) {
+      indexes[i] = columnIndex2TsBlockColumnIndexList.get(i);
+    }
+    return indexes;
+  }
+
+  private List<Column> extractColumns(TsBlock tsBlock) {
+    Column[] valueColumns = tsBlock.getValueColumns();
+    if (valueColumns.length == 0) {
+      return Arrays.asList(valueColumns);
+    }
+
+    if (columnIndexes != null) {
+      return Arrays.asList(tsBlock.getColumns(columnIndexes));
+    }
+    return Arrays.asList(valueColumns);
   }
 }

@@ -104,7 +104,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   @Override
   public TableAccumulator copy() {
     return new UserDefinedAggregateFunctionAccumulator(
-        analysis, aggregateFunction, functionArguments, inputDataTypes, ioTDBLocal, true);
+        analysis, aggregateFunction, functionArguments, inputDataTypes, ioTDBLocal, init);
   }
 
   @Override
@@ -139,6 +139,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
+    initIfNeeded();
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of UDAF should be BinaryColumn");

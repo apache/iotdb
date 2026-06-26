@@ -503,12 +503,39 @@ public class Coordinator {
       long timeOut,
       boolean userQuery,
       boolean debug) {
+    return executeForTableModel(
+        statement,
+        sqlParser,
+        clientSession,
+        queryId,
+        session,
+        sql,
+        metadata,
+        timeOut,
+        userQuery,
+        debug,
+        false);
+  }
+
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      long timeOut,
+      boolean userQuery,
+      boolean debug,
+      boolean readOnlyInternalQuery) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
         debug,
+        readOnlyInternalQuery,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,

@@ -72,7 +72,7 @@ public final class InternalQueryExecutor {
     long statementId = -1;
     long queryId = -1;
     try {
-      SESSION_MANAGER.exchangeCurrSession(internalSession);
+      SESSION_MANAGER.setCurrSession(internalSession);
 
       statementId = SESSION_MANAGER.requestStatementId(internalSession);
       queryId = SESSION_MANAGER.requestQueryId(internalSession, statementId);
@@ -91,7 +91,8 @@ public final class InternalQueryExecutor {
               METADATA,
               timeoutMs,
               false,
-              false);
+              false,
+              true);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new IoTDBException(result.status.message, result.status.code);
@@ -109,7 +110,7 @@ public final class InternalQueryExecutor {
       ClientRPCServiceImpl.clearUp(internalSession, statementId, queryId, () -> sql, e);
       throw new IoTDBException(e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     } finally {
-      SESSION_MANAGER.exchangeCurrSession(previousSession);
+      SESSION_MANAGER.restoreSession(previousSession, internalSession);
     }
   }
 

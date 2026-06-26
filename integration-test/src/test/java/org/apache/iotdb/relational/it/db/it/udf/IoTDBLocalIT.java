@@ -37,6 +37,7 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 /**
  * Integration tests for {@link org.apache.iotdb.udf.api.IoTDBLocal} in table-model UDF, covering
@@ -63,10 +64,12 @@ public class IoTDBLocalIT {
         "CREATE TABLE device_limits (device_id STRING TAG, max_temp DOUBLE FIELD)",
         "CREATE TABLE secret_table (device_id STRING TAG, secret STRING FIELD)",
         "CREATE TABLE vehicle (device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD)",
+        "CREATE TABLE probe_table (device_id STRING TAG, value DOUBLE FIELD)",
         "INSERT INTO device_info(time, device_id, device_name) VALUES (1, 'd1', '一号车间温度传感器'), (1, 'd2', '二号车间温度传感器')",
         "INSERT INTO device_limits(time, device_id, max_temp) VALUES (1, 'd1', 30.0), (1, 'd2', 35.0)",
         "INSERT INTO readings(time, device_id, temperature) VALUES (1000, 'd1', 25.5), (1001, 'd2', 32.0), (1002, 'd3', 20.0)",
         "INSERT INTO secret_table(time, device_id, secret) VALUES (1, 'd1', 'top-secret')",
+        "INSERT INTO probe_table(time, device_id, value) VALUES (1, 'seed', 1.0)",
         "INSERT INTO vehicle(time, device_id, s1, s2) VALUES (1, 'd0', 1, 1)",
         "INSERT INTO vehicle(time, device_id, s1, s2) VALUES (2, 'd0', null, 2)",
         "INSERT INTO vehicle(time, device_id, s1, s2) VALUES (3, 'd0', 3, 3)",
@@ -209,6 +212,151 @@ public class IoTDBLocalIT {
         "SELECT device_summary_no_close(device_id) AS summary FROM readings WHERE device_id = 'd2'",
         new String[] {"summary"},
         new String[] {"二号车间温度传感器(上限:35.0),"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testRejectMutatingStatementsViaIoTDBLocal() {
+    SQLFunctionUtils.createUDF("insert_probe", IOTDB_LOCAL_PKG + ".InsertProbeFunction");
+    tableAssertTestFail(
+        "SELECT insert_probe(device_id) FROM readings WHERE device_id = 'd1'",
+        "305: Only query is supported for IoTDBLocal query interface",
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT COUNT(*) AS cnt FROM probe_table",
+        new String[] {"cnt"},
+        new String[] {"1,"},
+        DATABASE_NAME);
+
+    SQLFunctionUtils.createUDF("create_table_probe", IOTDB_LOCAL_PKG + ".CreateTableProbeFunction");
+    tableAssertTestFail(
+        "SELECT create_table_probe(device_id) FROM readings WHERE device_id = 'd1'",
+        "305: Only query is supported for IoTDBLocal query interface",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM should_not_exist_local_probe", "does not exist", DATABASE_NAME);
+
+    SQLFunctionUtils.createUDF("drop_table_probe", IOTDB_LOCAL_PKG + ".DropTableProbeFunction");
+    tableAssertTestFail(
+        "SELECT drop_table_probe(device_id) FROM readings WHERE device_id = 'd1'",
+        "305: Only query is supported for IoTDBLocal query interface",
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT device_id FROM device_info ORDER BY device_id",
+        new String[] {"device_id"},
+        new String[] {"d1,", "d2,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryUdafAtBeforeStart() {
+    SQLFunctionUtils.createUDF(
+        "local_query_udaf_before_start",
+        IOTDB_LOCAL_PKG + ".LocalQueryUdafAtBeforeStartAggregateFunction");
+    tableResultSetEqualTest(
+        "SELECT local_query_udaf_before_start(temperature) AS total FROM readings",
+        new String[] {"total"},
+        new String[] {"5,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryUdafInAddInput() {
+    SQLFunctionUtils.createUDF(
+        "local_query_udaf_add_input",
+        IOTDB_LOCAL_PKG + ".LocalQueryUdafInAddInputAggregateFunction");
+    tableResultSetEqualTest(
+        "SELECT local_query_udaf_add_input(temperature) AS total FROM readings",
+        new String[] {"total"},
+        new String[] {"5,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryUdafInCombineState() {
+    assumeTrue(
+        "combineState IoTDBLocal.query coverage requires cluster execution",
+        EnvFactory.getEnv().getDataNodeWrapperList().size() > 1);
+    SQLFunctionUtils.createUDF(
+        "local_query_udaf_combine_state",
+        IOTDB_LOCAL_PKG + ".LocalQueryUdafInCombineStateAggregateFunction");
+    tableResultSetEqualTest(
+        "SELECT local_query_udaf_combine_state(temperature) AS total FROM readings",
+        new String[] {"total"},
+        new String[] {"5,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryUdafInOutputFinal() {
+    SQLFunctionUtils.createUDF(
+        "local_query_udaf_output_final",
+        IOTDB_LOCAL_PKG + ".LocalQueryUdafInOutputFinalAggregateFunction");
+    tableResultSetEqualTest(
+        "SELECT local_query_udaf_output_final(temperature) AS total FROM readings",
+        new String[] {"total"},
+        new String[] {"5,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryUdafAtBeforeDestroy() {
+    SQLFunctionUtils.createUDF(
+        "local_query_udaf_before_destroy",
+        IOTDB_LOCAL_PKG + ".LocalQueryUdafAtBeforeDestroyAggregateFunction");
+    tableResultSetEqualTest(
+        "SELECT local_query_udaf_before_destroy(temperature) AS total FROM readings",
+        new String[] {"total"},
+        new String[] {"3,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryLeafTableFunctionAtBeforeStart() {
+    SQLFunctionUtils.createUDF("device_id_list", IOTDB_LOCAL_PKG + ".DeviceIdListTableFunction");
+    tableResultSetEqualTest(
+        "SELECT * FROM device_id_list('id:')",
+        new String[] {"device_id"},
+        new String[] {"id:d1,", "id:d2,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryLeafTableFunctionInProcess() {
+    SQLFunctionUtils.createUDF(
+        "device_id_list_in_process", IOTDB_LOCAL_PKG + ".DeviceIdListInProcessTableFunction");
+    tableResultSetEqualTest(
+        "SELECT * FROM device_id_list_in_process('id:')",
+        new String[] {"device_id"},
+        new String[] {"id:d1,", "id:d2,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryDataTableFunctionAtBeforeStart() {
+    SQLFunctionUtils.createUDF(
+        "enrich_device_name_at_before_start",
+        IOTDB_LOCAL_PKG + ".DeviceNameEnrichBeforeStartTableFunction");
+    tableResultSetEqualTest(
+        "SELECT device_name FROM enrich_device_name_at_before_start((SELECT device_id FROM readings ORDER BY time))",
+        new String[] {"device_name"},
+        new String[] {
+          "一号车间温度传感器,", "二号车间温度传感器,", "未知设备,",
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLocalQueryDataTableFunctionInProcess() {
+    SQLFunctionUtils.createUDF(
+        "enrich_device_name_in_process",
+        IOTDB_LOCAL_PKG + ".DeviceNameEnrichInProcessTableFunction");
+    tableResultSetEqualTest(
+        "SELECT device_name FROM enrich_device_name_in_process((SELECT device_id FROM readings ORDER BY time))",
+        new String[] {"device_name"},
+        new String[] {
+          "一号车间温度传感器,", "二号车间温度传感器,", "未知设备,",
+        },
         DATABASE_NAME);
   }
 
