@@ -127,6 +127,16 @@ public class TestProcedureExecutor extends TestProcedureBase {
     Assert.assertFalse(internalProcedure.awaitExecution(300, TimeUnit.MILLISECONDS));
     Assert.assertEquals(1, internalProcedure.getExecutionCount());
 
+    procExecutor.addInternalProcedure(internalProcedure);
+    Assert.assertFalse(internalProcedure.awaitExecution(300, TimeUnit.MILLISECONDS));
+    Assert.assertEquals(1, internalProcedure.getExecutionCount());
+
+    Assert.assertTrue(procExecutor.removeInternalProcedure(internalProcedure));
+
+    procExecutor.addInternalProcedure(internalProcedure);
+    Assert.assertTrue(internalProcedure.awaitExecution(30, TimeUnit.SECONDS));
+    Assert.assertEquals(2, internalProcedure.getExecutionCount());
+
     Assert.assertTrue(procExecutor.removeInternalProcedure(internalProcedure));
   }
 
