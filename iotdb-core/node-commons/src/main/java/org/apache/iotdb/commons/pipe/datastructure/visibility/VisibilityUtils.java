@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.visibility;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -26,9 +27,15 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 public class VisibilityUtils {
+
+  private static final List<String> DOUBLE_LIVING_KEYS =
+      Arrays.asList(
+          PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+          PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY);
 
   private VisibilityUtils() {
     // forbidding instantiation
@@ -80,12 +87,67 @@ public class VisibilityUtils {
 
   public static Visibility calculateFromExtractorParameters(
       final PipeParameters extractorParameters) {
-    final boolean isTreeDialect =
-        extractorParameters
-            .getStringOrDefault(
-                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
-    return isTreeDialect ? Visibility.TREE_ONLY : Visibility.TABLE_ONLY;
+    if (isStrictVisibility(extractorParameters)) {
+      return calculateStrictlyFromExtractorParameters(extractorParameters);
+    }
+
+    if (extractorParameters.getBooleanOrDefault(
+        DOUBLE_LIVING_KEYS, PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)) {
+      return Visibility.BOTH;
+    }
+
+    final boolean isTreeDialect = isTreeDialect(extractorParameters);
+    final boolean isCaptureTree =
+        Objects.requireNonNullElse(
+            extractorParameters.getBooleanByKeys(
+                PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY),
+            isTreeDialect);
+    final boolean isCaptureTable =
+        Objects.requireNonNullElse(
+            extractorParameters.getBooleanByKeys(
+                PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY),
+            !isTreeDialect);
+
+    if (isCaptureTree && isCaptureTable) {
+      return Visibility.BOTH;
+    }
+    if (isCaptureTree) {
+      return Visibility.TREE_ONLY;
+    }
+    if (isCaptureTable) {
+      return Visibility.TABLE_ONLY;
+    }
+    return Visibility.NONE;
+  }
+
+  public static boolean isTreeModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
+    final Visibility visibility = calculateFromExtractorParameters(sourceParameters);
+    return Objects.equals(Visibility.BOTH, visibility)
+        || Objects.equals(Visibility.TREE_ONLY, visibility);
+  }
+
+  public static boolean isTableModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
+    final Visibility visibility = calculateFromExtractorParameters(sourceParameters);
+    return Objects.equals(Visibility.BOTH, visibility)
+        || Objects.equals(Visibility.TABLE_ONLY, visibility);
+  }
+
+  public static boolean isStrictVisibility(final PipeParameters sourceParameters) {
+    return SystemConstant.PIPE_VISIBILITY_STRICT_VALUE.equals(
+        sourceParameters.getStringOrDefault(SystemConstant.PIPE_VISIBILITY_KEY, ""));
+  }
+
+  private static Visibility calculateStrictlyFromExtractorParameters(
+      final PipeParameters extractorParameters) {
+    return isTreeDialect(extractorParameters) ? Visibility.TREE_ONLY : Visibility.TABLE_ONLY;
+  }
+
+  private static boolean isTreeDialect(final PipeParameters extractorParameters) {
+    return extractorParameters
+        .getStringOrDefault(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+        .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
   }
 
   public static Visibility calculateFromTopicConfig(final TopicConfig config) {

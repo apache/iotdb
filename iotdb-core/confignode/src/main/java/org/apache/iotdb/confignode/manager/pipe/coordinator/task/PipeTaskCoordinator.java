@@ -174,7 +174,11 @@ public class PipeTaskCoordinator {
   private TCreatePipeReq cloneCreatePipeRequestWithDialect(
       final TCreatePipeReq req, final PipeParameters sourceParameters, final String sqlDialect) {
     final Map<String, String> sourceAttributes = new HashMap<>(sourceParameters.getAttribute());
+    sourceAttributes.remove(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY);
+    sourceAttributes.remove(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY);
     sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, sqlDialect);
+    sourceAttributes.put(
+        SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
 
     final TCreatePipeReq clonedReq =
         new TCreatePipeReq()

@@ -35,13 +35,13 @@ import java.util.Map;
 public class PipeMetaKeeperTest {
 
   @Test
-  public void testSameNameTreeAndTablePipesCanCoexist() {
+  public void testStrictSameNameTreeAndTablePipesCanCoexist() {
     final String pipeName = "p";
     final PipeMetaKeeper keeper = new PipeMetaKeeper();
     final PipeStaticMeta treeStaticMeta =
-        createStaticMeta(pipeName, 1, SystemConstant.SQL_DIALECT_TREE_VALUE);
+        createStrictStaticMeta(pipeName, 1, SystemConstant.SQL_DIALECT_TREE_VALUE);
     final PipeStaticMeta tableStaticMeta =
-        createStaticMeta(pipeName, 2, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+        createStrictStaticMeta(pipeName, 2, SystemConstant.SQL_DIALECT_TABLE_VALUE);
 
     Assert.assertFalse(keeper.containsPipeMetaOverlapped(treeStaticMeta));
     keeper.addPipeMeta(new PipeMeta(treeStaticMeta, new PipeRuntimeMeta()));
@@ -57,30 +57,32 @@ public class PipeMetaKeeperTest {
   }
 
   @Test
-  public void testCaptureAttributesDoNotAffectSameNameConflictScope() {
+  public void testStrictCaptureAttributesDoNotAffectSameNameConflictScope() {
     final String pipeName = "p";
     final PipeMetaKeeper keeper = new PipeMetaKeeper();
     final PipeStaticMeta treeStaticMeta =
-        createStaticMetaWithCaptureAttributes(pipeName, 1, SystemConstant.SQL_DIALECT_TREE_VALUE);
+        createStrictStaticMetaWithCaptureAttributes(
+            pipeName, 1, SystemConstant.SQL_DIALECT_TREE_VALUE);
     final PipeStaticMeta tableStaticMeta =
-        createStaticMetaWithCaptureAttributes(pipeName, 2, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+        createStrictStaticMetaWithCaptureAttributes(
+            pipeName, 2, SystemConstant.SQL_DIALECT_TABLE_VALUE);
 
     keeper.addPipeMeta(new PipeMeta(treeStaticMeta, new PipeRuntimeMeta()));
 
     Assert.assertFalse(keeper.containsPipeMetaOverlapped(tableStaticMeta));
     Assert.assertTrue(
         keeper.containsPipeMetaOverlapped(
-            createStaticMeta(pipeName, 3, SystemConstant.SQL_DIALECT_TREE_VALUE)));
+            createStrictStaticMeta(pipeName, 3, SystemConstant.SQL_DIALECT_TREE_VALUE)));
   }
 
   @Test
-  public void testNoDialectPipeDefaultsToTreeScope() {
+  public void testLegacyNoDialectPipeDefaultsToTreeScope() {
     final String pipeName = "p";
     final PipeMetaKeeper keeper = new PipeMetaKeeper();
     final PipeStaticMeta oldTreeStaticMeta =
         new PipeStaticMeta(pipeName, 1, new HashMap<>(), new HashMap<>(), new HashMap<>());
     final PipeStaticMeta tableStaticMeta =
-        createStaticMeta(pipeName, 2, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+        createStrictStaticMeta(pipeName, 2, SystemConstant.SQL_DIALECT_TABLE_VALUE);
 
     keeper.addPipeMeta(new PipeMeta(oldTreeStaticMeta, new PipeRuntimeMeta()));
 
@@ -89,19 +91,99 @@ public class PipeMetaKeeperTest {
     Assert.assertFalse(keeper.containsPipeMetaOverlapped(tableStaticMeta));
   }
 
-  private PipeStaticMeta createStaticMeta(
+  @Test
+  public void testLegacyDoubleLivingPipeOverlapsBothScopes() {
+    final String pipeName = "p";
+    final PipeMetaKeeper keeper = new PipeMetaKeeper();
+    final PipeStaticMeta doubleLivingStaticMeta = createLegacyDoubleLivingStaticMeta(pipeName, 1);
+
+    keeper.addPipeMeta(new PipeMeta(doubleLivingStaticMeta, new PipeRuntimeMeta()));
+
+    Assert.assertSame(doubleLivingStaticMeta, keeper.getPipeMeta(pipeName, false).getStaticMeta());
+    Assert.assertSame(doubleLivingStaticMeta, keeper.getPipeMeta(pipeName, true).getStaticMeta());
+    Assert.assertTrue(
+        keeper.containsPipeMetaOverlapped(
+            createStrictStaticMeta(pipeName, 2, SystemConstant.SQL_DIALECT_TREE_VALUE)));
+    Assert.assertTrue(
+        keeper.containsPipeMetaOverlapped(
+            createStrictStaticMeta(pipeName, 3, SystemConstant.SQL_DIALECT_TABLE_VALUE)));
+  }
+
+  @Test
+  public void testLegacyCaptureBothPipeOverlapsBothScopes() {
+    final String pipeName = "p";
+    final PipeMetaKeeper keeper = new PipeMetaKeeper();
+    final PipeStaticMeta captureBothStaticMeta = createLegacyCaptureBothStaticMeta(pipeName, 1);
+
+    keeper.addPipeMeta(new PipeMeta(captureBothStaticMeta, new PipeRuntimeMeta()));
+
+    Assert.assertSame(captureBothStaticMeta, keeper.getPipeMeta(pipeName, false).getStaticMeta());
+    Assert.assertSame(captureBothStaticMeta, keeper.getPipeMeta(pipeName, true).getStaticMeta());
+    Assert.assertTrue(
+        keeper.containsPipeMetaOverlapped(
+            createStrictStaticMeta(pipeName, 2, SystemConstant.SQL_DIALECT_TREE_VALUE)));
+    Assert.assertTrue(
+        keeper.containsPipeMetaOverlapped(
+            createStrictStaticMeta(pipeName, 3, SystemConstant.SQL_DIALECT_TABLE_VALUE)));
+  }
+
+  @Test
+  public void testLegacyCaptureNonePipeKeepsNoneScope() {
+    final String pipeName = "p";
+    final PipeMetaKeeper keeper = new PipeMetaKeeper();
+    final PipeStaticMeta captureNoneStaticMeta = createLegacyCaptureNoneStaticMeta(pipeName, 1);
+
+    keeper.addPipeMeta(new PipeMeta(captureNoneStaticMeta, new PipeRuntimeMeta()));
+
+    Assert.assertSame(captureNoneStaticMeta, keeper.getPipeMeta(pipeName).getStaticMeta());
+    Assert.assertNull(keeper.getPipeMeta(pipeName, false));
+    Assert.assertNull(keeper.getPipeMeta(pipeName, true));
+    Assert.assertFalse(
+        keeper.containsPipeMetaOverlapped(
+            createStrictStaticMeta(pipeName, 2, SystemConstant.SQL_DIALECT_TREE_VALUE)));
+    Assert.assertFalse(
+        keeper.containsPipeMetaOverlapped(
+            createStrictStaticMeta(pipeName, 3, SystemConstant.SQL_DIALECT_TABLE_VALUE)));
+  }
+
+  private PipeStaticMeta createStrictStaticMeta(
       final String pipeName, final long creationTime, final String dialect) {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put(SystemConstant.SQL_DIALECT_KEY, dialect);
+    attributes.put(SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
     return new PipeStaticMeta(pipeName, creationTime, attributes, new HashMap<>(), new HashMap<>());
   }
 
-  private PipeStaticMeta createStaticMetaWithCaptureAttributes(
+  private PipeStaticMeta createStrictStaticMetaWithCaptureAttributes(
       final String pipeName, final long creationTime, final String dialect) {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put(SystemConstant.SQL_DIALECT_KEY, dialect);
+    attributes.put(SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
     attributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "true");
     attributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "true");
+    return new PipeStaticMeta(pipeName, creationTime, attributes, new HashMap<>(), new HashMap<>());
+  }
+
+  private PipeStaticMeta createLegacyDoubleLivingStaticMeta(
+      final String pipeName, final long creationTime) {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY, "true");
+    return new PipeStaticMeta(pipeName, creationTime, attributes, new HashMap<>(), new HashMap<>());
+  }
+
+  private PipeStaticMeta createLegacyCaptureBothStaticMeta(
+      final String pipeName, final long creationTime) {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "true");
+    attributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "true");
+    return new PipeStaticMeta(pipeName, creationTime, attributes, new HashMap<>(), new HashMap<>());
+  }
+
+  private PipeStaticMeta createLegacyCaptureNoneStaticMeta(
+      final String pipeName, final long creationTime) {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "false");
+    attributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "false");
     return new PipeStaticMeta(pipeName, creationTime, attributes, new HashMap<>(), new HashMap<>());
   }
 }

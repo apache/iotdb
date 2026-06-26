@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.i18n.PipeMessages;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -133,9 +133,7 @@ public class TablePattern {
   }
 
   public static boolean isTableModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
-    return sourceParameters
-        .getStringOrDefault(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-        .equals(SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    return VisibilityUtils.isTableModelDataAllowToBeCaptured(sourceParameters);
   }
 
   @Override

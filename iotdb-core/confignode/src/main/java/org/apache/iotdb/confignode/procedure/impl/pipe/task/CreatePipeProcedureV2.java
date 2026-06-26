@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -108,6 +109,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (createPipeRequest.getExtractorAttributes() == null) {
       createPipeRequest.setExtractorAttributes(new HashMap<>());
     }
+    createPipeRequest.setExtractorAttributes(
+        SystemConstant.addStrictPipeVisibilityIfNecessary(
+                new PipeParameters(createPipeRequest.getExtractorAttributes()))
+            .getAttribute());
     if (createPipeRequest.getProcessorAttributes() == null) {
       createPipeRequest.setProcessorAttributes(new HashMap<>());
     }

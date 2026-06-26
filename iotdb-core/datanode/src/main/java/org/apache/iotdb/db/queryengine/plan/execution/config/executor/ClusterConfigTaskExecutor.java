@@ -2225,7 +2225,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         validatePipePlugin(
             pipeName,
-            createPipeStatement.getSourceAttributes(),
+            cloneSourceParametersWithStrictVisibility(sourcePipeParameters).getAttribute(),
             createPipeStatement.getProcessorAttributes(),
             createPipeStatement.getSinkAttributes());
       }
@@ -2282,8 +2282,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   private PipeParameters cloneSourceParametersWithDialect(
       final PipeParameters sourcePipeParameters, final String sqlDialect) {
     final Map<String, String> sourceAttributes = new HashMap<>(sourcePipeParameters.getAttribute());
+    sourceAttributes.remove(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY);
+    sourceAttributes.remove(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY);
     sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, sqlDialect);
+    sourceAttributes.put(
+        SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
     return new PipeParameters(sourceAttributes);
+  }
+
+  private PipeParameters cloneSourceParametersWithStrictVisibility(
+      final PipeParameters sourcePipeParameters) {
+    return SystemConstant.addStrictPipeVisibilityIfNecessary(sourcePipeParameters);
   }
 
   private Map<String, String> cloneAttributes(final Map<String, String> attributes) {
@@ -2553,6 +2562,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       final Map<String, String> checkedSource = new HashMap<>(sourceAttributes);
+      keepCheckedSourceVisibilityConsistentWithTargetModel(
+          checkedSource,
+          pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
+          alterPipeStatement.isTableModel());
       if (!hasSourcePassword) {
         checkedSource.remove(PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY);
         checkedSource.remove(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
@@ -2601,6 +2614,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private static void keepCheckedSourceVisibilityConsistentWithTargetModel(
+      final Map<String, String> checkedSource,
+      final PipeParameters currentSourceParameters,
+      final boolean isTableModel) {
+    if (!VisibilityUtils.isStrictVisibility(currentSourceParameters)) {
+      return;
+    }
+
+    checkedSource.put(
+        SystemConstant.SQL_DIALECT_KEY,
+        isTableModel
+            ? SystemConstant.SQL_DIALECT_TABLE_VALUE
+            : SystemConstant.SQL_DIALECT_TREE_VALUE);
+    checkedSource.put(
+        SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
   }
 
   private static void checkIfSourcePluginChanged(

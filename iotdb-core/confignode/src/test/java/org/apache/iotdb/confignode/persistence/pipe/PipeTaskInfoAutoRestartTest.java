@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -293,6 +294,63 @@ public class PipeTaskInfoAutoRestartTest {
 
     Assert.assertEquals(
         rootPassword, sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+  }
+
+  @Test
+  public void testAlterLegacyDoubleLivingPipePreservesBothVisibility() throws Exception {
+    final String pipeName = "oldDoubleLivingPipe";
+    createPipeWithSourceAttributes(
+        pipeName,
+        new HashMap<String, String>() {
+          {
+            put("extractor", "iotdb-source");
+            put(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY, "true");
+          }
+        });
+
+    final TAlterPipeReq alterPipeRequest = createAlterPipeRequest(pipeName, true);
+    pipeTaskInfo.checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
+
+    final Map<String, String> extractorAttributes = alterPipeRequest.getExtractorAttributes();
+    Assert.assertEquals(
+        "true", extractorAttributes.get(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY));
+    Assert.assertFalse(extractorAttributes.containsKey(SystemConstant.SQL_DIALECT_KEY));
+    Assert.assertFalse(extractorAttributes.containsKey(SystemConstant.PIPE_VISIBILITY_KEY));
+  }
+
+  @Test
+  public void testAlterStrictPipeKeepsStrictVisibilityAndTargetDialect() throws Exception {
+    final String pipeName = "strictTablePipe";
+    createPipeWithSourceAttributes(
+        pipeName,
+        new HashMap<String, String>() {
+          {
+            put("extractor", "iotdb-source");
+            put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+            put(SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
+            put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "true");
+          }
+        });
+
+    final TAlterPipeReq alterPipeRequest = createAlterPipeRequest(pipeName, true);
+    pipeTaskInfo.checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
+
+    final Map<String, String> extractorAttributes = alterPipeRequest.getExtractorAttributes();
+    Assert.assertEquals(
+        SystemConstant.SQL_DIALECT_TABLE_VALUE,
+        extractorAttributes.get(SystemConstant.SQL_DIALECT_KEY));
+    Assert.assertEquals(
+        SystemConstant.PIPE_VISIBILITY_STRICT_VALUE,
+        extractorAttributes.get(SystemConstant.PIPE_VISIBILITY_KEY));
+  }
+
+  private TAlterPipeReq createAlterPipeRequest(final String pipeName, final boolean isTableModel) {
+    final TAlterPipeReq alterPipeRequest =
+        new TAlterPipeReq(pipeName, new HashMap<>(), new HashMap<>(), false, false);
+    alterPipeRequest.setExtractorAttributes(new HashMap<>());
+    alterPipeRequest.setIsReplaceAllExtractorAttributes(false);
+    alterPipeRequest.setIsTableModel(isTableModel);
+    return alterPipeRequest;
   }
 
   private Map<Integer, TPushPipeMetaResp> createErrorRespMap(final String pipeName) {

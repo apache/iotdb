@@ -41,6 +41,8 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -274,7 +276,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 .getAttribute());
       }
     }
-    keepExtractorDialectConsistentWithTargetModel(alterPipeRequest);
+    keepExtractorDialectConsistentWithTargetModel(
+        alterPipeRequest, pipeStaticMetaFromCoordinator.getSourceParameters());
 
     if (!alterPipeRequest.isReplaceAllProcessorAttributes) { // modify mode
       if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
@@ -322,7 +325,18 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  private void keepExtractorDialectConsistentWithTargetModel(final TAlterPipeReq alterPipeRequest) {
+  private void keepExtractorDialectConsistentWithTargetModel(
+      final TAlterPipeReq alterPipeRequest, final PipeParameters currentSourceParameters) {
+    final boolean isStrictVisibility = VisibilityUtils.isStrictVisibility(currentSourceParameters);
+    if (!isStrictVisibility) {
+      final Visibility currentVisibility =
+          VisibilityUtils.calculateFromExtractorParameters(currentSourceParameters);
+      if (Objects.equals(Visibility.BOTH, currentVisibility)
+          || Objects.equals(Visibility.NONE, currentVisibility)) {
+        return;
+      }
+    }
+
     alterPipeRequest
         .getExtractorAttributes()
         .put(
@@ -330,6 +344,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
             alterPipeRequest.isTableModel
                 ? SystemConstant.SQL_DIALECT_TABLE_VALUE
                 : SystemConstant.SQL_DIALECT_TREE_VALUE);
+    if (isStrictVisibility) {
+      alterPipeRequest
+          .getExtractorAttributes()
+          .put(SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
+    }
   }
 
   public void checkBeforeStartPipe(final String pipeName) throws PipeException {

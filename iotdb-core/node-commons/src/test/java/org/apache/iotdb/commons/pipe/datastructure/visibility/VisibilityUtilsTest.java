@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.pipe.datastructure.visibility;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.junit.Assert;
@@ -32,46 +34,64 @@ import java.util.Map;
 public class VisibilityUtilsTest {
 
   @Test
-  public void testCalculateFromExtractorParametersUsesDialectOnly() {
-    Assert.assertEquals(
-        Visibility.TREE_ONLY,
-        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(new HashMap<>())));
-
+  public void testStrictVisibilityUsesDialectOnly() {
     final Map<String, String> treeAttributes = new HashMap<>();
     treeAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    treeAttributes.put(
+        SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
     treeAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "false");
     treeAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "true");
     treeAttributes.put(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY, "true");
-    Assert.assertEquals(
-        Visibility.TREE_ONLY,
-        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(treeAttributes)));
+    assertVisibility(Visibility.TREE_ONLY, treeAttributes, true, false);
 
     final Map<String, String> tableAttributes = new HashMap<>();
     tableAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    tableAttributes.put(
+        SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
     tableAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, "true");
     tableAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "false");
     tableAttributes.put(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY, "true");
-    Assert.assertEquals(
-        Visibility.TABLE_ONLY,
-        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(tableAttributes)));
+    assertVisibility(Visibility.TABLE_ONLY, tableAttributes, false, true);
   }
 
   @Test
-  public void testCaptureAttributesDoNotCreateBothOrNoneVisibility() {
+  public void testLegacyVisibilityKeepsDoubleLivingAndCaptureAttributes() {
+    assertVisibility(Visibility.TREE_ONLY, new HashMap<>(), true, false);
+
+    final Map<String, String> tableAttributes = new HashMap<>();
+    tableAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    assertVisibility(Visibility.TABLE_ONLY, tableAttributes, false, true);
+
+    final Map<String, String> doubleLivingAttributes = new HashMap<>();
+    doubleLivingAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    doubleLivingAttributes.put(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY, "true");
+    doubleLivingAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "false");
+    doubleLivingAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "false");
+    assertVisibility(Visibility.BOTH, doubleLivingAttributes, true, true);
+
     final Map<String, String> captureBothAttributes = new HashMap<>();
     captureBothAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "true");
     captureBothAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "true");
-    Assert.assertEquals(
-        Visibility.TREE_ONLY,
-        VisibilityUtils.calculateFromExtractorParameters(
-            new PipeParameters(captureBothAttributes)));
+    assertVisibility(Visibility.BOTH, captureBothAttributes, true, true);
 
     final Map<String, String> captureNoneAttributes = new HashMap<>();
     captureNoneAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, "false");
     captureNoneAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "false");
+    assertVisibility(Visibility.NONE, captureNoneAttributes, false, false);
+  }
+
+  private void assertVisibility(
+      final Visibility expectedVisibility,
+      final Map<String, String> attributes,
+      final boolean expectedTreeAllowed,
+      final boolean expectedTableAllowed) {
+    final PipeParameters parameters = new PipeParameters(attributes);
     Assert.assertEquals(
-        Visibility.TREE_ONLY,
-        VisibilityUtils.calculateFromExtractorParameters(
-            new PipeParameters(captureNoneAttributes)));
+        expectedVisibility, VisibilityUtils.calculateFromExtractorParameters(parameters));
+    Assert.assertEquals(
+        expectedTreeAllowed, TreePattern.isTreeModelDataAllowToBeCaptured(parameters));
+    Assert.assertEquals(
+        expectedTableAllowed, TablePattern.isTableModelDataAllowToBeCaptured(parameters));
   }
 }
