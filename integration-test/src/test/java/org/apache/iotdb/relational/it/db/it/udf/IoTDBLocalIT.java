@@ -183,7 +183,7 @@ public class IoTDBLocalIT {
   }
 
   @Test
-  public void testDeviceSummaryWithMultipleQueries() {
+  public void testInterleavedIoTDBLocalQueries() {
     SQLFunctionUtils.createUDF("device_summary", IOTDB_LOCAL_PKG + ".DeviceSummaryFunction");
     tableResultSetEqualTest(
         "SELECT time, device_id, temperature, device_summary(device_id) AS summary FROM readings ORDER BY time",

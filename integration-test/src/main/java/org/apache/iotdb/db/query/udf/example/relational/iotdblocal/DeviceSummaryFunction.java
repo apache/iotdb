@@ -36,7 +36,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Lookup device_name and max_temp via two concurrent IoTDBLocal queries in {@link #beforeStart}.
+ * Lookup device_name and max_temp via two IoTDBLocal queries in {@link #beforeStart}, reading both
+ * {@link UDFResultSet} instances in an interleaved manner.
  */
 public class DeviceSummaryFunction implements ScalarFunction {
 
