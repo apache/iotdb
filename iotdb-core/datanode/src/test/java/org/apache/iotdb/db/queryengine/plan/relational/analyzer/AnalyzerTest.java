@@ -671,6 +671,43 @@ public class AnalyzerTest {
     assertNull(deviceTableScanNode.getPushDownPredicate());
     assertFalse(deviceTableScanNode.getTimePredicate().isPresent());
 
+    sql = "SELECT * FROM table1 WHERE tag1 like 'A' || '%'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    analysis = analyzeSQL(sql, metadata, context);
+    symbolAllocator = new SymbolAllocator();
+    logicalQueryPlan =
+        new TableLogicalPlanner(
+                context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP)
+            .plan(analysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    // Like with a non-literal pattern is evaluated by the filter operator.
+    assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
+    filterNode = (FilterNode) rootNode.getChildren().get(0);
+    assertTrue(filterNode.getPredicate().toString().contains("LIKE"));
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertNull(deviceTableScanNode.getPushDownPredicate());
+    assertFalse(deviceTableScanNode.getTimePredicate().isPresent());
+
+    sql = "SELECT * FROM table1 WHERE tag1 like concat('A', '%')";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    analysis = analyzeSQL(sql, metadata, context);
+    symbolAllocator = new SymbolAllocator();
+    logicalQueryPlan =
+        new TableLogicalPlanner(
+                context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP)
+            .plan(analysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
+    filterNode = (FilterNode) rootNode.getChildren().get(0);
+    assertTrue(filterNode.getPredicate().toString().contains("LIKE"));
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertNull(deviceTableScanNode.getPushDownPredicate());
+    assertFalse(deviceTableScanNode.getTimePredicate().isPresent());
+
     // 3. in / not in
     sql =
         "SELECT *, s1/2, s2+1, s2*3, s1+s2, s2%1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 not in ('A', 'C')";
