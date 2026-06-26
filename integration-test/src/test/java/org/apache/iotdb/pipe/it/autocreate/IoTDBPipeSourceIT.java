@@ -819,7 +819,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualAutoIT {
           Collections.singletonList(new MeasurementSchema("at1", TSDataType.INT32));
       final Tablet tabletWithUnusedTail = new Tablet("root.db.d5", schemas, 5);
       for (int time = 2000; time <= 4000; time += 1000) {
-        final int rowIndex = tabletWithUnusedTail.rowSize;
+        final int rowIndex = tabletWithUnusedTail.rowSize++;
         tabletWithUnusedTail.addTimestamp(rowIndex, time);
         tabletWithUnusedTail.addValue("at1", rowIndex, time / 1000);
       }
