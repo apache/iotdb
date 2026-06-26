@@ -61,6 +61,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.exception.DirectBufferMemoryAllocationException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -594,10 +595,6 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       recoverCompaction();
     } catch (Exception e) {
-      // signal wal recover manager to recover this region's files
-      WALRecoverManager.getInstance()
-          .getAllDataRegionScannedLatch()
-          .countDownWithException(e.getMessage());
       throw new DataRegionException(e);
     }
 
@@ -768,10 +765,6 @@ public class DataRegion implements IDataRegionForQuery {
         updatePartitionFileVersion(partitionNum, resource.getVersion());
       }
     } catch (IOException e) {
-      // signal wal recover manager to recover this region's files
-      WALRecoverManager.getInstance()
-          .getAllDataRegionScannedLatch()
-          .countDownWithException(e.getMessage());
       throw new DataRegionException(e);
     }
 
@@ -5117,11 +5110,9 @@ public class DataRegion implements IDataRegionForQuery {
   private void acquireDirectBufferMemory() throws DataRegionException {
     long acquireDirectBufferMemCost = getAcquireDirectBufferMemCost();
     if (!SystemInfo.getInstance().addDirectBufferMemoryCost(acquireDirectBufferMemCost)) {
-      throw new DataRegionException(
-          "Total allocated memory for direct buffer will be "
-              + (SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost)
-              + ", which is greater than limit mem cost: "
-              + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
+      throw new DirectBufferMemoryAllocationException(
+          SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost,
+          SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
     }
     this.directBufferMemoryCost = acquireDirectBufferMemCost;
   }
