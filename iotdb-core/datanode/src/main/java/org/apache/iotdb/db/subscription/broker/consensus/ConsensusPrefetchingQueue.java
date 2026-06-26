@@ -1390,7 +1390,13 @@ public class ConsensusPrefetchingQueue {
   }
 
   private boolean hasHistoricalWalLag() {
-    return nextExpectedSearchIndex.get() < consensusReqReader.getCurrentSearchIndex();
+    return hasUnreadWalEntriesBehindCursor();
+  }
+
+  private boolean hasUnreadWalEntriesBehindCursor() {
+    final long currentSearchIndex = consensusReqReader.getCurrentSearchIndex();
+    // Local search indexes start at 1; 0 is the empty-WAL sentinel.
+    return currentSearchIndex > 0 && nextExpectedSearchIndex.get() <= currentSearchIndex;
   }
 
   private static boolean hasLocalSearchIndex(final IndexedConsensusRequest request) {
@@ -3184,8 +3190,7 @@ public class ConsensusPrefetchingQueue {
             + inFlightEvents.size()
             + pendingEntries.size()
             + getRealtimeBufferedEntryCount();
-    final boolean hasUnreadWalEntries =
-        nextExpectedSearchIndex.get() < consensusReqReader.getCurrentSearchIndex();
+    final boolean hasUnreadWalEntries = hasUnreadWalEntriesBehindCursor();
     return queuedLag + (hasUnreadWalEntries ? 1 : 0);
   }
 
