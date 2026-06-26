@@ -167,13 +167,14 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
    */
   protected Map<Integer, TPushPipeMetaResp> dropMultiPipeOnDataNodes(
       List<DropPipeProcedureV2> dropPipeProcedures, ConfigNodeProcedureEnv env) throws IOException {
+    boolean hasMissingPipeMeta = false;
+    final List<String> pipeNamesToDrop = new ArrayList<>();
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     for (final DropPipeProcedureV2 dropPipeProcedure : dropPipeProcedures) {
+      pipeNamesToDrop.add(dropPipeProcedure.getPipeName());
       final PipeMeta pipeMetaToDrop = dropPipeProcedure.getPipeMetaToDrop();
       if (pipeMetaToDrop == null) {
-        LOGGER.warn(
-            ProcedureMessages.PIPE_NOT_FOUND_IN_PIPETASKINFO_CAN_NOT_PUSH_ITS_META,
-            dropPipeProcedure.getPipeName());
+        hasMissingPipeMeta = true;
         continue;
       }
 
@@ -183,6 +184,8 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
       pipeMetaBinaryList.add(droppedPipeMeta.serialize());
     }
 
-    return env.pushMultiPipeMetaToDataNodes(pipeMetaBinaryList);
+    return hasMissingPipeMeta
+        ? env.dropMultiPipeOnDataNodes(pipeNamesToDrop)
+        : env.pushMultiPipeMetaToDataNodes(pipeMetaBinaryList);
   }
 }

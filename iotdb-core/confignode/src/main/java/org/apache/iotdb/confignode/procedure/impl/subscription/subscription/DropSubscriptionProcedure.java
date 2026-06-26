@@ -148,7 +148,11 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     // Execute DropPipeProcedureV2s
     final List<ConfigPhysicalPlan> dropPipePlans =
         dropPipeProcedures.stream()
-            .map(proc -> new DropPipePlanV2(proc.getPipeName(), proc.isTableModel()))
+            .map(
+                proc ->
+                    proc.isTableModelSet()
+                        ? new DropPipePlanV2(proc.getPipeName(), proc.isTableModel())
+                        : new DropPipePlanV2(proc.getPipeName()))
             .collect(Collectors.toList());
     TSStatus response;
     try {

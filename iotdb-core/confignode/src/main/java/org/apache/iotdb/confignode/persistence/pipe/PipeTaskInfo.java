@@ -686,7 +686,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireWriteLock();
     try {
       pipeMetaKeeper
-          .getPipeMeta(plan.getPipeName(), plan.isTableModel())
+          .getPipeMeta(plan.getPipeName(), plan.isTableModelSet(), plan.isTableModel())
           .getRuntimeMeta()
           .getStatus()
           .set(plan.getPipeStatus());
@@ -701,12 +701,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireWriteLock();
     try {
       pipeMetaKeeper
-          .getPipeMeta(plan.getPipeName(), plan.isTableModel())
+          .getPipeMeta(plan.getPipeName(), plan.isTableModelSet(), plan.isTableModel())
           .getRuntimeMeta()
           .getStatus()
           .set(plan.getPipeStatus());
       pipeMetaKeeper
-          .getPipeMeta(plan.getPipeName(), plan.isTableModel())
+          .getPipeMeta(plan.getPipeName(), plan.isTableModelSet(), plan.isTableModel())
           .getRuntimeMeta()
           .setIsStoppedByRuntimeException(plan.isStoppedByRuntimeException());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -718,7 +718,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus dropPipe(final DropPipePlanV2 plan) {
     acquireWriteLock();
     try {
-      pipeMetaKeeper.removePipeMeta(plan.getPipeName(), plan.isTableModel());
+      if (plan.isTableModelSet()) {
+        pipeMetaKeeper.removePipeMeta(plan.getPipeName(), plan.isTableModel());
+      } else {
+        pipeMetaKeeper.removePipeMeta(plan.getPipeName());
+      }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();

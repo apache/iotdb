@@ -34,6 +34,7 @@ public class AlterPipePlanV2 extends ConfigPhysicalPlan {
   private PipeStaticMeta currentPipeStaticMeta;
   private PipeStaticMeta pipeStaticMeta;
   private PipeRuntimeMeta pipeRuntimeMeta;
+  private boolean currentPipeStaticMetaSet;
 
   public AlterPipePlanV2() {
     super(ConfigPhysicalPlanType.AlterPipeV2);
@@ -54,6 +55,7 @@ public class AlterPipePlanV2 extends ConfigPhysicalPlan {
     this.currentPipeStaticMeta = currentPipeStaticMeta;
     this.pipeStaticMeta = pipeStaticMeta;
     this.pipeRuntimeMeta = pipeRuntimeMeta;
+    this.currentPipeStaticMetaSet = true;
   }
 
   public PipeStaticMeta getCurrentPipeStaticMeta() {
@@ -68,20 +70,39 @@ public class AlterPipePlanV2 extends ConfigPhysicalPlan {
     return pipeRuntimeMeta;
   }
 
+  public boolean isCurrentPipeStaticMetaSet() {
+    return currentPipeStaticMetaSet;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     pipeStaticMeta.serialize(stream);
     pipeRuntimeMeta.serialize(stream);
-    currentPipeStaticMeta.serialize(stream);
+    if (currentPipeStaticMetaSet) {
+      currentPipeStaticMeta.serialize(stream);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeStaticMeta = PipeStaticMeta.deserialize(buffer);
     pipeRuntimeMeta = PipeRuntimeMeta.deserialize(buffer);
+    deserializeCurrentPipeStaticMeta(buffer.hasRemaining(), buffer);
+  }
+
+  void deserializeImpl(final ByteBuffer buffer, final boolean isLastSubPlan) {
+    pipeStaticMeta = PipeStaticMeta.deserialize(buffer);
+    pipeRuntimeMeta = PipeRuntimeMeta.deserialize(buffer);
+    deserializeCurrentPipeStaticMeta(
+        OperateMultiplePipesPlanV2.hasTrailingFieldInSubPlan(buffer, isLastSubPlan), buffer);
+  }
+
+  private void deserializeCurrentPipeStaticMeta(
+      final boolean hasCurrentPipeStaticMeta, final ByteBuffer buffer) {
+    currentPipeStaticMetaSet = hasCurrentPipeStaticMeta;
     currentPipeStaticMeta =
-        buffer.hasRemaining() ? PipeStaticMeta.deserialize(buffer) : pipeStaticMeta;
+        hasCurrentPipeStaticMeta ? PipeStaticMeta.deserialize(buffer) : pipeStaticMeta;
   }
 
   @Override
@@ -94,13 +115,15 @@ public class AlterPipePlanV2 extends ConfigPhysicalPlan {
     }
     AlterPipePlanV2 that = (AlterPipePlanV2) obj;
     return currentPipeStaticMeta.equals(that.currentPipeStaticMeta)
+        && currentPipeStaticMetaSet == that.currentPipeStaticMetaSet
         && pipeStaticMeta.equals(that.pipeStaticMeta)
         && pipeRuntimeMeta.equals(that.pipeRuntimeMeta);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(currentPipeStaticMeta, pipeStaticMeta, pipeRuntimeMeta);
+    return Objects.hash(
+        currentPipeStaticMeta, pipeStaticMeta, pipeRuntimeMeta, currentPipeStaticMetaSet);
   }
 
   @Override

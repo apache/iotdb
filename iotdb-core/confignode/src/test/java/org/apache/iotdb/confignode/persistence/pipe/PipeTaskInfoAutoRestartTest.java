@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -294,6 +295,20 @@ public class PipeTaskInfoAutoRestartTest {
 
     Assert.assertEquals(
         rootPassword, sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+  }
+
+  @Test
+  public void testLegacyStatusAndDropPlansTargetTableOnlyPipeByName() {
+    final String pipeName = "legacyTablePipe";
+    createPipe(pipeName, PipeStatus.STOPPED, true);
+
+    pipeTaskInfo.setPipeStatus(new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING));
+    Assert.assertEquals(
+        PipeStatus.RUNNING,
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName, true).getRuntimeMeta().getStatus().get());
+
+    pipeTaskInfo.dropPipe(new DropPipePlanV2(pipeName));
+    Assert.assertFalse(pipeTaskInfo.isPipeExisted(pipeName, true));
   }
 
   @Test

@@ -85,6 +85,10 @@ public class PipeMetaKeeper {
     return getPipeMetaOptional(pipeName, isTableModel).orElse(null);
   }
 
+  public PipeMeta getPipeMeta(String pipeName, boolean isTableModelSet, boolean isTableModel) {
+    return isTableModelSet ? getPipeMeta(pipeName, isTableModel) : getPipeMeta(pipeName);
+  }
+
   public PipeMeta getPipeMeta(PipeStaticMeta pipeStaticMeta) {
     return pipeNameToPipeMetaMap.get(generatePipeMetaKeeperKey(pipeStaticMeta));
   }
