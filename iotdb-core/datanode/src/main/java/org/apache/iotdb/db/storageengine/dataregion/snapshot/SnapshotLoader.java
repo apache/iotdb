@@ -153,7 +153,9 @@ public class SnapshotLoader {
       Map<String, String> fileTarget = new HashMap<>();
       for (String path : snapshotPaths) {
         File snapshotDir = new File(path);
-        createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, fileTarget);
+        // IoTConsensus fragments arrive under different recv folders; do not map each
+        // fragment back to the same disk as its recv path, rely on fileTarget instead.
+        createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, fileTarget, false);
         loadCompressionRatio(snapshotDir);
       }
       return loadSnapshot();
@@ -175,7 +177,7 @@ public class SnapshotLoader {
       }
       LOGGER.info(StorageEngineMessages.MOVING_SNAPSHOT_FILE_TO_DATA_DIRS);
       File snapshotDir = new File(snapshotPath);
-      createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, new HashMap<>());
+      createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, new HashMap<>(), true);
       loadCompressionRatio(snapshotDir);
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {
@@ -300,7 +302,7 @@ public class SnapshotLoader {
   }
 
   private void createLinksFromSnapshotDirToDataDirWithoutLog(
-      File sourceDir, Map<String, String> fileTarget)
+      File sourceDir, Map<String, String> fileTarget, boolean preferKeepSameDiskWhenLoading)
       throws IOException, DiskSpaceInsufficientException {
     if (!sourceDir.exists()) {
       throw new IOException(
@@ -346,7 +348,8 @@ public class SnapshotLoader {
                 + dataRegionId
                 + File.separator
                 + timePartitionFolder.getName();
-        createLinksFromSnapshotToSourceDir(targetSuffix, files, folderManager, fileTarget);
+        createLinksFromSnapshotToSourceDir(
+            targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
       }
     }
 
@@ -365,7 +368,8 @@ public class SnapshotLoader {
                 + dataRegionId
                 + File.separator
                 + timePartitionFolder.getName();
-        createLinksFromSnapshotToSourceDir(targetSuffix, files, folderManager, fileTarget);
+        createLinksFromSnapshotToSourceDir(
+            targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
       }
     }
   }
@@ -415,7 +419,8 @@ public class SnapshotLoader {
       String targetSuffix,
       File[] files,
       FolderManager folderManager,
-      Map<String, String> fileTarget)
+      Map<String, String> fileTarget,
+      boolean preferKeepSameDiskWhenLoading)
       throws IOException {
     for (File file : files) {
       checkTsFileResourceExists(file);
@@ -430,7 +435,8 @@ public class SnapshotLoader {
 
       try {
         String firstFolderOfSameDisk =
-            IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
+            preferKeepSameDiskWhenLoading
+                    && IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
                 ? folderManager.getFirstFolderOfSameDisk(file.getAbsolutePath())
                 : null;
 
