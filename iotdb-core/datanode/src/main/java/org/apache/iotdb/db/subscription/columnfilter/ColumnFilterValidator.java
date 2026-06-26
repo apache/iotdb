@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpre
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import java.util.Locale;
 import java.util.Set;
@@ -51,7 +52,9 @@ public class ColumnFilterValidator implements CommonQueryAstVisitor<Void, Void> 
 
   @Override
   public Void visitNode(final Node node, final Void context) {
-    throw invalid("unsupported expression: " + node.getClass().getSimpleName());
+    throw invalid(
+        String.format(
+            DataNodeMiscMessages.UNSUPPORTED_EXPRESSION_FMT, node.getClass().getSimpleName()));
   }
 
   @Override
@@ -75,10 +78,11 @@ public class ColumnFilterValidator implements CommonQueryAstVisitor<Void, Void> 
   public Void visitComparisonExpression(final ComparisonExpression node, final Void context) {
     if (node.getOperator() != ComparisonExpression.Operator.EQUAL
         && node.getOperator() != ComparisonExpression.Operator.NOT_EQUAL) {
-      throw invalid("only =, !=, and <> comparisons are supported in column-filter");
+      throw invalid(DataNodeMiscMessages.ONLY_COLUMN_FILTER_COMPARISONS_SUPPORTED);
     }
     requireField(node.getLeft());
-    requireStringLiteral(node.getRight(), "comparison right operand");
+    requireStringLiteral(
+        node.getRight(), DataNodeMiscMessages.COLUMN_FILTER_COMPARISON_RIGHT_OPERAND);
     return null;
   }
 
@@ -86,10 +90,10 @@ public class ColumnFilterValidator implements CommonQueryAstVisitor<Void, Void> 
   public Void visitInPredicate(final InPredicate node, final Void context) {
     requireField(node.getValue());
     if (!(node.getValueList() instanceof InListExpression)) {
-      throw invalid("IN predicate must use a string literal list");
+      throw invalid(DataNodeMiscMessages.IN_PREDICATE_MUST_USE_STRING_LITERAL_LIST);
     }
     for (final Expression expression : ((InListExpression) node.getValueList()).getValues()) {
-      requireStringLiteral(expression, "IN element");
+      requireStringLiteral(expression, DataNodeMiscMessages.COLUMN_FILTER_IN_ELEMENT);
     }
     return null;
   }
@@ -97,10 +101,14 @@ public class ColumnFilterValidator implements CommonQueryAstVisitor<Void, Void> 
   @Override
   public Void visitLikePredicate(final LikePredicate node, final Void context) {
     requireField(node.getValue());
-    final StringLiteral pattern = requireStringLiteral(node.getPattern(), "LIKE pattern");
+    final StringLiteral pattern =
+        requireStringLiteral(node.getPattern(), DataNodeMiscMessages.COLUMN_FILTER_LIKE_PATTERN);
     final String escape =
         node.getEscape()
-            .map(expression -> requireStringLiteral(expression, "LIKE escape").getValue())
+            .map(
+                expression ->
+                    requireStringLiteral(expression, DataNodeMiscMessages.COLUMN_FILTER_LIKE_ESCAPE)
+                        .getValue())
             .orElse(null);
     ColumnFilterEvaluator.compileLikePattern(pattern.getValue(), escape);
     return null;
@@ -112,16 +120,18 @@ public class ColumnFilterValidator implements CommonQueryAstVisitor<Void, Void> 
         || node.isDistinct()
         || node.getProcessingMode().isPresent()
         || node.getArguments().size() != 2) {
-      throw invalid("only REGEXP is supported as regexp_like(field, pattern)");
+      throw invalid(DataNodeMiscMessages.ONLY_REGEXP_SUPPORTED_AS_REGEXP_LIKE);
     }
 
     requireField(node.getArguments().get(0));
     final String pattern =
-        requireStringLiteral(node.getArguments().get(1), "REGEXP pattern").getValue();
+        requireStringLiteral(
+                node.getArguments().get(1), DataNodeMiscMessages.COLUMN_FILTER_REGEXP_PATTERN)
+            .getValue();
     try {
       Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
     } catch (final PatternSyntaxException e) {
-      throw invalid("illegal REGEXP pattern: " + e.getMessage());
+      throw invalid(String.format(DataNodeMiscMessages.ILLEGAL_REGEXP_PATTERN_FMT, e.getMessage()));
     }
     return null;
   }
@@ -134,12 +144,14 @@ public class ColumnFilterValidator implements CommonQueryAstVisitor<Void, Void> 
 
   private static Identifier requireField(final Expression expression) {
     if (!(expression instanceof Identifier)) {
-      throw invalid("left operand must be one of column metadata fields");
+      throw invalid(DataNodeMiscMessages.LEFT_OPERAND_MUST_BE_COLUMN_METADATA_FIELD);
     }
     final Identifier identifier = (Identifier) expression;
     final String normalizedField = normalizeField(identifier.getValue());
     if (!LEGAL_FIELDS.contains(normalizedField)) {
-      throw invalid("unsupported column metadata field: " + identifier.getValue());
+      throw invalid(
+          String.format(
+              DataNodeMiscMessages.UNSUPPORTED_COLUMN_METADATA_FIELD_FMT, identifier.getValue()));
     }
     return identifier;
   }
@@ -147,7 +159,7 @@ public class ColumnFilterValidator implements CommonQueryAstVisitor<Void, Void> 
   private static StringLiteral requireStringLiteral(
       final Expression expression, final String description) {
     if (!(expression instanceof StringLiteral)) {
-      throw invalid(description + " must be a string literal");
+      throw invalid(String.format(DataNodeMiscMessages.MUST_BE_STRING_LITERAL_FMT, description));
     }
     return (StringLiteral) expression;
   }

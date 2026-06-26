@@ -101,6 +101,8 @@ public class SubscriptionTopicAgent {
     if (shouldRefreshColumnFilter(oldMeta, metaFromCoordinator)) {
       SubscriptionAgent.broker().refreshColumnFilter(topicName, metaFromCoordinator.getConfig());
     } else if (!metaFromCoordinator.getConfig().isTableTopic()) {
+      // ConfigNode rejects column-filter on tree topics. Drop defensively in case stale or replayed
+      // topic metadata reaches this DataNode after a table-topic to tree-topic transition.
       SubscriptionAgent.broker().dropColumnFilter(topicName);
     }
     SubscriptionAgent.broker()

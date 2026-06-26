@@ -17,11 +17,11 @@
  * under the License.
  */
 
-grammar ColumnFilter;
+grammar SubscriptionColumnFilter;
 
 options { caseInsensitive = true; }
 
-columnFilter
+subscriptionColumnFilter
     : booleanExpression EOF
     ;
 

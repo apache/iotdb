@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.subscription.columnfilter.ColumnMetadata;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -112,7 +113,9 @@ public class ColumnFilterBinder {
           break;
         default:
           throw new IllegalArgumentException(
-              "Unsupported table column category: " + columnSchema.getColumnCategory());
+              String.format(
+                  DataNodeMiscMessages.UNSUPPORTED_TABLE_COLUMN_CATEGORY_FMT,
+                  columnSchema.getColumnCategory()));
       }
     }
 

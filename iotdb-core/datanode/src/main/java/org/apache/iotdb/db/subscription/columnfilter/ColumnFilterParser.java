@@ -33,8 +33,10 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpressio
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
-import org.apache.iotdb.db.relational.grammar.sql.ColumnFilterBaseVisitor;
-import org.apache.iotdb.db.relational.grammar.sql.ColumnFilterLexer;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.relational.grammar.sql.SubscriptionColumnFilterBaseVisitor;
+import org.apache.iotdb.db.relational.grammar.sql.SubscriptionColumnFilterLexer;
+import org.apache.iotdb.db.relational.grammar.sql.SubscriptionColumnFilterParser;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.antlr.v4.runtime.BaseErrorListener;
@@ -84,20 +86,21 @@ public class ColumnFilterParser {
       return expression;
     } catch (final ParsingException | IllegalArgumentException e) {
       throw new SubscriptionException(
-          String.format("Invalid column-filter: %s", e.getMessage()), e);
+          String.format(DataNodeMiscMessages.INVALID_COLUMN_FILTER_FMT, e.getMessage()), e);
     }
   }
 
   Expression parse(final String rawColumnFilter) {
     if (rawColumnFilter == null || rawColumnFilter.trim().isEmpty()) {
-      throw new ParsingException("column-filter should not be empty", null, 1, 1);
+      throw new ParsingException(
+          DataNodeMiscMessages.COLUMN_FILTER_SHOULD_NOT_BE_EMPTY, null, 1, 1);
     }
     validateUnsupportedSyntax(rawColumnFilter);
 
-    final ColumnFilterLexer lexer = new ColumnFilterLexer(CharStreams.fromString(rawColumnFilter));
+    final SubscriptionColumnFilterLexer lexer =
+        new SubscriptionColumnFilterLexer(CharStreams.fromString(rawColumnFilter));
     final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-    final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser parser =
-        new org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser(tokenStream);
+    final SubscriptionColumnFilterParser parser = new SubscriptionColumnFilterParser(tokenStream);
 
     lexer.removeErrorListeners();
     lexer.addErrorListener(ERROR_LISTENER);
@@ -116,12 +119,12 @@ public class ColumnFilterParser {
 
     try {
       parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
-      return new AstBuilder().visit(parser.columnFilter());
+      return new AstBuilder().visit(parser.subscriptionColumnFilter());
     } catch (final ParsingException e) {
       tokenStream.seek(0);
       parser.reset();
       parser.getInterpreter().setPredictionMode(PredictionMode.LL);
-      return new AstBuilder().visit(parser.columnFilter());
+      return new AstBuilder().visit(parser.subscriptionColumnFilter());
     }
   }
 
@@ -131,10 +134,11 @@ public class ColumnFilterParser {
             && !"true".equalsIgnoreCase(trimmedColumnFilter)
             && !"false".equalsIgnoreCase(trimmedColumnFilter))
         || FUNCTION_CALL_START_PATTERN.matcher(rawColumnFilter).matches()) {
-      throw new ParsingException("expected column predicate operator", null, 1, 1);
+      throw new ParsingException(
+          DataNodeMiscMessages.EXPECTED_COLUMN_PREDICATE_OPERATOR, null, 1, 1);
     }
     if (UNQUOTED_COMPARISON_RIGHT_PATTERN.matcher(rawColumnFilter).matches()) {
-      throw new ParsingException("expected string literal", null, 1, 1);
+      throw new ParsingException(DataNodeMiscMessages.EXPECTED_STRING_LITERAL, null, 1, 1);
     }
     for (int i = 0; i < rawColumnFilter.length(); i++) {
       final char ch = rawColumnFilter.charAt(i);
@@ -147,13 +151,22 @@ public class ColumnFilterParser {
           i++;
           continue;
         }
-        throw new ParsingException("unsupported comparison operator '<'", null, 1, i + 1);
+        throw new ParsingException(
+            String.format(DataNodeMiscMessages.UNSUPPORTED_COMPARISON_OPERATOR_FMT, "<"),
+            null,
+            1,
+            i + 1);
       }
       if (ch == '>') {
-        throw new ParsingException("unsupported comparison operator '>'", null, 1, i + 1);
+        throw new ParsingException(
+            String.format(DataNodeMiscMessages.UNSUPPORTED_COMPARISON_OPERATOR_FMT, ">"),
+            null,
+            1,
+            i + 1);
       }
       if (ch == '+') {
-        throw new ParsingException("unexpected character '+'", null, 1, i + 1);
+        throw new ParsingException(
+            String.format(DataNodeMiscMessages.UNEXPECTED_CHARACTER_FMT, "+"), null, 1, i + 1);
       }
     }
   }
@@ -171,34 +184,29 @@ public class ColumnFilterParser {
     return text.length();
   }
 
-  private static class AstBuilder extends ColumnFilterBaseVisitor<Expression> {
+  private static class AstBuilder extends SubscriptionColumnFilterBaseVisitor<Expression> {
 
     @Override
-    public Expression visitColumnFilter(
-        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.ColumnFilterContext
-            context) {
+    public Expression visitSubscriptionColumnFilter(
+        final SubscriptionColumnFilterParser.SubscriptionColumnFilterContext context) {
       return visit(context.booleanExpression());
     }
 
     @Override
     public Expression visitPredicateExpression(
-        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser
-                .PredicateExpressionContext
-            context) {
+        final SubscriptionColumnFilterParser.PredicateExpressionContext context) {
       return visit(context.predicate());
     }
 
     @Override
     public Expression visitLogicalNot(
-        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.LogicalNotContext
-            context) {
+        final SubscriptionColumnFilterParser.LogicalNotContext context) {
       return new NotExpression(visit(context.booleanExpression()));
     }
 
     @Override
     public Expression visitLogicalBinary(
-        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.LogicalBinaryContext
-            context) {
+        final SubscriptionColumnFilterParser.LogicalBinaryContext context) {
       final Expression left = visit(context.booleanExpression(0));
       final Expression right = visit(context.booleanExpression(1));
       return Objects.nonNull(context.AND())
@@ -208,8 +216,7 @@ public class ColumnFilterParser {
 
     @Override
     public Expression visitPredicate(
-        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.PredicateContext
-            context) {
+        final SubscriptionColumnFilterParser.PredicateContext context) {
       if (Objects.nonNull(context.booleanValue())) {
         return visit(context.booleanValue());
       }
@@ -228,8 +235,7 @@ public class ColumnFilterParser {
       }
       if (Objects.nonNull(context.IN())) {
         final List<Expression> values = new ArrayList<>();
-        for (final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.StringContext
-            string : context.string()) {
+        for (final SubscriptionColumnFilterParser.StringContext string : context.string()) {
           values.add(toStringLiteral(string));
         }
         return maybeNegate(
@@ -254,13 +260,12 @@ public class ColumnFilterParser {
         return maybeNegate(new IsNullPredicate(field), Objects.nonNull(context.NOT()));
       }
 
-      throw new IllegalArgumentException("unsupported column-filter predicate");
+      throw new IllegalArgumentException(DataNodeMiscMessages.UNSUPPORTED_COLUMN_FILTER_PREDICATE);
     }
 
     @Override
     public Expression visitBooleanValue(
-        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.BooleanValueContext
-            context) {
+        final SubscriptionColumnFilterParser.BooleanValueContext context) {
       return Objects.nonNull(context.TRUE())
           ? BooleanLiteral.TRUE_LITERAL
           : BooleanLiteral.FALSE_LITERAL;
@@ -271,7 +276,7 @@ public class ColumnFilterParser {
     }
 
     private static Identifier toIdentifier(
-        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.FieldContext context) {
+        final SubscriptionColumnFilterParser.FieldContext context) {
       final TerminalNode quoted = context.QUOTED_IDENTIFIER();
       if (Objects.nonNull(quoted)) {
         return new Identifier(unquote(quoted.getText()), true);
@@ -280,7 +285,7 @@ public class ColumnFilterParser {
     }
 
     private static StringLiteral toStringLiteral(
-        final org.apache.iotdb.db.relational.grammar.sql.ColumnFilterParser.StringContext context) {
+        final SubscriptionColumnFilterParser.StringContext context) {
       return new StringLiteral(unquote(context.QUOTED_IDENTIFIER().getText()));
     }
 

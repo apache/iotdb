@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.subscription.columnfilter.ColumnMetadata;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -48,7 +49,8 @@ public class ColumnFilterEvaluator implements CommonQueryAstVisitor<Boolean, Col
   @Override
   public Boolean visitNode(final Node node, final ColumnMetadata context) {
     throw new IllegalArgumentException(
-        "unsupported expression: " + node.getClass().getSimpleName());
+        String.format(
+            DataNodeMiscMessages.UNSUPPORTED_EXPRESSION_FMT, node.getClass().getSimpleName()));
   }
 
   @Override
@@ -129,7 +131,7 @@ public class ColumnFilterEvaluator implements CommonQueryAstVisitor<Boolean, Col
     } else if (escape.length() == 1) {
       escapeChar = escape.charAt(0);
     } else {
-      throw new IllegalArgumentException("LIKE escape must be a single character");
+      throw new IllegalArgumentException(DataNodeMiscMessages.LIKE_ESCAPE_MUST_BE_SINGLE_CHARACTER);
     }
 
     final StringBuilder regex = new StringBuilder();
@@ -150,7 +152,8 @@ public class ColumnFilterEvaluator implements CommonQueryAstVisitor<Boolean, Col
       escaping = false;
     }
     if (escaping) {
-      throw new IllegalArgumentException("LIKE pattern ends with escape character");
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages.LIKE_PATTERN_ENDS_WITH_ESCAPE_CHARACTER);
     }
     return Pattern.compile(regex.toString(), Pattern.CASE_INSENSITIVE);
   }
@@ -169,7 +172,8 @@ public class ColumnFilterEvaluator implements CommonQueryAstVisitor<Boolean, Col
         return metadata.getCategory();
       default:
         throw new IllegalArgumentException(
-            "unsupported column metadata field: " + field.getValue());
+            String.format(
+                DataNodeMiscMessages.UNSUPPORTED_COLUMN_METADATA_FIELD_FMT, field.getValue()));
     }
   }
 
