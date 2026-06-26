@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -82,11 +83,6 @@ import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetri
 public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAnalyzer.class);
-
-  private static final String MISSING_SCHEMA_MESSAGE =
-      "does not exist in IoTDB and can not be created";
-  private static final String AUTO_CREATE_SCHEMA_HINT_MESSAGE =
-      "Please check weather auto-create-schema is enabled";
 
   private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
       LoadTsFileCostMetricsSet.getInstance();
@@ -227,8 +223,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       executeTabletConversionOnException(analysis, e);
       return analysis;
     } catch (Exception e) {
-      if (isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
-        setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, e);
+      if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
         return analysis;
       }
       final String exceptionMessage =
@@ -355,8 +350,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 "The file %s is not a valid tsfile. Please check the input file.",
                 tsFile.getPath()));
       } catch (Exception e) {
-        if (isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
-          setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, e);
+        if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
           return false;
         }
         final String exceptionMessage =
@@ -698,7 +692,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final IAnalysis analysis, final Throwable throwable) {
     final String exceptionMessage =
         String.format(
-            "Pipe generated LoadTsFile is waiting for schema metadata to be transferred. Detail: %s",
+            DataNodeQueryMessages.PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA,
             throwable.getMessage() == null
                 ? throwable.getClass().getName()
                 : throwable.getMessage());
@@ -710,8 +704,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private void executeTabletConversionOnException(
       final IAnalysis analysis, final LoadAnalyzeException e) {
-    if (isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
-      setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, e);
+    if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
       return;
     }
 
@@ -796,6 +789,21 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     setRealStatement(analysis);
   }
 
+  private boolean setTemporaryUnavailableStatusIfNecessary(
+      final IAnalysis analysis, final Throwable throwable) {
+    if (isTemporaryUnavailableDueToPipeSchemaNotReady(throwable)) {
+      setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, throwable);
+      return true;
+    }
+    if (isGeneratedByPipe && LoadTsFileDataTypeConverter.isMemoryPressureException(throwable)) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(LoadTsFileDataTypeConverter.getMemoryPressureStatus(throwable));
+      setRealStatement(analysis);
+      return true;
+    }
+    return false;
+  }
+
   boolean isTemporaryUnavailableDueToPipeSchemaNotReady(final Throwable throwable) {
     if (!isGeneratedByPipe
         || !isVerifySchema
@@ -805,10 +813,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     Throwable current = throwable;
     while (current != null) {
-      final String message = current.getMessage();
-      if (message != null
-          && message.contains(MISSING_SCHEMA_MESSAGE)
-          && message.contains(AUTO_CREATE_SCHEMA_HINT_MESSAGE)) {
+      if (current instanceof LoadAnalyzeMissingSchemaException) {
         return true;
       }
       current = current.getCause();

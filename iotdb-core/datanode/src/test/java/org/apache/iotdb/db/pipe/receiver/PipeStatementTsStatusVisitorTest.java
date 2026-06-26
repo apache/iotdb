@@ -78,6 +78,18 @@ public class PipeStatementTsStatusVisitorTest {
   }
 
   @Test
+  public void testLoadFileErrorWithMemoryMessageIsNotClassifiedByMessage() throws Exception {
+    Assert.assertEquals(
+        TSStatusCode.LOAD_FILE_ERROR.getStatusCode(),
+        IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR
+            .process(
+                LoadTsFileStatement.createUnchecked("memory-error.tsfile"),
+                new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+                    .setMessage("memory pressure"))
+            .getCode());
+  }
+
+  @Test
   public void testDatabaseNotExistRuntimeExceptionClassification() {
     Assert.assertEquals(
         TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode(),
