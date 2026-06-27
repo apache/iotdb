@@ -82,7 +82,6 @@ import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
 import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
@@ -105,6 +104,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1321,189 +1321,139 @@ public class PartitionManager {
   /**
    * Called by {@link PartitionManager#regionMaintainer}.
    *
-   * <p>Periodically maintain the RegionReplicas to be created or deleted
+   * <p>Periodically recreate the failed RegionReplicas offered to the RegionMaintainer queue.
+   * Region deletion is owned by {@code RemoveRegionGroupProcedure} and is no longer handled here.
    */
   public void maintainRegionReplicas() {
     // The consensusManager of configManager may not be fully initialized at this time
-    Optional.ofNullable(getConsensusManager())
-        .ifPresent(
-            consensusManager -> {
-              if (getConsensusManager().isLeader()) {
-                List<RegionMaintainTask> regionMaintainTaskList =
-                    partitionInfo.getRegionMaintainEntryList();
+    if (getConsensusManager() == null || !getConsensusManager().isLeader()) {
+      return;
+    }
 
-                if (regionMaintainTaskList.isEmpty()) {
-                  return;
-                }
+    // Group the queued tasks into one FIFO sub-queue per region. The queue only ever holds
+    // RegionCreateTasks now (delete tasks are filtered out at the PartitionInfo ingestion points),
+    // and a region may carry several of them when more than one of its replicas failed to create.
+    final Map<TConsensusGroupId, Queue<RegionCreateTask>> tasksByRegion = new HashMap<>();
+    for (RegionMaintainTask task : partitionInfo.getRegionMaintainEntryList()) {
+      if (!(task instanceof RegionCreateTask)) {
+        // Unreachable: the queue only holds create tasks now (legacy delete tasks are dropped at
+        // the
+        // PartitionInfo ingestion points). Guard against a regression so an unexpected task type
+        // cannot silently stall the loop.
+        LOGGER.warn(ManagerMessages.UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED);
+        continue;
+      }
+      tasksByRegion
+          .computeIfAbsent(task.getRegionId(), k -> new LinkedList<>())
+          .add((RegionCreateTask) task);
+    }
 
-                // Group tasks by region id
-                Map<TConsensusGroupId, Queue<RegionMaintainTask>> regionMaintainTaskMap =
-                    new HashMap<>();
-                for (RegionMaintainTask regionMaintainTask : regionMaintainTaskList) {
-                  regionMaintainTaskMap
-                      .computeIfAbsent(regionMaintainTask.getRegionId(), k -> new LinkedList<>())
-                      .add(regionMaintainTask);
-                }
+    // Drain the sub-queues head-by-head. Each round takes the head of every region, batches those
+    // heads by region type into a single create RPC per type, then durably polls the tasks that
+    // succeeded. Tasks of the same region are advanced one at a time to preserve their offer order.
+    while (!tasksByRegion.isEmpty()) {
+      final Map<TConsensusGroupType, List<RegionCreateTask>> headsByType =
+          new EnumMap<>(TConsensusGroupType.class);
+      for (Queue<RegionCreateTask> queue : tasksByRegion.values()) {
+        final RegionCreateTask head = queue.peek();
+        headsByType.computeIfAbsent(head.getRegionId().getType(), k -> new ArrayList<>()).add(head);
+      }
 
-                while (!regionMaintainTaskMap.isEmpty()) {
-                  // Select same type task from each region group
-                  List<RegionMaintainTask> selectedRegionMaintainTask = new ArrayList<>();
-                  RegionMaintainType currentType = null;
-                  for (Map.Entry<TConsensusGroupId, Queue<RegionMaintainTask>> entry :
-                      regionMaintainTaskMap.entrySet()) {
-                    RegionMaintainTask regionMaintainTask = entry.getValue().peek();
-                    if (regionMaintainTask == null) {
-                      continue;
-                    }
+      final Set<TConsensusGroupId> successfulRegions = new HashSet<>();
+      int selectedCount = 0;
+      for (Map.Entry<TConsensusGroupType, List<RegionCreateTask>> entry : headsByType.entrySet()) {
+        selectedCount += entry.getValue().size();
+        successfulRegions.addAll(submitRegionCreateTasks(entry.getKey(), entry.getValue()));
+      }
 
-                    if (currentType == null) {
-                      currentType = regionMaintainTask.getType();
-                      selectedRegionMaintainTask.add(entry.getValue().peek());
-                    } else {
-                      if (!currentType.equals(regionMaintainTask.getType())) {
-                        continue;
-                      }
+      if (successfulRegions.isEmpty()) {
+        break;
+      }
 
-                      if (entry
-                          .getKey()
-                          .getType()
-                          .equals(selectedRegionMaintainTask.get(0).getRegionId().getType())) {
-                        // Batch create tasks of the same region type together
-                        selectedRegionMaintainTask.add(entry.getValue().peek());
-                      }
-                    }
-                  }
-
-                  if (selectedRegionMaintainTask.isEmpty()) {
-                    break;
-                  }
-
-                  Set<TConsensusGroupId> successfulTask = new HashSet<>();
-                  switch (currentType) {
-                    case CREATE:
-                      // create region
-                      switch (selectedRegionMaintainTask.get(0).getRegionId().getType()) {
-                        case SchemaRegion:
-                          // create SchemaRegion
-                          DataNodeAsyncRequestContext<TCreateSchemaRegionReq, TSStatus>
-                              createSchemaRegionHandler =
-                                  new DataNodeAsyncRequestContext<>(
-                                      CnToDnAsyncRequestType.CREATE_SCHEMA_REGION);
-                          for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
-                            RegionCreateTask schemaRegionCreateTask =
-                                (RegionCreateTask) regionMaintainTask;
-                            LOGGER.info(
-                                ManagerMessages.START_TO_CREATE_REGION_ON_DATANODE,
-                                schemaRegionCreateTask.getRegionReplicaSet().getRegionId(),
-                                schemaRegionCreateTask.getTargetDataNode());
-                            createSchemaRegionHandler.putRequest(
-                                schemaRegionCreateTask.getRegionId().getId(),
-                                new TCreateSchemaRegionReq(
-                                    schemaRegionCreateTask.getRegionReplicaSet(),
-                                    schemaRegionCreateTask.getStorageGroup()));
-                            createSchemaRegionHandler.putNodeLocation(
-                                schemaRegionCreateTask.getRegionId().getId(),
-                                schemaRegionCreateTask.getTargetDataNode());
-                          }
-
-                          CnToDnInternalServiceAsyncRequestManager.getInstance()
-                              .sendAsyncRequestWithRetry(createSchemaRegionHandler);
-
-                          for (Map.Entry<Integer, TSStatus> entry :
-                              createSchemaRegionHandler.getResponseMap().entrySet()) {
-                            if (entry.getValue().getCode()
-                                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                              successfulTask.add(
-                                  new TConsensusGroupId(
-                                      TConsensusGroupType.SchemaRegion, entry.getKey()));
-                            }
-                          }
-                          break;
-                        case DataRegion:
-                          // Create DataRegion
-                          DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus>
-                              createDataRegionHandler =
-                                  new DataNodeAsyncRequestContext<>(
-                                      CnToDnAsyncRequestType.CREATE_DATA_REGION);
-                          for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
-                            RegionCreateTask dataRegionCreateTask =
-                                (RegionCreateTask) regionMaintainTask;
-                            LOGGER.info(
-                                ManagerMessages.START_TO_CREATE_REGION_ON_DATANODE,
-                                dataRegionCreateTask.getRegionReplicaSet().getRegionId(),
-                                dataRegionCreateTask.getTargetDataNode());
-                            createDataRegionHandler.putRequest(
-                                dataRegionCreateTask.getRegionId().getId(),
-                                new TCreateDataRegionReq(
-                                    dataRegionCreateTask.getRegionReplicaSet(),
-                                    dataRegionCreateTask.getStorageGroup()));
-                            createDataRegionHandler.putNodeLocation(
-                                dataRegionCreateTask.getRegionId().getId(),
-                                dataRegionCreateTask.getTargetDataNode());
-                          }
-
-                          CnToDnInternalServiceAsyncRequestManager.getInstance()
-                              .sendAsyncRequestWithRetry(createDataRegionHandler);
-
-                          for (Map.Entry<Integer, TSStatus> entry :
-                              createDataRegionHandler.getResponseMap().entrySet()) {
-                            if (entry.getValue().getCode()
-                                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                              successfulTask.add(
-                                  new TConsensusGroupId(
-                                      TConsensusGroupType.DataRegion, entry.getKey()));
-                            }
-                          }
-                          break;
-                      }
-                      break;
-                    case DELETE:
-                      // Region deletion is no longer driven by the RegionMaintainer queue; it is
-                      // owned by RemoveRegionGroupProcedure. Legacy RegionDeleteTasks (from an
-                      // upgraded snapshot/log) are filtered out at the PartitionInfo ingestion
-                      // points, so this branch is unreachable. Keep it as a defensive guard that
-                      // never sends a delete RPC, so a regression cannot silently stall the loop.
-                      LOGGER.warn(ManagerMessages.UNEXPECTED_LEGACY_REGION_DELETE_TASK_SKIPPED);
-                      break;
-                  }
-
-                  if (successfulTask.isEmpty()) {
-                    break;
-                  }
-
-                  for (TConsensusGroupId regionId : successfulTask) {
-                    regionMaintainTaskMap.compute(
-                        regionId,
-                        (k, v) -> {
-                          if (v == null) {
-                            throw new IllegalStateException();
-                          }
-                          v.poll();
-                          if (v.isEmpty()) {
-                            return null;
-                          } else {
-                            return v;
-                          }
-                        });
-                  }
-
-                  // Poll the head entry if success
-                  try {
-                    getConsensusManager()
-                        .write(new PollSpecificRegionMaintainTaskPlan(successfulTask));
-                  } catch (ConsensusException e) {
-                    LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-                  }
-
-                  if (successfulTask.size() < selectedRegionMaintainTask.size()) {
-                    // Here we just break and wait until next schedule task
-                    // due to all the RegionMaintainEntry should be executed by
-                    // the order of they were offered
-                    break;
-                  }
-                }
-              }
+      // Advance the in-memory sub-queues so the next round picks the following task of each region.
+      for (TConsensusGroupId regionId : successfulRegions) {
+        tasksByRegion.computeIfPresent(
+            regionId,
+            (k, queue) -> {
+              queue.poll();
+              return queue.isEmpty() ? null : queue;
             });
+      }
+
+      // Durably remove the head of every successfully created region from the persisted queue.
+      try {
+        getConsensusManager().write(new PollSpecificRegionMaintainTaskPlan(successfulRegions));
+      } catch (ConsensusException e) {
+        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      }
+
+      if (successfulRegions.size() < selectedCount) {
+        // Some tasks failed this round; stop and retry on the next schedule so that the tasks of
+        // each region keep being executed in the order they were offered.
+        break;
+      }
+    }
+  }
+
+  /**
+   * Send a batched create RPC for the given heads, all of which share the given region type, and
+   * return the ids of the regions whose replica was created successfully.
+   */
+  private Set<TConsensusGroupId> submitRegionCreateTasks(
+      TConsensusGroupType regionType, List<RegionCreateTask> createTasks) {
+    final Set<TConsensusGroupId> successfulRegions = new HashSet<>();
+    switch (regionType) {
+      case SchemaRegion:
+        final DataNodeAsyncRequestContext<TCreateSchemaRegionReq, TSStatus> schemaHandler =
+            new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.CREATE_SCHEMA_REGION);
+        for (RegionCreateTask task : createTasks) {
+          LOGGER.info(
+              ManagerMessages.START_TO_CREATE_REGION_ON_DATANODE,
+              task.getRegionReplicaSet().getRegionId(),
+              task.getTargetDataNode());
+          schemaHandler.putRequest(
+              task.getRegionId().getId(),
+              new TCreateSchemaRegionReq(task.getRegionReplicaSet(), task.getStorageGroup()));
+          schemaHandler.putNodeLocation(task.getRegionId().getId(), task.getTargetDataNode());
+        }
+        CnToDnInternalServiceAsyncRequestManager.getInstance()
+            .sendAsyncRequestWithRetry(schemaHandler);
+        collectSuccessfulRegions(
+            schemaHandler.getResponseMap(), TConsensusGroupType.SchemaRegion, successfulRegions);
+        break;
+      case DataRegion:
+        final DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus> dataHandler =
+            new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.CREATE_DATA_REGION);
+        for (RegionCreateTask task : createTasks) {
+          LOGGER.info(
+              ManagerMessages.START_TO_CREATE_REGION_ON_DATANODE,
+              task.getRegionReplicaSet().getRegionId(),
+              task.getTargetDataNode());
+          dataHandler.putRequest(
+              task.getRegionId().getId(),
+              new TCreateDataRegionReq(task.getRegionReplicaSet(), task.getStorageGroup()));
+          dataHandler.putNodeLocation(task.getRegionId().getId(), task.getTargetDataNode());
+        }
+        CnToDnInternalServiceAsyncRequestManager.getInstance()
+            .sendAsyncRequestWithRetry(dataHandler);
+        collectSuccessfulRegions(
+            dataHandler.getResponseMap(), TConsensusGroupType.DataRegion, successfulRegions);
+        break;
+      default:
+        break;
+    }
+    return successfulRegions;
+  }
+
+  private void collectSuccessfulRegions(
+      Map<Integer, TSStatus> responseMap,
+      TConsensusGroupType regionType,
+      Set<TConsensusGroupId> successfulRegions) {
+    for (Map.Entry<Integer, TSStatus> entry : responseMap.entrySet()) {
+      if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        successfulRegions.add(new TConsensusGroupId(regionType, entry.getKey()));
+      }
+    }
   }
 
   public void startRegionCleaner() {
