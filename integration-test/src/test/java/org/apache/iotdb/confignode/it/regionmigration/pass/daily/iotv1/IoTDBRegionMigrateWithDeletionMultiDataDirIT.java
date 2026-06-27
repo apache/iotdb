@@ -107,25 +107,22 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
           String.format(
               "migrate region %d from %d to %d", dataRegionIdForTest, leaderId, destDataNodeId));
 
-      final int finalDestDataNodeId = destDataNodeId;
+      // Wait until the migration has fully settled: the destination peer has been added AND the
+      // source peer has been removed, so the replica set is exactly {followerId, destDataNodeId}.
+      // Only checking that the destination appeared would race with the still-running
+      // REMOVE_REGION_PEER phase, leaving the source replica transiently in SHOW REGIONS and making
+      // the deletion assertion below query a peer that is being torn down.
+      final Set<Integer> expectedReplicaSet = new HashSet<>();
+      expectedReplicaSet.add(followerId);
+      expectedReplicaSet.add(destDataNodeId);
       Awaitility.await()
           .atMost(10, TimeUnit.MINUTES)
           .pollDelay(1, TimeUnit.SECONDS)
           .pollInterval(2, TimeUnit.SECONDS)
           .untilAsserted(
-              () -> {
-                try (ResultSet showRegions = statement.executeQuery("SHOW REGIONS")) {
-                  boolean migrated = false;
-                  while (showRegions.next()) {
-                    if (showRegions.getInt("RegionId") == dataRegionIdForTest
-                        && showRegions.getInt("DataNodeId") == finalDestDataNodeId) {
-                      migrated = true;
-                      break;
-                    }
-                  }
-                  Assert.assertTrue(migrated);
-                }
-              });
+              () ->
+                  Assert.assertEquals(
+                      expectedReplicaSet, getReplicaDataNodeIds(statement, dataRegionIdForTest)));
 
       assertDeletionVisibleOnAllReplicas(dataRegionIdForTest, 1);
     }

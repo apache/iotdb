@@ -84,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CancelMigrations;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CliActivate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
@@ -701,6 +702,7 @@ public class Coordinator {
         || statement instanceof ShowActivation
         || statement instanceof ShowRegions
         || statement instanceof ShowMigrations
+        || statement instanceof CancelMigrations
         || statement instanceof ShowDataNodes
         || statement instanceof ShowAvailableUrls
         || statement instanceof ShowConfigNodes

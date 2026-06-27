@@ -2875,31 +2875,32 @@ public class ProcedureManager {
   }
 
   /**
-   * Cancel all running region migration procedures. Iterates over all active procedures, finds
-   * unfinished {@link RegionMigrateProcedure} instances, and sets their cancel flag. The actual
-   * cancellation is cooperative �?each procedure checks the flag at the entry of its next state
-   * transition and stops at the earliest safe point.
+   * Cancel all running region migration procedures. Iterates over the same top-level region
+   * operations reported by SHOW MIGRATIONS and sets their cancel flag. The actual cancellation is
+   * cooperative: each procedure checks the flag at safe state transitions.
    *
-   * @return the number of migration procedures that were signalled to cancel
+   * @return the number of region operation procedures that were signalled to cancel
    */
   public int cancelAllMigrations() {
     int cancelledCount = 0;
     for (Procedure<ConfigNodeProcedureEnv> procedure : getExecutor().getProcedures().values()) {
-      if (procedure instanceof RegionMigrateProcedure && !procedure.isFinished()) {
-        RegionMigrateProcedure migrateProc = (RegionMigrateProcedure) procedure;
-        if (!migrateProc.isCancelled()) {
-          migrateProc.cancel();
+      if (procedure instanceof RegionOperationProcedure
+          && !procedure.isFinished()
+          && !isChildOfMigrateOrReconstruct(procedure)) {
+        RegionOperationProcedure<?> regionOperation = (RegionOperationProcedure<?>) procedure;
+        if (!regionOperation.isCancelled()) {
+          regionOperation.cancel();
           cancelledCount++;
           LOGGER.info(
-              "[pid{}][CancelMigrations] cancel signal sent to migration: {} from DataNode {} to {}",
-              migrateProc.getProcId(),
-              migrateProc.getRegionId(),
-              migrateProc.getOriginalDataNode().getDataNodeId(),
-              migrateProc.getDestDataNode().getDataNodeId());
+              "[pid{}][CancelMigrations] cancel signal sent to {} on {}",
+              regionOperation.getProcId(),
+              regionOperation.getClass().getSimpleName(),
+              regionOperation.getRegionId());
         }
       }
     }
-    LOGGER.info("[CancelMigrations] total {} migration(s) signalled to cancel", cancelledCount);
+    LOGGER.info(
+        "[CancelMigrations] total {} region operation(s) signalled to cancel", cancelledCount);
     return cancelledCount;
   }
 }

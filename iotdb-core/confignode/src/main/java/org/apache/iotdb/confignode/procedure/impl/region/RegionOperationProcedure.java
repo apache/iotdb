@@ -27,6 +27,13 @@ public abstract class RegionOperationProcedure<TState>
     extends StateMachineProcedure<ConfigNodeProcedureEnv, TState> {
   TConsensusGroupId regionId;
 
+  /**
+   * Cooperative cancel flag for CANCEL ALL MIGRATIONS. It is intentionally not serialized; after a
+   * ConfigNode restart the user can issue the cancel command again if the procedure is still
+   * running.
+   */
+  private volatile boolean cancelled = false;
+
   public RegionOperationProcedure() {}
 
   public RegionOperationProcedure(TConsensusGroupId regionId) {
@@ -52,6 +59,14 @@ public abstract class RegionOperationProcedure<TState>
   public String getCurrentStateName() {
     TState state = getCurrentState();
     return state != null ? state.toString() : "UNKNOWN";
+  }
+
+  public void cancel() {
+    this.cancelled = true;
+  }
+
+  public boolean isCancelled() {
+    return cancelled;
   }
 
   @Override

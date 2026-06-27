@@ -27,8 +27,10 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.KillPoint.RegionMaintainKillPoints;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -43,6 +45,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DELETE_OLD_REGION_PEER;
@@ -92,6 +95,28 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
     TSStatus tsStatus;
     RegionMaintainHandler handler = env.getRegionMaintainHandler();
     try {
+      if (isCancellationRequested(env)) {
+        switch (state) {
+          case TRANSFER_REGION_LEADER:
+            LOGGER.info(
+                "[pid{}][RemoveRegionPeer] cancelled at state {} before removing {} from "
+                    + "DataNode {}.",
+                getProcId(),
+                state,
+                regionId,
+                targetDataNode.getDataNodeId());
+            return Flow.NO_MORE_STATE;
+          case REMOVE_REGION_PEER:
+            return cancelBeforePeerRemoved(handler, state);
+          default:
+            LOGGER.info(
+                "[pid{}][RemoveRegionPeer] cancel request ignored at state {} because peer removal "
+                    + "is already being cleaned up.",
+                getProcId(),
+                state);
+            break;
+        }
+      }
       switch (state) {
         case TRANSFER_REGION_LEADER:
           handleTransferLeader(handler);
@@ -104,7 +129,13 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
               handler.submitRemoveRegionPeerTask(
                   this.getProcId(), targetDataNode, regionId, coordinator);
           setKillPoint(state);
+          if (isCancellationRequested(env)) {
+            return cancelBeforePeerRemoved(handler, state);
+          }
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
+            if (isCancellationRequested(env)) {
+              return cancelBeforePeerRemoved(handler, state);
+            }
             LOGGER.warn(
                 ProcedureMessages
                     .PID_REMOVEREGION_TASK_SUBMITTED_FAILED_CONFIGNODE_BELIEVE_CURRENT_PEER_LIST,
@@ -116,8 +147,15 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
             return Flow.HAS_MORE_STATE;
           }
           TRegionMigrateResult removeRegionPeerResult =
-              handler.waitTaskFinish(this.getProcId(), coordinator);
+              handler.waitTaskFinish(
+                  this.getProcId(),
+                  coordinator,
+                  buildCancelChecker(env),
+                  RegionMaintainKillPoints.WAIT_TASK_FINISH_POLLING);
           if (removeRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
+            if (isCancellationRequested(env)) {
+              return cancelBeforePeerRemoved(handler, state);
+            }
             LOGGER.warn(
                 ProcedureMessages
                     .PID_REMOVEREGION_EXECUTED_FAILED_CONFIGNODE_BELIEVE_CURRENT_PEER_LIST_OF,
@@ -215,6 +253,39 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
     }
     LOGGER.info(ProcedureMessages.PID_REMOVEREGION_STATE_SUCCESS, getProcId(), state);
     return Flow.HAS_MORE_STATE;
+  }
+
+  private Flow cancelBeforePeerRemoved(RegionMaintainHandler handler, RemoveRegionPeerState state) {
+    handler.forceUpdateRegionCache(regionId, targetDataNode, RegionStatus.Running);
+    LOGGER.info(
+        "[pid{}][RemoveRegionPeer] cancelled at state {} before removing {} from DataNode {}.",
+        getProcId(),
+        state,
+        regionId,
+        targetDataNode.getDataNodeId());
+    return Flow.NO_MORE_STATE;
+  }
+
+  private BooleanSupplier buildCancelChecker(ConfigNodeProcedureEnv env) {
+    return () -> isCancellationRequested(env);
+  }
+
+  private boolean isCancellationRequested(ConfigNodeProcedureEnv env) {
+    if (isCancelled()) {
+      return true;
+    }
+    if (hasParent()) {
+      Procedure<ConfigNodeProcedureEnv> parent =
+          env.getConfigManager()
+              .getProcedureManager()
+              .getExecutor()
+              .getProcedures()
+              .get(getParentProcId());
+      if (parent instanceof ReconstructRegionProcedure reconstructRegionProcedure) {
+        return reconstructRegionProcedure.shouldCancelRemoveRegionPeer();
+      }
+    }
+    return false;
   }
 
   @Override

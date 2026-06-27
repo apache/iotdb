@@ -83,6 +83,25 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
     }
     RegionMaintainHandler handler = env.getRegionMaintainHandler();
     try {
+      if (isCancellationRequested(env)) {
+        switch (state) {
+          case CREATE_NEW_REGION_PEER:
+            LOGGER.info(
+                "[pid{}][AddRegionPeer] cancelled at state {} before adding {} to DataNode {}.",
+                getProcId(),
+                state,
+                regionId,
+                simplifiedLocation(targetDataNode));
+            return Flow.NO_MORE_STATE;
+          case CREATE_CONSENSUS_PIPES:
+          case DO_ADD_REGION_PEER:
+          case UPDATE_REGION_LOCATION_CACHE:
+            return warnAndRollBackAndNoMoreState(
+                env, handler, String.format("%s cancelled before completion", state));
+          default:
+            break;
+        }
+      }
       outerSwitch:
       switch (state) {
         case CREATE_NEW_REGION_PEER:
@@ -123,6 +142,10 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
             if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
               return warnAndRollBackAndNoMoreState(
                   env, handler, "submit DO_ADD_REGION_PEER task fail");
+            }
+            if (isCancellationRequested(env)) {
+              return warnAndRollBackAndNoMoreState(
+                  env, handler, String.format("%s cancelled after task submission", state));
             }
           }
           // Build cancel checker: if this AddRegionPeerProcedure is a child of
@@ -190,11 +213,19 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
   }
 
   /**
-   * Build a cancel checker for the waitTaskFinish polling loop. If this procedure is a child of
-   * {@link RegionMigrateProcedure}, returns its {@code isCancelled()} method reference; otherwise
-   * returns a no-op supplier that always returns false.
+   * Build a cancel checker for the waitTaskFinish polling loop. Standalone EXTEND REGION checks its
+   * own cancel flag. A child AddPeer of MIGRATE checks the parent migration's flag. A child AddPeer
+   * of RECONSTRUCT intentionally ignores the parent flag: once reconstruct has removed the old
+   * peer, adding it back is the safer path.
    */
   private BooleanSupplier buildCancelChecker(ConfigNodeProcedureEnv env) {
+    return () -> isCancellationRequested(env);
+  }
+
+  private boolean isCancellationRequested(ConfigNodeProcedureEnv env) {
+    if (isCancelled()) {
+      return true;
+    }
     if (hasParent()) {
       Procedure<ConfigNodeProcedureEnv> parent =
           env.getConfigManager()
@@ -203,10 +234,10 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
               .getProcedures()
               .get(getParentProcId());
       if (parent instanceof RegionMigrateProcedure) {
-        return ((RegionMigrateProcedure) parent)::isCancelled;
+        return ((RegionMigrateProcedure) parent).isCancelled();
       }
     }
-    return () -> false;
+    return false;
   }
 
   private Flow warnAndRollBackAndNoMoreState(

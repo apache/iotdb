@@ -53,13 +53,6 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
   private TDataNodeLocation coordinatorForAddPeer;
   private TDataNodeLocation coordinatorForRemovePeer;
 
-  /**
-   * Cancel flag for graceful cancellation. When set to true, the procedure will stop at the
-   * earliest safe point. This flag is NOT persisted — after ConfigNode restart, recovered
-   * procedures resume normally and the user can re-issue CANCEL ALL MIGRATIONS if needed.
-   */
-  private volatile boolean cancelled = false;
-
   public RegionMigrateProcedure() {
     super();
   }
@@ -144,7 +137,7 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
     //           continues to REMOVE_REGION_PEER (migration nearly done, let it finish).
     //   REMOVE_REGION_PEER / CHECK_REMOVE_REGION_PEER — migration is nearly done,
     //       ignore the cancel and let it finish.
-    if (cancelled) {
+    if (isCancelled()) {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
         case ADD_REGION_PEER:
@@ -313,20 +306,6 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
   @Override
   public int hashCode() {
     return Objects.hash(this.originalDataNode, this.destDataNode, this.regionId);
-  }
-
-  /**
-   * Request cancellation of this migration procedure. The cancellation is cooperative — the
-   * procedure will stop at the next safe point in its state machine. If the procedure has already
-   * passed the REMOVE_REGION_PEER state, the cancel request is ignored and the migration completes.
-   */
-  public void cancel() {
-    this.cancelled = true;
-  }
-
-  /** Returns true if cancellation has been requested for this procedure. */
-  public boolean isCancelled() {
-    return cancelled;
   }
 
   public TDataNodeLocation getDestDataNode() {

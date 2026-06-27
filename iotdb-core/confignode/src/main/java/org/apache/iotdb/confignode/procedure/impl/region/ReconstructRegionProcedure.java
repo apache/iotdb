@@ -58,6 +58,22 @@ public class ReconstructRegionProcedure extends RegionOperationProcedure<Reconst
   protected Flow executeFromState(ConfigNodeProcedureEnv env, ReconstructRegionState state)
       throws InterruptedException {
     try {
+      if (isCancelled()) {
+        switch (state) {
+          case RECONSTRUCT_REGION_PREPARE:
+          case REMOVE_REGION_PEER:
+            LOGGER.info(
+                "[pid{}][ReconstructRegion] cancelled at state {} before removing region {} from "
+                    + "DataNode {}.",
+                getProcId(),
+                state,
+                regionId.getId(),
+                targetDataNode.getDataNodeId());
+            return Flow.NO_MORE_STATE;
+          default:
+            break;
+        }
+      }
       switch (state) {
         case RECONSTRUCT_REGION_PREPARE:
           LOGGER.info(
@@ -171,6 +187,13 @@ public class ReconstructRegionProcedure extends RegionOperationProcedure<Reconst
 
   public TDataNodeLocation getCoordinator() {
     return coordinator;
+  }
+
+  public boolean shouldCancelRemoveRegionPeer() {
+    ReconstructRegionState state = getCurrentState();
+    return isCancelled()
+        && state != ReconstructRegionState.ADD_REGION_PEER
+        && state != ReconstructRegionState.CHECK_ADD_REGION_PEER;
   }
 
   @Override
