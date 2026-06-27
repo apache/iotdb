@@ -40,6 +40,8 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 
@@ -150,6 +152,31 @@ public class PartitionInfoTest {
     PartitionInfo partitionInfo1 = new PartitionInfo();
     partitionInfo1.processLoadSnapshot(snapshotDir);
     Assert.assertEquals(partitionInfo, partitionInfo1);
+  }
+
+  @Test
+  public void testLegacyRegionDeleteTasksAreFiltered() throws TException, IOException {
+    // Region deletion is owned by RemoveRegionGroupProcedure; the RegionMaintainer queue only
+    // recreates failed replicas. A legacy RegionDeleteTask (offered by an old version and replayed
+    // from a consensus log, or carried over in a snapshot) must be dropped rather than queued, so
+    // it cannot block the recreation of that region's other replicas.
+
+    // The offer plan mixes two RegionCreateTasks with one legacy RegionDeleteTask.
+    partitionInfo.offerRegionMaintainTasks(generateOfferRegionMaintainTasksPlan());
+
+    // The DELETE task is filtered out at offer time; only the two CREATE tasks remain queued.
+    List<RegionMaintainTask> queuedTasks = partitionInfo.getRegionMaintainEntryList();
+    Assert.assertEquals(2, queuedTasks.size());
+    for (RegionMaintainTask task : queuedTasks) {
+      Assert.assertEquals(RegionMaintainType.CREATE, task.getType());
+    }
+
+    // A snapshot round-trip keeps the CREATE tasks and never resurrects a DELETE task.
+    Assert.assertTrue(partitionInfo.processTakeSnapshot(snapshotDir));
+    PartitionInfo loaded = new PartitionInfo();
+    loaded.processLoadSnapshot(snapshotDir);
+    Assert.assertEquals(partitionInfo, loaded);
+    Assert.assertEquals(2, loaded.getRegionMaintainEntryList().size());
   }
 
   @Test

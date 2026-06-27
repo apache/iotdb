@@ -81,7 +81,6 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
 import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
@@ -1365,12 +1364,11 @@ public class PartitionManager {
                         continue;
                       }
 
-                      if (currentType.equals(RegionMaintainType.DELETE)
-                          || entry
-                              .getKey()
-                              .getType()
-                              .equals(selectedRegionMaintainTask.get(0).getRegionId().getType())) {
-                        // Delete or same create task
+                      if (entry
+                          .getKey()
+                          .getType()
+                          .equals(selectedRegionMaintainTask.get(0).getRegionId().getType())) {
+                        // Batch create tasks of the same region type together
                         selectedRegionMaintainTask.add(entry.getValue().peek());
                       }
                     }
@@ -1460,40 +1458,12 @@ public class PartitionManager {
                       }
                       break;
                     case DELETE:
-                      // delete region
-                      DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> deleteRegionHandler =
-                          new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.DELETE_REGION);
-                      Map<Integer, TConsensusGroupId> regionIdMap = new HashMap<>();
-                      for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
-                        RegionDeleteTask regionDeleteTask = (RegionDeleteTask) regionMaintainTask;
-                        LOGGER.info(
-                            ManagerMessages.START_TO_DELETE_REGION_ON_DATANODE,
-                            regionDeleteTask.getRegionId(),
-                            regionDeleteTask.getTargetDataNode());
-                        deleteRegionHandler.putRequest(
-                            regionDeleteTask.getRegionId().getId(), regionDeleteTask.getRegionId());
-                        deleteRegionHandler.putNodeLocation(
-                            regionDeleteTask.getRegionId().getId(),
-                            regionDeleteTask.getTargetDataNode());
-                        regionIdMap.put(
-                            regionDeleteTask.getRegionId().getId(), regionDeleteTask.getRegionId());
-                      }
-
-                      long startTime = System.currentTimeMillis();
-                      CnToDnInternalServiceAsyncRequestManager.getInstance()
-                          .sendAsyncRequestWithRetry(deleteRegionHandler);
-
-                      LOGGER.info(
-                          ManagerMessages.DELETING_REGIONS_COSTS_MS,
-                          (System.currentTimeMillis() - startTime));
-
-                      for (Map.Entry<Integer, TSStatus> entry :
-                          deleteRegionHandler.getResponseMap().entrySet()) {
-                        if (entry.getValue().getCode()
-                            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                          successfulTask.add(regionIdMap.get(entry.getKey()));
-                        }
-                      }
+                      // Region deletion is no longer driven by the RegionMaintainer queue; it is
+                      // owned by RemoveRegionGroupProcedure. Legacy RegionDeleteTasks (from an
+                      // upgraded snapshot/log) are filtered out at the PartitionInfo ingestion
+                      // points, so this branch is unreachable. Keep it as a defensive guard that
+                      // never sends a delete RPC, so a regression cannot silently stall the loop.
+                      LOGGER.warn(ManagerMessages.UNEXPECTED_LEGACY_REGION_DELETE_TASK_SKIPPED);
                       break;
                   }
 
