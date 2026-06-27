@@ -28,6 +28,7 @@ import org.apache.iotdb.calc.execution.operator.process.function.partition.Parti
 import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
@@ -53,6 +54,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 // only one input source is supported now
 public class TableFunctionOperator implements ProcessOperator {
 
@@ -72,6 +75,7 @@ public class TableFunctionOperator implements ProcessOperator {
   private final PartitionCache partitionCache;
   private final boolean requireRecordSnapshot;
   private final boolean isDeclaredAsPassThrough;
+  private final IoTDBLocal ioTDBLocal;
 
   private TableFunctionDataProcessor processor;
   private PartitionState partitionState;
@@ -91,7 +95,9 @@ public class TableFunctionOperator implements ProcessOperator {
       List<Integer> passThroughChannels,
       boolean isDeclaredAsPassThrough,
       List<Integer> partitionChannels,
-      boolean requireRecordSnapshot) {
+      boolean requireRecordSnapshot,
+      IoTDBLocal ioTDBLocal) {
+    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for table function");
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.properChannelCount = properChannelCount;
@@ -106,6 +112,7 @@ public class TableFunctionOperator implements ProcessOperator {
     this.partitionCache = new PartitionCache();
     this.resultTsBlocks = new LinkedList<>();
     this.requireRecordSnapshot = requireRecordSnapshot;
+    this.ioTDBLocal = ioTDBLocal;
   }
 
   @Override
@@ -159,7 +166,7 @@ public class TableFunctionOperator implements ProcessOperator {
       ColumnBuilder passThroughIndexBuilder = getPassThroughIndexBuilder();
       if (stateType == PartitionState.StateType.FINISHED) {
         if (processor != null) {
-          processor.finish(properColumnBuilders, passThroughIndexBuilder);
+          processor.finish(properColumnBuilders, passThroughIndexBuilder, ioTDBLocal);
         }
         finished = true;
         resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
@@ -170,21 +177,22 @@ public class TableFunctionOperator implements ProcessOperator {
       if (stateType == PartitionState.StateType.NEW_PARTITION) {
         if (processor != null) {
           // previous partition state has not finished consuming yet
-          processor.finish(properColumnBuilders, passThroughIndexBuilder);
+          processor.finish(properColumnBuilders, passThroughIndexBuilder, ioTDBLocal);
           resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
           partitionCache.clear();
-          processor.beforeDestroy();
+          destroyProcessor(processor);
           processor = null;
           return resultTsBlocks.poll();
         } else {
           processor = processorProvider.getDataProcessor();
-          processor.beforeStart();
+          processor.beforeStart(ioTDBLocal);
         }
       }
       partitionCache.addSlice(slice);
       Iterator<Record> recordIterator = slice.getRequiredRecordIterator(requireRecordSnapshot);
       while (recordIterator.hasNext()) {
-        processor.process(recordIterator.next(), properColumnBuilders, passThroughIndexBuilder);
+        processor.process(
+            recordIterator.next(), properColumnBuilders, passThroughIndexBuilder, ioTDBLocal);
       }
       consumeCurrentPartitionState();
       resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
@@ -251,6 +259,10 @@ public class TableFunctionOperator implements ProcessOperator {
     isBlocked = null;
   }
 
+  private void destroyProcessor(TableFunctionDataProcessor dataProcessor) {
+    dataProcessor.beforeDestroy(ioTDBLocal);
+  }
+
   @Override
   public boolean hasNext() throws Exception {
     return !finished || !resultTsBlocks.isEmpty();
@@ -261,8 +273,10 @@ public class TableFunctionOperator implements ProcessOperator {
     partitionCache.close();
     inputOperator.close();
     if (processor != null) {
-      processor.beforeDestroy();
+      destroyProcessor(processor);
+      processor = null;
     }
+    ioTDBLocal.close();
   }
 
   @Override

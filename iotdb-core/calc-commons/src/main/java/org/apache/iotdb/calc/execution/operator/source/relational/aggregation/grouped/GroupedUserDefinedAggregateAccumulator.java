@@ -24,7 +24,11 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ma
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.ObjectBigArray;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.State;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
@@ -41,20 +45,42 @@ import java.util.Arrays;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.rpc.TSStatusCode.EXECUTE_UDF_ERROR;
 
 public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedUserDefinedAggregateAccumulator.class);
   private final AggregateFunction aggregateFunction;
+  private final FunctionArguments functionArguments;
   private final ObjectBigArray<State> stateArray;
   private final List<Type> inputDataTypes;
+  private final IoTDBLocal ioTDBLocal;
+  private boolean init = false;
 
   public GroupedUserDefinedAggregateAccumulator(
-      AggregateFunction aggregateFunction, List<Type> inputDataTypes) {
+      AggregateFunction aggregateFunction,
+      FunctionArguments functionArguments,
+      List<Type> inputDataTypes,
+      IoTDBLocal ioTDBLocal) {
+    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for UDAF");
     this.aggregateFunction = aggregateFunction;
+    this.functionArguments = functionArguments;
     this.stateArray = new ObjectBigArray<>();
     this.inputDataTypes = inputDataTypes;
+    this.ioTDBLocal = ioTDBLocal;
+  }
+
+  private void initIfNeeded() {
+    if (init) {
+      return;
+    }
+    try {
+      aggregateFunction.beforeStart(functionArguments, ioTDBLocal);
+      init = true;
+    } catch (UDFException e) {
+      throw new IoTDBRuntimeException(e, EXECUTE_UDF_ERROR.getStatusCode());
+    }
   }
 
   @Override
@@ -78,6 +104,7 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
+    initIfNeeded();
     RecordIterator iterator =
         mask.isSelectAll()
             ? new RecordIterator(
@@ -90,7 +117,7 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
         int groupId = groupIds[index];
         index++;
         State state = getOrCreateState(groupId);
-        aggregateFunction.addInput(state, iterator.next());
+        aggregateFunction.addInput(state, iterator.next(), ioTDBLocal);
       }
     } else {
       int[] selectedPositions = mask.getSelectedPositions();
@@ -98,13 +125,14 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
         int groupId = groupIds[selectedPositions[index]];
         index++;
         State state = getOrCreateState(groupId);
-        aggregateFunction.addInput(state, iterator.next());
+        aggregateFunction.addInput(state, iterator.next(), ioTDBLocal);
       }
     }
   }
 
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
+    initIfNeeded();
     checkArgument(
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
@@ -116,13 +144,14 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
         State otherState = aggregateFunction.createState();
         Binary otherStateBinary = argument.getBinary(i);
         otherState.deserialize(otherStateBinary.getValues());
-        aggregateFunction.combineState(getOrCreateState(groupIds[i]), otherState);
+        aggregateFunction.combineState(getOrCreateState(groupIds[i]), otherState, ioTDBLocal);
       }
     }
   }
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
+    initIfNeeded();
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of UDAF should be BinaryColumn");
@@ -136,8 +165,9 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
+    initIfNeeded();
     ResultValue resultValue = new ResultValue(columnBuilder);
-    aggregateFunction.outputFinal(getOrCreateState(groupId), resultValue);
+    aggregateFunction.outputFinal(getOrCreateState(groupId), resultValue, ioTDBLocal);
   }
 
   @Override
@@ -152,7 +182,9 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
 
   @Override
   public void close() {
-    aggregateFunction.beforeDestroy();
+    initIfNeeded();
+    aggregateFunction.beforeDestroy(ioTDBLocal);
+    ioTDBLocal.close();
     stateArray.forEach(
         state -> {
           if (state != null) {

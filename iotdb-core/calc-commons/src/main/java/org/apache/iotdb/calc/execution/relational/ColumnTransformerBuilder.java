@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.relational;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.IoTDBLocalFactory;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
@@ -1525,11 +1526,10 @@ public class ColumnTransformerBuilder
                     .collect(Collectors.toList()),
                 Collections.emptyMap());
         ScalarFunctionAnalysis analysis = scalarFunction.analyze(parameters);
-        scalarFunction.beforeStart(parameters);
         Type returnType =
             UDFDataTypeTransformer.transformUDFDataTypeToReadType(analysis.getOutputDataType());
         return new UserDefineScalarFunctionTransformer(
-            returnType, scalarFunction, childrenColumnTransformer);
+            returnType, scalarFunction, childrenColumnTransformer, parameters, context);
       }
     }
     throw new IllegalArgumentException(
@@ -1990,6 +1990,14 @@ public class ColumnTransformerBuilder
     @SuppressWarnings("unused")
     private final Optional<MemoryReservationManager> memoryReservationManager;
 
+    private final String fragmentInstanceId;
+
+    private final String outerGlobalQueryId;
+
+    private final long outerQueryDeadlineMs;
+
+    @Nullable private final IoTDBLocalFactory ioTDBLocalFactory;
+
     public Context(
         SessionInfo sessionInfo,
         List<LeafColumnTransformer> leafList,
@@ -2002,6 +2010,40 @@ public class ColumnTransformerBuilder
         ITableTypeProvider typeProvider,
         ITypeMetadata metadata,
         @Nullable MemoryReservationManager memoryReservationManager) {
+      this(
+          sessionInfo,
+          leafList,
+          inputLocations,
+          cache,
+          hasSeen,
+          commonTransformerList,
+          inputDataTypes,
+          originSize,
+          typeProvider,
+          metadata,
+          memoryReservationManager,
+          null,
+          null,
+          -1L,
+          null);
+    }
+
+    public Context(
+        SessionInfo sessionInfo,
+        List<LeafColumnTransformer> leafList,
+        Map<Symbol, List<InputLocation>> inputLocations,
+        Map<Expression, ColumnTransformer> cache,
+        Map<Expression, ColumnTransformer> hasSeen,
+        List<ColumnTransformer> commonTransformerList,
+        List<TSDataType> inputDataTypes,
+        int originSize,
+        ITableTypeProvider typeProvider,
+        ITypeMetadata metadata,
+        @Nullable MemoryReservationManager memoryReservationManager,
+        String fragmentInstanceId,
+        String outerGlobalQueryId,
+        long outerQueryDeadlineMs,
+        @Nullable IoTDBLocalFactory ioTDBLocalFactory) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
       this.inputLocations = inputLocations;
@@ -2013,6 +2055,31 @@ public class ColumnTransformerBuilder
       this.typeProvider = typeProvider;
       this.metadata = metadata;
       this.memoryReservationManager = Optional.ofNullable(memoryReservationManager);
+      this.fragmentInstanceId = fragmentInstanceId;
+      this.outerGlobalQueryId = outerGlobalQueryId;
+      this.outerQueryDeadlineMs = outerQueryDeadlineMs;
+      this.ioTDBLocalFactory = ioTDBLocalFactory;
+    }
+
+    public SessionInfo getSessionInfo() {
+      return sessionInfo;
+    }
+
+    public String getFragmentInstanceId() {
+      return fragmentInstanceId;
+    }
+
+    public String getOuterGlobalQueryId() {
+      return outerGlobalQueryId;
+    }
+
+    public long getOuterQueryDeadlineMs() {
+      return outerQueryDeadlineMs;
+    }
+
+    @Nullable
+    public IoTDBLocalFactory getIoTDBLocalFactory() {
+      return ioTDBLocalFactory;
     }
 
     public Type getType(SymbolReference symbolReference) {

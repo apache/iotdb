@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational;
 
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
@@ -58,6 +59,26 @@ public interface AggregateFunction extends SQLFunction {
     // do nothing
   }
 
+  default void beforeStart(FunctionArguments arguments, IoTDBLocal local) throws UDFException {
+    beforeStart(arguments);
+  }
+
+  /**
+   * Same as {@link #addInput(State, Record)} with access to {@link IoTDBLocal} for embedded
+   * queries.
+   */
+  default void addInput(State state, Record input, IoTDBLocal local) {
+    addInput(state, input);
+  }
+
+  /**
+   * Same as {@link #combineState(State, State)} with access to {@link IoTDBLocal} for embedded
+   * queries.
+   */
+  default void combineState(State state, State rhs, IoTDBLocal local) {
+    combineState(state, rhs);
+  }
+
   /** Create and initialize state. You may bind some resource in this method. */
   State createState();
 
@@ -86,6 +107,14 @@ public interface AggregateFunction extends SQLFunction {
   void outputFinal(State state, ResultValue resultValue);
 
   /**
+   * Same as {@link #outputFinal(State, ResultValue)} with access to {@link IoTDBLocal} for embedded
+   * queries.
+   */
+  default void outputFinal(State state, ResultValue resultValue, IoTDBLocal local) {
+    outputFinal(state, resultValue);
+  }
+
+  /**
    * Remove input data from state. This method is used to remove the data points that have been
    * added to the state. Once it is implemented, {@linkplain
    * AggregateFunctionAnalysis.Builder#removable(boolean)} should be set to true.
@@ -100,5 +129,9 @@ public interface AggregateFunction extends SQLFunction {
   /** This method is mainly used to release the resources used in the SQLFunction. */
   default void beforeDestroy() {
     // do nothing
+  }
+
+  default void beforeDestroy(IoTDBLocal local) {
+    beforeDestroy();
   }
 }

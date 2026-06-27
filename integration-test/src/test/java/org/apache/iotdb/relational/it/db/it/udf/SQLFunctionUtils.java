@@ -41,7 +41,6 @@ public class SQLFunctionUtils {
   public static void createUDF(String udfName, String classPath) {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-      // create
       statement.execute(String.format("create function %s as '%s'", udfName, classPath));
       // check
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
