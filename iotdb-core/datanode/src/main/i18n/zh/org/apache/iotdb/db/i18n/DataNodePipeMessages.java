@@ -124,6 +124,8 @@ public final class DataNodePipeMessages {
       "减少 reference count for event {} in PipeRealtimePriorityBlockingQueue 失败";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "获取 PendingQueue. No such subtask:  失败";
+  public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
+      "从 ConfigNode 获取 pipe 信息失败，状态为 %s。";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
       "获取 pipe metas, will be synced by configNode later 失败。";
   public static final String FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM =
