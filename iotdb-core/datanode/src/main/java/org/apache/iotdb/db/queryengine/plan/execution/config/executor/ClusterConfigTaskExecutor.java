@@ -3635,7 +3635,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TMigrateRegionReq tMigrateRegionReq =
           new TMigrateRegionReq(
-              migrateRegionTask.getStatement().getRegionId(),
+              migrateRegionTask.getStatement().getRegionIds(),
               migrateRegionTask.getStatement().getFromId(),
               migrateRegionTask.getStatement().getToId(),
               migrateRegionTask.getModel());
