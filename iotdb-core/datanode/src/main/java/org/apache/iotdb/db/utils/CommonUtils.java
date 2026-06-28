@@ -363,7 +363,22 @@ public class CommonUtils {
    * @return whether the given time falls in ttl
    */
   public static boolean isAlive(long time, long dataTTL) {
-    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || time >= getTTLLowerBound(dataTTL);
+  }
+
+  public static long getTTLLowerBound(long dataTTL) {
+    if (dataTTL == Long.MAX_VALUE) {
+      return Long.MIN_VALUE;
+    }
+
+    long currentTime = CommonDateTimeUtils.currentTime();
+    if (dataTTL >= 0 && currentTime < Long.MIN_VALUE + dataTTL) {
+      return Long.MIN_VALUE;
+    }
+    if (dataTTL < 0 && currentTime > Long.MAX_VALUE + dataTTL) {
+      return Long.MAX_VALUE;
+    }
+    return currentTime - dataTTL;
   }
 
   public static Object createValueColumnOfDataType(

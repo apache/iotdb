@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
@@ -52,6 +53,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class AnalyzeUtilsTest {
@@ -71,6 +73,57 @@ public class AnalyzeUtilsTest {
     assertEquals(1, entries.size());
     assertEquals(Long.MIN_VALUE, entries.get(0).getStartTime());
     assertEquals(100, entries.get(0).getEndTime());
+  }
+
+  @Test
+  public void testParseDeleteTimePredicateWithBoundary() {
+    TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+
+    Expression expression =
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Identifier("time"),
+            new LongLiteral(String.valueOf(Long.MAX_VALUE - 1)));
+    List<TableDeletionEntry> entries = AnalyzeUtils.parseExpressions2ModEntries(expression, table);
+    assertEquals(1, entries.size());
+    assertEquals(Long.MAX_VALUE, entries.get(0).getStartTime());
+    assertEquals(Long.MAX_VALUE, entries.get(0).getEndTime());
+
+    expression =
+        new ComparisonExpression(
+            ComparisonExpression.Operator.LESS_THAN,
+            new Identifier("time"),
+            new LongLiteral(String.valueOf(Long.MIN_VALUE + 1)));
+    entries = AnalyzeUtils.parseExpressions2ModEntries(expression, table);
+    assertEquals(1, entries.size());
+    assertEquals(Long.MIN_VALUE, entries.get(0).getStartTime());
+    assertEquals(Long.MIN_VALUE, entries.get(0).getEndTime());
+  }
+
+  @Test
+  public void testParseDeleteTimePredicateWithEmptyBoundary() {
+    TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+
+    assertThrows(
+        SemanticException.class,
+        () ->
+            AnalyzeUtils.parseExpressions2ModEntries(
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.GREATER_THAN,
+                    new Identifier("time"),
+                    new LongLiteral(String.valueOf(Long.MAX_VALUE))),
+                table));
+    assertThrows(
+        SemanticException.class,
+        () ->
+            AnalyzeUtils.parseExpressions2ModEntries(
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.LESS_THAN,
+                    new Identifier("time"),
+                    new LongLiteral(String.valueOf(Long.MIN_VALUE))),
+                table));
   }
 
   @Test

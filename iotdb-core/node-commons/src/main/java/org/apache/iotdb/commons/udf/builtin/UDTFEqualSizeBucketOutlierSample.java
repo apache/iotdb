@@ -185,7 +185,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
 
       double A = (double) row0y - row1y;
       double B = (double) row1x - row0x;
-      double C = (double) row0x * row1y - row1x * row0y;
+      double C = (double) row0x * row1y - (double) row1x * row0y;
       double denominator = Math.sqrt(A * A + B * B);
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -215,7 +215,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
 
       double A = (double) row0y - row1y;
       double B = (double) row1x - row0x;
-      double C = (double) row0x * row1y - row1x * row0y;
+      double C = (double) row0x * row1y - (double) row1x * row0y;
       double denominator = Math.sqrt(A * A + B * B);
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -245,7 +245,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
 
       double A = (double) row0y - row1y;
       double B = (double) row1x - row0x;
-      double C = (double) row0x * row1y - row1x * row0y;
+      double C = (double) row0x * row1y - (double) row1x * row0y;
       double denominator = Math.sqrt(A * A + B * B);
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -275,7 +275,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
 
       double A = row0y - row1y;
       double B = (double) row1x - row0x;
-      double C = row0x * row1y - row1x * row0y;
+      double C = (double) row0x * row1y - (double) row1x * row0y;
       double denominator = Math.sqrt(A * A + B * B);
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -301,8 +301,9 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> -o.right));
 
-      long lastTime, currentTime, nextTime, x1, x2;
-      int lastValue, currentValue, nextValue, y1, y2;
+      long lastTime, currentTime, nextTime;
+      int lastValue, currentValue, nextValue;
+      double x1, x2, y1, y2;
       double value;
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -314,14 +315,12 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getInt(0);
         nextValue = rowWindow.getRow(i + 1).getInt(0);
 
-        x1 = currentTime - lastTime;
-        x2 = nextTime - currentTime;
-        y1 = currentValue - lastValue;
-        y2 = nextValue - currentValue;
+        x1 = timeDifferenceAsDouble(currentTime, lastTime);
+        x2 = timeDifferenceAsDouble(nextTime, currentTime);
+        y1 = (double) currentValue - lastValue;
+        y2 = (double) nextValue - currentValue;
 
-        value =
-            (x1 * x2 + y1 * y2)
-                / (Math.sqrt((double) x1 * x1 + y1 * y1) * Math.sqrt((double) x2 * x2 + y2 * y2));
+        value = (x1 * x2 + y1 * y2) / (Math.sqrt(x1 * x1 + y1 * y1) * Math.sqrt(x2 * x2 + y2 * y2));
 
         addToMaxHeap(pq, i, value);
       }
@@ -341,8 +340,9 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> -o.right));
 
-      long lastTime, currentTime, nextTime, x1, x2;
-      long lastValue, currentValue, nextValue, y1, y2;
+      long lastTime, currentTime, nextTime;
+      long lastValue, currentValue, nextValue;
+      double x1, x2, y1, y2;
       double value;
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -354,14 +354,12 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getLong(0);
         nextValue = rowWindow.getRow(i + 1).getLong(0);
 
-        x1 = currentTime - lastTime;
-        x2 = nextTime - currentTime;
-        y1 = currentValue - lastValue;
-        y2 = nextValue - currentValue;
+        x1 = timeDifferenceAsDouble(currentTime, lastTime);
+        x2 = timeDifferenceAsDouble(nextTime, currentTime);
+        y1 = (double) currentValue - (double) lastValue;
+        y2 = (double) nextValue - (double) currentValue;
 
-        value =
-            (x1 * x2 + y1 * y2)
-                / (Math.sqrt((double) x1 * x1 + y1 * y1) * Math.sqrt((double) x2 * x2 + y2 * y2));
+        value = (x1 * x2 + y1 * y2) / (Math.sqrt(x1 * x1 + y1 * y1) * Math.sqrt(x2 * x2 + y2 * y2));
 
         addToMaxHeap(pq, i, value);
       }
@@ -381,8 +379,9 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> -o.right));
 
-      long lastTime, currentTime, nextTime, x1, x2;
-      float lastValue, currentValue, nextValue, y1, y2;
+      long lastTime, currentTime, nextTime;
+      float lastValue, currentValue, nextValue;
+      double x1, x2, y1, y2;
       double value;
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -394,10 +393,10 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getFloat(0);
         nextValue = rowWindow.getRow(i + 1).getFloat(0);
 
-        x1 = currentTime - lastTime;
-        x2 = nextTime - currentTime;
-        y1 = currentValue - lastValue;
-        y2 = nextValue - currentValue;
+        x1 = timeDifferenceAsDouble(currentTime, lastTime);
+        x2 = timeDifferenceAsDouble(nextTime, currentTime);
+        y1 = (double) currentValue - lastValue;
+        y2 = (double) nextValue - currentValue;
 
         value = (x1 * x2 + y1 * y2) / (Math.sqrt(x1 * x1 + y1 * y1) * Math.sqrt(x2 * x2 + y2 * y2));
 
@@ -419,8 +418,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> -o.right));
 
-      long lastTime, currentTime, nextTime, x1, x2;
-      double lastValue, currentValue, nextValue, y1, y2;
+      long lastTime, currentTime, nextTime;
+      double lastValue, currentValue, nextValue, x1, x2, y1, y2;
       double value;
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -432,8 +431,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getDouble(0);
         nextValue = rowWindow.getRow(i + 1).getDouble(0);
 
-        x1 = currentTime - lastTime;
-        x2 = nextTime - currentTime;
+        x1 = timeDifferenceAsDouble(currentTime, lastTime);
+        x2 = timeDifferenceAsDouble(nextTime, currentTime);
         y1 = currentValue - lastValue;
         y2 = nextValue - currentValue;
 
@@ -458,8 +457,9 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
 
-      long lastTime, currentTime, nextTime, x1, x2;
-      int lastValue, currentValue, nextValue, y1, y2;
+      long lastTime, currentTime, nextTime;
+      int lastValue, currentValue, nextValue;
+      double x1, x2, y1, y2;
       double value;
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -471,10 +471,10 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getInt(0);
         nextValue = rowWindow.getRow(i + 1).getInt(0);
 
-        x1 = Math.abs(currentTime - lastTime);
-        x2 = Math.abs(nextTime - currentTime);
-        y1 = Math.abs(currentValue - lastValue);
-        y2 = Math.abs(nextValue - currentValue);
+        x1 = timeDistanceAsDouble(currentTime, lastTime);
+        x2 = timeDistanceAsDouble(nextTime, currentTime);
+        y1 = Math.abs((double) currentValue - lastValue);
+        y2 = Math.abs((double) nextValue - currentValue);
 
         value = (double) x1 + y1 + x2 + y2;
 
@@ -495,8 +495,9 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
 
-      long lastTime, currentTime, nextTime, x1, x2;
-      long lastValue, currentValue, nextValue, y1, y2;
+      long lastTime, currentTime, nextTime;
+      long lastValue, currentValue, nextValue;
+      double x1, x2, y1, y2;
       double value;
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -508,10 +509,10 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getLong(0);
         nextValue = rowWindow.getRow(i + 1).getLong(0);
 
-        x1 = Math.abs(currentTime - lastTime);
-        x2 = Math.abs(nextTime - currentTime);
-        y1 = Math.abs(currentValue - lastValue);
-        y2 = Math.abs(nextValue - currentValue);
+        x1 = timeDistanceAsDouble(currentTime, lastTime);
+        x2 = timeDistanceAsDouble(nextTime, currentTime);
+        y1 = Math.abs((double) currentValue - (double) lastValue);
+        y2 = Math.abs((double) nextValue - (double) currentValue);
 
         value = (double) x1 + y1 + x2 + y2;
 
@@ -532,8 +533,9 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
 
-      long lastTime, currentTime, nextTime, x1, x2;
-      float lastValue, currentValue, nextValue, y1, y2;
+      long lastTime, currentTime, nextTime;
+      float lastValue, currentValue, nextValue;
+      double x1, x2, y1, y2;
       double value;
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -545,10 +547,10 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getFloat(0);
         nextValue = rowWindow.getRow(i + 1).getFloat(0);
 
-        x1 = Math.abs(currentTime - lastTime);
-        x2 = Math.abs(nextTime - currentTime);
-        y1 = Math.abs(currentValue - lastValue);
-        y2 = Math.abs(nextValue - currentValue);
+        x1 = timeDistanceAsDouble(currentTime, lastTime);
+        x2 = timeDistanceAsDouble(nextTime, currentTime);
+        y1 = Math.abs((double) currentValue - lastValue);
+        y2 = Math.abs((double) nextValue - currentValue);
 
         value = x1 + y1 + x2 + y2;
 
@@ -569,7 +571,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
 
-      long lastTime, currentTime, nextTime, x1, x2;
+      long lastTime, currentTime, nextTime;
+      double x1, x2;
       double lastValue, currentValue, nextValue, y1, y2;
       double value;
 
@@ -582,8 +585,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getDouble(0);
         nextValue = rowWindow.getRow(i + 1).getDouble(0);
 
-        x1 = Math.abs(currentTime - lastTime);
-        x2 = Math.abs(nextTime - currentTime);
+        x1 = timeDistanceAsDouble(currentTime, lastTime);
+        x2 = timeDistanceAsDouble(nextTime, currentTime);
         y1 = Math.abs(currentValue - lastValue);
         y2 = Math.abs(nextValue - currentValue);
 
@@ -844,5 +847,13 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       return true;
     }
     return false;
+  }
+
+  private static double timeDifferenceAsDouble(long left, long right) {
+    return (double) left - (double) right;
+  }
+
+  private static double timeDistanceAsDouble(long left, long right) {
+    return Math.abs(timeDifferenceAsDouble(left, right));
   }
 }

@@ -25,54 +25,56 @@ import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
 import org.apache.iotdb.db.utils.windowing.runtime.WindowEvaluationTask;
 import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
 
+import java.math.BigInteger;
 import java.util.LinkedList;
 import java.util.Queue;
 
 public class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
 
-  private final long timeInterval;
-  private final long slidingStep;
+  private final BigInteger timeInterval;
+  private final BigInteger slidingStep;
 
   private final Queue<Integer> windowBeginIndexQueue;
 
   /** window: [begin, end). */
-  private long currentWindowEndTime;
+  private BigInteger currentWindowEndTime;
 
   /** window: [begin, end). */
-  private long nextWindowBeginTime;
+  private BigInteger nextWindowBeginTime;
 
   public SlidingTimeWindowEvaluationHandler(
       SlidingTimeWindowConfiguration configuration, Evaluator evaluator) throws WindowingException {
     super(configuration, evaluator);
 
-    timeInterval = configuration.getTimeInterval();
-    slidingStep = configuration.getSlidingStep();
+    timeInterval = BigInteger.valueOf(configuration.getTimeInterval());
+    slidingStep = BigInteger.valueOf(configuration.getSlidingStep());
 
     windowBeginIndexQueue = new LinkedList<>();
   }
 
   @Override
   protected void createEvaluationTaskIfNecessary(long timestamp) {
+    BigInteger currentTimestamp = BigInteger.valueOf(timestamp);
     if (data.size() == 1) {
       windowBeginIndexQueue.add(0);
-      currentWindowEndTime = timestamp + timeInterval;
-      nextWindowBeginTime = timestamp + slidingStep;
+      currentWindowEndTime = currentTimestamp.add(timeInterval);
+      nextWindowBeginTime = currentTimestamp.add(slidingStep);
       return;
     }
 
-    while (nextWindowBeginTime <= timestamp) {
+    while (nextWindowBeginTime.compareTo(currentTimestamp) <= 0) {
       windowBeginIndexQueue.add(data.size() - 1);
-      nextWindowBeginTime += slidingStep;
+      nextWindowBeginTime = nextWindowBeginTime.add(slidingStep);
     }
 
-    while (currentWindowEndTime <= timestamp) {
+    while (currentWindowEndTime.compareTo(currentTimestamp) <= 0) {
       int windowBeginIndex = windowBeginIndexQueue.remove();
       TASK_POOL_MANAGER.submit(
           new WindowEvaluationTask(
               evaluator,
               new WindowImpl(data, windowBeginIndex, data.size() - 1 - windowBeginIndex)));
       data.setEvictionUpperBound(windowBeginIndex);
-      currentWindowEndTime += slidingStep;
+      currentWindowEndTime = currentWindowEndTime.add(slidingStep);
     }
   }
 }

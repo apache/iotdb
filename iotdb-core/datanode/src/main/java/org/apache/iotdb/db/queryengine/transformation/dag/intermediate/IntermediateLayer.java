@@ -86,6 +86,17 @@ public abstract class IntermediateLayer {
       StateWindowAccessStrategy strategy, float memoryBudgetInMB)
       throws QueryProcessException, IOException;
 
+  protected static long saturatingAdd(long left, long right) {
+    long result = left + right;
+    if (right > 0 && result < left) {
+      return Long.MAX_VALUE;
+    }
+    if (right < 0 && result > left) {
+      return Long.MIN_VALUE;
+    }
+    return result;
+  }
+
   @Override
   public String toString() {
     return expression.getExpressionString();

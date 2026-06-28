@@ -25,10 +25,14 @@ import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
 import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.math.BigInteger;
 import java.util.Optional;
 import java.util.Set;
 
 public class WindowTVFUtils {
+  private static final BigInteger BIG_LONG_MIN = BigInteger.valueOf(Long.MIN_VALUE);
+  private static final BigInteger BIG_LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
+
   /**
    * Find the index of the column in the table argument.
    *
@@ -53,5 +57,30 @@ public class WindowTVFUtils {
     throw new UDFColumnNotFoundException(
         String.format(
             "Required column [%s] not found in the source table argument.", expectedFieldName));
+  }
+
+  static BigInteger getWindowStart(long source, long origin, long interval) {
+    return getWindowStart(source, origin, interval, BigInteger.ZERO);
+  }
+
+  static BigInteger getWindowStart(
+      long source, long origin, long interval, BigInteger distanceOffset) {
+    BigInteger intervalValue = BigInteger.valueOf(interval);
+    BigInteger stepCount =
+        BigInteger.valueOf(source)
+            .subtract(BigInteger.valueOf(origin))
+            .add(distanceOffset)
+            .divide(intervalValue);
+    return BigInteger.valueOf(origin).add(stepCount.multiply(intervalValue));
+  }
+
+  static long saturateToLong(BigInteger value) {
+    if (value.compareTo(BIG_LONG_MAX) > 0) {
+      return Long.MAX_VALUE;
+    }
+    if (value.compareTo(BIG_LONG_MIN) < 0) {
+      return Long.MIN_VALUE;
+    }
+    return value.longValue();
   }
 }

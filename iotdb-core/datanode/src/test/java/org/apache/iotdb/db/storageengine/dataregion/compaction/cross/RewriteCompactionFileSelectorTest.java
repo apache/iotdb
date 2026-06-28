@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -237,7 +238,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     List<TsFileResource> newUnseqResources = new ArrayList<>();
     newUnseqResources.add(largeUnseqTsFileResource);
 
-    long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+    long ttlLowerBound = CommonUtils.getTTLLowerBound(Long.MAX_VALUE);
     CrossSpaceCompactionCandidate mergeResource =
         new CrossSpaceCompactionCandidate(seqResources, newUnseqResources, ttlLowerBound);
     assertEquals(5, mergeResource.getSeqFiles().size());

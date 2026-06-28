@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
 import org.apache.tsfile.read.common.TimeRange;
 
+import java.math.BigInteger;
+
 /**
  * This interface used for iteratively generating aggregated time windows in GROUP BY query.
  *
@@ -47,8 +49,60 @@ public interface ITimeRangeIterator {
 
   default TimeRange getFinalTimeRange(TimeRange timeRange, boolean leftCRightO) {
     return leftCRightO
-        ? new TimeRange(timeRange.getMin(), timeRange.getMax() - 1)
-        : new TimeRange(timeRange.getMin() + 1, timeRange.getMax());
+        ? new TimeRange(timeRange.getMin(), saturatingAdd(timeRange.getMax(), -1))
+        : new TimeRange(saturatingAdd(timeRange.getMin(), 1), timeRange.getMax());
+  }
+
+  static long saturatingAdd(long left, long right) {
+    if (right > 0 && left > Long.MAX_VALUE - right) {
+      return Long.MAX_VALUE;
+    }
+    if (right < 0 && left < Long.MIN_VALUE - right) {
+      return Long.MIN_VALUE;
+    }
+    return left + right;
+  }
+
+  static boolean canMoveForward(long current, long step, long upperBound) {
+    return step > 0 && current <= Long.MAX_VALUE - step && current + step < upperBound;
+  }
+
+  static boolean canMoveBackward(long current, long step, long lowerBound) {
+    return step > 0 && current >= Long.MIN_VALUE + step && current - step >= lowerBound;
+  }
+
+  static long ceilDivTimeRange(long startTime, long endTime, long divisor) {
+    BigInteger range =
+        BigInteger.valueOf(endTime)
+            .subtract(BigInteger.valueOf(startTime))
+            .add(BigInteger.valueOf(divisor).subtract(BigInteger.ONE));
+    return saturateToLong(range.divide(BigInteger.valueOf(divisor)));
+  }
+
+  static long rightmostTimeRangeStart(long startTime, long endTime, long slidingStep) {
+    BigInteger distanceMinusOne =
+        BigInteger.valueOf(endTime)
+            .subtract(BigInteger.valueOf(startTime))
+            .subtract(BigInteger.ONE);
+    long remainder = distanceMinusOne.mod(BigInteger.valueOf(slidingStep)).longValue();
+    return saturatingAdd(saturatingAdd(endTime, -1), -remainder);
+  }
+
+  static boolean isTimeRangeDistanceGreaterThan(long startTime, long endTime, long distance) {
+    return BigInteger.valueOf(endTime)
+            .subtract(BigInteger.valueOf(startTime))
+            .compareTo(BigInteger.valueOf(distance))
+        > 0;
+  }
+
+  static long saturateToLong(BigInteger value) {
+    if (value.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+      return Long.MAX_VALUE;
+    }
+    if (value.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
+      return Long.MIN_VALUE;
+    }
+    return value.longValue();
   }
 
   /**

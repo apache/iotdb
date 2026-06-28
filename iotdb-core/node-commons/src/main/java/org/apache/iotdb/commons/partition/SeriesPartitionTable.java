@@ -178,14 +178,20 @@ public class SeriesPartitionTable {
       TConsensusGroupId regionId, long startTime, long endTime) {
     if (regionId.getId() == -1) {
       return seriesPartitionMap.keySet().stream()
-          .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+          .filter(e -> isTimeSlotInQueryRange(e, startTime, endTime))
           .collect(Collectors.toList());
     } else {
       return seriesPartitionMap.keySet().stream()
-          .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+          .filter(e -> isTimeSlotInQueryRange(e, startTime, endTime))
           .filter(e -> seriesPartitionMap.get(e).contains(regionId))
           .collect(Collectors.toList());
     }
+  }
+
+  private static boolean isTimeSlotInQueryRange(
+      TTimePartitionSlot timePartitionSlot, long startTime, long endTime) {
+    final long slotStartTime = timePartitionSlot.getStartTime();
+    return slotStartTime >= startTime && (endTime == Long.MAX_VALUE || slotStartTime < endTime);
   }
 
   /**
@@ -265,13 +271,30 @@ public class SeriesPartitionTable {
     while (iterator.hasNext()) {
       Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
       TTimePartitionSlot timePartitionSlot = entry.getKey();
-      if (timePartitionSlot.getStartTime() + timePartitionInterval + TTL
-          <= currentTimeSlot.getStartTime()) {
+      if (isTimePartitionExpired(timePartitionSlot, timePartitionInterval, TTL, currentTimeSlot)) {
         removedTimePartitions.add(timePartitionSlot);
         iterator.remove();
       }
     }
     return removedTimePartitions;
+  }
+
+  private static boolean isTimePartitionExpired(
+      TTimePartitionSlot timePartitionSlot,
+      long timePartitionInterval,
+      long TTL,
+      TTimePartitionSlot currentTimeSlot) {
+    long partitionEndTime = saturatingAdd(timePartitionSlot.getStartTime(), timePartitionInterval);
+    long expireTime = saturatingAdd(partitionEndTime, TTL);
+    return expireTime <= currentTimeSlot.getStartTime();
+  }
+
+  private static long saturatingAdd(long left, long right) {
+    long result = left + right;
+    if (((left ^ result) & (right ^ result)) < 0) {
+      return left < 0 ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
+    return result;
   }
 
   public void merge(SeriesPartitionTable sourceMap) {

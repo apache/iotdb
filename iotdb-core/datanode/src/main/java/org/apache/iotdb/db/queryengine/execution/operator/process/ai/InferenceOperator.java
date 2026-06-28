@@ -45,6 +45,7 @@ import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -155,7 +156,7 @@ public class InferenceOperator implements ProcessOperator {
     Column timeColumn = tsBlock.getTimeColumn();
     long[] time = timeColumn.getLongs();
     for (int i = 0; i < time.length; i++) {
-      time[i] = maxTimestamp + interval * currentRowIndex;
+      time[i] = calculateGeneratedTime(maxTimestamp, interval, currentRowIndex);
       currentRowIndex++;
     }
   }
@@ -242,7 +243,7 @@ public class InferenceOperator implements ProcessOperator {
   private void submitInferenceTask() {
 
     if (generateTimeColumn) {
-      interval = (maxTimestamp - minTimestamp) / totalRow;
+      interval = calculateGeneratedTimeInterval(minTimestamp, maxTimestamp, totalRow);
     }
 
     TsBlock inputTsBlock = inputTsBlockBuilder.build();
@@ -299,5 +300,28 @@ public class InferenceOperator implements ProcessOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + inputTsBlockBuilder.getRetainedSizeInBytes()
         + (long) columnIndexes.length * Integer.BYTES;
+  }
+
+  static long calculateGeneratedTimeInterval(long minTimestamp, long maxTimestamp, long totalRow) {
+    try {
+      BigInteger interval =
+          BigInteger.valueOf(maxTimestamp)
+              .subtract(BigInteger.valueOf(minTimestamp))
+              .divide(BigInteger.valueOf(totalRow));
+      if (interval.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+        throw new ArithmeticException();
+      }
+      return interval.longValue();
+    } catch (ArithmeticException e) {
+      throw new ModelInferenceProcessException("Generated time column is out of range.");
+    }
+  }
+
+  static long calculateGeneratedTime(long maxTimestamp, long interval, long currentRowIndex) {
+    try {
+      return Math.addExact(maxTimestamp, Math.multiplyExact(interval, currentRowIndex));
+    } catch (ArithmeticException e) {
+      throw new ModelInferenceProcessException("Generated time column is out of range.");
+    }
   }
 }

@@ -30,8 +30,23 @@ public class QueryTimeoutRuntimeException extends IoTDBRuntimeException {
 
   public QueryTimeoutRuntimeException(long startTime, long currentTime, long timeout) {
     super(
-        String.format(QUERY_TIMEOUT_EXCEPTION_MESSAGE, startTime, startTime + timeout, currentTime),
+        String.format(
+            QUERY_TIMEOUT_EXCEPTION_MESSAGE,
+            startTime,
+            saturatingAdd(startTime, timeout),
+            currentTime),
         QUERY_TIMEOUT.getStatusCode(),
         true);
+  }
+
+  private static long saturatingAdd(long left, long right) {
+    long result = left + right;
+    if (right > 0 && result < left) {
+      return Long.MAX_VALUE;
+    }
+    if (right < 0 && result > left) {
+      return Long.MIN_VALUE;
+    }
+    return result;
   }
 }

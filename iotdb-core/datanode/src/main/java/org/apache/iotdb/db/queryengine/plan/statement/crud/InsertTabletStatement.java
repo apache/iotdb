@@ -260,7 +260,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= upperBoundOfTimePartition) {
+      if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+          times[i], timePartitionSlot.getStartTime(), upperBoundOfTimePartition)) {
         result.add(timePartitionSlot);
         // next init
         upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);

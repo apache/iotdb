@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.load.splitter;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
+
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
@@ -53,7 +57,7 @@ public class TsFileSplitterTest {
     final IDeviceID deviceID = new StringArrayDeviceID("table1", "tagA");
 
     try {
-      writeTableTsFileWithTimeOnlyChunk(sourceTsFile, deviceID);
+      writeTableTsFileWithTimeOnlyChunk(sourceTsFile, deviceID, 100, 101);
 
       final List<ChunkData> emittedChunkDataList = new ArrayList<>();
       final TsFileSplitter splitter =
@@ -110,8 +114,156 @@ public class TsFileSplitterTest {
     }
   }
 
-  private void writeTableTsFileWithTimeOnlyChunk(final File tsFile, final IDeviceID deviceID)
-      throws Exception {
+  @Test
+  public void testSplitTableTimeOnlyAlignedChunkAtLongMaxPartitionEnd() throws Exception {
+    final File sourceTsFile = new File("split-table-time-only-long-max-source.tsfile");
+    final File targetTsFile = new File("split-table-time-only-long-max-target.tsfile");
+    final IDeviceID deviceID = new StringArrayDeviceID("table1", "tagA");
+    final long lastPartitionStartTime =
+        TimePartitionUtils.getTimePartitionSlot(Long.MAX_VALUE).getStartTime();
+
+    try {
+      writeTableTsFileWithTimeOnlyChunk(
+          sourceTsFile,
+          deviceID,
+          lastPartitionStartTime - 1,
+          lastPartitionStartTime,
+          Long.MAX_VALUE);
+
+      final List<ChunkData> emittedChunkDataList = new ArrayList<>();
+      final TsFileSplitter splitter =
+          new TsFileSplitter(
+              sourceTsFile,
+              tsFileData -> {
+                if (tsFileData instanceof ChunkData) {
+                  emittedChunkDataList.add((ChunkData) tsFileData);
+                }
+                return true;
+              });
+      splitter.splitTsFileByDataPartition();
+
+      if (targetTsFile.exists()) {
+        Assert.assertTrue(targetTsFile.delete());
+      }
+      try (final TsFileIOWriter writer = new TsFileIOWriter(targetTsFile)) {
+        writer.setSchema(createSchema());
+        writer.startChunkGroup(deviceID);
+        for (final ChunkData chunkData : emittedChunkDataList) {
+          writeSerializedChunkDataToWriter(chunkData, writer);
+        }
+        writer.endChunkGroup();
+        writer.endFile();
+      }
+
+      Assert.assertEquals(2, emittedChunkDataList.size());
+      Assert.assertEquals(
+          TimePartitionUtils.getTimePartitionSlot(lastPartitionStartTime - 1),
+          emittedChunkDataList.get(0).getTimePartitionSlot());
+      Assert.assertEquals(
+          new TTimePartitionSlot(lastPartitionStartTime),
+          emittedChunkDataList.get(1).getTimePartitionSlot());
+      try (final TsFileSequenceReader reader =
+          new TsFileSequenceReader(targetTsFile.getAbsolutePath())) {
+        final List<AbstractAlignedChunkMetadata> chunkMetadataList =
+            reader.getAlignedChunkMetadata(deviceID, false);
+        Assert.assertEquals(2, chunkMetadataList.size());
+        Assert.assertEquals(
+            3,
+            chunkMetadataList.stream()
+                .mapToLong(metadata -> metadata.getTimeChunkMetadata().getStatistics().getCount())
+                .sum());
+      }
+    } finally {
+      if (sourceTsFile.exists()) {
+        Assert.assertTrue(sourceTsFile.delete());
+      }
+      if (targetTsFile.exists()) {
+        Assert.assertTrue(targetTsFile.delete());
+      }
+    }
+  }
+
+  @Test
+  public void testSplitTableTimeOnlyAlignedChunkAtExactLongMaxUpperBound() throws Exception {
+    final File sourceTsFile = new File("split-table-time-only-exact-long-max-source.tsfile");
+    final File targetTsFile = new File("split-table-time-only-exact-long-max-target.tsfile");
+    final IDeviceID deviceID = new StringArrayDeviceID("table1", "tagA");
+    final long previousTimePartitionOrigin =
+        CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
+    final long previousTimePartitionInterval =
+        CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+
+    try {
+      CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(0);
+      CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(1);
+      TimePartitionUtils.setTimePartitionOrigin(0);
+      TimePartitionUtils.setTimePartitionInterval(1);
+
+      writeTableTsFileWithTimeOnlyChunk(sourceTsFile, deviceID, Long.MAX_VALUE - 1, Long.MAX_VALUE);
+
+      final List<ChunkData> emittedChunkDataList = new ArrayList<>();
+      final TsFileSplitter splitter =
+          new TsFileSplitter(
+              sourceTsFile,
+              tsFileData -> {
+                if (tsFileData instanceof ChunkData) {
+                  emittedChunkDataList.add((ChunkData) tsFileData);
+                }
+                return true;
+              });
+      splitter.splitTsFileByDataPartition();
+
+      if (targetTsFile.exists()) {
+        Assert.assertTrue(targetTsFile.delete());
+      }
+      try (final TsFileIOWriter writer = new TsFileIOWriter(targetTsFile)) {
+        writer.setSchema(createSchema());
+        writer.startChunkGroup(deviceID);
+        for (final ChunkData chunkData : emittedChunkDataList) {
+          writeSerializedChunkDataToWriter(chunkData, writer);
+        }
+        writer.endChunkGroup();
+        writer.endFile();
+      }
+
+      Assert.assertEquals(2, emittedChunkDataList.size());
+      Assert.assertEquals(
+          new TTimePartitionSlot(Long.MAX_VALUE - 1),
+          emittedChunkDataList.get(0).getTimePartitionSlot());
+      Assert.assertEquals(
+          new TTimePartitionSlot(Long.MAX_VALUE),
+          emittedChunkDataList.get(1).getTimePartitionSlot());
+      try (final TsFileSequenceReader reader =
+          new TsFileSequenceReader(targetTsFile.getAbsolutePath())) {
+        final List<AbstractAlignedChunkMetadata> chunkMetadataList =
+            reader.getAlignedChunkMetadata(deviceID, false);
+        Assert.assertEquals(2, chunkMetadataList.size());
+        Assert.assertEquals(
+            2,
+            chunkMetadataList.stream()
+                .mapToLong(metadata -> metadata.getTimeChunkMetadata().getStatistics().getCount())
+                .sum());
+      }
+    } finally {
+      TimePartitionUtils.setTimePartitionOrigin(previousTimePartitionOrigin);
+      TimePartitionUtils.setTimePartitionInterval(previousTimePartitionInterval);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setTimePartitionOrigin(previousTimePartitionOrigin);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setTimePartitionInterval(previousTimePartitionInterval);
+      if (sourceTsFile.exists()) {
+        Assert.assertTrue(sourceTsFile.delete());
+      }
+      if (targetTsFile.exists()) {
+        Assert.assertTrue(targetTsFile.delete());
+      }
+    }
+  }
+
+  private void writeTableTsFileWithTimeOnlyChunk(
+      final File tsFile, final IDeviceID deviceID, final long... times) throws Exception {
     if (tsFile.exists()) {
       Assert.assertTrue(tsFile.delete());
     }
@@ -122,8 +274,9 @@ public class TsFileSplitterTest {
 
       final AlignedChunkWriterImpl chunkWriter =
           new AlignedChunkWriterImpl(Collections.emptyList());
-      chunkWriter.write(100);
-      chunkWriter.write(101);
+      for (final long time : times) {
+        chunkWriter.write(time);
+      }
       chunkWriter.writeToFileWriter(writer);
 
       writer.endChunkGroup();

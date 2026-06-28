@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -75,6 +74,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushL
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -2258,7 +2258,7 @@ public class TsFileProcessor {
           DataNodeTTLCache.getInstance()
               .getTTLForTable(this.dataRegionName, deviceID.getTableName());
     }
-    return ttl != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - ttl : Long.MIN_VALUE;
+    return ttl != Long.MAX_VALUE ? CommonUtils.getTTLLowerBound(ttl) : Long.MIN_VALUE;
   }
 
   public long getTimeRangeId() {
