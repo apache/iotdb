@@ -660,7 +660,7 @@ removeRegionStatement
     ;
 
 removeDataNodeStatement
-    : REMOVE DATANODE dataNodeId=INTEGER_VALUE
+    : REMOVE DATANODE dataNodeIds+=INTEGER_VALUE (',' dataNodeIds+=INTEGER_VALUE)*
     ;
 
 removeConfigNodeStatement
