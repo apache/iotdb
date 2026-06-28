@@ -177,20 +177,12 @@ public class MetricInfo {
         return false;
       }
       MetaInfo that = (MetaInfo) o;
-      if (tagNames == null || that.tagNames == null) {
-        return false;
-      }
-      for (String tagName : that.tagNames) {
-        if (!tagNames.contains(tagName)) {
-          return false;
-        }
-      }
-      return true;
+      return type == that.type && Objects.equals(tagNames, that.tagNames);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(tagNames);
+      return Objects.hash(type, tagNames);
     }
 
     @Override

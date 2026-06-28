@@ -92,7 +92,7 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
 
   @Override
   public int hashCode() {
-    return Objects.hash(floatingMemoryUsageInByte, regionId2CommitterKeyMap);
+    return Objects.hash(floatingMemoryUsageInByte.get(), regionId2CommitterKeyMap);
   }
 
   @Override

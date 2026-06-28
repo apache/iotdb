@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.plugin.meta;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -31,6 +32,21 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class PipePluginMetaTest {
+
+  @Test
+  public void testPipePluginMetaHashCodeIncludesAllFields() {
+    PipePluginMeta pipePluginMeta =
+        new PipePluginMeta("test", "org.apache.iotdb.Test", false, "test.jar", "md5");
+    PipePluginMeta samePipePluginMeta =
+        new PipePluginMeta("TEST", "org.apache.iotdb.Test", false, "test.jar", "md5");
+    PipePluginMeta differentClassNamePipePluginMeta =
+        new PipePluginMeta("test", "org.apache.iotdb.AnotherTest", false, "test.jar", "md5");
+
+    Assert.assertEquals(pipePluginMeta, samePipePluginMeta);
+    Assert.assertEquals(pipePluginMeta.hashCode(), samePipePluginMeta.hashCode());
+    Assert.assertNotEquals(pipePluginMeta, differentClassNamePipePluginMeta);
+    Assert.assertNotEquals(pipePluginMeta.hashCode(), differentClassNamePipePluginMeta.hashCode());
+  }
 
   @Test
   public void testConfigNodePipePluginMetaKeeper() {
