@@ -1153,7 +1153,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 for (final PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
                   ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                       SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-                          pattern, false, null, null, SchemaConstant.ALL_MATCH_SCOPE);
+                          pattern, false, null, null, SchemaConstant.ALL_MATCH_SCOPE, true, true);
                   try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                       schemaSource.getSchemaReader(schemaRegion)) {
                     if (schemaReader.hasNext()) {
@@ -1996,7 +1996,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       // Does not support logical view currently
                       SchemaFilterFactory.createViewTypeFilter(ViewType.BASE),
                       null,
-                      SchemaConstant.ALL_MATCH_SCOPE);
+                      SchemaConstant.ALL_MATCH_SCOPE,
+                      true,
+                      true);
               try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                   schemaSource.getSchemaReader(schemaRegion)) {
                 final Map<String, Byte> updateMap = resp.getDeviewViewFieldTypeMap();
