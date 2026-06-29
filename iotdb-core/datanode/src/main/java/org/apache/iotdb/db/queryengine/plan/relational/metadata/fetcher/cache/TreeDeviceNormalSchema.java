@@ -71,7 +71,8 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
         continue;
       }
       final IMeasurementSchema schema = i < schemas.length ? schemas[i] : null;
-      final String measurement = Objects.nonNull(schema) ? schema.getMeasurementName() : inputMeasurement;
+      final String measurement =
+          Objects.nonNull(schema) ? schema.getMeasurementName() : inputMeasurement;
       // Skip this to avoid instance creation/gc for writing performance
       if (schema == null || measurementMap.containsKey(measurement)) {
         continue;

@@ -273,8 +273,7 @@ public class TableDeviceSchemaCache {
       final String[] measurements,
       final TimeValuePair[] timeValuePairs,
       boolean invalidateNull) {
-    updateLastCacheIfExists(
-        database, deviceId, measurements, null, timeValuePairs, invalidateNull);
+    updateLastCacheIfExists(database, deviceId, measurements, null, timeValuePairs, invalidateNull);
   }
 
   public void updateLastCacheIfExists(

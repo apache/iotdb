@@ -131,8 +131,7 @@ public class InsertNodeIsMeasurementFailedTest {
   }
 
   @Test
-  public void testGetRawMeasurementsCopiesOnlyWhenSchemaNameDiffers()
-      throws IllegalPathException {
+  public void testGetRawMeasurementsCopiesOnlyWhenSchemaNameDiffers() throws IllegalPathException {
     InsertRowNode node = buildInsertRowNode(new String[] {"alias", "s1"});
     node.getMeasurementSchemas()[0] = new MeasurementSchema("s0", TSDataType.INT32);
 
