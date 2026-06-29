@@ -794,9 +794,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     long needMemory = 0;
 
-    needMemory += calculateTsFileParserMemory(sourceParameters, sinkParameters);
-    needMemory += calculateSinkBatchMemory(sinkParameters);
-    needMemory += calculateSendTsFileReadBufferMemory(sourceParameters, sinkParameters);
+    // TsFile parser, sink batch, and TsFile read buffer memory are allocated dynamically
+    // from PipeMemoryManager only while they are active.
     needMemory += calculateAssignerMemory(sourceParameters);
 
     PipeMemoryManager pipeMemoryManager = PipeDataNodeResourceManager.memory();
