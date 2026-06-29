@@ -45,7 +45,6 @@ import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryDataSource;
@@ -1366,9 +1365,8 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setHighestPriority(boolean highestPriority) {
     this.highestPriority = highestPriority;
-    if (memoryReservationManager instanceof NotThreadSafeMemoryReservationManager) {
-      ((NotThreadSafeMemoryReservationManager) memoryReservationManager)
-          .setHighestPriority(highestPriority);
+    if (memoryReservationManager != null) {
+      memoryReservationManager.setHighestPriority(highestPriority);
     }
   }
 

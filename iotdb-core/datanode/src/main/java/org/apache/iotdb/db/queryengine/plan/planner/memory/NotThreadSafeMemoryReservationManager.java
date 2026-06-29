@@ -44,6 +44,12 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
 
   private long reservedBytesInTotal = 0;
 
+  /**
+   * Bytes logically reserved but not taken from the operators pool due to highest-priority
+   * fallback.
+   */
+  private long fallbackBytesInTotal = 0;
+
   private long bytesToBeReserved = 0;
 
   private long bytesToBeReleased = 0;
@@ -53,12 +59,9 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     this.contextHolder = contextHolder;
   }
 
+  @Override
   public void setHighestPriority(boolean isHighestPriority) {
     this.isHighestPriority = isHighestPriority;
-  }
-
-  public boolean isHighestPriority() {
-    return isHighestPriority;
   }
 
   @TestOnly
@@ -66,11 +69,13 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     return reservedBytesInTotal;
   }
 
+  @TestOnly
+  public long getFallbackBytesInTotalForTest() {
+    return fallbackBytesInTotal;
+  }
+
   @Override
   public void reserveMemoryCumulatively(final long size) {
-    if (isHighestPriority) {
-      return;
-    }
     bytesToBeReserved += size;
     if (bytesToBeReserved >= MEMORY_BATCH_THRESHOLD) {
       reserveMemoryImmediately();
@@ -79,83 +84,97 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
 
   @Override
   public void reserveMemoryImmediately() {
-    if (isHighestPriority) {
-      return;
-    }
     if (bytesToBeReserved != 0) {
-      LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
-          bytesToBeReserved, reservedBytesInTotal, queryId.getId(), contextHolder);
-      reservedBytesInTotal += bytesToBeReserved;
+      long actualReserved =
+          LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
+              bytesToBeReserved,
+              reservedBytesInTotal,
+              queryId.getId(),
+              contextHolder,
+              isHighestPriority);
+      if (actualReserved == 0) {
+        fallbackBytesInTotal += bytesToBeReserved;
+      } else {
+        reservedBytesInTotal += actualReserved;
+      }
       bytesToBeReserved = 0;
     }
   }
 
   @Override
   public void reserveMemoryImmediately(final long size) {
-    if (isHighestPriority || size == 0) {
-      return;
+    if (size != 0) {
+      long actualReserved =
+          LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
+              size, reservedBytesInTotal, queryId.getId(), contextHolder, isHighestPriority);
+      if (actualReserved == 0) {
+        fallbackBytesInTotal += size;
+      } else {
+        reservedBytesInTotal += actualReserved;
+      }
     }
-    LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
-        size, reservedBytesInTotal, queryId.getId(), contextHolder);
-    reservedBytesInTotal += size;
   }
 
   @Override
   public void releaseMemoryCumulatively(final long size) {
-    if (isHighestPriority) {
-      return;
-    }
     bytesToBeReleased += size;
     if (bytesToBeReleased >= MEMORY_BATCH_THRESHOLD) {
-      long bytesToRelease;
-      if (bytesToBeReleased <= bytesToBeReserved) {
-        bytesToBeReserved -= bytesToBeReleased;
-      } else {
-        bytesToRelease = bytesToBeReleased - bytesToBeReserved;
-        bytesToBeReserved = 0;
-        LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(bytesToRelease);
-        reservedBytesInTotal -= bytesToRelease;
-      }
+      releaseBytesImmediately(bytesToBeReleased);
       bytesToBeReleased = 0;
     }
+  }
+
+  private void releaseBytesImmediately(final long size) {
+    long poolBytes = deductReleaseAccounting(size);
+    if (poolBytes > 0) {
+      LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(poolBytes);
+    }
+  }
+
+  /** Deduct release size from pending reserve, fallback quota, then pool reservation in order. */
+  private long deductReleaseAccounting(final long size) {
+    long remaining = size;
+    if (remaining <= bytesToBeReserved) {
+      bytesToBeReserved -= remaining;
+      return 0L;
+    }
+    remaining -= bytesToBeReserved;
+    bytesToBeReserved = 0;
+
+    if (remaining <= fallbackBytesInTotal) {
+      fallbackBytesInTotal -= remaining;
+      return 0L;
+    }
+    remaining -= fallbackBytesInTotal;
+    fallbackBytesInTotal = 0;
+
+    reservedBytesInTotal -= remaining;
+    return remaining;
   }
 
   @Override
   public void releaseAllReservedMemory() {
-    if (isHighestPriority) {
-      return;
+    if (bytesToBeReleased != 0) {
+      releaseBytesImmediately(bytesToBeReleased);
+      bytesToBeReleased = 0;
     }
     if (reservedBytesInTotal != 0) {
       LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytesInTotal);
       reservedBytesInTotal = 0;
-      bytesToBeReserved = 0;
-      bytesToBeReleased = 0;
     }
+    fallbackBytesInTotal = 0;
+    bytesToBeReserved = 0;
   }
 
   @Override
   public Pair<Long, Long> releaseMemoryVirtually(final long size) {
-    if (isHighestPriority) {
-      return new Pair<>(size, 0L);
-    }
-    if (bytesToBeReserved >= size) {
-      bytesToBeReserved -= size;
-      return new Pair<>(size, 0L);
-    } else {
-      long releasedBytesInReserved = bytesToBeReserved;
-      long releasedBytesInTotal = size - bytesToBeReserved;
-      bytesToBeReserved = 0;
-      reservedBytesInTotal -= releasedBytesInTotal;
-      return new Pair<>(releasedBytesInReserved, releasedBytesInTotal);
-    }
+    long poolBytes = deductReleaseAccounting(size);
+    return new Pair<>(size - poolBytes, poolBytes);
   }
 
   @Override
   public void reserveMemoryVirtually(
       final long bytesToBeReserved, final long bytesAlreadyReserved) {
-    if (isHighestPriority) {
-      return;
-    }
     reservedBytesInTotal += bytesAlreadyReserved;
     reserveMemoryCumulatively(bytesToBeReserved);
   }

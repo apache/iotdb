@@ -207,11 +207,8 @@ public class LocalExecutionPlanner {
 
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
-    if (instanceContext.isHighestPriority()) {
-      return 0L;
-    }
-
-    long reservedBytes = allocateOperatorsMemory(estimatedMemorySize);
+    long reservedBytes =
+        allocateOperatorsMemory(estimatedMemorySize, instanceContext.isHighestPriority());
     if (reservedBytes < 0) {
       throw new MemoryNotEnoughException(
           String.format(
@@ -244,9 +241,10 @@ public class LocalExecutionPlanner {
   /**
    * Try to reserve bytes from the operators memory block.
    *
-   * @return allocated bytes on success ({@code >= 0}), {@code -1} if allocation failed
+   * @return allocated bytes on success ({@code > 0}), {@code 0} if nothing to allocate or
+   *     highest-priority fallback applies, {@code -1} if allocation failed
    */
-  private long allocateOperatorsMemory(final long memoryInBytes) {
+  private long allocateOperatorsMemory(final long memoryInBytes, final boolean isHighestPriority) {
     if (memoryInBytes <= 0) {
       return 0L;
     }
@@ -259,31 +257,15 @@ public class LocalExecutionPlanner {
       }
       return memoryInBytes;
     }
+    if (isHighestPriority) {
+      return 0L;
+    }
     return -1L;
   }
 
   @TestOnly
-  long allocateOperatorsMemoryForTest(final long memoryInBytes) {
-    return allocateOperatorsMemory(memoryInBytes);
-  }
-
-  @TestOnly
-  long reserveOperatorsMemoryForFragmentForTest(
-      final long estimatedMemorySize, final boolean isHighestPriority)
-      throws MemoryNotEnoughException {
-    if (isHighestPriority) {
-      return 0L;
-    }
-    long reservedBytes = allocateOperatorsMemory(estimatedMemorySize);
-    if (reservedBytes < 0) {
-      throw new MemoryNotEnoughException(
-          String.format(
-              "There is not enough memory to execute current fragment instance, "
-                  + "current remaining free memory is %dB, "
-                  + "estimated memory usage for current fragment instance is %dB",
-              OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(), estimatedMemorySize));
-    }
-    return reservedBytes;
+  long allocateOperatorsMemoryForTest(final long memoryInBytes, final boolean isHighestPriority) {
+    return allocateOperatorsMemory(memoryInBytes, isHighestPriority);
   }
 
   private QueryDataSourceType getQueryDataSourceType(DataDriverContext dataDriverContext) {
@@ -338,23 +320,19 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public void reserveFromFreeMemoryForOperators(
+  public long reserveFromFreeMemoryForOperators(
       final long memoryInBytes,
       final long reservedBytes,
       final String queryId,
-      final String contextHolder) {
+      final String contextHolder,
+      final boolean isHighestPriority)
+      throws MemoryNotEnoughException {
     if (memoryInBytes <= 0) {
       throw new IllegalArgumentException(
           "Bytes to reserve from free memory for operators should be larger than 0");
     }
-    if (OPERATORS_MEMORY_BLOCK.allocate(memoryInBytes)) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "[ConsumeMemory] consume: {}, current remaining memory: {}",
-            memoryInBytes,
-            OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
-      }
-    } else {
+    long allocated = allocateOperatorsMemory(memoryInBytes, isHighestPriority);
+    if (allocated < 0) {
       throw new MemoryNotEnoughException(
           String.format(
               "There is not enough memory for Query %s, the contextHolder is %s,"
@@ -367,6 +345,7 @@ public class LocalExecutionPlanner {
               reservedBytes,
               memoryInBytes));
     }
+    return allocated;
   }
 
   public void releaseToFreeMemoryForOperators(final long memoryInBytes) {

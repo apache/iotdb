@@ -48,6 +48,8 @@ public class CteDataStore implements Accountable {
   // reference count by CteScanReader
   private final AtomicInteger count;
 
+  private long operatorsMemoryReservedBytes;
+
   public CteDataStore(TableSchema tableSchema, List<Integer> columnIndex2TsBlockColumnIndexList) {
     this.tableSchema = tableSchema;
     this.columnIndex2TsBlockColumnIndexList = columnIndex2TsBlockColumnIndexList;
@@ -105,5 +107,13 @@ public class CteDataStore implements Accountable {
   @TestOnly
   public int getCount() {
     return count.get();
+  }
+
+  public long getOperatorsMemoryReservedBytes() {
+    return operatorsMemoryReservedBytes;
+  }
+
+  public void setOperatorsMemoryReservedBytes(long operatorsMemoryReservedBytes) {
+    this.operatorsMemoryReservedBytes = operatorsMemoryReservedBytes;
   }
 }
