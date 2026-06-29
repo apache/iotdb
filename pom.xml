@@ -770,6 +770,7 @@
                             <exclude>**/.gitmodules</exclude>
                             <exclude>**/.git-blame-ignore-revs</exclude>
                             <exclude>**/git.properties</exclude>
+                            <exclude>AGENTS.md</exclude>
                             <!-- Maven related files -->
                             <exclude>**/target/**</exclude>
                             <!-- Eclipse related files -->

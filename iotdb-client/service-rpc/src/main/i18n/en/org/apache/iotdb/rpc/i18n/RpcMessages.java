@@ -50,6 +50,12 @@ public final class RpcMessages {
   public static final String COULD_NOT_LOAD_KEYSTORE =
       "Could not load keystore or truststore file";
 
+  // AutoResizingBuffer
+  public static final String AUTO_RESIZING_BUFFER_ALLOCATE_INTERRUPTED =
+      "AutoResizingBuffer was interrupted while allocating %d bytes";
+  public static final String AUTO_RESIZING_BUFFER_ALLOCATE_FAILED =
+      "AutoResizingBuffer failed to allocate %d bytes after %d retries";
+
   // IoTDBRpcDataSet / IoTDBJDBCDataSet
   public static final String CLOSE_OPERATION_SERVER_ERROR =
       "Error occurs for close operation in server side because ";

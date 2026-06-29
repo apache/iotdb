@@ -2013,6 +2013,9 @@ public class SessionPool implements ISessionPool {
   @Override
   public void deleteTimeseries(List<String> paths)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (paths.isEmpty()) {
+      return;
+    }
     ISession session = getSession();
     try {
       session.deleteTimeseries(paths);
