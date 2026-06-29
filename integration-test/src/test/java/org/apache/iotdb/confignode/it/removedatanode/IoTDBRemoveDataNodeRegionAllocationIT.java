@@ -45,6 +45,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -165,7 +166,8 @@ public class IoTDBRemoveDataNodeRegionAllocationIT {
       // kill -9 the target DataNode so that it becomes Unknown (this is the exact condition under
       // which the failure detector overrides the Removing status back to Unknown).
       final List<DataNodeWrapper> removeDataNodeWrappers =
-          List.of(EnvFactory.getEnv().dataNodeIdToWrapper(removeDataNodeId).get());
+          Collections.singletonList(
+              EnvFactory.getEnv().dataNodeIdToWrapper(removeDataNodeId).get());
       stopDataNodes(removeDataNodeWrappers);
       LOGGER.info("DataNode {} is stopped.", removeDataNodeId);
     } catch (InconsistentDataException e) {
@@ -201,7 +203,8 @@ public class IoTDBRemoveDataNodeRegionAllocationIT {
       // this point belongs to the allocation we are about to force.
       final Set<Integer> preExistingRegionIds = new HashSet<>(getAllRegionMap(statement).keySet());
 
-      final String removeDataNodeSQL = generateRemoveString(Set.of(removeDataNodeId));
+      final String removeDataNodeSQL =
+          generateRemoveString(Collections.singleton(removeDataNodeId));
       LOGGER.info("Submitting: {}", removeDataNodeSQL);
       statement.execute(removeDataNodeSQL);
       LOGGER.info("Remove DataNode {} submitted.", removeDataNodeId);
