@@ -25,11 +25,14 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
@@ -43,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
@@ -51,6 +55,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckC
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -75,7 +82,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -84,6 +93,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
@@ -103,12 +113,15 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.WRITE_BACK_CONNECTOR_SKIP_IF_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 @TreeModel
 @TableModel
 public class WriteBackSink implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteBackSink.class);
+  private static final String CONNECTOR_IOTDB_DATABASE_KEY = "connector.database";
+  private static final String SINK_IOTDB_DATABASE_KEY = "sink.database";
 
   // Simulate the behavior of the client-to-server communication
   // for correctly handling data insertion in IoTDBReceiverAgent#receive method
@@ -121,6 +134,8 @@ public class WriteBackSink implements PipeConnector {
   private boolean useEventUserName;
 
   private UserEntity userEntity;
+  private String targetTableModelDatabaseName;
+  private String targetTreeModelDatabaseName;
 
   private static final SqlParser RELATIONAL_SQL_PARSER = new SqlParser();
 
@@ -132,6 +147,37 @@ public class WriteBackSink implements PipeConnector {
         Arrays.asList(CONNECTOR_IOTDB_USER_KEY, SINK_IOTDB_USER_KEY),
         Arrays.asList(CONNECTOR_IOTDB_USERNAME_KEY, SINK_IOTDB_USERNAME_KEY),
         false);
+    validator.validateSynonymAttributes(
+        Collections.singletonList(CONNECTOR_IOTDB_DATABASE_KEY),
+        Collections.singletonList(SINK_IOTDB_DATABASE_KEY),
+        false);
+
+    final String targetDatabase =
+        validator
+            .getParameters()
+            .getStringByKeys(CONNECTOR_IOTDB_DATABASE_KEY, SINK_IOTDB_DATABASE_KEY);
+    if (Objects.nonNull(targetDatabase)) {
+      validateTargetDatabase(targetDatabase);
+    }
+  }
+
+  private static void validateTargetDatabase(final String targetDatabase) {
+    try {
+      TableConfigTaskVisitor.validateDatabaseName(PathUtils.unQualifyDatabaseName(targetDatabase));
+    } catch (final Exception e) {
+      throw new PipeException(
+          String.format(
+              "The target database %s is invalid. It should be a table-model database name or "
+                  + "the corresponding one-level tree-model database path like root.%s. It should "
+                  + "not contain '%s', should match the pattern %s, and the length should not "
+                  + "exceed %d",
+              targetDatabase,
+              PathUtils.unQualifyDatabaseName(targetDatabase),
+              PATH_SEPARATOR,
+              IoTDBConfig.DATABASE_PATTERN,
+              MAX_DATABASE_NAME_LENGTH),
+          e);
+    }
   }
 
   @Override
@@ -191,6 +237,14 @@ public class WriteBackSink implements PipeConnector {
         parameters.getBooleanOrDefault(
             Arrays.asList(CONNECTOR_USE_EVENT_USER_NAME_KEY, SINK_USE_EVENT_USER_NAME_KEY),
             CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE);
+
+    final String targetDatabase =
+        parameters.getStringByKeys(CONNECTOR_IOTDB_DATABASE_KEY, SINK_IOTDB_DATABASE_KEY);
+    if (Objects.nonNull(targetDatabase)) {
+      targetTableModelDatabaseName =
+          PathUtils.unQualifyDatabaseName(targetDatabase).toLowerCase(Locale.ENGLISH);
+      targetTreeModelDatabaseName = PathUtils.qualifyDatabaseName(targetTableModelDatabaseName);
+    }
 
     if (SESSION_MANAGER.getCurrSession() == null) {
       SESSION_MANAGER.registerSession(session);
@@ -266,13 +320,18 @@ public class WriteBackSink implements PipeConnector {
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     final String dataBaseName =
         pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
-            ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+            ? getTargetTableModelDatabaseNameOrDefault(
+                pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName())
             : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName();
 
     final InsertBaseStatement insertBaseStatement;
     insertBaseStatement =
         PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(insertNode, dataBaseName)
             .constructStatement();
+    if (!insertBaseStatement.isWriteToTable()) {
+      rewriteTreeModelDatabaseNameIfNecessary(
+          insertBaseStatement, pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName());
+    }
 
     final TSStatus status =
         insertBaseStatement.isWriteToTable()
@@ -310,7 +369,8 @@ public class WriteBackSink implements PipeConnector {
       throws PipeException {
     final String dataBaseName =
         pipeRawTabletInsertionEvent.isTableModelEvent()
-            ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
+            ? getTargetTableModelDatabaseNameOrDefault(
+                pipeRawTabletInsertionEvent.getTableModelDatabaseName())
             : pipeRawTabletInsertionEvent.getTreeModelDatabaseName();
 
     final InsertTabletStatement insertTabletStatement =
@@ -319,6 +379,10 @@ public class WriteBackSink implements PipeConnector {
                 pipeRawTabletInsertionEvent.isAligned(),
                 dataBaseName)
             .constructStatement();
+    if (!insertTabletStatement.isWriteToTable()) {
+      rewriteTreeModelDatabaseNameIfNecessary(
+          insertTabletStatement, pipeRawTabletInsertionEvent.getTreeModelDatabaseName());
+    }
 
     final TSStatus status =
         insertTabletStatement.isWriteToTable()
@@ -365,11 +429,15 @@ public class WriteBackSink implements PipeConnector {
     final TSStatus status =
         pipeStatementInsertionEvent.isTableModelEvent()
             ? executeStatementForTableModel(
-                pipeStatementInsertionEvent.getStatement(),
-                pipeStatementInsertionEvent.getTableModelDatabaseName(),
+                rewriteTableModelDatabaseNameIfNecessary(
+                    pipeStatementInsertionEvent.getStatement()),
+                getTargetTableModelDatabaseNameOrDefault(
+                    pipeStatementInsertionEvent.getTableModelDatabaseName()),
                 pipeStatementInsertionEvent.getUserName())
             : executeStatementForTreeModel(
-                pipeStatementInsertionEvent.getStatement(),
+                rewriteTreeModelDatabaseNameIfNecessary(
+                    pipeStatementInsertionEvent.getStatement(),
+                    pipeStatementInsertionEvent.getTreeModelDatabaseName()),
                 pipeStatementInsertionEvent.getUserName());
 
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
@@ -382,6 +450,143 @@ public class WriteBackSink implements PipeConnector {
               "Write back PipeStatementInsertionEvent %s error, result status %s",
               pipeStatementInsertionEvent, status));
     }
+  }
+
+  private String getTargetTableModelDatabaseNameOrDefault(final String databaseName) {
+    return Objects.nonNull(targetTableModelDatabaseName)
+        ? targetTableModelDatabaseName
+        : databaseName;
+  }
+
+  private Statement rewriteTableModelDatabaseNameIfNecessary(final Statement statement) {
+    if (Objects.isNull(targetTableModelDatabaseName)
+        || !(statement instanceof InsertBaseStatement)) {
+      return statement;
+    }
+
+    rewriteTableModelDatabaseName((InsertBaseStatement) statement);
+    return statement;
+  }
+
+  private void rewriteTableModelDatabaseName(final InsertBaseStatement statement) {
+    statement.setDatabaseName(targetTableModelDatabaseName);
+
+    if (statement instanceof InsertRowsStatement) {
+      ((InsertRowsStatement) statement)
+          .getInsertRowStatementList()
+          .forEach(this::rewriteTableModelDatabaseName);
+    } else if (statement instanceof InsertRowsOfOneDeviceStatement) {
+      ((InsertRowsOfOneDeviceStatement) statement)
+          .getInsertRowStatementList()
+          .forEach(this::rewriteTableModelDatabaseName);
+    } else if (statement instanceof InsertMultiTabletsStatement) {
+      ((InsertMultiTabletsStatement) statement)
+          .getInsertTabletStatementList()
+          .forEach(this::rewriteTableModelDatabaseName);
+    }
+  }
+
+  private Statement rewriteTreeModelDatabaseNameIfNecessary(
+      final Statement statement, final String sourceTreeModelDatabaseName) {
+    if (!(statement instanceof InsertBaseStatement)) {
+      return statement;
+    }
+
+    return rewriteTreeModelDatabaseNameIfNecessary(
+        (InsertBaseStatement) statement, sourceTreeModelDatabaseName);
+  }
+
+  private InsertBaseStatement rewriteTreeModelDatabaseNameIfNecessary(
+      final InsertBaseStatement statement, final String sourceTreeModelDatabaseName) {
+    if (Objects.isNull(targetTreeModelDatabaseName)) {
+      return statement;
+    }
+
+    rewriteTreeModelDatabaseName(
+        statement, PathUtils.qualifyDatabaseName(sourceTreeModelDatabaseName));
+    return statement;
+  }
+
+  private void rewriteTreeModelDatabaseName(
+      final InsertBaseStatement statement, final String sourceTreeModelDatabaseName) {
+    statement.setDatabaseName(targetTreeModelDatabaseName);
+
+    if (statement instanceof InsertRowsStatement) {
+      ((InsertRowsStatement) statement)
+          .getInsertRowStatementList()
+          .forEach(
+              rowStatement ->
+                  rewriteTreeModelDatabaseName(rowStatement, sourceTreeModelDatabaseName));
+      return;
+    }
+
+    if (statement instanceof InsertRowsOfOneDeviceStatement) {
+      final InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement =
+          (InsertRowsOfOneDeviceStatement) statement;
+      insertRowsOfOneDeviceStatement
+          .getInsertRowStatementList()
+          .forEach(
+              rowStatement ->
+                  rewriteTreeModelDatabaseName(rowStatement, sourceTreeModelDatabaseName));
+      insertRowsOfOneDeviceStatement.setDevicePath(
+          rewriteTreeModelDevicePath(
+              insertRowsOfOneDeviceStatement.getDevicePath(), sourceTreeModelDatabaseName));
+      return;
+    }
+
+    if (statement instanceof InsertMultiTabletsStatement) {
+      ((InsertMultiTabletsStatement) statement)
+          .getInsertTabletStatementList()
+          .forEach(
+              tabletStatement ->
+                  rewriteTreeModelDatabaseName(tabletStatement, sourceTreeModelDatabaseName));
+      return;
+    }
+
+    statement.setDevicePath(
+        rewriteTreeModelDevicePath(statement.getDevicePath(), sourceTreeModelDatabaseName));
+  }
+
+  private PartialPath rewriteTreeModelDevicePath(
+      final PartialPath devicePath, final String sourceTreeModelDatabaseName) {
+    if (Objects.isNull(devicePath) || Objects.isNull(sourceTreeModelDatabaseName)) {
+      return devicePath;
+    }
+
+    try {
+      final String[] sourceDatabaseNodes = new PartialPath(sourceTreeModelDatabaseName).getNodes();
+      final String[] targetDatabaseNodes = new PartialPath(targetTreeModelDatabaseName).getNodes();
+      final String[] deviceNodes = devicePath.getNodes();
+      if (!startsWith(deviceNodes, sourceDatabaseNodes)) {
+        return devicePath;
+      }
+
+      final ArrayList<String> rebasedNodes =
+          new ArrayList<>(
+              targetDatabaseNodes.length + deviceNodes.length - sourceDatabaseNodes.length);
+      rebasedNodes.addAll(Arrays.asList(targetDatabaseNodes));
+      rebasedNodes.addAll(
+          Arrays.asList(deviceNodes).subList(sourceDatabaseNodes.length, deviceNodes.length));
+      return new PartialPath(rebasedNodes.toArray(new String[0]));
+    } catch (final Exception e) {
+      throw new PipeException(
+          String.format(
+              "Failed to rewrite tree-model database from %s to %s for device %s.",
+              sourceTreeModelDatabaseName, targetTreeModelDatabaseName, devicePath),
+          e);
+    }
+  }
+
+  private static boolean startsWith(final String[] nodes, final String[] prefixNodes) {
+    if (nodes.length < prefixNodes.length) {
+      return false;
+    }
+    for (int i = 0; i < prefixNodes.length; ++i) {
+      if (!Objects.equals(nodes[i], prefixNodes[i])) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private static void throwWriteBackExceptionIfNecessary(
