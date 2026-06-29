@@ -763,14 +763,26 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public void clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(final String pipeName) {
     acquireWriteLock();
     try {
-      clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(pipeName);
+      clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(
+          pipeName, System.currentTimeMillis());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  public void clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(
+      final String pipeName, final long exceptionsClearTime) {
+    acquireWriteLock();
+    try {
+      clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(
+          pipeName, exceptionsClearTime);
     } finally {
       releaseWriteLock();
     }
   }
 
   private void clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(
-      final String pipeName) {
+      final String pipeName, final long exceptionsClearTime) {
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
       return;
     }
@@ -780,7 +792,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     // To avoid unnecessary retries, we set the isStoppedByRuntimeException flag to false
     runtimeMeta.setIsStoppedByRuntimeException(false);
 
-    runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
+    runtimeMeta.setExceptionsClearTime(exceptionsClearTime);
 
     final Map<Integer, PipeRuntimeException> exceptionMap =
         runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
@@ -904,14 +916,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
    */
   private boolean autoRestartInternal() {
     final AtomicBoolean needRestart = new AtomicBoolean(false);
+    final long exceptionsClearTime = System.currentTimeMillis();
     final List<String> pipeToRestart = new LinkedList<>();
 
     pipeMetaKeeper
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
-              if (pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException()) {
-                pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+              if (runtimeMeta.getIsStoppedByRuntimeException()) {
+                runtimeMeta.setExceptionsClearTime(exceptionsClearTime);
+                runtimeMeta.getStatus().set(PipeStatus.RUNNING);
 
                 needRestart.set(true);
                 pipeToRestart.add(pipeMeta.getStaticMeta().getPipeName());
@@ -945,9 +960,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
-              if (pipeMeta.getRuntimeMeta().getStatus().get().equals(PipeStatus.RUNNING)) {
-                clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(
-                    pipeMeta.getStaticMeta().getPipeName());
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+              if (runtimeMeta.getStatus().get().equals(PipeStatus.RUNNING)
+                  && runtimeMeta.getIsStoppedByRuntimeException()) {
+                clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(
+                    pipeMeta.getStaticMeta().getPipeName(), runtimeMeta.getExceptionsClearTime());
               }
             });
   }
