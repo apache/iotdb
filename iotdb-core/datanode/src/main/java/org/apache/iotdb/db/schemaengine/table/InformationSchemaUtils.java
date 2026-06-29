@@ -74,9 +74,12 @@ public class InformationSchemaUtils {
     builder.getColumnBuilder(3).appendNull();
     builder.getColumnBuilder(4).appendNull();
     if (details) {
-      builder.getColumnBuilder(5).appendNull();
-      builder.getColumnBuilder(6).appendNull();
-      builder.getColumnBuilder(7).writeBoolean(false);
+      for (int columnIndex = 5;
+          columnIndex < builder.getValueColumnBuilders().length - 1;
+          columnIndex++) {
+        builder.getColumnBuilder(columnIndex).appendNull();
+      }
+      builder.getColumnBuilder(builder.getValueColumnBuilders().length - 1).writeBoolean(false);
     }
     builder.declarePosition();
   }

@@ -108,7 +108,13 @@ public class InformationSchema {
             ColumnHeaderConstant.SCHEMA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_SCHEMA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));

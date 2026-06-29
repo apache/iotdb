@@ -179,12 +179,13 @@ public class PreviousFillNode extends FillNode {
     }
     PreviousFillNode that = (PreviousFillNode) o;
     return Objects.equals(timeBound, that.timeBound)
-        && Objects.equals(helperColumn, that.helperColumn);
+        && Objects.equals(helperColumn, that.helperColumn)
+        && Objects.equals(groupingKeys, that.groupingKeys);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), timeBound, helperColumn);
+    return Objects.hash(super.hashCode(), timeBound, helperColumn, groupingKeys);
   }
 
   @Override

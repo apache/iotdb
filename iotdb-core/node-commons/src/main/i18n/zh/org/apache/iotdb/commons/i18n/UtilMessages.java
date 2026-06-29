@@ -85,6 +85,7 @@ public final class UtilMessages {
       "已将文件 {} 重命名为 {}，因为目标目录 {} 中已存在同名文件";
   public static final String COPIED_FILE_ALREADY_EXISTS =
       "已将文件 {} 复制为 {}，因为目标目录 {} 中已存在同名文件";
+  public static final String ILLEGAL_EMPTY_PATH = "路径不能为空。 ";
   public static final String ILLEGAL_PATH_DOTS_OR_SEPARATORS =
       "路径不能为 '.'、'..'、'./' 或 '.\\\\'. ";
 
@@ -116,6 +117,8 @@ public final class UtilMessages {
       "磁盘空间不足，系统切换为只读模式。";
   public static final String CANNOT_CALCULATE_OCCUPIED_SPACE =
       "无法计算文件夹 {} 的已占用空间";
+  public static final String UNRECOGNIZED_MULTI_DIR_STRATEGY =
+      "无法识别的多目录策略 '{}'，回退为 {}。";
 
   // ======================== NodeUrlUtils ========================
 

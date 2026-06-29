@@ -270,6 +270,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   public static final String ERROR_CODE = DataNodeMiscMessages.ERROR_CODE;
+  private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -561,7 +562,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  private void clearUp(
+  public static void clearUp(
       IClientSession clientSession,
       Long statementId,
       Long queryId,
@@ -571,7 +572,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     clientSession.removeQueryId(statementId, queryId);
   }
 
-  private void clearUp(
+  private static void clearUp(
       IClientSession clientSession,
       Long statementId,
       Long queryId,
@@ -1638,7 +1639,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             req.zoneId,
             req.client_protocol,
             clientVersion,
-            sqlDialect);
+            sqlDialect,
+            parseUseEncryptedPassword(req));
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
 
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && database.isPresent()) {
@@ -1678,6 +1680,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private Optional<String> parseDatabase(TSOpenSessionReq req) {
     Map<String, String> configuration = req.configuration;
     return configuration == null ? Optional.empty() : Optional.ofNullable(configuration.get("db"));
+  }
+
+  private boolean parseUseEncryptedPassword(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    return configuration != null
+        && Boolean.parseBoolean(configuration.get(USE_ENCRYPTED_PASSWORD_KEY));
   }
 
   @Override
@@ -2018,6 +2026,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
+      if (path.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
       // Step 1: transfer from DeleteStorageGroupsReq to Statement
       DeleteTimeSeriesStatement statement =
           StatementGenerator.createDeleteTimeSeriesStatement(path);

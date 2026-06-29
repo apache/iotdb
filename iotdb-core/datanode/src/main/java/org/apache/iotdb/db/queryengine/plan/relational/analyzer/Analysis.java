@@ -1529,6 +1529,32 @@ public class Analysis implements IAnalysis {
     }
   }
 
+  public static class NextFillAnalysis extends FillAnalysis {
+    @Nullable private final TimeDuration timeBound;
+    @Nullable private final FieldReference fieldReference;
+    @Nullable private final List<FieldReference> groupingKeys;
+
+    public NextFillAnalysis(
+        TimeDuration timeBound, FieldReference fieldReference, List<FieldReference> groupingKeys) {
+      super(FillPolicy.NEXT);
+      this.timeBound = timeBound;
+      this.fieldReference = fieldReference;
+      this.groupingKeys = groupingKeys;
+    }
+
+    public Optional<TimeDuration> getTimeBound() {
+      return Optional.ofNullable(timeBound);
+    }
+
+    public Optional<FieldReference> getFieldReference() {
+      return Optional.ofNullable(fieldReference);
+    }
+
+    public Optional<List<FieldReference>> getGroupingKeys() {
+      return Optional.ofNullable(groupingKeys);
+    }
+  }
+
   public static class LinearFillAnalysis extends FillAnalysis {
     private final FieldReference fieldReference;
     @Nullable private final List<FieldReference> groupingKeys;

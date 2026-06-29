@@ -131,6 +131,8 @@ public final class DataNodePipeMessages {
       "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "Failed to get PendingQueue. No such subtask: ";
+  public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
+      "Failed to get pipe info from config node, status is %s.";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
       "Failed to get pipe metas, will be synced by configNode later...";
   public static final String FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM =
@@ -140,6 +142,45 @@ public final class DataNodePipeMessages {
           + "node may not be ready yet, and meta will be pushed by config node later.";
   public static final String FAILED_TO_PERSIST_PROGRESS_INDEX_TO_CONFIGNODE =
       "Failed to persist progress index to configNode, status: {}";
+  public static final String SHUTDOWN_PROGRESS_NOT_CONFIRMED =
+      "This shutdown progress was not confirmed to be persisted on ConfigNode.";
+  public static final String START_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+      "Start to persist all pipe progress indexes during shutdown, pipe count {}, deadline {} ms";
+  public static final String
+      INTERRUPTED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "Interrupted while persisting all pipe progress indexes during shutdown. "
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String
+      TIMED_OUT_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "Timed out after {} ms while persisting all pipe progress indexes during shutdown. "
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String FAILED_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+      "Failed to persist all pipe progress indexes during shutdown within {} ms. "
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String COLLECTED_PIPE_METAS_FOR_SHUTDOWN_PROGRESS_PERSIST =
+      "Collected pipe metas for shutdown progress persist, pipe count {}, pipe meta count {}, "
+          + "pipe meta size {} bytes, took {} ms";
+  public static final String COLLECTED_EMPTY_PIPE_METAS_DURING_SHUTDOWN =
+      "Collected empty pipe metas for {} pipes during shutdown.";
+  public static final String START_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+      "Start to pushHeartbeat shutdown pipe meta to ConfigNode, dataNode id {}, pipe count {}, "
+          + "pipe meta count {}, pipe meta size {} bytes";
+  public static final String FAILED_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+      "Failed to pushHeartbeat shutdown pipe meta to ConfigNode, status {}, took {} ms. "
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String
+      SUCCESSFULLY_FINISHED_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+          "Successfully finished pushHeartbeat shutdown pipe meta to ConfigNode, pipe count {}, "
+              + "pipe meta count {}, pipe meta size {} bytes, took {} ms";
+  public static final String
+      EXCEPTION_OCCURRED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "Exception occurred while persisting all pipe progress indexes during shutdown. "
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String PERSISTING_PIPE_PROGRESS_INDEXES_BEFORE_SHUTDOWN =
+      "Persisting pipe progress indexes before shutdown with timeout {} ms.";
+  public static final String PIPE_PROGRESS_INDEXES_WERE_NOT_CONFIRMED_DURING_SHUTDOWN =
+      "Pipe progress indexes were not confirmed by ConfigNode during shutdown. "
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
   public static final String FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS =
       "Failure when register pipe plugin {}. Skip this plugin and continue startup.";
   public static final String
@@ -185,6 +226,10 @@ public final class DataNodePipeMessages {
       "Pipe skipping temporary TsFile which shouldn't be transferred: {}";
   public static final String PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING =
       "Pulled pipe meta from config node: {}, recovering ...";
+  public static final String FAILED_TO_SHOW_CREATE_PIPE_NOT_EXIST =
+      "Failed to show create pipe %s, the pipe does not exist.";
+  public static final String FAILED_TO_SHOW_CREATE_TOPIC_NOT_EXIST =
+      "Failed to show create topic %s, the topic does not exist.";
   public static final String RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_NODE =
       "Received pipe heartbeat request {} from config node.";
   public static final String REGION_NO_TSFILEINSERTIONEVENTS_TO_REPLACE_FOR_SOURCE =
@@ -1266,6 +1311,18 @@ public final class DataNodePipeMessages {
       "PipeTsFileResource's reference count is decreased to below 0.";
   public static final String PIPE_HARDLINK_DIR_FOUND_DELETING_IT_RESULT =
       "Pipe hardlink dir found, deleting it: {}, result: {}";
+  public static final String PIPE_HARDLINK_DIR_FOUND_MOVED_TO_PERIODICAL_DELETE =
+      "Pipe hardlink dir found, moved it from {} to {} for throttled periodical deletion.";
+  public static final String PIPE_STALE_HARDLINK_DIR_FOUND_REGISTERING_PERIODICAL_DELETE =
+      "Stale pipe hardlink dir found, registering it for throttled periodical deletion: {}";
+  public static final String PIPE_HARDLINK_DIR_PERIODICAL_DELETE_FINISHED =
+      "Finished deleting stale pipe hardlink dir {} by periodical job, result: {}";
+  public static final String PIPE_HARDLINK_DIR_PERIODICAL_DELETE_PROGRESS =
+      "Periodically deleted {} paths from stale pipe hardlink dirs, current dir: {}, current round result: {}";
+  public static final String PIPE_HARDLINK_DIR_PERIODICAL_DELETE_ALL_FINISHED =
+      "Finished deleting all stale pipe hardlink dirs by periodical job.";
+  public static final String PIPE_HARDLINK_DIR_MOVE_FAILED_DELETING_SYNC =
+      "Failed to move pipe hardlink dir {} for periodical deletion, deleting it synchronously.";
   public static final String PIPE_SNAPSHOT_DIR_FOUND_DELETING_IT =
       "Pipe snapshot dir found, deleting it: {},";
   public static final String SHRINK_CALLBACK_IS_NOT_SUPPORTED_IN_PIPEFIXEDMEMORYBLOCK =

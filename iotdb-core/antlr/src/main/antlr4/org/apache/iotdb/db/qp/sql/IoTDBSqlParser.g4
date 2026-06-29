@@ -59,7 +59,7 @@ ddlStatement
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
-    | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
+    | createTopic | alterTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -122,8 +122,8 @@ databaseAttributeClause
 databaseAttributeKey
     : TTL
     | TIME_PARTITION_INTERVAL
-    | SCHEMA_REGION_GROUP_NUM
-    | DATA_REGION_GROUP_NUM
+    | MAX_SCHEMA_REGION_GROUP_NUM
+    | MAX_DATA_REGION_GROUP_NUM
     ;
 
 // ---- Drop Database
@@ -721,6 +721,10 @@ createTopic
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
     ;
 
+alterTopic
+    : ALTER TOPIC topicName=identifier topicAttributesClause
+    ;
+
 topicAttributesClause
     : WITH LR_BRACKET topicAttributeClause (COMMA topicAttributeClause)* RR_BRACKET
     ;
@@ -879,7 +883,16 @@ dropCalcPoint
 
 showCalcPoint
     : SHOW CALCULATION POINTS prefixPath
+      calcPointWhereClause?
       rowPaginationClause?
+    ;
+
+calcPointWhereClause
+    : WHERE calcPointContainsExpression
+    ;
+
+calcPointContainsExpression
+    : filterKey=identifier operator_contains value=STRING_LITERAL
     ;
 
 viewColumnDefinition

@@ -89,7 +89,9 @@ public class IoTDBConfig {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX = "org.apache.iotdb.commons.disk.strategy.";
   private static final String[] CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES =
-      new String[] {"SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy"};
+      new String[] {
+        "SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy", "MinFolderOccupiedSpaceFirstStrategy"
+      };
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9`_.\\-\\u2E80-\\u9FFF]+)";
@@ -727,7 +729,7 @@ public class IoTDBConfig {
    * Minimum every interval to perform continuous query.
    * The every interval of continuous query instances should not be lower than this limit.
    */
-  private long continuousQueryMinimumEveryInterval = 1000;
+  private volatile long continuousQueryMinimumEveryInterval = 1000;
 
   /** How much memory may be used in ONE SELECT INTO operation (in Byte). */
   private long intoOperationBufferSizeInByte = 100 * 1024 * 1024L;
@@ -1018,7 +1020,7 @@ public class IoTDBConfig {
   private long detailContainerMinDegradeMemoryInBytes = 1024 * 1024L;
   private int schemaThreadCount = 5;
 
-  private ReadConsistencyLevel readConsistencyLevel = ReadConsistencyLevel.STRONG;
+  private volatile ReadConsistencyLevel readConsistencyLevel = ReadConsistencyLevel.STRONG;
 
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
   private long throttleThreshold = 200 * 1024 * 1024 * 1024L;
@@ -1055,13 +1057,22 @@ public class IoTDBConfig {
   private long schemaRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
 
   /** CQ related */
-  private long cqMinEveryIntervalInMs = 1_000;
+  private volatile long cqMinEveryIntervalInMs = 1_000;
 
   private long dataRatisConsensusRequestTimeoutMs = 10000L;
   private long schemaRatisConsensusRequestTimeoutMs = 10000L;
 
   private int dataRatisConsensusMaxRetryAttempts = 10;
   private int schemaRatisConsensusMaxRetryAttempts = 10;
+
+  /**
+   * RatisConsensus protocol, max retry attempts for a configuration change (add/remove peer). Uses
+   * a fixed 2s retry interval; bounding the attempts stops a killed ADDING peer from blocking the
+   * reconfiguration -- and hence a region migration -- forever. Pushed from the ConfigNode.
+   */
+  private int dataRatisConsensusReconfigurationMaxRetryAttempts = 15;
+
+  private int schemaRatisConsensusReconfigurationMaxRetryAttempts = 15;
   private long dataRatisConsensusInitialSleepTimeMs = 100L;
   private long schemaRatisConsensusInitialSleepTimeMs = 100L;
   private long dataRatisConsensusMaxSleepTimeMs = 10000L;
@@ -1090,6 +1101,9 @@ public class IoTDBConfig {
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
+  // Throttle the per-file snapshot-transmission progress log in IoTConsensus to at most once per
+  // this interval (ms). A value <= 0 logs every file.
+  private long dataRegionIotSnapshotTransmissionProgressLogIntervalMs = 5000L;
 
   // IoTConsensusV2 Config
   private int iotConsensusV2PipelineSize = 5;
@@ -1262,6 +1276,16 @@ public class IoTDBConfig {
   public void setRegionMigrationSpeedLimitBytesPerSecond(
       long regionMigrationSpeedLimitBytesPerSecond) {
     this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
+  }
+
+  public long getDataRegionIotSnapshotTransmissionProgressLogIntervalMs() {
+    return dataRegionIotSnapshotTransmissionProgressLogIntervalMs;
+  }
+
+  public void setDataRegionIotSnapshotTransmissionProgressLogIntervalMs(
+      long dataRegionIotSnapshotTransmissionProgressLogIntervalMs) {
+    this.dataRegionIotSnapshotTransmissionProgressLogIntervalMs =
+        dataRegionIotSnapshotTransmissionProgressLogIntervalMs;
   }
 
   public int getIotConsensusV2PipelineSize() {
@@ -3786,6 +3810,7 @@ public class IoTDBConfig {
 
   public void setCqMinEveryIntervalInMs(long cqMinEveryIntervalInMs) {
     this.cqMinEveryIntervalInMs = cqMinEveryIntervalInMs;
+    this.continuousQueryMinimumEveryInterval = cqMinEveryIntervalInMs;
   }
 
   public double getUsableCompactionMemoryProportion() {
@@ -3830,6 +3855,26 @@ public class IoTDBConfig {
 
   public void setSchemaRatisConsensusMaxRetryAttempts(int schemaRatisConsensusMaxRetryAttempts) {
     this.schemaRatisConsensusMaxRetryAttempts = schemaRatisConsensusMaxRetryAttempts;
+  }
+
+  public int getDataRatisConsensusReconfigurationMaxRetryAttempts() {
+    return dataRatisConsensusReconfigurationMaxRetryAttempts;
+  }
+
+  public void setDataRatisConsensusReconfigurationMaxRetryAttempts(
+      int dataRatisConsensusReconfigurationMaxRetryAttempts) {
+    this.dataRatisConsensusReconfigurationMaxRetryAttempts =
+        dataRatisConsensusReconfigurationMaxRetryAttempts;
+  }
+
+  public int getSchemaRatisConsensusReconfigurationMaxRetryAttempts() {
+    return schemaRatisConsensusReconfigurationMaxRetryAttempts;
+  }
+
+  public void setSchemaRatisConsensusReconfigurationMaxRetryAttempts(
+      int schemaRatisConsensusReconfigurationMaxRetryAttempts) {
+    this.schemaRatisConsensusReconfigurationMaxRetryAttempts =
+        schemaRatisConsensusReconfigurationMaxRetryAttempts;
   }
 
   public long getDataRatisConsensusInitialSleepTimeMs() {
@@ -4134,11 +4179,17 @@ public class IoTDBConfig {
   }
 
   public String getLoadActiveListeningPipeDir() {
-    return loadActiveListeningPipeDir;
+    return loadActiveListeningPipeDir == null || Objects.equals(loadActiveListeningPipeDir, "")
+        ? extDir
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.PIPE_FOLDER_NAME
+        : loadActiveListeningPipeDir;
   }
 
   public void setLoadActiveListeningPipeDir(String loadActiveListeningPipeDir) {
-    this.loadActiveListeningPipeDir = loadActiveListeningPipeDir;
+    this.loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
   }
 
   public String[] getLoadActiveListeningDirs() {

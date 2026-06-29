@@ -30,15 +30,6 @@ public final class DataNodeQueryMessages {
   public static final String THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAMEASUREMENTNODE =
       "This node isn't instance of SchemaMeasurementNode.";
 
-  // --- Execution ---
-
-  public static final String ERROR_SETTING_FUTURE_STATE_FOR =
-      "Error setting future state for {}";
-  public static final String ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR =
-      "Error notifying state change listener for {}";
-  public static final String SERVER_IS_SHUTTING_DOWN =
-      "Server is shutting down";
-
   // --- Execution / Aggregation ---
 
   public static final String INVALID_AGGREGATION_FUNCTION =
@@ -206,6 +197,21 @@ public final class DataNodeQueryMessages {
       "Failed to close reader in TableDiskUsageSupplier";
   public static final String UNSUPPORTED_CATEGORY =
       "Unsupported category: ";
+  public static final String CURRENT_DEVICE_ENTRY_IN_TABLESCANOPERATOR_IS_EMPTY =
+      "Current device entry in TableScanOperator is empty";
+  public static final String UNEXPECTED_END_OF_EXTERNAL_TSFILE_DEVICE_TASK_READER_AT_DEVICE_INDEX =
+      "Unexpected end of external TsFile device task reader at device index ";
+  public static final String
+      EXTERNAL_TSFILE_DEVICE_TASK_READER_IS_NOT_ALIGNED_WITH_DEVICE_ENTRIES =
+          "External TsFile device task reader is not aligned with device entries at index %d:"
+              + " expected %s but got %s";
+  public static final String FAILED_TO_UPDATE_EXTERNAL_TSFILE_DEVICE_RESOURCES =
+      "Failed to update external TsFile device resources";
+  public static final String SCHEMA_FILTER_TYPE_IS_NOT_SUPPORTED =
+      "The schema filter type %s is not supported";
+  public static final String
+      ATTRIBUTE_FILTER_IS_NOT_SUPPORTED_FOR_EXTERNAL_TSFILE_DEVICE_FILTERING =
+          "Attribute filter is not supported for external TsFile device filtering";
 
   // --- Execution / Operator / Window ---
 
@@ -295,6 +301,7 @@ public final class DataNodeQueryMessages {
       "select into: the i of ${i} should be an integer.";
   public static final String FAILED_TO_GET_DATABASE_MAP =
       "Failed to get database Map";
+  public static final String UNKNOWN_DATABASE = "Unknown database %s";
   public static final String LOAD_ANALYSIS_STAGE_ALL_TSFILES_HAVE_BEEN_ANALYZED =
       "Load - Analysis Stage: all tsfiles have been analyzed.";
   public static final String ASYNC_LOAD_HAS_FAILED_AND_IS_NOW_TRYING =
@@ -307,6 +314,12 @@ public final class DataNodeQueryMessages {
       "Empty file detected, will skip loading this file: {}";
   public static final String AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR =
       "Auto create or verify schema error.";
+  public static final String LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
+      "Device %s does not exist in IoTDB and can not be created. Please check whether auto-create-schema is enabled.";
+  public static final String LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
+      "Measurement %s does not exist in IoTDB and can not be created. Please check whether auto-create-schema is enabled.";
+  public static final String PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA =
+      "Pipe generated LoadTsFile is waiting for schema metadata to be transferred. Detail: %s";
   public static final String FAILED_TO_FIND_TAG_COLUMN_MAPPING_FOR_TABLE =
       "Failed to find tag column mapping for table {}";
   public static final String AUTO_CREATE_DATABASE_FAILED_BECAUSE =
@@ -551,6 +564,8 @@ public final class DataNodeQueryMessages {
       "Not support for this sql in START PIPE, please enter pipename.";
   public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_STOP_PIPE =
       "Not support for this sql in STOP PIPE, please enter pipename.";
+  public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_ALTER_TOPIC =
+      "Not support for this sql in ALTER TOPIC, please enter topicName.";
   public static final String GET_REGION_ID_STATEMENT_EXPRESSION_MUST_BE_A =
       "Get region id statement‘ expression must be a time expression";
   public static final String WRONG_SPACE_QUOTA_TYPE =
@@ -770,6 +785,83 @@ public final class DataNodeQueryMessages {
       "Tag column only support data type STRING.";
   public static final String ATTRIBUTE_COLUMN_ONLY_SUPPORT_DATA_TYPE_STRING =
       "Attribute column only support data type STRING.";
+  public static final String UNSUPPORTED_EXTERNAL_TSFILE_DEVICE_FILTER =
+      "Unsupported external TsFile device filter: ";
+
+  // --- Plan / Relational / Table Function ---
+
+  public static final String NO_TABLE_SCHEMA_FOUND_IN_TSFILES =
+      "No table schema found in TsFiles";
+  public static final String NO_TABLE_SCHEMA_FOUND_FOR_TABLE_IN_TSFILES =
+      "No table schema found for table %s in TsFiles";
+  public static final String READ_TSFILE_MUST_BE_PLANNED_AS_EXTERNAL_TSFILE_SCAN_NODE =
+      "readTsFile must be planned as an ExternalTsFileScanNode";
+  public static final String MISSING_SCALAR_ARGUMENT =
+      "Missing scalar argument: ";
+  public static final String ARGUMENT_SHOULD_NOT_BE_EMPTY =
+      "Argument %s should not be empty";
+  public static final String INVALID_SCALAR_ARGUMENT =
+      "Invalid scalar argument: ";
+  public static final String ARGUMENT_SHOULD_BE_A_STRING =
+      "Argument %s should be a string";
+  public static final String ARGUMENT_SHOULD_CONTAIN_AT_LEAST_ONE_PATH =
+      "Argument %s should contain at least one path";
+  public static final String READ_TSFILE_PATH_IS_NOT_ALLOWED =
+      "readTsFile path %s is not allowed because it may access IoTDB data directory %s";
+  public static final String OUTPUT_COLUMN_NAMES_AND_TYPES_SIZE_MISMATCH =
+      "Output column names and types size mismatch";
+  public static final String OUTPUT_COLUMN_NAMES_AND_CATEGORIES_SIZE_MISMATCH =
+      "Output column names and categories size mismatch";
+  public static final String READ_TSFILE_TABLE_FUNCTION_HANDLE_DOES_NOT_SUPPORT_SERIALIZATION =
+      "ReadTsFileTableFunctionHandle does not support serialization";
+  public static final String READ_TSFILE_TABLE_FUNCTION_HANDLE_DOES_NOT_SUPPORT_DESERIALIZATION =
+      "ReadTsFileTableFunctionHandle does not support deserialization";
+  public static final String TSFILE_PATH_DOES_NOT_EXIST =
+      "TsFile path does not exist: ";
+  public static final String TSFILE_PATH_IS_NEITHER_A_FILE_NOR_A_DIRECTORY =
+      "TsFile path is neither a file nor a directory: ";
+  public static final String NO_VALID_TSFILES_FOUND =
+      "No valid TsFiles found";
+  public static final String FAILED_TO_SCAN_TSFILE_PATH =
+      "Failed to scan TsFile path: ";
+  public static final String CANNOT_INFER_TABLE_NAME_FROM_TSFILES_MULTIPLE_TABLES =
+      "Cannot infer table name from TsFiles because multiple tables are found: %s and %s";
+  public static final String CANNOT_INFER_TABLE_NAME_FROM_TSFILE_NO_TABLE_SCHEMA =
+      "Cannot infer table name from TsFile because no table schema is found in ";
+  public static final String CANNOT_INFER_TABLE_NAME_FROM_TSFILE_MULTIPLE_TABLES =
+      "Cannot infer table name from TsFile because multiple tables are found in ";
+  public static final String FILE_IS_NOT_A_VALID_TSFILE =
+      "File is not a valid TsFile: ";
+  public static final String FAILED_TO_READ_TABLE_SCHEMA_FROM_TSFILE =
+      "Failed to read table schema from TsFile: ";
+  public static final String MULTIPLE_TIME_COLUMNS_FOUND_WHEN_MERGING_TABLE_SCHEMA =
+      "Multiple time columns found when merging table schema for table ";
+  public static final String TIME_COLUMN_CONFLICTS_WHEN_MERGING_TABLE_SCHEMA =
+      "Time column conflicts when merging table schema for table ";
+  public static final String TAG_COLUMNS_CONFLICT_WHEN_MERGING_TABLE_SCHEMA =
+      "Tag columns conflict when merging table schema for table ";
+  public static final String FIELD_COLUMN_HAS_CONFLICTING_DATA_TYPES_WHEN_MERGING_TABLE_SCHEMA =
+      "Field column %s has conflicting data types when merging table schema for table %s";
+  public static final String COLUMN_HAS_CONFLICTING_CATEGORIES_WHEN_MERGING_TABLE_SCHEMA =
+      "Column %s has conflicting categories when merging table schema for table %s";
+  public static final String FAILED_TO_CREATE_EXTERNAL_TSFILE_DEVICE_TASK_RUN_READER =
+      "Failed to create external TsFile device task run reader";
+  public static final String UNKNOWN_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION =
+      "Unknown external TsFile device task partition: ";
+  public static final String EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_BEEN_CLOSED =
+      "External TsFile query resource has been closed: ";
+  public static final String EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_ALREADY_BEEN_SET =
+      "External TsFile query resource has already been set in this fragment instance";
+  public static final String EXTERNAL_TSFILE_FRAGMENT_INSTANCE_USAGE_COUNT_CANNOT_BE_NEGATIVE =
+      "External TsFile fragment instance usage count cannot be negative";
+  public static final String FAILED_TO_DESERIALIZE_EXTERNAL_TSFILE_RESOURCE =
+      "Failed to deserialize external TsFile resource: %s, %s";
+  public static final String FAILED_TO_FLUSH_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION =
+      "Failed to flush external TsFile device task partition";
+  public static final String EXTERNAL_TSFILE_DEVICE_TASK_PARTITION_COUNT_MUST_BE_POSITIVE =
+      "External TsFile device task partition count must be positive";
+  public static final String FAILED_TO_CREATE_EXTERNAL_TSFILE_DEVICE_COLLECTOR =
+      "Failed to create external TsFile device collector";
 
   // --- Plan / Relational / Planner ---
 
@@ -813,6 +905,8 @@ public final class DataNodeQueryMessages {
       "Values is not supported in current version.";
   public static final String SUBSCRIPT_IS_NOT_SUPPORTED_IN_CURRENT_VERSION =
       "Subscript is not supported in current version";
+  public static final String READ_TSFILE_TABLE_FUNCTION_HANDLE_IS_INVALID =
+      "readTsFile table function handle is invalid";
 
   // --- Plan / Relational / Planner / IR ---
 
@@ -842,6 +936,16 @@ public final class DataNodeQueryMessages {
       "Not supported yet.";
   public static final String COPYTONODE_SHOULD_NOT_BE_SERIALIZED =
       "CopyToNode should not be serialized";
+  public static final String
+      EXTERNAL_TSFILE_AGGREGATION_SCAN_NODE_DEVICE_ENTRIES_MUST_BE_SET_BY_DEVICE_ENTRY_INDEXES =
+          "ExternalTsFileAggregationScanNode device entries must be set by device entry indexes";
+  public static final String EXTERNAL_TSFILE_AGGREGATION_SCAN_NODE_CANNOT_BE_SERIALIZED =
+      "ExternalTsFileAggregationScanNode cannot be serialized because it reads local external TsFiles";
+  public static final String
+      EXTERNAL_TSFILE_SCAN_NODE_DEVICE_ENTRIES_MUST_BE_SET_BY_DEVICE_ENTRY_INDEXES =
+          "ExternalTsFileScanNode device entries must be set by device entry indexes";
+  public static final String EXTERNAL_TSFILE_SCAN_NODE_CANNOT_BE_SERIALIZED =
+      "ExternalTsFileScanNode cannot be serialized because it reads local external TsFiles";
 
   // --- Plan / Relational / Planner / Optimizations ---
 

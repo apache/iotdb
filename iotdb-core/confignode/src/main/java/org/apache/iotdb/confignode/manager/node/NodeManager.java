@@ -142,6 +142,8 @@ public class NodeManager {
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
+  public static final int APPLY_CONFIG_LOCALLY = -2;
+
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
     this.nodeInfo = nodeInfo;
@@ -233,6 +235,10 @@ public class NodeManager {
     ratisConfig.setSchemaMaxRetryAttempts(conf.getSchemaRegionRatisMaxRetryAttempts());
     ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
     ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
+    ratisConfig.setDataReconfigurationMaxRetryAttempts(
+        conf.getDataRegionRatisReconfigurationMaxRetryAttempts());
+    ratisConfig.setSchemaReconfigurationMaxRetryAttempts(
+        conf.getSchemaRegionRatisReconfigurationMaxRetryAttempts());
 
     ratisConfig.setSchemaPreserveWhenPurge(conf.getSchemaRegionRatisPreserveLogsWhenPurge());
     ratisConfig.setDataPreserveWhenPurge(conf.getDataRegionRatisPreserveLogsWhenPurge());
@@ -1079,7 +1085,7 @@ public class NodeManager {
                 SyncConfigNodeClientPool.getInstance()
                     .sendSyncRequestToConfigNodeWithRetry(
                         configNode.getInternalEndPoint(),
-                        new TSetConfigurationReq(req.getConfigs(), configNode.getConfigNodeId()),
+                        new TSetConfigurationReq(req.getConfigs(), APPLY_CONFIG_LOCALLY),
                         CnToCnNodeRequestType.SET_CONFIGURATION);
       } catch (Exception e) {
         status =

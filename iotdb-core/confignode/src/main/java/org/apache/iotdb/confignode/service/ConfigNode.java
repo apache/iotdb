@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -89,7 +90,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private static final int STARTUP_RETRY_NUM = 10;
+  private static final int STARTUP_RETRY_NUM = 20;
   private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(3);
   private static final int SCHEDULE_WAITING_RETRY_NUM =
       (int) (COMMON_CONFIG.getCnConnectionTimeoutInMS() / STARTUP_RETRY_INTERVAL_IN_MS);
@@ -142,6 +143,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       LOGGER.info(ConfigNodeMessages.STARTING_IOTDB, IoTDBConstant.VERSION_WITH_BUILD);
       ConfigNodeStartupCheck checks = new ConfigNodeStartupCheck(IoTDBConstant.CN_ROLE);
       checks.startUpCheck();
+      MemoryConfig.getInstance();
     } catch (StartupException | ConfigurationException | IOException e) {
       LOGGER.error(ConfigNodeMessages.MEET_ERROR_WHEN_DOING_START_CHECKING, e);
       throw new IoTDBException(ConfigNodeMessages.ERROR_STARTING, -1);
@@ -414,6 +416,12 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       } else if (status.getCode() == TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode()) {
         LOGGER.warn(
             ConfigNodeMessages.THE_RESULT_OF_REGISTER_SELF_CONFIGNODE_IS_RETRY, status, retry);
+      } else if (status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()) {
+        LOGGER.info(
+            "ConfigNode leader is warming up before serving the registering ConfigNode, will wait"
+                + " and retry. Status: {}, retry: {}",
+            status,
+            retry);
       } else {
         throw new StartupException(status.getMessage());
       }

@@ -166,8 +166,10 @@ public class ShowDBTask implements IConfigTask {
       builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
       builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
       builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());
-      builder.getColumnBuilder(6).writeInt(storageGroupInfo.getDataRegionNum());
-      builder.getColumnBuilder(7).writeBoolean(storageGroupInfo.isNeedLastCache());
+      builder.getColumnBuilder(6).writeInt(storageGroupInfo.getMaxSchemaRegionNum());
+      builder.getColumnBuilder(7).writeInt(storageGroupInfo.getDataRegionNum());
+      builder.getColumnBuilder(8).writeInt(storageGroupInfo.getMaxDataRegionNum());
+      builder.getColumnBuilder(9).writeBoolean(storageGroupInfo.isNeedLastCache());
       builder.declarePosition();
     }
 

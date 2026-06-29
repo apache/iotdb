@@ -176,8 +176,13 @@ public class StreamingAggregationOperator extends AbstractOperator {
 
   private void addRowsToAggregators(TsBlock page, int startPosition, int endPosition) {
     TsBlock region = page.getRegion(startPosition, endPosition - startPosition + 1);
-    for (TableAggregator aggregator : aggregators) {
-      aggregator.processBlock(region);
+    long startTime = System.nanoTime();
+    try {
+      for (TableAggregator aggregator : aggregators) {
+        aggregator.processBlock(region);
+      }
+    } finally {
+      operatorContext.recordAggregationOperatorFromRawDataCost(System.nanoTime() - startTime);
     }
   }
 

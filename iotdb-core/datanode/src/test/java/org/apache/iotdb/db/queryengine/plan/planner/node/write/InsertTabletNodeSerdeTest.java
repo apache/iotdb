@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTe
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -87,8 +88,8 @@ public class InsertTabletNodeSerdeTest {
 
     tmpNode.setMeasurementSchemas(
         new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("\u6e29\u5ea6", TSDataType.DOUBLE),
+          new MeasurementSchema("\u6e7f\u5ea6", TSDataType.FLOAT),
           new MeasurementSchema("s3", TSDataType.INT64),
           new MeasurementSchema("s4", TSDataType.INT32),
           new MeasurementSchema("s5", TSDataType.BOOLEAN)
@@ -117,8 +118,8 @@ public class InsertTabletNodeSerdeTest {
     tmpNode.setPlanNodeId(insertTabletNode.getPlanNodeId());
     tmpNode.setMeasurementSchemas(
         new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("\u6e29\u5ea6", TSDataType.DOUBLE),
+          new MeasurementSchema("\u6e7f\u5ea6", TSDataType.FLOAT),
           new MeasurementSchema("s3", TSDataType.INT64),
           new MeasurementSchema("s4", TSDataType.INT32),
           new MeasurementSchema("s5", TSDataType.BOOLEAN)
@@ -224,6 +225,147 @@ public class InsertTabletNodeSerdeTest {
   }
 
   @Test
+  public void testRelationalSerializedSizeWithFailedMeasurement() {
+    RelationalInsertTabletNode insertTabletNode = getRelationalInsertTabletNodeWithSchema("table1");
+    insertTabletNode.markFailedMeasurement(1);
+    insertTabletNode.setFailedMeasurementNumber(1);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(insertTabletNode.serializedSize());
+    insertTabletNode.serializeToWAL(new WALByteBufferForTest(byteBuffer));
+
+    Assert.assertEquals(insertTabletNode.serializedSize(), byteBuffer.position());
+  }
+
+  @Test
+  public void testSerializedSizeWithClearedMeasurementAndRetainedColumn()
+      throws IllegalPathException {
+    InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
+    insertTabletNode.getMeasurements()[1] = null;
+    insertTabletNode.getMeasurementSchemas()[1] = null;
+    insertTabletNode.getDataTypes()[1] = null;
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(insertTabletNode.serializedSize());
+    insertTabletNode.serializeToWAL(new WALByteBufferForTest(byteBuffer));
+
+    Assert.assertEquals(insertTabletNode.serializedSize(), byteBuffer.position());
+  }
+
+  @Test
+  public void testSerializedSizeWithRetainedMeasurementAndNullColumn()
+      throws IllegalPathException, IOException {
+    InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
+    insertTabletNode.getColumns()[1] = null;
+
+    byte[] bytes = new byte[insertTabletNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertTabletNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), dataInputStream.readShort());
+
+    InsertTabletNode tmpNode = InsertTabletNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(
+        new String[] {"\u6e29\u5ea6", "s3", "s4", "s5"}, tmpNode.getMeasurements());
+  }
+
+  @Test
+  public void testSerializeToWALWithoutMeasurementSchemas() throws Exception {
+    InsertTabletNode insertTabletNode = getInsertTabletNode();
+
+    byte[] bytes = new byte[insertTabletNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertTabletNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), dataInputStream.readShort());
+
+    InsertTabletNode tmpNode = InsertTabletNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(new String[0], tmpNode.getMeasurements());
+  }
+
+  @Test
+  public void testSerializeToWALWithShortBitMaps() throws Exception {
+    InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
+    BitMap bitMap = new BitMap(insertTabletNode.getRowCount());
+    bitMap.mark(0);
+    insertTabletNode.setBitMaps(new BitMap[] {bitMap});
+
+    byte[] bytes = new byte[insertTabletNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertTabletNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), dataInputStream.readShort());
+
+    InsertTabletNode tmpNode = InsertTabletNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(
+        new String[] {"\u6e29\u5ea6", "\u6e7f\u5ea6", "s3", "s4", "s5"}, tmpNode.getMeasurements());
+    Assert.assertNotNull(tmpNode.getBitMaps());
+    Assert.assertTrue(tmpNode.getBitMaps()[0].isMarked(0));
+  }
+
+  @Test
+  public void testRelationalSerializedSizeWithRetainedMeasurementAndNullColumn() {
+    RelationalInsertTabletNode insertTabletNode = getRelationalInsertTabletNodeWithSchema("table1");
+    insertTabletNode.getColumns()[1] = null;
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(insertTabletNode.serializedSize());
+    insertTabletNode.serializeToWAL(new WALByteBufferForTest(byteBuffer));
+
+    Assert.assertEquals(insertTabletNode.serializedSize(), byteBuffer.position());
+  }
+
+  @Test
+  public void testRelationalDeserializeFromWALSkipsRetainedMeasurementWithNullCategory()
+      throws IOException {
+    RelationalInsertTabletNode insertTabletNode = getRelationalInsertTabletNodeWithSchema("table1");
+    insertTabletNode.getColumnCategories()[1] = null;
+
+    byte[] bytes = new byte[insertTabletNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertTabletNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(
+        PlanNodeType.RELATIONAL_INSERT_TABLET.getNodeType(), dataInputStream.readShort());
+
+    RelationalInsertTabletNode tmpNode =
+        RelationalInsertTabletNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(new String[] {"s1", "s3", "s4", "s5"}, tmpNode.getMeasurements());
+    Assert.assertArrayEquals(
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.ATTRIBUTE,
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.FIELD
+        },
+        tmpNode.getColumnCategories());
+  }
+
+  @Test
+  public void testDeserializeFromWALWithMarkedFailedMeasurementOnly()
+      throws IllegalPathException, IOException {
+    InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
+    insertTabletNode.markFailedMeasurement(1);
+
+    byte[] bytes = new byte[insertTabletNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertTabletNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), dataInputStream.readShort());
+
+    InsertTabletNode tmpNode = InsertTabletNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(
+        new String[] {"\u6e29\u5ea6", "s3", "s4", "s5"}, tmpNode.getMeasurements());
+  }
+
+  @Test
   public void testInitTabletValuesWithAllTypes()
       throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId("1"));
@@ -321,9 +463,9 @@ public class InsertTabletNodeSerdeTest {
     InsertTabletNode insertTabletNode =
         new InsertTabletNode(
             new PlanNodeId("plannode 1"),
-            new PartialPath("root.isp.d1"),
+            new PartialPath("root.\u6570\u636e\u5e93.d1"),
             false,
-            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            new String[] {"\u6e29\u5ea6", "\u6e7f\u5ea6", "s3", "s4", "s5"},
             dataTypes,
             times,
             null,
@@ -331,8 +473,8 @@ public class InsertTabletNodeSerdeTest {
             times.length);
     insertTabletNode.setMeasurementSchemas(
         new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("\u6e29\u5ea6", TSDataType.DOUBLE),
+          new MeasurementSchema("\u6e7f\u5ea6", TSDataType.FLOAT),
           new MeasurementSchema("s3", TSDataType.INT64),
           new MeasurementSchema("s4", TSDataType.INT32),
           new MeasurementSchema("s5", TSDataType.BOOLEAN)

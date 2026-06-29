@@ -132,7 +132,46 @@ public final class DataNodePipeMessages {
       "获取 pipe task meta from config node. Ignore the exception 失败，原因：config node may not be "
           + "ready yet, and meta will be pushed by config node later.";
   public static final String FAILED_TO_PERSIST_PROGRESS_INDEX_TO_CONFIGNODE =
-      "持久化 progress index 到 configNode 失败，状态：{}";
+      "持久化进度索引到 ConfigNode 失败，状态：{}";
+  public static final String SHUTDOWN_PROGRESS_NOT_CONFIRMED =
+      "本次关闭流程中的进度未确认已持久化到 ConfigNode。";
+  public static final String START_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+      "开始在关闭期间持久化所有 Pipe 进度索引，Pipe 数量 {}，超时时间 {} ms";
+  public static final String
+      INTERRUPTED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "在关闭期间持久化所有 Pipe 进度索引时被中断。"
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String
+      TIMED_OUT_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "在关闭期间持久化所有 Pipe 进度索引超时，耗时 {} ms。"
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String FAILED_TO_PERSIST_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+      "在关闭期间持久化所有 Pipe 进度索引失败，耗时 {} ms。"
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String COLLECTED_PIPE_METAS_FOR_SHUTDOWN_PROGRESS_PERSIST =
+      "已收集关闭期间进度持久化所需的 Pipe 元数据，Pipe 数量 {}，Pipe 元数据数量 {}，"
+          + "Pipe 元数据大小 {} 字节，耗时 {} ms";
+  public static final String COLLECTED_EMPTY_PIPE_METAS_DURING_SHUTDOWN =
+      "关闭期间为 {} 个 Pipe 收集到空 Pipe 元数据。";
+  public static final String START_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+      "开始向 ConfigNode 推送关闭期间的 Pipe 元数据心跳，DataNode ID {}，Pipe 数量 {}，"
+          + "Pipe 元数据数量 {}，Pipe 元数据大小 {} 字节";
+  public static final String FAILED_TO_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+      "向 ConfigNode 推送关闭期间的 Pipe 元数据心跳失败，状态 {}，耗时 {} ms。"
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String
+      SUCCESSFULLY_FINISHED_PUSH_HEARTBEAT_SHUTDOWN_PIPE_META_TO_CONFIGNODE =
+          "成功向 ConfigNode 推送关闭期间的 Pipe 元数据心跳，Pipe 数量 {}，Pipe 元数据数量 {}，"
+              + "Pipe 元数据大小 {} 字节，耗时 {} ms";
+  public static final String
+      EXCEPTION_OCCURRED_WHILE_PERSISTING_ALL_PIPE_PROGRESS_INDEXES_DURING_SHUTDOWN =
+          "在关闭期间持久化所有 Pipe 进度索引时发生异常。"
+              + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
+  public static final String PERSISTING_PIPE_PROGRESS_INDEXES_BEFORE_SHUTDOWN =
+      "关闭前正在持久化 Pipe 进度索引，超时时间 {} ms。";
+  public static final String PIPE_PROGRESS_INDEXES_WERE_NOT_CONFIRMED_DURING_SHUTDOWN =
+      "关闭期间 Pipe 进度索引未被 ConfigNode 确认。"
+          + SHUTDOWN_PROGRESS_NOT_CONFIRMED;
   public static final String FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS =
       "注册 pipe plugin {} 失败。将跳过该插件并继续启动。";
   public static final String
@@ -178,6 +217,10 @@ public final class DataNodePipeMessages {
       "Pipe 跳过不应传输的临时 TsFile：{}";
   public static final String PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING =
       "已从 config node 拉取 pipe 元数据：{}，正在恢复 ...";
+  public static final String FAILED_TO_SHOW_CREATE_PIPE_NOT_EXIST =
+      "show create pipe %s 失败，该 pipe 不存在。";
+  public static final String FAILED_TO_SHOW_CREATE_TOPIC_NOT_EXIST =
+      "show create topic %s 失败，该 topic 不存在。";
   public static final String RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_NODE =
       "收到来自 config node 的 pipe 心跳请求 {}。";
   public static final String REGION_NO_TSFILEINSERTIONEVENTS_TO_REPLACE_FOR_SOURCE =
@@ -209,7 +252,7 @@ public final class DataNodePipeMessages {
       "subtask {} 已关闭, ignore exception";
   public static final String SUBTASK_WORKER_IS_INTERRUPTED = "子任务工作线程被中断";
   public static final String SUCCESSFULLY_PERSISTED_ALL_PIPE_S_INFO_TO =
-      "成功 persisted all pipe's info to configNode。";
+      "成功将所有 Pipe 信息持久化到 ConfigNode。";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
       "执行器 {} 和 {} 已成功关闭。";
 
@@ -1221,6 +1264,18 @@ public final class DataNodePipeMessages {
       "PipeTsFileResource's reference count is decreased to below 0.";
   public static final String PIPE_HARDLINK_DIR_FOUND_DELETING_IT_RESULT =
       "Pipe hardlink dir found, deleting it: {}, result: {}";
+  public static final String PIPE_HARDLINK_DIR_FOUND_MOVED_TO_PERIODICAL_DELETE =
+      "Pipe hardlink dir found, moved it from {} to {} for throttled periodical deletion.";
+  public static final String PIPE_STALE_HARDLINK_DIR_FOUND_REGISTERING_PERIODICAL_DELETE =
+      "Stale pipe hardlink dir found, registering it for throttled periodical deletion: {}";
+  public static final String PIPE_HARDLINK_DIR_PERIODICAL_DELETE_FINISHED =
+      "Finished deleting stale pipe hardlink dir {} by periodical job, result: {}";
+  public static final String PIPE_HARDLINK_DIR_PERIODICAL_DELETE_PROGRESS =
+      "Periodically deleted {} paths from stale pipe hardlink dirs, current dir: {}, current round result: {}";
+  public static final String PIPE_HARDLINK_DIR_PERIODICAL_DELETE_ALL_FINISHED =
+      "Finished deleting all stale pipe hardlink dirs by periodical job.";
+  public static final String PIPE_HARDLINK_DIR_MOVE_FAILED_DELETING_SYNC =
+      "Failed to move pipe hardlink dir {} for periodical deletion, deleting it synchronously.";
   public static final String PIPE_SNAPSHOT_DIR_FOUND_DELETING_IT =
       "Pipe snapshot dir found, deleting it: {},";
   public static final String SHRINK_CALLBACK_IS_NOT_SUPPORTED_IN_PIPEFIXEDMEMORYBLOCK =

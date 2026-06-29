@@ -34,6 +34,8 @@ import org.apache.iotdb.calc.execution.operator.process.TableFillOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableLinearFillOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableLinearFillWithGroupOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
+import org.apache.iotdb.calc.execution.operator.process.TableNextFillOperator;
+import org.apache.iotdb.calc.execution.operator.process.TableNextFillWithGroupOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableTopKOperator;
@@ -93,6 +95,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.calc.plan.relational.planner.CastToBlobLiteralVisitor;
 import org.apache.iotdb.calc.plan.relational.planner.CastToBooleanLiteralVisitor;
@@ -106,6 +109,7 @@ import org.apache.iotdb.calc.plan.relational.planner.CastToTimestampLiteralVisit
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
@@ -134,6 +138,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearF
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Measure;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
@@ -165,6 +170,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 
@@ -218,6 +224,7 @@ import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.IDENTITY_FI
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getLinearFill;
+import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getNextFill;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getPreviousFill;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
@@ -309,6 +316,11 @@ public abstract class TableOperatorGenerator<
       PlanNodeId planNodeId,
       C context) {
 
+    String fragmentInstanceId = getFragmentInstanceId(context);
+    String outerGlobalQueryId = getQueryId(context);
+    long outerQueryDeadlineMs = getOuterQueryDeadlineMs(context);
+    IoTDBLocalFactory ioTDBLocalFactory = getIoTDBLocalFactory(context);
+
     final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
 
     // records LeafColumnTransformer of filter
@@ -336,7 +348,11 @@ public abstract class TableOperatorGenerator<
                           0,
                           context.getTableTypeProvider(),
                           metadata,
-                          context.getMemoryReservationManager());
+                          context.getMemoryReservationManager(),
+                          fragmentInstanceId,
+                          outerGlobalQueryId,
+                          outerQueryDeadlineMs,
+                          ioTDBLocalFactory);
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -364,7 +380,11 @@ public abstract class TableOperatorGenerator<
             inputLocations.size(),
             context.getTableTypeProvider(),
             metadata,
-            context.getMemoryReservationManager());
+            context.getMemoryReservationManager(),
+            fragmentInstanceId,
+            outerGlobalQueryId,
+            outerQueryDeadlineMs,
+            ioTDBLocalFactory);
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(
@@ -386,6 +406,22 @@ public abstract class TableOperatorGenerator<
         projectOutputTransformerList,
         false,
         predicate.isPresent());
+  }
+
+  protected String getFragmentInstanceId(C context) {
+    return null;
+  }
+
+  protected String getQueryId(C context) {
+    return null;
+  }
+
+  protected long getOuterQueryDeadlineMs(C context) {
+    return -1L;
+  }
+
+  protected IoTDBLocalFactory getIoTDBLocalFactory(C context) {
+    return null;
   }
 
   @Override
@@ -418,7 +454,7 @@ public abstract class TableOperatorGenerator<
         context);
   }
 
-  private List<TSDataType> getInputColumnTypes(PlanNode node, ITableTypeProvider typeProvider) {
+  protected List<TSDataType> getInputColumnTypes(PlanNode node, ITableTypeProvider typeProvider) {
     // ignore "time" column
     return node.getChildren().stream()
         .map(PlanNode::getOutputSymbols)
@@ -604,6 +640,46 @@ public abstract class TableOperatorGenerator<
           addOperatorContext(
               context, node.getPlanNodeId(), TableLinearFillOperator.class.getSimpleName());
       return new TableLinearFillOperator(operatorContext, fillArray, child, helperColumnIndex);
+    }
+  }
+
+  @Override
+  public Operator visitNextFill(NextFillNode node, C context) {
+    Operator child = node.getChild().accept(this, context);
+
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
+    int inputColumnCount = inputDataTypes.size();
+    int helperColumnIndex = -1;
+    if (node.getHelperColumn().isPresent()) {
+      helperColumnIndex = getColumnIndex(node.getHelperColumn().get(), node.getChild());
+    }
+    ILinearFill[] fillArray =
+        getNextFill(
+            inputColumnCount,
+            inputDataTypes,
+            node.getTimeBound().orElse(null),
+            context.getZoneId());
+
+    if (node.getGroupingKeys().isPresent()) {
+      CommonOperatorContext operatorContext =
+          addOperatorContext(
+              context, node.getPlanNodeId(), TableNextFillWithGroupOperator.class.getSimpleName());
+      return new TableNextFillWithGroupOperator(
+          operatorContext,
+          fillArray,
+          child,
+          helperColumnIndex,
+          node.getTimeBound().isPresent(),
+          genFillGroupKeyComparator(
+              node.getGroupingKeys().get(), node, inputDataTypes, new HashSet<>()),
+          inputDataTypes);
+    } else {
+      CommonOperatorContext operatorContext =
+          addOperatorContext(
+              context, node.getPlanNodeId(), TableNextFillOperator.class.getSimpleName());
+      return new TableNextFillOperator(
+          operatorContext, fillArray, child, helperColumnIndex, node.getTimeBound().isPresent());
     }
   }
 
@@ -1260,7 +1336,7 @@ public abstract class TableOperatorGenerator<
     return planGroupByAggregation(node, child, context.getTableTypeProvider(), context);
   }
 
-  private Operator planGlobalAggregation(
+  protected AggregationOperator planGlobalAggregation(
       AggregationNode node, Operator child, ITableTypeProvider typeProvider, C context) {
     CommonOperatorContext operatorContext =
         addOperatorContext(
@@ -1283,8 +1359,10 @@ public abstract class TableOperatorGenerator<
                         true,
                         false,
                         null,
-                        Collections.emptySet())));
-    return new AggregationOperator(operatorContext, child, aggregatorBuilder.build());
+                        Collections.emptySet(),
+                        operatorContext.getMemoryReservationContext(),
+                        context)));
+    return createAggregationOperator(operatorContext, child, aggregatorBuilder.build());
   }
 
   // timeColumnName and measurementColumnNames will only be set for AggTableScan.
@@ -1297,7 +1375,9 @@ public abstract class TableOperatorGenerator<
       boolean scanAscending,
       boolean isAggTableScan,
       String timeColumnName,
-      Set<String> measurementColumnNames) {
+      Set<String> measurementColumnNames,
+      MemoryReservationManager memoryReservationManager,
+      C context) {
     List<Integer> argumentChannels = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
@@ -1309,6 +1389,10 @@ public abstract class TableOperatorGenerator<
         aggregation.getResolvedFunction().getSignature().getArgumentTypes().stream()
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
+    IoTDBLocal ioTDBLocal =
+        getAggregationTypeByFuncName(functionName) == TAggregationType.UDAF
+            ? createIoTDBLocal(context)
+            : null;
     TableAccumulator accumulator =
         createAccumulator(
             functionName,
@@ -1320,7 +1404,9 @@ public abstract class TableOperatorGenerator<
             isAggTableScan,
             timeColumnName,
             measurementColumnNames,
-            aggregation.isDistinct());
+            aggregation.isDistinct(),
+            memoryReservationManager,
+            ioTDBLocal);
 
     OptionalInt maskChannel = OptionalInt.empty();
     if (aggregation.hasMask()) {
@@ -1362,12 +1448,14 @@ public abstract class TableOperatorGenerator<
                             true,
                             false,
                             null,
-                            Collections.emptySet())));
+                            Collections.emptySet(),
+                            context.getMemoryReservationManager(),
+                            context)));
 
         CommonOperatorContext operatorContext =
             addOperatorContext(
                 context, node.getPlanNodeId(), StreamingAggregationOperator.class.getSimpleName());
-        return new StreamingAggregationOperator(
+        return createStreamingAggregationOperator(
             operatorContext,
             child,
             groupByTypes,
@@ -1384,7 +1472,14 @@ public abstract class TableOperatorGenerator<
           .forEach(
               (k, v) ->
                   aggregatorBuilder.add(
-                      buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
+                      buildGroupByAggregator(
+                          childLayout,
+                          k,
+                          v,
+                          node.getStep(),
+                          typeProvider,
+                          context.getMemoryReservationManager(),
+                          context)));
 
       Set<Symbol> preGroupedKeys = ImmutableSet.copyOf(node.getPreGroupedSymbols());
       List<Symbol> groupingKeys = node.getGroupingKeys();
@@ -1413,7 +1508,7 @@ public abstract class TableOperatorGenerator<
               context,
               node.getPlanNodeId(),
               StreamingHashAggregationOperator.class.getSimpleName());
-      return new StreamingHashAggregationOperator(
+      return createStreamingHashAggregationOperator(
           operatorContext,
           child,
           preGroupedChannels,
@@ -1435,12 +1530,19 @@ public abstract class TableOperatorGenerator<
         .forEach(
             (k, v) ->
                 aggregatorBuilder.add(
-                    buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
+                    buildGroupByAggregator(
+                        childLayout,
+                        k,
+                        v,
+                        node.getStep(),
+                        typeProvider,
+                        context.getMemoryReservationManager(),
+                        context)));
     CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), HashAggregationOperator.class.getSimpleName());
 
-    return new HashAggregationOperator(
+    return createHashAggregationOperator(
         operatorContext,
         child,
         groupByTypes,
@@ -1451,6 +1553,89 @@ public abstract class TableOperatorGenerator<
         Long.MAX_VALUE,
         false,
         Long.MAX_VALUE);
+  }
+
+  protected AggregationOperator createAggregationOperator(
+      CommonOperatorContext operatorContext, Operator child, List<TableAggregator> aggregators) {
+    return new AggregationOperator(operatorContext, child, aggregators);
+  }
+
+  protected StreamingAggregationOperator createStreamingAggregationOperator(
+      CommonOperatorContext operatorContext,
+      Operator child,
+      List<Type> groupByTypes,
+      List<Integer> groupByChannels,
+      Comparator<SortKey> groupKeyComparator,
+      List<TableAggregator> aggregators,
+      long maxPartialMemory,
+      boolean spillEnabled,
+      long unSpillMemoryLimit) {
+    return new StreamingAggregationOperator(
+        operatorContext,
+        child,
+        groupByTypes,
+        groupByChannels,
+        groupKeyComparator,
+        aggregators,
+        maxPartialMemory,
+        spillEnabled,
+        unSpillMemoryLimit);
+  }
+
+  protected StreamingHashAggregationOperator createStreamingHashAggregationOperator(
+      CommonOperatorContext operatorContext,
+      Operator child,
+      List<Integer> preGroupedChannels,
+      List<Integer> preGroupedIndexInResult,
+      List<Type> unPreGroupedTypes,
+      List<Integer> unPreGroupedChannels,
+      List<Integer> unPreGroupedIndexInResult,
+      Comparator<SortKey> groupKeyComparator,
+      List<GroupedAggregator> aggregators,
+      AggregationNode.Step step,
+      int expectedGroups,
+      long maxPartialMemory,
+      boolean spillEnabled,
+      long unSpillMemoryLimit) {
+    return new StreamingHashAggregationOperator(
+        operatorContext,
+        child,
+        preGroupedChannels,
+        preGroupedIndexInResult,
+        unPreGroupedTypes,
+        unPreGroupedChannels,
+        unPreGroupedIndexInResult,
+        groupKeyComparator,
+        aggregators,
+        step,
+        expectedGroups,
+        maxPartialMemory,
+        spillEnabled,
+        unSpillMemoryLimit);
+  }
+
+  protected HashAggregationOperator createHashAggregationOperator(
+      CommonOperatorContext operatorContext,
+      Operator child,
+      List<Type> groupByTypes,
+      List<Integer> groupByChannels,
+      List<GroupedAggregator> aggregators,
+      AggregationNode.Step step,
+      int expectedGroups,
+      long maxPartialMemory,
+      boolean spillEnabled,
+      long unSpillMemoryLimit) {
+    return new HashAggregationOperator(
+        operatorContext,
+        child,
+        groupByTypes,
+        groupByChannels,
+        aggregators,
+        step,
+        expectedGroups,
+        maxPartialMemory,
+        spillEnabled,
+        unSpillMemoryLimit);
   }
 
   protected Comparator<SortKey> genGroupKeyComparator(
@@ -1476,7 +1661,9 @@ public abstract class TableOperatorGenerator<
       Symbol symbol,
       AggregationNode.Aggregation aggregation,
       AggregationNode.Step step,
-      ITableTypeProvider typeProvider) {
+      ITableTypeProvider typeProvider,
+      MemoryReservationManager memoryReservationManager,
+      C context) {
     List<Integer> argumentChannels = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
@@ -1488,6 +1675,10 @@ public abstract class TableOperatorGenerator<
         aggregation.getResolvedFunction().getSignature().getArgumentTypes().stream()
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
+    IoTDBLocal ioTDBLocal =
+        getAggregationTypeByFuncName(functionName) == TAggregationType.UDAF
+            ? createIoTDBLocal(context)
+            : null;
     GroupedAccumulator accumulator =
         createGroupedAccumulator(
             functionName,
@@ -1496,7 +1687,9 @@ public abstract class TableOperatorGenerator<
             Collections.emptyList(),
             Collections.emptyMap(),
             true,
-            aggregation.isDistinct());
+            aggregation.isDistinct(),
+            memoryReservationManager,
+            ioTDBLocal);
 
     OptionalInt maskChannel = OptionalInt.empty();
     if (aggregation.hasMask()) {
@@ -1525,7 +1718,9 @@ public abstract class TableOperatorGenerator<
       CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), TableFunctionLeafOperator.class.getSimpleName());
-      return new TableFunctionLeafOperator(operatorContext, processorProvider, outputDataTypes);
+      IoTDBLocal ioTDBLocal = createIoTDBLocal(context);
+      return new TableFunctionLeafOperator(
+          operatorContext, processorProvider, outputDataTypes, ioTDBLocal);
     } else {
       Operator operator = node.getChild().accept(this, context);
       CommonOperatorContext operatorContext =
@@ -1570,6 +1765,7 @@ public abstract class TableOperatorGenerator<
       } else {
         partitionChannels = Collections.emptyList();
       }
+      IoTDBLocal ioTDBLocal = createIoTDBLocal(context);
       return new TableFunctionOperator(
           operatorContext,
           processorProvider,
@@ -1583,7 +1779,8 @@ public abstract class TableOperatorGenerator<
               .map(TableFunctionNode.PassThroughSpecification::isDeclaredAsPassThrough)
               .orElse(false),
           partitionChannels,
-          node.isRequireRecordSnapshot());
+          node.isRequireRecordSnapshot(),
+          ioTDBLocal);
     }
   }
 
@@ -1591,7 +1788,8 @@ public abstract class TableOperatorGenerator<
       ResolvedFunction resolvedFunction,
       List<Map.Entry<Expression, Type>> arguments,
       List<Integer> argumentChannels,
-      PatternAggregationTracker patternAggregationTracker) {
+      PatternAggregationTracker patternAggregationTracker,
+      MemoryReservationManager memoryReservationManager) {
     String functionName = resolvedFunction.getSignature().getName();
     List<TSDataType> originalArgumentTypes =
         resolvedFunction.getSignature().getArgumentTypes().stream()
@@ -1599,7 +1797,10 @@ public abstract class TableOperatorGenerator<
             .collect(Collectors.toList());
 
     TableAccumulator accumulator =
-        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
+        createBuiltinAccumulator(
+            getAggregationTypeByFuncName(functionName),
+            originalArgumentTypes,
+            memoryReservationManager);
 
     BoundSignature signature = resolvedFunction.getSignature();
 
@@ -1760,7 +1961,11 @@ public abstract class TableOperatorGenerator<
 
           PatternAggregator variableRecognizerAggregator =
               buildPatternAggregator(
-                  resolvedFunction, arguments, valueChannels, patternAggregationTracker);
+                  resolvedFunction,
+                  arguments,
+                  valueChannels,
+                  patternAggregationTracker,
+                  context.getMemoryReservationManager());
 
           variableRecognizerAggregatorBuilder.add(variableRecognizerAggregator);
 
@@ -1851,7 +2056,11 @@ public abstract class TableOperatorGenerator<
 
           PatternAggregator measurePatternAggregator =
               buildPatternAggregator(
-                  resolvedFunction, arguments, valueChannels, patternAggregationTracker);
+                  resolvedFunction,
+                  arguments,
+                  valueChannels,
+                  patternAggregationTracker,
+                  context.getMemoryReservationManager());
 
           measurePatternAggregatorBuilder.add(measurePatternAggregator);
 
@@ -2089,7 +2298,12 @@ public abstract class TableOperatorGenerator<
       FunctionKind functionKind = resolvedFunction.getFunctionKind();
       if (functionKind == FunctionKind.AGGREGATE) {
         WindowAggregator tableWindowAggregator =
-            buildWindowAggregator(symbol, function, typeProvider, argumentChannels);
+            buildWindowAggregator(
+                symbol,
+                function,
+                typeProvider,
+                argumentChannels,
+                context.getMemoryReservationManager());
         windowFunction = new AggregationWindowFunction(tableWindowAggregator);
       } else if (functionKind == FunctionKind.WINDOW) {
         String functionName = function.getResolvedFunction().getSignature().getName();
@@ -2134,7 +2348,8 @@ public abstract class TableOperatorGenerator<
       Symbol symbol,
       WindowNode.Function function,
       ITableTypeProvider typeProvider,
-      List<Integer> argumentChannels) {
+      List<Integer> argumentChannels,
+      MemoryReservationManager memoryReservationManager) {
     // Create accumulator first
     String functionName = function.getResolvedFunction().getSignature().getName();
     List<TSDataType> originalArgumentTypes =
@@ -2142,7 +2357,10 @@ public abstract class TableOperatorGenerator<
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
     TableAccumulator accumulator =
-        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
+        createBuiltinAccumulator(
+            getAggregationTypeByFuncName(functionName),
+            originalArgumentTypes,
+            memoryReservationManager);
 
     // Create aggregator by accumulator
     return new WindowAggregator(
@@ -2204,8 +2422,7 @@ public abstract class TableOperatorGenerator<
   public Operator visitRowNumber(RowNumberNode node, C context) {
     Operator child = node.getChild().accept(this, context);
     CommonOperatorContext operatorContext =
-        addOperatorContext(
-            context, node.getPlanNodeId(), MappingCollectOperator.class.getSimpleName());
+        addOperatorContext(context, node.getPlanNodeId(), RowNumberOperator.class.getSimpleName());
 
     List<Symbol> partitionBySymbols = node.getPartitionBy();
     Map<Symbol, Integer> childLayout =
@@ -2301,4 +2518,40 @@ public abstract class TableOperatorGenerator<
   }
 
   protected abstract SessionInfo getSessionInfo(C context);
+
+  protected IoTDBLocal createIoTDBLocal(C context) {
+    return IoTDBLocalFactory.createIoTDBLocal(
+        getIoTDBLocalFactory(context),
+        getSessionInfo(context),
+        getFragmentInstanceId(context),
+        getQueryId(context),
+        getOuterQueryDeadlineMs(context));
+  }
+
+  /** Factory for creating {@link IoTDBLocal} inside UDF column transformers. */
+  @FunctionalInterface
+  public interface IoTDBLocalFactory {
+
+    IoTDBLocal create(
+        SessionInfo sessionInfo,
+        String fragmentInstanceId,
+        String outerGlobalQueryId,
+        long outerQueryDeadlineMs);
+
+    static IoTDBLocal createIoTDBLocal(
+        IoTDBLocalFactory factory,
+        SessionInfo sessionInfo,
+        String fragmentInstanceId,
+        String outerGlobalQueryId,
+        long outerQueryDeadlineMs) {
+      checkArgument(factory != null, "IoTDBLocalFactory must not be null for UDF execution");
+      checkArgument(
+          fragmentInstanceId != null, "fragmentInstanceId must not be null for UDF execution");
+      checkArgument(outerGlobalQueryId != null, "queryId must not be null for UDF execution");
+      checkArgument(
+          outerQueryDeadlineMs > 0, "outerQueryDeadlineMs must be positive for UDF execution");
+      return factory.create(
+          sessionInfo, fragmentInstanceId, outerGlobalQueryId, outerQueryDeadlineMs);
+    }
+  }
 }

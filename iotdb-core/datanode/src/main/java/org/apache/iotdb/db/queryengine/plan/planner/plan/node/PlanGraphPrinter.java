@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Interse
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
@@ -97,6 +98,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 
@@ -661,6 +663,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     if (node instanceof DeviceTableScanNode) {
       deviceTableScanNode = (DeviceTableScanNode) node;
     }
+    ExternalTsFileScanNode externalTsFileScanNode = null;
+    if (node instanceof ExternalTsFileScanNode) {
+      externalTsFileScanNode = (ExternalTsFileScanNode) node;
+    }
 
     List<String> boxValue = new ArrayList<>();
     boxValue.add(node.toString());
@@ -675,6 +681,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
         boxValue.add(
             String.format("TimePredicate: %s", deviceTableScanNode.getTimePredicate().get()));
       }
+    }
+    if (externalTsFileScanNode != null) {
+      boxValue.add(
+          String.format("TsFileNumber: %s", externalTsFileScanNode.getTsFilePaths().size()));
     }
 
     if (node.getPushDownPredicate() != null) {
@@ -911,6 +921,20 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("TIME_COLUMN: %s", node.getHelperColumn()));
     node.getGroupingKeys()
         .ifPresent(groupingKeys -> boxValue.add(String.format("FILL_GROUP: %s", groupingKeys)));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitNextFill(NextFillNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("NextFill-%s", node.getPlanNodeId().getId()));
+    node.getTimeBound()
+        .ifPresent(timeBound -> boxValue.add(String.format("TIME_BOUND: %s", timeBound)));
+    node.getHelperColumn()
+        .ifPresent(timeColumn -> boxValue.add(String.format("TIME_COLUMN: %s", timeColumn)));
+    node.getGroupingKeys()
+        .ifPresent(groupingKeys -> boxValue.add(String.format("FILL_GROUP: %s", groupingKeys)));
+
     return render(node, boxValue, context);
   }
 

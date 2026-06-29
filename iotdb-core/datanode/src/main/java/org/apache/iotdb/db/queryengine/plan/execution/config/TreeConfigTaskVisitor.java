@@ -123,6 +123,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetSpaceQ
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.AlterTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
@@ -192,6 +193,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -241,6 +243,8 @@ import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrusted
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUser;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUser;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.markSinkAuthenticationAsExplicitIfNecessary;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.markSourceAuthenticationAsExplicitIfNecessary;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -696,6 +700,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
           sourceAttributes,
           new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
           true);
+    } else {
+      markSourceAuthenticationAsExplicitIfNecessary(sourceAttributes);
     }
 
     if (alterPipeStatement.isReplaceAllSinkAttributes()) {
@@ -704,6 +710,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
           alterPipeStatement.getSinkAttributes(),
           context.getSession().getUserEntity(),
           true);
+    } else {
+      markSinkAuthenticationAsExplicitIfNecessary(alterPipeStatement.getSinkAttributes());
     }
 
     return new AlterPipeTask(alterPipeStatement);
@@ -728,6 +736,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
 
     return new CreateTopicTask(createTopicStatement);
+  }
+
+  @Override
+  public IConfigTask visitAlterTopic(
+      AlterTopicStatement alterTopicStatement, MPPQueryContext context) {
+    alterTopicStatement
+        .getTopicAttributes()
+        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+
+    return new AlterTopicTask(alterTopicStatement);
   }
 
   @Override
