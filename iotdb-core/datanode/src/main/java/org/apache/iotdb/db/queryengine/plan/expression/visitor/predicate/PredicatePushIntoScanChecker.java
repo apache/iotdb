@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
@@ -56,11 +57,12 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
   @Override
   public Boolean visitIsNullExpression(IsNullExpression isNullExpression, Void context) {
     if (!isNullExpression.isNot()) {
-      throw new IllegalArgumentException("IS NULL can be pushed down");
+      throw new IllegalArgumentException(DataNodeQueryMessages.IS_NULL_CAN_BE_PUSHED_DOWN);
     }
     Expression inputExpression = isNullExpression.getExpression();
     if (inputExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-      throw new IllegalArgumentException("TIMESTAMP does not support IS NULL/IS NOT NULL");
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_IS_NULL_IS_NOT);
     }
     return inputExpression.getExpressionType().equals(ExpressionType.TIMESERIES);
   }
@@ -69,7 +71,8 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
   public Boolean visitLikeExpression(LikeExpression likeExpression, Void context) {
     Expression inputExpression = likeExpression.getExpression();
     if (inputExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-      throw new IllegalArgumentException("TIMESTAMP does not support LIKE/NOT LIKE");
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_LIKE_NOT_LIKE);
     }
     return inputExpression.getExpressionType().equals(ExpressionType.TIMESERIES);
   }
@@ -78,7 +81,8 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
   public Boolean visitRegularExpression(RegularExpression regularExpression, Void context) {
     Expression inputExpression = regularExpression.getExpression();
     if (inputExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-      throw new IllegalArgumentException("TIMESTAMP does not support REGEXP/NOT REGEXP");
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_REGEXP_NOT_REGEXP);
     }
     return inputExpression.getExpressionType().equals(ExpressionType.TIMESERIES);
   }
@@ -166,6 +170,7 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
   @Override
   public Boolean visitGroupByTimeExpression(
       GroupByTimeExpression groupByTimeExpression, Void context) {
-    throw new IllegalArgumentException("GroupByTime filter cannot exist in value filter.");
+    throw new IllegalArgumentException(
+        DataNodeQueryMessages.GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER);
   }
 }

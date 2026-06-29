@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import org.apache.thrift.transport.TMemoryInputTransport;
 import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TSocket;
@@ -81,9 +83,15 @@ public class BaseRpcTransportFactory extends TTransportFactory {
   public TTransport getTransport(
       String ip, int port, int timeout, String trustStore, String trustStorePwd)
       throws TTransportException {
+    return getTransportWithSSLConfig(ip, port, timeout, trustStore, trustStorePwd, null);
+  }
+
+  public TTransport getTransportWithSSLConfig(
+      String ip, int port, int timeout, String trustStore, String trustStorePwd, String sslProtocol)
+      throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
-        new TSSLTransportFactory.TSSLTransportParameters();
-    params.setTrustStore(trustStore, trustStorePwd);
+        RpcSslUtils.createTSSLTransportParameters(sslProtocol);
+    RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd);
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);
   }
@@ -97,13 +105,26 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       String keyStore,
       String keyStorePwd)
       throws TTransportException {
+    return getTransport(ip, port, timeout, trustStore, trustStorePwd, keyStore, keyStorePwd, null);
+  }
+
+  public TTransport getTransport(
+      String ip,
+      int port,
+      int timeout,
+      String trustStore,
+      String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol)
+      throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
-        new TSSLTransportFactory.TSSLTransportParameters();
+        RpcSslUtils.createTSSLTransportParameters(sslProtocol);
     if (Files.exists(Paths.get(trustStore)) && Files.exists(Paths.get(keyStore))) {
-      params.setTrustStore(trustStore, trustStorePwd);
-      params.setKeyStore(keyStore, keyStorePwd);
+      RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd);
+      RpcSslUtils.setKeyStore(params, keyStore, keyStorePwd);
     } else {
-      throw new TTransportException(new IOException("Could not load keystore or truststore file"));
+      throw new TTransportException(new IOException(RpcMessages.COULD_NOT_LOAD_KEYSTORE));
     }
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);

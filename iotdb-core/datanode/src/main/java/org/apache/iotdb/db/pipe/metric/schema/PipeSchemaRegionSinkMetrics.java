@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.schema;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -76,8 +77,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
   public void unbindFrom(final AbstractMetricService metricService) {
     ImmutableSet.copyOf(connectorMap.keySet()).forEach(this::deregister);
     if (!connectorMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe schema region connector metrics, connector map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION);
     }
   }
 
@@ -111,8 +111,8 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!connectorMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe schema region connector metrics, PipeConnectorSubtask({}) does not exist",
-          taskID);
+          DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_CONNECTOR,
+          getDisplayTaskID(taskID));
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -128,11 +128,15 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
     final Rate rate = schemaRateMap.get(taskID);
     if (rate == null) {
       LOGGER.info(
-          "Failed to mark pipe schema region write plan event, PipeConnectorSubtask({}) does not exist",
-          taskID);
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_SCHEMA_REGION_WRITE, getDisplayTaskID(taskID));
       return;
     }
     rate.mark();
+  }
+
+  private String getDisplayTaskID(final String taskID) {
+    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    return Objects.nonNull(connector) ? connector.getDisplayTaskID() : "unknown";
   }
 
   //////////////////////////// singleton ////////////////////////////

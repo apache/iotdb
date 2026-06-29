@@ -345,14 +345,6 @@ public class PipeDescriptor {
                         String.valueOf(
                             config.getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes())))));
 
-    config.setPipeSourceMatcherCacheSize(
-        Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("pipe_source_matcher_cache_size"))
-                .orElse(
-                    properties.getProperty(
-                        "pipe_extractor_matcher_cache_size",
-                        String.valueOf(config.getPipeSourceMatcherCacheSize())))));
-
     config.setPipeSinkHandshakeTimeoutMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_handshake_timeout_ms"))
@@ -445,9 +437,11 @@ public class PipeDescriptor {
 
     config.setPipeSinkRequestSliceThresholdBytes(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_connector_request_slice_threshold_bytes",
-                String.valueOf(config.getPipeSinkRequestSliceThresholdBytes()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_request_slice_threshold_bytes"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_request_slice_threshold_bytes",
+                        String.valueOf(config.getPipeSinkRequestSliceThresholdBytes())))));
 
     config.setPipeReceiverLoginPeriodicVerificationIntervalMs(
         Long.parseLong(

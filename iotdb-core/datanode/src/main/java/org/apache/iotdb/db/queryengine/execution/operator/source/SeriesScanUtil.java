@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -207,27 +208,7 @@ public class SeriesScanUtil implements Accountable {
     dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending());
     this.dataSource = dataSource;
 
-    // updated filter concerning TTL
-    // IgnoreAllNullRows is false indicating that the current query is a table model query.
-    // In most cases, We can use this condition to determine from which model to obtain the ttl
-    // of the current device. However, it should be noted that for tree model data queried using
-    // table view, ttl also needs to be obtained from the tree model.
-    if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
-      if (deviceID != EMPTY_DEVICE_ID) {
-        long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
-        scanOptions.setTTLForTreeDevice(ttl);
-      }
-    } else {
-      if (scanOptions.timeFilterNeedUpdatedByTtl()) {
-        String databaseName = dataSource.getDatabaseName();
-        long ttl =
-            databaseName == null
-                ? Long.MAX_VALUE
-                : DataNodeTTLCache.getInstance()
-                    .getTTLForTable(databaseName, deviceID.getTableName());
-        scanOptions.setTTLForTableDevice(ttl);
-      }
-    }
+    updateFilterUsingTTL(dataSource);
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
@@ -250,6 +231,30 @@ public class SeriesScanUtil implements Accountable {
         endTime = Math.max(endTime, timeRange.getMax());
       }
       satisfiedTimeRange = new TimeRange(startTime, endTime);
+    }
+  }
+
+  protected void updateFilterUsingTTL(QueryDataSource dataSource) {
+    // updated filter concerning TTL
+    // IgnoreAllNullRows is false indicating that the current query is a table model query.
+    // In most cases, We can use this condition to determine from which model to obtain the ttl
+    // of the current device. However, it should be noted that for tree model data queried using
+    // table view, ttl also needs to be obtained from the tree model.
+    if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
+      if (deviceID != EMPTY_DEVICE_ID) {
+        long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+        scanOptions.setTTLForTreeDevice(ttl);
+      }
+    } else {
+      if (scanOptions.timeFilterNeedUpdatedByTtl()) {
+        String databaseName = dataSource.getDatabaseName();
+        long ttl =
+            databaseName == null
+                ? Long.MAX_VALUE
+                : DataNodeTTLCache.getInstance()
+                    .getTTLForTable(databaseName, deviceID.getTableName());
+        scanOptions.setTTLForTableDevice(ttl);
+      }
     }
   }
 
@@ -288,7 +293,8 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstChunkMetadata != null || !cachedChunkMetadata.isEmpty()) {
-      throw new IllegalStateException("all cached chunks should be consumed first");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST);
     }
 
     if (firstTimeSeriesMetadata != null) {
@@ -710,7 +716,9 @@ public class SeriesScanUtil implements Accountable {
 
     if (LOGGER.isDebugEnabled()) {
       for (IPageReader pageReader : pageReaderList) {
-        LOGGER.debug("[SeriesScanUtil] pageReader.isModified() is {}", pageReader.isModified());
+        LOGGER.debug(
+            DataNodeQueryMessages.SERIES_SCAN_UTIL_PAGE_READER_IS_MODIFIED,
+            pageReader.isModified());
       }
     }
   }
@@ -795,7 +803,8 @@ public class SeriesScanUtil implements Accountable {
               && mergeReaderTime <= firstPageReader.getStatistics().getEndTime())
           || (!orderUtils.getAscending()
               && mergeReaderTime >= firstPageReader.getStatistics().getStartTime())) {
-        throw new IllegalStateException("overlapped data should be consumed first");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST);
       }
     }
 
@@ -1792,7 +1801,7 @@ public class SeriesScanUtil implements Accountable {
       hasCachedNextOverlappedPage = false;
       return getTransferedDataTypeTsBlock(cachedTsBlock);
     }
-    throw new IOException("No more batch data");
+    throw new IOException(DataNodeQueryMessages.NO_MORE_BATCH_DATA);
   }
 
   /**
@@ -2062,7 +2071,9 @@ public class SeriesScanUtil implements Accountable {
           tsBlock.reverse();
         }
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[getAllSatisfiedPageData] TsBlock:{}", CommonUtils.toString(tsBlock));
+          LOGGER.debug(
+              DataNodeQueryMessages.GET_ALL_SATISFIED_PAGE_DATA_TSBLOCK,
+              CommonUtils.toString(tsBlock));
         }
         return tsBlock;
       } finally {
@@ -2213,7 +2224,8 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public TsBlock getAllSatisfiedPageData(boolean ascending) {
-      throw new UnsupportedOperationException("getAllSatisfiedPageData() shouldn't be called here");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.GETALLSATISFIEDPAGEDATA_SHOULDN_T_BE_CALLED_HERE);
     }
 
     @Override
@@ -2223,7 +2235,8 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public IPageReader getPageReader() {
-      throw new UnsupportedOperationException("getPageReader() shouldn't be called here");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.GETPAGEREADER_SHOULDN_T_BE_CALLED_HERE);
     }
 
     @Override

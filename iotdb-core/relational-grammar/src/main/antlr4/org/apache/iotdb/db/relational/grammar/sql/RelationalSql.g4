@@ -49,6 +49,8 @@ statement
     // Database Statement
     | useDatabaseStatement
     | showDatabasesStatement
+    | showCreateDatabaseStatement
+    | countDatabasesStatement
     | createDbStatement
     | alterDbStatement
     | dropDbStatement
@@ -101,14 +103,17 @@ statement
     | startPipeStatement
     | stopPipeStatement
     | showPipesStatement
+    | showCreatePipeStatement
     | createPipePluginStatement
     | dropPipePluginStatement
     | showPipePluginsStatement
 
     // Subscription Statement
     | createTopicStatement
+    | alterTopicStatement
     | dropTopicStatement
     | showTopicsStatement
+    | showCreateTopicStatement
     | showSubscriptionsStatement
     | dropSubscriptionStatement
 
@@ -201,6 +206,14 @@ useDatabaseStatement
 
 showDatabasesStatement
     : SHOW DATABASES (DETAILS)?
+    ;
+
+showCreateDatabaseStatement
+    : SHOW CREATE DATABASE database=identifier
+    ;
+
+countDatabasesStatement
+    : COUNT DATABASES
     ;
 
 createDbStatement
@@ -514,6 +527,10 @@ showPipesStatement
     : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
     ;
 
+showCreatePipeStatement
+    : SHOW CREATE PIPE pipeName=identifier
+    ;
+
 createPipePluginStatement
     : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=string uriClause
     ;
@@ -532,6 +549,10 @@ createTopicStatement
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
     ;
 
+alterTopicStatement
+    : ALTER TOPIC topicName=identifier topicAttributesClause
+    ;
+
 topicAttributesClause
     : WITH '(' topicAttributeClause (',' topicAttributeClause)* ')'
     ;
@@ -546,6 +567,10 @@ dropTopicStatement
 
 showTopicsStatement
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
+    ;
+
+showCreateTopicStatement
+    : SHOW CREATE TOPIC topicName=identifier
     ;
 
 showSubscriptionsStatement
@@ -933,8 +958,8 @@ copyToStatementOption
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
-    | EXPLAIN (query | executeStatement | executeImmediateStatement) #explain
-    | EXPLAIN ANALYZE VERBOSE? (query | executeStatement | executeImmediateStatement) #explainAnalyze
+    | EXPLAIN ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explain
+    | EXPLAIN ANALYZE VERBOSE? ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explainAnalyze
     ;
 
 query
@@ -976,6 +1001,7 @@ fillClause
 fillMethod
     : LINEAR timeColumnClause? fillGroupClause?                                    #linearFill
     | PREVIOUS timeBoundClause? timeColumnClause? fillGroupClause?                 #previousFill
+    | NEXT timeBoundClause? timeColumnClause? fillGroupClause?                     #nextFill
     | CONSTANT literalExpression                                                   #valueFill
     ;
 
@@ -1044,7 +1070,8 @@ fromFirstQuerySpecification
     ;
 
 groupBy
-    : setQuantifier? groupingElement (',' groupingElement)*
+    : ALL                                                                                         #allGroupBy
+    | setQuantifier? groupingElement (',' groupingElement)*                                       #explicitGroupBy
     ;
 
 groupingElement

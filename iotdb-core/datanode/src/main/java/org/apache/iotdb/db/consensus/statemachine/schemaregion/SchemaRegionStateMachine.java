@@ -143,15 +143,24 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void loadSnapshot(final File latestSnapshotRootDir) {
-    schemaRegion.loadSnapshot(latestSnapshotRootDir);
-    final SchemaRegionListeningQueue listener =
-        PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
-    if (listener != null) {
-      listener.loadSnapshot(latestSnapshotRootDir);
-      // We recompute the snapshot for pipe listener when loading snapshot
-      // to recover the newest snapshot in cache
-      listen2Snapshot4PipeListener(false);
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
+    try {
+      // The boolean result must reflect whether the schema-region data was actually loaded, so
+      // callers (e.g. the AddPeer flow and the Ratis snapshot-install path) can detect a real
+      // failure instead of treating a fallback-to-empty load as success.
+      final boolean loadSucceeded = schemaRegion.loadSnapshot(latestSnapshotRootDir);
+      final SchemaRegionListeningQueue listener =
+          PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+      if (listener != null) {
+        listener.loadSnapshot(latestSnapshotRootDir);
+        // We recompute the snapshot for pipe listener when loading snapshot
+        // to recover the newest snapshot in cache
+        listen2Snapshot4PipeListener(false);
+      }
+      return loadSucceeded;
+    } catch (Exception e) {
+      logger.error("Failed to load snapshot from {}", latestSnapshotRootDir, e);
+      return false;
     }
   }
 

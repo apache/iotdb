@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.PathMessages;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -424,16 +426,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return matchPath(rPath.getNodes(), 0, 0, false, false);
   }
 
+  public boolean matchFullPath(IDeviceID deviceID) throws IllegalPathException {
+    return matchPath(getDeviceNodes(deviceID), 0, 0, false, false);
+  }
+
   public boolean matchFullPath(IDeviceID deviceID, String measurement) {
-    // TODO change this way
-    PartialPath devicePath;
     try {
-      devicePath = new PartialPath(deviceID.toString());
+      String[] deviceNodes = getDeviceNodes(deviceID);
+      String[] fullPathNodes = Arrays.copyOf(deviceNodes, deviceNodes.length + 1);
+      fullPathNodes[deviceNodes.length] = measurement;
+      return matchPath(fullPathNodes, 0, 0, false, false);
     } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }
-    return matchPath(
-        devicePath.concatAsMeasurementPath(measurement).getNodes(), 0, 0, false, false);
   }
 
   /**
@@ -468,6 +473,21 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    */
   public boolean matchPrefixPath(PartialPath prefixPath) {
     return matchPath(prefixPath.getNodes(), 0, 0, false, true);
+  }
+
+  public boolean matchPrefixPath(IDeviceID deviceID) throws IllegalPathException {
+    return matchPath(getDeviceNodes(deviceID), 0, 0, false, true);
+  }
+
+  private static String[] getDeviceNodes(IDeviceID deviceID) throws IllegalPathException {
+    String[] tableNameSegments = PathUtils.splitPathToDetachedNodes(deviceID.getTableName());
+    String[] deviceNodes = new String[deviceID.segmentNum() - 1 + tableNameSegments.length];
+    System.arraycopy(tableNameSegments, 0, deviceNodes, 0, tableNameSegments.length);
+    for (int i = 0; i < deviceID.segmentNum() - 1; i++) {
+      deviceNodes[i + tableNameSegments.length] =
+          deviceID.segment(i + 1) != null ? deviceID.segment(i + 1).toString() : null;
+    }
+    return deviceNodes;
   }
 
   private boolean matchPath(
@@ -881,11 +901,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   // todo remove measurement related interface after invoker using MeasurementPath explicitly
   public String getMeasurementAlias() {
-    throw new RuntimeException("Only MeasurementPath support alias");
+    throw new RuntimeException(PathMessages.ONLY_MEASUREMENT_PATH_SUPPORT_ALIAS);
   }
 
   public void setMeasurementAlias(String measurementAlias) {
-    throw new RuntimeException("Only MeasurementPath support alias");
+    throw new RuntimeException(PathMessages.ONLY_MEASUREMENT_PATH_SUPPORT_ALIAS);
   }
 
   public boolean isMeasurementAliasExists() {
@@ -894,15 +914,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @Override
   public String getFullPathWithAlias() {
-    throw new RuntimeException("Only MeasurementPath support alias");
+    throw new RuntimeException(PathMessages.ONLY_MEASUREMENT_PATH_SUPPORT_ALIAS);
   }
 
   public IMeasurementSchema getMeasurementSchema() throws MetadataException {
-    throw new MetadataException("This path doesn't represent a measurement");
+    throw new MetadataException(CommonMessages.PATH_NOT_MEASUREMENT);
   }
 
   public TSDataType getSeriesType() throws UnsupportedOperationException {
-    throw new UnsupportedOperationException("This path doesn't represent a measurement");
+    throw new UnsupportedOperationException(CommonMessages.PATH_NOT_MEASUREMENT);
   }
 
   @Override
@@ -975,7 +995,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       try {
         ret.add(new PartialPath(s));
       } catch (IllegalPathException e) {
-        logger.warn("Encountered an illegal path {}", s);
+        logger.warn(PathMessages.ENCOUNTERED_ILLEGAL_PATH, s);
       }
     }
     return ret;

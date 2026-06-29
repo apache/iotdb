@@ -21,12 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.allocation;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALFakeNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,13 +71,13 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
       return folderManager.getNextWithRetry(
           folder -> new WALNode(identifier, folder + File.separator + identifier));
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("Fail to create wal node because all disks of wal folders are full.", e);
+      logger.error(StorageEngineMessages.FAIL_TO_CREATE_WAL_NODE_DISKS_FULL, e);
       return WALFakeNode.getFailureInstance(e);
     } catch (Exception e) {
-      logger.warn("Failed to create WAL node after retries for identifier: " + identifier, e);
+      logger.warn(StorageEngineMessages.FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES + identifier, e);
       return WALFakeNode.getFailureInstance(
           new IOException(
-              "Failed to create WAL node after retries for identifier: " + identifier, e));
+              StorageEngineMessages.FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES + identifier, e));
     }
   }
 
@@ -85,7 +86,7 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
     try {
       return new WALNode(identifier, folder, startFileVersion, startSearchIndex);
     } catch (IOException e) {
-      logger.error("Fail to create wal node", e);
+      logger.error(StorageEngineMessages.FAIL_TO_CREATE_WAL_NODE, e);
       return WALFakeNode.getFailureInstance(e);
     }
   }

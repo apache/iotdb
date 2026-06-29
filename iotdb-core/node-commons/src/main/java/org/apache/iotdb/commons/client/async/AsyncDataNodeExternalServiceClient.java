@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
@@ -103,7 +104,7 @@ public class AsyncDataNodeExternalServiceClient extends IDataNodeRPCService.Asyn
   @Override
   public void invalidate() {
     if (!hasError()) {
-      super.onError(new Exception("This client has been invalidated"));
+      super.onError(new Exception(ClientMessages.CLIENT_INVALIDATED));
     }
   }
 
@@ -137,7 +138,7 @@ public class AsyncDataNodeExternalServiceClient extends IDataNodeRPCService.Asyn
     } catch (Exception e) {
       if (printLogWhenEncounterException) {
         logger.error(
-            "Unexpected exception occurs in {}, error msg is {}",
+            ClientMessages.UNEXPECTED_EXCEPTION_IN_CLIENT_WITH_MSG,
             this,
             ExceptionUtils.getRootCause(e).toString());
       }
@@ -173,7 +174,7 @@ public class AsyncDataNodeExternalServiceClient extends IDataNodeRPCService.Asyn
           new AsyncDataNodeExternalServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

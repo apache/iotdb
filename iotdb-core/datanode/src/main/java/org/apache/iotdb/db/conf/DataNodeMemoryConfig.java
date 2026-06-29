@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
 import org.apache.iotdb.db.utils.MemUtils;
 
@@ -59,6 +60,12 @@ public class DataNodeMemoryConfig {
 
   /** whether to cache metadata(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
+
+  /**
+   * If a timeseries is not found in a TsFile, also cache a placeholder to indicate the
+   * non-existence.
+   */
+  private boolean mayCacheNonExistSeries = true;
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
@@ -161,6 +168,7 @@ public class DataNodeMemoryConfig {
     long schemaEngineMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long consensusMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long pipeMemorySize = Runtime.getRuntime().maxMemory() / 10;
+    long autoResizingBufferMemorySize = Runtime.getRuntime().maxMemory() / 20;
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -182,6 +190,11 @@ public class DataNodeMemoryConfig {
         if (proportions.length >= 6) {
           pipeMemorySize =
               maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum;
+          autoResizingBufferMemorySize =
+              maxMemoryAvailable
+                  * Integer.parseInt(proportions[proportions.length - 1].trim())
+                  / proportionSum
+                  / 2;
         } else {
           pipeMemorySize =
               (maxMemoryAvailable
@@ -204,6 +217,8 @@ public class DataNodeMemoryConfig {
     consensusMemoryManager =
         onHeapMemoryManager.getOrCreateMemoryManager("Consensus", consensusMemorySize);
     pipeMemoryManager = onHeapMemoryManager.getOrCreateMemoryManager("Pipe", pipeMemorySize);
+    MemoryConfig.getInstance()
+        .setAutoResizingBufferMemoryControl(onHeapMemoryManager, autoResizingBufferMemorySize);
     LOGGER.info(
         "initial allocateMemoryForWrite = {}",
         storageEngineMemoryManager.getTotalMemorySizeInBytes());
@@ -217,6 +232,7 @@ public class DataNodeMemoryConfig {
         consensusMemoryManager.getTotalMemorySizeInBytes());
     LOGGER.info(
         "initial allocateMemoryForPipe = {}", pipeMemoryManager.getTotalMemorySizeInBytes());
+    LOGGER.info("initial allocateMemoryForAutoResizingBuffer = {}", autoResizingBufferMemorySize);
 
     initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
     initStorageEngineAllocate(storageEngineMemoryManager, properties);
@@ -411,6 +427,10 @@ public class DataNodeMemoryConfig {
         Boolean.parseBoolean(
             properties.getProperty(
                 "meta_data_cache_enable", Boolean.toString(isMetaDataCacheEnable()))));
+    setMayCacheNonExistSeries(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "may_cache_nonexist_series", Boolean.toString(isMayCacheNonExistSeries()))));
 
     try {
       // update enable query memory estimation for memory control
@@ -422,7 +442,7 @@ public class DataNodeMemoryConfig {
                       "enable_query_memory_estimation"))));
 
     } catch (Exception e) {
-      LOGGER.error(String.format("Fail to reload configuration because %s", e));
+      LOGGER.error(String.format(DataNodeMiscMessages.FAIL_RELOAD_CONFIGURATION_FMT, e));
     }
 
     String queryMemoryAllocateProportion =
@@ -559,6 +579,14 @@ public class DataNodeMemoryConfig {
 
   public void setMetaDataCacheEnable(boolean metaDataCacheEnable) {
     this.metaDataCacheEnable = metaDataCacheEnable;
+  }
+
+  public boolean isMayCacheNonExistSeries() {
+    return mayCacheNonExistSeries;
+  }
+
+  public void setMayCacheNonExistSeries(boolean mayCacheNonExistSeries) {
+    this.mayCacheNonExistSeries = mayCacheNonExistSeries;
   }
 
   public int getQueryThreadCount() {

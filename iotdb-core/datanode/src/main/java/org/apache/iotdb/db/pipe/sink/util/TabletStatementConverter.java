@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.sink.util;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -30,7 +32,6 @@ import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -39,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Utility class for converting between InsertTabletStatement and Tablet format ByteBuffer. This
@@ -75,20 +77,57 @@ public class TabletStatementConverter {
    */
   public static InsertTabletStatement deserializeStatementFromTabletFormat(
       final ByteBuffer byteBuffer, final boolean readDatabaseName) throws IllegalPathException {
+    return deserializeStatementFromTabletFormat(byteBuffer, readDatabaseName, null);
+  }
+
+  public static InsertTabletStatement deserializeStatementFromTabletFormat(
+      final ByteBuffer byteBuffer,
+      final boolean readDatabaseName,
+      final TabletStringInternPool tabletStringInternPool)
+      throws IllegalPathException {
+    return deserializeStatementFromTabletFormat(
+        byteBuffer, readDatabaseName, tabletStringInternPool, true);
+  }
+
+  public static InsertTabletStatement deserializeLegacyStatementFromTabletFormat(
+      final ByteBuffer byteBuffer) throws IllegalPathException {
+    return deserializeLegacyStatementFromTabletFormat(byteBuffer, null);
+  }
+
+  public static InsertTabletStatement deserializeLegacyStatementFromTabletFormat(
+      final ByteBuffer byteBuffer, final TabletStringInternPool tabletStringInternPool)
+      throws IllegalPathException {
+    return deserializeStatementFromTabletFormat(byteBuffer, false, tabletStringInternPool, false);
+  }
+
+  private static InsertTabletStatement deserializeStatementFromTabletFormat(
+      final ByteBuffer byteBuffer,
+      final boolean readDatabaseName,
+      final TabletStringInternPool tabletStringInternPool,
+      final boolean readColumnCategory)
+      throws IllegalPathException {
     final InsertTabletStatement statement = new InsertTabletStatement();
 
     // Calculate memory size during deserialization, use INSTANCE_SIZE constant
     long memorySize = InsertTabletStatement.getInstanceSize();
 
-    final String insertTargetName = ReadWriteIOUtils.readString(byteBuffer);
+    final String insertTargetName =
+        intern(ReadWriteIOUtils.readString(byteBuffer), tabletStringInternPool);
 
     final int rowSize = ReadWriteIOUtils.readInt(byteBuffer);
+    if (rowSize < 0) {
+      throw new IllegalArgumentException(
+          String.format("Invalid row size %s in tablet format deserialization.", rowSize));
+    }
 
     // deserialize schemas
     final int schemaSize =
-        BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer))
-            ? ReadWriteIOUtils.readInt(byteBuffer)
-            : 0;
+        readBooleanByte(byteBuffer, "schema existence") ? ReadWriteIOUtils.readInt(byteBuffer) : 0;
+    if (schemaSize < 0) {
+      throw new IllegalArgumentException(
+          String.format("Invalid schema size %s in tablet format deserialization.", schemaSize));
+    }
+    ensureRemaining(byteBuffer, schemaSize, "measurement schema existence flags");
     final String[] measurement = new String[schemaSize];
     final TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[schemaSize];
     final TSDataType[] dataTypes = new TSDataType[schemaSize];
@@ -115,14 +154,27 @@ public class TabletStatementConverter {
 
     // Deserialize and calculate memory in the same loop
     for (int i = 0; i < schemaSize; i++) {
-      final boolean hasSchema = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+      final boolean hasSchema = readBooleanByte(byteBuffer, "measurement schema existence");
       if (hasSchema) {
-        final Pair<String, TSDataType> pair = readMeasurement(byteBuffer);
+        final Pair<String, TSDataType> pair = readMeasurement(byteBuffer, tabletStringInternPool);
         measurement[i] = pair.getLeft();
         dataTypes[i] = pair.getRight();
-        columnCategories[i] =
-            TsTableColumnCategory.fromTsFileColumnCategory(
-                ColumnCategory.values()[byteBuffer.get()]);
+        if (readColumnCategory) {
+          if (!byteBuffer.hasRemaining()) {
+            throw new IllegalArgumentException(
+                "Missing column category in current tablet format deserialization.");
+          }
+          final byte columnCategory = byteBuffer.get();
+          if (columnCategory < 0 || columnCategory >= ColumnCategory.values().length) {
+            throw new IllegalArgumentException(
+                String.format(
+                    "Invalid column category %s in current tablet format deserialization.",
+                    columnCategory));
+          }
+          columnCategories[i] =
+              TsTableColumnCategory.fromTsFileColumnCategory(
+                  ColumnCategory.values()[columnCategory]);
+        }
 
         // Calculate memory for each measurement string
         if (measurement[i] != null) {
@@ -143,6 +195,15 @@ public class TabletStatementConverter {
     memorySize += measurementMemorySize;
     memorySize += dataTypesMemorySize;
 
+    final boolean isTimesNotNull = readBooleanByte(byteBuffer, "timestamp column existence");
+    if (rowSize > 0 && !isTimesNotNull) {
+      throw new IllegalArgumentException(
+          "Missing timestamps in tablet format deserialization with non-empty rows.");
+    }
+    if (isTimesNotNull) {
+      ensureRemaining(byteBuffer, (long) Long.BYTES * rowSize, "timestamps");
+    }
+
     // deserialize times and calculate memory during deserialization
     final long[] times = new long[rowSize];
     // Calculate memory: array header + long size * rowSize
@@ -150,7 +211,6 @@ public class TabletStatementConverter {
         org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + (long) Long.BYTES * rowSize);
 
-    final boolean isTimesNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
     if (isTimesNotNull) {
       for (int i = 0; i < rowSize; i++) {
         times[i] = ReadWriteIOUtils.readLong(byteBuffer);
@@ -164,19 +224,16 @@ public class TabletStatementConverter {
     final BitMap[] bitMaps;
     final long bitMapsMemorySize;
 
-    final boolean isBitMapsNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+    final boolean isBitMapsNotNull = readBooleanByte(byteBuffer, "bitmap column existence");
     if (isBitMapsNotNull) {
       // Use the method that returns both BitMap array and memory size
       final Pair<BitMap[], Long> bitMapsAndMemory =
-          readBitMapsFromBufferWithMemory(byteBuffer, schemaSize);
+          readBitMapsFromBufferWithMemory(byteBuffer, schemaSize, rowSize);
       bitMaps = bitMapsAndMemory.getLeft();
       bitMapsMemorySize = bitMapsAndMemory.getRight();
     } else {
-      // Calculate memory for empty BitMap array: array header + references
-      bitMaps = new BitMap[schemaSize];
-      bitMapsMemorySize =
-          org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-              NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * schemaSize);
+      bitMaps = null;
+      bitMapsMemorySize = 0;
     }
 
     // Add bitMaps memory to total
@@ -186,7 +243,11 @@ public class TabletStatementConverter {
     final Object[] values;
     final long valuesMemorySize;
 
-    final boolean isValuesNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+    final boolean isValuesNotNull = readBooleanByte(byteBuffer, "value column existence");
+    if (rowSize > 0 && schemaSize > 0 && !isValuesNotNull) {
+      throw new IllegalArgumentException(
+          "Missing values in tablet format deserialization with non-empty rows.");
+    }
     if (isValuesNotNull) {
       // Use the method that returns both values array and memory size
       final Pair<Object[], Long> valuesAndMemory =
@@ -204,7 +265,7 @@ public class TabletStatementConverter {
     // Add values memory to total
     memorySize += valuesMemorySize;
 
-    final boolean isAligned = ReadWriteIOUtils.readBoolean(byteBuffer);
+    final boolean isAligned = readBooleanByte(byteBuffer, "alignment");
 
     statement.setMeasurements(measurement);
     statement.setTimes(times);
@@ -216,19 +277,28 @@ public class TabletStatementConverter {
 
     // Read databaseName if requested (V2 format)
     if (readDatabaseName) {
-      final String databaseName = ReadWriteIOUtils.readString(byteBuffer);
+      final String databaseName =
+          intern(ReadWriteIOUtils.readString(byteBuffer), tabletStringInternPool);
       if (databaseName != null) {
         statement.setDatabaseName(databaseName);
-        statement.setWriteToTable(true);
-        // For table model, insertTargetName is table name, convert to lowercase
-        statement.setDevicePath(new PartialPath(insertTargetName.toLowerCase(), false));
         // Calculate memory for databaseName
         memorySize += org.apache.tsfile.utils.RamUsageEstimator.sizeOf(databaseName);
 
-        statement.setColumnCategories(columnCategories);
+        if (PathUtils.isTableModelDatabase(databaseName)) {
+          statement.setWriteToTable(true);
+          // For table model, insertTargetName is table name, convert to lowercase
+          statement.setDevicePath(
+              new PartialPath(
+                  intern(insertTargetName.toLowerCase(), tabletStringInternPool), false));
+          statement.setColumnCategories(columnCategories);
 
-        memorySize += columnCategoriesMemorySize;
-        memorySize += tagColumnIndicesSize;
+          memorySize += columnCategoriesMemorySize;
+          memorySize += tagColumnIndicesSize;
+        } else {
+          statement.setDevicePath(
+              DataNodeDevicePathCache.getInstance().getPartialPath(insertTargetName));
+          statement.setColumnCategories(null);
+        }
       } else {
         // For tree model, use DataNodeDevicePathCache
         statement.setDevicePath(
@@ -262,6 +332,11 @@ public class TabletStatementConverter {
     return deserializeStatementFromTabletFormat(byteBuffer, false);
   }
 
+  private static String intern(
+      final String value, final TabletStringInternPool tabletStringInternPool) {
+    return Objects.nonNull(tabletStringInternPool) ? tabletStringInternPool.intern(value) : value;
+  }
+
   /**
    * Skip a string in ByteBuffer without reading it. This is more efficient than reading and
    * discarding the string.
@@ -275,6 +350,30 @@ public class TabletStatementConverter {
     }
   }
 
+  private static boolean readBooleanByte(final ByteBuffer buffer, final String fieldName) {
+    if (!buffer.hasRemaining()) {
+      throw new IllegalArgumentException(
+          String.format("Missing %s flag in tablet format deserialization.", fieldName));
+    }
+
+    final byte value = ReadWriteIOUtils.readByte(buffer);
+    if (value != 0 && value != 1) {
+      throw new IllegalArgumentException(
+          String.format("Invalid %s flag %s in tablet format deserialization.", fieldName, value));
+    }
+    return value == 1;
+  }
+
+  private static void ensureRemaining(
+      final ByteBuffer buffer, final long expectedSize, final String fieldName) {
+    if (expectedSize > buffer.remaining()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Insufficient bytes for %s in tablet format deserialization, expected %s, remaining %s.",
+              fieldName, expectedSize, buffer.remaining()));
+    }
+  }
+
   /**
    * Read measurement name and data type from buffer, skipping other measurement schema fields
    * (encoding, compression, and tags/attributes) that are not needed for InsertTabletStatement.
@@ -282,10 +381,13 @@ public class TabletStatementConverter {
    * @param buffer ByteBuffer containing serialized measurement schema
    * @return Pair of measurement name and data type
    */
-  private static Pair<String, TSDataType> readMeasurement(final ByteBuffer buffer) {
+  private static Pair<String, TSDataType> readMeasurement(
+      final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
     // Read measurement name and data type
     final Pair<String, TSDataType> pair =
-        new Pair<>(ReadWriteIOUtils.readString(buffer), TSDataType.deserializeFrom(buffer));
+        new Pair<>(
+            intern(ReadWriteIOUtils.readString(buffer), tabletStringInternPool),
+            TSDataType.deserializeFrom(buffer));
 
     // Skip encoding type (byte) and compression type (byte) - 2 bytes total
     buffer.position(buffer.position() + 2);
@@ -308,32 +410,46 @@ public class TabletStatementConverter {
    * array and the calculated memory size.
    */
   private static Pair<BitMap[], Long> readBitMapsFromBufferWithMemory(
-      final ByteBuffer byteBuffer, final int columns) {
+      final ByteBuffer byteBuffer, final int columns, final int rowSize) {
     final BitMap[] bitMaps = new BitMap[columns];
 
-    // Calculate memory: array header + object references
-    long memorySize =
-        org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns);
+    long bitMapsMemorySize = 0;
+    boolean hasMarkedBitMap = false;
 
     for (int i = 0; i < columns; i++) {
-      final boolean hasBitMap = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+      final boolean hasBitMap = readBooleanByte(byteBuffer, "bitmap existence");
       if (hasBitMap) {
         final int size = ReadWriteIOUtils.readInt(byteBuffer);
+        if (size < 0) {
+          throw new IllegalArgumentException(
+              String.format("Invalid bitmap size %s in tablet format deserialization.", size));
+        }
         final Binary valueBinary = ReadWriteIOUtils.readBinary(byteBuffer);
         final byte[] byteArray = valueBinary.getValues();
-        bitMaps[i] = new BitMap(size, byteArray);
+        final BitMap bitMap = new BitMap(size, byteArray);
+        if (bitMap.isAllUnmarked(Math.min(rowSize, bitMap.getSize()))) {
+          continue;
+        }
+        bitMaps[i] = bitMap;
+        hasMarkedBitMap = true;
 
         // Calculate memory for this BitMap: BitMap object + byte array
         // BitMap shallow size + byte array (array header + array length)
-        memorySize +=
+        bitMapsMemorySize +=
             SIZE_OF_BITMAP
                 + org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
                     NUM_BYTES_ARRAY_HEADER + byteArray.length);
       }
     }
 
-    return new Pair<>(bitMaps, memorySize);
+    if (!hasMarkedBitMap) {
+      return new Pair<>(null, 0L);
+    }
+    return new Pair<>(
+        bitMaps,
+        bitMapsMemorySize
+            + org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+                NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns));
   }
 
   /**
@@ -357,9 +473,8 @@ public class TabletStatementConverter {
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns);
 
     for (int i = 0; i < columns; i++) {
-      final boolean isValueColumnsNotNull =
-          BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
-      if (isValueColumnsNotNull && types[i] == null) {
+      final boolean isValueColumnsNotNull = readBooleanByte(byteBuffer, "value column existence");
+      if (types[i] == null) {
         continue;
       }
 
@@ -368,7 +483,7 @@ public class TabletStatementConverter {
           final boolean[] boolValues = new boolean[rowSize];
           if (isValueColumnsNotNull) {
             for (int index = 0; index < rowSize; index++) {
-              boolValues[index] = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+              boolValues[index] = readBooleanByte(byteBuffer, "boolean value");
             }
           }
           values[i] = boolValues;
@@ -444,8 +559,7 @@ public class TabletStatementConverter {
 
           if (isValueColumnsNotNull) {
             for (int index = 0; index < rowSize; index++) {
-              final boolean isNotNull =
-                  BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+              final boolean isNotNull = readBooleanByte(byteBuffer, "binary value existence");
               if (isNotNull) {
                 binaryValues[index] = ReadWriteIOUtils.readBinary(byteBuffer);
                 // Calculate memory for each Binary object during deserialization

@@ -31,7 +31,9 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
@@ -97,6 +99,7 @@ public class LoadTsFileTableSchemaCache {
   private Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap;
   private final Metadata metadata;
   private final MPPQueryContext context;
+  private final boolean shouldVerifyDataType;
 
   private Map<String, Set<IDeviceID>> currentBatchTable2Devices;
 
@@ -115,13 +118,17 @@ public class LoadTsFileTableSchemaCache {
   private final AtomicBoolean needDecode4DifferentTimeColumn = new AtomicBoolean(false);
 
   public LoadTsFileTableSchemaCache(
-      final Metadata metadata, final MPPQueryContext context, final boolean needToCreateDatabase)
+      final Metadata metadata,
+      final MPPQueryContext context,
+      final boolean needToCreateDatabase,
+      final boolean shouldVerifyDataType)
       throws LoadRuntimeOutOfMemoryException {
     this.block =
         LoadTsFileMemoryManager.getInstance()
             .allocateMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
     this.metadata = metadata;
     this.context = context;
+    this.shouldVerifyDataType = shouldVerifyDataType;
     this.currentBatchTable2Devices = new HashMap<>();
     this.currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     this.needToCreateDatabase = needToCreateDatabase;
@@ -208,7 +215,7 @@ public class LoadTsFileTableSchemaCache {
       getTableSchemaValidationIterator()
           .forEachRemaining(o -> metadata.validateDeviceSchema(o, context));
     } catch (Exception e) {
-      LOGGER.warn("Auto create or verify schema error.", e);
+      LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
       throw new SemanticException(
           String.format("Auto create or verify schema error.  Detail: %s.", e.getMessage()));
     }
@@ -240,7 +247,7 @@ public class LoadTsFileTableSchemaCache {
             tableTagColumnMapper.get(tableName);
         if (Objects.isNull(tagColumnCountAndMapper)) {
           // This should not happen
-          LOGGER.warn("Failed to find tag column mapping for table {}", tableName);
+          LOGGER.warn(DataNodeQueryMessages.FAILED_TO_FIND_TAG_COLUMN_MAPPING_FOR_TABLE, tableName);
         }
 
         for (final IDeviceID device : currentBatchTable2Devices.get(tableName)) {
@@ -349,7 +356,8 @@ public class LoadTsFileTableSchemaCache {
                 database, result.getStatusCode()));
       }
     } catch (final Exception e) {
-      throw new LoadAnalyzeException("Auto create database failed because: " + e.getMessage());
+      throw new LoadAnalyzeException(
+          DataNodeQueryMessages.AUTO_CREATE_DATABASE_FAILED_BECAUSE + e.getMessage());
     }
   }
 
@@ -387,14 +395,25 @@ public class LoadTsFileTableSchemaCache {
         }
       } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
         ColumnSchema realColumn = fieldColumnNameToSchema.get(fileColumn.getName());
-        if (LOGGER.isDebugEnabled()
-            && (realColumn == null || !fileColumn.getType().equals(realColumn.getType()))) {
+        if (realColumn != null && !fileColumn.getType().equals(realColumn.getType())) {
+          final String message =
+              String.format(
+                  "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s",
+                  fileColumn.getName(),
+                  realSchema.getTableName(),
+                  fileColumn.getType(),
+                  realColumn.getType());
+          if (shouldVerifyDataType) {
+            throw new LoadAnalyzeTypeMismatchException(message);
+          }
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(message);
+          }
+        } else if (LOGGER.isDebugEnabled() && realColumn == null) {
           LOGGER.debug(
-              "Data type mismatch for column {} in table {}, type in TsFile: {}, type in IoTDB: {}",
+              "Column {} in table {} is not found in IoTDB while loading TsFile.",
               fileColumn.getName(),
-              realSchema.getTableName(),
-              fileColumn.getType(),
-              Objects.nonNull(realColumn) ? realColumn.getType() : null);
+              realSchema.getTableName());
         }
       }
     }

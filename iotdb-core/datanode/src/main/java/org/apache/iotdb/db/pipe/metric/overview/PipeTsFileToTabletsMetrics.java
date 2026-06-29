@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -103,9 +104,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
   public void unbindFrom(final AbstractMetricService metricService) {
     ImmutableSet.copyOf(pipe).forEach(this::deregister);
     if (!pipe.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {}",
-          pipe);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_TSFILE_TO, pipe);
     }
   }
 
@@ -166,8 +165,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
 
   public void deregister(final String pipeID) {
     if (!pipe.contains(pipeID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe tsfile to tablets metrics, pipeID({}) does not exist", pipeID);
+      LOGGER.info(DataNodePipeMessages.SKIP_DEREGISTER_PIPE_TSFILE_TO_TABLETS, pipeID);
       return;
     }
     try {
@@ -189,8 +187,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
     }
     final Rate rate = pipeRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe tsfile to tablets invocation, pipeID({}) does not exist", taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_TSFILE_TO_TABLETS, taskID);
       return;
     }
     rate.mark();
@@ -202,8 +199,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
     }
     final Timer timer = pipeTimerMap.get(taskID);
     if (timer == null) {
-      LOGGER.info(
-          "Failed to record pipe tsfile to tablets time, pipeID({}) does not exist", taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_RECORD_PIPE_TSFILE_TO_TABLETS, taskID);
       return;
     }
     timer.updateNanos(costTimeInNanos);
@@ -220,7 +216,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
     }
     final Counter tabletCount = pipeTabletCountMap.get(taskID);
     if (tabletCount == null) {
-      LOGGER.info("Failed to record tablet generated, pipeID({}) does not exist", taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_RECORD_TABLET_GENERATED_PIPEID_DOES, taskID);
       return;
     }
     tabletCount.inc();

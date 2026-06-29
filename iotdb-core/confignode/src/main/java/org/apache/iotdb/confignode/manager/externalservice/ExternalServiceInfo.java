@@ -29,6 +29,8 @@ import org.apache.iotdb.confignode.consensus.request.write.externalservice.DropE
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.StartExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.StopExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.response.externalservice.ShowExternalServiceResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -36,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -212,7 +215,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
 
   private void deserializeInfos(InputStream inputStream) throws IOException {
     if (ReadWriteIOUtils.readByte(inputStream) != SERIALIZATION_VERSION) {
-      throw new IOException("Incorrect version of " + SNAPSHOT_FILENAME);
+      throw new IOException(ManagerMessages.INCORRECT_VERSION_OF + SNAPSHOT_FILENAME);
     }
 
     int outerSize = ReadWriteIOUtils.readInt(inputStream);
@@ -237,14 +240,14 @@ public class ExternalServiceInfo implements SnapshotProcessor {
       throws IOException {
     int length = ReadWriteIOUtils.readInt(inputStream);
     byte[] bytes = new byte[length];
-    inputStream.read(bytes);
+    new DataInputStream(inputStream).readFully(bytes);
 
     crc32.reset();
     crc32.update(bytes, 0, length);
 
     int expectedCRC = ReadWriteIOUtils.readInt(inputStream);
     if ((int) crc32.getValue() != expectedCRC) {
-      LOGGER.error("Mismatched CRC32 code when deserializing service info.");
+      LOGGER.error(ManagerMessages.MISMATCHED_CRC32_CODE_WHEN_DESERIALIZING_SERVICE_INFO);
       return null;
     }
 
@@ -261,7 +264,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -288,7 +291,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
 
     if (!snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not a normal file.",
+          ManagerMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_A_NORMAL,
           snapshotFile.getAbsolutePath());
       return;
     }

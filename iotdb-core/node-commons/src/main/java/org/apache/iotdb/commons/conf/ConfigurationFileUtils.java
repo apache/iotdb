@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.i18n.ConfigMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 
 import org.slf4j.Logger;
@@ -39,6 +40,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -57,6 +59,19 @@ public class ConfigurationFileUtils {
   private static final long maxTimeMillsToAcquireLock = TimeUnit.SECONDS.toMillis(20);
   private static final long waitTimeMillsPerCheck = TimeUnit.MILLISECONDS.toMillis(100);
   private static final Logger logger = LoggerFactory.getLogger(ConfigurationFileUtils.class);
+  private static final Set<String> PARAMETERS_NEED_KEEP_CONSISTENT_IN_CLUSTER =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  "heartbeat_interval_in_ms",
+                  "continuous_query_min_every_interval_in_ms",
+                  "schema_region_group_extension_policy",
+                  "data_region_group_extension_policy",
+                  "default_schema_region_group_num_per_database",
+                  "default_data_region_group_num_per_database",
+                  "schema_region_per_data_node",
+                  "data_region_per_data_node",
+                  "read_consistency_level")));
   private static final String lineSeparator = "\n";
   private static final String license =
       new StringJoiner(lineSeparator)
@@ -96,7 +111,7 @@ public class ConfigurationFileUtils {
     try {
       loadConfigurationDefaultValueFromTemplate();
     } catch (IOException e) {
-      logger.error("Failed to update applied properties", e);
+      logger.error(ConfigMessages.FAILED_TO_UPDATE_APPLIED_PROPERTIES, e);
       return;
     }
     for (Map.Entry<Object, Object> entry : properties.entrySet()) {
@@ -237,7 +252,7 @@ public class ConfigurationFileUtils {
     try {
       configuration2DefaultValue = getConfigurationItemsFromTemplate(false);
     } catch (IOException e) {
-      logger.warn("Failed to read configuration template", e);
+      logger.warn(ConfigMessages.FAILED_TO_READ_CONFIGURATION_TEMPLATE, e);
       throw e;
     }
   }
@@ -266,7 +281,7 @@ public class ConfigurationFileUtils {
   }
 
   public static boolean parameterNeedKeepConsistentInCluster(String key) {
-    return false;
+    return key != null && PARAMETERS_NEED_KEEP_CONSISTENT_IN_CLUSTER.contains(key.trim());
   }
 
   public static void releaseDefault() {
@@ -286,7 +301,7 @@ public class ConfigurationFileUtils {
         content.append(line).append(lineSeparator);
       }
     } catch (IOException e) {
-      logger.warn("Failed to read configuration template", e);
+      logger.warn(ConfigMessages.FAILED_TO_READ_CONFIGURATION_TEMPLATE, e);
       throw e;
     }
     return content.toString();
@@ -369,7 +384,7 @@ public class ConfigurationFileUtils {
         // No configuration needs to be modified
         return;
       }
-      logger.info("Updating configuration file {}", file.getAbsolutePath());
+      logger.info(ConfigMessages.UPDATING_CONFIGURATION_FILE, file.getAbsolutePath());
       try (BufferedWriter writer = new BufferedWriter(new FileWriter(lockFile))) {
         writer.write(contentsOfNewConfigurationFile.toString());
         // Properties.store is not used as Properties.store may generate '\' automatically
@@ -412,7 +427,7 @@ public class ConfigurationFileUtils {
       Thread.sleep(waitTimeMillsPerCheck);
     }
     logger.warn(
-        "Waiting for {} seconds to acquire configuration file update lock."
+        ConfigMessages.WAITING_TO_ACQUIRE_CONFIG_FILE_LOCK
             + " There may have been an unexpected interruption in the last"
             + " configuration file update. Ignore temporary file {}",
         totalWaitTime / 1000,
@@ -511,7 +526,7 @@ public class ConfigurationFileUtils {
         }
       }
     } catch (IOException e) {
-      logger.warn("Failed to read configuration template", e);
+      logger.warn(ConfigMessages.FAILED_TO_READ_CONFIGURATION_TEMPLATE, e);
       throw e;
     }
     return items;

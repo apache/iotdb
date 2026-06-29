@@ -28,8 +28,10 @@ import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -221,6 +223,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       executeTabletConversionOnException(analysis, e);
       return analysis;
     } catch (Exception e) {
+      if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
+        return analysis;
+      }
       final String exceptionMessage =
           String.format(
               "Auto create or verify schema error when executing statement %s. Detail: %s.",
@@ -232,7 +237,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return analysis;
     }
 
-    LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+    LOGGER.info(DataNodeQueryMessages.LOAD_ANALYSIS_STAGE_ALL_TSFILES_HAVE_BEEN_ANALYZED);
 
     setTsFileModelInfoToStatement();
     if (reconstructStatementIfMiniFileConverted()) {
@@ -296,7 +301,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         setRealStatement(analysis);
         return true;
       }
-      LOGGER.info("Async Load has failed, and is now trying to load sync");
+      LOGGER.info(DataNodeQueryMessages.ASYNC_LOAD_HAS_FAILED_AND_IS_NOW_TRYING);
       return false;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
@@ -311,7 +316,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (tsFile.length() == 0) {
         if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
+          LOGGER.warn(DataNodeQueryMessages.TSFILE_IS_EMPTY, tsFile.getPath());
         }
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
@@ -345,6 +350,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 "The file %s is not a valid tsfile. Please check the input file.",
                 tsFile.getPath()));
       } catch (Exception e) {
+        if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
+          return false;
+        }
         final String exceptionMessage =
             String.format(
                 "Loading file %s failed. Detail: %s",
@@ -389,7 +397,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final EncryptParameter param = reader.getEncryptParam();
       if (!Objects.equals(param.getType(), EncryptUtils.getEncryptParameter().getType())
           || !Arrays.equals(param.getKey(), EncryptUtils.getEncryptParameter().getKey())) {
-        throw new SemanticException("The encryption way of the TsFile is not supported.");
+        throw new SemanticException(DataNodeQueryMessages.THE_ENCRYPTION_WAY_OF_THE_TSFILE_IS_NOT);
       }
 
       this.isTableModelTsFile.set(i, isTableModelFile);
@@ -423,7 +431,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }
     } catch (final LoadEmptyFileException loadEmptyFileException) {
-      LOGGER.warn("Empty file detected, will skip loading this file: {}", tsFile.getAbsolutePath());
+      LOGGER.warn(
+          DataNodeQueryMessages.EMPTY_FILE_DETECTED_WILL_SKIP_LOADING_THIS_FILE,
+          tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
         FileUtils.deleteQuietly(tsFile);
       }
@@ -616,7 +626,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private LoadTsFileTableSchemaCache getOrCreateTableSchemaCache() {
     if (tableSchemaCache == null) {
-      tableSchemaCache = new LoadTsFileTableSchemaCache(metadata, context, isAutoCreateDatabase);
+      tableSchemaCache =
+          new LoadTsFileTableSchemaCache(metadata, context, isAutoCreateDatabase, isVerifySchema);
     }
     return tableSchemaCache;
   }
@@ -677,8 +688,26 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
   }
 
+  private void setFailAnalysisForTemporaryUnavailablePipeSchema(
+      final IAnalysis analysis, final Throwable throwable) {
+    final String exceptionMessage =
+        String.format(
+            DataNodeQueryMessages.PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA,
+            throwable.getMessage() == null
+                ? throwable.getClass().getName()
+                : throwable.getMessage());
+    analysis.setFinishQueryAfterAnalyze(true);
+    analysis.setFailStatus(
+        RpcUtils.getStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION, exceptionMessage));
+    setRealStatement(analysis);
+  }
+
   private void executeTabletConversionOnException(
       final IAnalysis analysis, final LoadAnalyzeException e) {
+    if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
+      return;
+    }
+
     if (shouldSkipConversion(e)) {
       analysis.setFailStatus(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
@@ -758,6 +787,38 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     analysis.setFinishQueryAfterAnalyze(true);
     setRealStatement(analysis);
+  }
+
+  private boolean setTemporaryUnavailableStatusIfNecessary(
+      final IAnalysis analysis, final Throwable throwable) {
+    if (isTemporaryUnavailableDueToPipeSchemaNotReady(throwable)) {
+      setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, throwable);
+      return true;
+    }
+    if (isGeneratedByPipe && LoadTsFileDataTypeConverter.isMemoryPressureException(throwable)) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(LoadTsFileDataTypeConverter.getMemoryPressureStatus(throwable));
+      setRealStatement(analysis);
+      return true;
+    }
+    return false;
+  }
+
+  boolean isTemporaryUnavailableDueToPipeSchemaNotReady(final Throwable throwable) {
+    if (!isGeneratedByPipe
+        || !isVerifySchema
+        || IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+      return false;
+    }
+
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof LoadAnalyzeMissingSchemaException) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {

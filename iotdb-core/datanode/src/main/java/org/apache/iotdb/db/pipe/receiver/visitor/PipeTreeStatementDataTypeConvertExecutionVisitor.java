@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertRowStatement;
@@ -74,7 +75,7 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
     try {
       return Optional.of(statementExecutor.execute(statement));
     } catch (final Exception e) {
-      LOGGER.warn("Failed to execute statement after data type conversion.", e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE, e);
       return Optional.empty();
     }
   }
@@ -95,7 +96,7 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
     }
 
     LOGGER.warn(
-        "Data type mismatch detected (TSStatus: {}) for LoadTsFileStatement: {}. Start data type conversion.",
+        DataNodePipeMessages.DATA_TYPE_MISMATCH_DETECTED_TSSTATUS_FOR_LOADTSFILESTATEMENT,
         status,
         loadTsFileStatement);
 
@@ -104,12 +105,15 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
           new TsFileInsertionEventScanParser(
               file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null, true)) {
         for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
+          final InsertTabletStatement insertTabletStatement =
+              PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                      tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
+                  .constructStatement();
+          if (loadTsFileStatement.getDatabase() != null) {
+            insertTabletStatement.setDatabaseName(loadTsFileStatement.getDatabase());
+          }
           final PipeConvertedInsertTabletStatement statement =
-              new PipeConvertedInsertTabletStatement(
-                  PipeTransferTabletRawReq.toTPipeTransferRawReq(
-                          tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
-                      .constructStatement(),
-                  false);
+              new PipeConvertedInsertTabletStatement(insertTabletStatement, false);
 
           TSStatus result;
           try {
@@ -145,7 +149,9 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+            DataNodePipeMessages.FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT,
+            loadTsFileStatement,
+            e);
         return Optional.empty();
       }
     }
@@ -155,7 +161,8 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
     }
 
     LOGGER.warn(
-        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+        DataNodePipeMessages.DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL,
+        loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }

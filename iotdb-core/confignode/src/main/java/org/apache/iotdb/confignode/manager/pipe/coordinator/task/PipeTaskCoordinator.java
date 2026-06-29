@@ -22,8 +22,11 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -105,7 +108,7 @@ public class PipeTaskCoordinator {
       status = configManager.getProcedureManager().createPipe(req);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to create pipe {}. Result status: {}.", req.getPipeName(), status);
+      LOGGER.warn(ManagerMessages.FAILED_TO_CREATE_PIPE_RESULT_STATUS, req.getPipeName(), status);
     }
     return status;
   }
@@ -125,7 +128,7 @@ public class PipeTaskCoordinator {
     }
     final TSStatus status = configManager.getProcedureManager().alterPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to alter pipe {}. Result status: {}.", req.getPipeName(), status);
+      LOGGER.warn(ManagerMessages.FAILED_TO_ALTER_PIPE_RESULT_STATUS, req.getPipeName(), status);
     }
     return status;
   }
@@ -139,7 +142,7 @@ public class PipeTaskCoordinator {
       status = configManager.getProcedureManager().startPipe(pipeName);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to start pipe {}. Result status: {}.", pipeName, status);
+      LOGGER.warn(ManagerMessages.FAILED_TO_START_PIPE_RESULT_STATUS, pipeName, status);
     }
     return status;
   }
@@ -165,7 +168,7 @@ public class PipeTaskCoordinator {
       status = configManager.getProcedureManager().stopPipe(pipeName);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to stop pipe {}. Result status: {}.", pipeName, status);
+      LOGGER.warn(ManagerMessages.FAILED_TO_STOP_PIPE_RESULT_STATUS, pipeName, status);
     }
     return status;
   }
@@ -202,7 +205,7 @@ public class PipeTaskCoordinator {
       status = configManager.getProcedureManager().dropPipe(pipeName);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
+      LOGGER.warn(ManagerMessages.FAILED_TO_DROP_PIPE_RESULT_STATUS, pipeName, status);
     }
     return status;
   }
@@ -213,7 +216,10 @@ public class PipeTaskCoordinator {
           .filter(req.whereClause, req.pipeName, req.isTableModel, req.userName)
           .convertToTShowPipeResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new PipeTableResp(res, Collections.emptyList()).convertToTShowPipeResp();
@@ -225,7 +231,7 @@ public class PipeTaskCoordinator {
       return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
           .convertToTGetAllPipeInfoResp();
     } catch (IOException | ConsensusException e) {
-      LOGGER.warn("Failed to get all pipe info.", e);
+      PipeLogger.log(LOGGER::warn, e, ManagerMessages.FAILED_TO_GET_ALL_PIPE_INFO);
       return new TGetAllPipeInfoResp(
           new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage()),
           Collections.emptyList());

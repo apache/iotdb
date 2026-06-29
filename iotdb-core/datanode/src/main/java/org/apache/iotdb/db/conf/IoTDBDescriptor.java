@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -36,7 +37,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -130,7 +131,7 @@ public class IoTDBDescriptor {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.error("Failed to update config file", e);
+      LOGGER.error(DataNodeMiscMessages.FAILED_UPDATE_CONFIG_FILE, e);
     }
   }
 
@@ -140,7 +141,7 @@ public class IoTDBDescriptor {
         ServiceLoader.load(IPropertiesLoader.class);
     boolean hasProperties = false;
     for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
-      LOGGER.info("Will reload properties from {} ", loader.getClass().getName());
+      LOGGER.info(DataNodeMiscMessages.WILL_RELOAD_PROPERTIES, loader.getClass().getName());
       hasProperties = true;
       Properties properties = loader.loadProperties();
       TrimProperties trimProperties = new TrimProperties();
@@ -213,7 +214,7 @@ public class IoTDBDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
-      LOGGER.warn("get url failed", e);
+      LOGGER.warn(DataNodeMiscMessages.GET_URL_FAILED, e);
       return null;
     }
   }
@@ -226,19 +227,19 @@ public class IoTDBDescriptor {
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
-        LOGGER.info("Start to read config file {}", url);
+        LOGGER.info(DataNodeMiscMessages.START_READ_CONFIG_FILE, url);
         Properties properties = new Properties();
         properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (FileNotFoundException e) {
-        LOGGER.error("Fail to find config file {}, reject DataNode startup.", url, e);
+        LOGGER.error(DataNodeMiscMessages.FAIL_FIND_CONFIG_FILE, url, e);
         System.exit(-1);
       } catch (IOException e) {
-        LOGGER.error("Cannot load config file, reject DataNode startup.", e);
+        LOGGER.error(DataNodeMiscMessages.CANNOT_LOAD_CONFIG_FILE, e);
         System.exit(-1);
       } catch (Exception e) {
-        LOGGER.error("Incorrect format in config file, reject DataNode startup.", e);
+        LOGGER.error(DataNodeMiscMessages.INCORRECT_FORMAT_CONFIG_FILE, e);
         System.exit(-1);
       } finally {
         // update all data seriesPath
@@ -368,7 +369,8 @@ public class IoTDBDescriptor {
     try {
       conf.checkMultiDirStrategyClassName();
     } catch (Exception e) {
-      conf.setMultiDirStrategyClassName(oldMultiDirStrategyClassName.trim());
+      conf.setMultiDirStrategyClassName(
+          oldMultiDirStrategyClassName == null ? null : oldMultiDirStrategyClassName.trim());
       throw e;
     }
 
@@ -1187,7 +1189,7 @@ public class IoTDBDescriptor {
                 "delay_analyzer_window_size",
                 ConfigurationFileUtils.getConfigurationDefaultValue("delay_analyzer_window_size")));
     if (delayAnalyzerWindowSize > 0) {
-      LOGGER.info("[DelayAnalyzer] Set delay_analyzer_window_size to {}", delayAnalyzerWindowSize);
+      LOGGER.info(DataNodeMiscMessages.SET_DELAY_ANALYZER_WINDOW_SIZE, delayAnalyzerWindowSize);
       conf.setDelayAnalyzerWindowSize(delayAnalyzerWindowSize);
     }
 
@@ -1284,6 +1286,18 @@ public class IoTDBDescriptor {
                 "region_migration_speed_limit_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "region_migration_speed_limit_bytes_per_second"))));
+    conf.setDataRegionIotSnapshotTransmissionProgressLogIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_iot_snapshot_transmission_progress_log_interval_ms",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "data_region_iot_snapshot_transmission_progress_log_interval_ms"))));
+    conf.setKeepSameDiskWhenLoadingSnapshot(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "keep_same_disk_when_loading_snapshot",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "keep_same_disk_when_loading_snapshot"))));
   }
 
   private void loadIoTConsensusV2Props(TrimProperties properties) throws IOException {
@@ -1806,7 +1820,7 @@ public class IoTDBDescriptor {
       try {
         newThrottleThreshold = Math.min(newThrottleThreshold, fileStore.getUsableSpace());
       } catch (IOException e) {
-        LOGGER.error("Failed to get file size of {}, because", fileStore, e);
+        LOGGER.error(DataNodeMiscMessages.FAILED_GET_FILE_SIZE, fileStore, e);
       }
     }
     newThrottleThreshold = (long) (newThrottleThreshold * dirUseProportion * walFileStores.size());
@@ -1898,7 +1912,7 @@ public class IoTDBDescriptor {
                     ConfigurationFileUtils.getConfigurationDefaultValue("page_size_in_byte"))));
     if (TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
         > TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()) {
-      LOGGER.warn("page_size is greater than group size, will set it as the same with group size");
+      LOGGER.warn(DataNodeMiscMessages.PAGE_SIZE_GREATER_THAN_GROUP_SIZE);
       TSFileDescriptor.getInstance()
           .getConfig()
           .setPageSizeInByte(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte());
@@ -1993,7 +2007,7 @@ public class IoTDBDescriptor {
     if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
       conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME).trim());
     } else {
-      LOGGER.info("MQTT host is not configured, will use dn_rpc_address.");
+      LOGGER.info(DataNodeMiscMessages.MQTT_HOST_NOT_CONFIGURED);
       conf.setMqttHost(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
     }
 
@@ -2099,7 +2113,6 @@ public class IoTDBDescriptor {
 
   public synchronized void loadHotModifiedProps(TrimProperties properties)
       throws QueryProcessException, IOException {
-    ConfigurationFileUtils.updateAppliedProperties(properties, true);
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
@@ -2189,6 +2202,12 @@ public class IoTDBDescriptor {
       // update load config
       loadLoadTsFileHotModifiedProp(properties);
 
+      // update CQ semantic-check config pushed from ConfigNode
+      loadCqMinEveryIntervalInMs(properties);
+
+      // update query routing consistency config pushed from ConfigNode
+      loadReadConsistencyLevel(properties);
+
       // update pipe config
       loadPipeHotModifiedProp(properties);
 
@@ -2206,6 +2225,11 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue("enable_wal_compression")));
       conf.setWALCompressionAlgorithm(
           enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
+
+      // update subscription consensus config:
+      // - batching properties take effect on running queues because they are read dynamically
+      // - retention defaults only affect queues created after reload
+      commonDescriptor.loadHotModifiedSubscriptionConsensusProps(properties);
 
       // update Consensus config
       reloadConsensusProps(properties);
@@ -2308,11 +2332,13 @@ public class IoTDBDescriptor {
         conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
       }
 
+      ConfigurationFileUtils.updateAppliedProperties(properties, true);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
+      throw new QueryProcessException(
+          String.format(DataNodeMiscMessages.FAIL_RELOAD_CONFIGURATION_FMT, e));
     }
   }
 
@@ -2344,7 +2370,7 @@ public class IoTDBDescriptor {
       try {
         pattern = Pattern.compile(trustedUriPattern);
       } catch (Exception e) {
-        LOGGER.warn("Failed to parse trusted_uri_pattern {}", trustedUriPattern);
+        LOGGER.warn(DataNodeMiscMessages.FAILED_PARSE_TRUSTED_URI, trustedUriPattern);
         pattern = commonDescriptor.getConfig().getTrustedUriPattern();
       }
     } else {
@@ -2356,18 +2382,18 @@ public class IoTDBDescriptor {
   public synchronized void loadHotModifiedProps() throws QueryProcessException {
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url == null) {
-      LOGGER.warn("Couldn't load the configuration from any of the known sources.");
+      LOGGER.warn(DataNodeMiscMessages.COULD_NOT_LOAD_CONFIG);
       return;
     }
 
     TrimProperties commonProperties = new TrimProperties();
     try (InputStream inputStream = url.openStream()) {
-      LOGGER.info("Start to reload config file {}", url);
+      LOGGER.info(DataNodeMiscMessages.START_RELOAD_CONFIG_FILE, url);
       commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       ConfigurationFileUtils.loadConfigurationDefaultValueFromTemplate();
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
-      LOGGER.warn("Fail to reload config file {}", url, e);
+      LOGGER.warn(DataNodeMiscMessages.FAIL_RELOAD_CONFIG_FILE, url, e);
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     } finally {
@@ -2378,7 +2404,7 @@ public class IoTDBDescriptor {
 
   public void reloadMetricProperties(TrimProperties properties) {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(properties, false);
-    LOGGER.info("Reload metric service in level {}", reloadLevel);
+    LOGGER.info(DataNodeMiscMessages.RELOAD_METRIC_SERVICE, reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
       IoTDBInternalReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
@@ -2490,6 +2516,9 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
@@ -2624,6 +2653,9 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(
@@ -2801,6 +2833,34 @@ public class IoTDBDescriptor {
             false));
   }
 
+  private void loadCqMinEveryIntervalInMs(TrimProperties properties) throws IOException {
+    long cqMinEveryIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "continuous_query_min_every_interval_in_ms",
+                String.valueOf(conf.getCqMinEveryIntervalInMs())));
+    if (cqMinEveryIntervalInMs <= 0) {
+      throw new IOException(
+          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is "
+              + cqMinEveryIntervalInMs
+              + ".");
+    }
+    conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
+  }
+
+  private void loadReadConsistencyLevel(TrimProperties properties) throws IOException {
+    String readConsistencyLevel =
+        properties.getProperty(
+            "read_consistency_level", conf.getReadConsistencyLevel().name().toLowerCase());
+    if (!"strong".equals(readConsistencyLevel) && !"weak".equals(readConsistencyLevel)) {
+      throw new IOException(
+          String.format(
+              "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+              readConsistencyLevel));
+    }
+    conf.setReadConsistencyLevel(readConsistencyLevel);
+  }
+
   public void loadClusterProps(TrimProperties properties) throws IOException {
     String configNodeUrls = properties.getProperty(IoTDBConstant.DN_SEED_CONFIG_NODE);
     if (configNodeUrls == null) {
@@ -2956,6 +3016,17 @@ public class IoTDBDescriptor {
     conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
     conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
     conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
+
+    // Optional fields: an old ConfigNode (rolling upgrade) will not set them, in which case the
+    // DataNode keeps its local default instead of overwriting it with 0.
+    if (ratisConfig.isSetDataReconfigurationMaxRetryAttempts()) {
+      conf.setDataRatisConsensusReconfigurationMaxRetryAttempts(
+          ratisConfig.getDataReconfigurationMaxRetryAttempts());
+    }
+    if (ratisConfig.isSetSchemaReconfigurationMaxRetryAttempts()) {
+      conf.setSchemaRatisConsensusReconfigurationMaxRetryAttempts(
+          ratisConfig.getSchemaReconfigurationMaxRetryAttempts());
+    }
 
     conf.setDataRatisConsensusPreserveWhenPurge(ratisConfig.getDataPreserveWhenPurge());
     conf.setSchemaRatisConsensusPreserveWhenPurge(ratisConfig.getSchemaPreserveWhenPurge());

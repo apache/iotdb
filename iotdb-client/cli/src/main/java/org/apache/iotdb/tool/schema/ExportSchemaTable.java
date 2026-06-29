@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -63,8 +64,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
             .enableAutoFetch(false)
             .database(database);
     if (useSsl) {
-      tableSessionPoolBuilder =
-          tableSessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      tableSessionPoolBuilder = configureSsl(tableSessionPoolBuilder);
     }
     sessionPool = tableSessionPoolBuilder.build();
     checkDatabase();
@@ -316,6 +316,6 @@ public class ExportSchemaTable extends AbstractExportSchema {
 
   @Override
   protected void exportSchemaToCsvFile(String pathPattern, int index) {
-    throw new UnsupportedOperationException("Not supported yet.");
+    throw new UnsupportedOperationException(CliMessages.NOT_SUPPORTED_YET);
   }
 }

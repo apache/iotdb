@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -80,7 +82,8 @@ public class SharedTimeDataBuffer {
 
   private void loadPageData() throws IOException {
     if (!timeBuffer.hasRemaining()) {
-      throw new UnsupportedOperationException("No more data in SharedTimeDataBuffer");
+      throw new UnsupportedOperationException(
+          StorageEngineMessages.NO_MORE_DATA_IN_SHARED_TIME_BUFFER);
     }
     PageHeader timePageHeader =
         isSinglePageChunk()

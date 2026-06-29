@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.load.disk;
 
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
 import org.slf4j.Logger;
@@ -45,7 +46,7 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
     super(selector);
     if (dirs == null || dirs.length == 0) {
       rootDisks2DataDirsMapForLoad = Collections.emptyMap();
-      logger.warn("MinIO selector requires at least one directory");
+      logger.warn(StorageEngineMessages.MINIO_SELECTOR_REQUIRES_ONE_DIR);
       return;
     }
     // init data dirs' root disks
@@ -60,7 +61,7 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
                 if (fileStore != null) {
                   String mountPoint = fileStore.toString();
                   this.rootDisks2DataDirsMapForLoad.put(mountPoint, dataDirPath);
-                  logger.info("Add {}'s mount point {}", dataDirPath, mountPoint);
+                  logger.info(StorageEngineMessages.ADD_MOUNT_POINT, dataDirPath, mountPoint);
                 } else {
                   logger.info(
                       "Failed to find mount point {}, skip register it to map", dataDirPath);

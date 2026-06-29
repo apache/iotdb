@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.control;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
@@ -79,11 +80,19 @@ public class FileReaderManager {
    */
   private Map<TsFileID, AtomicInteger> unclosedReferenceMap;
 
+  /** External TsFile readers. The key is the file path. */
+  private Map<String, TsFileSequenceReader> externalFileReaderMap;
+
+  /** Reference count of external TsFile readers. */
+  private Map<String, AtomicInteger> externalReferenceMap;
+
   private FileReaderManager() {
     closedFileReaderMap = new ConcurrentHashMap<>();
     unclosedFileReaderMap = new ConcurrentHashMap<>();
     closedReferenceMap = new ConcurrentHashMap<>();
     unclosedReferenceMap = new ConcurrentHashMap<>();
+    externalFileReaderMap = new ConcurrentHashMap<>();
+    externalReferenceMap = new ConcurrentHashMap<>();
   }
 
   public static FileReaderManager getInstance() {
@@ -136,6 +145,20 @@ public class FileReaderManager {
   public synchronized TsFileSequenceReader get(
       String filePath, TsFileID tsFileID, boolean isClosed, LongConsumer ioSizeRecorder)
       throws IOException {
+    return get(filePath, tsFileID, isClosed, ioSizeRecorder, false);
+  }
+
+  @SuppressWarnings("squid:S2095")
+  public synchronized TsFileSequenceReader get(
+      String filePath,
+      TsFileID tsFileID,
+      boolean isClosed,
+      LongConsumer ioSizeRecorder,
+      boolean isExternalTsFile)
+      throws IOException {
+    if (isExternalTsFile) {
+      return getExternalTsFileReader(filePath, ioSizeRecorder);
+    }
 
     Map<TsFileID, TsFileSequenceReader> readerMap =
         !isClosed ? unclosedFileReaderMap : closedFileReaderMap;
@@ -143,7 +166,7 @@ public class FileReaderManager {
       int currentOpenedReaderCount = readerMap.size();
       if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE
           && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
-        logger.warn("Query has opened {} files !", readerMap.size());
+        logger.warn(StorageEngineMessages.QUERY_OPENED_FILES, readerMap.size());
       }
 
       TsFileSequenceReader tsFileReader = null;
@@ -169,6 +192,25 @@ public class FileReaderManager {
     return readerMap.get(tsFileID);
   }
 
+  private TsFileSequenceReader getExternalTsFileReader(String filePath, LongConsumer ioSizeRecorder)
+      throws IOException {
+    TsFileSequenceReader reader = externalFileReaderMap.get(filePath);
+    if (reader == null) {
+      int currentOpenedReaderCount = externalFileReaderMap.size();
+      if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE
+          && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
+        logger.warn(StorageEngineMessages.QUERY_OPENED_FILES, externalFileReaderMap.size());
+      }
+      reader =
+          new TsFileSequenceReader(
+              filePath,
+              ioSizeRecorder,
+              EncryptDBUtils.getFirstEncryptParamFromTSFilePath(filePath));
+      externalFileReaderMap.put(filePath, reader);
+    }
+    return reader;
+  }
+
   /**
    * Increase the reference count of the reader specified by filePath. Only when the reference count
    * of a reader equals zero, the reader can be closed and removed.
@@ -186,6 +228,10 @@ public class FileReaderManager {
             .getAndIncrement();
       }
     }
+  }
+
+  public synchronized void increaseExternalFileReaderReference(String filePath) {
+    externalReferenceMap.computeIfAbsent(filePath, k -> new AtomicInteger()).getAndIncrement();
   }
 
   /**
@@ -206,6 +252,38 @@ public class FileReaderManager {
     tsFile.readUnlock();
   }
 
+  public synchronized void decreaseExternalFileReaderReference(String filePath) {
+    AtomicInteger reference = externalReferenceMap.get(filePath);
+    if (reference != null && reference.decrementAndGet() == 0) {
+      closeUnUsedExternalReaderAndRemoveRef(filePath);
+    }
+  }
+
+  private void closeUnUsedExternalReaderAndRemoveRef(String readerKey) {
+    synchronized (this) {
+      AtomicInteger reference = externalReferenceMap.get(readerKey);
+      if (reference != null && reference.get() != 0) {
+        return;
+      }
+
+      TsFileSequenceReader reader = externalFileReaderMap.get(readerKey);
+      if (reader != null) {
+        try {
+          reader.close();
+        } catch (IOException e) {
+          logger.error(
+              StorageEngineMessages.CANNOT_CLOSE_TSFILE_SEQUENCE_READER, reader.getFileName(), e);
+        }
+      }
+      externalFileReaderMap.remove(readerKey);
+      externalReferenceMap.remove(readerKey);
+      if (resourceLogger.isDebugEnabled()) {
+        resourceLogger.debug(
+            "{} externalTsFileReader is closed because of no reference.", readerKey);
+      }
+    }
+  }
+
   private void closeUnUsedReaderAndRemoveRef(
       String tsFilePath, TsFileID tsFileID, boolean isClosed) {
     Map<TsFileID, TsFileSequenceReader> readerMap =
@@ -222,7 +300,8 @@ public class FileReaderManager {
         try {
           reader.close();
         } catch (IOException e) {
-          logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
+          logger.error(
+              StorageEngineMessages.CANNOT_CLOSE_TSFILE_SEQUENCE_READER, reader.getFileName(), e);
         }
       }
       readerMap.remove(tsFileID);
@@ -260,6 +339,17 @@ public class FileReaderManager {
       }
       unclosedReferenceMap.remove(entry.getKey());
       iterator.remove();
+    }
+    Iterator<Map.Entry<String, TsFileSequenceReader>> externalIterator =
+        externalFileReaderMap.entrySet().iterator();
+    while (externalIterator.hasNext()) {
+      Map.Entry<String, TsFileSequenceReader> entry = externalIterator.next();
+      entry.getValue().close();
+      if (resourceLogger.isDebugEnabled()) {
+        resourceLogger.debug("{} externalTsFileReader is closed.", entry.getKey());
+      }
+      externalReferenceMap.remove(entry.getKey());
+      externalIterator.remove();
     }
   }
 

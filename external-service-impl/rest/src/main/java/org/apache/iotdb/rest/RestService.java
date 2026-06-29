@@ -19,8 +19,12 @@ package org.apache.iotdb.rest;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.externalservice.api.IExternalService;
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.filter.ApiOriginFilter;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
@@ -28,14 +32,12 @@ import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.SslConnectionFactory;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.DispatcherType;
+import jakarta.servlet.DispatcherType;
 
 import java.util.EnumSet;
 
@@ -51,6 +53,7 @@ public class RestService implements IExternalService {
       String trustStorePath,
       String keyStorePwd,
       String trustStorePwd,
+      String sslProtocol,
       int idleTime,
       boolean clientAuth) {
     server = new Server();
@@ -60,6 +63,7 @@ public class RestService implements IExternalService {
     httpsConfig.addCustomizer(new SecureRequestCustomizer());
 
     SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
+    configureSSL(sslContextFactory, sslProtocol);
     sslContextFactory.setKeyStorePath(keyStorePath);
     sslContextFactory.setKeyStorePassword(keyStorePwd);
     if (clientAuth) {
@@ -95,7 +99,7 @@ public class RestService implements IExternalService {
     holder.setInitOrder(1);
     holder.setInitParameter(
         "jersey.config.server.provider.packages",
-        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.rest.protocol");
+        "io.swagger.v3.jaxrs2.integration.resources, org.apache.iotdb.rest.protocol");
     holder.setInitParameter(
         "jersey.config.server.provider.classnames",
         "org.glassfish.jersey.media.multipart.MultiPartFeature");
@@ -108,10 +112,10 @@ public class RestService implements IExternalService {
     try {
       server.start();
     } catch (Exception e) {
-      LOGGER.warn("RestService failed to start: {}", e.getMessage());
+      LOGGER.warn(RestMessages.REST_SERVICE_START_FAILED, e.getMessage());
       server.destroy();
     }
-    LOGGER.info("start RestService successfully");
+    LOGGER.info(RestMessages.REST_SERVICE_START_SUCCESS);
   }
 
   @Override
@@ -124,6 +128,7 @@ public class RestService implements IExternalService {
           config.getTrustStorePath(),
           config.getKeyStorePwd(),
           config.getTrustStorePwd(),
+          config.getSslProtocol(),
           config.getIdleTimeoutInSeconds(),
           config.isClientAuth());
     } else {
@@ -136,9 +141,14 @@ public class RestService implements IExternalService {
     try {
       server.stop();
     } catch (Exception e) {
-      LOGGER.warn("RestService failed to stop: {}", e.getMessage());
+      LOGGER.warn(RestMessages.REST_SERVICE_STOP_FAILED, e.getMessage());
     } finally {
       server.destroy();
     }
+  }
+
+  private void configureSSL(SslContextFactory.Server sslContextFactory, String sslProtocol) {
+    String protocol = RpcSslUtils.normalizeProtocol(sslProtocol);
+    sslContextFactory.setProtocol(protocol);
   }
 }

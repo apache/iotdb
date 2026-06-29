@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -57,6 +58,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY;
@@ -70,11 +72,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private final Set<TEndPoint> endPointSet;
 
-  private static final Map<String, Integer> RECEIVER_ATTRIBUTES_REF_COUNT =
-      new ConcurrentHashMap<>();
+  private static final Map<String, Integer> CLIENT_RESOURCE_REF_COUNT = new ConcurrentHashMap<>();
   private final String receiverAttributes;
+  private final String clientResourceKey;
 
-  // receiverAttributes -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
+  // clientResourceKey -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
   private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new ConcurrentHashMap<>();
   private static final Map<String, ExecutorService> TS_FILE_ASYNC_EXECUTOR_HOLDER =
@@ -128,10 +130,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             shouldMarkAsPipeRequest,
             isTSFileUsed,
             skipIfNoPrivileges);
+    clientResourceKey = generateClientResourceKey(receiverAttributes, endPoints);
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
-      if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
+      if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(clientResourceKey)) {
         ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(
-            receiverAttributes,
+            clientResourceKey,
             new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
                 .createClientManager(
                     isTSFileUsed
@@ -139,21 +142,21 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
                             .AsyncPipeTsFileDataTransferServiceClientPoolFactory()
                         : new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
       }
-      endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
+      endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(clientResourceKey);
 
       if (isTSFileUsed) {
-        if (!TS_FILE_ASYNC_EXECUTOR_HOLDER.containsKey(receiverAttributes)) {
+        if (!TS_FILE_ASYNC_EXECUTOR_HOLDER.containsKey(clientResourceKey)) {
           TS_FILE_ASYNC_EXECUTOR_HOLDER.putIfAbsent(
-              receiverAttributes,
+              clientResourceKey,
               IoTDBThreadPoolFactory.newFixedThreadPool(
                   PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize(),
                   ThreadName.PIPE_TSFILE_ASYNC_SEND_POOL.getName() + "-" + id.getAndIncrement()));
         }
-        executor = TS_FILE_ASYNC_EXECUTOR_HOLDER.get(receiverAttributes);
+        executor = TS_FILE_ASYNC_EXECUTOR_HOLDER.get(clientResourceKey);
       }
 
-      RECEIVER_ATTRIBUTES_REF_COUNT.compute(
-          receiverAttributes, (attributes, refCount) -> refCount == null ? 1 : refCount + 1);
+      CLIENT_RESOURCE_REF_COUNT.compute(
+          clientResourceKey, (attributes, refCount) -> refCount == null ? 1 : refCount + 1);
     }
 
     switch (loadBalanceStrategy) {
@@ -168,7 +171,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         break;
       default:
         LOGGER.warn(
-            "Unknown load balance strategy: {}, use round-robin strategy instead.",
+            DataNodePipeMessages.UNKNOWN_LOAD_BALANCE_STRATEGY_USE_ROUND_ROBIN,
             loadBalanceStrategy);
         loadBalancer = new RoundRobinLoadBalancer();
     }
@@ -198,11 +201,17 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         return client;
       }
     } catch (final Exception e) {
-      LOGGER.warn(
-          "failed to borrow client {}:{} for cached leader.",
+      PipeLogger.log(
+          ignored ->
+              LOGGER.warn(
+                  DataNodePipeMessages.FAILED_TO_BORROW_CLIENT_FOR_CACHED_LEADER,
+                  endPoint.getIp(),
+                  endPoint.getPort(),
+                  e),
+          e,
+          "Failed to borrow client %s:%s for cached leader.",
           endPoint.getIp(),
-          endPoint.getPort(),
-          e);
+          endPoint.getPort());
     }
 
     return borrowClient();
@@ -251,7 +260,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
                           response.getStatus().getMessage())));
             } else {
               LOGGER.info(
-                  "Handshake successfully with receiver {}:{}.",
+                  DataNodePipeMessages.HANDSHAKE_SUCCESSFULLY_WITH_RECEIVER,
                   targetNodeUrl.getIp(),
                   targetNodeUrl.getPort());
               client.markHandshakeFinished();
@@ -341,7 +350,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       }
       if (exception.get() != null) {
         markUnhealthy(targetNodeUrl);
-        throw new PipeConnectionException("Failed to handshake.", exception.get());
+        throw new PipeConnectionException(
+            DataNodePipeMessages.FAILED_TO_HANDSHAKE, exception.get());
       } else {
         markHealthy(targetNodeUrl);
       }
@@ -355,11 +365,17 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           client.close();
           client.invalidateAll();
         } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to close client {}:{} after handshake failure when the manager is closed.",
+          PipeLogger.log(
+              ignored ->
+                  LOGGER.warn(
+                      DataNodePipeMessages.FAILED_TO_CLOSE_CLIENT_AFTER_HANDSHAKE_FAILURE,
+                      targetNodeUrl.getIp(),
+                      targetNodeUrl.getPort(),
+                      e),
+              e,
+              "Failed to close client %s:%s after handshake failure when the manager is closed.",
               targetNodeUrl.getIp(),
-              targetNodeUrl.getPort(),
-              e);
+              targetNodeUrl.getPort());
         }
       }
       client.setShouldReturnSelf(true);
@@ -373,7 +389,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     try {
       while (!isHandshakeFinished.get()) {
         if (isClosed) {
-          throw new PipeConnectionException("Timed out when waiting for client handshake finish.");
+          throw new PipeConnectionException(
+              DataNodePipeMessages.TIMED_OUT_WHEN_WAITING_FOR_CLIENT_HANDSHAKE);
         }
         synchronized (isHandshakeFinished) {
           isHandshakeFinished.wait(1);
@@ -381,7 +398,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new PipeException("Interrupted while waiting for handshake response.", e);
+      throw new PipeException(
+          DataNodePipeMessages.INTERRUPTED_WHILE_WAITING_FOR_HANDSHAKE_RESPONSE, e);
     }
   }
 
@@ -405,34 +423,36 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   public void close() {
     isClosed = true;
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
-      RECEIVER_ATTRIBUTES_REF_COUNT.computeIfPresent(
-          receiverAttributes,
+      CLIENT_RESOURCE_REF_COUNT.computeIfPresent(
+          clientResourceKey,
           (attributes, refCount) -> {
             if (refCount <= 1) {
               final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager =
-                  ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(receiverAttributes);
+                  ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(clientResourceKey);
               if (clientManager != null) {
                 try {
                   clientManager.close();
                   LOGGER.info(
-                      "Closed AsyncPipeDataTransferServiceClientManager for receiver attributes: {}",
-                      receiverAttributes);
+                      DataNodePipeMessages
+                          .CLOSED_ASYNCPIPEDATATRANSFERSERVICECLIENTMANAGER_FOR_RECEIVER_ATTRIBUTES,
+                      clientResourceKey);
                 } catch (final Exception e) {
                   LOGGER.warn(
-                      "Failed to close AsyncPipeDataTransferServiceClientManager for receiver attributes: {}",
-                      receiverAttributes,
+                      DataNodePipeMessages
+                          .FAILED_TO_CLOSE_ASYNCPIPEDATATRANSFERSERVICECLIENTMANAGER_FOR_RECEIVER_ATTRIBUTE,
+                      clientResourceKey,
                       e);
                 }
               }
 
               final ExecutorService executor =
-                  TS_FILE_ASYNC_EXECUTOR_HOLDER.remove(receiverAttributes);
+                  TS_FILE_ASYNC_EXECUTOR_HOLDER.remove(clientResourceKey);
               if (executor != null) {
                 try {
                   executor.shutdown();
-                  LOGGER.info("Successfully shutdown executor {}.", executor);
+                  LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_SHUTDOWN_EXECUTOR, executor);
                 } catch (final Exception e) {
-                  LOGGER.warn("Failed to shutdown executor {}.", executor);
+                  LOGGER.warn(DataNodePipeMessages.FAILED_TO_SHUTDOWN_EXECUTOR, executor);
                 }
               }
 
@@ -533,5 +553,17 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private void markHealthy(TEndPoint endPoint) {
     unhealthyEndPointMap.remove(endPoint);
+  }
+
+  private static String generateClientResourceKey(
+      final String receiverAttributes, final List<TEndPoint> endPoints) {
+    return String.format(
+        "%s-%s",
+        receiverAttributes,
+        endPoints.stream()
+            .map(endPoint -> String.format("%s:%s", endPoint.getIp(), endPoint.getPort()))
+            .distinct()
+            .sorted()
+            .collect(Collectors.joining(",", "[", "]")));
   }
 }

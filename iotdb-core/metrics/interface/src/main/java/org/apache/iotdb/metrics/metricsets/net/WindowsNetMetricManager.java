@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.metricsets.net;
 import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
@@ -130,13 +131,13 @@ public class WindowsNetMetricManager implements INetMetricManager {
       }
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        LOGGER.error("Failed to get interfaces, exit code: {}", exitCode);
+        LOGGER.error(MetricsMessages.GET_INTERFACES_FAILED, exitCode);
       }
     } catch (IOException | InterruptedException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.error("Error updating interfaces", e);
+      LOGGER.error(MetricsMessages.UPDATE_INTERFACES_ERROR, e);
       ifaceSet.clear();
     }
   }
@@ -177,13 +178,13 @@ public class WindowsNetMetricManager implements INetMetricManager {
       }
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        LOGGER.error("Failed to get statistics, exit code: {}", exitCode);
+        LOGGER.error(MetricsMessages.GET_STATISTICS_FAILED, exitCode);
       }
     } catch (IOException | InterruptedException | NumberFormatException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.error("Error updating statistics", e);
+      LOGGER.error(MetricsMessages.UPDATE_STATISTICS_ERROR, e);
     }
   }
 
@@ -205,13 +206,13 @@ public class WindowsNetMetricManager implements INetMetricManager {
       this.connectionNum = count;
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        LOGGER.error("Failed to get connection num, exit code: {}", exitCode);
+        LOGGER.error(MetricsMessages.GET_CONNECTION_NUM_FAILED, exitCode);
       }
     } catch (IOException | InterruptedException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.error("Error updating connection num", e);
+      LOGGER.error(MetricsMessages.UPDATE_CONNECTION_NUM_ERROR, e);
     }
   }
 }

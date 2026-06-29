@@ -35,6 +35,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
@@ -123,17 +124,19 @@ public class DataNodeRegionManager {
       SchemaRegionConsensusImpl.getInstance().createLocalPeer(schemaRegionId, peers);
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final IllegalPathException e1) {
-      LOGGER.error("Create Schema Region {} failed because path is illegal.", storageGroup);
+      LOGGER.error(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED_ILLEGAL_PATH, storageGroup);
       tsStatus = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
-      tsStatus.setMessage("Create Schema Region failed because storageGroup path is illegal.");
+      tsStatus.setMessage(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED_ILLEGAL_PATH_MSG);
     } catch (final MetadataException e2) {
-      LOGGER.error("Create Schema Region {} failed because {}", storageGroup, e2.getMessage());
+      LOGGER.error(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED, storageGroup, e2.getMessage());
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(
-          String.format("Create Schema Region failed because of %s", e2.getMessage()));
+          String.format(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED_FMT, e2.getMessage()));
     } catch (final ConsensusGroupAlreadyExistException e) {
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      tsStatus.setMessage(String.format("SchemaRegion %d already exists.", schemaRegionId.getId()));
+      tsStatus.setMessage(
+          String.format(
+              DataNodeMiscMessages.SCHEMA_REGION_ALREADY_EXISTS_FMT, schemaRegionId.getId()));
     } catch (final ConsensusException e) {
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(e.getMessage());
@@ -158,12 +161,14 @@ public class DataNodeRegionManager {
       DataRegionConsensusImpl.getInstance().createLocalPeer(dataRegionId, peers);
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (DataRegionException e) {
-      LOGGER.error("Create Data Region {} failed because {}", storageGroup, e.getMessage());
+      LOGGER.error(DataNodeMiscMessages.CREATE_DATA_REGION_FAILED, storageGroup, e.getMessage());
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-      tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
+      tsStatus.setMessage(
+          String.format(DataNodeMiscMessages.CREATE_DATA_REGION_FAILED_FMT, e.getMessage()));
     } catch (ConsensusGroupAlreadyExistException e) {
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      tsStatus.setMessage(String.format("DataRegion %d already exists.", dataRegionId.getId()));
+      tsStatus.setMessage(
+          String.format(DataNodeMiscMessages.DATA_REGION_ALREADY_EXISTS_FMT, dataRegionId.getId()));
     } catch (ConsensusException e) {
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(e.getMessage());
@@ -173,7 +178,7 @@ public class DataNodeRegionManager {
 
   public TSStatus createNewRegion(final ConsensusGroupId regionId, final String storageGroup) {
     final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    LOGGER.info("start to create new region {}", regionId);
+    LOGGER.info(DataNodeMiscMessages.START_CREATE_NEW_REGION, regionId);
     try {
       if (regionId instanceof DataRegionId) {
         final DataRegionId dataRegionId = (DataRegionId) regionId;
@@ -185,13 +190,15 @@ public class DataNodeRegionManager {
         schemaRegionLockMap.putIfAbsent(schemaRegionId, new ReentrantReadWriteLock(false));
       }
     } catch (final Exception e) {
-      LOGGER.error("create new region {} error", regionId, e);
+      LOGGER.error(DataNodeMiscMessages.CREATE_NEW_REGION_ERROR, regionId, e);
       status.setCode(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-      status.setMessage("create new region " + regionId + "error,  exception:" + e.getMessage());
+      status.setMessage(
+          String.format(
+              DataNodeMiscMessages.CREATE_NEW_REGION_ERROR_FMT, regionId, e.getMessage()));
       return status;
     }
-    status.setMessage("create new region " + regionId + " succeed");
-    LOGGER.info("succeed to create new region {}", regionId);
+    status.setMessage(String.format(DataNodeMiscMessages.CREATE_NEW_REGION_SUCCEED_FMT, regionId));
+    LOGGER.info(DataNodeMiscMessages.SUCCEED_CREATE_NEW_REGION, regionId);
     return status;
   }
 
@@ -213,7 +220,7 @@ public class DataNodeRegionManager {
       schemaRegionLockMap.remove(schemaRegionId);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
     } catch (MetadataException e) {
-      LOGGER.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      LOGGER.error(DataNodeMiscMessages.METADATA_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
     }
   }

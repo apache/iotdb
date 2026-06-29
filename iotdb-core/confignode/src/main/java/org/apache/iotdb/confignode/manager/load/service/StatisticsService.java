@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 
 import org.slf4j.Logger;
@@ -36,9 +37,6 @@ import java.util.concurrent.TimeUnit;
 public class StatisticsService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsService.class);
-
-  public static final long STATISTICS_UPDATE_INTERVAL =
-      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
 
   private final LoadCache loadCache;
 
@@ -63,9 +61,9 @@ public class StatisticsService {
                 loadStatisticsExecutor,
                 this::updateLoadStatistics,
                 0,
-                STATISTICS_UPDATE_INTERVAL,
+                ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
                 TimeUnit.MILLISECONDS);
-        LOGGER.info("LoadStatistics service is started successfully.");
+        LOGGER.info(ManagerMessages.LOADSTATISTICS_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
     }
   }
@@ -76,8 +74,26 @@ public class StatisticsService {
       if (currentLoadStatisticsFuture != null) {
         currentLoadStatisticsFuture.cancel(false);
         currentLoadStatisticsFuture = null;
-        LOGGER.info("LoadStatistics service is stopped successfully.");
+        LOGGER.info(ManagerMessages.LOADSTATISTICS_SERVICE_IS_STOPPED_SUCCESSFULLY);
       }
+    }
+  }
+
+  /** Reload the statistics update interval without rebuilding the service instance. */
+  public void reloadHeartbeatInterval() {
+    synchronized (statisticsScheduleMonitor) {
+      if (currentLoadStatisticsFuture == null) {
+        return;
+      }
+      currentLoadStatisticsFuture.cancel(false);
+      currentLoadStatisticsFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              loadStatisticsExecutor,
+              this::updateLoadStatistics,
+              0,
+              ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
+              TimeUnit.MILLISECONDS);
+      LOGGER.info(ManagerMessages.LOADSTATISTICS_SERVICE_IS_STARTED_SUCCESSFULLY);
     }
   }
 

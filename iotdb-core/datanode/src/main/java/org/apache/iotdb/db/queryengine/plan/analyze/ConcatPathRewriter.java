@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -149,7 +150,8 @@ public class ConcatPathRewriter {
         ExpressionAnalyzer.concatExpressionWithSuffixPaths(
             expression, prefixPaths, patternTree, queryContext);
     if (resultExpressions.size() != 1) {
-      throw new IllegalStateException("Expression in group by should indicate one value");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXPRESSION_IN_GROUP_BY_SHOULD_INDICATE_ONE_VALUE);
     }
     return resultExpressions.get(0);
   }
@@ -162,7 +164,8 @@ public class ConcatPathRewriter {
         ExpressionAnalyzer.concatExpressionWithSuffixPaths(
             expression, prefixPaths, patternTree, queryContext);
     if (resultExpressions.size() != 1) {
-      throw new IllegalStateException("Expression in order by should indicate one value");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXPRESSION_IN_ORDER_BY_SHOULD_INDICATE_ONE_VALUE);
     }
     return resultExpressions.get(0);
   }

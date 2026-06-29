@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +86,7 @@ public class SchemaRegionSnapshotParser {
         snapshotList.add(path);
       }
     } catch (final IOException ioException) {
-      LOGGER.warn("ioexception when get {}'s folder", schemaRegionId, ioException);
+      LOGGER.warn(DataNodeMiscMessages.IOEXCEPTION_GET_FOLDER, schemaRegionId, ioException);
       return null;
     }
     final Path latestSnapshotPath = getLatestSnapshotPath(snapshotList, isTmp);

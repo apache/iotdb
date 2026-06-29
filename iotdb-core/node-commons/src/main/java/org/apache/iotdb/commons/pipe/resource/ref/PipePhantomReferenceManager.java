@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.resource.ref;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
@@ -81,7 +82,7 @@ public abstract class PipePhantomReferenceManager {
 
     if (count != 0) {
       LOGGER.info(
-          "Clean {} pipe phantom reference(s) successfully within {} ms, remaining reference count: {}",
+          PipeMessages.CLEAN_PHANTOM_REFERENCES,
           count,
           System.currentTimeMillis() - startTime,
           getPhantomReferenceCount());
@@ -89,7 +90,7 @@ public abstract class PipePhantomReferenceManager {
       final long currentPhantomReferenceCount = getPhantomReferenceCount();
       if (currentPhantomReferenceCount != lastPhantomReferenceCount) {
         if (lastPhantomReferenceCount != -1) {
-          LOGGER.info("Remaining pipe phantom reference count: {}", currentPhantomReferenceCount);
+          LOGGER.info(PipeMessages.REMAINING_PHANTOM_REFERENCE_COUNT, currentPhantomReferenceCount);
         }
         lastPhantomReferenceCount = currentPhantomReferenceCount;
       }
@@ -155,7 +156,7 @@ public abstract class PipePhantomReferenceManager {
       }
 
       if (referenceCount.get() >= 1) {
-        LOGGER.error("PIPE EVENT RESOURCE LEAK DETECTED ({}): {}", referenceCount, holderMessage);
+        LOGGER.error(PipeMessages.PIPE_EVENT_RESOURCE_LEAK, referenceCount, holderMessage);
         finalizeResource();
       }
 

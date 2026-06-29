@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.Multi
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
@@ -187,7 +188,7 @@ public class AggregationPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
-      throw new IllegalArgumentException("Unexpected plan node: " + node);
+      throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_PLAN_NODE + node);
     }
 
     @Override
@@ -609,7 +610,7 @@ public class AggregationPushDown implements PlanOptimizer {
                 MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(aggScanNode));
         return aggScanNode;
       } else {
-        throw new IllegalArgumentException("unexpected path type");
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_PATH_TYPE);
       }
     }
 

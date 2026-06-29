@@ -28,6 +28,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.La
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.calc.plan.planner.TableOperatorGenerator;
+import org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.IoTDBLocalFactory;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -54,6 +55,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
@@ -94,6 +96,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Abst
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.CteScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.ExternalTsFileAggTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.ExternalTsFileTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.LastQueryAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
@@ -121,6 +125,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
@@ -131,9 +137,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.udf.IoTDBLocalImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -158,7 +166,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -199,7 +207,8 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_NO_VALUE;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_STALE_VALUE;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class DataNodeTableOperatorGenerator
@@ -862,7 +871,7 @@ public class DataNodeTableOperatorGenerator
       symbolInputs = new ArrayList<>(outputColumnCount);
       columnsIndexArray = new int[outputColumnCount];
       columnSchemaMap = node.getAssignments();
-      tagAndAttributeColumnsIndexMap = node.getTagAndAttributeIndexMap();
+      this.tagAndAttributeColumnsIndexMap = node.getTagAndAttributeIndexMap();
       measurementColumnNames = new ArrayList<>();
       measurementColumnsIndexMap = new HashMap<>();
       measurementSchemas = new ArrayList<>();
@@ -1088,7 +1097,8 @@ public class DataNodeTableOperatorGenerator
               context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName());
       return new EmptyDataOperator(operatorContext);
     }
-    throw new IllegalArgumentException("Valid TreeDeviceViewScanNode is not expected here.");
+    throw new IllegalArgumentException(
+        DataNodeQueryMessages.VALID_TREEDEVICEVIEWSCANNODE_IS_NOT_EXPECTED_HERE);
   }
 
   @Override
@@ -1111,6 +1121,40 @@ public class DataNodeTableOperatorGenerator
         DeviceTableScanNode.class.getSimpleName());
 
     return tableScanOperator;
+  }
+
+  @Override
+  public Operator visitExternalTsFileScan(
+      ExternalTsFileScanNode node, LocalExecutionPlanContext context) {
+    if (node.getDeviceEntries().isEmpty()) {
+      OperatorContext operatorContext =
+          addOperatorContext(
+              context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName());
+      return new EmptyDataOperator(operatorContext);
+    }
+
+    AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+        constructAbstractTableScanOperatorParameter(
+            node,
+            context,
+            ExternalTsFileTableScanOperator.class.getSimpleName(),
+            Collections.emptyMap(),
+            Long.MAX_VALUE);
+
+    AbstractTableScanOperator externalTsFileTableScanOperator =
+        new ExternalTsFileTableScanOperator(parameter, node.getDeviceTaskPartitionIndex());
+
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+
+    DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
+    dataDriverContext.addSourceOperator(externalTsFileTableScanOperator);
+    dataDriverContext.setQueryDataSourceType(QueryDataSourceType.EXTERNAL_TSFILE_SCAN);
+    dataDriverContext.setInputDriver(true);
+    context
+        .getInstanceContext()
+        .addExternalTsFileQueryResource(node.getExternalTsFileQueryResource());
+
+    return externalTsFileTableScanOperator;
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(
@@ -1460,7 +1504,9 @@ public class DataNodeTableOperatorGenerator
               scanAscending,
               true,
               timeColumnName,
-              measurementColumnsIndexMap.keySet()));
+              measurementColumnsIndexMap.keySet(),
+              context.getMemoryReservationManager(),
+              context));
     }
 
     ITableTimeRangeIterator timeRangeIterator = null;
@@ -1592,6 +1638,34 @@ public class DataNodeTableOperatorGenerator
     }
   }
 
+  @Override
+  public Operator visitExternalTsFileAggregationScan(
+      ExternalTsFileAggregationScanNode node, LocalExecutionPlanContext context) {
+    AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter =
+        constructAbstractAggTableScanOperatorParameter(node, context);
+
+    ExternalTsFileAggTableScanOperator aggTableScanOperator =
+        new ExternalTsFileAggTableScanOperator(parameter, node.getDeviceTaskPartitionIndex());
+
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+    addSource(
+        aggTableScanOperator,
+        context,
+        node,
+        parameter.getMeasurementColumnNames(),
+        parameter.getMeasurementSchemas(),
+        parameter.getAllSensors(),
+        ExternalTsFileAggregationScanNode.class.getSimpleName());
+
+    DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
+    dataDriverContext.setQueryDataSourceType(QueryDataSourceType.EXTERNAL_TSFILE_SCAN);
+    context
+        .getInstanceContext()
+        .addExternalTsFileQueryResource(node.getExternalTsFileQueryResource());
+
+    return aggTableScanOperator;
+  }
+
   private LastQueryAggTableScanOperator constructLastQueryAggTableScanOperator(
       AggregationTableScanNode node,
       AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter,
@@ -1624,6 +1698,9 @@ public class DataNodeTableOperatorGenerator
           for (int j = 0; j < lastByResult.get().getRight().length; j++) {
             TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
             if (tsPrimitiveType == null
+                // Known-null at the aligned row time can still hit cache. Only miss or stale target
+                // values need to fall back to scan for correctness.
+                || tsPrimitiveType == PLACEHOLDER_STALE_VALUE
                 || (updateTimeFilter != null
                     && !LastQueryUtil.satisfyFilter(
                         updateTimeFilter,
@@ -1723,7 +1800,7 @@ public class DataNodeTableOperatorGenerator
                     parameter.getSeriesScanOptions().getGlobalTimeFilter(), timeValuePair)) {
               if (isFilterGtOrGe(updateTimeFilter)) {
                 // it means there is no data meets Filter
-                timeValuePair.setValue(EMPTY_PRIMITIVE_TYPE);
+                timeValuePair.setValue(PLACEHOLDER_NO_VALUE);
               } else {
                 allHitCache = false;
                 break;
@@ -1861,7 +1938,12 @@ public class DataNodeTableOperatorGenerator
         addOperatorContext(
             context, node.getPlanNodeId(), ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(
-        operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
+        operatorContext,
+        operator,
+        node.getQueryId(),
+        node.isVerbose(),
+        node.getTimeout(),
+        node.getOutputFormat());
   }
 
   @Override
@@ -1932,7 +2014,8 @@ public class DataNodeTableOperatorGenerator
         if (timeColumnOfTargetTable == null) {
           timeColumnOfTargetTable = inputColumns.get(i);
         } else {
-          throw new SemanticException("Multiple columns with TIME category found");
+          throw new SemanticException(
+              DataNodeQueryMessages.MULTIPLE_COLUMNS_WITH_TIME_CATEGORY_FOUND);
         }
         continue;
       }
@@ -1943,7 +2026,7 @@ public class DataNodeTableOperatorGenerator
       inputColumnCategories.add(columnCategory);
     }
     if (timeColumnOfTargetTable == null) {
-      throw new SemanticException("Missing TIME category column");
+      throw new SemanticException(DataNodeQueryMessages.MISSING_TIME_CATEGORY_COLUMN);
     }
 
     long statementSizePerLine =
@@ -2087,5 +2170,25 @@ public class DataNodeTableOperatorGenerator
   @Override
   protected SessionInfo getSessionInfo(LocalExecutionPlanContext context) {
     return context.getDriverContext().getFragmentInstanceContext().getSessionInfo();
+  }
+
+  @Override
+  protected String getFragmentInstanceId(LocalExecutionPlanContext context) {
+    return context.getFragmentInstanceId().getFullId();
+  }
+
+  @Override
+  protected String getQueryId(LocalExecutionPlanContext context) {
+    return context.getFragmentInstanceId().getQueryId().getId();
+  }
+
+  @Override
+  protected long getOuterQueryDeadlineMs(LocalExecutionPlanContext context) {
+    return context.getOuterQueryDeadlineMs();
+  }
+
+  @Override
+  protected IoTDBLocalFactory getIoTDBLocalFactory(LocalExecutionPlanContext context) {
+    return IoTDBLocalImpl.FACTORY;
   }
 }

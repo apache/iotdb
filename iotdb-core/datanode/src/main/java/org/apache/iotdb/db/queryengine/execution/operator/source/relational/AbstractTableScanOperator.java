@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
@@ -53,27 +54,27 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.AlignedS
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 
 public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperator {
-  private static final long INSTANCE_SIZE =
+  protected static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
 
   private final List<ColumnSchema> columnSchemas;
 
   private final int[] columnsIndexArray;
 
-  private final List<DeviceEntry> deviceEntries;
+  protected final List<DeviceEntry> deviceEntries;
 
-  private final int deviceCount;
+  protected final int deviceCount;
 
-  private final Ordering scanOrder;
-  private final SeriesScanOptions seriesScanOptions;
+  protected final Ordering scanOrder;
+  protected final SeriesScanOptions seriesScanOptions;
 
-  private final List<String> measurementColumnNames;
+  protected final List<String> measurementColumnNames;
 
-  private final Set<String> allSensors;
+  protected final Set<String> allSensors;
 
-  private final List<IMeasurementSchema> measurementSchemas;
+  protected final List<IMeasurementSchema> measurementSchemas;
 
-  private final List<TSDataType> measurementColumnTSDataTypes;
+  protected final List<TSDataType> measurementColumnTSDataTypes;
 
   private TsBlockBuilder measurementDataBuilder;
 
@@ -83,7 +84,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   private QueryDataSource queryDataSource;
 
-  private int currentDeviceIndex;
+  protected int currentDeviceIndex;
 
   public AbstractTableScanOperator(AbstractTableScanOperatorParameter parameter) {
     this.sourceId = parameter.sourceId;
@@ -113,7 +114,6 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
             maxReturnSize,
             allSensors.size() * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = parameter.maxTsBlockLineNum;
-
     constructAlignedSeriesScanUtil();
   }
 
@@ -159,12 +159,11 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       if (measurementDataBuilder.isEmpty()
           && measurementDataBlock == null
           && currentDeviceNoMoreData) {
-        currentDeviceIndex++;
-        prepareForNextDevice();
+        moveToNextDevice();
       }
 
     } catch (IOException e) {
-      throw new RuntimeException("Error happened while scanning the file", e);
+      throw new RuntimeException(DataNodeQueryMessages.ERROR_HAPPENED_WHILE_SCANNING_THE_FILE, e);
     }
 
     // get all measurement column data and time column data
@@ -251,7 +250,8 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     this.measurementDataBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
   }
 
-  private void prepareForNextDevice() {
+  protected void moveToNextDevice() {
+    currentDeviceIndex++;
     if (currentDeviceIndex < deviceCount) {
       // construct AlignedSeriesScanUtil for next device
       constructAlignedSeriesScanUtil();
@@ -264,8 +264,8 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     }
   }
 
-  private void constructAlignedSeriesScanUtil() {
-    if (this.deviceEntries.isEmpty()) {
+  protected void constructAlignedSeriesScanUtil() {
+    if (this.deviceEntries.isEmpty() || currentDeviceIndex >= deviceCount) {
       // no need to construct SeriesScanUtil, hasNext will return false
       return;
     }

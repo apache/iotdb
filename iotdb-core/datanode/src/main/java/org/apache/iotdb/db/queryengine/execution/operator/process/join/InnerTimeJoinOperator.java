@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
 
@@ -253,7 +254,8 @@ public class InnerTimeJoinOperator implements ProcessOperator {
       List<Integer> list = lists.get(i);
       int[] array = res[i];
       if (list.size() != array.length) {
-        throw new IllegalStateException("All child should have same time column result!");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.ALL_CHILD_SHOULD_HAVE_SAME_TIME_COLUMN_RESULT);
       }
       for (int j = 0; j < array.length; j++) {
         array[j] = list.get(j);

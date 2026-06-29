@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -155,6 +156,27 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
+  public void stop() {
+    final WrappedThreadPoolExecutor executor = activeLoadExecutor.getAndSet(null);
+    if (executor == null) {
+      return;
+    }
+
+    executor.shutdownNow();
+    try {
+      if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+        LOGGER.warn(
+            StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S,
+            ThreadName.ACTIVE_LOAD_TSFILE_LOADER.getName());
+      }
+    } catch (final InterruptedException e) {
+      LOGGER.warn(
+          StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S,
+          ThreadName.ACTIVE_LOAD_TSFILE_LOADER.getName());
+      Thread.currentThread().interrupt();
+    }
+  }
+
   private void tryLoadPendingTsFiles() {
     final IClientSession session =
         new InternalClientSession(
@@ -201,18 +223,22 @@ public class ActiveLoadTsFileLoader {
         Math.max(1, IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds() << 1);
     long currentRetryTimes = 0;
 
-    while (true) {
+    while (!Thread.currentThread().isInterrupted()) {
       final ActiveLoadPendingQueue.ActiveLoadEntry entry = pendingQueue.dequeueFromPending();
       if (Objects.nonNull(entry)) {
         return Optional.of(entry);
       }
 
       LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
+      if (Thread.currentThread().isInterrupted()) {
+        return Optional.empty();
+      }
 
       if (currentRetryTimes++ >= maxRetryTimes) {
         return Optional.empty();
       }
     }
+    return Optional.empty();
   }
 
   private TSStatus loadTsFile(
@@ -268,7 +294,7 @@ public class ActiveLoadTsFileLoader {
 
   private void handleLoadFailure(
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final TSStatus status) {
-    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, status.getMessage())) {
+    if (!ActiveLoadFailedMessageHandler.isStatusShouldRetry(entry, status)) {
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
           entry.getFile(),
@@ -320,7 +346,7 @@ public class ActiveLoadTsFileLoader {
             return null;
           });
     } catch (final IOException e) {
-      LOGGER.warn("Error occurred during moving file {} to fail directory.", filePath, e);
+      LOGGER.warn(StorageEngineMessages.ERROR_MOVING_FILE_TO_FAIL_DIR, filePath, e);
     }
   }
 
@@ -344,7 +370,7 @@ public class ActiveLoadTsFileLoader {
               try {
                 fileSize[0] += file.toFile().length();
               } catch (Exception e) {
-                LOGGER.debug("Failed to count failed files in fail directory.", e);
+                LOGGER.debug(StorageEngineMessages.FAILED_COUNT_FILES_IN_FAIL_DIR, e);
               }
               return FileVisitResult.CONTINUE;
             }
@@ -353,7 +379,7 @@ public class ActiveLoadTsFileLoader {
       ActiveLoadingFilesNumberMetricsSet.getInstance().updateTotalFailedFileCounter(fileCount[0]);
       ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalFailedFileCounter(fileSize[0]);
     } catch (final IOException e) {
-      LOGGER.debug("Failed to count failed files in fail directory.", e);
+      LOGGER.debug(StorageEngineMessages.FAILED_COUNT_FILES_IN_FAIL_DIR, e);
     }
 
     return fileCount[0];

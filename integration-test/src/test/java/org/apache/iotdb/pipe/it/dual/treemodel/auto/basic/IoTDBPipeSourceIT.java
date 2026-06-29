@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -35,6 +36,10 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,6 +55,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
 
@@ -67,6 +73,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         // Disable sender compaction for tsfile determination in loose range test
@@ -81,6 +88,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)
@@ -771,6 +779,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -797,6 +810,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       sourceAttributes.put("source.inclusion", "data");
       sourceAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
       sourceAttributes.put("source.end-time", "1970-01-01T08:00:04+08:00");
+      sourceAttributes.put("source.realtime.mode", "stream");
       sourceAttributes.put("user", "root");
 
       final TSStatus status =
@@ -808,9 +822,10 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.db.**",
+          "select count(at1) from root.db.d1",
           "count(root.db.d1.at1),",
-          Collections.singleton("3,"));
+          Collections.singleton("3,"),
+          handleFailure);
 
       // Insert realtime data that overlapped with time range
       TestUtils.executeNonQueries(
@@ -823,9 +838,33 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.db.**",
+          "select count(at1) from root.db.d1, root.db.d3",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
-          Collections.singleton("3,3,"));
+          Collections.singleton("3,3,"),
+          handleFailure);
+
+      // Session Tablet can have unused timestamp slots when rowSize is smaller than maxRowNumber.
+      // The pipe source time range filter should ignore the unused zero tail.
+      final List<IMeasurementSchema> schemas =
+          Collections.singletonList(new MeasurementSchema("at1", TSDataType.INT32));
+      final Tablet tabletWithUnusedTail = new Tablet("root.db.d5", schemas, 5);
+      for (int time = 2000; time <= 4000; time += 1000) {
+        final int rowIndex = tabletWithUnusedTail.getRowSize();
+        tabletWithUnusedTail.addTimestamp(rowIndex, time);
+        tabletWithUnusedTail.addValue("at1", rowIndex, time / 1000);
+      }
+      Assert.assertEquals(3, tabletWithUnusedTail.getRowSize());
+      Assert.assertEquals(5, tabletWithUnusedTail.getTimestamps().length);
+      try (final ISession session = senderEnv.getSessionConnection()) {
+        session.insertTablet(tabletWithUnusedTail);
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(at1) from root.db.d1, root.db.d3, root.db.d5",
+          "count(root.db.d1.at1),count(root.db.d3.at1),count(root.db.d5.at1),",
+          Collections.singleton("3,3,3,"),
+          handleFailure);
 
       // Insert realtime data that does not overlap with time range
       TestUtils.executeNonQueries(
@@ -838,9 +877,21 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
-          "select count(*) from root.db.**",
-          "count(root.db.d1.at1),count(root.db.d3.at1),",
-          Collections.singleton("3,3,"));
+          "select count(at1) from root.db.d1, root.db.d3, root.db.d5",
+          "count(root.db.d1.at1),count(root.db.d3.at1),count(root.db.d5.at1),",
+          Collections.singleton("3,3,3,"),
+          600,
+          handleFailure);
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show timeseries root.db.d2.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.emptySet());
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show timeseries root.db.d4.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.emptySet());
     }
   }
 

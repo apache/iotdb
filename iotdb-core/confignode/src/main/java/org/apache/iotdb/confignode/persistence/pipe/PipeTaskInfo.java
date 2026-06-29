@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -39,6 +40,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -50,11 +52,11 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMult
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
-import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -74,9 +76,11 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -93,10 +97,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   // Pure in-memory object, not involved in snapshot serialization and deserialization.
   private final PipeTaskInfoVersion pipeTaskInfoVersion;
+  // Accepts a username and returns its current stored password for pipe authentication.
+  private final Function<String, String> pipeUserCurrentPasswordProvider;
 
   public PipeTaskInfo() {
+    this(null);
+  }
+
+  public PipeTaskInfo(final Function<String, String> pipeUserCurrentPasswordProvider) {
     this.pipeMetaKeeper = new PipeMetaKeeper();
     this.pipeTaskInfoVersion = new PipeTaskInfoVersion();
+    this.pipeUserCurrentPasswordProvider = pipeUserCurrentPasswordProvider;
   }
 
   /////////////////////////////// Lock ///////////////////////////////
@@ -332,7 +343,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void checkBeforeDropPipeInternal(final String pipeName) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Check before drop pipe {}, pipe exists: {}.", pipeName, isPipeExisted(pipeName));
+          ConfigNodeMessages.CHECK_BEFORE_DROP_PIPE_PIPE_EXISTS, pipeName, isPipeExisted(pipeName));
     }
     // No matter whether the pipe exists, we allow the drop operation executed on all nodes to
     // ensure the consistency.
@@ -443,6 +454,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus createPipe(final CreatePipePlanV2 plan) {
     acquireWriteLock();
     try {
+      enrichPipeMetaWithRootUserForCompatibility(plan.getPipeStaticMeta());
       pipeMetaKeeper.addPipeMeta(new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
@@ -473,12 +485,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
             dropPipe((DropPipePlanV2) subPlan);
           } else {
             throw new PipeException(
-                String.format("Unsupported subPlan type: %s", subPlan.getClass().getName()));
+                String.format(
+                    ConfigNodeMessages.UNSUPPORTED_SUBPLAN_TYPE, subPlan.getClass().getName()));
           }
           status.getSubStatus().add(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
         } catch (final Exception e) {
           // If one of the subPlan fails, we stop operating the rest of the pipes
-          LOGGER.error("Failed to operate pipe", e);
+          LOGGER.error(ConfigNodeMessages.FAILED_TO_OPERATE_PIPE, e);
           status.setCode(TSStatusCode.PIPE_ERROR.getStatusCode());
           status.getSubStatus().add(new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()));
           break;
@@ -499,6 +512,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus alterPipe(final AlterPipePlanV2 plan) {
     acquireWriteLock();
     try {
+      enrichPipeMetaWithRootUserForCompatibility(plan.getPipeStaticMeta());
       final PipeTemporaryMeta temporaryMeta =
           pipeMetaKeeper.getPipeMeta(plan.getPipeStaticMeta().getPipeName()).getTemporaryMeta();
       pipeMetaKeeper.removePipeMeta(plan.getPipeStaticMeta().getPipeName());
@@ -634,8 +648,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // external source pipe tasks are not balanced here since non-leaders
                             // don't know about RegionLeader Map and will be balanced in the meta
                             // sync procedure
-                            LOGGER.info(
-                                "Pipe {} is using external source, skip region leader change. PipeHandleLeaderChangePlan: {}",
+                            PipeLogger.log(
+                                LOGGER::info,
+                                ConfigNodeMessages.PIPE_IS_USING_EXTERNAL_SOURCE_SKIP_REGION,
                                 pipeMeta.getStaticMeta().getPipeName(),
                                 plan.getConsensusGroupId2NewLeaderIdMap());
                             return;
@@ -699,7 +714,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private TSStatus handleMetaChangesInternal(final PipeHandleMetaChangePlan plan) {
-    LOGGER.debug("Handling pipe meta changes ...");
+    LOGGER.debug(ConfigNodeMessages.HANDLING_PIPE_META_CHANGES);
 
     pipeMetaKeeper.clear();
 
@@ -715,8 +730,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
     plan.getPipeMetaList()
         .forEach(
             pipeMeta -> {
+              enrichPipeMetaWithRootUserForCompatibility(pipeMeta.getStaticMeta());
               pipeMetaKeeper.addPipeMeta(pipeMeta);
-              logger.ifPresent(l -> l.debug("Recording pipe meta: {}", pipeMeta));
+              logger.ifPresent(l -> l.debug(ConfigNodeMessages.RECORDING_PIPE_META, pipeMeta));
             });
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -903,7 +919,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
             });
 
     if (needRestart.get()) {
-      LOGGER.info("PipeMetaSyncer is trying to restart the pipes: {}", pipeToRestart);
+      PipeLogger.log(
+          LOGGER::info,
+          ConfigNodeMessages.PIPEMETASYNCER_IS_TRYING_TO_RESTART_THE_PIPES,
+          pipeToRestart);
     }
     return needRestart.get();
   }
@@ -955,7 +974,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
       if (snapshotFile.exists() && snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to take snapshot, because snapshot file [{}] is already exist.",
+            ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
             snapshotFile.getAbsolutePath());
         return false;
       }
@@ -977,7 +996,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
       if (!snapshotFile.exists() || !snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to load snapshot,snapshot file [{}] is not exist.",
+            ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
             snapshotFile.getAbsolutePath());
         return;
       }
@@ -988,6 +1007,47 @@ public class PipeTaskInfo implements SnapshotProcessor {
       normalizeRecoveredConsensusPipeStatus();
     } finally {
       releaseWriteLock();
+    }
+  }
+
+  public void enrichPipeMetasWithRootUserForCompatibility() {
+    acquireWriteLock();
+    try {
+      pipeMetaKeeper
+          .getPipeMetaList()
+          .forEach(
+              pipeMeta -> enrichPipeMetaWithRootUserForCompatibility(pipeMeta.getStaticMeta()));
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void enrichPipeMetaWithRootUserForCompatibility(final PipeStaticMeta pipeStaticMeta) {
+    if (pipeUserCurrentPasswordProvider == null) {
+      return;
+    }
+    final boolean shouldEnrichSource = pipeStaticMeta.mayNeedCompatibleRootUserForIoTDBSource();
+    final boolean shouldEnrichSink = pipeStaticMeta.mayNeedCompatibleRootUserForWriteBackSink();
+    if (!shouldEnrichSource && !shouldEnrichSink) {
+      return;
+    }
+
+    final String rootUserName = CommonDescriptor.getInstance().getConfig().getDefaultAdminName();
+    final String password = pipeUserCurrentPasswordProvider.apply(rootUserName);
+    if (Objects.isNull(password)) {
+      throw new PipeException(
+          String.format(
+              ConfigNodeMessages
+                  .FAILED_TO_ENRICH_PIPE_WITH_ROOT_USER_FOR_COMPATIBILITY_BECAUSE_ROOT_USER_DOES_NOT_EXIST,
+              pipeStaticMeta.getPipeName(),
+              rootUserName));
+    }
+
+    if (shouldEnrichSource) {
+      pipeStaticMeta.enrichSourceWithRootUserForCompatibility(rootUserName, password);
+    }
+    if (shouldEnrichSink) {
+      pipeStaticMeta.enrichWriteBackSinkWithRootUserForCompatibility(rootUserName, password);
     }
   }
 
@@ -1011,7 +1071,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     if (!restartedConsensusPipes.isEmpty()) {
       LOGGER.info(
-          "Recovered consensus pipes {} as RUNNING during snapshot load.", restartedConsensusPipes);
+          ConfigNodeMessages.RECOVERED_CONSENSUS_PIPES_AS_RUNNING_DURING_SNAPSHOT_LOAD,
+          restartedConsensusPipes);
     }
   }
 

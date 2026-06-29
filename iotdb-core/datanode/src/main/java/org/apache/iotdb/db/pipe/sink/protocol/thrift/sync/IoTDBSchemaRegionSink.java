@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.sync;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -57,13 +58,13 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaRegionConnector can't transfer TabletInsertionEvent.");
+        DataNodePipeMessages.IOTDBSCHEMAREGIONCONNECTOR_CAN_T_TRANSFER_TABLETINSERTIONEVENT);
   }
 
   @Override
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaRegionConnector can't transfer TsFileInsertionEvent.");
+        DataNodePipeMessages.IOTDBSCHEMAREGIONCONNECTOR_CAN_T_TRANSFER_TSFILEINSERTIONEVENT);
   }
 
   @Override
@@ -74,7 +75,9 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
       doTransferWrapper((PipeSchemaRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
-          "IoTDBSchemaRegionConnector does not support transferring generic event: {}.", event);
+          DataNodePipeMessages
+              .IOTDBSCHEMAREGIONCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
+          event);
     }
   }
 
@@ -131,7 +134,8 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
           true);
     }
 
-    LOGGER.info("Successfully transferred schema event {}.", pipeSchemaRegionWritePlanEvent);
+    LOGGER.info(
+        DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_SCHEMA_EVENT, pipeSchemaRegionWritePlanEvent);
   }
 
   private void doTransferWrapper(final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
@@ -226,7 +230,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
     }
 
     LOGGER.info(
-        "Successfully transferred file {}, {} and {}.",
+        DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE_AND,
         mTreeSnapshotFile,
         tagLogSnapshotFile,
         attributeSnapshotFile);
@@ -236,7 +240,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
   protected PipeTransferFilePieceReq getTransferSingleFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
-        "The schema region connector does not support transferring single file piece req.");
+        DataNodePipeMessages.THE_SCHEMA_REGION_CONNECTOR_DOES_NOT_SUPPORT);
   }
 
   @Override

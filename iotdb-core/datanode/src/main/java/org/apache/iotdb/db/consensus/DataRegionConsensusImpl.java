@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
@@ -51,7 +53,10 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -59,6 +64,8 @@ import java.util.concurrent.TimeUnit;
  * dataRegion's reading and writing
  */
 public class DataRegionConsensusImpl {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataRegionConsensusImpl.class);
 
   private DataRegionConsensusImpl() {
     // do nothing
@@ -113,6 +120,11 @@ public class DataRegionConsensusImpl {
 
     private static DataRegionStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
       DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
+      if (dataRegion == null) {
+        String errorMsg = String.format(StorageEngineMessages.FAILED_TO_FIND_DATA_REGION, gid);
+        LOGGER.error(errorMsg);
+        throw new IllegalArgumentException(errorMsg);
+      }
       if (ConsensusFactory.IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
         return new IoTConsensusDataRegionStateMachine(dataRegion);
       } else {
@@ -129,6 +141,10 @@ public class DataRegionConsensusImpl {
           .setThisNodeId(CONF.getDataNodeId())
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
           .setStorageDir(CONF.getDataRegionConsensusDir())
+          .setRecvSnapshotDirs(Arrays.asList(CONF.getLocalDataDirs()))
+          // IoTConsensus always balances received snapshot files by least occupied space,
+          // independent of the global dn_multi_dir_strategy.
+          .setDirectoryStrategyType(DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY)
           .setConsensusGroupType(TConsensusGroupType.DataRegion)
           .setIoTConsensusConfig(
               IoTConsensusConfig.newBuilder()
@@ -158,6 +174,12 @@ public class DataRegionConsensusImpl {
                           .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
                           .setRegionMigrationSpeedLimitBytesPerSecond(
                               CONF.getRegionMigrationSpeedLimitBytesPerSecond())
+                          .setSubscriptionWalRetentionSizeInBytes(
+                              COMMON_CONF.getSubscriptionConsensusWalRetentionSizeInBytes())
+                          .setSubscriptionWalRetentionTimeMs(
+                              COMMON_CONF.getSubscriptionConsensusWalRetentionTimeMs())
+                          .setSnapshotTransmissionProgressLogIntervalMs(
+                              CONF.getDataRegionIotSnapshotTransmissionProgressLogIntervalMs())
                           .build())
                   .build())
           .setIoTConsensusV2Config(
@@ -261,6 +283,8 @@ public class DataRegionConsensusImpl {
                               CONF.getDataRatisConsensusInitialSleepTimeMs())
                           .setClientRetryMaxSleepTimeMs(CONF.getDataRatisConsensusMaxSleepTimeMs())
                           .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                          .setReconfigurationMaxRetryAttempts(
+                              CONF.getDataRatisConsensusReconfigurationMaxRetryAttempts())
                           .build())
                   .setImpl(
                       RatisConfig.Impl.newBuilder()

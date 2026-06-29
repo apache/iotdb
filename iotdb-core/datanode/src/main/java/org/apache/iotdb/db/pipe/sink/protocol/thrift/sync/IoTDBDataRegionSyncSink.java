@@ -21,11 +21,13 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -164,7 +166,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     // PipeProcessor can change the type of tsFileInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
+          DataNodePipeMessages
+              .IOTDBTHRIFTSYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_IGNORE,
           tsFileInsertionEvent);
       return;
     }
@@ -200,7 +203,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
 
     if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
       LOGGER.warn(
-          "IoTDBThriftSyncConnector does not support transferring generic event: {}.", event);
+          DataNodePipeMessages.IOTDBTHRIFTSYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
+          event);
     }
   }
 
@@ -257,7 +261,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     }
 
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Successfully transferred deletion event {}.", pipeDeleteDataNodeEvent);
+      LOGGER.debug(
+          DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_DELETION_EVENT, pipeDeleteDataNodeEvent);
     }
   }
 
@@ -276,7 +281,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     } else if (batch instanceof PipeTabletEventTsFileBatch) {
       doTransfer((PipeTabletEventTsFileBatch) batch);
     } else {
-      LOGGER.warn("Unsupported batch type {}.", batch.getClass());
+      LOGGER.warn(DataNodePipeMessages.UNSUPPORTED_BATCH_TYPE, batch.getClass());
     }
     batch.decreaseEventsReferenceCount(IoTDBDataRegionSyncSink.class.getName(), true);
     batch.onSuccess();
@@ -343,10 +348,9 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
               return null;
             });
       } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", dbTsFile);
+        LOGGER.info(DataNodePipeMessages.THE_FILE_IS_NOT_FOUND_MAY_ALREADY, dbTsFile);
       } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to delete batch file {}, this file should be deleted manually later", dbTsFile);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, dbTsFile);
       }
     }
   }
@@ -384,7 +388,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                   insertNode,
                   pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
                       ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-                      : null));
+                      : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName()));
       rateLimitIfNeeded(
           pipeInsertNodeTabletInsertionEvent.getPipeName(),
           pipeInsertNodeTabletInsertionEvent.getCreationTime(),
@@ -449,7 +453,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                   pipeRawTabletInsertionEvent.isAligned(),
                   pipeRawTabletInsertionEvent.isTableModelEvent()
                       ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-                      : null));
+                      : pipeRawTabletInsertionEvent.getTreeModelDatabaseName()));
       rateLimitIfNeeded(
           pipeRawTabletInsertionEvent.getPipeName(),
           pipeRawTabletInsertionEvent.getCreationTime(),
@@ -499,7 +503,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
           pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null,
           pipeTsFileInsertionEvent.isTableModelEvent()
               ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-              : null);
+              : pipeTsFileInsertionEvent.getTreeModelDatabaseName());
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionSyncSink.class.getName(), false);
@@ -586,14 +590,13 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
           tsFile.getName());
     }
 
-    LOGGER.info("Successfully transferred file {}.", tsFile);
+    LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE, tsFile);
   }
 
   @Override
   public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
-    if (Objects.isNull(compressionTimer) && Objects.nonNull(attributeSortedString)) {
-      compressionTimer =
-          PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(attributeSortedString);
+    if (Objects.isNull(compressionTimer) && Objects.nonNull(sinkTaskId)) {
+      compressionTimer = PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(sinkTaskId);
     }
     return super.compressIfNeeded(req);
   }
@@ -602,8 +605,13 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
   public synchronized void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
     super.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  @Override
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
     if (Objects.nonNull(tabletBatchBuilder)) {
-      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
+      tabletBatchBuilder.discardEventsOfPipe(committerKey);
     }
   }
 

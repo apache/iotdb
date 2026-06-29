@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.HashMap;
@@ -41,6 +42,10 @@ public class SystemConstant {
   public static final String SQL_DIALECT_KEY = "__system.sql-dialect";
   public static final String SQL_DIALECT_TREE_VALUE = "tree";
   public static final String SQL_DIALECT_TABLE_VALUE = "table";
+  public static final String SOURCE_AUTHENTICATION_INJECTED_KEY =
+      "__system.source-authentication-injected";
+  public static final String SINK_AUTHENTICATION_INJECTED_KEY =
+      "__system.sink-authentication-injected";
 
   /////////////////////////////////// Utility ///////////////////////////////////
 
@@ -49,6 +54,8 @@ public class SystemConstant {
   static {
     SYSTEM_KEYS.add(RESTART_OR_NEWLY_ADDED_KEY);
     SYSTEM_KEYS.add(SQL_DIALECT_KEY);
+    SYSTEM_KEYS.add(SOURCE_AUTHENTICATION_INJECTED_KEY);
+    SYSTEM_KEYS.add(SINK_AUTHENTICATION_INJECTED_KEY);
   }
 
   public static PipeParameters addSystemKeysIfNecessary(final PipeParameters givenPipeParameters) {
@@ -60,6 +67,6 @@ public class SystemConstant {
   /////////////////////////////////// Private Constructor ///////////////////////////////////
 
   private SystemConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

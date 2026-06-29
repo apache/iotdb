@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -118,7 +119,7 @@ public class CompactionUtils {
       case SETTLE:
         return IoTDBConstant.SETTLE_SUFFIX;
       default:
-        logger.error("Current task type {} does not have tmp file suffix.", type);
+        logger.error(StorageEngineMessages.TASK_TYPE_NO_TMP_FILE_SUFFIX, type);
         return "";
     }
   }
@@ -196,7 +197,7 @@ public class CompactionUtils {
                     try {
                       return tsFileResource.getModFileForWrite();
                     } catch (IOException e) {
-                      logger.error("Can not get mod file of {}", tsFileResource, e);
+                      logger.error(StorageEngineMessages.CANNOT_GET_MOD_FILE, tsFileResource, e);
                       return null;
                     }
                   })
@@ -300,7 +301,7 @@ public class CompactionUtils {
 
   public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
-    logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
+    logger.info(StorageEngineMessages.COMPACTION_START_DELETE_REAL_FILE, storageGroupName);
     boolean result = true;
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       if (!mergeTsFile.remove()) {
@@ -320,7 +321,7 @@ public class CompactionUtils {
   @TestOnly
   public static void deleteModificationForSourceFile(
       Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
-    logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
+    logger.info(StorageEngineMessages.COMPACTION_START_DELETE_SOURCE_MODS, storageGroupName);
     for (TsFileResource tsFileResource : sourceFiles) {
       tsFileResource.removeModFile();
     }
@@ -410,7 +411,8 @@ public class CompactionUtils {
           "[Compaction] delete file failed, file path is {}",
           resource.getTsFile().getAbsolutePath());
     } else {
-      logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
+      logger.info(
+          StorageEngineMessages.COMPACTION_DELETE_FILE, resource.getTsFile().getAbsolutePath());
     }
   }
 

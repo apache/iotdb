@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -100,7 +101,7 @@ public class DeactivateTemplateProcedure
     try {
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
-          LOGGER.info("Construct schema black list with template {}", requestMessage);
+          LOGGER.info(ProcedureMessages.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE, requestMessage);
           if (constructBlackList(env) > 0) {
             setNextState(DeactivateTemplateState.CLEAN_DATANODE_SCHEMA_CACHE);
             break;
@@ -108,31 +109,34 @@ public class DeactivateTemplateProcedure
             setFailure(
                 new ProcedureException(
                     new IoTDBException(
-                        "Target Device Template is not activated on any path matched by given path pattern",
+                        ProcedureMessages
+                            .TARGET_DEVICE_TEMPLATE_IS_NOT_ACTIVATED_ON_ANY_PATH_MATCHED,
                         TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode())));
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of template timeSeries {}", requestMessage);
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TEMPLATE_TIMESERIES, requestMessage);
           invalidateCache(env);
           break;
         case DELETE_DATA:
-          LOGGER.info("Delete data of template timeSeries {}", requestMessage);
+          LOGGER.info(ProcedureMessages.DELETE_DATA_OF_TEMPLATE_TIMESERIES, requestMessage);
           deleteData(env);
           break;
         case DEACTIVATE_TEMPLATE:
-          LOGGER.info("Deactivate template of {}", requestMessage);
+          LOGGER.info(ProcedureMessages.DEACTIVATE_TEMPLATE_OF, requestMessage);
           deactivateTemplate(env);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DeactivateTemplate-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.DEACTIVATETEMPLATE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -192,9 +196,11 @@ public class DeactivateTemplateProcedure
         // all dataNodes must clear the related schema cache
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOGGER.error(
-              "Failed to invalidate schema cache of template timeSeries {}", requestMessage);
+              ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES,
+              requestMessage);
           setFailure(
-              new ProcedureException(new MetadataException("Invalidate schema cache failed")));
+              new ProcedureException(
+                  new MetadataException(ProcedureMessages.INVALIDATE_SCHEMA_CACHE_FAILED)));
           return;
         }
       }
@@ -449,7 +455,8 @@ public class DeactivateTemplateProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Deactivate template of %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure: %s",
+                      ProcedureMessages
+                          .DEACTIVATE_TEMPLATE_OF_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN,
                       requestMessage,
                       taskName,
                       consensusGroupId.type,

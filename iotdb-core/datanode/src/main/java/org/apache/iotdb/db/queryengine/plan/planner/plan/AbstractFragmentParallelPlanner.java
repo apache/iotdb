@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -53,13 +54,11 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractFragmentParallelPlanner.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private final ReadConsistencyLevel readConsistencyLevel;
 
   protected final MPPQueryContext queryContext;
 
   protected AbstractFragmentParallelPlanner(MPPQueryContext queryContext) {
     this.queryContext = queryContext;
-    this.readConsistencyLevel = CONFIG.getReadConsistencyLevel();
   }
 
   protected void selectExecutorAndHost(
@@ -116,7 +115,7 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
       throw new IllegalArgumentException(
           String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
     }
-    boolean selectRandomDataNode = ReadConsistencyLevel.WEAK == this.readConsistencyLevel;
+    boolean selectRandomDataNode = ReadConsistencyLevel.WEAK == CONFIG.getReadConsistencyLevel();
 
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
@@ -131,13 +130,14 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
           errorMsg, TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode(), true);
     }
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
-      LOGGER.info("available replicas: {}", availableDataNodes);
+      LOGGER.info(DataNodeQueryMessages.AVAILABLE_REPLICAS, availableDataNodes);
     }
     int targetIndex;
     if (!selectRandomDataNode || queryContext.getSession() == null) {
       targetIndex = 0;
     } else {
-      targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
+      targetIndex =
+          (int) Math.floorMod(queryContext.getSession().getSessionId(), availableDataNodes.size());
     }
     return availableDataNodes.get(targetIndex);
   }

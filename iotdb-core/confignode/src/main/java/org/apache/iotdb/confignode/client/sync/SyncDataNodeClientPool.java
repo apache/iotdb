@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
@@ -160,7 +161,8 @@ public class SyncDataNodeClientPool {
             .collect(Collectors.toList());
     if (!lackList.isEmpty()) {
       throw new UncheckedStartupException(
-          String.format("These request types should be added to actionMap: %s", lackList));
+          String.format(
+              ConfigNodeMessages.THESE_REQUEST_TYPES_SHOULD_BE_ADDED_TO_ACTIONMAP, lackList));
     }
   }
 
@@ -173,14 +175,15 @@ public class SyncDataNodeClientPool {
       } catch (Exception e) {
         lastException = e;
         if (retry != DEFAULT_RETRY_NUM - 1) {
-          LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
+          LOGGER.warn(
+              ConfigNodeMessages.FAILED_ON_DATANODE_RETRYING, requestType, endPoint, retry + 1);
           doRetryWait(retry);
         }
       }
     }
-    LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
+    LOGGER.error(ConfigNodeMessages.FAILED_ON_DATANODE, requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
-        .setMessage("All retry failed due to: " + lastException.getMessage());
+        .setMessage(ConfigNodeMessages.ALL_RETRY_FAILED_DUE_TO + lastException.getMessage());
   }
 
   public Object sendSyncRequestToDataNodeWithGivenRetry(
@@ -192,14 +195,15 @@ public class SyncDataNodeClientPool {
       } catch (Exception e) {
         lastException = e;
         if (retry != retryNum - 1) {
-          LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
+          LOGGER.warn(
+              ConfigNodeMessages.FAILED_ON_DATANODE_RETRYING, requestType, endPoint, retry + 1);
           doRetryWait(retry);
         }
       }
     }
-    LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
+    LOGGER.error(ConfigNodeMessages.FAILED_ON_DATANODE, requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
-        .setMessage("All retry failed due to: " + lastException.getMessage());
+        .setMessage(ConfigNodeMessages.ALL_RETRY_FAILED_DUE_TO + lastException.getMessage());
   }
 
   private Object executeSyncRequest(
@@ -218,7 +222,7 @@ public class SyncDataNodeClientPool {
         TimeUnit.MILLISECONDS.sleep(3200L);
       }
     } catch (InterruptedException e) {
-      LOGGER.warn("Retry wait failed.", e);
+      LOGGER.warn(ConfigNodeMessages.RETRY_WAIT_FAILED, e);
       Thread.currentThread().interrupt();
     }
   }
@@ -234,17 +238,17 @@ public class SyncDataNodeClientPool {
    */
   public TRegionLeaderChangeResp changeRegionLeader(
       TConsensusGroupId regionId, TEndPoint dataNode, TDataNodeLocation newLeaderNode) {
-    LOGGER.info("Send RPC to data node: {} for changing regions leader on it", dataNode);
+    LOGGER.info(ConfigNodeMessages.SEND_RPC_TO_DATA_NODE_FOR_CHANGING_REGIONS_LEADER_ON, dataNode);
     TSStatus status;
     try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(dataNode)) {
       TRegionLeaderChangeReq req = new TRegionLeaderChangeReq(regionId, newLeaderNode);
       return client.changeRegionLeader(req);
     } catch (ClientManagerException e) {
-      LOGGER.error("Can't connect to Data node: {}", dataNode, e);
+      LOGGER.error(ConfigNodeMessages.CAN_T_CONNECT_TO_DATA_NODE, dataNode, e);
       status = new TSStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode());
       status.setMessage(e.getMessage());
     } catch (TException e) {
-      LOGGER.error("Change regions leader error on Date node: {}", dataNode, e);
+      LOGGER.error(ConfigNodeMessages.CHANGE_REGIONS_LEADER_ERROR_ON_DATE_NODE, dataNode, e);
       status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }

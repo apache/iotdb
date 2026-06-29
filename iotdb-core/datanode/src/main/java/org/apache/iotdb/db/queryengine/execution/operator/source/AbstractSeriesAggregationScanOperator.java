@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -222,7 +223,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       updateResultTsBlock();
       return Optional.of(true);
     } catch (IOException e) {
-      throw new RuntimeException("Error while scanning the file", e);
+      throw new RuntimeException(DataNodeQueryMessages.ERROR_WHILE_SCANNING_THE_FILE, e);
     }
   }
 
@@ -244,18 +245,28 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   private boolean calcFromRawData(TsBlock tsBlock) {
-    Pair<Boolean, TsBlock> calcResult =
-        calculateAggregationFromRawData(tsBlock, aggregators, curTimeRange, ascending);
-    inputTsBlock = calcResult.getRight();
-    return calcResult.getLeft();
+    long startTime = System.nanoTime();
+    try {
+      Pair<Boolean, TsBlock> calcResult =
+          calculateAggregationFromRawData(tsBlock, aggregators, curTimeRange, ascending);
+      inputTsBlock = calcResult.getRight();
+      return calcResult.getLeft();
+    } finally {
+      operatorContext.recordScanAggregationFromRawDataCost(System.nanoTime() - startTime);
+    }
   }
 
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
-    for (TreeAggregator aggregator : aggregators) {
-      if (aggregator.hasFinalResult()) {
-        continue;
+    long startTime = System.nanoTime();
+    try {
+      for (TreeAggregator aggregator : aggregators) {
+        if (aggregator.hasFinalResult()) {
+          continue;
+        }
+        aggregator.processStatistics(timeStatistics, valueStatistics);
       }
-      aggregator.processStatistics(timeStatistics, valueStatistics);
+    } finally {
+      operatorContext.recordScanAggregationFromStatisticsCost(System.nanoTime() - startTime);
     }
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
@@ -81,7 +82,7 @@ public class CheckpointManager implements AutoCloseable {
     this.logDirectory = logDirectory;
     File logDirFile = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!logDirFile.exists() && logDirFile.mkdirs()) {
-      logger.info("create folder {} for wal buffer-{}.", logDirectory, identifier);
+      logger.info(StorageEngineMessages.CREATE_FOLDER_FOR_WAL_BUFFER, logDirectory, identifier);
     }
     currentLogWriter =
         new CheckpointWriter(
@@ -108,7 +109,7 @@ public class CheckpointManager implements AutoCloseable {
       try {
         currentLogWriter.write(tmpBuffer);
       } catch (IOException e) {
-        logger.error("Fail to log max memTable id: {}", maxMemTableId, e);
+        logger.error(StorageEngineMessages.FAIL_TO_LOG_MAX_MEMTABLE_ID, maxMemTableId, e);
       }
       // log global memTables' info
       makeGlobalInfoCP();
@@ -198,7 +199,7 @@ public class CheckpointManager implements AutoCloseable {
     try {
       currentLogWriter.write(cachedByteBuffer);
     } catch (IOException e) {
-      logger.error("Fail to make checkpoint: {}", checkpoint, e);
+      logger.error(StorageEngineMessages.FAIL_TO_MAKE_CHECKPOINT, checkpoint, e);
     } finally {
       cachedByteBuffer.clear();
     }
@@ -310,7 +311,7 @@ public class CheckpointManager implements AutoCloseable {
     final MemTableInfo info = memTableId2Info.get(memtableId);
     if (info == null) {
       if (memtableId != Long.MIN_VALUE && memtableId != TsFileProcessor.MEMTABLE_NOT_EXIST) {
-        logger.warn("memtableId {} not found in MemTableId2Info", memtableId);
+        logger.warn(StorageEngineMessages.MEMTABLE_ID_NOT_FOUND_IN_MAP, memtableId);
       }
       return -1;
     }
@@ -325,7 +326,7 @@ public class CheckpointManager implements AutoCloseable {
         try {
           currentLogWriter.close();
         } catch (IOException e) {
-          logger.error("Fail to close wal node-{}'s checkpoint writer.", identifier, e);
+          logger.error(StorageEngineMessages.FAIL_TO_CLOSE_WAL_CHECKPOINT_WRITER, identifier, e);
         }
       }
     } finally {

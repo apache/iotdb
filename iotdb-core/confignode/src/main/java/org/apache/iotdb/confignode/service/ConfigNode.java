@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -49,6 +50,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -88,7 +90,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private static final int STARTUP_RETRY_NUM = 10;
+  private static final int STARTUP_RETRY_NUM = 20;
   private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(3);
   private static final int SCHEDULE_WAITING_RETRY_NUM =
       (int) (COMMON_CONFIG.getCnConnectionTimeoutInMS() / STARTUP_RETRY_INTERVAL_IN_MS);
@@ -118,11 +120,11 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   public static void main(String[] args) throws Exception {
     LOGGER.info(
-        "{} environment variables: {}",
+        ConfigNodeMessages.ENVIRONMENT_VARIABLES,
         ConfigNodeConstant.GLOBAL_NAME,
         ConfigNodeConfig.getEnvironmentVariables());
     LOGGER.info(
-        "{} default charset is: {}",
+        ConfigNodeMessages.DEFAULT_CHARSET_IS,
         ConfigNodeConstant.GLOBAL_NAME,
         Charset.defaultCharset().displayName());
     // let IoTDB handle the exception instead of ratis
@@ -138,26 +140,26 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   protected void start() throws IoTDBException {
     try {
       // Do ConfigNode startup checks
-      LOGGER.info("Starting IoTDB {}", IoTDBConstant.VERSION_WITH_BUILD);
+      LOGGER.info(ConfigNodeMessages.STARTING_IOTDB, IoTDBConstant.VERSION_WITH_BUILD);
       ConfigNodeStartupCheck checks = new ConfigNodeStartupCheck(IoTDBConstant.CN_ROLE);
       checks.startUpCheck();
+      MemoryConfig.getInstance();
     } catch (StartupException | ConfigurationException | IOException e) {
-      LOGGER.error("Meet error when doing start checking", e);
-      throw new IoTDBException("Error starting", -1);
+      LOGGER.error(ConfigNodeMessages.MEET_ERROR_WHEN_DOING_START_CHECKING, e);
+      throw new IoTDBException(ConfigNodeMessages.ERROR_STARTING, -1);
     }
     active();
-    LOGGER.info("IoTDB started");
+    LOGGER.info(ConfigNodeMessages.IOTDB_STARTED);
   }
 
   @Override
   protected void remove(Set<Integer> nodeIds) throws IoTDBException {
     throw new IoTDBException(
-        "The remove-confignode script has been deprecated. Please connect to the CLI and use SQL: remove confignode [confignode_id].",
-        -1);
+        ConfigNodeMessages.THE_REMOVE_CONFIGNODE_SCRIPT_HAS_BEEN_DEPRECATED_PLEASE_CONNECT_TO, -1);
   }
 
   public void active() {
-    LOGGER.info("Activating {}...", ConfigNodeConstant.GLOBAL_NAME);
+    LOGGER.info(ConfigNodeMessages.ACTIVATING, ConfigNodeConstant.GLOBAL_NAME);
 
     try {
       processPid();
@@ -170,7 +172,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
-        LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
+        LOGGER.info(ConfigNodeMessages.IS_IN_RESTARTING_PROCESS, ConfigNodeConstant.GLOBAL_NAME);
 
         int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();
@@ -182,7 +184,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         setUpRPCService();
         LOGGER.info(CONFIGURATION, CONF.getConfigMessage());
         LOGGER.info(
-            "{} has successfully restarted and joined the cluster: {}.",
+            ConfigNodeMessages.HAS_SUCCESSFULLY_RESTARTED_AND_JOINED_THE_CLUSTER,
             ConfigNodeConstant.GLOBAL_NAME,
             CONF.getClusterName());
 
@@ -212,7 +214,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       /* Initial startup of Seed-ConfigNode */
       if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
         LOGGER.info(
-            "The current {} is now starting as the Seed-ConfigNode.",
+            ConfigNodeMessages.THE_CURRENT_IS_NOW_STARTING_AS_THE_SEED_CONFIGNODE,
             ConfigNodeConstant.GLOBAL_NAME);
 
         /* Always set ConfigNodeId before initConsensusManager */
@@ -241,7 +243,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         // The initial startup of Seed-ConfigNode finished
         LOGGER.info(CONFIGURATION, CONF.getConfigMessage());
         LOGGER.info(
-            "{} has successfully started and joined the cluster: {}.",
+            ConfigNodeMessages.HAS_SUCCESSFULLY_STARTED_AND_JOINED_THE_CLUSTER,
             ConfigNodeConstant.GLOBAL_NAME,
             CONF.getClusterName());
         return;
@@ -256,7 +258,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       // we should wait for leader's scheduling
       LOGGER.info(CONFIGURATION, CONF.getConfigMessage());
       LOGGER.info(
-          "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster: {}.",
+          ConfigNodeMessages.HAS_REGISTERED_SUCCESSFULLY_WAITING_FOR_THE_LEADER_S_SCHEDULING_TO,
           ConfigNodeConstant.GLOBAL_NAME,
           CONF.getConfigNodeId(),
           CONF.getClusterName());
@@ -277,11 +279,11 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
       if (!isJoinedCluster) {
         LOGGER.error(
-            "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
+            ConfigNodeMessages.THE_CURRENT_CONFIGNODE_CAN_T_JOINED_THE_CLUSTER_BECAUSE_LEADER);
         stop();
       }
     } catch (Throwable e) {
-      LOGGER.error("Meet error while starting up.", e);
+      LOGGER.error(ConfigNodeMessages.MEET_ERROR_WHILE_STARTING_UP, e);
       exitStatusCode = StatusUtils.retrieveExitStatusCode(e);
       stop();
     }
@@ -306,7 +308,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     // Init Pipe Runtime Agent
     registerManager.register(PipeConfigNodeAgent.runtime());
 
-    LOGGER.info("Successfully setup internal services.");
+    LOGGER.info(ConfigNodeMessages.SUCCESSFULLY_SETUP_INTERNAL_SERVICES);
   }
 
   private void setUpMetricService() throws StartupException {
@@ -354,10 +356,10 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     try {
       setConfigManager();
     } catch (Exception e) {
-      LOGGER.error("Can't start ConfigNode consensus group!", e);
+      LOGGER.error(ConfigNodeMessages.CAN_T_START_CONFIGNODE_CONSENSUS_GROUP, e);
       stop();
     }
-    LOGGER.info("Successfully initialize ConfigManager.");
+    LOGGER.info(ConfigNodeMessages.SUCCESSFULLY_INITIALIZE_CONFIGMANAGER);
   }
 
   protected void setConfigManager() throws Exception {
@@ -380,8 +382,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
     TEndPoint seedConfigNode = CONF.getSeedConfigNode();
     if (seedConfigNode == null) {
-      LOGGER.error("Please set the cn_seed_config_node parameter in iotdb-system.properties file.");
-      throw new StartupException("The seedConfigNode setting in conf is empty");
+      LOGGER.error(ConfigNodeMessages.PLEASE_SET_THE_CN_SEED_CONFIG_NODE_PARAMETER_IN_IOTDB);
+      throw new StartupException(ConfigNodeMessages.THE_SEEDCONFIGNODE_SETTING_IN_CONF_IS_EMPTY);
     }
 
     for (int retry = 0; retry < STARTUP_RETRY_NUM; retry++) {
@@ -401,8 +403,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         if (resp == null) {
-          LOGGER.error("The result of register ConfigNode is empty!");
-          throw new StartupException("The result of register ConfigNode is empty!");
+          LOGGER.error(ConfigNodeMessages.THE_RESULT_OF_REGISTER_CONFIGNODE_IS_EMPTY);
+          throw new StartupException(ConfigNodeMessages.THE_RESULT_OF_REGISTER_CONFIGNODE_IS_EMPTY);
         }
         /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(resp.getConfigNodeId());
@@ -410,17 +412,23 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         return;
       } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         seedConfigNode = status.getRedirectNode();
-        LOGGER.info("ConfigNode need redirect to  {}, retry {} ...", seedConfigNode, retry);
+        LOGGER.info(ConfigNodeMessages.CONFIGNODE_NEED_REDIRECT_TO_RETRY, seedConfigNode, retry);
       } else if (status.getCode() == TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode()) {
-        LOGGER.warn("The result of register self ConfigNode is {}, retry {} ...", status, retry);
+        LOGGER.warn(
+            ConfigNodeMessages.THE_RESULT_OF_REGISTER_SELF_CONFIGNODE_IS_RETRY, status, retry);
+      } else if (status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()) {
+        LOGGER.info(
+            "ConfigNode leader is warming up before serving the registering ConfigNode, will wait"
+                + " and retry. Status: {}, retry: {}",
+            status,
+            retry);
       } else {
         throw new StartupException(status.getMessage());
       }
       startUpSleep("Register ConfigNode failed!");
     }
 
-    LOGGER.error(
-        "The current ConfigNode can't send register request to the ConfigNode-leader after all retries!");
+    LOGGER.error(ConfigNodeMessages.THE_CURRENT_CONFIGNODE_CAN_T_SEND_REGISTER_REQUEST_TO_THE);
     stop();
   }
 
@@ -471,12 +479,12 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   private TConfigNodeLocation waitForLeaderElected() {
     while (!configManager.getConsensusManager().isLeaderExist()) {
-      LOGGER.info("Leader has not been elected yet, wait for 1 second");
+      LOGGER.info(ConfigNodeMessages.LEADER_HAS_NOT_BEEN_ELECTED_YET_WAIT_FOR_1_SECOND);
       try {
         TimeUnit.SECONDS.sleep(1);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Unexpected interruption during waiting for leader election.");
+        LOGGER.warn(ConfigNodeMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_LEADER_ELECTION);
       }
     }
     return configManager.getConsensusManager().getLeaderLocation();
@@ -488,20 +496,20 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
    * @throws IOException if close {@link ConfigNode} failed.
    */
   public void deactivate() throws IOException {
-    LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
+    LOGGER.info(ConfigNodeMessages.DEACTIVATING, ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     if (configManager != null) {
       configManager.close();
     }
-    LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
+    LOGGER.info(ConfigNodeMessages.IS_DEACTIVATED, ConfigNodeConstant.GLOBAL_NAME);
   }
 
   public void stop() {
     try {
       deactivate();
     } catch (IOException e) {
-      LOGGER.error("Meet error when deactivate ConfigNode", e);
+      LOGGER.error(ConfigNodeMessages.MEET_ERROR_WHEN_DEACTIVATE_CONFIGNODE, e);
     }
     System.exit(exitStatusCode);
   }

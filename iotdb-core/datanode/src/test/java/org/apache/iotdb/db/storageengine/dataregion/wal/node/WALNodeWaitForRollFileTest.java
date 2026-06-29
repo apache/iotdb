@@ -178,6 +178,29 @@ public class WALNodeWaitForRollFileTest {
     assertNotNull(iterator.next());
   }
 
+  @Test
+  public void testLegacySeparatorStillWorksAfterRollFile() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode.onMemTableCreated(memTable, logDirectory + File.separator + "test.tsfile");
+
+    InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath, new long[] {1});
+    insertTabletNode.setSearchIndex(1);
+    walNode.log(
+        memTable.getMemTableId(),
+        insertTabletNode,
+        Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
+    walNode.log(memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode());
+
+    Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
+
+    walNode.rollWALFile();
+    Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
+
+    ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
+    assertTrue(iterator.hasNext());
+    assertNotNull(iterator.next());
+  }
+
   /**
    * Verifies that waitForNextReady wakes up when a WAL file roll is triggered concurrently. A
    * background thread rolls the WAL file while the main thread waits on the iterator.
@@ -190,12 +213,11 @@ public class WALNodeWaitForRollFileTest {
     // write data with search index
     InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath, new long[] {1});
     insertTabletNode.setSearchIndex(1);
+    insertTabletNode.setLastFragment(true);
     walNode.log(
         memTable.getMemTableId(),
         insertTabletNode,
         Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
-    walNode.log(
-        memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId("")));
 
     Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
 
@@ -318,12 +340,11 @@ public class WALNodeWaitForRollFileTest {
     // write data with search index — stays in the current (active) WAL file
     InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath, new long[] {1});
     insertTabletNode.setSearchIndex(1);
+    insertTabletNode.setLastFragment(true);
     walNode.log(
         memTable.getMemTableId(),
         insertTabletNode,
         Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
-    walNode.log(
-        memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId("")));
 
     Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
 

@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -423,44 +424,31 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
-    return handleAccountUnlock(
-        authorStatement,
-        authorStatement.getUserName(),
-        false,
-        () -> onOperatePermissionSuccess(authorStatement));
+    return handleAccountUnlock(authorStatement, false);
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> operatePermission(
       RelationalAuthorStatement authorStatement) {
-    return handleAccountUnlock(
-        authorStatement,
-        authorStatement.getUserName(),
-        true,
-        () -> onOperatePermissionSuccess(authorStatement));
+    return handleAccountUnlock(authorStatement, true);
   }
 
   private SettableFuture<ConfigTaskResult> handleAccountUnlock(
-      Object authorStatement, String username, boolean isRelational, Runnable successCallback) {
+      Object authorStatement, boolean isRelational) {
 
     if (isUnlockStatement(authorStatement, isRelational)) {
-      final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-      final User user;
-      try {
-        user = getUser(username, false);
-      } catch (final IoTDBRuntimeException e) {
-        future.setException(e);
-        return future;
-      }
       String loginAddr =
           isRelational
               ? ((RelationalAuthorStatement) authorStatement).getLoginAddr()
               : ((AuthorStatement) authorStatement).getLoginAddr();
 
-      LoginLockManager.getInstance().unlock(user.getUserId(), loginAddr);
-      successCallback.run();
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      return future;
+      // Reuse roleName to carry the optional login address for the internal unlock broadcast.
+      if (isRelational) {
+        ((RelationalAuthorStatement) authorStatement).setRoleName(loginAddr);
+      } else {
+        ((AuthorStatement) authorStatement).setRoleName(loginAddr);
+      }
+      return operatePermissionInternal(authorStatement, isRelational);
     }
     return operatePermissionInternal(authorStatement, isRelational);
   }
@@ -717,7 +705,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     try {
       user.loadTreePrivilegeInfo(privilegeList);
     } catch (MetadataException e) {
-      LOGGER.error("cache user's path privileges error", e);
+      LOGGER.error(DataNodeMiscMessages.CACHE_USER_PATH_PRIVILEGES_ERROR, e);
     }
     if (tPermissionInfoResp.isSetRoleInfo()) {
       for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
@@ -740,14 +728,14 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     try {
       role.loadTreePrivilegeInfo(resp.getPrivilegeList());
     } catch (MetadataException e) {
-      LOGGER.error("cache role's path privileges error", e);
+      LOGGER.error(DataNodeMiscMessages.CACHE_ROLE_PATH_PRIVILEGES_ERROR, e);
     }
     return role;
   }
 
   private TAuthorizerReq statementToAuthorizerReq(AuthorStatement authorStatement)
       throws AuthException {
-    if (authorStatement.getAuthorType() == null) {
+    if (authorStatement.getNodeNameList() == null) {
       authorStatement.setNodeNameList(new ArrayList<>());
     }
     return new TAuthorizerReq(

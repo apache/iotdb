@@ -61,10 +61,8 @@ public class ColumnHeaderConstant {
   public static final String TIME_PARTITION_ORIGIN = "TimePartitionOrigin";
   public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
   public static final String SCHEMA_REGION_GROUP_NUM = "SchemaRegionGroupNum";
-  public static final String MIN_SCHEMA_REGION_GROUP_NUM = "MinSchemaRegionGroupNum";
   public static final String MAX_SCHEMA_REGION_GROUP_NUM = "MaxSchemaRegionGroupNum";
   public static final String DATA_REGION_GROUP_NUM = "DataRegionGroupNum";
-  public static final String MIN_DATA_REGION_GROUP_NUM = "MinDataRegionGroupNum";
   public static final String MAX_DATA_REGION_GROUP_NUM = "MaxDataRegionGroupNum";
   public static final String CHILD_PATHS = "ChildPaths";
   public static final String NODE_TYPES = "NodeTypes";
@@ -135,6 +133,8 @@ public class ColumnHeaderConstant {
   // column names for show topics statement
   public static final String TOPIC_NAME = "TopicName";
   public static final String TOPIC_CONFIGS = "TopicConfigs";
+  public static final String TOPIC = "Topic";
+  public static final String CREATE_TOPIC = "Create Topic";
 
   // column names for show subscriptions statement
   public static final String CONSUMER_GROUP_NAME = "ConsumerGroupName";
@@ -248,7 +248,10 @@ public class ColumnHeaderConstant {
   public static final String DATA_REPLICATION_FACTOR_TABLE_MODEL = "data_replication_factor";
   public static final String TIME_PARTITION_INTERVAL_TABLE_MODEL = "time_partition_interval";
   public static final String SCHEMA_REGION_GROUP_NUM_TABLE_MODEL = "schema_region_group_num";
+  public static final String MAX_SCHEMA_REGION_GROUP_NUM_TABLE_MODEL =
+      "max_schema_region_group_num";
   public static final String DATA_REGION_GROUP_NUM_TABLE_MODEL = "data_region_group_num";
+  public static final String MAX_DATA_REGION_GROUP_NUM_TABLE_MODEL = "max_data_region_group_num";
 
   public static final String REGION_ID_TABLE_MODEL = "region_id";
   public static final String DATANODE_ID_TABLE_MODEL = "datanode_id";
@@ -340,6 +343,9 @@ public class ColumnHeaderConstant {
   public static final String CREATE_VIEW = "Create View";
   public static final String TABLE = "Table";
   public static final String CREATE_TABLE = "Create Table";
+  public static final String PIPE = "Pipe";
+  public static final String CREATE_PIPE = "Create Pipe";
+  public static final String CREATE_DATABASE = "Create Database";
 
   public static final String GRANT_OPTION = "GrantOption";
 
@@ -417,10 +423,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TIME_PARTITION_ORIGIN, TSDataType.INT64),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MIN_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MIN_DATA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
@@ -611,6 +615,11 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showCreateTopicColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC, TSDataType.TEXT),
+          new ColumnHeader(CREATE_TOPIC, TSDataType.TEXT));
+
   public static final List<ColumnHeader> showSubscriptionColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(SUBSCRIPTION_ID, TSDataType.TEXT),
@@ -730,7 +739,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> describeTableColumnHeaders =
       ImmutableList.of(
@@ -754,6 +765,15 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(TABLE, TSDataType.TEXT),
           new ColumnHeader(CREATE_TABLE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreatePipeColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(PIPE, TSDataType.TEXT), new ColumnHeader(CREATE_PIPE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreateDatabaseColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(CREATE_DATABASE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> LIST_USER_COLUMN_HEADERS =
       ImmutableList.of(

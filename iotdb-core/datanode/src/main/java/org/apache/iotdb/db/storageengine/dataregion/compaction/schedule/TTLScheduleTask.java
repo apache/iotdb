@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.StopTTLCheckException;
@@ -77,7 +78,7 @@ public class TTLScheduleTask implements Callable<Void> {
           return null;
         }
       } catch (Exception e) {
-        logger.error("[TTLCheckTask-{}] Failed to execute ttl check", workerId, e);
+        logger.error(StorageEngineMessages.TTL_CHECK_TASK_FAILED, workerId, e);
       } catch (Throwable t) {
         logger.error(
             "[TTLCheckTask-{}] Failed to execute ttl check and cannot recover", workerId, t);

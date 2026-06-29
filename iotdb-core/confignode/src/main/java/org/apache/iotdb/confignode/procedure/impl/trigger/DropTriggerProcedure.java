@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -65,7 +66,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
     try {
       switch (state) {
         case INIT:
-          LOG.info("Start to drop trigger [{}]", triggerName);
+          LOG.info(ProcedureMessages.START_TO_DROP_TRIGGER, triggerName);
 
           TriggerInfo triggerInfo = env.getConfigManager().getTriggerManager().getTriggerInfo();
           triggerInfo.acquireTriggerTableLock();
@@ -79,7 +80,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
           break;
 
         case CONFIG_NODE_DROPPING:
-          LOG.info("Start to drop trigger [{}] on Data Nodes", triggerName);
+          LOG.info(ProcedureMessages.START_TO_DROP_TRIGGER_ON_DATA_NODES, triggerName);
 
           // TODO consider using reference counts to determine whether to remove jar
           if (RpcUtils.squashResponseStatusList(env.dropTriggerOnDataNodes(triggerName, false))
@@ -88,12 +89,12 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
             setNextState(DropTriggerState.DATA_NODE_DROPPED);
           } else {
             throw new TriggerManagementException(
-                String.format("Fail to drop trigger [%s] on Data Nodes", triggerName));
+                String.format(ProcedureMessages.FAIL_TO_DROP_TRIGGER_ON_DATA_NODES, triggerName));
           }
           break;
 
         case DATA_NODE_DROPPED:
-          LOG.info("Start to drop trigger [{}] on Config Nodes", triggerName);
+          LOG.info(ProcedureMessages.START_TO_DROP_TRIGGER_ON_CONFIG_NODES, triggerName);
           env.getConfigManager()
               .getConsensusManager()
               .write(
@@ -108,11 +109,11 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
           return Flow.NO_MORE_STATE;
 
         default:
-          throw new IllegalArgumentException("Unknown DropTriggerState: " + state);
+          throw new IllegalArgumentException(ProcedureMessages.UNKNOWN_DROPTRIGGERSTATE + state);
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        LOG.warn("Drop trigger {} failed.", triggerName, e);
+        LOG.warn(ProcedureMessages.DROP_TRIGGER_FAILED, triggerName, e);
         setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOG.error(
@@ -120,7 +121,8 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
-                  String.format("Fail to drop trigger [%s] at STATE [%s]", triggerName, state)));
+                  String.format(
+                      ProcedureMessages.FAIL_TO_DROP_TRIGGER_AT_STATE, triggerName, state)));
         }
       }
     }
@@ -131,7 +133,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
   protected void rollbackState(ConfigNodeProcedureEnv env, DropTriggerState state)
       throws IOException, InterruptedException, ProcedureException {
     if (state == DropTriggerState.INIT) {
-      LOG.info("Start [INIT] rollback of trigger [{}]", triggerName);
+      LOG.info(ProcedureMessages.START_INIT_ROLLBACK_OF_TRIGGER, triggerName);
 
       env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
     }
@@ -178,7 +180,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
     if (that instanceof DropTriggerProcedure) {
       DropTriggerProcedure thatProc = (DropTriggerProcedure) that;
       return thatProc.getProcId() == this.getProcId()
-          && thatProc.getCurrentState().equals(this.getCurrentState())
+          && Objects.equals(thatProc.getCurrentState(), this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && (thatProc.triggerName).equals(this.triggerName);

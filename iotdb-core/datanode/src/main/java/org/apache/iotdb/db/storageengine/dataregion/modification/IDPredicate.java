@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.Accountable;
@@ -29,6 +29,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -63,7 +64,11 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
 
     public static IDPredicateType deserialize(InputStream stream) throws IOException {
-      return values()[stream.read()];
+      int typeNum = stream.read();
+      if (typeNum == -1) {
+        throw new EOFException();
+      }
+      return values()[typeNum];
     }
 
     public static IDPredicateType deserialize(ByteBuffer buffer) {
@@ -101,7 +106,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     } else if (Objects.requireNonNull(type) == IDPredicateType.AND) {
       predicate = new And();
     } else {
-      throw new IllegalArgumentException("Unrecognized predicate type: " + type);
+      throw new IllegalArgumentException(StorageEngineMessages.UNRECOGNIZED_PREDICATE_TYPE + type);
     }
     predicate.deserialize(buffer);
     return predicate;
@@ -119,7 +124,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     } else if (Objects.requireNonNull(type) == IDPredicateType.AND) {
       predicate = new And();
     } else {
-      throw new IllegalArgumentException("Unrecognized predicate type: " + type);
+      throw new IllegalArgumentException(StorageEngineMessages.UNRECOGNIZED_PREDICATE_TYPE + type);
     }
     predicate.deserialize(stream);
     return predicate;
@@ -264,15 +269,9 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public int serializedSize() {
-      if (pattern != null) {
-        byte[] bytes = pattern.getBytes(TSFileConfig.STRING_CHARSET);
-        return super.serializedSize()
-            + ReadWriteForEncodingUtils.varIntSize(bytes.length)
-            + bytes.length * Character.BYTES
-            + ReadWriteForEncodingUtils.varIntSize(segmentIndex);
-      } else {
-        return ReadWriteForEncodingUtils.varIntSize(-1);
-      }
+      return super.serializedSize()
+          + ModEntry.sizeToWriteVarString(pattern)
+          + ReadWriteForEncodingUtils.varIntSize(segmentIndex);
     }
 
     @Override
