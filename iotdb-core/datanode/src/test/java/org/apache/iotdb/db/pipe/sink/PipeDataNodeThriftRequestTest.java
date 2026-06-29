@@ -429,6 +429,7 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(
         PipeRequestType.TRANSFER_PLAN_NODE.getType(), ReadWriteIOUtils.readShort(transferBuffer));
     Assert.assertEquals(node, PlanNodeType.deserialize(transferBuffer));
+    Assert.assertEquals(0, ReadWriteIOUtils.readInt(transferBuffer));
     Assert.assertFalse(transferBuffer.hasRemaining());
   }
 
