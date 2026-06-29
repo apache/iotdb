@@ -106,12 +106,12 @@ public class SubscriptionPrefetchingQueueStates {
     }
 
     // 1.3. local event count
-    if (hasTooManyPrefetchedLocalEvent()) {
+    if (hasTooManyRetainedLocalEvent()) {
       return false;
     }
 
     // 1.4. global event count
-    if (hasTooManyPrefetchedGlobalEvent()) {
+    if (hasTooManyRetainedGlobalEvent()) {
       return false;
     }
 
@@ -132,22 +132,38 @@ public class SubscriptionPrefetchingQueueStates {
     return (System.currentTimeMillis() - lastPollRequestTimestamp) * pollRate() > 1000;
   }
 
+  public boolean shouldThrottlePoll() {
+    return hasTooManyInFlightLocalEvent() || hasTooManyInFlightGlobalEvent();
+  }
+
   private boolean isMemoryEnough() {
     return PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
             * PREFETCH_MEMORY_THRESHOLD
         > PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes();
   }
 
-  private boolean hasTooManyPrefetchedLocalEvent() {
-    return prefetchingQueue.getPrefetchedEventCount() > PREFETCH_EVENT_LOCAL_COUNT_THRESHOLD;
+  private boolean hasTooManyRetainedLocalEvent() {
+    return prefetchingQueue.getSubscriptionRetainedEventCount()
+        > PREFETCH_EVENT_LOCAL_COUNT_THRESHOLD;
   }
 
-  private boolean hasTooManyPrefetchedGlobalEvent() {
-    // The number of prefetched events in the current prefetching queue > floor(t / number of
+  private boolean hasTooManyRetainedGlobalEvent() {
+    // The number of retained events in the current prefetching queue > floor(t / number of
     // prefetching queues), where t is an adjustable parameter.
-    return prefetchingQueue.getPrefetchedEventCount()
+    return prefetchingQueue.getSubscriptionRetainedEventCount()
             * SubscriptionAgent.broker().getPrefetchingQueueCount()
         > PREFETCH_EVENT_GLOBAL_COUNT_THRESHOLD;
+  }
+
+  private boolean hasTooManyInFlightLocalEvent() {
+    return prefetchingQueue.getSubscriptionUncommittedEventCount()
+        >= PREFETCH_EVENT_LOCAL_COUNT_THRESHOLD;
+  }
+
+  private boolean hasTooManyInFlightGlobalEvent() {
+    return prefetchingQueue.getSubscriptionUncommittedEventCount()
+            * SubscriptionAgent.broker().getPrefetchingQueueCount()
+        >= PREFETCH_EVENT_GLOBAL_COUNT_THRESHOLD;
   }
 
   private boolean isMissingRateTooHigh() {
@@ -169,6 +185,8 @@ public class SubscriptionPrefetchingQueueStates {
         .add("pollRate", pollRate())
         .add("missingRate", missingRate())
         .add("disorderCause", disorderCauseCounter.getCount())
+        .add("retainedEventCount", prefetchingQueue.getSubscriptionRetainedEventCount())
+        .add("inFlightEventCount", prefetchingQueue.getSubscriptionUncommittedEventCount())
         .toString();
   }
 }

@@ -223,6 +223,10 @@ public abstract class SubscriptionPrefetchingQueue {
   private SubscriptionEvent pollInternal(final String consumerId) {
     states.markPollRequest();
 
+    if (shouldThrottlePollByInFlightEvents()) {
+      return null;
+    }
+
     if (prefetchingQueue.isEmpty()) {
       states.markMissingPrefetch();
       try {
@@ -254,6 +258,22 @@ public abstract class SubscriptionPrefetchingQueue {
     return null;
   }
 
+  private boolean shouldThrottlePollByInFlightEvents() {
+    if (!states.shouldThrottlePoll()) {
+      return false;
+    }
+
+    remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
+    if (!states.shouldThrottlePoll()) {
+      return false;
+    }
+
+    LOGGER.debug(
+        "Subscription: SubscriptionPrefetchingQueue {} throttles poll because too many events are in flight.",
+        this);
+    return true;
+  }
+
   public SubscriptionEvent pollV2(final String consumerId, final PollTimer timer) {
     acquireReadLock();
     try {
@@ -268,6 +288,10 @@ public abstract class SubscriptionPrefetchingQueue {
 
     // do-while ensures at least one poll
     do {
+      if (shouldThrottlePollByInFlightEvents()) {
+        return null;
+      }
+
       SubscriptionEvent event;
       try {
         if (prefetchingQueue.isEmpty()) {
@@ -976,6 +1000,10 @@ public abstract class SubscriptionPrefetchingQueue {
     return inFlightEvents.size();
   }
 
+  public long getSubscriptionRetainedEventCount() {
+    return prefetchingQueue.size() + inFlightEvents.size();
+  }
+
   public long getCurrentCommitId() {
     return commitIdGenerator.get();
   }
@@ -1023,6 +1051,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
     result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
     result.put("size of inFlightEvents", String.valueOf(inFlightEvents.size()));
+    result.put("size of retainedEvents", String.valueOf(getSubscriptionRetainedEventCount()));
     result.put("commitIdGenerator", commitIdGenerator.toString());
     result.put("states", states.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
