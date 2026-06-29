@@ -64,7 +64,6 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
   protected long sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
   protected long lastExceptionTime = Long.MAX_VALUE;
-  private long nextSchedulingDelayInMs = 0;
 
   protected PipeAbstractSinkSubtask(
       final String taskID, final long creationTime, final PipeConnector outputPipeSink) {
@@ -250,8 +249,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
   @Override
   protected boolean shouldStopSubmittingSelfInCurrentCall() {
-    nextSchedulingDelayInMs = consumeSchedulingDelayInMs();
-    return nextSchedulingDelayInMs > 0;
+    return peekSchedulingDelayInMs() > 0;
   }
 
   private synchronized void submitSelfToWorker(final boolean shouldMarkSubmitted) {
@@ -268,13 +266,11 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   }
 
   private long getNextSchedulingDelayInMs() {
-    if (nextSchedulingDelayInMs <= 0) {
-      return consumeSchedulingDelayInMs();
-    }
+    return consumeSchedulingDelayInMs();
+  }
 
-    final long delayInMs = nextSchedulingDelayInMs;
-    nextSchedulingDelayInMs = 0;
-    return delayInMs;
+  protected long peekSchedulingDelayInMs() {
+    return 0;
   }
 
   protected long consumeSchedulingDelayInMs() {

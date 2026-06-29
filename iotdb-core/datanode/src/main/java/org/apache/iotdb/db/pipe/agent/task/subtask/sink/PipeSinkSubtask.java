@@ -164,6 +164,15 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   @Override
+  protected long peekSchedulingDelayInMs() {
+    if (!(outputPipeSink instanceof PipeSinkWithSchedulingDelay)) {
+      return 0;
+    }
+
+    return ((PipeSinkWithSchedulingDelay) outputPipeSink).peekSchedulingDelayMs();
+  }
+
+  @Override
   protected long consumeSchedulingDelayInMs() {
     if (!(outputPipeSink instanceof PipeSinkWithSchedulingDelay)) {
       return 0;

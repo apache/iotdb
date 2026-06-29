@@ -21,5 +21,7 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 
 public interface PipeSinkWithSchedulingDelay {
 
+  long peekSchedulingDelayMs();
+
   long consumeSchedulingDelayMs();
 }

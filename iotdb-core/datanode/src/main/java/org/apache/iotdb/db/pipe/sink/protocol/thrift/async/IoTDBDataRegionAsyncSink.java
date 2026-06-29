@@ -589,6 +589,11 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   }
 
   @Override
+  public long peekSchedulingDelayMs() {
+    return schedulingDelayMs.get();
+  }
+
+  @Override
   public long consumeSchedulingDelayMs() {
     return schedulingDelayMs.getAndSet(0);
   }
