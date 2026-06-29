@@ -30,6 +30,8 @@ import com.codahale.metrics.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.IntSupplier;
+
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
@@ -54,6 +56,7 @@ public class SubscriptionPrefetchingQueueStates {
       SubscriptionConfig.getInstance().getSubscriptionPrefetchEventGlobalCountThreshold();
 
   private final SubscriptionPrefetchingQueue prefetchingQueue;
+  private final IntSupplier prefetchingQueueCountSupplier;
 
   private volatile long lastPollRequestTimestamp;
   private final Meter pollRequestMeter;
@@ -61,7 +64,14 @@ public class SubscriptionPrefetchingQueueStates {
   private final Counter disorderCauseCounter; // TODO: use meter
 
   public SubscriptionPrefetchingQueueStates(final SubscriptionPrefetchingQueue prefetchingQueue) {
+    this(prefetchingQueue, () -> SubscriptionAgent.broker().getPrefetchingQueueCount());
+  }
+
+  SubscriptionPrefetchingQueueStates(
+      final SubscriptionPrefetchingQueue prefetchingQueue,
+      final IntSupplier prefetchingQueueCountSupplier) {
     this.prefetchingQueue = prefetchingQueue;
+    this.prefetchingQueueCountSupplier = prefetchingQueueCountSupplier;
 
     this.lastPollRequestTimestamp = -1;
     this.pollRequestMeter = new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
@@ -151,7 +161,7 @@ public class SubscriptionPrefetchingQueueStates {
     // The number of retained events in the current prefetching queue > floor(t / number of
     // prefetching queues), where t is an adjustable parameter.
     return prefetchingQueue.getSubscriptionRetainedEventCount()
-            * SubscriptionAgent.broker().getPrefetchingQueueCount()
+            * prefetchingQueueCountSupplier.getAsInt()
         > PREFETCH_EVENT_GLOBAL_COUNT_THRESHOLD;
   }
 
@@ -162,7 +172,7 @@ public class SubscriptionPrefetchingQueueStates {
 
   private boolean hasTooManyInFlightGlobalEvent() {
     return prefetchingQueue.getSubscriptionUncommittedEventCount()
-            * SubscriptionAgent.broker().getPrefetchingQueueCount()
+            * prefetchingQueueCountSupplier.getAsInt()
         >= PREFETCH_EVENT_GLOBAL_COUNT_THRESHOLD;
   }
 
