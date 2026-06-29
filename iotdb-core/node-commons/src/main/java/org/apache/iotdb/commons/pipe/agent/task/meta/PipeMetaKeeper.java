@@ -322,12 +322,12 @@ public class PipeMetaKeeper {
 
   private static String generatePipeMetaKeeperKey(
       final String pipeName, final boolean isTableModel) {
-    return (isTableModel ? "table:" : "tree:") + pipeName.length() + ":" + pipeName;
+    return (isTableModel ? "table:" : "tree:") + pipeName;
   }
 
   private static String generatePipeMetaKeeperKeyForVisibility(
       final String pipeName, final Visibility visibility) {
-    return visibility.name().toLowerCase() + ":" + pipeName.length() + ":" + pipeName;
+    return visibility.name().toLowerCase() + ":" + pipeName;
   }
 
   private static boolean isVisibilityOverlapped(

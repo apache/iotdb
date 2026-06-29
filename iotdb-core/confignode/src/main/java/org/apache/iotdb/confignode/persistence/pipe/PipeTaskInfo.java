@@ -82,7 +82,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -97,20 +96,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskInfo.class);
   private static final String SNAPSHOT_FILE_NAME = "pipe_task_info.bin";
-
-  private static OptionalLong tryGetPushPipeMetaRespExceptionMessageCreationTime(
-      final TPushPipeMetaRespExceptionMessage exceptionMessage) {
-    try {
-      if (!Boolean.TRUE.equals(
-          exceptionMessage.getClass().getMethod("isSetCreationTime").invoke(exceptionMessage))) {
-        return OptionalLong.empty();
-      }
-      return OptionalLong.of(
-          (long) exceptionMessage.getClass().getMethod("getCreationTime").invoke(exceptionMessage));
-    } catch (final Exception ignored) {
-      return OptionalLong.empty();
-    }
-  }
 
   private final PipeMetaKeeper pipeMetaKeeper;
 
@@ -373,7 +358,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void checkBeforeStartPipeInternal(final String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
-          String.format("Failed to start pipe %s, %s", pipeName, PIPE_NOT_EXIST_MSG);
+          String.format(
+              ConfigNodeMessages.FAILED_TO_START_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST, pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -381,7 +367,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
-          String.format("Failed to start pipe %s, the pipe is already dropped", pipeName);
+          String.format(
+              ConfigNodeMessages.FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -391,7 +378,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
       throws PipeException {
     if (!isPipeExisted(pipeName, isTableModel)) {
       final String exceptionMessage =
-          String.format("Failed to start pipe %s, %s", pipeName, PIPE_NOT_EXIST_MSG);
+          String.format(
+              ConfigNodeMessages.FAILED_TO_START_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST, pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -399,7 +387,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
     final PipeStatus pipeStatus = getPipeStatus(pipeName, isTableModel);
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
-          String.format("Failed to start pipe %s, the pipe is already dropped", pipeName);
+          String.format(
+              ConfigNodeMessages.FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -427,7 +416,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void checkBeforeStopPipeInternal(final String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
-          String.format("Failed to stop pipe %s, %s", pipeName, PIPE_NOT_EXIST_MSG);
+          String.format(
+              ConfigNodeMessages.FAILED_TO_STOP_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST, pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -435,7 +425,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
-          String.format("Failed to stop pipe %s, the pipe is already dropped", pipeName);
+          String.format(
+              ConfigNodeMessages.FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -445,7 +436,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
       throws PipeException {
     if (!isPipeExisted(pipeName, isTableModel)) {
       final String exceptionMessage =
-          String.format("Failed to stop pipe %s, %s", pipeName, PIPE_NOT_EXIST_MSG);
+          String.format(
+              ConfigNodeMessages.FAILED_TO_STOP_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST, pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -453,7 +445,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
     final PipeStatus pipeStatus = getPipeStatus(pipeName, isTableModel);
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
-          String.format("Failed to stop pipe %s, the pipe is already dropped", pipeName);
+          String.format(
+              ConfigNodeMessages.FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -777,6 +770,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
+  /**
+   * Creation time is part of a pipe's identity on DataNodes. The same pipe name may coexist in
+   * different visibility scopes, and alter pushes the dropped old meta and the updated meta
+   * together, so same-name metas must have distinct creation times.
+   */
   public long generateUniqueCreationTime(final String pipeName) {
     acquireReadLock();
     try {
@@ -1088,11 +1086,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
         }
 
         for (final TPushPipeMetaRespExceptionMessage message : resp.getExceptionMessages()) {
-          final OptionalLong creationTime =
-              tryGetPushPipeMetaRespExceptionMessageCreationTime(message);
           final PipeMeta pipeMeta =
-              creationTime.isPresent()
-                  ? pipeMetaKeeper.getPipeMeta(message.getPipeName(), creationTime.getAsLong())
+              message.isSetCreationTime()
+                  ? pipeMetaKeeper.getPipeMeta(message.getPipeName(), message.getCreationTime())
                   : pipeMetaKeeper.getPipeMeta(message.getPipeName());
           if (pipeMeta == null) {
             continue;

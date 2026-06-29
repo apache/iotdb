@@ -49,7 +49,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -60,7 +59,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -163,39 +161,6 @@ public abstract class PipeTaskAgent {
     return Math.max(1L, (Math.max(0L, timeOutInMs) + 999L) / 1000L);
   }
 
-  public static boolean trySetPushPipeMetaRespExceptionMessageCreationTime(
-      final TPushPipeMetaRespExceptionMessage exceptionMessage, final long creationTime) {
-    try {
-      exceptionMessage
-          .getClass()
-          .getMethod("setCreationTime", long.class)
-          .invoke(exceptionMessage, creationTime);
-      return true;
-    } catch (final IllegalAccessException
-        | InvocationTargetException
-        | NoSuchMethodException
-        | SecurityException e) {
-      return false;
-    }
-  }
-
-  public static OptionalLong tryGetPushPipeMetaRespExceptionMessageCreationTime(
-      final TPushPipeMetaRespExceptionMessage exceptionMessage) {
-    try {
-      if (!Boolean.TRUE.equals(
-          exceptionMessage.getClass().getMethod("isSetCreationTime").invoke(exceptionMessage))) {
-        return OptionalLong.empty();
-      }
-      return OptionalLong.of(
-          (long) exceptionMessage.getClass().getMethod("getCreationTime").invoke(exceptionMessage));
-    } catch (final IllegalAccessException
-        | InvocationTargetException
-        | NoSuchMethodException
-        | SecurityException e) {
-      return OptionalLong.empty();
-    }
-  }
-
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
   public TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
@@ -228,8 +193,7 @@ public abstract class PipeTaskAgent {
       LOGGER.warn(PipeMessages.FAILED_TO_HANDLE_SINGLE_PIPE_META_CHANGES, pipeName, e);
       final TPushPipeMetaRespExceptionMessage exceptionMessage =
           new TPushPipeMetaRespExceptionMessage(pipeName, errorMessage, System.currentTimeMillis());
-      trySetPushPipeMetaRespExceptionMessageCreationTime(
-          exceptionMessage, pipeMetaFromCoordinator.getStaticMeta().getCreationTime());
+      exceptionMessage.setCreationTime(pipeMetaFromCoordinator.getStaticMeta().getCreationTime());
       return exceptionMessage;
     }
   }
@@ -472,8 +436,7 @@ public abstract class PipeTaskAgent {
           final TPushPipeMetaRespExceptionMessage exceptionMessage =
               new TPushPipeMetaRespExceptionMessage(
                   pipeName, errorMessage, System.currentTimeMillis());
-          trySetPushPipeMetaRespExceptionMessageCreationTime(
-              exceptionMessage, metaFromCoordinator.getStaticMeta().getCreationTime());
+          exceptionMessage.setCreationTime(metaFromCoordinator.getStaticMeta().getCreationTime());
           exceptionMessages.add(exceptionMessage);
         }
       }
@@ -508,8 +471,7 @@ public abstract class PipeTaskAgent {
         final TPushPipeMetaRespExceptionMessage exceptionMessage =
             new TPushPipeMetaRespExceptionMessage(
                 pipeName, errorMessage, System.currentTimeMillis());
-        trySetPushPipeMetaRespExceptionMessageCreationTime(
-            exceptionMessage, metaInAgent.getStaticMeta().getCreationTime());
+        exceptionMessage.setCreationTime(metaInAgent.getStaticMeta().getCreationTime());
         exceptionMessages.add(exceptionMessage);
       }
     }

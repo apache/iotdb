@@ -45,7 +45,6 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -55,33 +54,6 @@ public class PipeTaskInfoAutoRestartTest {
 
   private PipeTaskInfo pipeTaskInfo;
   private long creationTime;
-
-  private static boolean trySetPushPipeMetaRespExceptionMessageCreationTime(
-      final TPushPipeMetaRespExceptionMessage exceptionMessage, final long creationTime) {
-    try {
-      exceptionMessage
-          .getClass()
-          .getMethod("setCreationTime", long.class)
-          .invoke(exceptionMessage, creationTime);
-      return true;
-    } catch (final Exception ignored) {
-      return false;
-    }
-  }
-
-  private static OptionalLong tryGetPushPipeMetaRespExceptionMessageCreationTime(
-      final TPushPipeMetaRespExceptionMessage exceptionMessage) {
-    try {
-      if (!Boolean.TRUE.equals(
-          exceptionMessage.getClass().getMethod("isSetCreationTime").invoke(exceptionMessage))) {
-        return OptionalLong.empty();
-      }
-      return OptionalLong.of(
-          (long) exceptionMessage.getClass().getMethod("getCreationTime").invoke(exceptionMessage));
-    } catch (final Exception ignored) {
-      return OptionalLong.empty();
-    }
-  }
 
   @Before
   public void setUp() {
@@ -130,13 +102,6 @@ public class PipeTaskInfoAutoRestartTest {
     final String pipeName = "sameNamePipe";
     final PipeStaticMeta treePipeStaticMeta = createPipe(pipeName, PipeStatus.RUNNING, false);
     final PipeStaticMeta tablePipeStaticMeta = createPipe(pipeName, PipeStatus.RUNNING, true);
-
-    final TPushPipeMetaRespExceptionMessage probe =
-        new TPushPipeMetaRespExceptionMessage(pipeName, "probe", System.currentTimeMillis());
-    trySetPushPipeMetaRespExceptionMessageCreationTime(
-        probe, tablePipeStaticMeta.getCreationTime());
-    org.junit.Assume.assumeTrue(
-        tryGetPushPipeMetaRespExceptionMessageCreationTime(probe).isPresent());
 
     Assert.assertTrue(
         pipeTaskInfo.recordDataNodePushPipeMetaExceptions(
@@ -378,7 +343,7 @@ public class PipeTaskInfoAutoRestartTest {
         new TPushPipeMetaRespExceptionMessage(
             pipeName, "failed to push pipe meta", System.currentTimeMillis());
     if (creationTime != null) {
-      trySetPushPipeMetaRespExceptionMessageCreationTime(exceptionMessage, creationTime);
+      exceptionMessage.setCreationTime(creationTime);
     }
     final TPushPipeMetaResp resp =
         new TPushPipeMetaResp()

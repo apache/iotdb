@@ -147,22 +147,31 @@ public class PipeTaskCoordinator {
         cloneCreatePipeRequestWithDialect(req, sourceParameters, firstDialect);
     final TCreatePipeReq secondReq =
         cloneCreatePipeRequestWithDialect(req, sourceParameters, secondDialect);
+    final boolean shouldCreateFirstPipe;
+    final boolean shouldCreateSecondPipe;
     try {
-      pipeTaskInfo.checkBeforeCreatePipe(firstReq);
-      pipeTaskInfo.checkBeforeCreatePipe(secondReq);
+      shouldCreateFirstPipe = pipeTaskInfo.checkBeforeCreatePipe(firstReq);
+      shouldCreateSecondPipe = pipeTaskInfo.checkBeforeCreatePipe(secondReq);
     } catch (final Exception e) {
       return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
     }
 
-    final TSStatus firstStatus = configManager.getProcedureManager().createPipe(firstReq);
-    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != firstStatus.getCode()) {
+    TSStatus firstStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    if (shouldCreateFirstPipe) {
+      firstStatus = configManager.getProcedureManager().createPipe(firstReq);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != firstStatus.getCode()) {
+        return firstStatus;
+      }
+    }
+    if (!shouldCreateSecondPipe) {
       return firstStatus;
     }
+
     final TSStatus secondStatus = configManager.getProcedureManager().createPipe(secondReq);
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == secondStatus.getCode()) {
       return secondStatus;
     }
-    if (!firstReq.isSetIfNotExistsCondition() || !firstReq.isIfNotExistsCondition()) {
+    if (shouldCreateFirstPipe) {
       configManager
           .getProcedureManager()
           .dropPipe(

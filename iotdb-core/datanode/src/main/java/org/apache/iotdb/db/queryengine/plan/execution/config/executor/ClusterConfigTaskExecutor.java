@@ -164,6 +164,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
@@ -2308,11 +2309,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String pipeName = createPipeStatement.getPipeName();
     if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
         && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)) {
+      final String realtimePipeName = pipeName + "_realtime";
+      final boolean isDoubleLiving = isDoubleLivingPipe(sourcePipeParameters);
+      final boolean isTableModelPipe = isTableModelPipe(sourcePipeParameters);
+      final boolean realtimeTreePipeExistedBeforeCreation =
+          isTableModelPipe && !isDoubleLiving
+              || pipeExistedBeforeCreation(configNodeClient, realtimePipeName, false);
+      final boolean realtimeTablePipeExistedBeforeCreation =
+          !isTableModelPipe && !isDoubleLiving
+              || pipeExistedBeforeCreation(configNodeClient, realtimePipeName, true);
+
       // 1. Send request to create the real-time data synchronization pipeline
       final TCreatePipeReq realtimeReq =
           new TCreatePipeReq()
               // Append suffix to the pipeline name for real-time data
-              .setPipeName(pipeName + "_realtime")
+              .setPipeName(realtimePipeName)
               // NOTE: set if not exists always to true to handle partial failure
               .setIfNotExistsCondition(true)
               // Use extractor parameters for real-time data
@@ -2399,6 +2410,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
       // If creation fails, immediately return with exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != historyTsStatus.getCode()) {
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == realtimeTsStatus.getCode()) {
+          dropPipeIfCreated(
+              configNodeClient,
+              realtimePipeName,
+              false,
+              !realtimeTreePipeExistedBeforeCreation && (!isTableModelPipe || isDoubleLiving));
+          dropPipeIfCreated(
+              configNodeClient,
+              realtimePipeName,
+              true,
+              !realtimeTablePipeExistedBeforeCreation && (isTableModelPipe || isDoubleLiving));
+        }
         return historyTsStatus;
       }
 
@@ -2414,6 +2437,48 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
             .setConnectorAttributes(createPipeStatement.getSinkAttributes());
     return configNodeClient.createPipe(req);
+  }
+
+  private boolean isTableModelPipe(final PipeParameters sourcePipeParameters) {
+    return SystemConstant.SQL_DIALECT_TABLE_VALUE.equals(
+        sourcePipeParameters.getStringOrDefault(
+            SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE));
+  }
+
+  private boolean pipeExistedBeforeCreation(
+      final ConfigNodeClient configNodeClient, final String pipeName, final boolean isTableModel)
+      throws TException {
+    final TShowPipeResp showPipeResp =
+        configNodeClient.showPipe(
+            new TShowPipeReq().setPipeName(pipeName).setIsTableModel(isTableModel));
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != showPipeResp.getStatus().getCode()) {
+      return true;
+    }
+    return showPipeResp.isSetPipeInfoList()
+        && showPipeResp.getPipeInfoList().stream()
+            .anyMatch(pipeInfo -> pipeName.equals(pipeInfo.getId()));
+  }
+
+  private void dropPipeIfCreated(
+      final ConfigNodeClient configNodeClient,
+      final String pipeName,
+      final boolean isTableModel,
+      final boolean shouldDrop)
+      throws TException {
+    if (!shouldDrop) {
+      return;
+    }
+
+    final TSStatus rollbackStatus =
+        configNodeClient.dropPipeExtended(
+            new TDropPipeReq()
+                .setPipeName(pipeName)
+                .setIfExistsCondition(true)
+                .setIsTableModel(isTableModel));
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != rollbackStatus.getCode()) {
+      LOGGER.warn(
+          "Failed to rollback created realtime pipe {}. Status: {}", pipeName, rollbackStatus);
+    }
   }
 
   @Override
