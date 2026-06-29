@@ -265,6 +265,39 @@ public class AINodeTestUtils {
   }
 
   /**
+   * Prepare db.AI3, a table with a TAG column, two ATTRIBUTE columns and two FIELD columns, holding
+   * 5760 rows for a single device. In the table model ATTRIBUTE columns must be STRING, so both
+   * static-covariate columns ({@code turbine_type}, {@code capacity}) are STRING. They are constant
+   * across the whole series, so {@code SELECT DISTINCT capacity, turbine_type FROM db.AI3 WHERE
+   * turbine_id='WT-07'} returns exactly one row. The FIELD columns (s0/s1) act as target / dynamic
+   * covariates; 5760 rows leave room for future covariates beyond time=2880. Assumes database
+   * {@code db} has already been created (e.g., by a prior call to {@link #prepareDataInTable()}).
+   */
+  public static void prepareDataInTable3() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TABLE db.AI3 ("
+              + "turbine_id STRING TAG, "
+              + "turbine_type STRING ATTRIBUTE, "
+              + "capacity STRING ATTRIBUTE, "
+              + "s0 FLOAT FIELD, s1 DOUBLE FIELD)");
+      for (int i = 0; i < 5760; i++) {
+        statement.addBatch(
+            String.format(
+                "INSERT INTO db.AI3(time,turbine_id,turbine_type,capacity,s0,s1) "
+                    + "VALUES(%d,'WT-07','TYPE_A','5MW',%f,%f)",
+                i, (float) i, (double) i));
+        if ((i + 1) % 500 == 0) {
+          statement.executeBatch();
+          statement.clearBatch();
+        }
+      }
+      statement.executeBatch();
+    }
+  }
+
+  /**
    * Prepare db.AI2(s0 FLOAT,...) with 2880 rows of data in table. Assumes database {@code db} has
    * already been created (e.g., by a prior call to {@link #prepareDataInTable()}).
    */

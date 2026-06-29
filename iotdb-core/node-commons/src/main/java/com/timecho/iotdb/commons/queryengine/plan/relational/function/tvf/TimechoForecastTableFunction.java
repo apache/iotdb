@@ -69,6 +69,7 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
       extends ForecastTableFunction.ForecastTableFunctionHandle {
     protected String historyCovs;
     protected String futureCovs;
+    protected String staticCovs;
     protected boolean autoAdapt;
 
     public TimechoForecastTableFunctionHandle() {}
@@ -81,6 +82,7 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
         Map<String, String> options,
         String historyCovs,
         String futureCovs,
+        String staticCovs,
         int outputLength,
         long outputStartTime,
         long outputInterval,
@@ -97,6 +99,7 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
       this.autoAdapt = autoAdapt;
       this.historyCovs = historyCovs;
       this.futureCovs = futureCovs;
+      this.staticCovs = staticCovs;
     }
 
     @Override
@@ -108,6 +111,7 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
         ReadWriteIOUtils.write(outputLength, outputStream);
         ReadWriteIOUtils.write(historyCovs, outputStream);
         ReadWriteIOUtils.write(futureCovs, outputStream);
+        ReadWriteIOUtils.write(staticCovs, outputStream);
         ReadWriteIOUtils.write(outputStartTime, outputStream);
         ReadWriteIOUtils.write(outputInterval, outputStream);
         ReadWriteIOUtils.write(keepInput, outputStream);
@@ -135,6 +139,7 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
       this.outputLength = ReadWriteIOUtils.readInt(buffer);
       this.historyCovs = ReadWriteIOUtils.readString(buffer);
       this.futureCovs = ReadWriteIOUtils.readString(buffer);
+      this.staticCovs = ReadWriteIOUtils.readString(buffer);
       this.outputStartTime = ReadWriteIOUtils.readLong(buffer);
       this.outputInterval = ReadWriteIOUtils.readLong(buffer);
       this.keepInput = ReadWriteIOUtils.readBoolean(buffer);
@@ -165,6 +170,7 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
           && Objects.equals(modelId, that.modelId)
           && Objects.equals(historyCovs, that.historyCovs)
           && Objects.equals(futureCovs, that.futureCovs)
+          && Objects.equals(staticCovs, that.staticCovs)
           && Objects.equals(options, that.options)
           && Objects.equals(targetColumntypes, that.targetColumntypes);
     }
@@ -177,6 +183,7 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
           outputLength,
           historyCovs,
           futureCovs,
+          staticCovs,
           outputStartTime,
           outputInterval,
           keepInput,
@@ -190,6 +197,8 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
   private static final String DEFAULT_HISTORY_COVS = "";
   private static final String FUTURE_COVS_PARAMETER_NAME = "FUTURE_COVS";
   private static final String DEFAULT_FUTURE_COVS = "";
+  private static final String STATIC_COVS_PARAMETER_NAME = "STATIC_COVS";
+  private static final String DEFAULT_STATIC_COVS = "";
   private static final String AUTO_ADAPT_PARAMETER_NAME = "AUTO_ADAPT";
   private static final Boolean DEFAULT_AUTO_ADAPT = Boolean.TRUE;
   private static final String AUTO_ADAPT_FILL_VALUE_PARAMETER_NAME = "AUTO_ADAPT_FILL_VALUE";
@@ -214,6 +223,11 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
             .name(FUTURE_COVS_PARAMETER_NAME)
             .type(Type.STRING)
             .defaultValue(DEFAULT_FUTURE_COVS)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(STATIC_COVS_PARAMETER_NAME)
+            .type(Type.STRING)
+            .defaultValue(DEFAULT_STATIC_COVS)
             .build(),
         ScalarParameterSpecification.builder()
             .name(OUTPUT_LENGTH_PARAMETER_NAME)
@@ -334,6 +348,8 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
         (String) ((ScalarArgument) arguments.get(HISTORY_COVS_PARAMETER_NAME)).getValue();
     String futureCovs =
         (String) ((ScalarArgument) arguments.get(FUTURE_COVS_PARAMETER_NAME)).getValue();
+    String staticCovs =
+        (String) ((ScalarArgument) arguments.get(STATIC_COVS_PARAMETER_NAME)).getValue();
     String autoAdaptFillValue =
         (String) ((ScalarArgument) arguments.get(AUTO_ADAPT_FILL_VALUE_PARAMETER_NAME)).getValue();
     String options = (String) ((ScalarArgument) arguments.get(OPTIONS_PARAMETER_NAME)).getValue();
@@ -349,6 +365,7 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
             parsedOptions,
             historyCovs,
             futureCovs,
+            staticCovs,
             outputLength,
             outputStartTime,
             outputInterval,
@@ -414,12 +431,14 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
   private static class TimechoForecastDataProcessor extends ForecastDataProcessor {
     private final String historyCovs;
     private final String futureCovs;
+    private final String staticCovs;
     private final boolean autoAdapt;
 
     public TimechoForecastDataProcessor(TimechoForecastTableFunctionHandle functionHandle) {
       super(functionHandle);
       this.historyCovs = functionHandle.historyCovs;
       this.futureCovs = functionHandle.futureCovs;
+      this.staticCovs = functionHandle.staticCovs;
       this.autoAdapt = functionHandle.autoAdapt;
     }
 
@@ -452,6 +471,7 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
                     new TForecastReq(modelId, SERDE.serialize(inputData), outputLength)
                         .setHistoryCovs(historyCovs)
                         .setFutureCovs(futureCovs)
+                        .setStaticCovs(staticCovs)
                         .setAutoAdapt(autoAdapt)
                         .setOptions(options));
       } catch (IOException e) {

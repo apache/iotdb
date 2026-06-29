@@ -90,6 +90,7 @@ struct TForecastReq {
   5: optional string futureCovs
   6: optional bool autoAdapt
   7: optional map<string, string> options
+  8: optional string staticCovs
 }
 
 struct TForecastResp {

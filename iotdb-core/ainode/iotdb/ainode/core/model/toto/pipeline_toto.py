@@ -77,9 +77,13 @@ class TotoPipeline(ForecastPipeline):
             n_variates, series_len = targets.shape
             device = targets.device
 
-            if "past_covariates" in item or "future_covariates" in item:
+            if (
+                "past_covariates" in item
+                or "future_covariates" in item
+                or "static_covariates" in item
+            ):
                 logger.warning(
-                    "TotoPipeline does not support covariates; they will be ignored."
+                    "TotoPipeline does not support covariates (including static covariates); they will be ignored."
                 )
 
             padding_mask = ~torch.isnan(targets)

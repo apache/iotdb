@@ -50,11 +50,13 @@ class SundialPipeline(ForecastPipeline):
         model_id = self.model_info.model_id
         # Here, we assume element in list has same history_length,
         # otherwise, the model cannot proceed
-        if inputs[0].get("past_covariates", None) or inputs[0].get(
-            "future_covariates", None
+        if (
+            inputs[0].get("past_covariates", None)
+            or inputs[0].get("future_covariates", None)
+            or inputs[0].get("static_covariates", None)
         ):
             logger.warning(
-                f"[Inference] Past_covariates and future_covariates will be ignored, as they are not supported for model {model_id}."
+                f"[Inference] Past_covariates, future_covariates and static_covariates will be ignored, as they are not supported for model {model_id}."
             )
 
         # stack the data and get a 3D-tensor:[batch_size, target_count(1), input_length]

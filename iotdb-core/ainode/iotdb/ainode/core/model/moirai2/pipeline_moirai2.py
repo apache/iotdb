@@ -49,6 +49,15 @@ class Moirai2Pipeline(ForecastPipeline):
             Processed inputs compatible with moirai2 format (time, features).
         """
         # Moirai2.predict() expects past_target in (time, features) format
+        if inputs and (
+            inputs[0].get("past_covariates", None)
+            or inputs[0].get("future_covariates", None)
+            or inputs[0].get("static_covariates", None)
+        ):
+            logger.warning(
+                "[Inference] Past_covariates, future_covariates and static_covariates will be ignored, "
+                f"as they are not supported for model {self.model_info.model_id}."
+            )
         processed_inputs = []
         for item in inputs:
             targets = item.get("targets", None)

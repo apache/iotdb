@@ -29,20 +29,24 @@ class TimechoInferenceManager(InferenceManager):
         inputs: torch.Tensor,  # [batch_size(1), target_count, input_length]
         history_covs_sql: str,
         future_covs_sql: str,
+        static_covs_sql: str = "",
     ) -> list[dict[str, torch.Tensor | dict[str, torch.Tensor]]]:
         """
-        Fetches the historical and future covariates based on provided SQL queries and combines them with the input data.
+        Fetches the historical, future and static covariates based on provided SQL queries and combines them with the input data.
 
         Args:
             inputs (torch.Tensor): A tensor of shape [batch_size(1), target_count, input_length] representing the input data.
             history_covs_sql (str): SQL query to fetch historical covariates.
             future_covs_sql (str): SQL query to fetch future covariates.
+            static_covs_sql (str): SQL query to fetch static covariates. The query must return
+                exactly one row, one column per static covariate (e.g. ATTRIBUTE columns).
 
         Returns:
             list: Each is a dict, which contains the following keys:
                 - `targets`: The input tensor for the target variable(s), whose shape is [target_count, input_length].
                 - `past_covariates` (optional): A dictionary of past covariates (if `history_covs_sql` is provided).
                 - `future_covariates` (optional): A dictionary of future covariates (if `future_covs_sql` is provided).
+                - `static_covariates` (optional): A dictionary of static covariates (if `static_covs_sql` is provided).
 
         Raises:
             ValueError: If `future_covs_sql` is provided without `history_covs_sql`, or if no covariates are found.
@@ -52,6 +56,7 @@ class TimechoInferenceManager(InferenceManager):
 
         history_covs: dict[str, torch.Tensor] = {}
         future_covs: dict[str, torch.Tensor] = {}
+        static_covs: dict[str, int | float | str] = {}
 
         # Ensure both history and future covariates are valid
         if future_covs_sql and not history_covs_sql:
@@ -111,12 +116,28 @@ class TimechoInferenceManager(InferenceManager):
                             "[Inference] Tag other than default tag will be ignored now."
                         )
 
+        # Fetch static covariates if provided. A static covariate is constant over the whole
+        # series (an ATTRIBUTE column), so it is fetched as a single row and kept as a scalar
+        # value per covariate. The single-row constraint is enforced inside fetch_static_data.
+        if static_covs_sql:
+            data_fetcher = IoTDBDataFetcher()
+            static_covs = data_fetcher.fetch_static_data(static_covs_sql)
+            if not static_covs:
+                logger.error(
+                    "[Inference] The static covariates are specified but no static data are selected."
+                )
+                raise ValueError(
+                    "The static covariates are specified but no static data are selected."
+                )
+
         model_inputs.append({"targets": inputs[0]})
         # Combine covariates if available
         if history_covs:
             model_inputs[0].update({"past_covariates": history_covs})
             if future_covs:
                 model_inputs[0].update({"future_covariates": future_covs})
+        if static_covs:
+            model_inputs[0].update({"static_covariates": static_covs})
 
         # Note: Currently, only contain one dict in list
         return model_inputs
@@ -179,8 +200,11 @@ class TimechoInferenceManager(InferenceManager):
 
             history_covs_sql = str(inference_attrs.pop("history_covs", ""))
             future_covs_sql = str(inference_attrs.pop("future_covs", ""))
+            static_covs_sql = str(inference_attrs.pop("static_covs", ""))
             model_inputs: list[dict[str, torch.Tensor | dict[str, torch.Tensor]]] = (
-                self._get_covariate_if_needed(inputs, history_covs_sql, future_covs_sql)
+                self._get_covariate_if_needed(
+                    inputs, history_covs_sql, future_covs_sql, static_covs_sql
+                )
             )
 
             resp_list = self._do_inference_and_construct_resp(
@@ -211,6 +235,7 @@ class TimechoInferenceManager(InferenceManager):
                 "output_length": r.outputLength,
                 "history_covs": r.historyCovs or "",
                 "future_covs": r.futureCovs or "",
+                "static_covs": r.staticCovs or "",
                 "auto_adapt": r.autoAdapt,
                 **(r.options or {}),
             },

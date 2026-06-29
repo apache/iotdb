@@ -128,6 +128,75 @@ class IoTDBDataFetcher:
 
         return self._sort_data_by_timestamp(series_map, timestamps_map)
 
+    def fetch_static_data(self, sql_query: str) -> Dict[str, int | float | str]:
+        """
+        Fetch static covariates from IoTDB. A static covariate is constant over the whole
+        time series (e.g. an ATTRIBUTE column such as device model or rated capacity), so the
+        query is expected to return exactly one row, with one column per static covariate.
+
+        Unlike ``fetch_data`` (which is built for time series and treats TEXT columns as tag
+        columns), this method keeps every selected column as a static covariate value and
+        preserves its native type: numeric columns stay numeric, TEXT columns stay strings so
+        that categorical static covariates can be encoded by the model.
+
+        Arguments:
+        - sql_query: The SQL query to execute. It must not contain a TIMESTAMP (time) column
+          and must return exactly one row.
+
+        Returns:
+        - static_map: Dict[column_name, value], one entry per static covariate column.
+
+        Raises:
+        - ValueError: If the query is empty, contains a time column, returns no rows,
+          or returns more than one row.
+        """
+        if not sql_query:
+            logger.warning("Empty static covariates query provided.")
+            return {}
+
+        static_map: Dict[str, int | float | str] = {}
+        with self.session.execute_query_statement(sql_query) as static_data:
+            column_names = static_data.get_column_names()
+            column_types = static_data.get_column_types()
+            value_cols = []
+            for i, col_type in enumerate(column_types):
+                if col_type == TSDataType.TIMESTAMP:
+                    raise ValueError(
+                        "The static_covs query must not contain a time column, but a "
+                        f"TIMESTAMP column [{column_names[i]}] was found."
+                    )
+                value_cols.append(i)
+
+            if not value_cols:
+                raise ValueError(
+                    "Invalid static covariates schema: no static covariate column found."
+                )
+
+            row_count = 0
+            while static_data.has_next():
+                row_count += 1
+                if row_count > 1:
+                    # A static covariate must be constant across the series. Receiving more
+                    # than one distinct row is ambiguous and is rejected explicitly.
+                    raise ValueError(
+                        "The static_covs query must return exactly one row, but more than "
+                        "one row was found. Please make sure each static covariate has a "
+                        "single value, e.g. by using SELECT DISTINCT."
+                    )
+                cur_data: RowRecord = static_data.next()
+                fields = cur_data.get_fields()
+                for value_col in value_cols:
+                    static_map[column_names[value_col]] = get_field_value(
+                        fields[value_col]
+                    )
+
+            if row_count == 0:
+                raise ValueError(
+                    "The static covariates are specified but no static data are selected."
+                )
+
+        return static_map
+
     def _sort_data_by_timestamp(
         self, series_map, timestamps_map
     ) -> Tuple[Dict[Tuple, Dict[str, torch.Tensor]], Dict[Tuple, List[int]]]:

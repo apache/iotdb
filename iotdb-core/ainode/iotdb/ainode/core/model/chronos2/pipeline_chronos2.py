@@ -47,6 +47,9 @@ class Chronos2Pipeline(ForecastPipeline):
             - 'targets': A tensor (1D or 2D) of shape (input_length,) or (target_count, input_length).
             - 'past_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
             - 'future_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
+            - 'static_covariates': A dictionary of scalar values (optional), constant over the
+              whole series. Chronos-2 has no static-covariate pathway, so this key is dropped
+              with a warning (see Notes).
 
         infer_kwargs: Additional keyword arguments for inference, such as:
             - `output_length`(int): Used to check validation of 'future_covariates' if provided.
@@ -61,9 +64,24 @@ class Chronos2Pipeline(ForecastPipeline):
                 Unchanged past covariates.
             - 'future_covariates' (optional): dict of str to torch.Tensor
                 Unchanged future covariates.
+
+        Notes
+        -----
+        Chronos-2 only accepts time-varying covariates (`past_covariates` /
+        `future_covariates`); it has no dedicated static-covariate input. Broadcasting a single
+        constant value across all timesteps carries no temporal signal for a single series and
+        would be a misuse of the covariate path, so static covariates are not consumed here:
+        the `static_covariates` key is removed and a warning is logged. The key is also dropped
+        because Chronos2Dataset rejects any key other than target/past_covariates/future_covariates.
         """
+        if inputs and inputs[0].get("static_covariates", None):
+            logger.warning(
+                "[Inference] Static_covariates will be ignored, as they are not supported "
+                f"for model {self.model_info.model_id}."
+            )
         for item in inputs:
             item["target"] = item.pop("targets")
+            item.pop("static_covariates", None)
         return inputs
 
     @property

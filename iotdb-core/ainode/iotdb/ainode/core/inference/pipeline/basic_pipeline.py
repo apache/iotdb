@@ -114,6 +114,12 @@ class ForecastPipeline(BasicPipeline):
                     - 'targets': A tensor (1D or 2D) of shape (input_length,) or (target_count, input_length).
                     - 'past_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
                     - 'future_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
+                    - 'static_covariates': A dictionary of scalar values (optional), constant over the
+                      whole series (e.g. ATTRIBUTE columns such as device model or rated capacity).
+                      This base preprocessing intentionally does NOT validate or transform static
+                      covariates; it passes them through untouched. Each model's `_preprocess` is
+                      responsible for consuming them or dropping them with a warning if the model
+                      does not support static covariates.
 
             infer_kwargs (dict, optional): Additional keyword arguments for inference, such as:
                 - `output_length`(int): Used to check validation of 'future_covariates' if provided.
@@ -128,6 +134,7 @@ class ForecastPipeline(BasicPipeline):
                     - 'targets': A tensor (1D or 2D) of shape (input_length,) or (target_count, input_length).
                     - 'past_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
                     - 'future_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
+                    - 'static_covariates': A dictionary of scalar values (optional), passed through unchanged.
         """
 
         if isinstance(inputs, list):
@@ -281,6 +288,10 @@ class ForecastPipeline(BasicPipeline):
                 - 'past_covariates' (optional): A dictionary of 1-D tensors, each of shape (input_length,).
                 - 'future_covariates' (optional): A dictionary of 1-D tensors, each of shape (output_length,),
                   whose keys are guaranteed to be a subset of 'past_covariates'.
+                - 'static_covariates' (optional): A dictionary of scalar values, constant over the whole
+                  series. Passed through unchanged by `_base_preprocess`. A subclass must either consume
+                  it or drop it (e.g. `item.pop("static_covariates", None)`) with a warning when the model
+                  does not support static covariates.
             **infer_kwargs: Additional keyword arguments passed through from the pipeline.
 
         Returns:
