@@ -56,6 +56,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
@@ -324,7 +325,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         generateMeasurementSchemas();
 
     // Generate createTimeSeries in sender and receiver
-    String uuid = "bcdedit";
+    String uuid = "bcdedit" + UUID.randomUUID().toString().replace("-", "");
     for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
       createTimeSeries(uuid, pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
       createTimeSeries(
