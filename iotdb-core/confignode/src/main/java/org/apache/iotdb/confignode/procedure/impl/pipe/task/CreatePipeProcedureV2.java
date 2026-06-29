@@ -552,18 +552,15 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     final CreatePipeProcedureV2 that = (CreatePipeProcedureV2) o;
     return this.createPipeRequest.getPipeName().equals(that.createPipeRequest.getPipeName())
-        && this.createPipeRequest
-            .getExtractorAttributes()
-            .toString()
-            .equals(that.createPipeRequest.getExtractorAttributes().toString())
-        && this.createPipeRequest
-            .getProcessorAttributes()
-            .toString()
-            .equals(that.createPipeRequest.getProcessorAttributes().toString())
-        && this.createPipeRequest
-            .getConnectorAttributes()
-            .toString()
-            .equals(that.createPipeRequest.getConnectorAttributes().toString());
+        && Objects.equals(
+            this.createPipeRequest.getExtractorAttributes(),
+            that.createPipeRequest.getExtractorAttributes())
+        && Objects.equals(
+            this.createPipeRequest.getProcessorAttributes(),
+            that.createPipeRequest.getProcessorAttributes())
+        && Objects.equals(
+            this.createPipeRequest.getConnectorAttributes(),
+            that.createPipeRequest.getConnectorAttributes());
   }
 
   @Override

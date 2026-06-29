@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropPipeProcedureV2.class);
+  private static final int SERIALIZATION_VERSION_MAGIC = 0x44505632;
 
   private String pipeName;
   private boolean isTableModel;
@@ -211,6 +212,8 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.DROP_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
+    ReadWriteIOUtils.write(SERIALIZATION_VERSION_MAGIC, stream);
+    ReadWriteIOUtils.write(isTableModelSet, stream);
     if (isTableModelSet) {
       ReadWriteIOUtils.write(isTableModel, stream);
       if (pipeMetaToDrop == null) {
@@ -228,6 +231,23 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
     if (!byteBuffer.hasRemaining()) {
       return;
+    }
+    if (byteBuffer.remaining() >= Integer.BYTES) {
+      final int position = byteBuffer.position();
+      if (ReadWriteIOUtils.readInt(byteBuffer) == SERIALIZATION_VERSION_MAGIC) {
+        if (!byteBuffer.hasRemaining()) {
+          return;
+        }
+        isTableModelSet = ReadWriteIOUtils.readBool(byteBuffer);
+        if (isTableModelSet) {
+          isTableModel = ReadWriteIOUtils.readBool(byteBuffer);
+          if (ReadWriteIOUtils.readBool(byteBuffer)) {
+            pipeMetaToDrop = PipeMeta.deserialize4Coordinator(byteBuffer);
+          }
+        }
+        return;
+      }
+      byteBuffer.position(position);
     }
     isTableModel = ReadWriteIOUtils.readBool(byteBuffer);
     isTableModelSet = true;
