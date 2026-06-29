@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -88,16 +87,19 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_PLAN_NODE.getType(), outputStream);
-      return BytesUtils.concatByteArray(
-          byteArrayOutputStream.toByteArray(), getBytes(serializedPlanNode));
+      return concatBytes(byteArrayOutputStream, serializedPlanNode);
     }
   }
 
-  private static byte[] getBytes(final ByteBuffer byteBuffer) {
+  private static byte[] concatBytes(
+      final PublicBAOS byteArrayOutputStream, final ByteBuffer byteBuffer) {
     final ByteBuffer duplicateBuffer = byteBuffer.duplicate();
-    final byte[] bytes = new byte[duplicateBuffer.remaining()];
-    duplicateBuffer.get(bytes);
-    return bytes;
+    final int headerSize = byteArrayOutputStream.size();
+    final int bodySize = duplicateBuffer.remaining();
+    final byte[] result = new byte[headerSize + bodySize];
+    System.arraycopy(byteArrayOutputStream.getBuf(), 0, result, 0, headerSize);
+    duplicateBuffer.get(result, headerSize, bodySize);
+    return result;
   }
 
   /////////////////////////////// Object ///////////////////////////////
