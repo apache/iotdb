@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.utils;
 
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +34,7 @@ import java.nio.file.Paths;
 public class FileStoreUtils {
   private static final Logger logger = LoggerFactory.getLogger(FileStoreUtils.class);
 
-  // get the FileStore of dir .if current dir is not exists, check parent dir.
+  // get the FileStore of dir. if current dir is not exists, check parent dir.
   // for example, the dn_wal_dirs default value is data/datanode/wal and system will save the
   // data in the relative path directory it indicates under the IoTDB folder.
   // it will check the parent dir until find the existing dir.
@@ -47,7 +49,7 @@ public class FileStoreUtils {
       } catch (NoSuchFileException e) {
         path = path.getParent();
       } catch (IOException e) {
-        logger.warn("Failed to get storage path of {}, because", dir, e);
+        logger.warn(MetricsMessages.STORAGE_PATH_FAILED, dir, e);
         break;
       }
     }
@@ -57,7 +59,7 @@ public class FileStoreUtils {
       try {
         fileStore = Files.getFileStore(path);
       } catch (IOException innerException) {
-        logger.warn("Failed to get storage path of {}, because", dir, innerException);
+        logger.warn(MetricsMessages.STORAGE_PATH_FAILED, dir, innerException);
       }
     }
     return fileStore;

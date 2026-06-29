@@ -84,6 +84,12 @@ public class IoTConsensusConfig {
     private final int thriftMaxFrameSize;
     private final int maxClientNumForEachNode;
 
+    private final boolean isEnableSSL;
+    private final String sslTrustStorePath;
+    private final String sslTrustStorePassword;
+    private final String sslKeyStorePath;
+    private final String sslKeyStorePassword;
+
     private RPC(
         int rpcSelectorThreadNum,
         int rpcMinConcurrentClientNum,
@@ -94,7 +100,12 @@ public class IoTConsensusConfig {
         int connectionTimeoutInMs,
         boolean printLogWhenThriftClientEncounterException,
         int thriftMaxFrameSize,
-        int maxClientNumForEachNode) {
+        int maxClientNumForEachNode,
+        boolean isEnableSSL,
+        String sslTrustStorePath,
+        String sslTrustStorePassword,
+        String sslKeyStorePath,
+        String sslKeyStorePassword) {
       this.rpcSelectorThreadNum = rpcSelectorThreadNum;
       this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -105,6 +116,11 @@ public class IoTConsensusConfig {
       this.printLogWhenThriftClientEncounterException = printLogWhenThriftClientEncounterException;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
       this.maxClientNumForEachNode = maxClientNumForEachNode;
+      this.isEnableSSL = isEnableSSL;
+      this.sslTrustStorePath = sslTrustStorePath;
+      this.sslTrustStorePassword = sslTrustStorePassword;
+      this.sslKeyStorePath = sslKeyStorePath;
+      this.sslKeyStorePassword = sslKeyStorePassword;
     }
 
     public int getRpcSelectorThreadNum() {
@@ -147,6 +163,26 @@ public class IoTConsensusConfig {
       return maxClientNumForEachNode;
     }
 
+    public boolean isEnableSSL() {
+      return isEnableSSL;
+    }
+
+    public String getSslTrustStorePath() {
+      return sslTrustStorePath;
+    }
+
+    public String getSslTrustStorePassword() {
+      return sslTrustStorePassword;
+    }
+
+    public String getSslKeyStorePath() {
+      return sslKeyStorePath;
+    }
+
+    public String getSslKeyStorePassword() {
+      return sslKeyStorePassword;
+    }
+
     public static RPC.Builder newBuilder() {
       return new RPC.Builder();
     }
@@ -164,6 +200,12 @@ public class IoTConsensusConfig {
       private boolean printLogWhenThriftClientEncounterException = true;
       private int thriftMaxFrameSize = 536870912;
       private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
+      private boolean isEnableSSL = false;
+      private String sslTrustStorePath = "";
+      private String sslTrustStorePassword = "";
+      private String sslKeyStorePath = "";
+      private String sslKeyStorePassword = "";
 
       public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
         this.rpcSelectorThreadNum = rpcSelectorThreadNum;
@@ -218,6 +260,31 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public Builder setEnableSSL(boolean isEnableSSL) {
+        this.isEnableSSL = isEnableSSL;
+        return this;
+      }
+
+      public Builder setSslTrustStorePath(String sslTrustStorePath) {
+        this.sslTrustStorePath = sslTrustStorePath;
+        return this;
+      }
+
+      public Builder setSslTrustStorePassword(String sslTrustStorePassword) {
+        this.sslTrustStorePassword = sslTrustStorePassword;
+        return this;
+      }
+
+      public Builder setSslKeyStorePath(String sslKeyStorePath) {
+        this.sslKeyStorePath = sslKeyStorePath;
+        return this;
+      }
+
+      public Builder setSslKeyStorePassword(String sslKeyStorePassword) {
+        this.sslKeyStorePassword = sslKeyStorePassword;
+        return this;
+      }
+
       public RPC build() {
         return new RPC(
             rpcSelectorThreadNum,
@@ -229,7 +296,12 @@ public class IoTConsensusConfig {
             connectionTimeoutInMs,
             printLogWhenThriftClientEncounterException,
             thriftMaxFrameSize,
-            maxClientNumForEachNode);
+            maxClientNumForEachNode,
+            isEnableSSL,
+            sslTrustStorePath,
+            sslTrustStorePassword,
+            sslKeyStorePath,
+            sslKeyStorePassword);
       }
     }
   }
@@ -251,6 +323,9 @@ public class IoTConsensusConfig {
     private final IMemoryBlock consensusMemoryBlock;
     private final double maxMemoryRatioForQueue;
     private final long regionMigrationSpeedLimitBytesPerSecond;
+    private final long subscriptionWalRetentionSizeInBytes;
+    private final long subscriptionWalRetentionTimeMs;
+    private final long snapshotTransmissionProgressLogIntervalMs;
 
     private Replication(
         int maxLogEntriesNumPerBatch,
@@ -266,7 +341,10 @@ public class IoTConsensusConfig {
         long checkpointGap,
         IMemoryBlock consensusMemoryBlock,
         double maxMemoryRatioForQueue,
-        long regionMigrationSpeedLimitBytesPerSecond) {
+        long regionMigrationSpeedLimitBytesPerSecond,
+        long subscriptionWalRetentionSizeInBytes,
+        long subscriptionWalRetentionTimeMs,
+        long snapshotTransmissionProgressLogIntervalMs) {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
@@ -281,6 +359,9 @@ public class IoTConsensusConfig {
       this.consensusMemoryBlock = consensusMemoryBlock;
       this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
       this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
+      this.subscriptionWalRetentionSizeInBytes = subscriptionWalRetentionSizeInBytes;
+      this.subscriptionWalRetentionTimeMs = subscriptionWalRetentionTimeMs;
+      this.snapshotTransmissionProgressLogIntervalMs = snapshotTransmissionProgressLogIntervalMs;
     }
 
     public int getMaxLogEntriesNumPerBatch() {
@@ -339,6 +420,18 @@ public class IoTConsensusConfig {
       return regionMigrationSpeedLimitBytesPerSecond;
     }
 
+    public long getSubscriptionWalRetentionSizeInBytes() {
+      return subscriptionWalRetentionSizeInBytes;
+    }
+
+    public long getSubscriptionWalRetentionTimeMs() {
+      return subscriptionWalRetentionTimeMs;
+    }
+
+    public long getSnapshotTransmissionProgressLogIntervalMs() {
+      return snapshotTransmissionProgressLogIntervalMs;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
@@ -362,6 +455,13 @@ public class IoTConsensusConfig {
               "Consensus-Default", null, Runtime.getRuntime().maxMemory() / 10);
       private double maxMemoryRatioForQueue = 0.6;
       private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
+      private long subscriptionWalRetentionSizeInBytes = 0;
+      private long subscriptionWalRetentionTimeMs = -1L;
+      // Throttle the per-file snapshot-transmission progress log to at most once per this interval;
+      // a snapshot may contain hundreds of thousands of files, so one INFO line per file is itself
+      // a
+      // heavy IO/string-building cost. A value <= 0 logs every file.
+      private long snapshotTransmissionProgressLogIntervalMs = 5000L;
 
       public Replication.Builder setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
         this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
@@ -436,6 +536,23 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public Builder setSubscriptionWalRetentionSizeInBytes(
+          long subscriptionWalRetentionSizeInBytes) {
+        this.subscriptionWalRetentionSizeInBytes = subscriptionWalRetentionSizeInBytes;
+        return this;
+      }
+
+      public Builder setSubscriptionWalRetentionTimeMs(long subscriptionWalRetentionTimeMs) {
+        this.subscriptionWalRetentionTimeMs = subscriptionWalRetentionTimeMs;
+        return this;
+      }
+
+      public Builder setSnapshotTransmissionProgressLogIntervalMs(
+          long snapshotTransmissionProgressLogIntervalMs) {
+        this.snapshotTransmissionProgressLogIntervalMs = snapshotTransmissionProgressLogIntervalMs;
+        return this;
+      }
+
       public Replication build() {
         return new Replication(
             maxLogEntriesNumPerBatch,
@@ -451,7 +568,10 @@ public class IoTConsensusConfig {
             checkpointGap,
             consensusMemoryBlock,
             maxMemoryRatioForQueue,
-            regionMigrationSpeedLimitBytesPerSecond);
+            regionMigrationSpeedLimitBytesPerSecond,
+            subscriptionWalRetentionSizeInBytes,
+            subscriptionWalRetentionTimeMs,
+            snapshotTransmissionProgressLogIntervalMs);
       }
     }
   }

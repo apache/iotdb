@@ -39,8 +39,9 @@ public class AlterTableRenameColumnTask extends AbstractAlterOrDropTableTask {
       final String newName,
       final String queryId,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
-    super(database, tableName, queryId, tableIfExists);
+      final boolean columnIfExists,
+      final boolean view) {
+    super(database, tableName, queryId, tableIfExists, view);
     this.oldName = oldName;
     this.newName = newName;
     this.columnIfExists = columnIfExists;
@@ -50,6 +51,6 @@ public class AlterTableRenameColumnTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableRenameColumn(
-        database, tableName, oldName, newName, queryId, tableIfExists, columnIfExists);
+        database, tableName, oldName, newName, queryId, tableIfExists, columnIfExists, view);
   }
 }

@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.FunctionNullability;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 
@@ -44,10 +44,10 @@ import java.util.Map;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 
 public class Util {
   private Util() {}
@@ -175,7 +175,7 @@ public class Util {
                 node.getOutputSymbols(),
                 node.getAssignments(),
                 ImmutableList.of(),
-                node.getIdAndAttributeIndexMap(),
+                node.getTagAndAttributeIndexMap(),
                 node.getScanOrder(),
                 node.getTimePredicate().orElse(null),
                 node.getPushDownPredicate(),
@@ -195,7 +195,7 @@ public class Util {
                 node.getOutputSymbols(),
                 node.getAssignments(),
                 ImmutableList.of(),
-                node.getIdAndAttributeIndexMap(),
+                node.getTagAndAttributeIndexMap(),
                 node.getScanOrder(),
                 node.getTimePredicate().orElse(null),
                 node.getPushDownPredicate(),
@@ -231,7 +231,7 @@ public class Util {
     Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
     return new ResolvedFunction(
         new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
-        new FunctionId("noop"),
+        FunctionId.NOOP_FUNCTION_ID,
         FunctionKind.AGGREGATE,
         true,
         FunctionNullability.getAggregationFunctionNullability(argumentTypes.size()));

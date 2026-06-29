@@ -21,11 +21,13 @@ package org.apache.iotdb.commons.binaryallocator;
 
 import org.apache.iotdb.commons.binaryallocator.arena.Arena;
 import org.apache.iotdb.commons.binaryallocator.arena.ArenaStrategy;
+import org.apache.iotdb.commons.binaryallocator.autoreleaser.Releaser;
 import org.apache.iotdb.commons.binaryallocator.config.AllocatorConfig;
 import org.apache.iotdb.commons.binaryallocator.evictor.Evictor;
 import org.apache.iotdb.commons.binaryallocator.metric.BinaryAllocatorMetrics;
 import org.apache.iotdb.commons.binaryallocator.utils.SizeClasses;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -33,7 +35,11 @@ import org.apache.tsfile.utils.PooledBinary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.ref.ReferenceQueue;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class BinaryAllocator {
@@ -49,13 +55,21 @@ public class BinaryAllocator {
 
   private final BinaryAllocatorMetrics metrics;
   private Evictor sampleEvictor;
+  private Releaser autoReleaser;
   private static final ThreadLocal<ThreadArenaRegistry> arenaRegistry =
       ThreadLocal.withInitial(ThreadArenaRegistry::new);
 
-  private static final int WARNING_GC_TIME_PERCENTAGE = 10;
-  private static final int HALF_GC_TIME_PERCENTAGE = 20;
+  private static final int WARNING_GC_TIME_PERCENTAGE = 20;
+  private static final int HALF_GC_TIME_PERCENTAGE = 25;
   private static final int SHUTDOWN_GC_TIME_PERCENTAGE = 30;
   private static final int RESTART_GC_TIME_PERCENTAGE = 5;
+
+  public final ReferenceQueue<PooledBinary> referenceQueue = new ReferenceQueue<>();
+
+  // JDK 9+ Cleaner uses double-linked list and synchronized to manage references, which has worse
+  // performance than lock-free hash set
+  public final Set<PooledBinaryPhantomReference> phantomRefs =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   public BinaryAllocator(AllocatorConfig allocatorConfig) {
     this.allocatorConfig = allocatorConfig;
@@ -87,8 +101,14 @@ public class BinaryAllocator {
     sampleEvictor =
         new SampleEvictor(
             ThreadName.BINARY_ALLOCATOR_SAMPLE_EVICTOR.getName(),
-            allocatorConfig.durationEvictorShutdownTimeout);
-    sampleEvictor.startEvictor(allocatorConfig.durationBetweenEvictorRuns);
+            allocatorConfig.durationShutdownTimeout,
+            allocatorConfig.durationBetweenEvictorRuns);
+    sampleEvictor.start();
+    autoReleaser =
+        new AutoReleaser(
+            ThreadName.BINARY_ALLOCATOR_AUTO_RELEASER.getName(),
+            allocatorConfig.durationShutdownTimeout);
+    autoReleaser.start();
   }
 
   public synchronized void close(boolean forceClose) {
@@ -99,13 +119,14 @@ public class BinaryAllocator {
       state.set(BinaryAllocatorState.PENDING);
     }
 
-    sampleEvictor.stopEvictor();
+    sampleEvictor.stop();
+    autoReleaser.stop();
     for (Arena arena : heapArenas) {
       arena.close();
     }
   }
 
-  public PooledBinary allocateBinary(int reqCapacity) {
+  public PooledBinary allocateBinary(int reqCapacity, boolean autoRelease) {
     if (reqCapacity < allocatorConfig.minAllocateSize
         || reqCapacity > allocatorConfig.maxAllocateSize
         || state.get() != BinaryAllocatorState.OPEN) {
@@ -114,7 +135,7 @@ public class BinaryAllocator {
 
     Arena arena = arenaStrategy.choose(heapArenas);
 
-    return new PooledBinary(arena.allocate(reqCapacity), reqCapacity, arena.getArenaID());
+    return arena.allocate(reqCapacity, autoRelease);
   }
 
   public void deallocateBinary(PooledBinary binary) {
@@ -125,7 +146,7 @@ public class BinaryAllocator {
       int arenaIndex = binary.getArenaIndex();
       if (arenaIndex != -1) {
         Arena arena = heapArenas[arenaIndex];
-        arena.deallocate(binary.getValues());
+        arena.deallocate(binary);
       }
     }
   }
@@ -168,11 +189,13 @@ public class BinaryAllocator {
   }
 
   private static class BinaryAllocatorHolder {
+
     private static final BinaryAllocator INSTANCE =
         new BinaryAllocator(AllocatorConfig.DEFAULT_CONFIG);
   }
 
   private static class ThreadArenaRegistry {
+
     private Arena threadArenaBinding = null;
 
     public Arena getArena() {
@@ -199,6 +222,7 @@ public class BinaryAllocator {
   }
 
   private static class LeastUsedArenaStrategy implements ArenaStrategy {
+
     @Override
     public Arena choose(Arena[] arenas) {
       Arena boundArena = arenaRegistry.get().getArena();
@@ -225,7 +249,7 @@ public class BinaryAllocator {
       return;
     }
 
-    LOGGER.debug("Binary allocator running GC eviction");
+    LOGGER.debug(CommonMessages.BINARY_ALLOCATOR_RUNNING_GC_EVICTION);
     if (state.get() == BinaryAllocatorState.PENDING) {
       if (curGcTimePercent <= RESTART_GC_TIME_PERCENTAGE) {
         start();
@@ -235,9 +259,7 @@ public class BinaryAllocator {
 
     long evictedSize = 0;
     if (curGcTimePercent > SHUTDOWN_GC_TIME_PERCENTAGE) {
-      LOGGER.info(
-          "Binary allocator is shutting down because of high GC time percentage {}%.",
-          curGcTimePercent);
+      LOGGER.info(CommonMessages.BINARY_ALLOCATOR_SHUTTING_DOWN_HIGH_GC, curGcTimePercent);
       evictedSize = evict(1.0);
       close(false);
     } else if (curGcTimePercent > HALF_GC_TIME_PERCENTAGE) {
@@ -250,8 +272,9 @@ public class BinaryAllocator {
 
   public class SampleEvictor extends Evictor {
 
-    public SampleEvictor(String name, Duration evictorShutdownTimeoutDuration) {
-      super(name, evictorShutdownTimeoutDuration);
+    public SampleEvictor(
+        String name, Duration evictorShutdownTimeoutDuration, Duration durationBetweenEvictorRuns) {
+      super(name, evictorShutdownTimeoutDuration, durationBetweenEvictorRuns);
     }
 
     @Override
@@ -261,6 +284,28 @@ public class BinaryAllocator {
         evictedSize += arena.runSampleEviction();
       }
       metrics.updateSampleEvictionCounter(evictedSize);
+    }
+  }
+
+  /** Process phantomly reachable objects and return their byte arrays to pool. */
+  public class AutoReleaser extends Releaser {
+
+    public AutoReleaser(String name, Duration shutdownTimeoutDuration) {
+      super(name, shutdownTimeoutDuration);
+    }
+
+    @Override
+    public void run() {
+      PooledBinaryPhantomReference ref;
+      try {
+        while ((ref = (PooledBinaryPhantomReference) referenceQueue.remove()) != null) {
+          phantomRefs.remove(ref);
+          ref.slabRegion.deallocate(ref.byteArray);
+        }
+      } catch (InterruptedException e) {
+        LOGGER.info(CommonMessages.AUTO_RELEASER_EXIT_INTERRUPTED, name);
+        Thread.currentThread().interrupt();
+      }
     }
   }
 }

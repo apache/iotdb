@@ -21,7 +21,9 @@ package org.apache.iotdb.db.schemaengine.rescon;
 
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
@@ -41,7 +43,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
       IoTDBDescriptor.getInstance()
           .getMemoryConfig()
           .getSchemaRegionMemoryManager()
-          .exactAllocate("SchemaRegion", MemoryBlockType.DYNAMIC);
+          .exactAllocate(DataNodeMemoryConfig.SCHEMA_REGION, MemoryBlockType.DYNAMIC);
   private final ClusterTemplateManager clusterTemplateManager =
       ClusterTemplateManager.getInstance();
 
@@ -85,10 +87,12 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
             && memoryBlock.getUsedMemoryInBytes() >= memoryBlock.getTotalMemorySizeInBytes()) {
           if (needLog) {
             logger.warn(
-                "Current series memory {} is too large...", memoryBlock.getUsedMemoryInBytes());
+                DataNodeSchemaMessages.CURRENT_SERIES_MEMORY_TOO_LARGE,
+                memoryBlock.getUsedMemoryInBytes());
           } else {
             logger.debug(
-                "Current series memory {} is too large...", memoryBlock.getUsedMemoryInBytes());
+                DataNodeSchemaMessages.CURRENT_SERIES_MEMORY_TOO_LARGE,
+                memoryBlock.getUsedMemoryInBytes());
           }
           allowToCreateNewSeries = false;
         }
@@ -104,12 +108,12 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
             && memoryBlock.getUsedMemoryInBytes() < memoryBlock.getTotalMemorySizeInBytes()) {
           if (needLog) {
             logger.info(
-                "Current series memory {} come back to normal level, total series number is {}.",
+                DataNodeSchemaMessages.CURRENT_SERIES_MEMORY_BACK_TO_NORMAL,
                 memoryBlock.getUsedMemoryInBytes(),
                 totalMeasurementNumber.get() + totalViewNumber.get());
           } else {
             logger.debug(
-                "Current series memory {} come back to normal level, total series number is {}.",
+                DataNodeSchemaMessages.CURRENT_SERIES_MEMORY_BACK_TO_NORMAL,
                 memoryBlock.getUsedMemoryInBytes(),
                 totalMeasurementNumber.get() + totalViewNumber.get());
           }
@@ -193,6 +197,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   @Override
   public CachedSchemaEngineStatistics getAsCachedSchemaEngineStatistics() {
-    throw new UnsupportedOperationException("Wrong SchemaEngineStatistics Type");
+    throw new UnsupportedOperationException(
+        DataNodeSchemaMessages.WRONG_SCHEMA_ENGINE_STATISTICS_TYPE);
   }
 }

@@ -25,10 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator.DataNodeEntry;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
-import org.apache.tsfile.utils.Pair;
-
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -39,6 +38,7 @@ import java.util.stream.Collectors;
 
 public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAllocator {
 
+  private static final SecureRandom RANDOM = new SecureRandom();
   private static final GreedyRegionGroupAllocator GREEDY_ALLOCATOR =
       new GreedyRegionGroupAllocator();
 
@@ -47,15 +47,17 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
   private int regionPerDataNode;
 
   private int dataNodeNum;
-  // The number of allocated Regions in each DataNode
+  // The number of allocated Regions in each DataNode (fake-id indexed)
   private int[] regionCounter;
-  // The number of edges in current cluster
+  // The number of allocated Regions in each DataNode within the same Database (fake-id indexed)
+  private int[] databaseRegionCounter;
+  // Whether there exists a region with both i and j as replicas (fake-id indexed, binary)
   private int[][] combinationCounter;
   private Map<Integer, Integer> fakeToRealIdMap;
 
   private int alphaDataNodeNum;
-  // Pair<combinationSum, RegionSum>
-  Pair<Integer, Integer> bestValue;
+  // The best valuation found so far
+  private Value bestValue;
   private int[] bestAlphaNodes;
 
   @Override
@@ -70,13 +72,17 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
         consensusGroupId.getType().equals(TConsensusGroupType.DataRegion)
             ? ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode()
             : ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionPerDataNode();
-    prepare(replicationFactor, availableDataNodeMap, allocatedRegionGroups);
+    prepare(
+        replicationFactor,
+        availableDataNodeMap,
+        allocatedRegionGroups,
+        databaseAllocatedRegionGroups);
 
     // Select alpha nodes set
     for (int i = 0; i < subGraphCount; i++) {
       subGraphSearch(i, freeDiskSpaceMap);
     }
-    if (bestValue.left == Integer.MAX_VALUE) {
+    if (bestValue.regionSum == Integer.MAX_VALUE) {
       // Use greedy allocator as alternative if no alpha nodes set is found
       return GREEDY_ALLOCATOR.generateOptimalRegionReplicasDistribution(
           availableDataNodeMap,
@@ -114,10 +120,25 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     return result;
   }
 
+  @Override
+  public Map<TConsensusGroupId, TDataNodeConfiguration> removeNodeReplicaSelect(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      Map<TConsensusGroupId, String> regionDatabaseMap,
+      Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
+    // TODO: Implement this method
+    throw new UnsupportedOperationException(
+        ManagerMessages
+            .THE_REMOVENODEREPLICASELECT_METHOD_OF_PARTITEGRAPHPLACEMENTREGIONGROUPALLOCATOR);
+  }
+
   private void prepare(
       int replicationFactor,
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
-      List<TRegionReplicaSet> allocatedRegionGroups) {
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups) {
     this.subGraphCount = replicationFactor / 2 + (replicationFactor % 2 == 0 ? 0 : 1);
     this.replicationFactor = replicationFactor;
 
@@ -135,9 +156,11 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
       realToFakeIdMap.put(dataNodeIdList.get(i), i);
     }
 
-    // Compute regionCounter and combinationCounter
+    // Compute regionCounter, databaseRegionCounter and combinationCounter
     this.regionCounter = new int[dataNodeNum];
     Arrays.fill(regionCounter, 0);
+    this.databaseRegionCounter = new int[dataNodeNum];
+    Arrays.fill(databaseRegionCounter, 0);
     this.combinationCounter = new int[dataNodeNum][dataNodeNum];
     for (int i = 0; i < dataNodeNum; i++) {
       Arrays.fill(combinationCounter[i], 0);
@@ -145,42 +168,64 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     for (TRegionReplicaSet regionReplicaSet : allocatedRegionGroups) {
       List<TDataNodeLocation> dataNodeLocations = regionReplicaSet.getDataNodeLocations();
       for (int i = 0; i < dataNodeLocations.size(); i++) {
-        int fakeIId = realToFakeIdMap.get(dataNodeLocations.get(i).getDataNodeId());
+        Integer fakeIId = realToFakeIdMap.get(dataNodeLocations.get(i).getDataNodeId());
+        if (fakeIId == null) {
+          // Skip nodes that are no longer available
+          continue;
+        }
         regionCounter[fakeIId]++;
         for (int j = i + 1; j < dataNodeLocations.size(); j++) {
-          int fakeJId = realToFakeIdMap.get(dataNodeLocations.get(j).getDataNodeId());
+          Integer fakeJId = realToFakeIdMap.get(dataNodeLocations.get(j).getDataNodeId());
+          if (fakeJId == null) {
+            continue;
+          }
           combinationCounter[fakeIId][fakeJId] = 1;
           combinationCounter[fakeJId][fakeIId] = 1;
+        }
+      }
+    }
+    if (databaseAllocatedRegionGroups != null) {
+      for (TRegionReplicaSet regionReplicaSet : databaseAllocatedRegionGroups) {
+        for (TDataNodeLocation location : regionReplicaSet.getDataNodeLocations()) {
+          Integer fakeId = realToFakeIdMap.get(location.getDataNodeId());
+          if (fakeId != null) {
+            databaseRegionCounter[fakeId]++;
+          }
         }
       }
     }
 
     // Reset the optimal result
     this.alphaDataNodeNum = replicationFactor / 2 + 1;
-    this.bestValue = new Pair<>(Integer.MAX_VALUE, Integer.MAX_VALUE);
+    this.bestValue = Value.worst();
     this.bestAlphaNodes = new int[alphaDataNodeNum];
   }
 
-  private Pair<Integer, Integer> valuation(int[] nodes) {
-    int edgeSum = 0;
+  private Value valuation(int[] nodes) {
     int regionSum = 0;
+    int databaseRegionSum = 0;
+    int edgeSum = 0;
     for (int iota : nodes) {
+      regionSum += regionCounter[iota];
+      databaseRegionSum += databaseRegionCounter[iota];
       for (int kappa : nodes) {
         edgeSum += combinationCounter[iota][kappa];
       }
-      regionSum += regionCounter[iota];
     }
-    return new Pair<>(edgeSum, regionSum);
+    return new Value(regionSum, databaseRegionSum, edgeSum);
   }
 
   private void subGraphSearch(int firstIndex, Map<Integer, Double> freeDiskSpaceMap) {
-    List<DataNodeEntry> entryList = new ArrayList<>();
+    List<PgpDataNodeEntry> entryList = new ArrayList<>();
     for (int index = firstIndex; index < dataNodeNum; index += subGraphCount) {
       // Prune: skip filled DataNodes
       if (regionCounter[index] < regionPerDataNode) {
         entryList.add(
-            new DataNodeEntry(
-                index, regionCounter[index], freeDiskSpaceMap.get(fakeToRealIdMap.get(index))));
+            new PgpDataNodeEntry(
+                index,
+                regionCounter[index],
+                databaseRegionCounter[index],
+                freeDiskSpaceMap.get(fakeToRealIdMap.get(index))));
       }
     }
     if (entryList.size() < alphaDataNodeNum) {
@@ -194,9 +239,8 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     }
     for (int i = alphaDataNodeNum - 1; i < entryList.size(); i++) {
       alphaNodes[alphaDataNodeNum - 1] = entryList.get(i).dataNodeId;
-      Pair<Integer, Integer> currentValue = valuation(alphaNodes);
-      if (currentValue.left < bestValue.left
-          || (currentValue.left.equals(bestValue.left) && currentValue.right < bestValue.right)) {
+      Value currentValue = valuation(alphaNodes);
+      if (currentValue.compareTo(bestValue) < 0) {
         bestValue = currentValue;
         System.arraycopy(alphaNodes, 0, bestAlphaNodes, 0, alphaDataNodeNum);
       }
@@ -213,16 +257,15 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
         continue;
       }
       int selectedDataNode = -1;
-      Pair<Integer, Integer> tmpValue = new Pair<>(Integer.MAX_VALUE, Integer.MAX_VALUE);
+      Value tmpValue = Value.worst();
       for (int i = partiteIndex; i < dataNodeNum; i += subGraphCount) {
         if (regionCounter[i] >= regionPerDataNode) {
           // Pruning: skip filled DataNodes
           continue;
         }
         tmpNodes[alphaDataNodeNum] = i;
-        Pair<Integer, Integer> currentValue = valuation(tmpNodes);
-        if (currentValue.left < tmpValue.left
-            || (currentValue.left.equals(tmpValue.left) && currentValue.right < tmpValue.right)) {
+        Value currentValue = valuation(tmpNodes);
+        if (currentValue.compareTo(tmpValue) < 0) {
           tmpValue = currentValue;
           selectedDataNode = i;
         }
@@ -233,5 +276,80 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
       betaNodes.add(selectedDataNode);
     }
     return betaNodes;
+  }
+
+  /**
+   * Valuation for a candidate alpha (or alpha ∪ beta-candidate) set. Smaller is better. Comparison
+   * priority:
+   *
+   * <ol>
+   *   <li>{@code regionSum} — global per-DN region count (balance the whole cluster)
+   *   <li>{@code databaseRegionSum} — per-(database, DN) region count (balance each database)
+   *   <li>{@code edgeSum} — 2-Region combination scatter (refines PGP's scatter property)
+   * </ol>
+   */
+  private static class Value implements Comparable<Value> {
+
+    private final int regionSum;
+    private final int databaseRegionSum;
+    private final int edgeSum;
+
+    private Value(int regionSum, int databaseRegionSum, int edgeSum) {
+      this.regionSum = regionSum;
+      this.databaseRegionSum = databaseRegionSum;
+      this.edgeSum = edgeSum;
+    }
+
+    private static Value worst() {
+      return new Value(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE);
+    }
+
+    @Override
+    public int compareTo(Value other) {
+      if (regionSum != other.regionSum) {
+        return Integer.compare(regionSum, other.regionSum);
+      }
+      if (databaseRegionSum != other.databaseRegionSum) {
+        return Integer.compare(databaseRegionSum, other.databaseRegionSum);
+      }
+      return Integer.compare(edgeSum, other.edgeSum);
+    }
+  }
+
+  /**
+   * Pre-sort entry for selecting alpha nodes inside a sub-graph. Sort priority matches {@link
+   * Value}: regionCount first, databaseRegionCount second, then freeDiskSpace (descending) and a
+   * random tie-breaker.
+   */
+  private static class PgpDataNodeEntry implements Comparable<PgpDataNodeEntry> {
+
+    private final int dataNodeId;
+    private final int regionCount;
+    private final int databaseRegionCount;
+    private final double freeDiskSpace;
+    private final int randomWeight;
+
+    private PgpDataNodeEntry(
+        int dataNodeId, int regionCount, int databaseRegionCount, double freeDiskSpace) {
+      this.dataNodeId = dataNodeId;
+      this.regionCount = regionCount;
+      this.databaseRegionCount = databaseRegionCount;
+      this.freeDiskSpace = freeDiskSpace;
+      this.randomWeight = RANDOM.nextInt();
+    }
+
+    @Override
+    public int compareTo(PgpDataNodeEntry other) {
+      if (this.regionCount != other.regionCount) {
+        return Integer.compare(this.regionCount, other.regionCount);
+      }
+      if (this.databaseRegionCount != other.databaseRegionCount) {
+        return Integer.compare(this.databaseRegionCount, other.databaseRegionCount);
+      }
+      if (this.freeDiskSpace != other.freeDiskSpace) {
+        return Double.compare(other.freeDiskSpace, this.freeDiskSpace);
+      }
+      return Integer.compare(this.randomWeight, other.randomWeight);
+    }
   }
 }

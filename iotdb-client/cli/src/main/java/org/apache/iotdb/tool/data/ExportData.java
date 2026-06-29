@@ -35,9 +35,9 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.jline.reader.LineReader;
 
 import java.io.File;
@@ -207,9 +207,7 @@ public class ExportData extends AbstractDataTool {
       }
     } else {
       ioTPrinter.println(
-          String.format(
-              "Invalid args: Required values for option '%s' not provided",
-              Constants.FILE_TYPE_NAME));
+          String.format(Constants.REQUIRED_ARGS_ERROR_MSG, Constants.FILE_TYPE_NAME));
       System.exit(Constants.CODE_ERROR);
     }
     int exitCode = Constants.CODE_OK;
@@ -220,28 +218,34 @@ public class ExportData extends AbstractDataTool {
         System.exit(Constants.CODE_ERROR);
       }
       AbstractExportData exportData;
-      // check timePrecision by session
       exportData = new ExportDataTree();
       exportData.init();
       if (!sqlDialectTree) {
         exportData = new ExportDataTable();
         exportData.init();
       }
-      if (sqlDialectTree && queryCommand == null) {
-        LineReader lineReader =
-            JlineUtils.getLineReader(
-                new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION),
-                username,
-                host,
-                port);
-        String sql = lineReader.readLine(Constants.EXPORT_CLI_PREFIX + "> please input query: ");
-        ioTPrinter.println(sql);
-        String[] values = sql.trim().split(";");
+      if (queryCommand == null) {
+        if (sqlDialectTree) {
+          LineReader lineReader =
+              JlineUtils.getLineReader(
+                  new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION),
+                  username,
+                  host,
+                  port);
+          String sql = lineReader.readLine(Constants.EXPORT_CLI_PREFIX + "> please input query: ");
+          ioTPrinter.println(sql);
+          String[] values = sql.trim().split(";");
+          for (int i = 0; i < values.length; i++) {
+            exportData.exportBySql(values[i], i);
+          }
+        } else {
+          exportData.exportBySql(null, 0);
+        }
+      } else {
+        String[] values = queryCommand.trim().split(";");
         for (int i = 0; i < values.length; i++) {
           exportData.exportBySql(values[i], i);
         }
-      } else {
-        exportData.exportBySql(queryCommand, 0);
       }
     } catch (IOException e) {
       ioTPrinter.println("Failed to operate on file, because " + e.getMessage());
@@ -270,6 +274,10 @@ public class ExportData extends AbstractDataTool {
     String timeoutString = commandLine.getOptionValue(Constants.TIMEOUT_ARGS);
     if (timeoutString != null) {
       timeout = Long.parseLong(timeoutString);
+    }
+    String rpcMaxFrameSizeString = commandLine.getOptionValue(Constants.RPC_MAX_FRAME_SIZE_ARGS);
+    if (rpcMaxFrameSizeString != null) {
+      rpcMaxFrameSize = Integer.parseInt(rpcMaxFrameSizeString);
     }
     if (needDataTypePrinted == null) {
       needDataTypePrinted = true;

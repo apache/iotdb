@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -36,8 +39,15 @@ import java.util.List;
 public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompactionWriter {
   private List<TimeValuePair>[] dataOfCurrentSeriesArr;
 
+  @TestOnly
   public RepairUnsortedFileCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    super(targetFileResource);
+    super(targetFileResource, EncryptDBUtils.getDefaultFirstEncryptParam());
+    dataOfCurrentSeriesArr = new ArrayList[subTaskNum];
+  }
+
+  public RepairUnsortedFileCompactionWriter(
+      TsFileResource targetFileResource, EncryptParameter encryptParameter) throws IOException {
+    super(targetFileResource, encryptParameter);
     dataOfCurrentSeriesArr = new ArrayList[subTaskNum];
   }
 
@@ -74,8 +84,8 @@ public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompaction
   }
 
   private void writeToChunkWriter(TimeValuePair timeValuePair, int subTaskId) throws IOException {
-    writeDataPoint(timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
-    chunkPointNumArray[subTaskId]++;
+    writeDataPoint(
+        timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId], subTaskId);
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
   }
 

@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.tvf;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.function.PartitionRecognizer;
+import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionState;
+import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -26,11 +30,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.PartitionRecognizer;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.udf.api.relational.access.Record;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -49,8 +49,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
+import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -203,7 +203,8 @@ public class TableFunctionOperatorTest {
               Collections.singletonList(1),
               Arrays.asList(0, 1, 3),
               Arrays.asList(0, 1, 2, 3),
-              Arrays.asList(TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.INT32));
+              Arrays.asList(
+                  TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.DOUBLE, TSDataType.INT32));
       PartitionState state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.INIT_STATE, state);
       Assert.assertEquals(PartitionState.INIT_STATE, partitionRecognizer.nextState());
@@ -281,12 +282,13 @@ public class TableFunctionOperatorTest {
       state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.FINISHED, state.getStateType());
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
   private void checkIteratorSimply(Slice slice, List<List<Object>> expected) {
-    Iterator<Record> recordIterable = slice.getRequiredRecordIterator();
+    Iterator<Record> recordIterable = slice.getRequiredRecordIterator(false);
     int i = 0;
     while (recordIterable.hasNext()) {
       Record record = recordIterable.next();

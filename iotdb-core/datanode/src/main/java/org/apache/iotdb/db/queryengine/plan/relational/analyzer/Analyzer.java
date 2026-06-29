@@ -19,15 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 
@@ -80,6 +82,12 @@ public class Analyzer {
             warningCollector);
 
     Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
+    analysis.setSqlParser(statementAnalyzerFactory.getSqlParser());
+    // Register CTE passed by parent query.
+    context
+        .getCteQueries()
+        .forEach((tableRef, query) -> analysis.registerNamedQuery(tableRef.getNode(), query));
+
     Statement innerStatement =
         rewrittenStatement instanceof PipeEnriched
             ? ((PipeEnriched) rewrittenStatement).getInnerStatement()
@@ -91,7 +99,8 @@ public class Analyzer {
       } else if (session.getDatabaseName().isPresent()) {
         analysis.setDatabaseName(session.getDatabaseName().get());
       } else {
-        throw new SemanticException("database is not specified for insert:" + statement);
+        throw new SemanticException(
+            DataNodeQueryMessages.DATABASE_IS_NOT_SPECIFIED_FOR_INSERT + statement);
       }
     } else if (session.getDatabaseName().isPresent()) {
       analysis.setDatabaseName(session.getDatabaseName().get());

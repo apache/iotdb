@@ -29,11 +29,19 @@ services:
       - schema_replication_factor=3
       - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
       - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
+      - CONFIGNODE_JMX_OPTS=-Xms1G -Xmx1G -XX:MaxDirectMemorySize=256M 
     volumes:
       - /etc/hosts:/etc/hosts:ro
       - ./data/confignode:/iotdb/data
       - ./logs/confignode:/iotdb/logs
     network_mode: "host"
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576
 
   iotdb-datanode:
     image: apache/iotdb:1.1.0-datanode
@@ -48,8 +56,16 @@ services:
       - dn_data_region_consensus_port=10760
       - data_replication_factor=3
       - data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
+      - IOTDB_JMX_OPTS=-Xms4G -Xmx4G -XX:MaxDirectMemorySize=1G
     volumes:
       - /etc/hosts:/etc/hosts:ro
       - ./data/datanode:/iotdb/data/
       - ./logs/datanode:/iotdb/logs/
     network_mode: "host"
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576

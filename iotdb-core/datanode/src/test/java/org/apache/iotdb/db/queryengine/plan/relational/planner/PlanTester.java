@@ -21,27 +21,31 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TSBSMetadata;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 
@@ -66,7 +70,7 @@ public class PlanTester {
           ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
-          IClientSession.SqlDialect.TABLE);
+          SqlDialect.TABLE);
   private final Metadata metadata;
 
   private DistributedQueryPlan distributedQueryPlan;
@@ -83,6 +87,8 @@ public class PlanTester {
         public List<TDataNodeLocation> getDataNodeLocations(String table) {
           switch (table) {
             case "queries":
+            case "current_queries":
+            case "queries_costs_histogram":
               return ImmutableList.of(
                   genDataNodeLocation(1, "192.0.1.1"), genDataNodeLocation(2, "192.0.1.2"));
             default:
@@ -92,40 +98,72 @@ public class PlanTester {
       };
 
   public PlanTester() {
-    this(new TestMatadata());
+    this(new TestMetadata());
   }
 
   public PlanTester(Metadata metadata) {
     this.metadata = metadata;
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
   }
 
   public LogicalQueryPlan createPlan(String sql) {
-    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector());
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), false, null);
+  }
+
+  public LogicalQueryPlan createPlan(
+      String sql,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
+    return createPlan(
+        sessionInfo,
+        sql,
+        NOOP,
+        createPlanOptimizersStatsCollector(),
+        false,
+        predicateWithUncorrelatedScalarSubqueryReconstructor);
+  }
+
+  public LogicalQueryPlan createPlan(String sql, boolean explain) {
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), explain, null);
   }
 
   public LogicalQueryPlan createPlan(SessionInfo sessionInfo, String sql) {
-    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector());
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), false, null);
   }
 
   public LogicalQueryPlan createPlan(
       SessionInfo sessionInfo,
       String sql,
       WarningCollector warningCollector,
-      PlanOptimizersStatsCollector planOptimizersStatsCollector) {
+      PlanOptimizersStatsCollector planOptimizersStatsCollector,
+      boolean explain,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
     distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    if (explain) {
+      context.setExplainType(ExplainType.EXPLAIN);
+    }
 
-    Analysis analysis = analyze(sql, metadata);
+    Analysis analysis = analyze(sql, metadata, context);
     this.analysis = analysis;
     this.symbolAllocator = new SymbolAllocator();
 
     TableLogicalPlanner logicalPlanner =
         new TableLogicalPlanner(
             context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP);
+    if (predicateWithUncorrelatedScalarSubqueryReconstructor != null) {
+      logicalPlanner.setPredicateWithUncorrelatedScalarSubqueryReconstructor(
+          predicateWithUncorrelatedScalarSubqueryReconstructor);
+    }
 
     plan = logicalPlanner.plan(analysis);
 
     return plan;
+  }
+
+  public Analysis getAnalysis() {
+    return analysis;
   }
 
   public LogicalQueryPlan createPlan(
@@ -137,7 +175,7 @@ public class PlanTester {
     distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
 
-    Analysis analysis = analyze(sql, metadata);
+    Analysis analysis = analyze(sql, metadata, context);
 
     TableLogicalPlanner logicalPlanner =
         new TableLogicalPlanner(
@@ -146,7 +184,7 @@ public class PlanTester {
     return logicalPlanner.plan(analysis);
   }
 
-  public static Analysis analyze(String sql, Metadata metadata) {
+  public static Analysis analyze(String sql, Metadata metadata, MPPQueryContext context) {
     SqlParser sqlParser = new SqlParser();
     String databaseName;
     if (metadata instanceof TSBSMetadata) {
@@ -158,12 +196,8 @@ public class PlanTester {
     Mockito.when(clientSession.getDatabaseName()).thenReturn(databaseName);
     Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), clientSession);
     SessionInfo session =
-        new SessionInfo(
-            0, "test", ZoneId.systemDefault(), databaseName, IClientSession.SqlDialect.TABLE);
-    final MPPQueryContext context =
-        new MPPQueryContext(sql, new QueryId("test_query"), session, null, null);
-    return analyzeStatement(
-        statement, metadata, context, sqlParser, session, new AllowAllAccessControl());
+        new SessionInfo(0, "test", ZoneId.systemDefault(), databaseName, SqlDialect.TABLE);
+    return analyzeStatement(statement, metadata, context, sqlParser, session);
   }
 
   public static Analysis analyzeStatement(
@@ -171,11 +205,11 @@ public class PlanTester {
       Metadata metadata,
       MPPQueryContext context,
       SqlParser sqlParser,
-      SessionInfo session,
-      AccessControl accessControl) {
+      SessionInfo session) {
     try {
       StatementAnalyzerFactory statementAnalyzerFactory =
-          new StatementAnalyzerFactory(metadata, sqlParser, new AllowAllAccessControl());
+          new StatementAnalyzerFactory(
+              metadata, sqlParser, new AllowAllAccessControl(), new InternalTypeManager());
 
       Analyzer analyzer =
           new Analyzer(
@@ -184,7 +218,7 @@ public class PlanTester {
               statementAnalyzerFactory,
               Collections.emptyList(),
               Collections.emptyMap(),
-              new StatementRewriteFactory(metadata, accessControl).getStatementRewrite(),
+              new StatementRewriteFactory().getStatementRewrite(),
               NOOP);
       return analyzer.analyze(statement);
     } catch (Exception e) {

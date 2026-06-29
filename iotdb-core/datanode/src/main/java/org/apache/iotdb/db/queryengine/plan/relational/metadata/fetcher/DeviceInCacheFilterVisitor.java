@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 
@@ -32,7 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry> {
+public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<AlignedDeviceEntry> {
 
   private final Map<String, Integer> attributeIndexMap = new HashMap<>();
 
@@ -43,13 +43,13 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry>
   }
 
   @Override
-  protected Boolean visitNode(final SchemaFilter filter, final DeviceEntry deviceEntry) {
+  protected Boolean visitNode(final SchemaFilter filter, final AlignedDeviceEntry deviceEntry) {
     throw new UnsupportedOperationException(
         "The schema filter type " + filter.getSchemaFilterType() + " is not supported");
   }
 
   @Override
-  public Boolean visitIdFilter(final IdFilter filter, final DeviceEntry deviceEntry) {
+  public Boolean visitTagFilter(final TagFilter filter, final AlignedDeviceEntry deviceEntry) {
     // The first segment is "tableName", skip it
     final int index = filter.getIndex() + 1;
     return filter
@@ -58,7 +58,8 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry>
   }
 
   @Override
-  public Boolean visitAttributeFilter(final AttributeFilter filter, final DeviceEntry deviceEntry) {
+  public Boolean visitAttributeFilter(
+      final AttributeFilter filter, final AlignedDeviceEntry deviceEntry) {
     return filter
         .getChild()
         .accept(

@@ -117,6 +117,17 @@ public abstract class ProgressIndex implements Accountable {
   }
 
   /**
+   * A.isEqualOrAfter(B) is true if and only if A already covers B in every tuple member. In other
+   * words, blending B into A does not advance A.
+   *
+   * @param progressIndex the progress index to be compared
+   * @return true if and only if this progress index is equal to or after the given progress index
+   */
+  public final boolean isEqualOrAfter(@Nonnull final ProgressIndex progressIndex) {
+    return updateToMinimumEqualOrIsAfterProgressIndex(progressIndex).equals(this);
+  }
+
+  /**
    * Define the isEqualOrAfter relation, A.isEqualOrAfter(B) if and only if each tuple member in A
    * is greater than or equal to B in the corresponding total order relation.
    *
@@ -215,7 +226,7 @@ public abstract class ProgressIndex implements Accountable {
    * <p>Notice:TotalOrderSumTuple is an ordered tuple, the larger the subscript the higher the
    * weight of the element when comparing sizes, e.g. (1, 2) is larger than (2, 1).
    */
-  protected static class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
+  public static class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
     private final ImmutableList<Long> tuple;
 
     /**

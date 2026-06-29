@@ -38,13 +38,26 @@
     </dependencySets>
     <fileSets>
         <fileSet>
+            <directory>${project.basedir}/../scripts/sbin</directory>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../iotdb-client/cli/src/assembly/resources/sbin</directory>
+            <includes>
+                <include>*cli.*</include>
+                <include>**/*cli.*</include>
+                <include>**/*cli-table.*</include>
+            </includes>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
+            <directory>${project.basedir}/../scripts/tools</directory>
             <outputDirectory>tools</outputDirectory>
-            <directory>${project.basedir}/../iotdb-client/cli/src/assembly/resources/tools</directory>
+            <includes>
+                <include>*data.*</include>
+                <include>*schema.*</include>
+                <include>*tsfile.*</include>
+                <include>**/*data.*</include>
+                <include>**/*schema.*</include>
+                <include>**/*tsfile.*</include>
+            </includes>
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>

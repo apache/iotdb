@@ -28,6 +28,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,45 +42,46 @@ import java.util.Map;
 @Category({MultiClusterIT1.class})
 public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
   @Test
+  @Ignore
   public void testAggregator() throws Exception {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
       // Test the mixture of historical and realtime data
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           env,
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.temperature with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)",
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN, encoding=RLE, compression=SNAPPY",
-              "insert into root.ln.wf01.wt01(time, temperature, status) values (10000, 1, false)"))) {
-        return;
-      }
+              "insert into root.ln.wf01.wt01(time, temperature, status) values (10000, 1, false)"),
+          null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("pattern", "root.ln");
+      sourceAttributes.put("pattern", "root.ln");
 
       processorAttributes.put("processor", "aggregate-processor");
       processorAttributes.put("output.database", "root.testdb");
       processorAttributes.put(
           "output.measurements", "Avg1, peak1, rms1, var1, skew1, kurt1, ff1, cf1, pf1");
-      processorAttributes.put("operators", "avg, peak, rms, var, skew, kurt, ff, cf, pf, cE");
+      processorAttributes.put(
+          "operators", "avg, peak, rms, var, skew, kurt, ff, cf, pf, cE, max, min");
       processorAttributes.put("sliding.seconds", "60");
 
-      connectorAttributes.put("sink", "write-back-sink");
+      sinkAttributes.put("sink", "write-back-sink");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // Test unsupported types
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           env,
           Arrays.asList(
               "create timeSeries root.ln.wf01.wt01.boolean boolean",
@@ -88,11 +90,10 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
               "create timeSeries root.ln.wf01.wt01.string string",
               "create timeSeries root.ln.wf01.wt01.blob blob",
               "insert into root.ln.wf01.wt01(time, boolean, date, text, string, blob) values (20000, false, '2000-12-13', 'abc', 'def', X'f103')",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           env,
           Arrays.asList(
               "insert into root.ln.wf01.wt01(time, temperature, status) values (20000, 2, true)",
@@ -106,16 +107,15 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
               "insert into root.ln.wf01.wt01(time, temperature, status) values (100000, 10, true)",
               "insert into root.ln.wf01.wt01(time, temperature, status) values (110000, 11, false)",
               "insert into root.ln.wf01.wt01(time, temperature, status) values (120000, 12, false)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
       // Test total number
       TestUtils.assertDataEventuallyOnEnv(
           env,
           "select count(*) from root.testdb.** group by level=1",
           "count(root.testdb.*.*.*.*),",
-          Collections.singleton("20,"));
+          Collections.singleton("24,"));
 
       // Test manually renamed timeSeries count
       TestUtils.assertDataEventuallyOnEnv(

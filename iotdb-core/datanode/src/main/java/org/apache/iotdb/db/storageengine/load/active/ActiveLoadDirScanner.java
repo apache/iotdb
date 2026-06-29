@@ -21,23 +21,28 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -48,10 +53,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadDirScanner.class);
 
-  private static final String RESOURCE = ".resource";
-  private static final String MODS = ".mods";
-
   private final AtomicReference<String[]> listeningDirsConfig = new AtomicReference<>();
+  private final AtomicReference<String> pipeListeningDirConfig = new AtomicReference<>();
   private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
 
   private final Set<String> noPermissionDirs = new CopyOnWriteArraySet<>();
@@ -65,21 +68,21 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
     this.activeLoadTsFileLoader = activeLoadTsFileLoader;
 
     register(this::scanSafely);
-    LOGGER.info("Active load dir scanner periodical job registered");
+    LOGGER.info(StorageEngineMessages.ACTIVE_LOAD_DIR_SCANNER_REGISTERED);
   }
 
   private void scanSafely() {
     try {
       scan();
     } catch (final Exception e) {
-      LOGGER.warn("Error occurred during active load dir scanning.", e);
+      LOGGER.warn(StorageEngineMessages.ERROR_ACTIVE_LOAD_DIR_SCANNING, e);
     }
   }
 
   private void scan() throws IOException {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       if (!isReadOnlyLogPrinted.get()) {
-        LOGGER.warn("Current system is read-only mode. Skip active load dir scanning.");
+        LOGGER.warn(StorageEngineMessages.SYSTEM_READ_ONLY_SKIP_ACTIVE_SCAN);
         isReadOnlyLogPrinted.set(true);
       }
       return;
@@ -100,23 +103,40 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
       final boolean isGeneratedByPipe =
           listeningDir.equals(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
+      final File listeningDirFile = new File(listeningDir);
       try (final Stream<File> fileStream =
-          FileUtils.streamFiles(new File(listeningDir), true, (String[]) null)) {
+          FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
         try {
           fileStream
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
               .filter(File::exists)
-              .map(
-                  file ->
-                      (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS))
-                          ? getTsFilePath(file.getAbsolutePath())
-                          : file.getAbsolutePath())
+              .map(file -> LoadUtil.getTsFilePath(file.getAbsolutePath()))
               .filter(this::isTsFileCompleted)
               .limit(currentAllowedPendingSize)
               .forEach(
-                  file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
+                  filePath -> {
+                    final File tsFile = new File(filePath);
+                    final Map<String, String> attributes =
+                        ActiveLoadPathHelper.parseAttributes(tsFile, listeningDirFile);
+
+                    final File parentFile = tsFile.getParentFile();
+                    final boolean isTableModel =
+                        ActiveLoadPathHelper.containsDatabaseName(attributes)
+                            || (parentFile != null
+                                && !Objects.equals(
+                                    parentFile.getAbsoluteFile(),
+                                    listeningDirFile.getAbsoluteFile()));
+
+                    activeLoadTsFileLoader.tryTriggerTsFileLoad(
+                        tsFile.getAbsolutePath(),
+                        listeningDirFile.getAbsolutePath(),
+                        isTableModel,
+                        isGeneratedByPipe);
+                  });
+        } catch (UncheckedIOException e) {
+          LOGGER.debug(StorageEngineMessages.FILE_DELETED_IGNORE_EXCEPTION);
         } catch (final Exception e) {
-          LOGGER.warn("Exception occurred during scanning dir: {}", listeningDir, e);
+          LOGGER.warn(StorageEngineMessages.EXCEPTION_SCANNING_DIR, listeningDir, e);
         }
       }
     }
@@ -178,14 +198,27 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
               listeningDirsConfig.set(IOTDB_CONFIG.getLoadActiveListeningDirs());
               listeningDirs.addAll(Arrays.asList(IOTDB_CONFIG.getLoadActiveListeningDirs()));
+              LoadUtil.updateLoadDiskSelector();
             }
           }
         }
       } else {
         listeningDirs.clear();
       }
-      // Hot reload active load listening dir for pipe data sync
-      // Active load is always enabled for pipe data sync
+      if (!Objects.equals(
+          IOTDB_CONFIG.getLoadActiveListeningPipeDir(), pipeListeningDirConfig.get())) {
+        synchronized (this) {
+          if (!Objects.equals(
+              IOTDB_CONFIG.getLoadActiveListeningPipeDir(), pipeListeningDirConfig.get())) {
+            if (pipeListeningDirConfig.get() != null) {
+              listeningDirs.remove(pipeListeningDirConfig.get());
+            }
+            pipeListeningDirConfig.set(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
+          }
+        }
+      }
+
+      // Active load is always enabled for pipe data sync.
       listeningDirs.add(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
 
       // Create directories if not exists
@@ -206,16 +239,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
     try {
       FileUtils.forceMkdir(new File(dirPath));
     } catch (final IOException e) {
-      LOGGER.warn("Error occurred during creating directory {} for active load.", dirPath, e);
+      LOGGER.warn(StorageEngineMessages.ERROR_CREATING_DIR_FOR_ACTIVE_LOAD, dirPath, e);
     }
-  }
-
-  private static String getTsFilePath(final String filePathWithResourceOrModsTail) {
-    return filePathWithResourceOrModsTail.endsWith(RESOURCE)
-        ? filePathWithResourceOrModsTail.substring(
-            0, filePathWithResourceOrModsTail.length() - RESOURCE.length())
-        : filePathWithResourceOrModsTail.substring(
-            0, filePathWithResourceOrModsTail.length() - MODS.length());
   }
 
   // Metrics
@@ -237,7 +262,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
                 try {
                   fileSizeInDir[0] += file.toFile().length();
                 } catch (Exception e) {
-                  LOGGER.debug("Failed to count active listening dirs file number.", e);
+                  LOGGER.debug(StorageEngineMessages.FAILED_COUNT_ACTIVE_DIRS_FILE_NUMBER, e);
                 }
                 return FileVisitResult.CONTINUE;
               }
@@ -256,7 +281,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           .updateTotalPendingFileCounter(totalFileCount);
       ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalPendingFileCounter(totalFileSize);
     } catch (final IOException e) {
-      LOGGER.debug("Failed to count active listening dirs file number.", e);
+      LOGGER.debug(StorageEngineMessages.FAILED_COUNT_ACTIVE_DIRS_FILE_NUMBER, e);
     }
 
     return totalFileCount;

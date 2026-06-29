@@ -34,10 +34,16 @@
         <fileSet>
             <directory>${project.basedir}/../iotdb-core/ainode/target/apache-iotdb-ainode-${project.version}/apache-iotdb-ainode-${project.version}/sbin</directory>
             <outputDirectory>${file.separator}/sbin</outputDirectory>
+            <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/../iotdb-core/ainode/target/apache-iotdb-ainode-${project.version}/apache-iotdb-ainode-${project.version}/lib</directory>
             <outputDirectory>${file.separator}/lib</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../iotdb-core/ainode/target/apache-iotdb-ainode-${project.version}/apache-iotdb-ainode-${project.version}/tools</directory>
+            <outputDirectory>${file.separator}/tools</outputDirectory>
+            <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
     <componentDescriptors>

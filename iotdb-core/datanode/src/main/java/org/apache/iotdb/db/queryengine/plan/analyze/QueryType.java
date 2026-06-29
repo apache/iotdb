@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 public enum QueryType {
+  OTHER,
   WRITE,
-  READ;
+  READ,
+  // Currently READ_WRITE is only used by insert into query, which means it behaves as a READ query
+  // type. However, the protocol layer regards it as WRITE operation when it returns.
+  READ_WRITE,
 }

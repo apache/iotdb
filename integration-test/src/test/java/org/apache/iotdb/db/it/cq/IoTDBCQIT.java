@@ -72,7 +72,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
                 + ": CQ: Specifying time range in GROUP BY TIME clause is prohibited.",
             e.getMessage());
       }
@@ -92,7 +92,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
                 + ": CQ: Specifying time filters in the query body is prohibited.",
             e.getMessage());
       }
@@ -128,7 +128,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
                 + ": CQ: The query body misses an INTO clause.",
             e.getMessage());
       }
@@ -149,7 +149,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
                 + ": CQ: Every interval [50] should not be lower than the `continuous_query_minimum_every_interval` [1000] configured.",
             e.getMessage());
       }
@@ -189,7 +189,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
                 + ": CQ: The start time offset should be greater than 0.",
             e.getMessage());
       }
@@ -229,7 +229,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
                 + ": CQ: The start time offset should be greater than end time offset.",
             e.getMessage());
       }
@@ -249,7 +249,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
                 + ": CQ: The start time offset should be greater than end time offset.",
             e.getMessage());
       }
@@ -269,7 +269,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
                 + ": CQ: The start time offset should be greater than or equal to every interval.",
             e.getMessage());
       }

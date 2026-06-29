@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -68,7 +69,8 @@ public class ProjectOperator implements ProcessOperator {
     }
     Column[] valueColumns = new Column[remainingColumnIndexList.size()];
     for (int i = 0; i < remainingColumnIndexList.size(); i++) {
-      valueColumns[i] = input.getColumn(remainingColumnIndexList.get(i));
+      int index = remainingColumnIndexList.get(i);
+      valueColumns[i] = index == -1 ? input.getTimeColumn() : input.getColumn(index);
     }
     return new TsBlock(input.getPositionCount(), input.getTimeColumn(), valueColumns);
   }

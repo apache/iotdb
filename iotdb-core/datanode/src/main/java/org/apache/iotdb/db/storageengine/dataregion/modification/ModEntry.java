@@ -19,21 +19,26 @@
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
 import org.apache.tsfile.annotations.TreeModel;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public abstract class ModEntry
-    implements StreamSerializable, BufferSerializable, Comparable<ModEntry> {
+    implements StreamSerializable, BufferSerializable, Comparable<ModEntry>, Accountable {
 
   protected ModType modType;
   protected TimeRange timeRange;
@@ -44,7 +49,15 @@ public abstract class ModEntry
 
   public int serializedSize() {
     // modType + time range
-    return Byte.BYTES + Long.BYTES * 2 + Byte.BYTES * 2;
+    return Byte.BYTES + Long.BYTES * 2;
+  }
+
+  static int sizeToWriteVarString(final String value) {
+    if (value == null) {
+      return ReadWriteForEncodingUtils.varIntSize(-1);
+    }
+    final int byteLength = value.getBytes(TSFileConfig.STRING_CHARSET).length;
+    return ReadWriteForEncodingUtils.varIntSize(byteLength) + byteLength;
   }
 
   @Override
@@ -159,7 +172,7 @@ public abstract class ModEntry
           entry = new TableDeletionEntry();
           break;
         default:
-          throw new IllegalArgumentException("Unsupported mod type: " + this);
+          throw new IllegalArgumentException(StorageEngineMessages.UNSUPPORTED_MOD_TYPE + this);
       }
       return entry;
     }
@@ -172,19 +185,25 @@ public abstract class ModEntry
         case 0x01:
           return TREE_DELETION;
         default:
-          throw new IllegalArgumentException("Unknown ModType: " + typeNum);
+          throw new IllegalArgumentException(StorageEngineMessages.UNKNOWN_MOD_TYPE + typeNum);
       }
     }
 
     public static ModType deserialize(InputStream stream) throws IOException {
-      byte typeNum = ReadWriteIOUtils.readByte(stream);
+      // The ModIterator needs to use this EOFException to determine whether it has finished
+      // reading. And we should not use InputStream.available() to make this judgments outside,
+      // because calling it frequently will have a certain overhead.
+      int typeNum = stream.read();
+      if (typeNum == -1) {
+        throw new EOFException();
+      }
       switch (typeNum) {
         case 0x00:
           return TABLE_DELETION;
         case 0x01:
           return TREE_DELETION;
         default:
-          throw new IllegalArgumentException("Unknown ModType: " + typeNum);
+          throw new IllegalArgumentException(StorageEngineMessages.UNKNOWN_MOD_TYPE + typeNum);
       }
     }
   }

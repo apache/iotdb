@@ -20,14 +20,17 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import org.apache.tsfile.utils.Pair;
 import org.junit.Test;
@@ -36,12 +39,13 @@ import java.time.ZoneId;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PredicateUtils.extractGlobalTimePredicate;
+import static org.junit.Assert.assertNotNull;
 
 public class PredicateUtilsTest {
   @Test
   public void extractGlobalTimePredicateTest() {
     String sql = "SELECT tag1 FROM table1 where time>1 and s1>1";
-    final Metadata metadata = new TestMatadata();
+    final Metadata metadata = new TestMetadata();
     final MPPQueryContext context =
         new MPPQueryContext(
             sql,
@@ -52,7 +56,7 @@ public class PredicateUtilsTest {
                 ZoneId.systemDefault(),
                 IoTDBConstant.ClientVersion.V_1_0,
                 "db",
-                IClientSession.SqlDialect.TABLE),
+                SqlDialect.TABLE),
             null,
             null);
 
@@ -68,5 +72,14 @@ public class PredicateUtilsTest {
         extractGlobalTimePredicate(
             actualAnalysis.getWhereMap().values().iterator().next(), true, true);
     System.out.println(ret.getLeft());
+  }
+
+  @Test
+  public void extractGlobalTimePredicateWithCustomTimeColumnTest() {
+    Expression expression =
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN, new Identifier("ts"), new LongLiteral("1"));
+    Pair<Expression, Boolean> ret = extractGlobalTimePredicate(expression, true, true, "ts");
+    assertNotNull(ret.getLeft());
   }
 }

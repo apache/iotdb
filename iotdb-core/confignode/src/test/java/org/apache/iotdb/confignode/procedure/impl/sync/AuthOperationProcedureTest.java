@@ -99,6 +99,34 @@ public class AuthOperationProcedureTest {
     }
 
     try {
+      final AuthOperationProcedure proc =
+          new AuthOperationProcedure(
+              new AuthorTreePlan(
+                  ConfigPhysicalPlanType.AccountUnlock,
+                  "user1",
+                  "",
+                  "",
+                  "",
+                  Collections.emptySet(),
+                  false,
+                  Collections.emptyList()),
+              datanodes,
+              false);
+      proc.serialize(outputStream);
+      final ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+      final AuthOperationProcedure proc2 =
+          (AuthOperationProcedure) ProcedureFactory.getInstance().create(buffer);
+      Assert.assertEquals(proc, proc2);
+      buffer.clear();
+      byteArrayOutputStream.reset();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+
+    try {
       final int begin = ConfigPhysicalPlanType.RCreateUser.ordinal();
       final int end = ConfigPhysicalPlanType.RRevokeRoleSysPri.ordinal();
       for (int i = begin; i <= end; i++) {
@@ -112,7 +140,7 @@ public class AuthOperationProcedureTest {
                     "table",
                     new HashSet<>(PrivilegeType.CREATE.ordinal(), PrivilegeType.SELECT.ordinal()),
                     false,
-                    "password"),
+                    "password123456"),
                 datanodes,
                 false);
         proc.serialize(outputStream);
@@ -125,6 +153,34 @@ public class AuthOperationProcedureTest {
         buffer.clear();
         byteArrayOutputStream.reset();
       }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+
+    try {
+      final AuthOperationProcedure proc =
+          new AuthOperationProcedure(
+              new AuthorRelationalPlan(
+                  ConfigPhysicalPlanType.RAccountUnlock,
+                  "user1",
+                  "127.0.0.1",
+                  "",
+                  "",
+                  Collections.emptySet(),
+                  false,
+                  ""),
+              datanodes,
+              false);
+      proc.serialize(outputStream);
+      final ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+      final AuthOperationProcedure proc2 =
+          (AuthOperationProcedure) ProcedureFactory.getInstance().create(buffer);
+      Assert.assertEquals(proc, proc2);
+      buffer.clear();
+      byteArrayOutputStream.reset();
     } catch (final Exception e) {
       e.printStackTrace();
       fail();

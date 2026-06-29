@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.confignode.manager.pipe.metric.overview;
 
-import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
+import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
-import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.ExponentialMovingAverages;
@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
 
-  private final Set<IoTDBConfigRegionExtractor> configRegionExtractors =
+  private final Set<IoTDBConfigRegionSource> configRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final AtomicReference<Meter> configRegionCommitMeter = new AtomicReference<>(null);
 
@@ -56,24 +56,21 @@ class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
    * @return The estimated remaining time
    */
   double getRemainingTime() {
-    final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+    final PipeRateAverage pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
     // Do not calculate heartbeat event
     final long totalConfigRegionWriteEventCount =
         configRegionExtractors.stream()
-            .map(IoTDBConfigRegionExtractor::getUnTransferredEventCount)
+            .map(IoTDBConfigRegionSource::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
 
-    configRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            lastConfigRegionCommitSmoothingValue =
-                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
-          }
-          return meter;
-        });
+    final Meter configRegionMeter = configRegionCommitMeter.get();
+    if (Objects.nonNull(configRegionMeter)) {
+      lastConfigRegionCommitSmoothingValue =
+          pipeRemainingTimeCommitRateAverageTime.getMeterRate(configRegionMeter);
+    }
 
     final double configRegionRemainingTime;
     if (totalConfigRegionWriteEventCount <= 0) {
@@ -94,20 +91,17 @@ class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
-  void register(final IoTDBConfigRegionExtractor extractor) {
+  void register(final IoTDBConfigRegionSource extractor) {
     configRegionExtractors.add(extractor);
   }
 
   //////////////////////////// Rate ////////////////////////////
 
   void markConfigRegionCommit() {
-    configRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
+    final Meter meter = configRegionCommitMeter.get();
+    if (Objects.nonNull(meter)) {
+      meter.mark();
+    }
   }
 
   //////////////////////////// Switch ////////////////////////////

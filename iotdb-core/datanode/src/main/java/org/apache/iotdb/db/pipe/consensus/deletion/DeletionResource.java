@@ -24,8 +24,10 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteNodeType;
@@ -42,7 +44,7 @@ import java.util.function.Consumer;
 /**
  * DeletionResource is designed for IoTConsensusV2 to manage the lifecycle of all deletion
  * operations including realtime deletion and historical deletion. In order to be compatible with
- * user pipe framework, PipeConsensus will use {@link PipeDeleteDataNodeEvent}
+ * user pipe framework, IoTConsensusV2 will use {@link PipeDeleteDataNodeEvent}
  */
 public class DeletionResource implements PersistentResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
@@ -57,29 +59,25 @@ public class DeletionResource implements PersistentResource {
   private volatile Exception cause;
 
   public DeletionResource(
-      AbstractDeleteDataNode deleteDataNode,
-      Consumer<DeletionResource> removeHook,
-      String regionId) {
+      AbstractDeleteDataNode deleteDataNode, Consumer<DeletionResource> removeHook, int regionId) {
     this.deleteDataNode = deleteDataNode;
     this.removeHook = removeHook;
     this.currentStatus = Status.RUNNING;
     this.consensusGroupId =
-        ConsensusGroupId.Factory.create(
-            TConsensusGroupType.DataRegion.getValue(), Integer.parseInt(regionId));
+        ConsensusGroupId.Factory.create(TConsensusGroupType.DataRegion.getValue(), regionId);
     this.pipeTaskReferenceCount =
         new AtomicInteger(
             DataRegionConsensusImpl.getInstance().getReplicationNum(consensusGroupId) - 1);
   }
 
   public synchronized void decreaseReference() {
-    if (pipeTaskReferenceCount.get() == 1) {
+    if (pipeTaskReferenceCount.decrementAndGet() == 0) {
       removeSelf();
     }
-    pipeTaskReferenceCount.decrementAndGet();
   }
 
   public void removeSelf() {
-    LOGGER.info("DeletionResource {} has been released, trigger a remove of DAL...", this);
+    LOGGER.info(DataNodePipeMessages.DELETIONRESOURCE_HAS_BEEN_RELEASED_TRIGGER_A_REMOVE, this);
     removeHook.accept(this);
   }
 
@@ -106,7 +104,7 @@ public class DeletionResource implements PersistentResource {
       try {
         this.wait();
       } catch (InterruptedException e) {
-        LOGGER.warn("Interrupted when waiting for result.", e);
+        LOGGER.warn(DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_RESULT, e);
         Thread.currentThread().interrupt();
         currentStatus = Status.FAILURE;
         break;
@@ -150,7 +148,7 @@ public class DeletionResource implements PersistentResource {
   }
 
   public static DeletionResource deserialize(
-      final ByteBuffer buffer, final String regionId, final Consumer<DeletionResource> removeHook)
+      final ByteBuffer buffer, final int regionId, final Consumer<DeletionResource> removeHook)
       throws IOException {
     AbstractDeleteDataNode node = DeleteNodeType.deserializeFromDAL(buffer);
     return new DeletionResource(node, removeHook, regionId);
@@ -197,5 +195,10 @@ public class DeletionResource implements PersistentResource {
     SUCCESS,
     FAILURE,
     RUNNING,
+  }
+
+  @TestOnly
+  public void setPipeTaskReferenceCount(int pipeTaskReferenceCount) {
+    this.pipeTaskReferenceCount.set(pipeTaskReferenceCount);
   }
 }

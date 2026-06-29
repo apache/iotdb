@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.subscription.it;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Assume;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
@@ -38,7 +37,7 @@ public class SkipOnSetUpAndTearDownFailure implements TestRule {
    * @param tearDownMethodName Should be exactly the same as the method name decorated with @After.
    */
   public SkipOnSetUpAndTearDownFailure(
-      @NonNull final String setUpMethodName, @NonNull final String tearDownMethodName) {
+      final String setUpMethodName, final String tearDownMethodName) {
     this.setUpMethodName = setUpMethodName;
     this.tearDownMethodName = tearDownMethodName;
   }

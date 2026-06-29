@@ -21,13 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -248,6 +248,23 @@ public class ConsensusReqReaderTest {
     walNode.log(0, insertRowNode); // put -1 after 6
     Assert.assertTrue(future.get());
     checkThread.shutdown();
+  }
+
+  @Test
+  public void testReqIteratorCarriesWriterMetadata() throws Exception {
+    final InsertRowNode insertRowNode = getInsertRowNode(devicePath);
+    insertRowNode.setSearchIndex(1).setPhysicalTime(123456789L).setNodeId(7);
+    walNode.log(0, insertRowNode);
+    walNode.rollWALFile();
+    walNode.rollWALFile();
+
+    final ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
+    Assert.assertTrue(iterator.hasNext());
+    final IndexedConsensusRequest request = iterator.next();
+
+    Assert.assertEquals(1L, request.getSearchIndex());
+    Assert.assertEquals(123456789L, request.getPhysicalTime());
+    Assert.assertEquals(7, request.getNodeId());
   }
 
   @Test

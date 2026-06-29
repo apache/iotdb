@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
@@ -65,6 +66,7 @@ public class CompactionScheduleTaskManager implements IService {
       ConcurrentHashMap.newKeySet();
   private ReentrantLock lock = new ReentrantLock();
   private volatile boolean init = false;
+  private volatile boolean isStoppingAllScheduleTask = false;
 
   @Override
   public void start() throws StartupException {
@@ -73,11 +75,16 @@ public class CompactionScheduleTaskManager implements IService {
     }
     initThreadPool();
     startScheduleTasks();
-    logger.info("Compaction schedule task manager started.");
+    logger.info(StorageEngineMessages.COMPACTION_SCHEDULE_TASK_MANAGER_STARTED);
+  }
+
+  public boolean isStoppingAllScheduleTask() {
+    return isStoppingAllScheduleTask;
   }
 
   public void stopCompactionScheduleTasks() throws InterruptedException {
     lock.lock();
+    isStoppingAllScheduleTask = true;
     try {
       for (Future<Void> task : submitCompactionScheduleTaskFutures) {
         task.cancel(true);
@@ -121,6 +128,7 @@ public class CompactionScheduleTaskManager implements IService {
 
   public void startScheduleTasks() {
     lock.lock();
+    isStoppingAllScheduleTask = false;
     try {
       // compaction selector
       for (int workerId = 0; workerId < compactionSelectorNum; workerId++) {
@@ -144,13 +152,14 @@ public class CompactionScheduleTaskManager implements IService {
   @Override
   public void stop() {
     lock.lock();
+    isStoppingAllScheduleTask = true;
     try {
       if (!init) {
         return;
       }
       init = false;
       compactionScheduleTaskThreadPool.shutdownNow();
-      logger.info("Waiting for compaction schedule task thread pool to shut down");
+      logger.info(StorageEngineMessages.WAITING_COMPACTION_SCHEDULE_POOL_SHUTDOWN);
       waitForThreadPoolTerminated();
     } finally {
       lock.unlock();
@@ -160,6 +169,7 @@ public class CompactionScheduleTaskManager implements IService {
   @Override
   public void waitAndStop(long milliseconds) {
     lock.lock();
+    isStoppingAllScheduleTask = true;
     try {
       if (!init) {
         return;
@@ -213,10 +223,10 @@ public class CompactionScheduleTaskManager implements IService {
       timeMillis += 200;
       long time = System.currentTimeMillis() - startTime;
       if (timeMillis % 60_000 == 0) {
-        logger.info("CompactionScheduleTaskManager has wait for {} seconds to stop", time / 1000);
+        logger.info(StorageEngineMessages.COMPACTION_SCHEDULE_MANAGER_WAIT_TO_STOP, time / 1000);
       }
     }
-    logger.info("CompactionScheduleTaskManager stopped");
+    logger.info(StorageEngineMessages.COMPACTION_SCHEDULE_TASK_MANAGER_STOPPED);
   }
 
   @Override
@@ -237,6 +247,7 @@ public class CompactionScheduleTaskManager implements IService {
   }
 
   public void unregisterDataRegion(DataRegion dataRegion) {
+    dataRegion.setAllowCompaction(false);
     dataRegionList.remove(dataRegion);
   }
 
@@ -279,7 +290,7 @@ public class CompactionScheduleTaskManager implements IService {
           try {
             Files.move(progressFile.toPath(), stoppedFile.toPath());
           } catch (IOException e) {
-            logger.error("[RepairTaskManager] Failed to rename repair data progress file");
+            logger.error(StorageEngineMessages.REPAIR_FAILED_RENAME_PROGRESS_FILE);
           }
         }
       }
@@ -315,7 +326,7 @@ public class CompactionScheduleTaskManager implements IService {
       lock.lock();
       try {
         if (repairTaskStatus.get() != RepairTaskStatus.RUNNING) {
-          logger.info("[RepairTaskManager] skip current task because repair task is stopping");
+          logger.info(StorageEngineMessages.REPAIR_SKIP_TASK_STOPPING);
           return null;
         }
         Future<Void> future = compactionScheduleTaskThreadPool.submit(scanTask);
@@ -333,9 +344,9 @@ public class CompactionScheduleTaskManager implements IService {
         } catch (InterruptedException e) {
           throw e;
         } catch (CancellationException cancellationException) {
-          logger.info("[RepairScheduler] scan task is cancelled");
+          logger.info(StorageEngineMessages.REPAIR_SCAN_TASK_CANCELLED);
         } catch (Exception e) {
-          logger.error("[RepairScheduler] Meet errors when scan time partition files", e);
+          logger.error(StorageEngineMessages.REPAIR_ERROR_SCAN_TIME_PARTITION, e);
         }
       }
       submitRepairScanTaskFutures.clear();

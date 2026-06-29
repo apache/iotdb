@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.exception.ArgsErrorException;
@@ -32,8 +33,8 @@ import org.apache.iotdb.tool.data.ImportData;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
@@ -76,19 +77,21 @@ public abstract class AbstractCli {
 
   static final String TRUST_STORE_PWD_ARGS = "tpw";
 
+  static final String SSL_PROTOCOL_ARGS = "ssl_protocol";
+
   private static final String EXECUTE_NAME = "execute";
 
   private static final String USE_SSL = "use_ssl";
   private static final String TRUST_STORE = "trust_store";
 
   private static final String TRUST_STORE_PWD = "trust_store_pwd";
+  private static final String SSL_PROTOCOL = "ssl_protocol";
   private static final String NULL = "null";
 
   static final int CODE_OK = 0;
   static final int CODE_ERROR = 1;
 
   static final String ISO8601_ARGS = "disableISO8601";
-  static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
   static final String RPC_COMPRESS_ARGS = "c";
   private static final String RPC_COMPRESS_NAME = "rpcCompressed";
   static final String TIMEOUT_ARGS = "timeout";
@@ -132,6 +135,7 @@ public abstract class AbstractCli {
   static String trustStore;
   // TODO: Make non-static
   static String trustStorePwd;
+  static String sslProtocol;
 
   static String execute;
   static boolean hasExecuteSQL = false;
@@ -156,6 +160,7 @@ public abstract class AbstractCli {
     keywordSet.add("-" + USE_SSL_ARGS);
     keywordSet.add("-" + TRUST_STORE_ARGS);
     keywordSet.add("-" + TRUST_STORE_PWD_ARGS);
+    keywordSet.add("-" + SSL_PROTOCOL_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
@@ -163,11 +168,12 @@ public abstract class AbstractCli {
 
   static Options createOptions() {
     Options options = new Options();
-    Option help = new Option(HELP_ARGS, false, "Display help information(optional)");
+    Option help = new Option(HELP_ARGS, false, "Display help information. (optional)");
     help.setRequired(false);
     options.addOption(help);
 
-    Option timeFormat = new Option(ISO8601_ARGS, false, "Display timestamp in number(optional)");
+    Option timeFormat =
+        new Option(ISO8601_ARGS, false, "Display timestamp in numeric format. (optional)");
     timeFormat.setRequired(false);
     options.addOption(timeFormat);
 
@@ -175,7 +181,7 @@ public abstract class AbstractCli {
         Option.builder(HOST_ARGS)
             .argName(HOST_NAME)
             .hasArg()
-            .desc("Host Name (optional, default 127.0.0.1)")
+            .desc("Host Name. Default is 127.0.0.1. (optional)")
             .build();
     options.addOption(host);
 
@@ -183,7 +189,7 @@ public abstract class AbstractCli {
         Option.builder(PORT_ARGS)
             .argName(PORT_NAME)
             .hasArg()
-            .desc("Port (optional, default 6667)")
+            .desc("Port. Default is 6667. (optional)")
             .build();
     options.addOption(port);
 
@@ -191,51 +197,49 @@ public abstract class AbstractCli {
         Option.builder(USERNAME_ARGS)
             .argName(USERNAME_NAME)
             .hasArg()
-            .desc("User name (required)")
+            .desc("User name. (required)")
             .required()
             .build();
     options.addOption(username);
 
     Option password =
-        Option.builder(PW_ARGS).argName(PW_NAME).hasArg().desc("password (optional)").build();
+        Option.builder(PW_ARGS)
+            .argName(PW_NAME)
+            .hasArg(true)
+            .optionalArg(true)
+            .desc("Password. Default is root. (optional)")
+            .build();
     options.addOption(password);
 
     Option useSSL =
         Option.builder(USE_SSL_ARGS)
             .argName(USE_SSL)
             .hasArg()
-            .desc("use_ssl statement (optional)")
+            .desc("Use SSL statement. (optional)")
             .build();
     options.addOption(useSSL);
 
-    Option trustStore =
-        Option.builder(TRUST_STORE_ARGS)
-            .argName(TRUST_STORE)
+    Option sslProtocol =
+        Option.builder(SSL_PROTOCOL_ARGS)
+            .longOpt(SSL_PROTOCOL)
+            .argName(SSL_PROTOCOL)
             .hasArg()
-            .desc("trust_store statement (optional)")
+            .desc("SSL protocol. (optional)")
             .build();
-    options.addOption(trustStore);
-
-    Option trustStorePwd =
-        Option.builder(TRUST_STORE_PWD_ARGS)
-            .argName(TRUST_STORE_PWD)
-            .hasArg()
-            .desc("trust_store_pwd statement (optional)")
-            .build();
-    options.addOption(trustStorePwd);
+    options.addOption(sslProtocol);
 
     Option execute =
         Option.builder(EXECUTE_ARGS)
             .argName(EXECUTE_NAME)
             .hasArg()
-            .desc("execute statement (optional)")
+            .desc("Execute a statement. (optional)")
             .build();
     options.addOption(execute);
 
     Option isRpcCompressed =
         Option.builder(RPC_COMPRESS_ARGS)
             .argName(RPC_COMPRESS_NAME)
-            .desc("Rpc Compression enabled or not")
+            .desc("Enable or disable Rpc Compression. (optional)")
             .build();
     options.addOption(isRpcCompressed);
 
@@ -243,9 +247,7 @@ public abstract class AbstractCli {
         Option.builder(TIMEOUT_ARGS)
             .argName(TIMEOUT_NAME)
             .hasArg()
-            .desc(
-                "The timeout in second. "
-                    + "Using the configuration of server if it's not set (optional)")
+            .desc("The timeout in seconds. Uses the server configuration if not set. (optional)")
             .build();
     options.addOption(queryTimeout);
 
@@ -253,7 +255,7 @@ public abstract class AbstractCli {
         Option.builder(SQL_DIALECT)
             .argName(SQL_DIALECT)
             .hasArg()
-            .desc("currently support tree and table, using tree if it's not set (optional)")
+            .desc("Currently supports tree and table; uses tree if not set. (optional)")
             .build();
     options.addOption(sqlDialect);
     return options;
@@ -272,7 +274,7 @@ public abstract class AbstractCli {
       if (isRequired) {
         String msg = String.format("%s: Required values for option '%s' not provided", IOTDB, name);
         ctx.getPrinter().println(msg);
-        ctx.getPrinter().println("Use -help for more information");
+        ctx.getPrinter().println(CliMessages.USE_HELP_FOR_MORE);
         throw new ArgsErrorException(msg);
       } else if (defaultValue == null) {
         String msg = String.format("%s: Required values for option '%s' is null.", IOTDB, name);
@@ -332,10 +334,10 @@ public abstract class AbstractCli {
         break;
       }
     }
-    if (index >= 0
-        && ((index + 1 >= args.length)
-            || (index + 1 < args.length && keywordSet.contains(args[index + 1])))) {
-      return ArrayUtils.remove(args, index);
+    if (index >= 0) {
+      if (index + 1 >= args.length || keywordSet.contains(args[index + 1])) {
+        return ArrayUtils.remove(args, index);
+      }
     }
     return args;
   }
@@ -570,8 +572,6 @@ public abstract class AbstractCli {
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       long costTime = System.currentTimeMillis() - startTime;
-      updateSqlDialectAndUsingDatabase(
-          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       if (hasResultSet) {
         // print the result
         try (ResultSet resultSet = statement.getResultSet()) {
@@ -580,7 +580,11 @@ public abstract class AbstractCli {
           List<Integer> maxSizeList = new ArrayList<>(columnLength);
           List<List<String>> lists =
               cacheResult(ctx, resultSet, maxSizeList, columnLength, resultSetMetaData, zoneId);
-          output(ctx, lists, maxSizeList);
+          if (isJsonExplainResult(lists)) {
+            outputRawJson(ctx, lists, maxSizeList);
+          } else {
+            output(ctx, lists, maxSizeList);
+          }
           ctx.getPrinter().println(String.format("It costs %.3fs", costTime / 1000.0));
           while (!isReachEnd) {
             if (continuePrint) {
@@ -629,6 +633,8 @@ public abstract class AbstractCli {
       ctx.getPrinter().println("Msg: " + e);
       executeStatus = CODE_ERROR;
     } finally {
+      updateSqlDialectAndUsingDatabase(
+          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       resetArgs();
     }
     return executeStatus;
@@ -752,6 +758,7 @@ public abstract class AbstractCli {
       case DOUBLE:
       case TEXT:
       case STRING:
+      case OBJECT:
         return resultSet.getString(columnIndex);
       case BLOB:
         byte[] v = resultSet.getBytes(columnIndex);
@@ -825,6 +832,46 @@ public abstract class AbstractCli {
     }
 
     return lists;
+  }
+
+  private static final String COLUMN_DISTRIBUTION_PLAN = "distribution plan";
+  private static final String COLUMN_EXPLAIN_ANALYZE = "Explain Analyze";
+
+  private static boolean isJsonExplainResult(List<List<String>> lists) {
+    if (lists.size() != 1 || lists.get(0).size() < 2) {
+      return false;
+    }
+    String columnName = lists.get(0).get(0);
+    if (!COLUMN_DISTRIBUTION_PLAN.equalsIgnoreCase(columnName)
+        && !COLUMN_EXPLAIN_ANALYZE.equalsIgnoreCase(columnName)) {
+      return false;
+    }
+    String value = lists.get(0).get(1).trim();
+    return value.startsWith("{") || value.startsWith("[");
+  }
+
+  private static void outputRawJson(
+      CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {
+    // Use header text length for border width instead of the full content length
+    String header = lists.get(0).get(0);
+    int headerLen = header.length() + ctx.getPrinter().computeHANCount(header);
+    List<Integer> headerSizeList = new ArrayList<>(1);
+    headerSizeList.add(headerLen);
+    // Print header with table border
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    ctx.getPrinter().printRow(lists, 0, headerSizeList);
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    // Print JSON content without '|' borders
+    for (int i = 1; i < lists.get(0).size(); i++) {
+      ctx.getPrinter().println(lists.get(0).get(i));
+    }
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    if (isReachEnd) {
+      lineCount += lists.get(0).size() - 1;
+      ctx.getPrinter().printCount(lineCount);
+    } else {
+      lineCount += maxPrintRowCount;
+    }
   }
 
   private static void output(CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {

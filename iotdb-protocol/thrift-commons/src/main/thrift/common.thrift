@@ -34,6 +34,7 @@ struct TSStatus {
   3: optional list<TSStatus> subStatus
   4: optional TEndPoint redirectNode
   5: optional bool needRetry
+  6: optional binary responseData
 }
 
 enum TConsensusGroupType {
@@ -196,6 +197,13 @@ struct TSetThrottleQuotaReq {
   2: required TThrottleQuota throttleQuota
 }
 
+struct TPipeHeartbeatResp {
+  1: required list<binary> pipeMetaList
+  2: optional list<bool> pipeCompletedList
+  3: optional list<i64> pipeRemainingEventCountList
+  4: optional list<double> pipeRemainingTimeList
+}
+
 struct TLicense {
     1: required i64 licenseIssueTimestamp
     2: required i64 expireTimestamp
@@ -229,6 +237,7 @@ enum TServiceType {
 struct TServiceProvider {
   1: required TEndPoint endPoint
   2: required TServiceType serviceType
+  3: required i32 nodeId
 }
 
 struct TSender {
@@ -251,6 +260,20 @@ struct TTestConnectionResp {
 struct TNodeLocations {
   1: optional list<TConfigNodeLocation> configNodeLocations
   2: optional list<TDataNodeLocation> dataNodeLocations
+}
+
+struct TExternalServiceListResp {
+  1: required TSStatus status
+  2: required list<TExternalServiceEntry> externalServiceInfos
+}
+
+
+struct TExternalServiceEntry {
+  1: required string serviceName
+  2: required string className
+  3: required byte state
+  4: required i32 dataNodeId
+  5: required byte serviceType
 }
 
 enum TAggregationType {
@@ -283,7 +306,18 @@ enum TAggregationType {
   LAST_BY,
   MIN,
   MAX,
-  COUNT_ALL
+  COUNT_ALL,
+  APPROX_COUNT_DISTINCT,
+  APPROX_MOST_FREQUENT,
+  APPROX_PERCENTILE,
+  CORR,
+  COVAR_POP,
+  COVAR_SAMP,
+  REGR_SLOPE,
+  REGR_INTERCEPT,
+  SKEWNESS,
+  KURTOSIS
+  PERCENTILE,
 }
 
 struct TShowConfigurationTemplateResp {
@@ -294,6 +328,11 @@ struct TShowConfigurationTemplateResp {
 struct TShowConfigurationResp {
   1: required TSStatus status
   2: required string content
+}
+
+struct TShowAppliedConfigurationsResp {
+  1: required TSStatus status
+  2: optional map<string, string> data
 }
 
 // for AINode

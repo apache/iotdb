@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,7 +65,8 @@ public class LocalFileUserAccessorTest {
 
   @Test
   public void test() throws IOException, IllegalPathException {
-    User user = new User("test", "password");
+    User user = new User("test", "password123456");
+    user.setUserId(5);
     user.grantSysPrivilege(PrivilegeType.EXTEND_TEMPLATE, false);
     user.grantSysPrivilege(PrivilegeType.MANAGE_USER, false);
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.test"));
@@ -80,23 +81,24 @@ public class LocalFileUserAccessorTest {
     user.addRole("testRole2");
     accessor.saveEntity(user);
     accessor.reset();
-    User loadUser = accessor.loadEntity("test");
+    User loadUser = accessor.loadEntity("5");
     assertEquals(user, loadUser);
     user.setName("test1");
+    user.setUserId(6);
     accessor.saveEntity(user);
 
     // list
     List<String> usernames = accessor.listAllEntities();
     usernames.sort(null);
-    assertTrue(usernames.contains("test"));
-    assertTrue(usernames.contains("test1"));
+    assertTrue(usernames.contains("5"));
+    assertTrue(usernames.contains("6"));
 
     // delete
     assertFalse(accessor.deleteEntity("not a user"));
-    assertTrue(accessor.deleteEntity(user.getName()));
+    assertTrue(accessor.deleteEntity(String.valueOf(user.getUserId())));
     usernames = accessor.listAllEntities();
     assertEquals(1, usernames.size());
-    assertTrue(usernames.contains("test"));
+    assertTrue(usernames.contains("5"));
     User nullUser = accessor.loadEntity(user.getName());
     assertNull(nullUser);
   }
@@ -105,7 +107,7 @@ public class LocalFileUserAccessorTest {
   public void testLoadOldVersion() throws IOException, IllegalPathException {
     User role = new User();
     role.setName("root");
-    role.setPassword("password");
+    role.setPassword("password123456");
     List<PathPrivilege> pathPriList = new ArrayList<>();
     PathPrivilege rootPathPriv = new PathPrivilege(new PartialPath("root.**"));
     PathPrivilege normalPathPriv = new PathPrivilege(new PartialPath("root.b.c.**"));
@@ -127,9 +129,14 @@ public class LocalFileUserAccessorTest {
     accessor.saveUserOldVersion(role);
     User newRole = accessor.loadEntity("root");
     assertEquals(role, newRole);
+    newRole.setName("root1");
+    accessor.saveUserOldVersion1(newRole);
+    User newRole1 = accessor.loadEntity("root1");
+    assertEquals(newRole, newRole1);
     newRole.setName("root2");
+    newRole.setUserId(10000);
     accessor.saveEntity(newRole);
-    User newRole2 = accessor.loadEntity("root2");
+    User newRole2 = accessor.loadEntity("10000");
     assertEquals(newRole, newRole2);
   }
 }

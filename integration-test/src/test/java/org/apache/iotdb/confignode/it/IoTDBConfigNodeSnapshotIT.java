@@ -55,8 +55,8 @@ import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -83,8 +83,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBConfigNodeSnapshotIT {
-  private static final int testRatisSnapshotTriggerThreshold = 100;
-  private static final long testTimePartitionInterval = 86400;
+  protected final long testTimePartitionInterval = 86400;
 
   @Before
   public void setUp() throws Exception {
@@ -92,7 +91,7 @@ public class IoTDBConfigNodeSnapshotIT {
         .getConfig()
         .getCommonConfig()
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setConfigNodeRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold)
+        .setConfigNodeRatisSnapshotTriggerThreshold(1000)
         .setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 2C2D cluster environment
@@ -107,7 +106,7 @@ public class IoTDBConfigNodeSnapshotIT {
   @Test
   public void testPartitionInfoSnapshot() throws Exception {
     final String sg = "root.sg";
-    final int storageGroupNum = 10;
+    final int databaseNum = 10;
     final int seriesPartitionSlotsNum = 10;
     final int timePartitionSlotsNum = 10;
 
@@ -119,10 +118,10 @@ public class IoTDBConfigNodeSnapshotIT {
 
       Set<TCQEntry> expectedCQEntries = createCQs(client);
 
-      for (int i = 0; i < storageGroupNum; i++) {
-        String storageGroup = sg + i;
-        TDatabaseSchema storageGroupSchema = new TDatabaseSchema(storageGroup);
-        TSStatus status = client.setDatabase(storageGroupSchema);
+      for (int i = 0; i < databaseNum; i++) {
+        String database = sg + i;
+        TDatabaseSchema databaseSchema = new TDatabaseSchema(database);
+        TSStatus status = client.setDatabase(databaseSchema);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
         for (int j = 0; j < seriesPartitionSlotsNum; j++) {
@@ -130,7 +129,7 @@ public class IoTDBConfigNodeSnapshotIT {
 
           // Create SchemaPartition
           ByteBuffer patternTree =
-              generatePatternTreeBuffer(new String[] {storageGroup + ".d" + j + ".s"});
+              generatePatternTreeBuffer(new String[] {database + ".d" + j + ".s"});
           TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(patternTree);
           TSchemaPartitionTableResp schemaPartitionTableResp =
               client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
@@ -140,10 +139,8 @@ public class IoTDBConfigNodeSnapshotIT {
               schemaPartitionTableResp.getStatus().getCode());
           Assert.assertNotNull(schemaPartitionTableResp.getSchemaPartitionTable());
           assertEquals(1, schemaPartitionTableResp.getSchemaPartitionTableSize());
-          Assert.assertNotNull(
-              schemaPartitionTableResp.getSchemaPartitionTable().get(storageGroup));
-          assertEquals(
-              1, schemaPartitionTableResp.getSchemaPartitionTable().get(storageGroup).size());
+          Assert.assertNotNull(schemaPartitionTableResp.getSchemaPartitionTable().get(database));
+          assertEquals(1, schemaPartitionTableResp.getSchemaPartitionTable().get(database).size());
 
           for (int k = 0; k < timePartitionSlotsNum; k++) {
             TTimePartitionSlot timePartitionSlot =
@@ -152,9 +149,9 @@ public class IoTDBConfigNodeSnapshotIT {
             // Create DataPartition
             Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
                 new HashMap<>();
-            partitionSlotsMap.put(storageGroup, new HashMap<>());
+            partitionSlotsMap.put(database, new HashMap<>());
             partitionSlotsMap
-                .get(storageGroup)
+                .get(database)
                 .put(
                     seriesPartitionSlot,
                     new TTimeSlotList()
@@ -168,19 +165,18 @@ public class IoTDBConfigNodeSnapshotIT {
                 dataPartitionTableResp.getStatus().getCode());
             Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
             assertEquals(1, dataPartitionTableResp.getDataPartitionTableSize());
-            Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable().get(storageGroup));
-            assertEquals(
-                1, dataPartitionTableResp.getDataPartitionTable().get(storageGroup).size());
+            Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable().get(database));
+            assertEquals(1, dataPartitionTableResp.getDataPartitionTable().get(database).size());
             Assert.assertNotNull(
                 dataPartitionTableResp
                     .getDataPartitionTable()
-                    .get(storageGroup)
+                    .get(database)
                     .get(seriesPartitionSlot));
             assertEquals(
                 1,
                 dataPartitionTableResp
                     .getDataPartitionTable()
-                    .get(storageGroup)
+                    .get(database)
                     .get(seriesPartitionSlot)
                     .size());
           }

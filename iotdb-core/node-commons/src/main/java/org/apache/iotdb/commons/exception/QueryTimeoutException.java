@@ -27,4 +27,8 @@ public class QueryTimeoutException extends IoTDBRuntimeException {
   public QueryTimeoutException() {
     super("Query execution is time out", QUERY_TIMEOUT.getStatusCode(), true);
   }
+
+  public QueryTimeoutException(String message) {
+    super(message, QUERY_TIMEOUT.getStatusCode(), true);
+  }
 }

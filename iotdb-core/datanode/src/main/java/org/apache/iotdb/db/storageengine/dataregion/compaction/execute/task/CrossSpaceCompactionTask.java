@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 
 import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
@@ -236,6 +239,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           }
         }
 
+        updateTableSizeCache();
+
         CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
@@ -273,6 +278,21 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     return isSuccess;
   }
 
+  protected void updateTableSizeCache() {
+    if (!PathUtils.isTableModelDatabase(this.storageGroupName)) {
+      return;
+    }
+    for (TsFileResource resource : targetTsfileResourceList) {
+      if (!resource.isDeleted()) {
+        TableDiskUsageIndex.getInstance()
+            .write(
+                storageGroupName,
+                resource.getTsFileID(),
+                summary.getTableSizeMapOfTargetResource(resource.getTsFileID()));
+      }
+    }
+  }
+
   public void recover() {
     try {
       if (needRecoverTaskInfoFromLogFile) {
@@ -308,7 +328,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     deleteCompactionModsFile(selectedUnsequenceFiles);
     // delete target file
     if (targetTsfileResourceList != null && !deleteTsFilesOnDisk(targetTsfileResourceList)) {
-      throw new CompactionRecoverException("failed to delete target file %s");
+      throw new CompactionRecoverException(StorageEngineMessages.FAILED_TO_DELETE_TARGET_FILE);
     }
   }
 
@@ -333,7 +353,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     }
     if (!deleteTsFilesOnDisk(selectedSequenceFiles)
         || !deleteTsFilesOnDisk(selectedUnsequenceFiles)) {
-      throw new CompactionRecoverException("source files cannot be deleted successfully");
+      throw new CompactionRecoverException(StorageEngineMessages.SOURCE_FILES_CANNOT_BE_DELETED);
     }
     if (recoverMemoryStatus) {
       FileMetrics.getInstance().deleteTsFile(true, selectedSequenceFiles);

@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -47,10 +48,10 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
       String treeDBName,
       Map<String, String> measurementColumnNameMap) {
-    super(id, qualifiedObjectName, outputSymbols, assignments, idAndAttributeIndexMap);
+    super(id, qualifiedObjectName, outputSymbols, assignments, tagAndAttributeIndexMap);
     this.treeDBName = treeDBName;
     this.measurementColumnNameMap = measurementColumnNameMap;
   }
@@ -61,7 +62,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
       Expression pushDownPredicate,
@@ -77,7 +78,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -91,6 +92,10 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
 
   public TreeDeviceViewScanNode() {}
 
+  public void setTreeDBName(String treeDBName) {
+    this.treeDBName = treeDBName;
+  }
+
   public String getTreeDBName() {
     return treeDBName;
   }
@@ -100,8 +105,8 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTreeDeviceViewScan(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitTreeDeviceViewScan(this, context);
   }
 
   @Override
@@ -112,7 +117,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,

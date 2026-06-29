@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.rea
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -91,7 +92,12 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
 
       if (dataBlockReader.hasNextBatch()) {
         compactionWriter.startMeasurement(
-            measurement, new ChunkWriterImpl(measurementSchemas.get(0), true), taskId);
+            measurement,
+            new ChunkWriterImpl(
+                measurementSchemas.get(0),
+                true,
+                EncryptUtils.getEncryptParameter(compactionWriter.getEncryptParameter())),
+            taskId);
         ReadPointCompactionPerformer.writeWithReader(
             compactionWriter, dataBlockReader, device, taskId, false);
         compactionWriter.endMeasurement(taskId);

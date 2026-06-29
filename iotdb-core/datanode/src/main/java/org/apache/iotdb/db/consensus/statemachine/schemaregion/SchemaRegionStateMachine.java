@@ -22,16 +22,16 @@ package org.apache.iotdb.db.consensus.statemachine.schemaregion;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
@@ -136,14 +136,23 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void loadSnapshot(final File latestSnapshotRootDir) {
-    schemaRegion.loadSnapshot(latestSnapshotRootDir);
-    PipeDataNodeAgent.runtime()
-        .schemaListener(schemaRegion.getSchemaRegionId())
-        .loadSnapshot(latestSnapshotRootDir);
-    // We recompute the snapshot for pipe listener when loading snapshot
-    // to recover the newest snapshot in cache
-    listen2Snapshot4PipeListener(false);
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
+    try {
+      // The boolean result must reflect whether the schema-region data was actually loaded, so
+      // callers (e.g. the AddPeer flow and the Ratis snapshot-install path) can detect a real
+      // failure instead of treating a fallback-to-empty load as success.
+      final boolean loadSucceeded = schemaRegion.loadSnapshot(latestSnapshotRootDir);
+      PipeDataNodeAgent.runtime()
+          .schemaListener(schemaRegion.getSchemaRegionId())
+          .loadSnapshot(latestSnapshotRootDir);
+      // We recompute the snapshot for pipe listener when loading snapshot
+      // to recover the newest snapshot in cache
+      listen2Snapshot4PipeListener(false);
+      return loadSucceeded;
+    } catch (Exception e) {
+      logger.error("Failed to load snapshot from {}", latestSnapshotRootDir, e);
+      return false;
+    }
   }
 
   public void listen2Snapshot4PipeListener(final boolean isTmp) {

@@ -34,6 +34,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.Meter;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
-    implements Iterator<List<Tablet>> {
+    implements Iterator<Pair<String, List<Tablet>>> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
@@ -162,7 +163,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
             >= SubscriptionConfig.getInstance().getSubscriptionMaxAllowedEventCountInTabletBatch();
   }
 
-  private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
+  private Pair<String, List<Tablet>> convertToTablets(
+      final TabletInsertionEvent tabletInsertionEvent) {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       final List<Tablet> tablets =
           ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablets();
@@ -171,19 +173,28 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
               .reduce(Long::sum)
               .orElse(0L));
-      return tablets;
+      return new Pair<>(
+          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
+              ? ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
+                  .getTableModelDatabaseName()
+              : null,
+          tablets);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
       final Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
       updateEstimatedRawTabletInsertionEventSize(
           PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
-      return Collections.singletonList(tablet);
+      return new Pair<>(
+          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
+              ? ((PipeRawTabletInsertionEvent) tabletInsertionEvent).getTableModelDatabaseName()
+              : null,
+          Collections.singletonList(tablet));
     }
 
     LOGGER.warn(
         "SubscriptionPipeTabletEventBatch {} only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
         this,
         tabletInsertionEvent);
-    return Collections.emptyList();
+    return null;
   }
 
   /////////////////////////////// estimator ///////////////////////////////
@@ -263,8 +274,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public synchronized List<Tablet> next() {
-    final List<Tablet> tablets = nextInternal();
+  public synchronized Pair<String, List<Tablet>> next() {
+    final Pair<String, List<Tablet>> tablets = nextInternal();
     if (Objects.isNull(tablets)) {
       return null;
     }
@@ -280,7 +291,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     return tablets;
   }
 
-  private List<Tablet> nextInternal() {
+  private Pair<String, List<Tablet>> nextInternal() {
     if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
       if (currentTabletInsertionEventsIterator.hasNext()) {
         final TabletInsertionEvent tabletInsertionEvent =

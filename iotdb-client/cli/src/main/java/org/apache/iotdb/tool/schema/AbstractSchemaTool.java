@@ -19,68 +19,86 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.type.ExitType;
+import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.IoTPrinter;
+import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
+import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
+import org.jline.reader.LineReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.LongAdder;
 
 public abstract class AbstractSchemaTool {
 
-  protected static final String HOST_ARGS = "h";
-  protected static final String HOST_NAME = "host";
-  protected static final String HOST_DEFAULT_VALUE = "127.0.0.1";
-
-  protected static final String HELP_ARGS = "help";
-
-  protected static final String PORT_ARGS = "p";
-  protected static final String PORT_NAME = "port";
-  protected static final String PORT_DEFAULT_VALUE = "6667";
-
-  protected static final String PW_ARGS = "pw";
-  protected static final String PW_NAME = "password";
-  protected static final String PW_DEFAULT_VALUE = "root";
-
-  protected static final String USERNAME_ARGS = "u";
-  protected static final String USERNAME_NAME = "username";
-  protected static final String USERNAME_DEFAULT_VALUE = "root";
-
-  protected static final String TIMEOUT_ARGS = "timeout";
-  protected static final String TIMEOUT_ARGS_NAME = "queryTimeout";
-
-  protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
-
-  protected static final int CODE_OK = 0;
-  protected static final int CODE_ERROR = 1;
-
   protected static String host;
   protected static String port;
+  protected static String table;
+  protected static String database;
   protected static String username;
   protected static String password;
-
-  protected static String aligned;
+  protected static Boolean useSsl;
+  protected static String trustStore;
+  protected static String trustStorePwd;
+  protected static String sslProtocol;
   protected static Session session;
+  protected static String queryPath;
+  protected static int threadNum = 8;
+  protected static String targetPath;
+  protected static Boolean sqlDialectTree = true;
+  protected static long timeout = 60000;
+  protected static String targetDirectory;
+  protected static Boolean aligned = false;
+  protected static int linesPerFile = 10000;
+  protected static String failedFileDirectory = null;
+  protected static int batchPointSize = Constants.BATCH_POINT_SIZE;
+  protected static int linesPerFailedFile = Constants.BATCH_POINT_SIZE;
+  protected static String targetFile = Constants.DUMP_FILE_NAME_DEFAULT;
+  protected static final LongAdder loadFileSuccessfulNum = new LongAdder();
 
-  protected static final List<String> HEAD_COLUMNS =
-      Arrays.asList("Timeseries", "Alias", "DataType", "Encoding", "Compression");
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSchemaTool.class);
 
   protected AbstractSchemaTool() {}
+
+  protected static Session.Builder configureSsl(Session.Builder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
+  protected static SessionPool.Builder configureSsl(SessionPool.Builder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
+  protected static TableSessionPoolBuilder configureSsl(TableSessionPoolBuilder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
 
   protected static String checkRequiredArg(
       String arg, String name, CommandLine commandLine, String defaultValue)
@@ -91,63 +109,56 @@ public abstract class AbstractSchemaTool {
         return defaultValue;
       }
       String msg = String.format("Required values for option '%s' not provided", name);
-      LOGGER.info(msg);
-      LOGGER.info("Use -help for more information");
       throw new ArgsErrorException(msg);
     }
     return str;
   }
 
-  protected static void parseBasicParams(CommandLine commandLine) throws ArgsErrorException {
-    host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, HOST_DEFAULT_VALUE);
-    port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, PORT_DEFAULT_VALUE);
-    username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, USERNAME_DEFAULT_VALUE);
-    password = checkRequiredArg(PW_ARGS, PW_NAME, commandLine, PW_DEFAULT_VALUE);
-  }
-
-  protected static Options createNewOptions() {
-    Options options = new Options();
-
-    Option opHost =
-        Option.builder(HOST_ARGS)
-            .longOpt(HOST_NAME)
-            .optionalArg(true)
-            .argName(HOST_NAME)
-            .hasArg()
-            .desc("Host Name (optional)")
-            .build();
-    options.addOption(opHost);
-
-    Option opPort =
-        Option.builder(PORT_ARGS)
-            .longOpt(PORT_NAME)
-            .optionalArg(true)
-            .argName(PORT_NAME)
-            .hasArg()
-            .desc("Port (optional)")
-            .build();
-    options.addOption(opPort);
-
-    Option opUsername =
-        Option.builder(USERNAME_ARGS)
-            .longOpt(USERNAME_NAME)
-            .optionalArg(true)
-            .argName(USERNAME_NAME)
-            .hasArg()
-            .desc("Username (optional)")
-            .build();
-    options.addOption(opUsername);
-
-    Option opPassword =
-        Option.builder(PW_ARGS)
-            .longOpt(PW_NAME)
-            .optionalArg(true)
-            .argName(PW_NAME)
-            .hasArg()
-            .desc("Password (optional)")
-            .build();
-    options.addOption(opPassword);
-    return options;
+  protected static void parseBasicParams(CommandLine commandLine)
+      throws ArgsErrorException, IOException {
+    host =
+        checkRequiredArg(
+            Constants.HOST_ARGS, Constants.HOST_NAME, commandLine, Constants.HOST_DEFAULT_VALUE);
+    port =
+        checkRequiredArg(
+            Constants.PORT_ARGS, Constants.PORT_NAME, commandLine, Constants.PORT_DEFAULT_VALUE);
+    username =
+        checkRequiredArg(
+            Constants.USERNAME_ARGS,
+            Constants.USERNAME_NAME,
+            commandLine,
+            Constants.USERNAME_DEFAULT_VALUE);
+    CliContext cliCtx = new CliContext(System.in, System.out, System.err, ExitType.SYSTEM_EXIT);
+    LineReader lineReader = JlineUtils.getLineReader(cliCtx, username, host, port);
+    cliCtx.setLineReader(lineReader);
+    String useSslStr = commandLine.getOptionValue(Constants.USE_SSL_ARGS);
+    useSsl = Boolean.parseBoolean(useSslStr);
+    if (useSsl) {
+      sslProtocol = commandLine.getOptionValue(Constants.SSL_PROTOCOL_ARGS);
+      String givenTS = commandLine.getOptionValue(Constants.TRUST_STORE_ARGS);
+      if (givenTS != null) {
+        trustStore = givenTS;
+      } else {
+        trustStore = cliCtx.getLineReader().readLine("please input your trust_store:", '\0');
+      }
+      String givenTPW = commandLine.getOptionValue(Constants.TRUST_STORE_PWD_ARGS);
+      if (givenTPW != null) {
+        trustStorePwd = givenTPW;
+      } else {
+        trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+      }
+    }
+    boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);
+    if (hasPw) {
+      String inputPassword = commandLine.getOptionValue(Constants.PW_ARGS);
+      if (inputPassword != null) {
+        password = inputPassword;
+      } else {
+        password = cliCtx.getLineReader().readLine("please input your password:", '\0');
+      }
+    } else {
+      password = Constants.PW_DEFAULT_VALUE;
+    }
   }
 
   /**
@@ -160,7 +171,7 @@ public abstract class AbstractSchemaTool {
     try {
       final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(filePath);
       for (List<Object> CsvRecord : records) {
-        csvPrinterWrapper.printRecordln(CsvRecord);
+        csvPrinterWrapper.printRecordLn(CsvRecord);
       }
       csvPrinterWrapper.flush();
       csvPrinterWrapper.close();
@@ -194,7 +205,7 @@ public abstract class AbstractSchemaTool {
       csvPrinter.printRecord(values);
     }
 
-    public void printRecordln(final Iterable<?> values) throws IOException {
+    public void printRecordLn(final Iterable<?> values) throws IOException {
       if (csvPrinter == null) {
         csvPrinter = csvFormat.print(new PrintWriter(filePath));
       }

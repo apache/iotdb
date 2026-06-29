@@ -27,6 +27,11 @@ public class OrderByKey {
   public static final String DATANODEID = "DATANODEID";
   public static final String ELAPSEDTIME = "ELAPSEDTIME";
   public static final String STATEMENT = "STATEMENT";
+  public static final String DATABASE = "DATABASE";
+  public static final String REGIONID = "REGIONID";
+  public static final String TIMEPARTITION = "TIMEPARTITION";
+  public static final String TIMESERIESPARTITION = "TIMESERIESPARTITION";
+  public static final String SIZEINBYTES = "SIZEINBYTES";
 
   private OrderByKey() {
     // forbidding instantiation

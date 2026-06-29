@@ -44,18 +44,19 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
 
   @Override
   public void run() {
-    String filePath;
+    String filePath = "";
+    File file = null;
     try {
       if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
         while ((filePath = ImportTsFileScanTool.pollFromQueue()) != null) {
-          File file = new File(filePath);
+          file = new File(filePath);
           if (file.getName().endsWith(Constants.TSFILE_SUFFIXS)) {
             importFromTsFile(file);
           }
         }
       } else {
         while ((filePath = ImportDataScanTool.pollFromQueue()) != null) {
-          File file = new File(filePath);
+          file = new File(filePath);
           if (file.getName().endsWith(Constants.SQL_SUFFIXS)) {
             importFromSqlFile(file);
           } else {
@@ -64,7 +65,8 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
         }
       }
     } catch (Exception e) {
-      ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
+      ioTPrinter.println(
+          String.format("[%s] - Unexpected error occurred: %s", file.getName(), e.getMessage()));
     }
   }
 
@@ -87,7 +89,7 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
               ioTPrinter.println("ImportData thread join interrupted: " + e.getMessage());
             }
           });
-      ioTPrinter.println("Import completely!");
+      ioTPrinter.println(Constants.IMPORT_COMPLETELY);
     }
   }
 

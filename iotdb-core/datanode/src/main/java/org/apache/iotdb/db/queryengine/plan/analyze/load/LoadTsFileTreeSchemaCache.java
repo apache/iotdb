@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
@@ -29,9 +30,10 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
-import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileAnalyzeSchemaMemoryBlock;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -41,8 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -70,13 +70,13 @@ public class LoadTsFileTreeSchemaCache {
     FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES = ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES >> 1;
   }
 
-  private final LoadTsFileAnalyzeSchemaMemoryBlock block;
+  private final LoadTsFileMemoryBlock block;
 
   private Map<IDeviceID, Set<MeasurementSchema>> currentBatchDevice2TimeSeriesSchemas;
   private Map<IDeviceID, Boolean> tsFileDevice2IsAligned;
   private Set<PartialPath> alreadySetDatabases;
 
-  private Collection<ModEntry> currentModifications;
+  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
   private ITimeIndex currentTimeIndex;
 
   private long batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
@@ -90,11 +90,11 @@ public class LoadTsFileTreeSchemaCache {
   public LoadTsFileTreeSchemaCache() throws LoadRuntimeOutOfMemoryException {
     this.block =
         LoadTsFileMemoryManager.getInstance()
-            .allocateAnalyzeSchemaMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
+            .allocateMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
     this.currentBatchDevice2TimeSeriesSchemas = new HashMap<>();
     this.tsFileDevice2IsAligned = new HashMap<>();
     this.alreadySetDatabases = new HashSet<>();
-    this.currentModifications = new ArrayList<>();
+    this.currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
   }
 
   public Map<IDeviceID, Set<MeasurementSchema>> getDevice2TimeSeries() {
@@ -154,10 +154,12 @@ public class LoadTsFileTreeSchemaCache {
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     clearModificationsAndTimeIndex();
 
-    currentModifications = ModificationFile.readAllModifications(resource.getTsFile(), true);
-    for (final ModEntry modification : currentModifications) {
-      currentModificationsMemoryUsageSizeInBytes += modification.serializedSize();
-    }
+    ModificationFile.readAllModifications(resource.getTsFile(), true)
+        .forEach(
+            modification ->
+                currentModifications.append(modification.keyOfPatternTree(), modification));
+
+    currentModificationsMemoryUsageSizeInBytes = currentModifications.ramBytesUsed();
 
     // If there are too many modifications, a larger memory block is needed to avoid frequent
     // flush.
@@ -188,13 +190,17 @@ public class LoadTsFileTreeSchemaCache {
     }
   }
 
+  public void setCurrentTimeIndex(final ITimeIndex timeIndex) {
+    currentTimeIndex = timeIndex;
+  }
+
   public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
     return ModificationUtils.isDeviceDeletedByMods(currentModifications, currentTimeIndex, device);
   }
 
-  public boolean isTimeseriesDeletedByMods(IDeviceID device, TimeseriesMetadata timeseriesMetadata)
+  public boolean isTimeSeriesDeletedByMods(IDeviceID device, TimeseriesMetadata timeseriesMetadata)
       throws IllegalPathException {
-    return ModificationUtils.isTimeseriesDeletedByMods(
+    return ModificationUtils.isTimeSeriesDeletedByMods(
         currentModifications,
         device,
         timeseriesMetadata.getMeasurementId(),
@@ -231,7 +237,7 @@ public class LoadTsFileTreeSchemaCache {
   }
 
   public void clearModificationsAndTimeIndex() {
-    currentModifications.clear();
+    currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     currentTimeIndex = null;
     block.reduceMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
     block.reduceMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);

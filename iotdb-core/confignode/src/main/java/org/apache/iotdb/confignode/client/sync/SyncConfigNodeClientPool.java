@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -98,6 +99,8 @@ public class SyncConfigNodeClientPool {
             return client.submitTestConnectionTask((TNodeLocations) req);
           case TEST_CONNECTION:
             return client.testConnectionEmptyRPC();
+          case SHOW_APPLIED_CONFIGURATIONS:
+            return client.showAppliedConfigurations((int) req);
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
@@ -105,7 +108,7 @@ public class SyncConfigNodeClientPool {
       } catch (Exception e) {
         lastException = e;
         LOGGER.warn(
-            "{} failed on ConfigNode {}, because {}, retrying {}...",
+            ConfigNodeMessages.FAILED_ON_CONFIGNODE_BECAUSE_RETRYING,
             requestType,
             endPoint,
             e.getMessage(),
@@ -113,7 +116,7 @@ public class SyncConfigNodeClientPool {
         doRetryWait(retry);
       }
     }
-    LOGGER.error("{} failed on ConfigNode {}", requestType, endPoint, lastException);
+    LOGGER.error(ConfigNodeMessages.FAILED_ON_CONFIGNODE, requestType, endPoint, lastException);
     return RpcUtils.getStatus(
         TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR,
         "All retry failed due to: " + lastException.getMessage());
@@ -135,6 +138,11 @@ public class SyncConfigNodeClientPool {
     while (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       TimeUnit.MILLISECONDS.sleep(2000);
       updateConfigNodeLeader(status);
+      if (configNodeLeader == null) {
+        LOGGER.warn(
+            "Redirection recommended for removeConfigNode but no leader endpoint provided, abort retry.");
+        break;
+      }
       try (SyncConfigNodeIServiceClient clientLeader =
           clientManager.borrowClient(configNodeLeader)) {
         status = clientLeader.removeConfigNode(configNodeLocation);
@@ -147,7 +155,7 @@ public class SyncConfigNodeClientPool {
     try {
       TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
     } catch (InterruptedException e) {
-      LOGGER.error("Retry wait failed.", e);
+      LOGGER.error(ConfigNodeMessages.RETRY_WAIT_FAILED, e);
       Thread.currentThread().interrupt();
     }
   }

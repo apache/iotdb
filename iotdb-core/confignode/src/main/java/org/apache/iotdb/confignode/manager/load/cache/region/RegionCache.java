@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.Collections;
 import java.util.List;
@@ -31,9 +34,11 @@ import java.util.List;
  * statistics of the Region based on the latest RegionHeartbeatSample.
  */
 public class RegionCache extends AbstractLoadCache {
+  private final Pair<Integer, TConsensusGroupId> id;
 
-  public RegionCache() {
+  public RegionCache(int dataNodeId, TConsensusGroupId gid) {
     super();
+    this.id = new Pair<>(dataNodeId, gid);
     this.currentStatistics.set(RegionStatistics.generateDefaultRegionStatistics());
   }
 
@@ -50,7 +55,7 @@ public class RegionCache extends AbstractLoadCache {
       if (lastSample == null) {
         /* First heartbeat not received from this region, status is UNKNOWN */
         status = RegionStatus.Unknown;
-      } else if (!failureDetector.isAvailable(history)) {
+      } else if (!failureDetector.isAvailable(id, history)) {
         /* Failure detector decides that this region is UNKNOWN */
         status = RegionStatus.Unknown;
       } else {

@@ -30,12 +30,20 @@ import java.nio.ByteBuffer;
 public class SetTableCommentPlan extends AbstractTablePlan {
   private String comment;
 
-  public SetTableCommentPlan() {
-    super(ConfigPhysicalPlanType.SetTableComment);
+  public SetTableCommentPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public SetTableCommentPlan(final String database, final String tableName, final String comment) {
-    super(ConfigPhysicalPlanType.SetTableComment, database, tableName);
+    this(ConfigPhysicalPlanType.SetTableComment, database, tableName, comment);
+  }
+
+  protected SetTableCommentPlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final String tableName,
+      final String comment) {
+    super(type, database, tableName);
     this.comment = comment;
   }
 

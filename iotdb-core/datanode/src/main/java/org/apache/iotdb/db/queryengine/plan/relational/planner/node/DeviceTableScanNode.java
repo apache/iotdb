@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -47,11 +50,11 @@ public class DeviceTableScanNode extends TableScanNode {
 
   protected List<DeviceEntry> deviceEntries;
 
-  // Indicates the respective index order of ID and Attribute columns in DeviceEntry.
+  // Indicates the respective index order of tag and attribute columns in DeviceEntry.
   // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
-  // `idAndAttributeIndexMap` will
+  // `tagAndAttributeIndexMap` will
   // be `tag1: 0, tag2: 1, attribute1: 0, attribute2: 1`.
-  protected Map<Symbol, Integer> idAndAttributeIndexMap;
+  protected Map<Symbol, Integer> tagAndAttributeIndexMap;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -83,9 +86,9 @@ public class DeviceTableScanNode extends TableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      Map<Symbol, Integer> idAndAttributeIndexMap) {
+      Map<Symbol, Integer> tagAndAttributeIndexMap) {
     super(id, qualifiedObjectName, outputSymbols, assignments);
-    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
+    this.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
   }
 
   public DeviceTableScanNode(
@@ -94,7 +97,7 @@ public class DeviceTableScanNode extends TableScanNode {
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
       Expression pushDownPredicate,
@@ -111,7 +114,7 @@ public class DeviceTableScanNode extends TableScanNode {
         pushDownLimit,
         pushDownOffset);
     this.deviceEntries = deviceEntries;
-    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
+    this.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
     this.scanOrder = scanOrder;
     this.timePredicate = timePredicate;
     this.pushDownPredicate = pushDownPredicate;
@@ -120,8 +123,8 @@ public class DeviceTableScanNode extends TableScanNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeviceTableScan(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitDeviceTableScan(this, context);
   }
 
   @Override
@@ -132,7 +135,7 @@ public class DeviceTableScanNode extends TableScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -151,8 +154,8 @@ public class DeviceTableScanNode extends TableScanNode {
       entry.serialize(byteBuffer);
     }
 
-    ReadWriteIOUtils.write(node.idAndAttributeIndexMap.size(), byteBuffer);
-    for (Map.Entry<Symbol, Integer> entry : node.idAndAttributeIndexMap.entrySet()) {
+    ReadWriteIOUtils.write(node.tagAndAttributeIndexMap.size(), byteBuffer);
+    for (Map.Entry<Symbol, Integer> entry : node.tagAndAttributeIndexMap.entrySet()) {
       Symbol.serialize(entry.getKey(), byteBuffer);
       ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
     }
@@ -179,8 +182,8 @@ public class DeviceTableScanNode extends TableScanNode {
       entry.serialize(stream);
     }
 
-    ReadWriteIOUtils.write(node.idAndAttributeIndexMap.size(), stream);
-    for (Map.Entry<Symbol, Integer> entry : node.idAndAttributeIndexMap.entrySet()) {
+    ReadWriteIOUtils.write(node.tagAndAttributeIndexMap.size(), stream);
+    for (Map.Entry<Symbol, Integer> entry : node.tagAndAttributeIndexMap.entrySet()) {
       Symbol.serialize(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
@@ -204,17 +207,17 @@ public class DeviceTableScanNode extends TableScanNode {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<DeviceEntry> deviceEntries = new ArrayList<>(size);
     while (size-- > 0) {
-      deviceEntries.add(DeviceEntry.deserialize(byteBuffer));
+      deviceEntries.add(AlignedDeviceEntry.deserialize(byteBuffer));
     }
     node.deviceEntries = deviceEntries;
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>(size);
+    Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>(size);
     while (size-- > 0) {
-      idAndAttributeIndexMap.put(
+      tagAndAttributeIndexMap.put(
           Symbol.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     }
-    node.idAndAttributeIndexMap = idAndAttributeIndexMap;
+    node.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
 
     node.scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
 
@@ -252,8 +255,8 @@ public class DeviceTableScanNode extends TableScanNode {
     this.deviceEntries = deviceEntries;
   }
 
-  public Map<Symbol, Integer> getIdAndAttributeIndexMap() {
-    return this.idAndAttributeIndexMap;
+  public Map<Symbol, Integer> getTagAndAttributeIndexMap() {
+    return this.tagAndAttributeIndexMap;
   }
 
   public void setScanOrder(Ordering scanOrder) {

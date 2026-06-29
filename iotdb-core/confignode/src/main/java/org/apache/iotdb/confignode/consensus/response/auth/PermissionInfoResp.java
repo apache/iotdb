@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.consensus.response.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
@@ -31,6 +32,8 @@ public class PermissionInfoResp implements DataSet {
 
   private String tag;
   private List<String> memberList;
+
+  private List<TListUserInfo> usersInfo;
 
   private TPermissionInfoResp permissionInfoResp;
 
@@ -60,6 +63,14 @@ public class PermissionInfoResp implements DataSet {
 
   public List<String> getMemberList() {
     return memberList;
+  }
+
+  public void setUsersInfo(List<TListUserInfo> usersInfo) {
+    this.usersInfo = usersInfo;
+  }
+
+  public List<TListUserInfo> getUsersInfo() {
+    return usersInfo;
   }
 
   public TPermissionInfoResp getPermissionInfoResp() {

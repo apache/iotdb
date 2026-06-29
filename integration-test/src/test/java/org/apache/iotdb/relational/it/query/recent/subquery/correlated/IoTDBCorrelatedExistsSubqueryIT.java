@@ -34,7 +34,6 @@ import org.junit.runner.RunWith;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.CREATE_SQLS;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.DATABASE_NAME;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.NUMERIC_MEASUREMENTS;
@@ -358,7 +357,7 @@ public class IoTDBCorrelatedExistsSubqueryIT {
   }
 
   @Test
-  public void testUnCorrelatedExistsSubqueryInSelectClause() {
+  public void testCorrelatedExistsSubqueryInSelectClause() {
     String sql;
     String[] expectedHeader;
     String[] retArray;
@@ -389,8 +388,8 @@ public class IoTDBCorrelatedExistsSubqueryIT {
 
   @Test
   public void testNonComparisonFilterInCorrelatedExistsSubquery() {
-    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + ONLY_SUPPORT_EQUI_JOIN;
-    // Legality check: Correlated subquery with Non-equality comparison is not support for now.
+    String errMsg =
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + "Unsupported Join creteria";
     tableAssertTestFail(
         "select s1 from table1 t1 where exists(select s1 from table3 t3 where t1.s1 > t3.s1)",
         errMsg,

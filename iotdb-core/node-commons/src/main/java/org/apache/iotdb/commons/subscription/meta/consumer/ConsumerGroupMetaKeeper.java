@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -89,6 +90,12 @@ public class ConsumerGroupMetaKeeper {
             .get(consumerGroupId)
             .getConsumersSubscribingTopic(topic)
         : Collections.emptySet();
+  }
+
+  public Optional<Long> getSubscriptionCreationTime(String consumerGroupId, String topic) {
+    return consumerGroupIdToConsumerGroupMetaMap.containsKey(consumerGroupId)
+        ? consumerGroupIdToConsumerGroupMetaMap.get(consumerGroupId).getSubscriptionTime(topic)
+        : Optional.empty();
   }
 
   public Set<String> getTopicsSubscribedByConsumer(String consumerGroupId, String consumerId) {

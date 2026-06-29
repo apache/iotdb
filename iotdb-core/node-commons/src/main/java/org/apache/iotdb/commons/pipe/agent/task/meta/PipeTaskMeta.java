@@ -21,11 +21,11 @@ package org.apache.iotdb.commons.pipe.agent.task.meta;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -44,13 +44,15 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeTaskMeta {
 
   private final AtomicReference<ProgressIndex> progressIndex = new AtomicReference<>();
+
+  // This is -2 - leaderNodeId iff it's a newly added region with internal source.
   private final AtomicInteger leaderNodeId = new AtomicInteger(0);
 
   /**
    * Stores the exceptions encountered during run time of each pipe task.
    *
    * <p>The exceptions are instances of {@link PipeRuntimeCriticalException}, {@link
-   * PipeRuntimeConnectorCriticalException} and {@link PipeRuntimeNonCriticalException}.
+   * PipeRuntimeSinkCriticalException} and {@link PipeRuntimeNonCriticalException}.
    *
    * <p>The failure of them, respectively, will lead to the stop of the pipe, the stop of the pipes
    * sharing the same connector, and nothing.
@@ -63,6 +65,37 @@ public class PipeTaskMeta {
     this.leaderNodeId.set(leaderNodeId);
   }
 
+  ///////////////////////// Region old & new test /////////////////////////
+
+  public PipeTaskMeta markAsNewlyAdded() {
+    leaderNodeId.getAndUpdate(PipeTaskMeta::getRevertedLeader);
+    return this;
+  }
+
+  public boolean isNewlyAdded() {
+    return isNewlyAdded(leaderNodeId.get());
+  }
+
+  public int getLeaderNodeId() {
+    final int result = leaderNodeId.get();
+    return isNewlyAdded(result) ? getRevertedLeader(result) : result;
+  }
+
+  public void setLeaderNodeId(final int leaderNodeId) {
+    this.leaderNodeId.updateAndGet(
+        leaderId -> isNewlyAdded(leaderId) ? getRevertedLeader(leaderNodeId) : leaderNodeId);
+  }
+
+  public static int getRevertedLeader(final int leaderNodeId) {
+    return -2 - leaderNodeId;
+  }
+
+  public static boolean isNewlyAdded(final int leaderNodeId) {
+    return leaderNodeId < -1;
+  }
+
+  ///////////////////////// Normal /////////////////////////
+
   public ProgressIndex getProgressIndex() {
     return progressIndex.get();
   }
@@ -70,14 +103,6 @@ public class PipeTaskMeta {
   public ProgressIndex updateProgressIndex(final ProgressIndex updateIndex) {
     return progressIndex.updateAndGet(
         index -> index.updateToMinimumEqualOrIsAfterProgressIndex(updateIndex));
-  }
-
-  public int getLeaderNodeId() {
-    return leaderNodeId.get();
-  }
-
-  public void setLeaderNodeId(final int leaderNodeId) {
-    this.leaderNodeId.set(leaderNodeId);
   }
 
   public synchronized Iterable<PipeRuntimeException> getExceptionMessages() {

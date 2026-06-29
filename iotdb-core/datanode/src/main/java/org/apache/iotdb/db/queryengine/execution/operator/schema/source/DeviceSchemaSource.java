@@ -89,7 +89,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
   @Override
   public List<ColumnHeader> getInfoQueryColumnHeaders() {
     return hasSgCol
-        ? ColumnHeaderConstant.showDevicesWithSgColumnHeaders
+        ? ColumnHeaderConstant.showDevicesWithDbColumnHeaders
         : ColumnHeaderConstant.showDevicesColumnHeaders;
   }
 
@@ -153,5 +153,13 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
   @Override
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
     return schemaRegion.getSchemaRegionStatistics().getDevicesNumber();
+  }
+
+  @Override
+  public boolean checkRegionDatabaseIncluded(final ISchemaRegion schemaRegion) {
+    String databasePath = schemaRegion.getDatabaseFullPath();
+    return pathPattern.include(new PartialPath(databasePath.split("\\.")))
+        && (schemaFilter == null)
+        && scope.equals(SchemaConstant.ALL_MATCH_SCOPE);
   }
 }

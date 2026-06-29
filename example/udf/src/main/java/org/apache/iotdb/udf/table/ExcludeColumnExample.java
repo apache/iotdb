@@ -20,8 +20,10 @@
 package org.apache.iotdb.udf.table;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.relational.EmptyTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
@@ -56,7 +58,7 @@ import java.util.Optional;
  *
  * <p>SHOW FUNCTIONS;
  *
- * <p>SELECT * FROM TABLE(exclude_column(TABLE(t1), 's2'));
+ * <p>SELECT * FROM exclude_column(t1, 's2');
  */
 public class ExcludeColumnExample implements TableFunction {
   private final String TBL_PARAM = "DATA";
@@ -85,11 +87,18 @@ public class ExcludeColumnExample implements TableFunction {
     return TableFunctionAnalysis.builder()
         .properColumnSchema(schemaBuilder.build())
         .requiredColumns(TBL_PARAM, requiredColumns)
+        .handle(new EmptyTableFunctionHandle())
         .build();
   }
 
   @Override
-  public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new EmptyTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {

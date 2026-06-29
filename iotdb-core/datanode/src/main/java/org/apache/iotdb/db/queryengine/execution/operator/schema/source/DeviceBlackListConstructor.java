@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 
@@ -47,12 +48,16 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
       final String tableName,
       final List<TsTableColumnSchema> columnSchemaList,
       final BiFunction<Integer, String, Binary> attributeProvider,
-      final MemSchemaRegionStatistics regionStatistics) {
+      final MemSchemaRegionStatistics regionStatistics,
+      final String database,
+      final TsTable table) {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
         columnSchemaList,
-        attributeProvider);
+        attributeProvider,
+        database,
+        table);
     this.tableName = tableName;
     this.regionStatistics = regionStatistics;
   }

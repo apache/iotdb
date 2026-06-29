@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.file.IMetadataIndexEntry;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
@@ -42,16 +44,27 @@ import java.util.Set;
  * data read and distinguishing between aligned and not aligned series during compaction.
  */
 public class CompactionTsFileReader extends TsFileSequenceReader {
+  @TestOnly
+  public CompactionTsFileReader(String file, CompactionType compactionType) throws IOException {
+    super(file, new EncryptParameter(config.getEncryptType(), config.getEncryptKey()));
+    CompactionTsFileInput compactionTsFileInput =
+        new CompactionTsFileInput(compactionType, tsFileInput);
+    this.tsFileInput = compactionTsFileInput;
+    compactionTsFileInput.setMetadataOffset(readFileMetadata().getMetaOffset());
+  }
 
   /**
    * Constructs a new instance of CompactionTsFileReader.
    *
    * @param file The file to be read.
    * @param compactionType The type of compaction running.
+   * @param encryptParameter The first encryption parameters for the file.
    * @throws IOException If an error occurs during file operations.
    */
-  public CompactionTsFileReader(String file, CompactionType compactionType) throws IOException {
-    super(file);
+  public CompactionTsFileReader(
+      String file, CompactionType compactionType, EncryptParameter encryptParameter)
+      throws IOException {
+    super(file, encryptParameter);
     CompactionTsFileInput compactionTsFileInput =
         new CompactionTsFileInput(compactionType, tsFileInput);
     this.tsFileInput = compactionTsFileInput;

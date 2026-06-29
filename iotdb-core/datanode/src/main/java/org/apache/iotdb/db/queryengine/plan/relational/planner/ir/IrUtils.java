@@ -19,21 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.NoOpSymbolResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -50,8 +51,8 @@ import java.util.function.Predicate;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.FALSE_LITERAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.FALSE_LITERAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 public final class IrUtils {
   private IrUtils() {}
@@ -152,7 +153,8 @@ public final class IrUtils {
         case OR:
           return FALSE_LITERAL;
       }
-      throw new IllegalArgumentException("Unsupported LogicalExpression operator");
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.UNSUPPORTED_LOGICALEXPRESSION_OPERATOR);
     }
 
     if (expressions.size() == 1) {
@@ -261,6 +263,12 @@ public final class IrUtils {
     return combineConjuncts(conjuncts);
   }
 
+  /**
+   * Returns whether expression is effectively literal. An effectively literal expression is a
+   * simple constant value, or null, in either {@link Literal} form, or other form returned by
+   * LiteralEncoder. In particular, other constant expressions like a deterministic function call
+   * with constant arguments are not considered effectively literal.
+   */
   public static boolean isEffectivelyLiteral(
       Expression expression, PlannerContext plannerContext, SessionInfo session) {
     if (expression instanceof Literal) {
@@ -271,6 +279,7 @@ public final class IrUtils {
           // a Cast(Literal(...)) can fail, so this requires verification
           && constantExpressionEvaluatesSuccessfully(plannerContext, session, expression);
     }
+
     if (expression instanceof FunctionCall) {
       String functionName = ((FunctionCall) expression).getName().getSuffix();
       if (functionName.equals("pi") || functionName.equals("e")) {

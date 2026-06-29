@@ -19,16 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -36,6 +32,7 @@ import java.util.List;
 public class ShowTopicsStatement extends Statement implements IConfigStatement {
 
   private String topicName;
+  private boolean isTableModel;
 
   public ShowTopicsStatement() {
     super();
@@ -46,12 +43,20 @@ public class ShowTopicsStatement extends Statement implements IConfigStatement {
     return topicName;
   }
 
-  public void setTopicName(String topicName) {
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public void setTopicName(final String topicName) {
     this.topicName = topicName;
   }
 
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
+  }
+
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitShowTopics(this, context);
   }
 
@@ -63,15 +68,5 @@ public class ShowTopicsStatement extends Statement implements IConfigStatement {
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
   }
 }

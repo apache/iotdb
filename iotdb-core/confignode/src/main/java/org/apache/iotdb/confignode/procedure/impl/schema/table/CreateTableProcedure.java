@@ -28,10 +28,9 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTab
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
@@ -56,9 +55,9 @@ public class CreateTableProcedure
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableProcedure.class);
 
-  private String database;
+  protected String database;
 
-  private TsTable table;
+  protected TsTable table;
 
   public CreateTableProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -73,38 +72,40 @@ public class CreateTableProcedure
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final CreateTableState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case CHECK_TABLE_EXISTENCE:
-          LOGGER.info("Check the existence of table {}.{}", database, table.getTableName());
+          LOGGER.info(
+              ProcedureMessages.CHECK_THE_EXISTENCE_OF_TABLE, database, table.getTableName());
           checkTableExistence(env);
           break;
         case PRE_CREATE:
-          LOGGER.info("Pre create table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.PRE_CREATE_TABLE, database, table.getTableName());
           preCreateTable(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Pre release table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.PRE_RELEASE_TABLE, database, table.getTableName());
           preReleaseTable(env);
           break;
         case COMMIT_CREATE:
-          LOGGER.info("Commit create table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.COMMIT_CREATE_TABLE, database, table.getTableName());
           commitCreateTable(env);
           break;
         case COMMIT_RELEASE:
-          LOGGER.info("Commit release table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.COMMIT_RELEASE_TABLE, database, table.getTableName());
           commitReleaseTable(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
+          setFailure(
+              new ProcedureException(ProcedureMessages.UNRECOGNIZED_CREATETABLESTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "CreateTable-{}.{}-{} costs {}ms",
+          ProcedureMessages.CREATETABLE_COSTS_MS,
           database,
           table.getTableName(),
           state,
@@ -112,7 +113,7 @@ public class CreateTableProcedure
     }
   }
 
-  private void checkTableExistence(final ConfigNodeProcedureEnv env) {
+  protected void checkTableExistence(final ConfigNodeProcedureEnv env) {
     try {
       if (env.getConfigManager()
           .getClusterSchemaManager()
@@ -121,7 +122,8 @@ public class CreateTableProcedure
         setFailure(
             new ProcedureException(
                 new IoTDBException(
-                    String.format("Table '%s.%s' already exists.", database, table.getTableName()),
+                    String.format(
+                        ProcedureMessages.TABLE_ALREADY_EXISTS, database, table.getTableName()),
                     TABLE_ALREADY_EXISTS.getStatusCode())));
       } else {
         final TDatabaseSchema schema =
@@ -138,28 +140,29 @@ public class CreateTableProcedure
     }
   }
 
-  private void preCreateTable(final ConfigNodeProcedureEnv env) {
+  protected void preCreateTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(new PreCreateTablePlan(database, table), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.PRE_RELEASE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
   private void preReleaseTable(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
+        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), null);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to sync table {}.{} pre-create info to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_SYNC_TABLE_PRE_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
           failedResults);
-      setFailure(new ProcedureException(new MetadataException("Pre create table failed")));
+      setFailure(
+          new ProcedureException(new MetadataException(ProcedureMessages.PRE_CREATE_TABLE_FAILED)));
       return;
     }
 
@@ -177,17 +180,18 @@ public class CreateTableProcedure
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.COMMIT_RELEASE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
   private void commitReleaseTable(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.commitReleaseTable(
+            database, table.getTableName(), env.getConfigManager(), null);
 
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
-          "Failed to sync table {}.{} commit-create info to DataNode {}, failure results: ",
+          ProcedureMessages.FAILED_TO_SYNC_TABLE_COMMIT_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
           failedResults);
@@ -206,42 +210,50 @@ public class CreateTableProcedure
     try {
       switch (state) {
         case PRE_CREATE:
-          LOGGER.info("Start rollback pre create table {}.{}", database, table.getTableName());
+          LOGGER.info(
+              ProcedureMessages.START_ROLLBACK_PRE_CREATE_TABLE, database, table.getTableName());
           rollbackCreate(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Start rollback pre release table {}.{}", database, table.getTableName());
+          LOGGER.info(
+              ProcedureMessages.START_ROLLBACK_PRE_RELEASE_TABLE, database, table.getTableName());
           rollbackPreRelease(env);
           break;
       }
     } finally {
       LOGGER.info(
-          "Rollback CreateTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.ROLLBACK_CREATETABLE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
-  private void rollbackCreate(final ConfigNodeProcedureEnv env) {
+  protected void rollbackCreate(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
             new RollbackCreateTablePlan(database, table.getTableName()), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to rollback table creation {}.{}", database, table.getTableName());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_ROLLBACK_TABLE_CREATION, database, table.getTableName());
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
   private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.rollbackPreRelease(
+            database, table.getTableName(), env.getConfigManager(), null);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to sync table {}.{} rollback-create info to DataNode {}, failure results: ",
+          ProcedureMessages.FAILED_TO_SYNC_TABLE_ROLLBACK_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
           failedResults);
-      setFailure(new ProcedureException(new MetadataException("Rollback create table failed")));
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.ROLLBACK_CREATE_TABLE_FAILED)));
     }
   }
 
@@ -274,6 +286,10 @@ public class CreateTableProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_CREATE_TABLE_PROCEDURE.getTypeCode()
             : ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     table.serialize(stream);
@@ -291,15 +307,17 @@ public class CreateTableProcedure
     if (this == o) {
       return true;
     }
-    if (!(o instanceof CreateTableProcedure)) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
     final CreateTableProcedure that = (CreateTableProcedure) o;
-    return Objects.equals(database, that.database) && Objects.equals(table, that.table);
+    return Objects.equals(database, that.database)
+        && Objects.equals(table, that.table)
+        && isGeneratedByPipe == that.isGeneratedByPipe;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, table);
+    return Objects.hash(database, table, isGeneratedByPipe);
   }
 }

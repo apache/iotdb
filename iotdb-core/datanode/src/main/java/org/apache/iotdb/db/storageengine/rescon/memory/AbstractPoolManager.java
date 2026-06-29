@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.rescon.memory;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.slf4j.Logger;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -38,25 +41,39 @@ public abstract class AbstractPoolManager {
     Logger logger = getLogger();
     pool.shutdownNow();
     long totalWaitTime = WAIT_TIMEOUT;
-    logger.info("Waiting for {} thread pool to shut down.", getName());
+    logger.info(StorageEngineMessages.WAITING_FOR_THREAD_POOL_SHUTDOWN, getName());
     while (!pool.isTerminated()) {
       try {
         if (!pool.awaitTermination(WAIT_TIMEOUT, TimeUnit.MILLISECONDS)) {
-          logger.info("{} thread pool doesn't exit after {}ms.", getName(), +totalWaitTime);
+          logger.info(
+              StorageEngineMessages.THREAD_POOL_NOT_EXIT_AFTER_MS, getName(), +totalWaitTime);
         }
         totalWaitTime += WAIT_TIMEOUT;
       } catch (InterruptedException e) {
-        logger.error("Interrupted while waiting {} thread pool to exit. ", getName(), e);
+        logger.error(StorageEngineMessages.INTERRUPTED_WAITING_THREAD_POOL_EXIT, getName(), e);
         Thread.currentThread().interrupt();
       }
     }
   }
 
   public synchronized Future<?> submit(Runnable task) {
+    if (pool == null) {
+      return CompletableFuture.runAsync(task);
+    }
     return pool.submit(task);
   }
 
   public synchronized <T> Future<T> submit(Callable<T> task) {
+    if (pool == null) {
+      return CompletableFuture.supplyAsync(
+          () -> {
+            try {
+              return task.call();
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          });
+    }
     return pool.submit(task);
   }
 
@@ -91,7 +108,7 @@ public abstract class AbstractPoolManager {
 
   public abstract void start();
 
-  public void stop() {
+  public synchronized void stop() {
     if (pool != null) {
       close();
       pool = null;

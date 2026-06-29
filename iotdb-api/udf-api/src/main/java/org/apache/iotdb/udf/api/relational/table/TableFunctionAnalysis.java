@@ -48,10 +48,27 @@ public class TableFunctionAnalysis {
   // table argument
   private final Map<String, List<Integer>> requiredColumns;
 
+  /**
+   * The `requireRecordSnapshot` field is used to inform the Analyzer of whether the table function
+   * processor requires a record snapshot. Default value is true, which means that the table
+   * function processor will receive a new record object for each record. Record object reference
+   * can be kept for future use. Otherwise, if it is false, the table function processor will always
+   * receive the same record object but with different values. It will perform better, but the
+   * processor must not keep the record object reference for future use.
+   */
+  private final boolean requireRecordSnapshot;
+
+  private final TableFunctionHandle handle;
+
   private TableFunctionAnalysis(
-      Optional<DescribedSchema> properColumnSchema, Map<String, List<Integer>> requiredColumns) {
+      Optional<DescribedSchema> properColumnSchema,
+      Map<String, List<Integer>> requiredColumns,
+      boolean requiredRecordSnapshot,
+      TableFunctionHandle handle) {
     this.properColumnSchema = requireNonNull(properColumnSchema, "returnedType is null");
     this.requiredColumns = requiredColumns;
+    this.requireRecordSnapshot = requiredRecordSnapshot;
+    this.handle = requireNonNull(handle, "TableFunctionHandle is null");
   }
 
   public Optional<DescribedSchema> getProperColumnSchema() {
@@ -62,6 +79,14 @@ public class TableFunctionAnalysis {
     return requiredColumns;
   }
 
+  public boolean isRequireRecordSnapshot() {
+    return requireRecordSnapshot;
+  }
+
+  public TableFunctionHandle getTableFunctionHandle() {
+    return handle;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -69,6 +94,8 @@ public class TableFunctionAnalysis {
   public static final class Builder {
     private DescribedSchema properColumnSchema;
     private final Map<String, List<Integer>> requiredColumns = new HashMap<>();
+    private boolean requireRecordSnapshot = true;
+    private TableFunctionHandle executionInfo;
 
     private Builder() {}
 
@@ -82,8 +109,22 @@ public class TableFunctionAnalysis {
       return this;
     }
 
+    public Builder requireRecordSnapshot(boolean requireRecordSnapshot) {
+      this.requireRecordSnapshot = requireRecordSnapshot;
+      return this;
+    }
+
+    public Builder handle(TableFunctionHandle executionInfo) {
+      this.executionInfo = executionInfo;
+      return this;
+    }
+
     public TableFunctionAnalysis build() {
-      return new TableFunctionAnalysis(Optional.ofNullable(properColumnSchema), requiredColumns);
+      return new TableFunctionAnalysis(
+          Optional.ofNullable(properColumnSchema),
+          requiredColumns,
+          requireRecordSnapshot,
+          executionInfo);
     }
   }
 }

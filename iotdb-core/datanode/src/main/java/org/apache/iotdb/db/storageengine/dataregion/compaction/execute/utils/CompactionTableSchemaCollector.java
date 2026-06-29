@@ -28,8 +28,10 @@ import org.apache.tsfile.write.schema.Schema;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -39,13 +41,17 @@ public class CompactionTableSchemaCollector {
   public static List<Schema> collectSchema(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
-      Map<TsFileResource, TsFileSequenceReader> readerMap)
+      Map<TsFileResource, TsFileSequenceReader> readerMap,
+      Map<TsFileResource, Set<String>> deprecatedTableSchemaMap)
       throws IOException {
     List<Schema> targetSchemas = new ArrayList<>(seqFiles.size());
     Schema schema =
         collectSchema(
-            Stream.concat(seqFiles.stream(), unseqFiles.stream()).collect(Collectors.toList()),
-            readerMap);
+            Stream.concat(seqFiles.stream(), unseqFiles.stream())
+                .sorted(TsFileResource::compareFileName)
+                .collect(Collectors.toList()),
+            readerMap,
+            deprecatedTableSchemaMap);
 
     targetSchemas.add(schema);
     for (int i = 1; i < seqFiles.size(); i++) {
@@ -64,11 +70,14 @@ public class CompactionTableSchemaCollector {
   }
 
   public static Schema collectSchema(
-      List<TsFileResource> sourceFiles, Map<TsFileResource, TsFileSequenceReader> readerMap)
+      List<TsFileResource> sourceFiles,
+      Map<TsFileResource, TsFileSequenceReader> readerMap,
+      Map<TsFileResource, Set<String>> deprecatedTableSchemaMap)
       throws IOException {
     Schema targetSchema = new Schema();
     Map<String, TableSchema> targetTableSchemaMap = new HashMap<>();
-    for (TsFileResource resource : sourceFiles) {
+    for (int i = 0; i < sourceFiles.size(); i++) {
+      TsFileResource resource = sourceFiles.get(i);
       TsFileSequenceReader reader = readerMap.get(resource);
       Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
       if (tableSchemaMap == null) {
@@ -89,7 +98,19 @@ public class CompactionTableSchemaCollector {
           collectedTableSchema = new CompactionTableSchema(tableName);
           targetTableSchemaMap.put(tableName, collectedTableSchema);
         }
-        collectedTableSchema.merge(currentTableSchema);
+        boolean canMerge = collectedTableSchema.merge(currentTableSchema);
+        if (!canMerge) {
+          // mark resources with deprecated table schema
+          for (int j = 0; j < i; j++) {
+            deprecatedTableSchemaMap
+                .computeIfAbsent(sourceFiles.get(j), k -> new HashSet<>())
+                .add(tableName);
+          }
+          // replace old table schema in targetTableSchemaMap
+          collectedTableSchema = new CompactionTableSchema(tableName);
+          collectedTableSchema.merge(currentTableSchema);
+          targetTableSchemaMap.put(tableName, collectedTableSchema);
+        }
       }
     }
     targetTableSchemaMap.values().forEach(targetSchema::registerTableSchema);

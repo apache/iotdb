@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
 
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -45,11 +47,12 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
       IDeviceID deviceID,
       String measurement,
       String filePath,
+      TsFileID tsFileID,
       boolean isTsFileClosed,
       long offset,
       Statistics<? extends Serializable> chunkStatistic,
       SharedTimeDataBuffer sharedTimeDataBuffer) {
-    super(deviceID, measurement, filePath, isTsFileClosed, offset, chunkStatistic);
+    super(deviceID, measurement, filePath, tsFileID, isTsFileClosed, offset, chunkStatistic);
     this.sharedTimeDataBuffer = sharedTimeDataBuffer;
   }
 
@@ -75,7 +78,7 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
 
     long[] timeData = sharedTimeDataBuffer.getPageTime(pageIndex);
     if (timeData.length != size) {
-      throw new UnsupportedOperationException("Time data size not match");
+      throw new UnsupportedOperationException(StorageEngineMessages.TIME_DATA_SIZE_NOT_MATCH);
     }
 
     long[] validTimeList = new long[(int) this.currentPageHeader.getNumOfValues()];

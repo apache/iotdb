@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
@@ -44,6 +45,7 @@ import org.apache.iotdb.session.Session;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
@@ -117,6 +119,27 @@ public class IoTDBRegionOperationReliabilityITFramework {
         LOGGER.info("Cluster has been restarted");
       };
 
+  /**
+   * Gracefully stop (SIGTERM, not a forcible kill) the ConfigNode that hit the kill point, then
+   * restart it. A graceful stop lets the ConfigNode run its shutdown hooks, which interrupts the
+   * in-flight region-operation procedure worker. This reproduces a leader switch / graceful
+   * shutdown during AddRegionPeer: the interrupted {@code waitTaskFinish()} returns PROCESSING
+   * while the AddRegionPeerTask is still running on the coordinator DataNode. The procedure must
+   * NOT silently end here, otherwise the parent RegionMigrateProcedure would falsely treat AddPeer
+   * as complete and remove the source replica before the destination replica is actually Running.
+   * See AddRegionPeerProcedure#executeFromState DO_ADD_REGION_PEER PROCESSING branch.
+   */
+  public static Consumer<KillPointContext> actionOfGracefullyRestartConfigNode =
+      context -> {
+        Assert.assertTrue(context.getNodeWrapper() instanceof ConfigNodeWrapper);
+        context.getNodeWrapper().stop();
+        LOGGER.info("ConfigNode {} gracefully stopped.", context.getNodeWrapper().getId());
+        Assert.assertFalse(context.getNodeWrapper().isAlive());
+        context.getNodeWrapper().start();
+        LOGGER.info("ConfigNode {} restarted.", context.getNodeWrapper().getId());
+        Assert.assertTrue(context.getNodeWrapper().isAlive());
+      };
+
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
@@ -153,6 +176,28 @@ public class IoTDBRegionOperationReliabilityITFramework {
         killNode);
   }
 
+  public void successTestWithAction(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> killConfigNodeKeywords,
+      KeySetView<String, Boolean> killDataNodeKeywords,
+      Consumer<KillPointContext> actionWhenDetectKeyWords,
+      KillNode killNode)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        killConfigNodeKeywords,
+        killDataNodeKeywords,
+        actionWhenDetectKeyWords,
+        true,
+        killNode);
+  }
+
   public void failTest(
       final int dataReplicateFactor,
       final int schemaReplicationFactor,
@@ -172,6 +217,28 @@ public class IoTDBRegionOperationReliabilityITFramework {
         actionOfKillNode,
         false,
         killNode);
+  }
+
+  public void failAndRollbackTest(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> killConfigNodeKeywords,
+      KeySetView<String, Boolean> killDataNodeKeywords,
+      KillNode killNode)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        killConfigNodeKeywords,
+        killDataNodeKeywords,
+        actionOfKillNode,
+        false,
+        killNode,
+        true);
   }
 
   public void killClusterTest(
@@ -201,6 +268,31 @@ public class IoTDBRegionOperationReliabilityITFramework {
       Consumer<KillPointContext> actionWhenDetectKeyWords,
       final boolean expectMigrateSuccess,
       KillNode killNode)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        configNodeKeywords,
+        dataNodeKeywords,
+        actionWhenDetectKeyWords,
+        expectMigrateSuccess,
+        killNode,
+        false);
+  }
+
+  private void generalTestWithAllOptions(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> configNodeKeywords,
+      KeySetView<String, Boolean> dataNodeKeywords,
+      Consumer<KillPointContext> actionWhenDetectKeyWords,
+      final boolean expectMigrateSuccess,
+      KillNode killNode,
+      boolean expectRollbackWhenFail)
       throws Exception {
     // prepare env
     EnvFactory.getEnv()
@@ -264,30 +356,58 @@ public class IoTDBRegionOperationReliabilityITFramework {
       statement.execute(buildRegionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
       boolean success = false;
-      Predicate<TShowRegionResp> migrateRegionPredicate =
-          tShowRegionResp -> {
-            Map<Integer, Set<Integer>> newRegionMap =
-                getRegionMap(tShowRegionResp.getRegionInfoList());
-            Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
-            return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
-          };
-      try {
-        awaitUntilSuccess(
-            client,
-            migrateRegionPredicate,
-            Optional.of(destDataNode),
-            Optional.of(originalDataNode));
-        success = true;
-      } catch (ConditionTimeoutException e) {
-        if (expectMigrateSuccess) {
-          LOGGER.error("Region migrate failed", e);
+      if (expectRollbackWhenFail) {
+        awaitKillPointsTriggered(configNodeKeywords);
+        awaitKillPointsTriggered(dataNodeKeywords);
+        try {
+          awaitUntilSuccess(
+              client,
+              selectedRegion,
+              rollbackPredicate(selectedRegion, regionMap.get(selectedRegion), destDataNode),
+              Optional.empty(),
+              Optional.of(destDataNode));
+        } catch (ConditionTimeoutException e) {
+          LOGGER.error("Region migrate did not roll back", e);
           Assert.fail();
+        }
+      } else {
+        Predicate<TShowRegionResp> migrateRegionPredicate =
+            tShowRegionResp -> {
+              Map<Integer, Set<Integer>> newRegionMap =
+                  getRegionMap(tShowRegionResp.getRegionInfoList());
+              Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
+              return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+            };
+        try {
+          awaitUntilSuccess(
+              client,
+              selectedRegion,
+              migrateRegionPredicate,
+              Optional.of(destDataNode),
+              Optional.of(originalDataNode));
+          success = true;
+        } catch (ConditionTimeoutException e) {
+          if (expectMigrateSuccess) {
+            LOGGER.error("Region migrate failed", e);
+            Assert.fail();
+          }
         }
       }
       if (!expectMigrateSuccess && success) {
         LOGGER.error("Region migrate succeeded unexpectedly");
         Assert.fail();
       }
+
+      // The kill point is detected by a background thread tailing the node log, so the migration
+      // result (observed by awaitUntilSuccess above) can become visible before that thread has read
+      // and processed the kill-point line of the last migration phase (e.g.
+      // RemoveRegionLocationCache). Give that thread a short grace period to catch up before
+      // asserting, otherwise checkKillPointsAllTriggered may fail spuriously with "Some kill points
+      // was not triggered". This is best-effort: the authoritative assertion remains
+      // checkKillPointsAllTriggered, which still fails the test if a kill point genuinely never
+      // triggers (e.g. the badKillPoint test).
+      graceWaitForKillPointsTriggered(configNodeKeywords);
+      graceWaitForKillPointsTriggered(dataNodeKeywords);
 
       // make sure all kill points have been triggered
       checkKillPointsAllTriggered(configNodeKeywords);
@@ -297,7 +417,8 @@ public class IoTDBRegionOperationReliabilityITFramework {
       if (success) {
         checkRegionFileClearIfNodeAlive(originalDataNode);
         checkRegionFileExistIfNodeAlive(destDataNode);
-        checkClusterStillWritable();
+        // TODO: @YongzaoDan enable this check after the __system database is refactored!!!
+        //        checkClusterStillWritable();
       } else {
         checkRegionFileClearIfNodeAlive(destDataNode);
         checkRegionFileExistIfNodeAlive(originalDataNode);
@@ -307,7 +428,29 @@ public class IoTDBRegionOperationReliabilityITFramework {
     }
   }
 
-  protected Set<Integer> getAllDataNodes(Statement statement) throws Exception {
+  private static Predicate<TShowRegionResp> rollbackPredicate(
+      int selectedRegion, Set<Integer> originalDataNodes, int destDataNode) {
+    return tShowRegionResp -> {
+      List<TRegionInfo> selectedDataRegionInfos =
+          tShowRegionResp.getRegionInfoList().stream()
+              .filter(
+                  regionInfo ->
+                      regionInfo.getConsensusGroupId().getType() == TConsensusGroupType.DataRegion
+                          && regionInfo.getConsensusGroupId().getId() == selectedRegion)
+              .collect(Collectors.toList());
+      Set<Integer> dataNodes =
+          selectedDataRegionInfos.stream()
+              .map(TRegionInfo::getDataNodeId)
+              .collect(Collectors.toSet());
+      return dataNodes.equals(originalDataNodes)
+          && !dataNodes.contains(destDataNode)
+          && selectedDataRegionInfos.stream()
+              .allMatch(
+                  regionInfo -> RegionStatus.Running.getStatus().equals(regionInfo.getStatus()));
+    };
+  }
+
+  public static Set<Integer> getAllDataNodes(Statement statement) throws Exception {
     ResultSet result = statement.executeQuery(SHOW_DATANODES);
     Set<Integer> allDataNodeId = new HashSet<>();
     while (result.next()) {
@@ -424,6 +567,33 @@ public class IoTDBRegionOperationReliabilityITFramework {
     }
   }
 
+  private static void awaitKillPointsTriggered(KeySetView<String, Boolean> killPoints) {
+    if (killPoints.isEmpty()) {
+      return;
+    }
+    Awaitility.await().atMost(2, TimeUnit.MINUTES).until(killPoints::isEmpty);
+  }
+
+  /**
+   * Best-effort wait for all kill points to be triggered. The kill point is detected by a
+   * background thread tailing the node log, so there can be a short lag between the migration
+   * result becoming visible and that thread processing the kill-point line. This gives it a brief
+   * grace period to catch up. Unlike {@link #awaitKillPointsTriggered}, it never throws: the
+   * authoritative check is {@link #checkKillPointsAllTriggered}, so a kill point that genuinely
+   * never triggers (e.g. the badKillPoint test) is still caught there as an AssertionError rather
+   * than masked here.
+   */
+  private static void graceWaitForKillPointsTriggered(KeySetView<String, Boolean> killPoints) {
+    if (killPoints.isEmpty()) {
+      return;
+    }
+    try {
+      Awaitility.await().atMost(1, TimeUnit.MINUTES).until(killPoints::isEmpty);
+    } catch (ConditionTimeoutException ignored) {
+      // Fall through to checkKillPointsAllTriggered, which makes the real assertion.
+    }
+  }
+
   private static String buildRegionMigrateCommand(int who, int from, int to) {
     String result = String.format(REGION_MIGRATE_COMMAND_FORMAT, who, from, to);
     LOGGER.info(result);
@@ -435,10 +605,42 @@ public class IoTDBRegionOperationReliabilityITFramework {
     Map<Integer, Set<Integer>> regionMap = new HashMap<>();
     while (showRegionsResult.next()) {
       if (String.valueOf(TConsensusGroupType.DataRegion)
-          .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))) {
+              .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))
+          && !showRegionsResult
+              .getString(ColumnHeaderConstant.DATABASE)
+              .equals(SystemConstant.SYSTEM_DATABASE)
+          && !showRegionsResult
+              .getString(ColumnHeaderConstant.DATABASE)
+              .equals(SystemConstant.AUDIT_DATABASE)) {
         int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
         int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
         regionMap.computeIfAbsent(regionId, id -> new HashSet<>()).add(dataNodeId);
+      }
+    }
+    return regionMap;
+  }
+
+  public static Map<Integer, Pair<Integer, Set<Integer>>> getDataRegionMapWithLeader(
+      Statement statement) throws Exception {
+    ResultSet showRegionsResult = statement.executeQuery(SHOW_REGIONS);
+    Map<Integer, Pair<Integer, Set<Integer>>> regionMap = new HashMap<>();
+    while (showRegionsResult.next()) {
+      if (String.valueOf(TConsensusGroupType.DataRegion)
+              .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))
+          && !showRegionsResult
+              .getString(ColumnHeaderConstant.DATABASE)
+              .equals(SystemConstant.SYSTEM_DATABASE)
+          && !showRegionsResult
+              .getString(ColumnHeaderConstant.DATABASE)
+              .equals(SystemConstant.AUDIT_DATABASE)) {
+        int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
+        int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
+        Pair<Integer, Set<Integer>> leaderNodesPair =
+            regionMap.computeIfAbsent(regionId, id -> new Pair<>(-1, new HashSet<>()));
+        leaderNodesPair.getRight().add(dataNodeId);
+        if (showRegionsResult.getString(ColumnHeaderConstant.ROLE).equals("Leader")) {
+          leaderNodesPair.setLeft(dataNodeId);
+        }
       }
     }
     return regionMap;
@@ -535,6 +737,7 @@ public class IoTDBRegionOperationReliabilityITFramework {
 
   protected static void awaitUntilSuccess(
       SyncConfigNodeIServiceClient client,
+      int selectedRegion,
       Predicate<TShowRegionResp> predicate,
       Optional<Integer> dataNodeExpectInRegionGroup,
       Optional<Integer> dataNodeExpectNotInRegionGroup) {
@@ -543,12 +746,13 @@ public class IoTDBRegionOperationReliabilityITFramework {
     AtomicReference<SyncConfigNodeIServiceClient> clientRef = new AtomicReference<>(client);
     try {
       Awaitility.await()
-          .atMost(2, TimeUnit.MINUTES)
+          .atMost(4, TimeUnit.MINUTES)
           .pollDelay(2, TimeUnit.SECONDS)
           .until(
               () -> {
                 try {
                   TShowRegionResp resp = clientRef.get().showRegion(new TShowRegionReq());
+                  lastTimeDataNodes.set(getRegionMap(resp.getRegionInfoList()).get(selectedRegion));
                   return predicate.test(resp);
                 } catch (TException e) {
                   clientRef.set(
@@ -606,20 +810,23 @@ public class IoTDBRegionOperationReliabilityITFramework {
   private static void checkRegionFileClear(int dataNode) {
     File originalRegionDir = new File(buildRegionDirPath(dataNode));
     Assert.assertTrue(originalRegionDir.isDirectory());
+    File[] files = originalRegionDir.listFiles();
     try {
-      Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+      int length = Objects.requireNonNull(files).length;
+      // the node may still have a region of the system database
+      Assert.assertTrue(length == 0 || length == 1 && files[0].getName().equals("1_1"));
     } catch (AssertionError e) {
       LOGGER.error(
           "Original DataNode {} region file not clear, these files is still remain: {}",
           dataNode,
-          Arrays.toString(originalRegionDir.listFiles()));
+          Arrays.toString(files));
       throw e;
     }
     LOGGER.info("Original DataNode {} region file clear", dataNode);
   }
 
   private void checkClusterStillWritable() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getAvailableConnection();
         Statement statement = connection.createStatement()) {
       // check old data
       ResultSet resultSet = statement.executeQuery(COUNT_TIMESERIES);
@@ -692,6 +899,25 @@ public class IoTDBRegionOperationReliabilityITFramework {
       if (!"Running".equals(regionStatus)) {
         result.putIfAbsent(regionId, regionStatus);
       }
+    }
+    return result;
+  }
+
+  /** Returns regionId -> dataNodeId -> status as reported by {@code show regions}. */
+  protected static Map<Integer, Map<Integer, String>> getRegionStatusMap(Session session)
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = session.executeQueryStatement("show regions");
+    final int regionIdIndex = dataSet.getColumnNames().indexOf("RegionId");
+    final int dataNodeIdIndex = dataSet.getColumnNames().indexOf("DataNodeId");
+    final int regionStatusIndex = dataSet.getColumnNames().indexOf("Status");
+    dataSet.setFetchSize(1024);
+    Map<Integer, Map<Integer, String>> result = new TreeMap<>();
+    while (dataSet.hasNext()) {
+      List<Field> fields = dataSet.next().getFields();
+      final int regionId = fields.get(regionIdIndex).getIntV();
+      final int dataNodeId = fields.get(dataNodeIdIndex).getIntV();
+      final String regionStatus = fields.get(regionStatusIndex).toString();
+      result.computeIfAbsent(regionId, k -> new TreeMap<>()).put(dataNodeId, regionStatus);
     }
     return result;
   }

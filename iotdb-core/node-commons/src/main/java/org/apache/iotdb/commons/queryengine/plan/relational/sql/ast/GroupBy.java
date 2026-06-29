@@ -1,0 +1,125 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
+
+import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
+
+import java.util.List;
+import java.util.Objects;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static java.util.Objects.requireNonNull;
+
+public class GroupBy extends Node {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(GroupBy.class);
+
+  private final boolean isDistinct;
+  private final boolean isAll;
+  private final List<GroupingElement> groupingElements;
+
+  public GroupBy(boolean isDistinct, List<GroupingElement> groupingElements) {
+    this(null, isDistinct, false, groupingElements);
+  }
+
+  public GroupBy(
+      NodeLocation location, boolean isDistinct, List<GroupingElement> groupingElements) {
+    this(location, isDistinct, false, groupingElements);
+  }
+
+  public GroupBy(
+      NodeLocation location,
+      boolean isDistinct,
+      boolean isAll,
+      List<GroupingElement> groupingElements) {
+    super(location);
+    this.isDistinct = isDistinct;
+    this.isAll = isAll;
+    this.groupingElements = ImmutableList.copyOf(requireNonNull(groupingElements));
+  }
+
+  public boolean isDistinct() {
+    return isDistinct;
+  }
+
+  public boolean isAll() {
+    return isAll;
+  }
+
+  public List<GroupingElement> getGroupingElements() {
+    return groupingElements;
+  }
+
+  @Override
+  protected <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitGroupBy(this, context);
+  }
+
+  @Override
+  public List<? extends Node> getChildren() {
+    return groupingElements;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    GroupBy groupBy = (GroupBy) o;
+    return isDistinct == groupBy.isDistinct
+        && isAll == groupBy.isAll
+        && Objects.equals(groupingElements, groupBy.groupingElements);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(isDistinct, isAll, groupingElements);
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this)
+        .add("isDistinct", isDistinct)
+        .add("isAll", isAll)
+        .add("groupingElements", groupingElements)
+        .toString();
+  }
+
+  @Override
+  public boolean shallowEquals(Node other) {
+    if (!sameClass(this, other)) {
+      return false;
+    }
+
+    return isDistinct == ((GroupBy) other).isDistinct && isAll == ((GroupBy) other).isAll;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(groupingElements);
+    return size;
+  }
+}

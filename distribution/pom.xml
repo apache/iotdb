@@ -24,34 +24,49 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>2.0.2-SNAPSHOT</version>
+        <version>2.0.7-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-distribution</artifactId>
     <packaging>pom</packaging>
     <name>IoTDB: Distribution</name>
+    <properties>
+        <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.7-SNAPSHOT</version>
             <type>zip</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-cli</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.7-SNAPSHOT</version>
             <type>zip</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-confignode</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.7-SNAPSHOT</version>
             <type>zip</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>library-udf</artifactId>
-            <version>2.0.2-SNAPSHOT</version>
+            <version>2.0.7-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>mqtt</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>rest</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
     <build>
@@ -107,6 +122,7 @@
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-external-service-impl-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
@@ -117,6 +133,67 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>.os-unix</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <family>unix</family>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>linux-x86_64-glibc2.28</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-unix-arm</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <family>unix</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>linux-aarch64-glibc2.28</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-mac</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>macos-x86_64</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-mac-arm</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>macos-aarch64</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>windows-x86_64-msvc14.3</client.cpp.package.classifier>
+            </properties>
+        </profile>
         <profile>
             <id>with-cpp</id>
             <build>
@@ -157,7 +234,7 @@
                                     <fileSets>
                                         <fileSet>
                                             <includes combine.children="append">
-                                                <include>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin.zip</include>
+                                                <include>apache-iotdb-${project.version}-client-cpp-${client.cpp.package.classifier}-bin.zip</include>
                                             </includes>
                                         </fileSet>
                                     </fileSets>
@@ -174,7 +251,7 @@
                 <dependency>
                     <groupId>org.apache.iotdb</groupId>
                     <artifactId>iotdb-ainode</artifactId>
-                    <version>2.0.2-SNAPSHOT</version>
+                    <version>2.0.7-SNAPSHOT</version>
                 </dependency>
             </dependencies>
             <build>

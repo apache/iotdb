@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +48,12 @@ public class DriverContext {
   @TestOnly
   public DriverContext() {
     this.fragmentInstanceContext = null;
+  }
+
+  @TestOnly
+  // should only be used by executeGroupByQueryInternal
+  public DriverContext(FragmentInstanceContext fragmentInstanceContext) {
+    this.fragmentInstanceContext = fragmentInstanceContext;
   }
 
   public DriverContext(FragmentInstanceContext fragmentInstanceContext, int pipelineId) {

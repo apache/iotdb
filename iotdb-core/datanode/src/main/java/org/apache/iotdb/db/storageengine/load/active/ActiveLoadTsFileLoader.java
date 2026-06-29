@@ -24,12 +24,15 @@ import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -38,10 +41,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +57,8 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -67,6 +72,8 @@ public class ActiveLoadTsFileLoader {
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
   private static final int MAX_PENDING_SIZE = 1000;
   private final ActiveLoadPendingQueue pendingQueue = new ActiveLoadPendingQueue();
 
@@ -79,12 +86,13 @@ public class ActiveLoadTsFileLoader {
     return MAX_PENDING_SIZE - pendingQueue.size();
   }
 
-  public void tryTriggerTsFileLoad(String absolutePath, boolean isGeneratedByPipe) {
+  public void tryTriggerTsFileLoad(
+      String absolutePath, String pendingDir, boolean isTabletMode, boolean isGeneratedByPipe) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       return;
     }
 
-    if (pendingQueue.enqueue(absolutePath, isGeneratedByPipe)) {
+    if (pendingQueue.enqueue(absolutePath, pendingDir, isGeneratedByPipe, isTabletMode)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
     }
@@ -148,111 +156,179 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  private void tryLoadPendingTsFiles() {
-    while (true) {
-      final Optional<Pair<String, Boolean>> filePair = tryGetNextPendingFile();
-      if (!filePair.isPresent()) {
-        return;
-      }
+  public void stop() {
+    final WrappedThreadPoolExecutor executor = activeLoadExecutor.getAndSet(null);
+    if (executor == null) {
+      return;
+    }
 
-      try {
-        final TSStatus result = loadTsFile(filePair.get());
-        if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          LOGGER.info(
-              "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
-              filePair.get().getLeft(),
-              filePair.get().getRight());
-        } else {
-          handleLoadFailure(filePair.get(), result);
-        }
-      } catch (final FileNotFoundException e) {
-        handleFileNotFoundException(filePair.get());
-      } catch (final Exception e) {
-        handleOtherException(filePair.get(), e);
-      } finally {
-        pendingQueue.removeFromLoading(filePair.get().getLeft());
+    executor.shutdownNow();
+    try {
+      if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+        LOGGER.warn(
+            StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S,
+            ThreadName.ACTIVE_LOAD_TSFILE_LOADER.getName());
       }
+    } catch (final InterruptedException e) {
+      LOGGER.warn(
+          StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S,
+          ThreadName.ACTIVE_LOAD_TSFILE_LOADER.getName());
+      Thread.currentThread().interrupt();
     }
   }
 
-  private Optional<Pair<String, Boolean>> tryGetNextPendingFile() {
+  private void tryLoadPendingTsFiles() {
+    final IClientSession session =
+        new InternalClientSession(
+            String.format(
+                "%s_%s",
+                ActiveLoadTsFileLoader.class.getSimpleName(), Thread.currentThread().getName()));
+    session.setUsername(AuthorityChecker.SUPER_USER);
+    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+    session.setZoneId(ZoneId.systemDefault());
+
+    try {
+      while (true) {
+        final Optional<ActiveLoadPendingQueue.ActiveLoadEntry> loadEntry = tryGetNextPendingFile();
+        if (!loadEntry.isPresent()) {
+          return;
+        }
+
+        try {
+          final TSStatus result = loadTsFile(loadEntry.get(), session);
+          if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            LOGGER.info(
+                "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
+                loadEntry.get().getFile(),
+                loadEntry.get().isGeneratedByPipe());
+          } else {
+            handleLoadFailure(loadEntry.get(), result);
+          }
+        } catch (final FileNotFoundException e) {
+          handleFileNotFoundException(loadEntry.get());
+        } catch (final Exception e) {
+          handleOtherException(loadEntry.get(), e);
+        } finally {
+          pendingQueue.removeFromLoading(loadEntry.get().getFile());
+        }
+      }
+    } finally {
+      SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
+    }
+  }
+
+  private Optional<ActiveLoadPendingQueue.ActiveLoadEntry> tryGetNextPendingFile() {
     final long maxRetryTimes =
         Math.max(1, IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds() << 1);
     long currentRetryTimes = 0;
 
-    while (true) {
-      final Pair<String, Boolean> filePair = pendingQueue.dequeueFromPending();
-      if (Objects.nonNull(filePair)) {
-        return Optional.of(filePair);
+    while (!Thread.currentThread().isInterrupted()) {
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry = pendingQueue.dequeueFromPending();
+      if (Objects.nonNull(entry)) {
+        return Optional.of(entry);
       }
 
       LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
+      if (Thread.currentThread().isInterrupted()) {
+        return Optional.empty();
+      }
 
       if (currentRetryTimes++ >= maxRetryTimes) {
         return Optional.empty();
       }
     }
+    return Optional.empty();
   }
 
-  private TSStatus loadTsFile(final Pair<String, Boolean> filePair) throws FileNotFoundException {
-    final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
+  private TSStatus loadTsFile(
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry, final IClientSession session)
+      throws FileNotFoundException {
+    final File tsFile = new File(entry.getFile());
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+    final List<File> files = statement.getTsFiles();
+
     statement.setDeleteAfterLoad(true);
-    statement.setConvertOnTypeMismatch(true);
-    statement.setVerifySchema(isVerify);
-    statement.setAutoCreateDatabase(false);
-    return executeStatement(filePair.getRight() ? new PipeEnrichedStatement(statement) : statement);
+    statement.setAutoCreateDatabase(
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
+
+    final File pendingDir =
+        entry.getPendingDir() == null
+            ? ActiveLoadPathHelper.findPendingDirectory(tsFile)
+            : new File(entry.getPendingDir());
+    final Map<String, String> attributes = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+    ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
+
+    final File parentFile;
+    if (statement.getDatabase() == null && entry.isTableModel()) {
+      statement.setDatabase(
+          files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null
+              ? null
+              : parentFile.getName());
+    }
+
+    return executeStatement(
+        entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement, session);
   }
 
-  private TSStatus executeStatement(final Statement statement) {
-    return Coordinator.getInstance()
-        .executeForTreeModel(
-            statement,
-            SessionManager.getInstance().requestQueryId(),
-            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
-            "",
-            ClusterPartitionFetcher.getInstance(),
-            ClusterSchemaFetcher.getInstance(),
-            IOTDB_CONFIG.getQueryTimeoutThreshold(),
-            false)
-        .status;
-  }
-
-  private void handleLoadFailure(final Pair<String, Boolean> filePair, final TSStatus status) {
-    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(
-        filePair, status.getMessage())) {
-      LOGGER.warn(
-          "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
-          filePair.getLeft(),
-          filePair.getRight(),
-          status);
-      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+  private TSStatus executeStatement(final Statement statement, final IClientSession session) {
+    SESSION_MANAGER.registerSession(session);
+    try {
+      return Coordinator.getInstance()
+          .executeForTreeModel(
+              statement,
+              SESSION_MANAGER.requestQueryId(),
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              ClusterPartitionFetcher.getInstance(),
+              ClusterSchemaFetcher.getInstance(),
+              IOTDB_CONFIG.getQueryTimeoutThreshold(),
+              false,
+              statement.isDebug())
+          .status;
+    } finally {
+      SESSION_MANAGER.removeCurrSession();
     }
   }
 
-  private void handleFileNotFoundException(final Pair<String, Boolean> filePair) {
-    LOGGER.warn(
-        "Failed to auto load tsfile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.",
-        filePair.getLeft(),
-        filePair.getRight());
-    removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+  private void handleLoadFailure(
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry, final TSStatus status) {
+    if (!ActiveLoadFailedMessageHandler.isStatusShouldRetry(entry, status)) {
+      LOGGER.warn(
+          "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
+          entry.getFile(),
+          entry.isGeneratedByPipe(),
+          status);
+      removeFileAndResourceAndModsToFailDir(entry.getFile());
+    }
   }
 
-  private void handleOtherException(final Pair<String, Boolean> filePair, final Exception e) {
-    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(filePair, e.getMessage())) {
+  private void handleFileNotFoundException(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
+    LOGGER.warn(
+        "Failed to auto load tsfile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.",
+        entry.getFile(),
+        entry.isGeneratedByPipe());
+    removeFileAndResourceAndModsToFailDir(entry.getFile());
+  }
+
+  private void handleOtherException(
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry, final Exception e) {
+    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, e.getMessage())) {
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
-          filePair.getLeft(),
-          filePair.getRight(),
+          entry.getFile(),
+          entry.isGeneratedByPipe(),
           e);
-      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+      removeFileAndResourceAndModsToFailDir(entry.getFile());
     }
   }
 
   private void removeFileAndResourceAndModsToFailDir(final String filePath) {
     removeToFailDir(filePath);
-    removeToFailDir(filePath + ".resource");
-    removeToFailDir(filePath + ".mods");
+    removeToFailDir(LoadUtil.getTsFileResourcePath(filePath));
+    removeToFailDir(LoadUtil.getTsFileModsV1Path(filePath));
+    removeToFailDir(LoadUtil.getTsFileModsV2Path(filePath));
   }
 
   private void removeToFailDir(final String filePath) {
@@ -270,7 +346,7 @@ public class ActiveLoadTsFileLoader {
             return null;
           });
     } catch (final IOException e) {
-      LOGGER.warn("Error occurred during moving file {} to fail directory.", filePath, e);
+      LOGGER.warn(StorageEngineMessages.ERROR_MOVING_FILE_TO_FAIL_DIR, filePath, e);
     }
   }
 
@@ -294,7 +370,7 @@ public class ActiveLoadTsFileLoader {
               try {
                 fileSize[0] += file.toFile().length();
               } catch (Exception e) {
-                LOGGER.debug("Failed to count failed files in fail directory.", e);
+                LOGGER.debug(StorageEngineMessages.FAILED_COUNT_FILES_IN_FAIL_DIR, e);
               }
               return FileVisitResult.CONTINUE;
             }
@@ -303,7 +379,7 @@ public class ActiveLoadTsFileLoader {
       ActiveLoadingFilesNumberMetricsSet.getInstance().updateTotalFailedFileCounter(fileCount[0]);
       ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalFailedFileCounter(fileSize[0]);
     } catch (final IOException e) {
-      LOGGER.debug("Failed to count failed files in fail directory.", e);
+      LOGGER.debug(StorageEngineMessages.FAILED_COUNT_FILES_IN_FAIL_DIR, e);
     }
 
     return fileCount[0];

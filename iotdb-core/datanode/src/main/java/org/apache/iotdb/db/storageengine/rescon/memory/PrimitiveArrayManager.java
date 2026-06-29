@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.memory.StorageEngineMemoryMetrics;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -91,7 +93,8 @@ public class PrimitiveArrayManager {
   }
 
   private static void init() {
-    LOGGER.info("BufferedArraySizeThreshold is {}", POOLED_ARRAYS_MEMORY_THRESHOLD);
+    LOGGER.info(
+        StorageEngineMessages.BUFFERED_ARRAY_SIZE_THRESHOLD, POOLED_ARRAYS_MEMORY_THRESHOLD);
 
     // POOLED_ARRAYS_MEMORY_THRESHOLD = ∑(datatype[i].getDataTypeSize() * ARRAY_SIZE * LIMITS[i])
     // we init all LIMITS[i] with the same value, so we have
@@ -153,9 +156,12 @@ public class PrimitiveArrayManager {
     synchronized (POOLED_ARRAYS[order]) {
       array = POOLED_ARRAYS[order].poll();
     }
+    StorageEngineMemoryMetrics.getInstance().incPamAllocation();
     if (array == null) {
       array = createPrimitiveArray(dataType);
+      StorageEngineMemoryMetrics.getInstance().incPamAllocationFailure();
     }
+
     return array;
   }
 
@@ -245,6 +251,7 @@ public class PrimitiveArrayManager {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         dataArray = new Binary[ARRAY_SIZE];
         break;
       default:
@@ -278,10 +285,13 @@ public class PrimitiveArrayManager {
       throw new UnSupportedDataTypeException(array.getClass().toString());
     }
 
+    StorageEngineMemoryMetrics.getInstance().incPamRelease();
     synchronized (POOLED_ARRAYS[order]) {
       ArrayDeque<Object> arrays = POOLED_ARRAYS[order];
       if (arrays.size() < LIMITS[order]) {
         arrays.add(array);
+      } else {
+        StorageEngineMemoryMetrics.getInstance().incPamReleaseFailure();
       }
     }
   }
@@ -335,6 +345,7 @@ public class PrimitiveArrayManager {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         Binary[][] binaries = new Binary[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
           binaries[i] = new Binary[ARRAY_SIZE];

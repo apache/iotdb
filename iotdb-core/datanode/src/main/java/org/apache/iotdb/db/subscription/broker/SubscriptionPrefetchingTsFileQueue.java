@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -33,7 +34,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +74,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     }
   }
 
-  public @NonNull SubscriptionEvent pollTsFileInternal(
+  public SubscriptionEvent pollTsFileInternal(
       final String consumerId,
       final SubscriptionCommitContext commitContext,
       final long writingOffset) {
@@ -84,6 +84,16 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         (key, ev) -> {
           // 1. Extract current event and check it
           if (Objects.isNull(ev)) {
+            if (isCommitContextOutdated(commitContext)) {
+              LOGGER.warn(
+                  "SubscriptionPrefetchingTsFileQueue {} detected outdated poll request, consumer {}, commit context {}, writing offset {}",
+                  this,
+                  consumerId,
+                  commitContext,
+                  writingOffset);
+              eventRef.set(generateSubscriptionPollOutdatedErrorResponse());
+              return null;
+            }
             final String errorMessage =
                 String.format(
                     "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any file to consumer %s, commit context: %s, writing offset: %s",
@@ -131,7 +141,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           // 2. Check previous response type, file name and offset
           final short responseType = response.getResponseType();
           if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-            final String errorMessage = String.format("unexpected response type: %s", responseType);
+            final String errorMessage =
+                String.format(DataNodeMiscMessages.UNEXPECTED_RESPONSE_TYPE_FMT, responseType);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return ev;
@@ -199,7 +210,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
             default:
               {
                 final String errorMessage =
-                    String.format("unexpected response type: %s", responseType);
+                    String.format(DataNodeMiscMessages.UNEXPECTED_RESPONSE_TYPE_FMT, responseType);
                 LOGGER.warn(errorMessage);
                 eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
                 return ev;
@@ -240,6 +251,9 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         new SubscriptionEvent(
             new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
             ((PipeTsFileInsertionEvent) event).getTsFile(),
+            ((PipeTsFileInsertionEvent) event).isTableModelEvent()
+                ? ((PipeTsFileInsertionEvent) event).getTableModelDatabaseName()
+                : null,
             commitContext);
     super.prefetchEvent(ev);
     return true;

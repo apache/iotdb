@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.task;
 
+import org.apache.iotdb.calc.execution.schedule.queue.ID;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.ID;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.Objects;
 
@@ -36,11 +36,12 @@ public class DriverTaskId implements ID, Comparable<DriverTaskId> {
   // Currently, we just save pipelineId in driverTask since it's one-to-one relation.
   private final int pipelineId;
   private final String fullId;
+  private static final String EMPTY_FULL_ID = "EmptyFullId";
 
   public DriverTaskId(FragmentInstanceId id, int pipelineId) {
     this.fragmentInstanceId = id;
     this.pipelineId = pipelineId;
-    this.fullId = String.format("%s.%d", id.getFullId(), pipelineId);
+    this.fullId = String.format("%s.%d", id == null ? EMPTY_FULL_ID : id.getFullId(), pipelineId);
   }
 
   @Override

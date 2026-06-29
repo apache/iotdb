@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class UncheckedStartupException extends IoTDBRuntimeException {
@@ -27,7 +28,7 @@ public class UncheckedStartupException extends IoTDBRuntimeException {
 
   public UncheckedStartupException(String name, String message) {
     super(
-        String.format("Failed to start [%s], because [%s]", name, message),
+        String.format(CommonMessages.STARTUP_FAILED, name, message),
         TSStatusCode.START_UP_ERROR.getStatusCode());
   }
 

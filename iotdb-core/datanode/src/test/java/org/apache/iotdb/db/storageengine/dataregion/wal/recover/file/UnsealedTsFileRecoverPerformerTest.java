@@ -21,12 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -189,8 +189,8 @@ public class UnsealedTsFileRecoverPerformerTest {
     final TsTable testTable1 = new TsTable("table1");
     testTable1.addColumnSchema(
         new FieldColumnSchema("m1", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
-    DataNodeTableCache.getInstance().preUpdateTable(SG_NAME, testTable1);
-    DataNodeTableCache.getInstance().commitUpdateTable(SG_NAME, "table1");
+    DataNodeTableCache.getInstance().preUpdateTable(SG_NAME, testTable1, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(SG_NAME, "table1", null);
     // generate crashed .tsfile
     File file = new File(FILE_NAME);
     Files.createDirectories(file.getParentFile().toPath());

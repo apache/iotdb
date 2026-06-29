@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
@@ -32,12 +34,18 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.List;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqual;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
 import static org.junit.Assert.fail;
 
 /** In this IT, table has more than one TAGs and Attributes. */
@@ -152,7 +160,22 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "insert into tableB(time,device,value) values('2020-01-01 00:00:03.000', 'd333', 333)",
         "flush",
         "insert into tableB(time,device,value) values('2020-01-01 00:00:04.000', 'd2', 40)",
-        "insert into tableB(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 50)"
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 50)",
+        "create table tableD(device STRING TAG, value TIMESTAMP FIELD)",
+        "insert into tableD(time,device,value) values('2020-01-01 00:00:07.000', 'd2', '1970-01-01 00:00:00.000')"
+      };
+
+  private static final String[] sql6 =
+      new String[] {
+        "create table table6(device STRING TAG, s1 INT32 FIELD)",
+        "insert into table6 values(2,'d1',2)",
+        "delete from table6 where time >= 1"
+      };
+
+  private static final String[] sql7 =
+      new String[] {
+        "create table t1(device_id STRING TAG, code STRING TAG, s1 float)",
+        "create table t2(device_id STRING TAG, s2 float)"
       };
 
   String[] expectedHeader;
@@ -179,7 +202,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5)) {
+      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5, sql6, sql7)) {
         for (String sql : sqlList) {
           statement.execute(sql);
         }
@@ -387,12 +410,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "l3,217,null,d2,1971-01-01T00:00:00.500Z,",
           "l3,245,t,d1,1971-04-26T17:46:40.020Z,",
           "l3,245,null,d2,1971-04-26T17:46:40.020Z,",
-          "l4,52,null,d2,1970-01-01T00:00:00.080Z,",
           "l4,52,null,d1,1970-01-01T00:00:00.080Z,",
-          "l4,61,null,d2,1971-01-01T00:00:01.000Z,",
+          "l4,52,null,d2,1970-01-01T00:00:00.080Z,",
           "l4,61,null,d1,1971-01-01T00:00:01.000Z,",
-          "l4,67,null,d2,1971-04-26T18:01:40.000Z,",
+          "l4,61,null,d2,1971-01-01T00:00:01.000Z,",
           "l4,67,null,d1,1971-04-26T18:01:40.000Z,",
+          "l4,67,null,d2,1971-04-26T18:01:40.000Z,",
           "l5,220,null,d1,1971-01-01T00:00:10.000Z,",
           "l5,220,null,d2,1971-01-01T00:00:10.000Z,",
           "l5,250,null,d1,1971-08-20T11:33:20.000Z,",
@@ -401,7 +424,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "l5,4662,null,d2,1970-01-01T00:00:00.100Z,",
         };
     tableResultSetEqualTest(
-        "select level,cast(num+floatNum as int32) as sum,attr1,device,time from table0 order by level asc, cast(num+floatNum as int32) asc, attr1 desc",
+        "select level,cast(num+floatNum as int32) as sum,attr1,device,time from table0 order by level asc, cast(num+floatNum as int32) asc, attr1 desc, device asc",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -537,6 +560,16 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(num) as count_num, count(1) as count_star, avg(num) as avg_num, count(num) as count_num,\n"
+            + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
+            + "count(attr1) as count_attr1, count(device) as count_device, \n"
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, "
+            + "count(time) as count_time, count(1) as count_star "
+            + "from table0",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     retArray =
         new String[] {
@@ -548,6 +581,17 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(device) as count_device, \n"
             + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, "
             + "count(time) as count_time, count(*) as count_star "
+            + "from table0 "
+            + "where time<200 and num>1 ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(num) as count_num, count(1) as count_star, avg(num) as avg_num, count(num) as count_num,\n"
+            + "count(attr2) as count_attr2, avg(num) as avg_num, count(device) as count_device,\n"
+            + "count(attr1) as count_attr1, count(device) as count_device, \n"
+            + "round(avg(floatnum)) as avg_floatnum, count(date) as count_date, "
+            + "count(time) as count_time, count(1) as count_star "
             + "from table0 "
             + "where time<200 and num>1 ",
         expectedHeader,
@@ -595,7 +639,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     String[] expectedHeader = new String[] {"_col0"};
     String[] retArray = new String[] {"30,"};
 
-    String sql = "SELECT count(num+1) from table0";
+    sql = "SELECT count(num+1) from table0";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
@@ -603,7 +647,9 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   public void countStarTest() {
     expectedHeader = new String[] {"_col0", "_col1"};
     retArray = new String[] {"1,1,"};
-    String sql = "select count(*),count(t1) from (select avg(num+1) as t1 from table0)";
+    sql = "select count(*),count(t1) from (select avg(num+1) as t1 from table0)";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql = "select count(1),count(t1) from (select avg(num+1) as t1 from table0)";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader = new String[] {"count_star"};
@@ -613,6 +659,8 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         };
     tableResultSetEqualTest(
         "select count(*) as count_star from table0", expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(1) as count_star from table0", expectedHeader, retArray, DATABASE_NAME);
 
     retArray =
         new String[] {
@@ -623,6 +671,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(1) as count_star from (select count(1) from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     retArray =
         new String[] {
@@ -630,6 +683,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         };
     tableResultSetEqualTest(
         "select count(*) as count_star from (select count(*), avg(num) from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(1) as count_star from (select count(1), avg(num) from table0)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -644,6 +702,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count_star + avg_num as sum from (select count(1) as count_star, avg(num) as avg_num from table0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     // TODO select count(*),count(t1) from (select avg(num+1) as t1 from table0) where time < 0
 
@@ -654,6 +717,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         };
     tableResultSetEqualTest(
         "select count(*) from (select device from table0 group by device, level)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select count(1) from (select device from table0 group by device, level)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -693,6 +761,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
             + "from table0 group by device,level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, "
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
+            + "from table0 group by device,level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader =
         new String[] {
@@ -713,6 +787,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     sql =
         "select device, "
             + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
+            + "from table0 where device='d1' and level='l1' group by device order by device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, "
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num "
             + "from table0 where device='d1' and level='l1' group by device order by device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -816,6 +896,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
             + "from table0 group by 3, device, level order by device, level, bin";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, date_bin(1y, time) as bin,"
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
+            + "from table0 group by 3, device, level order by device, level, bin";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     retArray =
         new String[] {
@@ -851,6 +937,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     sql =
         "select device, level, date_bin(1d, time) as bin,"
             + "count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
+            + "from table0 group by 3, device, level order by device, level, bin";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, date_bin(1d, time) as bin,"
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
             + "from table0 group by 3, device, level order by device, level, bin";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -894,6 +986,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
             + "from table0 group by 3, device, level order by device, level, bin";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, date_bin(1s, time) as bin,"
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
+            + "from table0 group by 3, device, level order by device, level, bin";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // only group by date_bin
     expectedHeader = new String[] {"bin"};
@@ -928,6 +1026,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "1971-01-01T00:00:00.000Z,1,1,1,0,1,1,1,10.0,",
           "1971-04-26T17:46:40.000Z,1,1,1,0,1,1,1,12.0,"
         };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select date_bin(1s, time) as bin,"
+            + "count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, avg(num) as avg_num "
+            + "from table0 where device='d1' and level='l2' group by 1";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // flush multi times, generated multi tsfile
@@ -975,6 +1079,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     retArray =
         new String[] {
@@ -982,6 +1091,11 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         };
     sql =
         "select count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -1006,9 +1120,19 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32 group by device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 group by device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
     retArray = new String[] {"d1,l2,1,1,1,0,1,1,1,12.0,12.0,", "d2,l2,1,1,1,0,1,0,1,12.0,12.0,"};
     sql =
         "select device, level, count(num) as count_num, count(*) as count_star, count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, count(num) as count_num, count(1) as count_star, count(device) as count_device, count(date) as count_date, "
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -1035,6 +1159,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32 group by 3, device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, date_bin(1d, time) as bin, count(num) as count_num, count(1) as count_star, "
+            + "count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 group by 3, device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
     retArray =
         new String[] {
           "d1,l2,1971-04-26T00:00:00.000Z,1,1,1,0,1,1,1,12.0,12.0,",
@@ -1046,15 +1176,26 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
             + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by 3, device, level order by device, level";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select device, level, date_bin(1d, time) as bin, count(num) as count_num, count(1) as count_star, "
+            + "count(device) as count_device, count(date) as count_date, "
+            + "count(attr1) as count_attr1, count(attr2) as count_attr2, count(time) as count_time, sum(num) as sum_num,"
+            + "avg(num) as avg_num from table0 where time=32 or time=1971-04-27T01:46:40.000+08:00 group by 3, device, level order by device, level";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // queried device is not exist
     expectedHeader = buildHeaders(3);
     sql = "select count(*), count(num), sum(num) from table0 where device='d_not_exist'";
     retArray = new String[] {"0,0,null,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql = "select count(1), count(num), sum(num) from table0 where device='d_not_exist'";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
     sql =
         "select count(*), count(num), sum(num) from table0 where device='d_not_exist1' or device='d_not_exist2'";
     retArray = new String[] {"0,0,null,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "select count(1), count(num), sum(num) from table0 where device='d_not_exist1' or device='d_not_exist2'";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // no data in given time range (push-down)
@@ -1108,7 +1249,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     expectedHeader = buildHeaders(24);
     retArray =
         new String[] {
-          "1971-08-20T11:33:20.000Z,d2,l5,yy,zz,15,3147483648,4654.231,2023-01-01,1971-01-01T00:01:40.000Z,test-string3,6666.8,1970-01-01T00:00:00.000Z,d1,l1,c,a,1,2107483648,12.123,2022-01-01,1970-01-01T00:00:00.020Z,test-string1,6666.3,",
+          "1971-08-20T11:33:20.000Z,d2,l5,yy,zz,15,3147483648,4654.231,2023-01-01,2024-09-25T06:15:35.000Z,test-string3,6666.8,1970-01-01T00:00:00.000Z,d1,l1,c,a,1,2107483648,12.123,2022-01-01,2024-08-01T06:15:35.000Z,test-string1,6666.3,",
         };
     sql =
         "select max(time),max(device),max(level),max(attr1),max(attr2),max(num),max(bignum),max(floatnum),max(date),max(ts),max(stringv),max(doubleNum),min(time),min(device),min(level),min(attr1),min(attr2),min(num),min(bignum),min(floatnum),min(date),min(ts),min(stringv),min(doubleNum) from table0";
@@ -1514,7 +1655,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
 
   // no filter
   @Test
-  public void timeColumnFullOuterJoinTest1() {
+  public void timeColumnOuterJoinTest1() {
     expectedHeader =
         new String[] {"time", "device", "level", "num", "device", "attr2", "num", "str"};
     retArray =
@@ -1584,35 +1725,37 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     // join on
     String sql =
         "SELECT t1.time as time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
-            + "FROM table0 t1 FULL JOIN table0 t2 ON t1.time = t2.time \n"
+            + "FROM table0 t1 %s JOIN table0 t2 ON t1.time = t2.time \n"
             + "ORDER BY t1.time, t1.device, t2.device";
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    sql =
-        "SELECT t1.time as time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
-            + "FROM table0 t1 INNER JOIN table0 t2 ON t1.time = t2.time \n"
-            + "ORDER BY t1.time, t1.device, t2.device";
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(String.format(sql, FULL), expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest(String.format(sql, LEFT), expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest(String.format(sql, RIGHT), expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest(String.format(sql, INNER), expectedHeader, retArray, DATABASE_NAME);
 
     // join using
     sql =
         "SELECT time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
-            + "FROM table0 t1 FULL OUTER JOIN table0 t2 USING(time)\n"
+            + "FROM table0 t1 %s JOIN table0 t2 USING(time)\n"
             + "ORDER BY time, t1.device, t2.device";
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    sql =
-        "SELECT time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
-            + "FROM table0 t1 INNER JOIN table0 t2 USING(time)\n"
-            + "ORDER BY time, t1.device, t2.device";
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(String.format(sql, FULL), expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest(String.format(sql, LEFT), expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest(String.format(sql, RIGHT), expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest(String.format(sql, INNER), expectedHeader, retArray, DATABASE_NAME);
 
     sql =
         "select t1.time as time1, t2.time as time2, "
             + "  t1.device as device1, "
             + "  t1.value as value1, "
             + "  t2.device as device2, "
-            + "  t2.value as value2  from tableA t1 full join tableB t2 on t1.time = t2.time "
+            + "  t2.value as value2  from tableA t1 %s join tableB t2 on t1.time = t2.time "
             + "order by COALESCE(time1, time2),device1,device2";
     retArray =
         new String[] {
@@ -1625,14 +1768,43 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "2020-01-01T00:00:07.000Z,null,d2,7,null,null,",
         };
     expectedHeader = new String[] {"time1", "time2", "device1", "value1", "device2", "value2"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest(String.format(sql, FULL), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,null,d1,1,null,null,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:05.000Z,2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+          "2020-01-01T00:00:07.000Z,null,d2,7,null,null,",
+        };
+    tableResultSetEqualTest(String.format(sql, LEFT), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "null,2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "null,2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+        };
+    tableResultSetEqualTest(String.format(sql, RIGHT), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:05.000Z,2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+        };
+    tableResultSetEqualTest(String.format(sql, INNER), expectedHeader, retArray, DATABASE_NAME);
 
     sql =
         "select time, "
             + "  t1.device as device1, "
             + "  t1.value as value1, "
             + "  t2.device as device2, "
-            + "  t2.value as value2  from tableA t1 full join tableB t2 USING(time) "
+            + "  t2.value as value2  from tableA t1 %s join tableB t2 USING(time) "
             + "order by time,device1,device2";
     retArray =
         new String[] {
@@ -1645,7 +1817,36 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "2020-01-01T00:00:07.000Z,d2,7,null,null,",
         };
     expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest(String.format(sql, FULL), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,d1,1,null,null,",
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+          "2020-01-01T00:00:07.000Z,d2,7,null,null,",
+        };
+    tableResultSetEqualTest(String.format(sql, LEFT), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+        };
+    tableResultSetEqualTest(String.format(sql, RIGHT), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+        };
+    tableResultSetEqualTest(String.format(sql, INNER), expectedHeader, retArray, DATABASE_NAME);
 
     // empty table join non-empty table
     sql =
@@ -1653,7 +1854,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "  t1.device as device1, "
             + "  t1.value as value1, "
             + "  t2.device as device2, "
-            + "  t2.value as value2  from tableC t1 full join tableB t2 USING(time) "
+            + "  t2.value as value2  from tableC t1 %s join tableB t2 USING(time) "
             + "order by time,device1,device2";
     retArray =
         new String[] {
@@ -1664,7 +1865,24 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "2020-01-01T00:00:05.000Z,null,null,d2,50,",
         };
     expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest(String.format(sql, FULL), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray = new String[] {};
+    tableResultSetEqualTest(String.format(sql, LEFT), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,null,null,d1,30,",
+          "2020-01-01T00:00:03.000Z,null,null,d333,333,",
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,null,null,d2,50,",
+        };
+    tableResultSetEqualTest(String.format(sql, RIGHT), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray = new String[] {};
+    tableResultSetEqualTest(String.format(sql, INNER), expectedHeader, retArray, DATABASE_NAME);
 
     sql =
         "select time, "
@@ -1672,7 +1890,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
             + "  t1.value as value1, "
             + "  t2.device as device2, "
             + "  t2.value as value2 "
-            + "from (select * from tableA where device='d1') t1 full join (select * from tableB where device='d2') t2 USING(time) order by time, device1, device2";
+            + "from (select * from tableA where device='d1') t1 %s join (select * from tableB where device='d2') t2 USING(time) order by time, device1, device2";
     retArray =
         new String[] {
           "2020-01-01T00:00:01.000Z,d1,1,null,null,",
@@ -1681,12 +1899,28 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "2020-01-01T00:00:05.000Z,null,null,d2,50,",
         };
     expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest(String.format(sql, FULL), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,d1,1,null,null,", "2020-01-01T00:00:03.000Z,d1,3,null,null,",
+        };
+    tableResultSetEqualTest(String.format(sql, LEFT), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,", "2020-01-01T00:00:05.000Z,null,null,d2,50,",
+        };
+    tableResultSetEqualTest(String.format(sql, RIGHT), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray = new String[] {};
+    tableResultSetEqualTest(String.format(sql, INNER), expectedHeader, retArray, DATABASE_NAME);
   }
 
   // has filter
   @Test
-  public void timeColumnFullOuterJoinTest2() {
+  public void timeColumnOuterJoinTest2() {
     expectedHeader =
         new String[] {"time", "device", "level", "t1_num_add", "device", "attr2", "num", "str"};
     retArray =
@@ -1728,22 +1962,84 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         };
 
     // join using
-    String sql =
+    String sql1 =
         "SELECT time, t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
             + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1 \n"
-            + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
+            + "%s JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
             + "USING(time) \n"
             + "ORDER BY time, t1.device, t2.device";
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(String.format(sql1, FULL), expectedHeader, retArray, DATABASE_NAME);
 
     // join on
-    sql =
+    String sql2 =
         "SELECT COALESCE(t1.time, t2.time) as time, t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
             + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1 \n"
-            + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
+            + "%s JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
             + "ON t1.time = t2.time \n"
             + "ORDER BY time, t1.device, t2.device";
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(String.format(sql2, FULL), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.080Z,d1,l4,10,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d1,l4,10,d2,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,10,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,10,d2,null,9,apple,",
+          "1970-01-01T00:00:00.100Z,d1,l5,9,null,null,null,null,",
+          "1970-01-01T00:00:00.100Z,d2,l5,9,null,null,null,null,",
+          "1971-01-01T00:00:00.100Z,d1,l2,11,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d1,l2,11,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,11,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,11,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.500Z,d1,l3,5,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d1,l3,5,d2,null,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,5,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,5,d2,null,4,peach,",
+          "1971-01-01T00:00:01.000Z,d1,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d1,l4,6,d2,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,6,d2,null,5,orange,",
+          "1971-01-01T00:00:10.000Z,d1,l5,8,null,null,null,null,",
+          "1971-01-01T00:00:10.000Z,d2,l5,8,null,null,null,null,",
+          "1971-04-26T17:46:40.000Z,d1,l2,13,null,null,null,null,",
+          "1971-04-26T17:46:40.000Z,d2,l2,13,null,null,null,null,",
+          "1971-04-26T17:46:40.020Z,d1,l3,15,null,null,null,null,",
+          "1971-04-26T17:46:40.020Z,d2,l3,15,null,null,null,null,",
+          "1971-04-26T18:01:40.000Z,d1,l4,14,null,null,null,null,",
+          "1971-04-26T18:01:40.000Z,d2,l4,14,null,null,null,null,",
+          "1971-08-20T11:33:20.000Z,d1,l5,16,null,null,null,null,",
+          "1971-08-20T11:33:20.000Z,d2,l5,16,null,null,null,null,",
+        };
+    tableResultSetEqualTest(String.format(sql1, LEFT), expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(String.format(sql2, LEFT), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,null,null,null,d1,d,3,coconut,",
+          "1970-01-01T00:00:00.000Z,null,null,null,d2,c,3,coconut,",
+          "1970-01-01T00:00:00.020Z,null,null,null,d1,zz,2,pineapple,",
+          "1970-01-01T00:00:00.020Z,null,null,null,d2,null,2,pineapple,",
+          "1970-01-01T00:00:00.040Z,null,null,null,d1,a,1,apricot,",
+          "1970-01-01T00:00:00.040Z,null,null,null,d2,null,1,apricot,",
+          "1970-01-01T00:00:00.080Z,d1,l4,10,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d1,l4,10,d2,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,10,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,10,d2,null,9,apple,",
+          "1971-01-01T00:00:00.100Z,d1,l2,11,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d1,l2,11,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,11,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,11,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.500Z,d1,l3,5,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d1,l3,5,d2,null,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,5,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,5,d2,null,4,peach,",
+          "1971-01-01T00:00:01.000Z,d1,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d1,l4,6,d2,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,6,d2,null,5,orange,",
+        };
+    tableResultSetEqualTest(String.format(sql1, RIGHT), expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(String.format(sql2, RIGHT), expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -1922,10 +2218,10 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   }
 
   @Test
-  public void fullJoinTest() {
+  public void outerJoinTest() {
     expectedHeader = new String[] {"date", "date"};
     sql =
-        "select t0.date, t1.date from table0 t0 full join table1 t1 on t0.date=t1.date order by t0.date, t1.date";
+        "select t0.date, t1.date from table0 t0 %s join table1 t1 on t0.date=t1.date order by t0.date, t1.date";
     retArray =
         new String[] {
           "2022-01-01,null,",
@@ -1971,11 +2267,62 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "null,null,",
           "null,null,",
         };
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(String.format(sql, FULL), expectedHeader, retArray, DATABASE_NAME);
+    retArray =
+        new String[] {
+          "2022-01-01,null,",
+          "2023-01-01,2023-01-01,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,"
+        };
+    tableResultSetEqualTest(String.format(sql, LEFT), expectedHeader, retArray, DATABASE_NAME);
+    retArray =
+        new String[] {
+          "2023-01-01,2023-01-01,",
+          "null,2023-05-01,",
+          "null,2023-10-01,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+        };
+    tableResultSetEqualTest(String.format(sql, RIGHT), expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader = new String[] {"attr1", "attr2", "attr1", "attr2"};
     sql =
-        "select t0.attr1,t0.attr2,t1.attr1,t1.attr2 from table0 t0 full join table1 t1 on t0.attr1=t1.attr1 AND t0.attr2=t1.attr2 order by t0.attr1,t0.attr2,t1.attr1,t1.attr2";
+        "select t0.attr1,t0.attr2,t1.attr1,t1.attr2 from table0 t0 %s join table1 t1 on t0.attr1=t1.attr1 AND t0.attr2=t1.attr2 order by t0.attr1,t0.attr2,t1.attr1,t1.attr2";
     retArray =
         new String[] {
           "c,d,c,d,",
@@ -2032,11 +2379,100 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
           "null,null,null,null,",
           "null,null,null,null,",
         };
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(String.format(sql, FULL), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "d,c,null,null,",
+          "d,c,null,null,",
+          "d,c,null,null,",
+          "t,a,t,a,",
+          "t,a,t,a,",
+          "t,a,t,a,",
+          "vv,null,null,null,",
+          "vv,null,null,null,",
+          "vv,null,null,null,",
+          "yy,zz,null,null,",
+          "yy,zz,null,null,",
+          "yy,zz,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+        };
+    tableResultSetEqualTest(String.format(sql, LEFT), expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "t,a,t,a,",
+          "t,a,t,a,",
+          "t,a,t,a,",
+          "null,null,y,z,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,"
+        };
+    tableResultSetEqualTest(String.format(sql, RIGHT), expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
   public void lastCacheTest() {
+    prepareStaleLastRowCacheOnSingleDataNode();
+
     expectedHeader =
         new String[] {
           "level", "attr1", "device", "attr2", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
@@ -2093,11 +2529,294 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "select level, attr1, device, attr2, last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last(time),"
             + "last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(time,time),last_by(device,time),last_by(num,time) from table0 where time>1971-04-26T17:46:40.000 group by attr1, device, attr2, level order by device,level,attr1,attr2";
     repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
+
+    expectedHeader =
+        new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7"};
+    retArray =
+        new String[] {
+          "1971-08-20T11:33:20.000Z,d2,l5,null,null,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,"
+        };
+    sql =
+        "select last(time),last(device),last(level),last(attr1),last(attr2),"
+            + "last_by(time,num),last_by(time,bignum),last_by(time,floatnum) from table0 where device='d2' and time>1971-04-26T17:46:40.000";
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 2);
+
+    expectedHeader =
+        new String[] {
+          "level", "attr1", "device", "attr2", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11"
+        };
+    retArray =
+        new String[] {
+          "l3,t,d1,a,1971-04-26T17:46:40.020Z,d1,l3,t,a,1971-04-26T17:46:40.020Z,1971-04-26T17:46:40.020Z,1971-04-26T17:46:40.020Z,",
+          "l4,null,d1,null,1971-04-26T18:01:40.000Z,d1,l4,null,null,1971-04-26T18:01:40.000Z,1971-04-26T18:01:40.000Z,1971-04-26T18:01:40.000Z,",
+          "l5,null,d1,null,1971-08-20T11:33:20.000Z,d1,l5,null,null,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,",
+          "l3,null,d2,null,1971-04-26T17:46:40.020Z,d2,l3,null,null,1971-04-26T17:46:40.020Z,1971-04-26T17:46:40.020Z,1971-04-26T17:46:40.020Z,",
+          "l4,null,d2,null,1971-04-26T18:01:40.000Z,d2,l4,null,null,1971-04-26T18:01:40.000Z,1971-04-26T18:01:40.000Z,1971-04-26T18:01:40.000Z,",
+          "l5,null,d2,null,1971-08-20T11:33:20.000Z,d2,l5,null,null,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,",
+        };
+    sql =
+        "select level, attr1, device, attr2, last(time),last(device),last(level),last(attr1),last(attr2),"
+            + "last_by(time,num),last_by(time,bignum),last_by(time,floatnum) from table0 where time>1971-04-26T17:46:40.000 group by attr1, device, attr2, level order by device,level,attr1,attr2";
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
+
+    expectedHeader = new String[] {"_col0", "_col1"};
+    retArray = new String[] {"null,null,"};
+    repeatTest(
+        "select last(time), last(s1) from table6", expectedHeader, retArray, DATABASE_NAME, 3);
+
+    retArray = new String[] {};
+    repeatTest(
+        "select last(time), last(s1) from table6 group by device",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME,
+        3);
+  }
+
+  @Test
+  public void asofInnerJoinTest() {
+    expectedHeader = new String[] {"time", "device", "level", "time", "device", "level"};
+    retArray =
+        new String[] {
+          "1971-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.100Z,d1,l5,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d999,null,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,null,l999,",
+          "1970-01-01T00:00:00.020Z,d1,l2,1970-01-01T00:00:00.010Z,d11,l11,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,d999,null,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,null,l999,",
+          "1971-04-26T17:46:40.000Z,d1,l2,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-04-26T17:46:40.000Z,d1,l2,1971-01-01T00:00:00.000Z,d999,null,"
+        };
+    // test single join condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.time>table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.time>=table1.time+1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1971-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1970-01-01T00:00:00.020Z,d1,l2,",
+          "1971-04-26T17:46:40.000Z,d1,l2,1970-01-01T00:00:00.020Z,d1,l2,",
+          "1971-01-01T00:00:00.500Z,d1,l3,1970-01-01T00:00:00.040Z,d1,l3,",
+          "1971-04-26T17:46:40.020Z,d1,l3,1970-01-01T00:00:00.040Z,d1,l3,",
+          "1971-01-01T00:00:01.000Z,d1,l4,1970-01-01T00:00:00.080Z,d1,l4,",
+          "1971-04-26T18:01:40.000Z,d1,l4,1970-01-01T00:00:00.080Z,d1,l4,",
+          "1971-01-01T00:00:10.000Z,d1,l5,1970-01-01T00:00:00.100Z,d1,l5,",
+          "1971-08-20T11:33:20.000Z,d1,l5,1970-01-01T00:00:00.100Z,d1,l5,"
+        };
+    // test multi join conditions
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time>table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time>=table1.time+1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.010Z,d11,l11,",
+          "1970-01-01T00:00:00.020Z,d1,l2,1970-01-01T00:00:00.030Z,d11,l11,",
+          "1970-01-01T00:00:00.040Z,d1,l3,1970-01-01T00:00:00.080Z,d1,l4,",
+          "1970-01-01T00:00:00.080Z,d1,l4,1970-01-01T00:00:00.100Z,d1,l5,",
+          "1970-01-01T00:00:00.100Z,d1,l5,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1970-01-01T00:00:00.100Z,d1,l5,1971-01-01T00:00:00.000Z,d999,null,",
+          "1970-01-01T00:00:00.100Z,d1,l5,1971-01-01T00:00:00.000Z,null,l999,",
+          "1970-01-01T00:00:00.000Z,d2,l1,1970-01-01T00:00:00.010Z,d11,l11,",
+          "1970-01-01T00:00:00.020Z,d2,l2,1970-01-01T00:00:00.030Z,d11,l11,",
+          "1970-01-01T00:00:00.040Z,d2,l3,1970-01-01T00:00:00.080Z,d1,l4,"
+        };
+    // test single join condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.time<table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '<=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.time<=table1.time-1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+        };
+    // test multi join conditions
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time<table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time<=table1.time-1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void asofLeftJoinTest() {
+    expectedHeader = new String[] {"time", "device", "level", "time", "device", "level"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,null,null,null,",
+          "1971-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.100Z,d1,l5,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d999,null,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,null,l999,",
+          "1970-01-01T00:00:00.020Z,d1,l2,1970-01-01T00:00:00.010Z,d11,l11,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,d999,null,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1971-01-01T00:00:00.000Z,null,l999,",
+          "1971-04-26T17:46:40.000Z,d1,l2,1971-01-01T00:00:00.000Z,d1,l1,"
+        };
+    // test single join condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.time>table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.time>=table1.time+1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,null,null,null,",
+          "1971-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:01:40.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1970-01-01T00:00:00.020Z,d1,l2,null,null,null,",
+          "1971-01-01T00:00:00.100Z,d1,l2,1970-01-01T00:00:00.020Z,d1,l2,",
+          "1971-04-26T17:46:40.000Z,d1,l2,1970-01-01T00:00:00.020Z,d1,l2,",
+          "1970-01-01T00:00:00.040Z,d1,l3,null,null,null,",
+          "1971-01-01T00:00:00.500Z,d1,l3,1970-01-01T00:00:00.040Z,d1,l3,",
+          "1971-04-26T17:46:40.020Z,d1,l3,1970-01-01T00:00:00.040Z,d1,l3,",
+          "1970-01-01T00:00:00.080Z,d1,l4,null,null,null,"
+        };
+    // test multi join conditions
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time>table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time>=table1.time+1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,1970-01-01T00:00:00.010Z,d11,l11,",
+          "1971-01-01T00:00:00.000Z,d1,l1,null,null,null,",
+          "1971-01-01T00:01:40.000Z,d1,l1,null,null,null,",
+          "1970-01-01T00:00:00.020Z,d1,l2,1970-01-01T00:00:00.030Z,d11,l11,",
+          "1971-01-01T00:00:00.100Z,d1,l2,null,null,null,",
+          "1971-04-26T17:46:40.000Z,d1,l2,null,null,null,",
+          "1970-01-01T00:00:00.040Z,d1,l3,1970-01-01T00:00:00.080Z,d1,l4,",
+          "1971-01-01T00:00:00.500Z,d1,l3,null,null,null,",
+          "1971-04-26T17:46:40.020Z,d1,l3,null,null,null,",
+          "1970-01-01T00:00:00.080Z,d1,l4,1970-01-01T00:00:00.100Z,d1,l5,"
+        };
+    // test single join condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.time<table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '<=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.time<=table1.time-1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,1971-01-01T00:00:00.000Z,d1,l1,",
+          "1971-01-01T00:00:00.000Z,d1,l1,null,null,null,",
+          "1971-01-01T00:01:40.000Z,d1,l1,null,null,null,",
+          "1970-01-01T00:00:00.020Z,d1,l2,null,null,null,",
+          "1971-01-01T00:00:00.100Z,d1,l2,null,null,null,",
+          "1971-04-26T17:46:40.000Z,d1,l2,null,null,null,",
+          "1970-01-01T00:00:00.040Z,d1,l3,null,null,null,",
+          "1971-01-01T00:00:00.500Z,d1,l3,null,null,null,",
+          "1971-04-26T17:46:40.020Z,d1,l3,null,null,null,",
+          "1970-01-01T00:00:00.080Z,d1,l4,null,null,null,"
+        };
+    // test multi join conditions
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time<table1.time "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    // test expr and '>=' in ASOF condition
+    tableResultSetEqualTest(
+        "select table0.time,table0.device,table0.level,table1.time,table1.device,table1.level from table0 asof left join table1 on "
+            + "table0.device=table1.device and table1.level=table0.level and table0.time<=table1.time-1 "
+            + "order by table0.device,table0.level,table0.time,table1.device,table1.level limit 10",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
   public void exceptionTest() {
-    String errMsg = TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + ONLY_SUPPORT_EQUI_JOIN;
+    String errMsg =
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + "Unsupported Join creteria";
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.num>t1.num", errMsg, DATABASE_NAME);
 
@@ -2118,12 +2837,161 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.time=t1.time",
         errMsg,
         DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 t0 full join table1 t1 on t0.time=4000", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 t0 left join table1 t1 on t0.time=4000", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 t0 right join table1 t1 on t0.time=4000", errMsg, DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 asof (tolerance 1s) left join table1 on table0.time<=table1.time",
+        "Tolerance in ASOF JOIN only supports INNER type now",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 asof right join table1 on table0.time<=table1.time",
+        "ASOF JOIN does not support RIGHT type now",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select * from table0 asof full join table1 on table0.time<=table1.time",
+        "ASOF JOIN does not support FULL type now",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void aggregationTableScanWithJoinTest() {
+    expectedHeader = new String[] {"date", "_col1", "date", "_col3"};
+    retArray = new String[] {"1970-01-01T00:00:00.000Z,2,1970-01-01T00:00:00.000Z,2,"};
+    // Join may rename the 'time' column, so we need to ensure the correctness of
+    // AggregationTableScan in this case
+    tableResultSetEqualTest(
+        "select * from ("
+            + "select date_bin(1ms,time) as date,count(*)from table0 group by date_bin(1ms,time)) t0 "
+            + "join ("
+            + "select date_bin(1ms,time) as date,count(*)from table1 where time=0 group by date_bin(1ms,time)) t1 "
+            + "on t0.date = t1.date",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void timestampTypeTest() {
+    expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.000Z,"
+        };
+    tableResultSetEqualTest(
+        "select last(value),first(value),last_by(value,time),first_by(value,time),max(value),min(value) from tableD",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void implicitTimeTest() {
+    expectedHeader = new String[] {"code", "_col1", "device_id", "_col3"};
+    retArray = new String[] {};
+    tableResultSetEqualTest(
+        "select t1.code,date_bin(15m, t2.time),t2.device_id,last(t2.s2) from t1, t2 "
+            + "where t1.device_id = t2.device_id group by t1.code,date_bin(15m, t2.time),t2.device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select t1.code,date_bin(15m, t2.time),t2.device_id,last(t2.s2, t2.time) from t1, t2 "
+            + "where t1.device_id = t2.device_id group by t1.code,date_bin(15m, t2.time),t2.device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select t1.code,date_bin(15m, t2.time),t2.device_id,last(t2.s2, time) from t1, t2 "
+            + "where t1.device_id = t2.device_id group by t1.code,date_bin(15m, t2.time),t2.device_id",
+        "Column 'time' is ambiguous",
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"null,"};
+    tableResultSetEqualTest("select last(1) from t1", expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest("select last(1,time) from t1", expectedHeader, retArray, DATABASE_NAME);
   }
 
   public static void repeatTest(
       String sql, String[] expectedHeader, String[] retArray, String dbName, int repeatTimes) {
     for (int i = 0; i < repeatTimes; i++) {
       tableResultSetEqualTest(sql, expectedHeader, retArray, dbName);
+    }
+  }
+
+  private static void prepareStaleLastRowCacheOnSingleDataNode() {
+    try {
+      final List<DataNodeWrapper> dataNodeWrappers = EnvFactory.getEnv().getDataNodeWrapperList();
+      for (final DataNodeWrapper dataNodeWrapper : dataNodeWrappers) {
+        executeTableStatementOnSingleDataNode(dataNodeWrapper, "clear query cache on local");
+      }
+
+      final DataNodeWrapper pollutedDataNode = dataNodeWrappers.get(0);
+
+      tableResultSetEqualOnSingleDataNode(
+          pollutedDataNode,
+          "select last_by(num,time),last_by(bignum,time),last_by(floatnum,time) "
+              + "from table0 where device='d1' and level='l2' and time<1971-04-26T17:46:40.000",
+          new String[] {"_col0", "_col1", "_col2"},
+          new String[] {"10,3147483648,231.55,"});
+      // This only refreshes the cached row time on one DataNode, keeping the field caches stale.
+      tableResultSetEqualOnSingleDataNode(
+          pollutedDataNode,
+          "select last(time),last(device),last(level),last(attr1),last(attr2) "
+              + "from table0 where device='d1' and level='l2'",
+          new String[] {"_col0", "_col1", "_col2", "_col3", "_col4"},
+          new String[] {"1971-04-26T17:46:40.000Z,d1,l2,yy,zz,"});
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private static void executeTableStatementOnSingleDataNode(
+      final DataNodeWrapper dataNodeWrapper, final String sql) throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv()
+                .getConnection(
+                    dataNodeWrapper,
+                    SessionConfig.DEFAULT_USER,
+                    SessionConfig.DEFAULT_PASSWORD,
+                    "table");
+        final Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    }
+  }
+
+  private static void tableResultSetEqualOnSingleDataNode(
+      final DataNodeWrapper dataNodeWrapper,
+      final String sql,
+      final String[] expectedHeader,
+      final String[] expectedRetArray)
+      throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv()
+                .getConnection(
+                    dataNodeWrapper,
+                    SessionConfig.DEFAULT_USER,
+                    SessionConfig.DEFAULT_PASSWORD,
+                    "table");
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use " + DATABASE_NAME);
+      try (final ResultSet resultSet = statement.executeQuery(sql)) {
+        tableResultSetEqual(resultSet, expectedHeader, expectedRetArray);
+      }
     }
   }
 

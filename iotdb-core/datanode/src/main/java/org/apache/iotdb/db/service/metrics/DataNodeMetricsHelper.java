@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -31,10 +32,10 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeMetrics;
+import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetrics;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
-import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -70,6 +71,7 @@ public class DataNodeMetricsHelper {
     metricService.addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
     metricService.addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
     metricService.addMetricSet(ClientManagerMetrics.getInstance());
+    metricService.addMetricSet(RPCServiceThriftHandlerMetrics.getInstance());
     initCpuMetrics(metricService);
     initSystemMetrics(metricService);
     metricService.addMetricSet(WritingMetrics.getInstance());

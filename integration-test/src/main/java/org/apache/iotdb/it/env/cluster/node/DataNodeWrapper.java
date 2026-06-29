@@ -44,7 +44,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_PROPERTIES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_CONNECTION_TIMEOUT_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_CONSENSUS_DIR;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_DATA_DIRS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_DATA_REGION_CONSENSUS_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_JOIN_CLUSTER_RETRY_INTERVAL_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_METRIC_INTERNAL_REPORTER_TYPE;
@@ -103,7 +102,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     this.schemaRegionConsensusPort = portList[4];
     this.mqttPort = portList[5];
     this.pipeAirGapReceiverPort = portList[6];
-    this.restServicePort = portList[10] + 6000;
+    this.restServicePort = portList[7];
     this.defaultNodePropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_DATA_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =
@@ -125,7 +124,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
     immutableNodeProperties.setProperty(IoTDBConstant.DN_SEED_CONFIG_NODE, seedConfigNode);
     immutableNodeProperties.setProperty(DN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
-    immutableNodeProperties.setProperty(DN_DATA_DIRS, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_CONSENSUS_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_WAL_DIRS, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_TRACING_DIR, MppBaseConfig.NULL_VALUE);
@@ -157,8 +155,20 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     return getNodePath() + File.separator + "data";
   }
 
+  public String getDataNodeDir() {
+    return getDataDir() + File.separator + "datanode";
+  }
+
   public String getWalDir() {
-    return getDataDir() + File.separator + "datanode" + File.separator + "wal";
+    return getDataNodeDir() + File.separator + "wal";
+  }
+
+  public String getSystemDir() {
+    return getDataNodeDir() + File.separator + "system";
+  }
+
+  public String getDataNodeObjectDir() {
+    return getDataNodeDir() + File.separator + "data" + File.separator + "object";
   }
 
   @Override
@@ -168,6 +178,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         .setMaxHeapSize(EnvUtils.getIntFromSysVar(DATANODE_MAX_HEAP_SIZE, 256, clusterIndex))
         .setMaxDirectMemorySize(
             EnvUtils.getIntFromSysVar(DATANODE_MAX_DIRECT_MEMORY_SIZE, 256, clusterIndex))
+        .setTimezone("Asia/Shanghai")
         .build();
   }
 

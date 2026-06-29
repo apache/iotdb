@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
@@ -190,18 +191,19 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void abort() {
+  public boolean abort() {
     if (aborted || closed) {
-      return;
+      return false;
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartAbortShuffleSinkHandle]");
+      LOGGER.debug(DataNodeQueryMessages.START_ABORT_SHUFFLE_SINK_HANDLE);
     }
     boolean meetError = false;
     Exception firstException = null;
+    boolean selfAborted = true;
     for (ISink channel : downStreamChannelList) {
       try {
-        channel.abort();
+        selfAborted = channel.abort();
       } catch (Exception e) {
         if (!meetError) {
           firstException = e;
@@ -210,12 +212,17 @@ public class ShuffleSinkHandle implements ISinkHandle {
       }
     }
     if (meetError) {
-      LOGGER.warn("Error occurred when try to abort channel.", firstException);
+      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_ABORT_CHANNEL, firstException);
     }
-    sinkListener.onAborted(this);
-    aborted = true;
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndAbortShuffleSinkHandle]");
+    if (selfAborted) {
+      sinkListener.onAborted(this);
+      aborted = true;
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(DataNodeQueryMessages.END_ABORT_SHUFFLE_SINK_HANDLE);
+      }
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -224,18 +231,19 @@ public class ShuffleSinkHandle implements ISinkHandle {
   // ShuffleSinkHandle while synchronized methods of ShuffleSinkHandle
   // Lock ShuffleSinkHandle and wait to lock LocalSinkChannel
   @Override
-  public void close() {
+  public boolean close() {
     if (closed || aborted) {
-      return;
+      return false;
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartCloseShuffleSinkHandle]");
+      LOGGER.debug(DataNodeQueryMessages.START_CLOSE_SHUFFLE_SINK_HANDLE);
     }
     boolean meetError = false;
     Exception firstException = null;
+    boolean selfClosed = true;
     for (ISink channel : downStreamChannelList) {
       try {
-        channel.close();
+        selfClosed = channel.close();
       } catch (Exception e) {
         if (!meetError) {
           firstException = e;
@@ -244,12 +252,17 @@ public class ShuffleSinkHandle implements ISinkHandle {
       }
     }
     if (meetError) {
-      LOGGER.warn("Error occurred when try to close channel.", firstException);
+      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_CLOSE_CHANNEL, firstException);
     }
-    sinkListener.onFinish(this);
-    closed = true;
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndCloseShuffleSinkHandle]");
+    if (selfClosed) {
+      sinkListener.onFinish(this);
+      closed = true;
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SHUFFLE_SINK_HANDLE);
+      }
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -273,7 +286,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       for (ISinkChannel channel : downStreamChannelList) {
         channel.checkState();
       }
-      throw new IllegalStateException("ShuffleSinkHandle is aborted.");
+      throw new IllegalStateException(DataNodeQueryMessages.SHUFFLESINKHANDLE_IS_ABORTED);
     }
   }
 
@@ -355,7 +368,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
       case SIMPLE_ROUND_ROBIN:
         return new SimpleRoundRobinStrategy();
       default:
-        throw new UnsupportedOperationException("Unsupported type of shuffle strategy");
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_TYPE_OF_SHUFFLE_STRATEGY);
     }
   }
 

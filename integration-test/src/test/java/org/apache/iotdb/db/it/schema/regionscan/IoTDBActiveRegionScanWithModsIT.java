@@ -158,7 +158,7 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
 
   @Test
   public void showActiveDataWithMods4() {
-    String sql = "show devices where time > 40";
+    String sql = "show devices root.sg.** where time > 40";
     String[] retArray =
         new String[] {
           "root.sg.aligned.d1",
@@ -168,11 +168,11 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
         };
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
-    sql = "count devices where time > 40";
+    sql = "count devices root.sg.**  where time > 40";
     long value = 4;
     basicCountActiveDeviceTest(sql, COUNT_DEVICES_COLUMN_NAMES, value);
 
-    sql = "show timeseries where time > 40";
+    sql = "show timeseries root.sg.**  where time > 40";
     retArray =
         new String[] {
           "root.sg.aligned.d1.s1",
@@ -184,7 +184,7 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
         };
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 
-    sql = "count timeseries where time > 40";
+    sql = "count timeseries root.sg.** where time > 40";
     value = 6;
     basicCountActiveDeviceTest(sql, COUNT_TIMESERIES_COLUMN_NAMES, value);
   }

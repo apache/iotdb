@@ -22,7 +22,9 @@ package org.apache.iotdb.tool.common;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Constants {
@@ -53,6 +55,22 @@ public class Constants {
   public static final String USERNAME_NAME = "username";
   public static final String USERNAME_DESC = "Username (optional)";
   public static final String USERNAME_DEFAULT_VALUE = "root";
+
+  public static final String USE_SSL_ARGS = "usessl";
+  public static final String USE_SSL_NAME = "use_ssl";
+  public static final String USE_SSL_DESC = "Use SSL statement. (optional)";
+
+  public static final String TRUST_STORE_ARGS = "ts";
+  public static final String TRUST_STORE_NAME = "trust_store";
+  public static final String TRUST_STORE_DESC = "Trust store. (optional)";
+
+  public static final String TRUST_STORE_PWD_ARGS = "tpw";
+  public static final String TRUST_STORE_PWD_NAME = "trust_store_password";
+  public static final String TRUST_STORE_PWD_DESC = "Trust store password. (optional)";
+
+  public static final String SSL_PROTOCOL_ARGS = "ssl_protocol";
+  public static final String SSL_PROTOCOL_NAME = "ssl_protocol";
+  public static final String SSL_PROTOCOL_DESC = "SSL protocol. (optional)";
 
   public static final String FILE_TYPE_ARGS = "ft";
   public static final String FILE_TYPE_NAME = "file_type";
@@ -96,7 +114,7 @@ public class Constants {
   public static final String DB_ARGS = "db";
   public static final String DB_NAME = "database";
   public static final String DB_DESC =
-      "The database to be exported,only takes effect when sql_dialect is table.(optional)";
+      "The database to be exported,only takes effect when sql_dialect is table and required when file_type is csv and tsfile.(optional)";
 
   public static final String TABLE_ARGS = "table";
   public static final String TABLE_DESC =
@@ -159,8 +177,12 @@ public class Constants {
   public static final String COLON = ": ";
   public static final String MINUS = "-";
 
+  public static final List<String> HEAD_COLUMNS =
+      Arrays.asList("Timeseries", "Alias", "DataType", "Encoding", "Compression");
+
   // export constants
   public static final String EXPORT_CLI_PREFIX = "Export Data";
+  public static final String EXPORT_SCHEMA_CLI_PREFIX = "ExportSchema";
 
   public static final String EXPORT_CLI_HEAD =
       "Please obtain help information for the corresponding data type based on different parameters, for example:\n"
@@ -168,6 +190,8 @@ public class Constants {
           + "./export_data.sh -help sql\n"
           + "./export_data.sh -help csv";
 
+  public static final String SCHEMA_CLI_CHECK_IN_HEAD =
+      "Too few params input, please check the following hint.";
   public static final String START_TIME_ARGS = "start_time";
   public static final String START_TIME_DESC = "The start time to be exported (optional)";
 
@@ -181,6 +205,11 @@ public class Constants {
   public static final String TARGET_DIR_SUBSCRIPTION_DESC =
       "Target file directory.default ./target (optional)";
 
+  public static final String TARGET_PATH_ARGS = "path";
+  public static final String TARGET_PATH_ARGS_NAME = "path_pattern";
+  public static final String TARGET_PATH_NAME = "exportPathPattern";
+  public static final String TARGET_PATH_DESC = "Export Path Pattern (optional)";
+
   public static final String QUERY_COMMAND_ARGS = "q";
   public static final String QUERY_COMMAND_NAME = "query";
   public static final String QUERY_COMMAND_ARGS_NAME = "query_command";
@@ -191,6 +220,11 @@ public class Constants {
   public static final String TARGET_FILE_NAME = "prefix_file_name";
   public static final String TARGET_FILE_DESC = "Export file name .(optional)";
 
+  public static final String RPC_MAX_FRAME_SIZE_ARGS = "mfs";
+  public static final String RPC_MAX_FRAME_SIZE_NAME = "rpc_max_frame_size";
+  public static final String RPC_MAX_FRAME_SIZE_DESC =
+      "The max frame size of RPC, default is 536870912 bytes.(optional)";
+
   public static final String DATA_TYPE_ARGS = "dt";
   public static final String DATA_TYPE_NAME = "datatype";
   public static final String DATA_TYPE_DESC =
@@ -200,17 +234,23 @@ public class Constants {
 
   public static final String LINES_PER_FILE_ARGS = "lpf";
   public static final String LINES_PER_FILE_NAME = "lines_per_file";
-  public static final String LINES_PER_FILE_DESC = "Lines per dump file.(optional)";
+  public static final String LINES_PER_FILE_DESC =
+      "Lines per dump file,only effective in tree model.(optional)";
 
   public static final String DUMP_FILE_NAME_DEFAULT = "dump";
 
   public static final String queryTableParamRequired =
       "Either '-q' or '-table' is required when 'sql-dialect' is' table '";
   public static final String INSERT_CSV_MEET_ERROR_MSG = "Meet error when insert csv because ";
+  public static final String INSERT_SQL_MEET_ERROR_MSG = "Meet error when insert sql because ";
+  public static final String COLUMN_SQL_MEET_ERROR_MSG =
+      "Meet error when get table columns information because ";
   public static final String TARGET_DATABASE_NOT_EXIST_MSG =
       "The target database %s does not exist";
   public static final String TARGET_TABLE_NOT_EXIST_MSG =
       "There are no tables or the target table %s does not exist";
+  public static final String TARGET_TABLE_EMPTY_MSG =
+      "There are no tables to export. Please check if the tables in the target database exist and if you have permission to access them.";
 
   public static final String[] TIME_FORMAT =
       new String[] {"default", "long", "number", "timestamp"};
@@ -268,15 +308,29 @@ public class Constants {
   public static final String MODE = "snapshot";
   public static final boolean AUTO_COMMIT = false;
   public static final String TABLE_MODEL = "table";
-  public static final long AUTO_COMMIT_INTERVAL = 5000;
   public static final long POLL_MESSAGE_TIMEOUT = 10000;
   public static final String TOPIC_NAME_PREFIX = "topic_";
   public static final String GROUP_NAME_PREFIX = "group_";
   public static final String HANDLER = "TsFileHandler";
   public static final String CONSUMER_NAME_PREFIX = "consumer_";
   public static final SimpleDateFormat DATE_FORMAT_VIEW = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+  public static final String BASE_VIEW_TYPE = "BASE";
+  public static final String HEADER_VIEW_TYPE = "ViewType";
+  public static final String HEADER_TIMESERIES = "Timeseries";
+  public static final String EXPORT_COMPLETELY = "Export completely!";
+  public static final String EXPORT_SCHEMA_TABLES_SELECT =
+      "select * from information_schema.tables where database = '%s'";
+  public static final String EXPORT_SCHEMA_TABLES_SHOW = "show tables details from %s";
+  public static final String EXPORT_SCHEMA_TABLES_SHOW_DATABASES = "show databases";
+  public static final String EXPORT_SCHEMA_COLUMNS_SELECT =
+      "select * from information_schema.columns where database like '%s' and table_name like '%s'";
+  public static final String EXPORT_SCHEMA_COLUMNS_DESC = "desc %s.%s details";
+  public static final String SHOW_CREATE_TABLE = "SHOW CREATE TABLE %s.%s";
+  public static final String DROP_TABLE_IF_EXIST = "DROP TABLE IF EXISTS %s";
+  public static final String PROCESSED_PROGRESS = "\rProcessed %d rows";
 
   // import constants
+  public static final String IMPORT_SCHEMA_CLI_PREFIX = "ImportSchema";
   public static final String IMPORT_CLI_PREFIX = "Import Data";
 
   public static final String IMPORT_CLI_HEAD =
@@ -289,6 +343,12 @@ public class Constants {
   public static final String FILE_NAME = "source";
   public static final String FILE_DESC =
       "The local directory path of the script file (folder) to be loaded. (required)";
+
+  public static final String FAILED_FILE_ARGS = "fd";
+  public static final String FAILED_FILE_NAME = "fail_dir";
+  public static final String FAILED_FILE_ARGS_NAME = "failDir";
+  public static final String FAILED_FILE_DESC =
+      "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)";
 
   public static final String ON_SUCCESS_ARGS = "os";
   public static final String ON_SUCCESS_NAME = "on_success";
@@ -325,6 +385,8 @@ public class Constants {
   public static final String BATCH_POINT_SIZE_NAME = "batch_size";
   public static final String BATCH_POINT_SIZE_ARGS_NAME = "batch_size";
   public static final String BATCH_POINT_SIZE_DESC = "100000 (optional)";
+  public static final String BATCH_POINT_SIZE_LIMIT_DESC =
+      "10000 (only not aligned and sql_dialect tree optional)";
 
   public static final String TIMESTAMP_PRECISION_ARGS = "tp";
   public static final String TIMESTAMP_PRECISION_NAME = "timestamp_precision";
@@ -338,5 +400,12 @@ public class Constants {
 
   public static final String LINES_PER_FAILED_FILE_ARGS = "lpf";
   public static final String LINES_PER_FAILED_FILE_ARGS_NAME = "lines_per_failed_file";
-  public static final String LINES_PER_FAILED_FILE_DESC = "Lines per failed file.(optional)";
+  public static final String LINES_PER_FAILED_FILE_DESC =
+      "Lines per failed file,only takes effect and required when sql_dialect is table .(option)";
+  public static final String IMPORT_COMPLETELY = "Import completely!";
+  public static final int BATCH_POINT_SIZE = 10000;
+
+  public static final String IMPORT_INIT_MEET_ERROR_MSG = "Meet error when init import because ";
+  public static final String REQUIRED_ARGS_ERROR_MSG =
+      "Invalid args: Required values for option '%s' not provided";
 }

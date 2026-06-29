@@ -26,18 +26,17 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.UnsetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -86,24 +85,25 @@ public class UnsetTemplateProcedure
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final UnsetTemplateState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
           LOGGER.info(
-              "Construct schemaengine black list of template {} set on {}",
+              ProcedureMessages.CONSTRUCT_SCHEMAENGINE_BLACK_LIST_OF_TEMPLATE_SET_ON,
               template.getName(),
               path);
           constructBlackList(env);
           break;
         case CLEAN_DATANODE_TEMPLATE_CACHE:
-          LOGGER.info("Invalidate cache of template {} set on {}", template.getName(), path);
+          LOGGER.info(
+              ProcedureMessages.INVALIDATE_CACHE_OF_TEMPLATE_SET_ON, template.getName(), path);
           invalidateCache(env);
           break;
         case CHECK_DATANODE_TEMPLATE_ACTIVATION:
           LOGGER.info(
-              "Check DataNode template activation of template {} set on {}",
+              ProcedureMessages.CHECK_DATANODE_TEMPLATE_ACTIVATION_OF_TEMPLATE_SET_ON,
               template.getName(),
               path);
           if (isFailed()) {
@@ -117,16 +117,19 @@ public class UnsetTemplateProcedure
           }
           break;
         case UNSET_SCHEMA_TEMPLATE:
-          LOGGER.info("Unset template {} on {}", template.getName(), path);
+          LOGGER.info(ProcedureMessages.UNSET_TEMPLATE_ON, template.getName(), path);
           unsetTemplate(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
-      LOGGER.info("UnsetTemplate-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+      LOGGER.info(
+          ProcedureMessages.UNSETTEMPLATE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -138,15 +141,12 @@ public class UnsetTemplateProcedure
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(UnsetTemplateState.CLEAN_DATANODE_TEMPLATE_CACHE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
     try {
-      // Cannot roll back after cache invalidation
-      // Because we do not know whether there are time series successfully created
-      alreadyRollback = true;
       executeInvalidateCache(env);
       setNextState(UnsetTemplateState.CHECK_DATANODE_TEMPLATE_ACTIVATION);
     } catch (final ProcedureException e) {
@@ -172,10 +172,11 @@ public class UnsetTemplateProcedure
       // all dataNodes must clear the related template cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
-            "Failed to invalidate template cache of template {} set on {}",
+            ProcedureMessages.FAILED_TO_INVALIDATE_TEMPLATE_CACHE_OF_TEMPLATE_SET_ON,
             template.getName(),
             path);
-        throw new ProcedureException(new MetadataException("Invalidate template cache failed"));
+        throw new ProcedureException(
+            new MetadataException(ProcedureMessages.INVALIDATE_TEMPLATE_CACHE_FAILED));
       }
     }
   }
@@ -192,8 +193,11 @@ public class UnsetTemplateProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Unset template %s from %s failed when [check DataNode template activation] because %s",
-                      template.getName(), path, e.getMessage()))));
+                      ProcedureMessages
+                          .UNSET_TEMPLATE_FROM_FAILED_WHEN_CHECK_DATANODE_TEMPLATE_ACTIVATION_BECAUSE,
+                      template.getName(),
+                      path,
+                      e.getMessage()))));
       return false;
     }
   }
@@ -204,7 +208,7 @@ public class UnsetTemplateProcedure
             .getClusterSchemaManager()
             .unsetSchemaTemplateInBlackList(template.getId(), path, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -217,21 +221,27 @@ public class UnsetTemplateProcedure
     }
     alreadyRollback = true;
     ProcedureException rollbackException;
-    final TSStatus status =
-        env.getConfigManager()
-            .getClusterSchemaManager()
-            .rollbackPreUnsetSchemaTemplate(template.getId(), path);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return;
-    } else {
-      LOGGER.error(
-          "Failed to rollback pre unset template operation of template {} set on {}",
-          template.getName(),
-          path);
-      rollbackException =
-          new ProcedureException(
-              new MetadataException(
-                  "Rollback template pre unset failed because of" + status.getMessage()));
+    try {
+      executeRollbackInvalidateCache(env);
+      final TSStatus status =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .rollbackPreUnsetSchemaTemplate(template.getId(), path);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return;
+      } else {
+        LOGGER.error(
+            ProcedureMessages.FAILED_TO_ROLLBACK_PRE_UNSET_TEMPLATE_OPERATION_OF_TEMPLATE_SET,
+            template.getName(),
+            path);
+        rollbackException =
+            new ProcedureException(
+                new MetadataException(
+                    ProcedureMessages.ROLLBACK_TEMPLATE_PRE_UNSET_FAILED_BECAUSE_OF
+                        + status.getMessage()));
+      }
+    } catch (final ProcedureException e) {
+      rollbackException = e;
     }
     try {
       executeInvalidateCache(env);
@@ -240,8 +250,48 @@ public class UnsetTemplateProcedure
       setFailure(
           new ProcedureException(
               new MetadataException(
-                  "Rollback unset template failed and the cluster template info management is strictly broken. Please try unset again.")));
+                  ProcedureMessages
+                      .ROLLBACK_UNSET_TEMPLATE_FAILED_AND_THE_CLUSTER_TEMPLATE_INFO_MANAGEMENT)));
     }
+  }
+
+  private void executeRollbackInvalidateCache(ConfigNodeProcedureEnv env)
+      throws ProcedureException {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    TUpdateTemplateReq rollbackTemplateSetInfoReq = new TUpdateTemplateReq();
+    rollbackTemplateSetInfoReq.setType(
+        TemplateInternalRPCUpdateType.ROLLBACK_INVALIDATE_TEMPLATE_SET_INFO.toByte());
+    rollbackTemplateSetInfoReq.setTemplateInfo(getAddTemplateSetInfo());
+    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.UPDATE_TEMPLATE,
+            rollbackTemplateSetInfoReq,
+            dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (TSStatus status : statusMap.values()) {
+      // all dataNodes must clear the related template cache
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error(
+            ProcedureMessages.FAILED_TO_ROLLBACK_TEMPLATE_CACHE_OF_TEMPLATE_SET_ON,
+            template.getName(),
+            path);
+        throw new ProcedureException(
+            new MetadataException(ProcedureMessages.ROLLBACK_TEMPLATE_CACHE_FAILED));
+      }
+    }
+  }
+
+  private ByteBuffer getAddTemplateSetInfo() {
+    if (this.addTemplateSetInfo == null) {
+      this.addTemplateSetInfo =
+          ByteBuffer.wrap(
+              TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(
+                  template, path.getFullPath()));
+    }
+
+    return addTemplateSetInfo;
   }
 
   @Override

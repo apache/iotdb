@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational;
 
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
@@ -55,6 +56,14 @@ public interface ScalarFunction extends SQLFunction {
   }
 
   /**
+   * Same as {@link #beforeStart(FunctionArguments)} with access to {@link IoTDBLocal} for embedded
+   * queries.
+   */
+  default void beforeStart(FunctionArguments arguments, IoTDBLocal local) throws UDFException {
+    beforeStart(arguments);
+  }
+
+  /**
    * This method will be called to process the transformation. In a single UDF query, this method
    * may be called multiple times.
    *
@@ -63,8 +72,18 @@ public interface ScalarFunction extends SQLFunction {
    */
   Object evaluate(Record input) throws UDFException;
 
+  /** Same as {@link #evaluate(Record)} with access to {@link IoTDBLocal} for embedded queries. */
+  default Object evaluate(Record input, IoTDBLocal local) throws UDFException {
+    return evaluate(input);
+  }
+
   /** This method is mainly used to release the resources used in the ScalarFunction. */
   default void beforeDestroy() {
     // do nothing
+  }
+
+  /** Same as {@link #beforeDestroy()} with access to {@link IoTDBLocal}. */
+  default void beforeDestroy(IoTDBLocal local) {
+    beforeDestroy();
   }
 }

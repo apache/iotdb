@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -70,7 +71,7 @@ public class SubscriptionMetaSyncer {
               INITIAL_SYNC_DELAY_MINUTES,
               SYNC_INTERVAL_MINUTES,
               TimeUnit.MINUTES);
-      LOGGER.info("SubscriptionMetaSyncer is started successfully.");
+      LOGGER.info(ManagerMessages.SUBSCRIPTIONMETASYNCER_IS_STARTED_SUCCESSFULLY);
     }
   }
 
@@ -84,7 +85,7 @@ public class SubscriptionMetaSyncer {
 
     if (configManager.getSubscriptionManager().getSubscriptionCoordinator().isLocked()) {
       LOGGER.warn(
-          "SubscriptionCoordinatorLock is held by another thread, skip this round of sync to avoid procedure and rpc accumulation as much as possible");
+          ManagerMessages.SUBSCRIPTIONCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF);
       return;
     }
 
@@ -94,7 +95,7 @@ public class SubscriptionMetaSyncer {
     // TODO: consider drop the topic which is subscribed by consumers
     final TSStatus topicMetaSyncStatus = procedureManager.topicMetaSync();
     if (topicMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to sync topic meta. Result status: {}.", topicMetaSyncStatus);
+      LOGGER.warn(ManagerMessages.FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS, topicMetaSyncStatus);
       return;
     }
 
@@ -102,12 +103,20 @@ public class SubscriptionMetaSyncer {
     final TSStatus consumerGroupMetaSyncStatus = procedureManager.consumerGroupMetaSync();
     if (consumerGroupMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Failed to sync consumer group meta. Result status: {}.", consumerGroupMetaSyncStatus);
+          ManagerMessages.FAILED_TO_SYNC_CONSUMER_GROUP_META_RESULT_STATUS,
+          consumerGroupMetaSyncStatus);
+      return;
+    }
+
+    // sync commit progress if syncing consumer group meta successfully
+    final TSStatus commitProgressSyncStatus = procedureManager.commitProgressSync();
+    if (commitProgressSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to sync commit progress. Result status: {}.", commitProgressSyncStatus);
       return;
     }
 
     LOGGER.info(
-        "After this successful sync, if SubscriptionInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped");
+        ManagerMessages.AFTER_THIS_SUCCESSFUL_SYNC_IF_SUBSCRIPTIONINFO_IS_EMPTY_DURING_THIS);
     isLastSubscriptionSyncSuccessful = true;
   }
 
@@ -115,7 +124,7 @@ public class SubscriptionMetaSyncer {
     if (metaSyncFuture != null) {
       metaSyncFuture.cancel(false);
       metaSyncFuture = null;
-      LOGGER.info("SubscriptionMetaSyncer is stopped successfully.");
+      LOGGER.info(ManagerMessages.SUBSCRIPTIONMETASYNCER_IS_STOPPED_SUCCESSFULLY);
     }
   }
 }

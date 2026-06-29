@@ -21,6 +21,7 @@ package org.apache.iotdb.udf.api.relational;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
@@ -81,6 +82,8 @@ public interface TableFunction extends SQLFunction {
    *         <li>A description of proper columns.
    *         <li>A map indicating which columns from the input table arguments are required for the
    *             function to execute.
+   *         <li>A TableFunctionExecutionInfo which stores all information necessary to execute the
+   *             table function.
    *       </ul>
    * </ul>
    *
@@ -91,13 +94,16 @@ public interface TableFunction extends SQLFunction {
    */
   TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException;
 
+  TableFunctionHandle createTableFunctionHandle();
+
   /**
    * This method is used to obtain a {@link TableFunctionProcessorProvider} that will be responsible
    * for creating processors to handle the transformation of input data into output table. The
    * provider is initialized with the validated arguments.
    *
-   * @param arguments a map of argument names to their corresponding {@link Argument} values
+   * @param tableFunctionHandle the object containing the execution information, which is generated
+   *     in the {@link TableFunction#analyze} process.
    * @return a {@link TableFunctionProcessorProvider} for creating processors
    */
-  TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments);
+  TableFunctionProcessorProvider getProcessorProvider(TableFunctionHandle tableFunctionHandle);
 }

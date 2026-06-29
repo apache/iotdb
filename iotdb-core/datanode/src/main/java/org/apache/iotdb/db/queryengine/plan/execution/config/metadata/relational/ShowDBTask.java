@@ -44,50 +44,60 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
+
 public class ShowDBTask implements IConfigTask {
 
   private final ShowDB node;
 
   // judge whether the specific database can be seen, dbName should be without `root.` prefix
-  private final Predicate<String> canSeenDB;
+  private final Predicate<String> canSeeDB;
 
-  public ShowDBTask(final ShowDB node, final Predicate<String> canSeenDB) {
+  public ShowDBTask(final ShowDB node, final Predicate<String> canSeeDB) {
     this.node = node;
-    this.canSeenDB = canSeenDB;
+    this.canSeeDB = canSeeDB;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showDatabases(node, canSeenDB);
+    return configTaskExecutor.showDatabases(node, canSeeDB);
   }
 
   public static void buildTSBlock(
-      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future,
       final boolean isDetails,
-      final Predicate<String> canSeenDB) {
+      final Predicate<String> canSeeDB) {
     if (isDetails) {
-      buildTSBlockForDetails(storageGroupInfoMap, future, canSeenDB);
+      buildTSBlockForDetails(databaseInfoMap, future, canSeeDB);
     } else {
-      buildTSBlockForNonDetails(storageGroupInfoMap, future, canSeenDB);
+      buildTSBlockForNonDetails(databaseInfoMap, future, canSeeDB);
     }
   }
 
   private static void buildTSBlockForNonDetails(
-      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future,
-      final Predicate<String> canSeenDB) {
+      final Predicate<String> canSeeDB) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showDBColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
 
+    // Used to order by database name
+    databaseInfoMap.put(INFORMATION_DATABASE, null);
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, false, true);
-    for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
+    for (final Map.Entry<String, TDatabaseInfo> entry :
+        databaseInfoMap.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .collect(Collectors.toList())) {
       final String dbName = entry.getKey();
-      if (Boolean.FALSE.equals(canSeenDB.test(dbName))) {
+      if (Boolean.FALSE.equals(canSeeDB.test(dbName))) {
+        continue;
+      }
+      if (dbName.equals(INFORMATION_DATABASE)) {
+        InformationSchemaUtils.buildDatabaseTsBlock(builder, false, true);
         continue;
       }
       final TDatabaseInfo storageGroupInfo = entry.getValue();
@@ -115,19 +125,27 @@ public class ShowDBTask implements IConfigTask {
   }
 
   private static void buildTSBlockForDetails(
-      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final Map<String, TDatabaseInfo> databaseMap,
       final SettableFuture<ConfigTaskResult> future,
-      final Predicate<String> canSeenDB) {
+      final Predicate<String> canSeeDB) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showDBDetailsColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
 
+    // Used to order by database name
+    databaseMap.put(INFORMATION_DATABASE, null);
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, true, true);
-    for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
+    for (final Map.Entry<String, TDatabaseInfo> entry :
+        databaseMap.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .collect(Collectors.toList())) {
       final String dbName = entry.getKey();
-      if (!canSeenDB.test(dbName)) {
+      if (!canSeeDB.test(dbName)) {
+        continue;
+      }
+      if (dbName.equals(INFORMATION_DATABASE)) {
+        InformationSchemaUtils.buildDatabaseTsBlock(builder, true, true);
         continue;
       }
       final TDatabaseInfo storageGroupInfo = entry.getValue();
@@ -148,7 +166,9 @@ public class ShowDBTask implements IConfigTask {
       builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
       builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
       builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());
-      builder.getColumnBuilder(6).writeInt(storageGroupInfo.getDataRegionNum());
+      builder.getColumnBuilder(6).writeInt(storageGroupInfo.getMaxSchemaRegionNum());
+      builder.getColumnBuilder(7).writeInt(storageGroupInfo.getDataRegionNum());
+      builder.getColumnBuilder(8).writeInt(storageGroupInfo.getMaxDataRegionNum());
       builder.declarePosition();
     }
 

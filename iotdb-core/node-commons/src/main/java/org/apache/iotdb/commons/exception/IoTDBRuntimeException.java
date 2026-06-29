@@ -20,6 +20,8 @@
 
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+
 public class IoTDBRuntimeException extends RuntimeException {
   protected int errorCode;
 
@@ -29,6 +31,8 @@ public class IoTDBRuntimeException extends RuntimeException {
    */
   protected boolean isUserException = false;
 
+  private TSStatus status;
+
   public IoTDBRuntimeException(String message, int errorCode) {
     super(message);
     this.errorCode = errorCode;
@@ -36,6 +40,13 @@ public class IoTDBRuntimeException extends RuntimeException {
 
   public IoTDBRuntimeException(String message, int errorCode, boolean isUserException) {
     super(message);
+    this.errorCode = errorCode;
+    this.isUserException = isUserException;
+  }
+
+  public IoTDBRuntimeException(
+      String message, int errorCode, Throwable cause, boolean isUserException) {
+    super(message, cause);
     this.errorCode = errorCode;
     this.isUserException = isUserException;
   }
@@ -56,11 +67,22 @@ public class IoTDBRuntimeException extends RuntimeException {
     this.isUserException = isUserException;
   }
 
+  public IoTDBRuntimeException(final TSStatus status) {
+    super(status.message);
+    this.errorCode = status.getCode();
+    this.status = status;
+    this.isUserException = false;
+  }
+
   public boolean isUserException() {
     return isUserException;
   }
 
   public int getErrorCode() {
     return errorCode;
+  }
+
+  public TSStatus getStatus() {
+    return status;
   }
 }

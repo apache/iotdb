@@ -27,11 +27,15 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.rpc.AutoScalingBufferWriteTransport;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.apache.ratis.client.RaftClientConfigKeys;
+import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.grpc.GrpcConfigKeys;
+import org.apache.ratis.grpc.GrpcTlsConfig;
 import org.apache.ratis.proto.RaftProtos.RaftPeerProto;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
@@ -46,9 +50,18 @@ import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.TrustManager;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.AccessDeniedException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +70,7 @@ import java.util.stream.Collectors;
 
 public class Utils {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
   private static final int TEMP_BUFFER_SIZE = 1024;
   private static final byte PADDING_MAGIC = 0x47;
   private static final String DATA_REGION_GROUP = "group-0001";
@@ -172,10 +186,23 @@ public class Utils {
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
     AutoScalingBufferWriteTransport byteBuffer =
-        new AutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
-    TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
-    status.write(protocol);
-    return ByteBuffer.wrap(byteBuffer.getBuffer());
+        createAutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
+    try {
+      TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
+      status.write(protocol);
+      return ByteBuffer.wrap(Arrays.copyOf(byteBuffer.getBuffer(), byteBuffer.getPos()));
+    } finally {
+      byteBuffer.close();
+    }
+  }
+
+  private static AutoScalingBufferWriteTransport createAutoScalingBufferWriteTransport(
+      int initialCapacity) throws TException {
+    try {
+      return new AutoScalingBufferWriteTransport(initialCapacity);
+    } catch (IOException e) {
+      throw new TException(e);
+    }
   }
 
   public static TSStatus deserializeFrom(ByteBuffer buffer) throws TException {
@@ -243,9 +270,10 @@ public class Utils {
     return TimeDuration.valueOf(maxWaitMs, TimeUnit.MILLISECONDS);
   }
 
-  public static void initRatisConfig(RaftProperties properties, RatisConfig config) {
+  public static Parameters initRatisConfig(RaftProperties properties, RatisConfig config) {
     GrpcConfigKeys.setMessageSizeMax(properties, config.getGrpc().getMessageSizeMax());
     GrpcConfigKeys.setFlowControlWindow(properties, config.getGrpc().getFlowControlWindow());
+
     GrpcConfigKeys.Server.setAsyncRequestThreadPoolCached(
         properties, config.getGrpc().isAsyncRequestThreadPoolCached());
     GrpcConfigKeys.Server.setAsyncRequestThreadPoolSize(
@@ -345,6 +373,27 @@ public class Utils {
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);
+
+    Parameters parameters = new Parameters();
+    if (config.getGrpc().isEnableSSL()) {
+      String keyStorePath = config.getGrpc().getSslKeyStorePath();
+      String keyStorePassword = config.getGrpc().getSslKeyStorePassword();
+      String trustStorePath = config.getGrpc().getSslTrustStorePath();
+      String trustStorePassword = config.getGrpc().getSslTrustStorePassword();
+      try {
+        KeyManager keyManager = RpcSslUtils.createKeyManagers(keyStorePath, keyStorePassword)[0];
+        TrustManager trustManager =
+            RpcSslUtils.createTrustManagers(trustStorePath, trustStorePassword)[0];
+        GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
+      } catch (AccessDeniedException e) {
+        LOGGER.error(ConsensusMessages.FAILED_TO_LOAD_KEYSTORE);
+      } catch (FileNotFoundException e) {
+        LOGGER.error(ConsensusMessages.KEYSTORE_FILE_NOT_FOUND);
+      } catch (Exception e) {
+        LOGGER.error(ConsensusMessages.FAILED_TO_READ_KEYSTORE, e);
+      }
+    }
+    return parameters;
   }
 
   public static boolean anyOf(BooleanSupplier... conditions) {

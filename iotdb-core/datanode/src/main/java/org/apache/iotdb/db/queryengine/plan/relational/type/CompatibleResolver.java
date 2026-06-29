@@ -1,0 +1,118 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.queryengine.plan.relational.type;
+
+import org.apache.tsfile.read.common.type.Type;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DateType.DATE;
+import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.ObjectType.OBJECT;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
+import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
+
+public class CompatibleResolver {
+
+  private static final Map<Type, Map<Type, Type>> CONDITION_MAP = new HashMap<>();
+
+  static {
+    addCondition(INT32, INT32, INT32);
+    addCondition(INT32, INT64, INT64);
+    addCondition(INT32, FLOAT, FLOAT);
+    addCondition(INT32, DOUBLE, DOUBLE);
+    addCondition(INT32, UNKNOWN, INT32);
+
+    addCondition(INT64, INT32, INT64);
+    addCondition(INT64, INT64, INT64);
+    addCondition(INT64, FLOAT, FLOAT);
+    addCondition(INT64, DOUBLE, DOUBLE);
+    addCondition(INT64, TIMESTAMP, TIMESTAMP);
+    addCondition(INT64, UNKNOWN, INT64);
+
+    addCondition(FLOAT, INT32, FLOAT);
+    addCondition(FLOAT, INT64, FLOAT);
+    addCondition(FLOAT, FLOAT, FLOAT);
+    addCondition(FLOAT, DOUBLE, DOUBLE);
+    addCondition(FLOAT, UNKNOWN, FLOAT);
+
+    addCondition(DOUBLE, INT32, DOUBLE);
+    addCondition(DOUBLE, INT64, DOUBLE);
+    addCondition(DOUBLE, FLOAT, DOUBLE);
+    addCondition(DOUBLE, DOUBLE, DOUBLE);
+    addCondition(DOUBLE, UNKNOWN, DOUBLE);
+
+    addCondition(DATE, DATE, DATE);
+    addCondition(DATE, UNKNOWN, DATE);
+
+    addCondition(TIMESTAMP, TIMESTAMP, TIMESTAMP);
+    addCondition(TIMESTAMP, INT64, TIMESTAMP);
+    addCondition(TIMESTAMP, UNKNOWN, TIMESTAMP);
+
+    addCondition(BOOLEAN, BOOLEAN, BOOLEAN);
+    addCondition(BOOLEAN, UNKNOWN, BOOLEAN);
+
+    addCondition(TEXT, TEXT, TEXT);
+    addCondition(TEXT, STRING, STRING);
+    addCondition(TEXT, UNKNOWN, TEXT);
+
+    addCondition(STRING, STRING, STRING);
+    addCondition(STRING, TEXT, STRING);
+    addCondition(STRING, UNKNOWN, STRING);
+
+    addCondition(BLOB, BLOB, BLOB);
+    addCondition(BLOB, UNKNOWN, BLOB);
+
+    addCondition(OBJECT, OBJECT, OBJECT);
+    addCondition(OBJECT, UNKNOWN, OBJECT);
+
+    addCondition(UNKNOWN, INT32, INT32);
+    addCondition(UNKNOWN, INT64, INT64);
+    addCondition(UNKNOWN, FLOAT, FLOAT);
+    addCondition(UNKNOWN, DOUBLE, DOUBLE);
+    addCondition(UNKNOWN, DATE, DATE);
+    addCondition(UNKNOWN, TIMESTAMP, TIMESTAMP);
+    addCondition(UNKNOWN, BOOLEAN, BOOLEAN);
+    addCondition(UNKNOWN, TEXT, TEXT);
+    addCondition(UNKNOWN, STRING, STRING);
+    addCondition(UNKNOWN, BLOB, BLOB);
+    addCondition(UNKNOWN, OBJECT, OBJECT);
+    addCondition(UNKNOWN, UNKNOWN, UNKNOWN);
+  }
+
+  private static void addCondition(Type condition1, Type condition2, Type result) {
+    CONDITION_MAP.computeIfAbsent(condition1, k -> new HashMap<>()).put(condition2, result);
+  }
+
+  public static Optional<Type> getCommonSuperType(Type type1, Type type2) {
+    return Optional.ofNullable(
+        CONDITION_MAP.getOrDefault(type1, Collections.emptyMap()).getOrDefault(type2, null));
+  }
+}

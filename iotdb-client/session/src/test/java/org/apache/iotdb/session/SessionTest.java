@@ -107,6 +107,18 @@ public class SessionTest {
             .build();
     session1 =
         new Session.Builder()
+            .nodeUrls(Collections.nCopies(2, "host:port"))
+            .username("username")
+            .password("pwd")
+            .build();
+    session1 =
+        new Session.Builder()
+            .nodeUrls(Collections.unmodifiableList(Arrays.asList("host:port1", "host:port2")))
+            .username("username")
+            .password("pwd")
+            .build();
+    session1 =
+        new Session.Builder()
             .host("host")
             .port(12)
             .username("username")

@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
@@ -52,8 +54,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,7 +169,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
       } catch (Throwable t) {
         LOGGER.warn(
-            "ack TsBlock [{}, {}) failed.", e.getStartSequenceId(), e.getEndSequenceId(), t);
+            DataNodeQueryMessages.ACK_TSBLOCK_FAILED,
+            e.getStartSequenceId(),
+            e.getEndSequenceId(),
+            t);
         throw t;
       } finally {
         DATA_EXCHANGE_COST_METRICS.recordDataExchangeCost(
@@ -204,7 +209,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         sinkHandle.getChannel(e.getIndex()).close();
       } catch (Throwable t) {
         LOGGER.warn(
-            "Close channel of ShuffleSinkHandle {}, index {} failed.",
+            DataNodeQueryMessages.CLOSE_CHANNEL_OF_SHUFFLESINKHANDLE_FAILED,
             e.getSourceFragmentInstanceId(),
             e.getIndex(),
             t);
@@ -326,14 +331,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[ScHListenerOnFinish]");
+        LOGGER.debug(DataNodeQueryMessages.SCH_LISTENER_ON_FINISH);
       }
       Map<String, ISourceHandle> sourceHandleMap =
           sourceHandles.get(sourceHandle.getLocalFragmentInstanceId());
       if ((sourceHandleMap == null
               || sourceHandleMap.remove(sourceHandle.getLocalPlanNodeId()) == null)
           && LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[ScHListenerAlreadyReleased]");
+        LOGGER.debug(DataNodeQueryMessages.SCH_LISTENER_ALREADY_RELEASED);
       }
 
       if (sourceHandleMap != null && sourceHandleMap.isEmpty()) {
@@ -344,14 +349,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[ScHListenerOnAbort]");
+        LOGGER.debug(DataNodeQueryMessages.SCH_LISTENER_ON_ABORT);
       }
       onFinished(sourceHandle);
     }
 
     @Override
     public void onFailure(ISourceHandle sourceHandle, Throwable t) {
-      LOGGER.warn("Source handle failed due to: ", t);
+      LOGGER.warn(DataNodeQueryMessages.SOURCE_HANDLE_FAILED_DUE_TO, t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }
@@ -374,20 +379,20 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[ScHListenerOnFinish]");
+        LOGGER.debug(DataNodeQueryMessages.SCH_LISTENER_ON_FINISH);
       }
     }
 
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[ScHListenerOnAbort]");
+        LOGGER.debug(DataNodeQueryMessages.SCH_LISTENER_ON_ABORT);
       }
     }
 
     @Override
     public void onFailure(ISourceHandle sourceHandle, Throwable t) {
-      LOGGER.warn("Source handle failed due to: ", t);
+      LOGGER.warn(DataNodeQueryMessages.SOURCE_HANDLE_FAILED_DUE_TO, t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }
@@ -410,7 +415,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFinish(ISink sink) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[ShuffleSinkHandleListenerOnFinish]");
+        LOGGER.debug(DataNodeQueryMessages.SHUFFLE_SINK_HANDLE_LISTENER_ON_FINISH);
       }
       shuffleSinkHandles.remove(sink.getLocalFragmentInstanceId());
       context.finished();
@@ -419,7 +424,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onEndOfBlocks(ISink sink) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[ShuffleSinkHandleListenerOnEndOfTsBlocks]");
+        LOGGER.debug(DataNodeQueryMessages.SHUFFLE_SINK_HANDLE_LISTENER_ON_END_OF_TSBLOCKS);
       }
       context.transitionToFlushing();
     }
@@ -427,7 +432,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public Optional<Throwable> onAborted(ISink sink) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[ShuffleSinkHandleListenerOnAbort]");
+        LOGGER.debug(DataNodeQueryMessages.SHUFFLE_SINK_HANDLE_LISTENER_ON_ABORT);
       }
       shuffleSinkHandles.remove(sink.getLocalFragmentInstanceId());
       return context.getFailureCause();
@@ -436,7 +441,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFailure(ISink sink, Throwable t) {
       // TODO: (xingtanzjr) should we remove the sink from MPPDataExchangeManager ?
-      LOGGER.warn("Sink failed due to", t);
+      LOGGER.warn(DataNodeQueryMessages.SINK_FAILED_DUE_TO, t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }
@@ -468,7 +473,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFinish(ISink sink) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[SkHListenerOnFinish]");
+        LOGGER.debug(DataNodeQueryMessages.SKH_LISTENER_ON_FINISH);
       }
       decrementCnt();
     }
@@ -476,14 +481,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onEndOfBlocks(ISink sink) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[SkHListenerOnEndOfTsBlocks]");
+        LOGGER.debug(DataNodeQueryMessages.SKH_LISTENER_ON_END_OF_TSBLOCKS);
       }
     }
 
     @Override
     public Optional<Throwable> onAborted(ISink sink) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[SkHListenerOnAbort]");
+        LOGGER.debug(DataNodeQueryMessages.SKH_LISTENER_ON_ABORT);
       }
       decrementCnt();
       return context.getFailureCause();
@@ -491,7 +496,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFailure(ISink sink, Throwable t) {
-      LOGGER.warn("ISinkChannel failed due to", t);
+      LOGGER.warn(DataNodeQueryMessages.ISINKCHANNEL_FAILED_DUE_TO, t);
       decrementCnt();
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
@@ -508,7 +513,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       ISinkHandle sinkHandle = shuffleSinkHandles.remove(shuffleSinkHandleId);
       if (sinkHandle != null) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Close ShuffleSinkHandle: {}", shuffleSinkHandleId);
+          LOGGER.debug(DataNodeQueryMessages.CLOSE_SHUFFLE_SINK_HANDLE, shuffleSinkHandleId);
         }
         sinkHandle.close();
       }
@@ -535,28 +540,28 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFinish(ISink sink) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[SkHListenerOnFinish]");
+        LOGGER.debug(DataNodeQueryMessages.SKH_LISTENER_ON_FINISH);
       }
     }
 
     @Override
     public void onEndOfBlocks(ISink sink) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[SkHListenerOnEndOfTsBlocks]");
+        LOGGER.debug(DataNodeQueryMessages.SKH_LISTENER_ON_END_OF_TSBLOCKS);
       }
     }
 
     @Override
     public Optional<Throwable> onAborted(ISink sink) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[SkHListenerOnAbort]");
+        LOGGER.debug(DataNodeQueryMessages.SKH_LISTENER_ON_ABORT);
       }
       return context.getFailureCause();
     }
 
     @Override
     public void onFailure(ISink sink, Throwable t) {
-      LOGGER.warn("Sink handle failed due to", t);
+      LOGGER.warn(DataNodeQueryMessages.SINK_HANDLE_FAILED_DUE_TO, t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }
@@ -635,7 +640,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Create local sink handle to plan node {} of {} for {}",
+          DataNodeQueryMessages.CREATE_LOCAL_SINK_HANDLE_TO_PLAN_NODE,
           remotePlanNodeId,
           remoteFragmentInstanceId,
           localFragmentInstanceId);
@@ -647,16 +652,20 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         sourceHandleMap == null ? null : (LocalSourceHandle) sourceHandleMap.get(remotePlanNodeId);
     if (localSourceHandle != null) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Get SharedTsBlockQueue from local source handle");
+        LOGGER.debug(DataNodeQueryMessages.GET_SHARED_TSBLOCK_QUEUE_FROM_LOCAL_SOURCE_HANDLE);
       }
       queue = localSourceHandle.getSharedTsBlockQueue();
     } else {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Create SharedTsBlockQueue");
+        LOGGER.debug(DataNodeQueryMessages.CREATE_SHARED_TSBLOCK_QUEUE);
       }
       queue =
           new SharedTsBlockQueue(
-              localFragmentInstanceId, localPlanNodeId, localMemoryManager, executorService);
+              localFragmentInstanceId,
+              localPlanNodeId,
+              localMemoryManager,
+              executorService,
+              instanceContext.isHighestPriority());
     }
 
     return new LocalSinkChannel(
@@ -673,14 +682,16 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   public ISinkChannel createLocalSinkChannelForPipeline(
       DriverContext driverContext, String planNodeId) {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Create local sink handle for {}", driverContext.getDriverTaskID());
+      LOGGER.debug(
+          DataNodeQueryMessages.CREATE_LOCAL_SINK_HANDLE_FOR, driverContext.getDriverTaskID());
     }
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(
             driverContext.getDriverTaskID().getFragmentInstanceId().toThrift(),
             planNodeId,
             localMemoryManager,
-            executorService);
+            executorService,
+            driverContext.getFragmentInstanceContext().isHighestPriority());
     queue.allowAddingTsBlock();
     return new LocalSinkChannel(
         queue,
@@ -701,7 +712,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Create sink handle to plan node {} of {} for {}",
+          DataNodeQueryMessages.CREATE_SINK_HANDLE_TO_PLAN_NODE,
           remotePlanNodeId,
           remoteFragmentInstanceId,
           localFragmentInstanceId);
@@ -718,6 +729,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         tsBlockSerdeFactory.get(),
         new ISinkChannelListenerImpl(
             localFragmentInstanceId, instanceContext, instanceContext::failed, cnt),
+        instanceContext.isHighestPriority(),
         mppDataExchangeServiceClientManager);
   }
 
@@ -733,7 +745,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       FragmentInstanceContext instanceContext) {
     if (shuffleSinkHandles.containsKey(localFragmentInstanceId)) {
       throw new IllegalStateException(
-          "ShuffleSinkHandle for " + localFragmentInstanceId + " is in the map.");
+          DataNodeQueryMessages.SHUFFLESINKHANDLE_ALREADY_IN_MAP
+              + localFragmentInstanceId
+              + DataNodeQueryMessages.IS_IN_THE_MAP);
     }
 
     int channelNum = downStreamChannelLocationList.size();
@@ -794,12 +808,30 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   public ISourceHandle createLocalSourceHandleForPipeline(
       SharedTsBlockQueue queue, DriverContext context) {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Create local source handle for {}", context.getDriverTaskID());
+      LOGGER.debug(DataNodeQueryMessages.CREATE_LOCAL_SOURCE_HANDLE_FOR, context.getDriverTaskID());
     }
     return new PipelineSourceHandle(
         queue,
         new PipelineSourceHandleListenerImpl(context::failed),
         context.getDriverTaskID().toString());
+  }
+
+  @TestOnly
+  public synchronized ISourceHandle createLocalSourceHandleForFragment(
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
+      String remotePlanNodeId,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      int index,
+      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+    return createLocalSourceHandleForFragment(
+        localFragmentInstanceId,
+        localPlanNodeId,
+        remotePlanNodeId,
+        remoteFragmentInstanceId,
+        index,
+        onFailureCallback,
+        false);
   }
 
   public synchronized ISourceHandle createLocalSourceHandleForFragment(
@@ -808,20 +840,20 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       String remotePlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,
       int index,
-      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
+      boolean isHighestPriority) {
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
-          "Source handle for plan node "
-              + localPlanNodeId
-              + " of "
-              + localFragmentInstanceId
-              + " exists.");
+          String.format(
+              DataNodeQueryMessages.SOURCE_HANDLE_FOR_PLAN_NODE_EXISTS_FMT,
+              localPlanNodeId,
+              localFragmentInstanceId));
     }
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Create local source handle from {} for plan node {} of {}",
+          DataNodeQueryMessages.CREATE_LOCAL_SOURCE_HANDLE_FROM,
           remoteFragmentInstanceId,
           localPlanNodeId,
           localFragmentInstanceId);
@@ -831,16 +863,20 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     ISinkHandle sinkHandle = shuffleSinkHandles.get(remoteFragmentInstanceId);
     if (sinkHandle != null) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Get SharedTsBlockQueue from local sink handle");
+        LOGGER.debug(DataNodeQueryMessages.GET_SHARED_TSBLOCK_QUEUE_FROM_LOCAL_SINK_HANDLE);
       }
       queue = ((LocalSinkChannel) (sinkHandle.getChannel(index))).getSharedTsBlockQueue();
     } else {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Create SharedTsBlockQueue");
+        LOGGER.debug(DataNodeQueryMessages.CREATE_SHARED_TSBLOCK_QUEUE);
       }
       queue =
           new SharedTsBlockQueue(
-              remoteFragmentInstanceId, remotePlanNodeId, localMemoryManager, executorService);
+              remoteFragmentInstanceId,
+              remotePlanNodeId,
+              localMemoryManager,
+              executorService,
+              isHighestPriority);
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
@@ -854,6 +890,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return localSourceHandle;
   }
 
+  @TestOnly
   @Override
   public ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
@@ -862,14 +899,31 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+    return createSourceHandle(
+        localFragmentInstanceId,
+        localPlanNodeId,
+        indexOfUpstreamSinkHandle,
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        onFailureCallback,
+        false);
+  }
+
+  public ISourceHandle createSourceHandle(
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
+      boolean isHighestPriority) {
     Map<String, ISourceHandle> sourceHandleMap = sourceHandles.get(localFragmentInstanceId);
     if (sourceHandleMap != null && sourceHandleMap.containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
-          "Source handle for plan node "
-              + localPlanNodeId
-              + " of "
-              + localFragmentInstanceId
-              + " exists.");
+          String.format(
+              DataNodeQueryMessages.SOURCE_HANDLE_FOR_PLAN_NODE_EXISTS_FMT,
+              localPlanNodeId,
+              localFragmentInstanceId));
     }
 
     if (LOGGER.isDebugEnabled()) {
@@ -891,6 +945,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             executorService,
             tsBlockSerdeFactory.get(),
             new SourceHandleListenerImpl(onFailureCallback),
+            isHighestPriority,
             mppDataExchangeServiceClientManager);
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
@@ -906,7 +961,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    */
   public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartForceReleaseFIDataExchangeResource]");
+      LOGGER.debug(DataNodeQueryMessages.START_FORCE_RELEASE_FI_DATA_EXCHANGE_RESOURCE);
     }
     ISink sinkHandle = shuffleSinkHandles.get(fragmentInstanceId);
     if (sinkHandle != null) {
@@ -917,14 +972,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     if (planNodeIdToSourceHandle != null) {
       for (Entry<String, ISourceHandle> entry : planNodeIdToSourceHandle.entrySet()) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[CloseSourceHandle] {}", entry.getKey());
+          LOGGER.debug(DataNodeQueryMessages.CLOSE_SOURCE_HANDLE, entry.getKey());
         }
         entry.getValue().abort();
       }
       sourceHandles.remove(fragmentInstanceId);
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndForceReleaseFIDataExchangeResource]");
+      LOGGER.debug(DataNodeQueryMessages.END_FORCE_RELEASE_FI_DATA_EXCHANGE_RESOURCE);
     }
   }
 

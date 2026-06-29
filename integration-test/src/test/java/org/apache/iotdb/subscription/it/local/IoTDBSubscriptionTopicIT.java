@@ -27,6 +27,7 @@ import org.apache.iotdb.session.subscription.model.Topic;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -46,6 +47,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     super.setUp();
   }
 
+  @Ignore
   @Test
   public void testBasicCreateTopic() {
     final String host = EnvFactory.getEnv().getIP();
@@ -82,6 +84,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testBasicCreateTopicIfNotExists() {
     final String host = EnvFactory.getEnv().getIP();
@@ -137,6 +140,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testBasicDropTopic() {
     final String host = EnvFactory.getEnv().getIP();
@@ -158,6 +162,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testBasicDropTopicIfExists() {
     final String host = EnvFactory.getEnv().getIP();

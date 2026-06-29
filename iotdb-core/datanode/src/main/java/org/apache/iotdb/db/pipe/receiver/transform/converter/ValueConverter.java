@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.pipe.receiver.transform.converter;
 
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 
@@ -624,7 +626,7 @@ public class ValueConverter {
   }
 
   public static Binary convertDateToText(final int value) {
-    return parseText(Integer.toString(value));
+    return parseText(DateUtils.parseIntToLocalDate(value).toString());
   }
 
   public static long convertDateToTimestamp(final int value) {
@@ -639,11 +641,11 @@ public class ValueConverter {
   }
 
   public static Binary convertDateToBlob(final int value) {
-    return parseBlob(Integer.toString(value));
+    return parseBlob(DateUtils.parseIntToLocalDate(value).toString());
   }
 
   public static Binary convertDateToString(final int value) {
-    return parseString(Integer.toString(value));
+    return parseString(DateUtils.parseIntToLocalDate(value).toString());
   }
 
   ///////////// BLOB //////////////
@@ -750,7 +752,8 @@ public class ValueConverter {
       case STRING:
         return parseString(value);
       default:
-        throw new UnsupportedOperationException("Unsupported data type: " + dataType);
+        throw new UnsupportedOperationException(
+            DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + dataType);
     }
   }
 
@@ -797,23 +800,44 @@ public class ValueConverter {
     try {
       return TypeInferenceUtils.isNumber(value)
           ? Long.parseLong(value)
-          : DateTimeUtils.parseDateTimeExpressionToLong(StringUtils.trim(value), ZoneOffset.UTC);
+          : DataNodeDateTimeUtils.parseDateTimeExpressionToLong(
+              StringUtils.trim(value), ZoneOffset.UTC);
     } catch (final Exception e) {
       return 0L;
     }
   }
 
   private static int parseDate(final String value) {
-    if (value == null || value.isEmpty()) {
+    if (value == null) {
       return DEFAULT_DATE;
     }
-    try {
-      if (TypeInferenceUtils.isNumber(value)) {
-        int date = Integer.parseInt(value);
+    final String trimmedValue = StringUtils.trim(value);
+    if (trimmedValue.isEmpty()) {
+      return DEFAULT_DATE;
+    }
+    if (TypeInferenceUtils.isNumber(trimmedValue)) {
+      try {
+        int date = Integer.parseInt(trimmedValue);
         DateUtils.parseIntToLocalDate(date);
         return date;
+      } catch (final Exception e) {
+        return DEFAULT_DATE;
       }
-      return DateTimeUtils.parseDateExpressionToInt(StringUtils.trim(value));
+    }
+    try {
+      return DateTimeUtils.parseDateExpressionToInt(trimmedValue);
+    } catch (final Exception e) {
+      return parseDateTimeToDate(trimmedValue);
+    }
+  }
+
+  private static int parseDateTimeToDate(final String value) {
+    try {
+      return DateUtils.parseDateExpressionToInt(
+          Instant.ofEpochMilli(
+                  DateTimeUtils.convertDatetimeStrToLong(value, ZoneOffset.UTC, 0, "ms"))
+              .atZone(ZoneOffset.UTC)
+              .toLocalDate());
     } catch (final Exception e) {
       return DEFAULT_DATE;
     }

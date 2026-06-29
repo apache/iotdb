@@ -21,7 +21,8 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.read.req;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import java.util.Map;
 
@@ -32,4 +33,7 @@ public interface IShowTimeSeriesPlan extends IShowSchemaPlan {
   SchemaFilter getSchemaFilter();
 
   Map<Integer, Template> getRelatedTemplate();
+
+  /** Ordering of timeseries full path in this region, null means no ordering. */
+  Ordering getTimeseriesOrdering();
 }

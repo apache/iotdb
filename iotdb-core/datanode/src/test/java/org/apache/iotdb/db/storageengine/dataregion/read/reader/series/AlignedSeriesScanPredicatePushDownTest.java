@@ -68,16 +68,17 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
   }
 
   @Test
-  @SuppressWarnings("squid:S5961") // Suppress "Test methods should not contain too many assertions"
+  @SuppressWarnings(
+      "squid:S5961") // Suppress "Test methods should not contain too manya assertions"
   public void testNoFilter() throws IllegalPathException, IOException {
     AlignedSeriesScanUtil seriesScanUtil = getAlignedSeriesScanUtil(null, null);
 
     // File 1
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 1 - Chunk 1
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 1 - Chunk 1 - Page 1
@@ -86,14 +87,14 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     TsBlock tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(10, tsBlock.getPositionCount());
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
 
     // File 2
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 2 - Chunk 1
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 2 - Chunk 1 - Page 1
@@ -102,14 +103,14 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(10, tsBlock.getPositionCount());
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
 
     // File 3
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 3 - Chunk 1
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 3 - Chunk 1 - Page 1
@@ -120,7 +121,7 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     Assert.assertFalse(seriesScanUtil.hasNextPage());
 
     // File 3 - Chunk 2
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 3 - Chunk 2 - Page 1
@@ -129,14 +130,14 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(10, tsBlock.getPositionCount());
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
 
     // File 4
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 4 - Chunk 1
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 4 - Chunk 1 - Page 1 (chunk actually)
@@ -147,7 +148,7 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     Assert.assertFalse(seriesScanUtil.hasNextPage());
 
     // File 4 - Chunk 1 - Page 2 (chunk actually)
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     Assert.assertTrue(seriesScanUtil.canUseCurrentPageStatistics());
     tsBlock = seriesScanUtil.nextPage();
@@ -155,7 +156,7 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     Assert.assertFalse(seriesScanUtil.hasNextPage());
 
     // File 4 - Chunk 1 - Page 3 (chunk actually)
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     Assert.assertTrue(seriesScanUtil.canUseCurrentPageStatistics());
     tsBlock = seriesScanUtil.nextPage();
@@ -163,7 +164,7 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     Assert.assertFalse(seriesScanUtil.hasNextPage());
 
     // (File 4 - Chunk 2) merge (File 5 - Chunk 1)
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // (File 4 - Chunk 2 - Page 1) merge (File 5 - Chunk 1 - Page 1)
@@ -178,8 +179,8 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(10, tsBlock.getPositionCount());
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 
   @Test
@@ -194,11 +195,11 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     // File 1 skipped
     // File 2 skipped
     // File 3
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentFileStatistics());
 
     // File 3 - Chunk 1
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.canUseCurrentChunkStatistics());
 
     // File 3 - Chunk 1 - Page 1
@@ -213,7 +214,7 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     // File 3 - Chunk 2 skipped
     // File 4 - Chunk 1 skipped
     // (File 4 - Chunk 2) merge (File 5 - Chunk 1)
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertFalse(seriesScanUtil.canUseCurrentChunkStatistics());
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     Assert.assertFalse(seriesScanUtil.canUseCurrentPageStatistics());
@@ -226,7 +227,7 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     Assert.assertTrue(tsBlock == null || tsBlock.isEmpty());
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 }

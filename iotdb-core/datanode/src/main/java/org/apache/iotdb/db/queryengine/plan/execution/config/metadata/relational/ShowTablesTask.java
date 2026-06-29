@@ -36,6 +36,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -69,6 +70,7 @@ public class ShowTablesTask implements IConfigTask {
 
     tableInfoList.stream()
         .filter(t -> checkCanShowTable.test(t.getTableName()))
+        .sorted(Comparator.comparing(TTableInfo::getTableName))
         .forEach(
             tableInfo -> {
               builder.getTimeColumnBuilder().writeLong(0L);

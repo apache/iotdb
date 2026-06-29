@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
 import static org.apache.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
@@ -56,6 +57,9 @@ public class MemPageReader implements IPageReader {
   private final PageMetadata pageMetadata;
 
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
+
+  // data type is modified in query and statistics cannot be used
+  private boolean modified;
 
   public MemPageReader(
       Supplier<TsBlock> tsBlockSupplier,
@@ -76,8 +80,7 @@ public class MemPageReader implements IPageReader {
     getTsBlock();
 
     BatchData batchData = BatchDataFactory.createBatchData(tsDataType, ascending, false);
-
-    boolean[] satisfyInfo = buildSatisfyInfoArray();
+    boolean[] satisfyInfo = buildSatisfyInfoArray(null);
 
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       if (satisfyInfo[i]) {
@@ -105,6 +108,7 @@ public class MemPageReader implements IPageReader {
           case TEXT:
           case STRING:
           case BLOB:
+          case OBJECT:
             batchData.putBinary(
                 tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBinary(i));
             break;
@@ -118,11 +122,16 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() {
+    return getAllSatisfiedData(null);
+  }
+
+  @Override
+  public TsBlock getAllSatisfiedData(LongConsumer filterRowsRecorder) {
     getTsBlock();
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(tsDataType));
 
-    boolean[] satisfyInfo = buildSatisfyInfoArray();
+    boolean[] satisfyInfo = buildSatisfyInfoArray(filterRowsRecorder);
 
     // build time column
     int readEndIndex = buildTimeColumn(builder, satisfyInfo);
@@ -133,13 +142,20 @@ public class MemPageReader implements IPageReader {
     return builder.build();
   }
 
-  private boolean[] buildSatisfyInfoArray() {
+  private boolean[] buildSatisfyInfoArray(LongConsumer filterRowsRecorder) {
     if (recordFilter == null || recordFilter.allSatisfy(this)) {
       boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
       Arrays.fill(satisfyInfo, true);
       return satisfyInfo;
     }
-    return recordFilter.satisfyTsBlock(tsBlock);
+
+    if (filterRowsRecorder == null) {
+      return recordFilter.satisfyTsBlock(tsBlock);
+    } else {
+      boolean[] selection = new boolean[tsBlock.getPositionCount()];
+      Arrays.fill(selection, true);
+      return recordFilter.satisfyTsBlock(selection, tsBlock, filterRowsRecorder);
+    }
   }
 
   private int buildTimeColumn(TsBlockBuilder builder, boolean[] satisfyInfo) {
@@ -222,7 +238,12 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public boolean isModified() {
-    return false;
+    return modified;
+  }
+
+  @Override
+  public void setModified(boolean modified) {
+    this.modified = modified;
   }
 
   @Override
@@ -266,6 +287,7 @@ public class MemPageReader implements IPageReader {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBinary(i));
           }

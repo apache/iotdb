@@ -26,21 +26,22 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
+import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeTSStatusTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -86,29 +87,39 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected void preRelease(final ConfigNodeProcedureEnv env) {
+    preRelease(env, null);
+  }
+
+  protected void preRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
+        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), oldName);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to pre-release {} for table {}.{} to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_PRE_RELEASE_FOR_TABLE_TO_DATANODE_FAILURE_RESULTS,
           getActionMessage(),
           database,
           table.getTableName(),
           failedResults);
       setFailure(
           new ProcedureException(
-              new MetadataException("Pre-release " + getActionMessage() + " failed")));
+              new MetadataException(
+                  ProcedureMessages.PRE_RELEASE + getActionMessage() + " failed")));
     }
   }
 
   protected void commitRelease(final ConfigNodeProcedureEnv env) {
+    commitRelease(env, null);
+  }
+
+  protected void commitRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.commitReleaseTable(
+            database, table.getTableName(), env.getConfigManager(), oldName);
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
-          "Failed to {} for table {}.{} to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_FOR_TABLE_TO_DATANODE_FAILURE_RESULTS,
           getActionMessage(),
           database,
           table.getTableName(),
@@ -122,20 +133,27 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    rollbackPreRelease(env, null);
+  }
+
+  protected void rollbackPreRelease(
+      final ConfigNodeProcedureEnv env, final @Nullable String tableName) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.rollbackPreRelease(
+            database, table.getTableName(), env.getConfigManager(), tableName);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to rollback pre-release {} for table {}.{} info to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_ROLLBACK_PRE_RELEASE_FOR_TABLE_INFO_TO_DATANODE,
           getActionMessage(),
           database,
           table.getTableName(),
           failedResults);
       setFailure(
           new ProcedureException(
-              new MetadataException("Rollback pre-release " + getActionMessage() + " failed")));
+              new MetadataException(
+                  ProcedureMessages.ROLLBACK_PRE_RELEASE + getActionMessage() + " failed")));
     }
   }
 
@@ -169,7 +187,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     }
   }
 
-  protected class TableRegionTaskExecutor<Q> extends DataNodeRegionTaskExecutor<Q, TSStatus> {
+  protected class TableRegionTaskExecutor<Q> extends DataNodeTSStatusTaskExecutor<Q> {
 
     private final String taskName;
 
@@ -184,29 +202,6 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     }
 
     @Override
-    protected List<TConsensusGroupId> processResponseOfOneDataNode(
-        final TDataNodeLocation dataNodeLocation,
-        final List<TConsensusGroupId> consensusGroupIdList,
-        final TSStatus response) {
-      final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return failedRegionList;
-      }
-
-      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        final List<TSStatus> subStatus = response.getSubStatus();
-        for (int i = 0; i < subStatus.size(); i++) {
-          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedRegionList.add(consensusGroupIdList.get(i));
-          }
-        }
-      } else {
-        failedRegionList.addAll(consensusGroupIdList);
-      }
-      return failedRegionList;
-    }
-
-    @Override
     protected void onAllReplicasetFailure(
         final TConsensusGroupId consensusGroupId,
         final Set<TDataNodeLocation> dataNodeLocationSet) {
@@ -214,7 +209,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "[%s] for %s.%s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      ProcedureMessages.FOR_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN_ALL_REPLICASET,
                       this.getClass().getSimpleName(),
                       database,
                       tableName,
@@ -237,11 +232,12 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     final AbstractAlterOrDropTableProcedure<?> that = (AbstractAlterOrDropTableProcedure<?>) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(queryId, that.queryId);
+        && Objects.equals(queryId, that.queryId)
+        && isGeneratedByPipe == that.isGeneratedByPipe;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName, queryId);
+    return Objects.hash(database, tableName, queryId, isGeneratedByPipe);
   }
 }

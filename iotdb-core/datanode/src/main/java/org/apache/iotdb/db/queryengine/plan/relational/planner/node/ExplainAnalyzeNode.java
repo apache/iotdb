@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -37,6 +40,8 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
   private final long queryId;
   private final long timeout;
   private final Symbol outputSymbol;
+  private final List<Symbol> childPermittedOutputs;
+  private final ExplainOutputFormat outputFormat;
 
   public ExplainAnalyzeNode(
       PlanNodeId id,
@@ -44,22 +49,53 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
       boolean verbose,
       long queryId,
       long timeout,
-      Symbol outputSymbol) {
+      Symbol outputSymbol,
+      List<Symbol> childPermittedOutputs) {
+    this(
+        id,
+        child,
+        verbose,
+        queryId,
+        timeout,
+        outputSymbol,
+        childPermittedOutputs,
+        ExplainOutputFormat.TEXT);
+  }
+
+  public ExplainAnalyzeNode(
+      PlanNodeId id,
+      PlanNode child,
+      boolean verbose,
+      long queryId,
+      long timeout,
+      Symbol outputSymbol,
+      List<Symbol> childPermittedOutputs,
+      ExplainOutputFormat outputFormat) {
     super(id, child);
     this.verbose = verbose;
     this.timeout = timeout;
     this.queryId = queryId;
     this.outputSymbol = outputSymbol;
+    this.childPermittedOutputs = childPermittedOutputs;
+    this.outputFormat = outputFormat;
   }
 
   @Override
   public PlanNode clone() {
-    return new ExplainAnalyzeNode(getPlanNodeId(), child, verbose, queryId, timeout, outputSymbol);
+    return new ExplainAnalyzeNode(
+        getPlanNodeId(),
+        child,
+        verbose,
+        queryId,
+        timeout,
+        outputSymbol,
+        childPermittedOutputs,
+        outputFormat);
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitExplainAnalyze(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitExplainAnalyze(this, context);
   }
 
   @Override
@@ -72,22 +108,35 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     return Collections.singletonList(outputSymbol);
   }
 
+  public List<Symbol> getChildPermittedOutputs() {
+    return childPermittedOutputs;
+  }
+
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
     return new org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode(
-        getPlanNodeId(), newChildren.get(0), verbose, queryId, timeout, outputSymbol);
+        getPlanNodeId(),
+        newChildren.get(0),
+        verbose,
+        queryId,
+        timeout,
+        outputSymbol,
+        childPermittedOutputs,
+        outputFormat);
   }
 
   // ExplainAnalyze should be at the same region as Coordinator all the time. Therefore, there will
   // be no serialization and deserialization process.
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new UnsupportedOperationException("ExplainAnalyzeNode should not be serialized");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.EXPLAINANALYZENODE_SHOULD_NOT_BE_SERIALIZED);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    throw new UnsupportedOperationException("ExplainAnalyzeNode should not be serialized");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.EXPLAINANALYZENODE_SHOULD_NOT_BE_SERIALIZED);
   }
 
   public boolean isVerbose() {
@@ -100,6 +149,10 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
 
   public long getTimeout() {
     return timeout;
+  }
+
+  public ExplainOutputFormat getOutputFormat() {
+    return outputFormat;
   }
 
   @Override

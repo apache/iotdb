@@ -81,6 +81,14 @@ public abstract class PipePluginConstructor {
       LOGGER.warn(errorMessage);
       throw new PipeException(errorMessage);
     }
+    if (information.getPluginLoadingExceptionMessage() != null) {
+      final String errorMessage =
+          String.format(
+              "Failed to reflect PipePlugin instance, because PipePlugin %s failed to load: %s",
+              pluginName.toUpperCase(), information.getPluginLoadingExceptionMessage());
+      LOGGER.warn(errorMessage);
+      throw new PipeException(errorMessage);
+    }
 
     try {
       final Class<?> pluginClass =

@@ -75,11 +75,12 @@ public class SimpleNFA implements IPatternFA {
     patternNodes = new SinglePathPatternNode[pathPattern.getNodeLength() + 1];
   }
 
-  // This is only used for table device query
+  // This is only used for table device query, or tree view query when restrict is set to false
   // For other schema query, the smallest nullable index will be the last index of the pattern
   private void computeSmallestNullableIndex() {
     smallestNullableIndex = pathPattern.getNodeLength() - 1;
-    if (!(pathPattern instanceof ExtendedPartialPath)) {
+    if (!(pathPattern instanceof ExtendedPartialPath)
+        || ((ExtendedPartialPath) pathPattern).isRestrict()) {
       return;
     }
 

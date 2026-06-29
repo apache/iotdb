@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -31,7 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,7 +49,8 @@ public class ConcatDeviceAndBindSchemaForPredicateVisitor
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
     if (predicate.isAggregationFunctionExpression() && context.isWhere()) {
-      throw new SemanticException("aggregate functions are not supported in WHERE clause");
+      throw new SemanticException(
+          DataNodeQueryMessages.AGGREGATE_FUNCTIONS_ARE_NOT_SUPPORTED_IN_WHERE_CLAUSE);
     }
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression suffixExpression : predicate.getExpressions()) {

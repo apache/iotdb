@@ -86,8 +86,8 @@ public class DataNodeTTLCache {
   }
 
   public long getTTLForTable(final String database, final String table) {
-    final TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, table);
-    return tsTable == null ? Long.MAX_VALUE : tsTable.getTableTTL();
+    final TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, table, false);
+    return tsTable == null ? Long.MAX_VALUE : tsTable.getCachedTableTTL();
   }
 
   /** Get ttl with time precision conversion. */
@@ -104,6 +104,15 @@ public class DataNodeTTLCache {
     lock.readLock().lock();
     try {
       return treeModelTTLCache.getClosestTTL(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public boolean dataInDatabaseMayHaveTTL(String db) throws IllegalPathException {
+    lock.readLock().lock();
+    try {
+      return treeModelTTLCache.dataInDatabaseMayHaveTTL(db);
     } finally {
       lock.readLock().unlock();
     }

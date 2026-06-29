@@ -19,7 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,25 +36,46 @@ import static java.util.Objects.requireNonNull;
 
 public class Explain extends Statement {
 
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Explain.class);
+
   private final Statement statement;
+  private final ExplainOutputFormat outputFormat;
 
   public Explain(Statement statement) {
     super(null);
     this.statement = requireNonNull(statement, "statement is null");
+    this.outputFormat = ExplainOutputFormat.GRAPHVIZ;
+  }
+
+  public Explain(Statement statement, ExplainOutputFormat outputFormat) {
+    super(null);
+    this.statement = requireNonNull(statement, "statement is null");
+    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
   }
 
   public Explain(NodeLocation location, Statement statement) {
     super(requireNonNull(location, "location is null"));
     this.statement = requireNonNull(statement, "statement is null");
+    this.outputFormat = ExplainOutputFormat.GRAPHVIZ;
+  }
+
+  public Explain(NodeLocation location, Statement statement, ExplainOutputFormat outputFormat) {
+    super(requireNonNull(location, "location is null"));
+    this.statement = requireNonNull(statement, "statement is null");
+    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
   }
 
   public Statement getStatement() {
     return statement;
   }
 
+  public ExplainOutputFormat getOutputFormat() {
+    return outputFormat;
+  }
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitExplain(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitExplain(this, context);
   }
 
   @Override
@@ -57,7 +85,7 @@ public class Explain extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(statement);
+    return Objects.hash(statement, outputFormat);
   }
 
   @Override
@@ -69,11 +97,22 @@ public class Explain extends Statement {
       return false;
     }
     Explain o = (Explain) obj;
-    return Objects.equals(statement, o.statement);
+    return Objects.equals(statement, o.statement) && outputFormat == o.outputFormat;
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("statement", statement).toString();
+    return toStringHelper(this)
+        .add("statement", statement)
+        .add("outputFormat", outputFormat)
+        .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(statement);
+    return size;
   }
 }

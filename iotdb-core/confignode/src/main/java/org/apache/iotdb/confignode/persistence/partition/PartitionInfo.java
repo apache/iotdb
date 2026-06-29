@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
@@ -35,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataParti
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionGroupsByTimePlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -52,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.CountTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.partition.GetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetSeriesSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetTimeSlotListResp;
@@ -59,6 +62,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -193,6 +197,13 @@ public class PartitionInfo implements SnapshotProcessor {
     plan.getRegionGroupMap()
         .forEach(
             (database, regionReplicaSets) -> {
+              if (isDatabasePreDeleted(database)) {
+                LOGGER.warn(
+                    ConfigNodeMessages
+                        .CREATEREGIONGROUPS_DATABASE_HAS_BEEN_DELETED_CORRESPONDING_REGIONGROUPS,
+                    database);
+                return;
+              }
               databasePartitionTables.get(database).createRegionGroups(regionReplicaSets);
               regionReplicaSets.forEach(
                   regionReplicaSet ->
@@ -285,7 +296,7 @@ public class PartitionInfo implements SnapshotProcessor {
   public TSStatus preDeleteDatabase(final PreDeleteDatabasePlan preDeleteDatabasePlan) {
     final PreDeleteDatabasePlan.PreDeleteType preDeleteType =
         preDeleteDatabasePlan.getPreDeleteType();
-    final String database = preDeleteDatabasePlan.getStorageGroup();
+    final String database = preDeleteDatabasePlan.getDatabase();
     final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
     if (databasePartitionTable == null) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -521,7 +532,8 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /** Get SchemaNodeManagementPartition through matched Database. */
-  public DataSet getSchemaNodeManagementPartition(List<String> matchedDatabases) {
+  public DataSet getSchemaNodeManagementPartition(
+      List<String> matchedDatabases, boolean canSeeAuditDB) {
     SchemaNodeManagementResp schemaNodeManagementResp = new SchemaNodeManagementResp();
     Map<String, SchemaPartitionTable> schemaPartitionMap = new ConcurrentHashMap<>();
 
@@ -529,6 +541,9 @@ public class PartitionInfo implements SnapshotProcessor {
         .filter(this::isDatabaseExisted)
         .forEach(
             database -> {
+              if (!canSeeAuditDB && Audit.TREE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(database)) {
+                return;
+              }
               schemaPartitionMap.put(database, new SchemaPartitionTable());
 
               databasePartitionTables
@@ -620,7 +635,7 @@ public class PartitionInfo implements SnapshotProcessor {
         .forEach(
             databasePartitionTable ->
                 databasePartitionTable.removeRegionLocation(
-                    req.getRegionId(), req.getDeprecatedLocation()));
+                    req.getRegionId(), req.getDeprecatedLocation().getDataNodeId()));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -969,7 +984,7 @@ public class PartitionInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -1017,7 +1032,8 @@ public class PartitionInfo implements SnapshotProcessor {
           break;
         } else {
           LOGGER.warn(
-              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+              ConfigNodeMessages.CAN_T_DELETE_TEMPORARY_SNAPSHOT_FILE_RETRYING,
+              tmpFile.getAbsolutePath());
         }
       }
     }
@@ -1028,7 +1044,7 @@ public class PartitionInfo implements SnapshotProcessor {
     final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
           snapshotFile.getAbsolutePath());
       return;
     }
@@ -1049,7 +1065,8 @@ public class PartitionInfo implements SnapshotProcessor {
       for (int i = 0; i < length; i++) {
         final String database = ReadWriteIOUtils.readString(fileInputStream);
         if (database == null) {
-          throw new IOException("Failed to load snapshot because get null database name");
+          throw new IOException(
+              ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_BECAUSE_GET_NULL_DATABASE_NAME);
         }
         final DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(database);
         databasePartitionTable.deserialize(fileInputStream, protocol);
@@ -1092,6 +1109,18 @@ public class PartitionInfo implements SnapshotProcessor {
             .distinct()
             .sorted(Comparator.comparing(TConsensusGroupId::getId))
             .collect(Collectors.toList()));
+  }
+
+  public DataSet getRegionGroupsByTime(GetRegionGroupsByTimePlan plan) {
+    if (!isDatabaseExisted(plan.getDatabase())) {
+      return new GetRegionGroupsByTimeResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new HashSet<>());
+    }
+    DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(plan.getDatabase());
+    return new GetRegionGroupsByTimeResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        databasePartitionTable.getRegionGroupsByTime(
+            plan.getStartTimeSlot(), plan.getEndTimeSlot()));
   }
 
   /**

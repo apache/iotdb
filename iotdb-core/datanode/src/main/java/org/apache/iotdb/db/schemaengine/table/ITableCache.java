@@ -21,15 +21,19 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 
+import javax.annotation.Nullable;
+
 public interface ITableCache {
 
   void init(final byte[] tableInitializationBytes);
 
-  void preUpdateTable(final String database, final TsTable table);
+  void preUpdateTable(final String database, final TsTable table, final @Nullable String oldName);
 
-  void rollbackUpdateTable(final String database, final String tableName);
+  void rollbackUpdateTable(
+      final String database, final String tableName, final @Nullable String oldName);
 
-  void commitUpdateTable(final String database, final String tableName);
+  void commitUpdateTable(
+      final String database, final String tableName, final @Nullable String oldName);
 
   /**
    * @param database shouldn't start with `root.`

@@ -35,12 +35,14 @@ import org.apache.iotdb.confignode.client.async.handlers.heartbeat.AINodeHeartbe
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 
 import org.apache.tsfile.utils.Pair;
@@ -63,9 +65,6 @@ import java.util.stream.Collectors;
 public class HeartbeatService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatService.class);
-
-  private static final long HEARTBEAT_INTERVAL =
-      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
 
   protected IManager configManager;
   private final LoadCache loadCache;
@@ -99,9 +98,9 @@ public class HeartbeatService {
                 heartBeatExecutor,
                 this::heartbeatLoopBody,
                 0,
-                HEARTBEAT_INTERVAL,
+                ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
                 TimeUnit.MILLISECONDS);
-        LOGGER.info("Heartbeat service is started successfully.");
+        LOGGER.info(ManagerMessages.HEARTBEAT_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
     }
   }
@@ -112,8 +111,26 @@ public class HeartbeatService {
       if (currentHeartbeatFuture != null) {
         currentHeartbeatFuture.cancel(false);
         currentHeartbeatFuture = null;
-        LOGGER.info("Heartbeat service is stopped successfully.");
+        LOGGER.info(ManagerMessages.HEARTBEAT_SERVICE_IS_STOPPED_SUCCESSFULLY);
       }
+    }
+  }
+
+  /** Reload the heartbeat interval without rebuilding the service instance. */
+  public void reloadHeartbeatInterval() {
+    synchronized (heartbeatScheduleMonitor) {
+      if (currentHeartbeatFuture == null) {
+        return;
+      }
+      currentHeartbeatFuture.cancel(false);
+      currentHeartbeatFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              heartBeatExecutor,
+              this::heartbeatLoopBody,
+              0,
+              ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
+              TimeUnit.MILLISECONDS);
+      LOGGER.info(ManagerMessages.HEARTBEAT_SERVICE_IS_STARTED_SUCCESSFULLY);
     }
   }
 
@@ -131,15 +148,20 @@ public class HeartbeatService {
                 pingRegisteredDataNodes(
                     genHeartbeatReq(), getNodeManager().getRegisteredDataNodes());
                 // Send heartbeat requests to all the registered AINodes
-                pingRegisteredAINodes(genMLHeartbeatReq(), getNodeManager().getRegisteredAINodes());
+                pingRegisteredAINodes(genAIHeartbeatReq(), getNodeManager().getRegisteredAINodes());
               }
             });
   }
 
-  private TDataNodeHeartbeatReq genHeartbeatReq() {
+  protected TDataNodeHeartbeatReq genHeartbeatReq() {
     /* Generate heartbeat request */
     TDataNodeHeartbeatReq heartbeatReq = new TDataNodeHeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
+    heartbeatReq.setLogicalClock(
+        configManager
+            .getConsensusManager()
+            .getConsensusImpl()
+            .getLogicalClock(ConfigNodeInfo.CONFIG_REGION_ID));
     // Always sample RegionGroups' leadership as the Region heartbeat
     heartbeatReq.setNeedJudgeLeader(true);
     // We sample DataNode's load in every 10 heartbeat loop
@@ -159,6 +181,12 @@ public class HeartbeatService {
       heartbeatReq.setSchemaRegionIds(configManager.getClusterQuotaManager().getSchemaRegionIds());
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
+    }
+
+    // We broadcast region operations list every 100 heartbeat loops
+    if (heartbeatCounter.get() % 100 == 0) {
+      heartbeatReq.setCurrentRegionOperations(
+          configManager.getProcedureManager().getRegionOperationConsensusIds());
     }
 
     /* Update heartbeat counter */
@@ -187,13 +215,13 @@ public class HeartbeatService {
     }
   }
 
-  private TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq() {
+  protected TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq() {
     TConfigNodeHeartbeatReq req = new TConfigNodeHeartbeatReq();
     req.setTimestamp(System.nanoTime());
     return req;
   }
 
-  private TAIHeartbeatReq genMLHeartbeatReq() {
+  private TAIHeartbeatReq genAIHeartbeatReq() {
     /* Generate heartbeat request */
     TAIHeartbeatReq heartbeatReq = new TAIHeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.nanoTime());

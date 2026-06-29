@@ -19,16 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -40,6 +36,8 @@ public class CreatePipePluginStatement extends Statement implements IConfigState
   private final String className;
   private final String uriString;
 
+  private boolean isTableModel = false;
+
   public CreatePipePluginStatement(
       String pluginName, boolean ifNotExistsCondition, String className, String uriString) {
     super();
@@ -48,6 +46,14 @@ public class CreatePipePluginStatement extends Statement implements IConfigState
     this.ifNotExistsCondition = ifNotExistsCondition;
     this.className = className;
     this.uriString = uriString;
+  }
+
+  public void markIsTableModel(final boolean isTableModel) {
+    this.isTableModel = isTableModel;
+  }
+
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   public String getPluginName() {
@@ -68,22 +74,12 @@ public class CreatePipePluginStatement extends Statement implements IConfigState
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
   }
 
   @Override

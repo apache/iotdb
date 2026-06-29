@@ -23,3 +23,4 @@ thrift>=0.14.1
 # SQLAlchemy Dialect
 sqlalchemy>=1.4
 sqlalchemy-utils>=0.37.8
+tzlocal>=4.0

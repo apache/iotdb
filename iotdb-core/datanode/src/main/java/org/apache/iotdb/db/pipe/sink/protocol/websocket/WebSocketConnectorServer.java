@@ -1,0 +1,545 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.pipe.sink.protocol.websocket;
+
+import org.apache.iotdb.commons.external.collections4.BidiMap;
+import org.apache.iotdb.commons.external.collections4.bidimap.DualTreeBidiMap;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.apache.tsfile.exception.NotImplementedException;
+import org.java_websocket.WebSocket;
+import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.server.WebSocketServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+
+public class WebSocketConnectorServer extends WebSocketServer {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
+
+  private final AtomicLong eventIdGenerator = new AtomicLong(0);
+  // Map<pipeName, Queue<Tuple<eventId, connector, event>>>
+  private final ConcurrentHashMap<String, PriorityBlockingQueue<EventWaitingForTransfer>>
+      eventsWaitingForTransfer = new ConcurrentHashMap<>();
+  // Map<pipeName, Map<eventId, Tuple<connector, event>>>
+  private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventWaitingForAck>>
+      eventsWaitingForAck = new ConcurrentHashMap<>();
+
+  private final Set<CommitterKey> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
+
+  private final BidiMap<String, WebSocket> router =
+      new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
+
+  private static final AtomicReference<WebSocketConnectorServer> instance = new AtomicReference<>();
+  private static final AtomicBoolean isStarted = new AtomicBoolean(false);
+
+  private WebSocketConnectorServer(int port) {
+    super(new InetSocketAddress(port));
+    new TransferThread(this).start();
+  }
+
+  public static synchronized WebSocketConnectorServer getOrCreateInstance(int port) {
+    if (null == instance.get()) {
+      instance.set(new WebSocketConnectorServer(port));
+    }
+    return instance.get();
+  }
+
+  public synchronized void register(WebSocketSink connector) {
+    eventsWaitingForTransfer.putIfAbsent(
+        connector.getPipeName(),
+        new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.eventId)));
+    eventsWaitingForAck.putIfAbsent(connector.getPipeName(), new ConcurrentHashMap<>());
+  }
+
+  public synchronized void unregister(WebSocketSink connector) {
+    final String pipeName = connector.getPipeName();
+    // close invoked in validation stage
+    if (pipeName == null) {
+      return;
+    }
+    if (eventsWaitingForTransfer.containsKey(pipeName)) {
+      final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
+          eventsWaitingForTransfer.remove(pipeName);
+      while (!eventTransferQueue.isEmpty()) {
+        final List<EventWaitingForTransfer> eventWrappers;
+        synchronized (eventTransferQueue) {
+          eventWrappers = new ArrayList<>(eventTransferQueue);
+          eventTransferQueue.clear();
+        }
+        eventWrappers.forEach(eventWrapper -> discardEvent(eventWrapper.event));
+        eventWrappers.clear();
+        synchronized (eventTransferQueue) {
+          eventTransferQueue.notifyAll();
+        }
+      }
+    }
+
+    if (eventsWaitingForAck.containsKey(pipeName)) {
+      eventsWaitingForAck
+          .remove(pipeName)
+          .forEach((eventId, eventWrapper) -> discardEvent(eventWrapper.event));
+    }
+
+    droppedPipeTaskKeys.removeIf(key -> key.getPipeName().equals(pipeName));
+  }
+
+  public synchronized void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
+    droppedPipeTaskKeys.add(committerKey);
+
+    final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
+        eventsWaitingForTransfer.get(committerKey.getPipeName());
+    if (eventTransferQueue != null) {
+      eventTransferQueue.removeIf(
+          eventWrapper -> discardIfMatches(eventWrapper.event, committerKey));
+      synchronized (eventTransferQueue) {
+        eventTransferQueue.notifyAll();
+      }
+    }
+
+    final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
+        eventsWaitingForAck.get(committerKey.getPipeName());
+    if (eventId2EventMap != null) {
+      eventId2EventMap
+          .entrySet()
+          .removeIf(entry -> discardIfMatches(entry.getValue().event, committerKey));
+    }
+  }
+
+  @Override
+  public void start() {
+    super.start();
+    isStarted.set(true);
+  }
+
+  @Override
+  public void onStart() {
+    LOGGER.info(
+        DataNodePipeMessages.THE_WEBSOCKET_SERVER_HAS_BEEN_STARTED,
+        getAddress().getHostName(),
+        getPort());
+  }
+
+  public boolean isStarted() {
+    return isStarted.get();
+  }
+
+  @Override
+  public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
+    LOGGER.info(
+        DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_CLIENT_HAS_BEEN_2,
+        webSocket.getRemoteSocketAddress().getHostName(),
+        webSocket.getRemoteSocketAddress().getPort());
+  }
+
+  @Override
+  public void onClose(WebSocket webSocket, int code, String reason, boolean remote) {
+    if (webSocket.getRemoteSocketAddress() != null) {
+      LOGGER.info(
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_CLIENT_HAS_BEEN_1,
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort(),
+          code,
+          reason,
+          remote);
+    } else {
+      LOGGER.warn(
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_CLIENT_HAS_BEEN, code, reason, remote);
+    }
+    router.remove(router.getKey(webSocket));
+  }
+
+  @Override
+  public void onMessage(WebSocket webSocket, String s) {
+    if (s.startsWith("BIND")) {
+      LOGGER.info(
+          DataNodePipeMessages.RECEIVED_A_BIND_MESSAGE_FROM,
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort());
+
+      handleBind(webSocket, s.replace("BIND:", ""));
+    } else if (s.startsWith("ACK")) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            DataNodePipeMessages.RECEIVED_A_ACK_MESSAGE_FROM,
+            webSocket.getRemoteSocketAddress().getHostName(),
+            webSocket.getRemoteSocketAddress().getPort());
+      }
+
+      handleAck(webSocket, Long.parseLong(s.replace("ACK:", "")));
+    } else if (s.startsWith("ERROR")) {
+      LOGGER.warn(
+          DataNodePipeMessages.RECEIVED_AN_ERROR_MESSAGE_FROM,
+          s,
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort());
+
+      handleError(webSocket, Long.parseLong(s.replace("ERROR:", "")));
+    } else {
+      LOGGER.warn(
+          DataNodePipeMessages.RECEIVED_AN_UNKNOWN_MESSAGE_FROM,
+          s,
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort());
+    }
+  }
+
+  private void handleBind(WebSocket webSocket, String pipeName) {
+    if (router.containsKey(pipeName)) {
+      broadcast("ERROR", Collections.singletonList(webSocket));
+      webSocket.close(4000, "Too many connections.");
+      return;
+    }
+
+    broadcast("READY", Collections.singletonList(webSocket));
+    router.put(pipeName, webSocket);
+  }
+
+  private void handleAck(WebSocket webSocket, long eventId) {
+    final String pipeName = router.getKey(webSocket);
+    if (pipeName == null) {
+      LOGGER.warn(
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_HAS_BEEN_CLOSED,
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort(),
+          eventId);
+      return;
+    }
+
+    final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
+        eventsWaitingForAck.get(pipeName);
+    if (eventId2EventMap == null) {
+      LOGGER.warn(DataNodePipeMessages.THE_PIPE_WAS_DROPPED_SO_THE_EVENT, pipeName, eventId);
+      return;
+    }
+
+    final EventWaitingForAck eventWrapper = eventId2EventMap.remove(eventId);
+    if (eventWrapper == null) {
+      LOGGER.warn(DataNodePipeMessages.THE_EVENT_ACK_IS_NOT_FOUND, eventId);
+      return;
+    }
+
+    eventWrapper.connector.commit(
+        eventWrapper.event instanceof EnrichedEvent ? (EnrichedEvent) eventWrapper.event : null);
+  }
+
+  // synchronized with register and unregister to avoid resource leak
+  private synchronized void handleError(WebSocket webSocket, long eventId) {
+    final String pipeName = router.getKey(webSocket);
+    if (pipeName == null) {
+      LOGGER.warn(
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_HAS_BEEN_CLOSED_1,
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort(),
+          eventId);
+      return;
+    }
+
+    final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
+        eventsWaitingForAck.get(pipeName);
+    final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
+        eventsWaitingForTransfer.get(pipeName);
+    if (eventId2EventMap == null || eventTransferQueue == null) {
+      LOGGER.warn(DataNodePipeMessages.THE_PIPE_WAS_DROPPED_SO_THE_EVENT_1, pipeName, eventId);
+      return;
+    }
+
+    final EventWaitingForAck eventWrapper = eventId2EventMap.remove(eventId);
+    if (eventWrapper == null) {
+      LOGGER.warn(DataNodePipeMessages.THE_EVENT_IN_ERROR_IS_NOT_FOUND, eventId);
+      return;
+    }
+
+    LOGGER.warn(DataNodePipeMessages.THE_TABLET_OF_COMMITID_CAN_T_BE, eventId);
+    synchronized (eventTransferQueue) {
+      eventTransferQueue.put(
+          new EventWaitingForTransfer(eventId, eventWrapper.connector, eventWrapper.event));
+    }
+  }
+
+  @Override
+  public void onError(WebSocket webSocket, Exception e) {
+    if (webSocket.getRemoteSocketAddress() != null) {
+      LOGGER.warn(
+          DataNodePipeMessages.GOT_AN_ERROR_FROM,
+          e.getMessage(),
+          webSocket.getLocalSocketAddress().getHostName(),
+          webSocket.getLocalSocketAddress().getPort(),
+          e);
+    } else {
+      LOGGER.warn(DataNodePipeMessages.GOT_AN_ERROR_FROM_AN_UNKNOWN_CLIENT, e.getMessage(), e);
+      // if the remote socket address is null, it means the connection is not established yet.
+      // we should close the connection manually.
+      router.remove(router.getKey(webSocket));
+    }
+  }
+
+  public void addEvent(Event event, WebSocketSink connector) {
+    if (isDroppedPipe(event)) {
+      discardEvent(event);
+      return;
+    }
+
+    final String pipeName = connector.getPipeName();
+    final PriorityBlockingQueue<EventWaitingForTransfer> queue =
+        eventsWaitingForTransfer.get(pipeName);
+
+    if (queue == null) {
+      LOGGER.warn(DataNodePipeMessages.THE_PIPE_WAS_DROPPED_SO_THE_EVENT_2, connector, event);
+      discardEvent(event);
+      return;
+    }
+
+    if (queue.size() >= 5) {
+      synchronized (queue) {
+        while (queue.size() >= 5 && isQueueAvailable(pipeName, queue) && !isDroppedPipe(event)) {
+          try {
+            queue.wait();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new PipeException(e.getMessage());
+          }
+        }
+
+        if (!isQueueAvailable(pipeName, queue) || isDroppedPipe(event)) {
+          discardEvent(event);
+          return;
+        }
+
+        queue.put(
+            new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
+        return;
+      }
+    }
+
+    if (!isQueueAvailable(pipeName, queue) || isDroppedPipe(event)) {
+      discardEvent(event);
+      return;
+    }
+
+    synchronized (queue) {
+      queue.put(new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
+    }
+  }
+
+  private class TransferThread extends Thread {
+
+    private final WebSocketConnectorServer server;
+
+    public TransferThread(WebSocketConnectorServer server) {
+      this.server = server;
+    }
+
+    @Override
+    public void run() {
+      while (true) {
+        if (sleepIfNecessary()) {
+          continue;
+        }
+
+        for (final String pipeName : eventsWaitingForTransfer.keySet()) {
+          final PriorityBlockingQueue<EventWaitingForTransfer> queue =
+              eventsWaitingForTransfer.getOrDefault(pipeName, null);
+          if (queue == null || queue.isEmpty() || !router.containsKey(pipeName)) {
+            continue;
+          }
+
+          try {
+            EventWaitingForTransfer queueElement;
+            queueElement = queue.take();
+            synchronized (queue) {
+              queue.notifyAll();
+            }
+            transfer(pipeName, queueElement);
+          } catch (InterruptedException e) {
+            LOGGER.warn(DataNodePipeMessages.THE_TRANSFER_THREAD_IS_INTERRUPTED, e);
+            Thread.currentThread().interrupt();
+          }
+        }
+      }
+    }
+
+    private void transfer(String pipeName, EventWaitingForTransfer element) {
+      final Long eventId = element.eventId;
+      final Event event = element.event;
+      final WebSocketSink connector = element.connector;
+
+      try {
+        if (isDroppedPipe(event)) {
+          discardEvent(event);
+          return;
+        }
+
+        ByteBuffer tabletBuffer;
+        if (event instanceof PipeRawTabletInsertionEvent) {
+          tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
+        } else {
+          throw new NotImplementedException(
+              DataNodePipeMessages
+                  .IOTDBCDCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTAB);
+        }
+
+        if (tabletBuffer == null) {
+          if (isDroppedPipe(event)) {
+            discardEvent(event);
+          } else {
+            connector.commit((EnrichedEvent) event);
+          }
+          return;
+        }
+
+        final ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.limit());
+        payload.putLong(eventId);
+        payload.put(tabletBuffer);
+        payload.flip();
+
+        server.broadcast(payload, Collections.singletonList(router.get(pipeName)));
+
+        if (isDroppedPipe(event)) {
+          discardEvent(event);
+          return;
+        }
+
+        final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
+            eventsWaitingForAck.get(pipeName);
+        if (eventId2EventMap == null) {
+          LOGGER.warn(DataNodePipeMessages.THE_PIPE_WAS_DROPPED_SO_THE_EVENT, pipeName, eventId);
+          discardEvent(event);
+          return;
+        }
+        eventId2EventMap.put(eventId, new EventWaitingForAck(connector, event));
+      } catch (Exception e) {
+        synchronized (server) {
+          final PriorityBlockingQueue<EventWaitingForTransfer> queue =
+              eventsWaitingForTransfer.get(pipeName);
+          if (queue == null || isDroppedPipe(event)) {
+            LOGGER.warn(
+                DataNodePipeMessages.THE_PIPE_WAS_DROPPED_SO_THE_EVENT_2, pipeName, eventId);
+            discardEvent(event);
+            return;
+          }
+
+          LOGGER.warn(DataNodePipeMessages.THE_EVENT_CAN_T_BE_TRANSFERRED_TO, eventId, e);
+          queue.put(new EventWaitingForTransfer(eventId, connector, event));
+        }
+      }
+    }
+
+    private boolean sleepIfNecessary() {
+      if (!eventsWaitingForTransfer.isEmpty()) {
+        return false;
+      }
+
+      try {
+        Thread.sleep(10000);
+      } catch (InterruptedException e) {
+        LOGGER.warn(DataNodePipeMessages.THE_TRANSFER_THREAD_IS_INTERRUPTED, e);
+        Thread.currentThread().interrupt();
+      }
+      return true;
+    }
+  }
+
+  private static class EventWaitingForTransfer {
+
+    private final Long eventId;
+    private final WebSocketSink connector;
+    private final Event event;
+
+    public EventWaitingForTransfer(Long eventId, WebSocketSink connector, Event event) {
+      this.eventId = eventId;
+      this.connector = connector;
+      this.event = event;
+    }
+  }
+
+  private static class EventWaitingForAck {
+
+    private final WebSocketSink connector;
+    private final Event event;
+
+    public EventWaitingForAck(WebSocketSink connector, Event event) {
+      this.connector = connector;
+      this.event = event;
+    }
+  }
+
+  private boolean discardIfMatches(final Event event, final CommitterKey committerKey) {
+    if (!(event instanceof EnrichedEvent)) {
+      return false;
+    }
+
+    final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+    if (!isEventFromPipe(enrichedEvent, committerKey)) {
+      return false;
+    }
+
+    discardEvent(enrichedEvent);
+    return true;
+  }
+
+  private boolean isDroppedPipe(final Event event) {
+    return event instanceof EnrichedEvent
+        && droppedPipeTaskKeys.stream()
+            .anyMatch(key -> isEventFromPipe((EnrichedEvent) event, key));
+  }
+
+  private static boolean isEventFromPipe(
+      final EnrichedEvent event, final CommitterKey committerKey) {
+    return committerKey.getPipeName().equals(event.getPipeName())
+        && committerKey.getCreationTime() == event.getCreationTime()
+        && committerKey.getRegionId() == event.getRegionId()
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
+  }
+
+  private boolean isQueueAvailable(
+      final String pipeName, final PriorityBlockingQueue<EventWaitingForTransfer> queue) {
+    return eventsWaitingForTransfer.get(pipeName) == queue;
+  }
+
+  private void discardEvent(final Event event) {
+    if (event instanceof EnrichedEvent) {
+      ((EnrichedEvent) event).clearReferenceCount(WebSocketSink.class.getName());
+    }
+  }
+}

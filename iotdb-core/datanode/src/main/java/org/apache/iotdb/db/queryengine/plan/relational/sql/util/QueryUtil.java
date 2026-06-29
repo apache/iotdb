@@ -19,33 +19,34 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AliasedRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Fill;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupBy;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Offset;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QueryBody;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SelectItem;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SingleColumn;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowDefinition;
 
 import com.google.common.collect.ImmutableList;
 
@@ -156,6 +157,7 @@ public final class QueryUtil {
             Optional.empty(),
             Optional.empty(),
             Optional.empty(),
+            ImmutableList.of(),
             Optional.empty(),
             Optional.empty(),
             Optional.empty()));
@@ -203,7 +205,41 @@ public final class QueryUtil {
       Optional<Node> limit) {
     return query(
         new QuerySpecification(
-            select, Optional.of(from), where, groupBy, having, fill, orderBy, offset, limit));
+            select,
+            Optional.of(from),
+            where,
+            groupBy,
+            having,
+            fill,
+            ImmutableList.of(),
+            orderBy,
+            offset,
+            limit));
+  }
+
+  public static Query simpleQuery(
+      Select select,
+      Relation from,
+      Optional<Expression> where,
+      Optional<GroupBy> groupBy,
+      Optional<Expression> having,
+      Optional<Fill> fill,
+      List<WindowDefinition> windows,
+      Optional<OrderBy> orderBy,
+      Optional<Offset> offset,
+      Optional<Node> limit) {
+    return query(
+        new QuerySpecification(
+            select,
+            Optional.of(from),
+            where,
+            groupBy,
+            having,
+            fill,
+            windows,
+            orderBy,
+            offset,
+            limit));
   }
 
   public static Query query(QueryBody body) {

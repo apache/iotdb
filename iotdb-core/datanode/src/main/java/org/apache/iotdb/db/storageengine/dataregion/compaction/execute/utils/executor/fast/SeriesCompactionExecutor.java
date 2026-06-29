@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
@@ -32,7 +32,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.rea
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.exception.write.PageException;
@@ -46,12 +45,10 @@ import org.apache.tsfile.read.common.TimeRange;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
-import java.util.stream.Collectors;
 
 public abstract class SeriesCompactionExecutor {
 
@@ -475,24 +472,17 @@ public abstract class SeriesCompactionExecutor {
   /**
    * Get the modifications of a timeseries in the ModificationFile of a TsFile. Create ttl
    * modification from ttl cache.
-   *
-   * @param path name of the time series
    */
   protected List<ModEntry> getModificationsFromCache(
-      TsFileResource tsFileResource, PartialPath path) {
+      TsFileResource tsFileResource, IDeviceID deviceId, String measurement)
+      throws IllegalPathException {
     PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allModifications =
         modificationCacheMap.get(tsFileResource.getTsFile().getName());
-    if (allModifications == null) {
-      return Collections.emptyList();
-    }
-    List<ModEntry> modEntries = allModifications.getOverlapped(path);
-    if (path.getIDeviceID().isTableModel()) {
-      modEntries =
-          modEntries.stream()
-              .filter(e -> e.affects(path.getIDeviceID()) && e.affects(path.getMeasurement()))
-              .collect(Collectors.toList());
-    }
-    return ModificationUtils.sortAndMerge(modEntries);
+    return CompactionUtils.getMatchedModifications(
+        allModifications,
+        deviceId,
+        measurement,
+        compactionWriter.getTTLLowerBoundForCurrentDevice());
   }
 
   @SuppressWarnings("squid:S3776")

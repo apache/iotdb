@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
 
@@ -31,60 +35,184 @@ public class MemPointIteratorFactory {
   }
 
   // TVListIterator
-  private static MemPointIterator single(List<TVList> tvLists) {
-    return tvLists.get(0).iterator(null, null, null);
-  }
-
-  private static MemPointIterator single(List<TVList> tvLists, List<TimeRange> deletionList) {
-    return tvLists.get(0).iterator(deletionList, null, null);
+  private static MemPointIterator single(
+      List<TVList> tvLists, int maxNumberOfPointsInPage, QueryContext queryContext) {
+    return tvLists
+        .get(0)
+        .iterator(
+            Ordering.ASC,
+            tvLists.get(0).rowCount,
+            null,
+            null,
+            null,
+            null,
+            maxNumberOfPointsInPage,
+            queryContext);
   }
 
   private static MemPointIterator single(
       List<TVList> tvLists,
       List<TimeRange> deletionList,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
+    return tvLists
+        .get(0)
+        .iterator(
+            Ordering.ASC,
+            tvLists.get(0).rowCount,
+            null,
+            deletionList,
+            null,
+            null,
+            maxNumberOfPointsInPage,
+            queryContext);
+  }
+
+  private static MemPointIterator single(
+      List<TVList> tvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
+      List<TimeRange> deletionList,
       Integer floatPrecision,
-      TSEncoding encoding) {
-    return tvLists.get(0).iterator(deletionList, floatPrecision, encoding);
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
+    return tvLists
+        .get(0)
+        .iterator(
+            scanOrder,
+            tvListRowCounts.get(0),
+            globalTimeFilter,
+            deletionList,
+            floatPrecision,
+            encoding,
+            maxNumberOfPointsInPage,
+            queryContext);
   }
 
   // MergeSortMultiTVListIterator
-  private static MemPointIterator mergeSort(TSDataType tsDataType, List<TVList> tvLists) {
-    return new MergeSortMultiTVListIterator(tsDataType, tvLists, null, null, null);
-  }
-
   private static MemPointIterator mergeSort(
-      TSDataType tsDataType, List<TVList> tvLists, List<TimeRange> deletionList) {
-    return new MergeSortMultiTVListIterator(tsDataType, tvLists, deletionList, null, null);
+      TSDataType tsDataType,
+      List<TVList> tvLists,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
+    return new MergeSortMultiTVListIterator(
+        Ordering.ASC,
+        null,
+        tsDataType,
+        tvLists,
+        null,
+        null,
+        null,
+        null,
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   private static MemPointIterator mergeSort(
       TSDataType tsDataType,
       List<TVList> tvLists,
       List<TimeRange> deletionList,
-      Integer floatPrecision,
-      TSEncoding encoding) {
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return new MergeSortMultiTVListIterator(
-        tsDataType, tvLists, deletionList, floatPrecision, encoding);
+        Ordering.ASC,
+        null,
+        tsDataType,
+        tvLists,
+        null,
+        deletionList,
+        null,
+        null,
+        maxNumberOfPointsInPage,
+        queryContext);
+  }
+
+  private static MemPointIterator mergeSort(
+      TSDataType tsDataType,
+      List<TVList> tvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
+      List<TimeRange> deletionList,
+      Integer floatPrecision,
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
+    return new MergeSortMultiTVListIterator(
+        scanOrder,
+        globalTimeFilter,
+        tsDataType,
+        tvLists,
+        tvListRowCounts,
+        deletionList,
+        floatPrecision,
+        encoding,
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   // OrderedMultiTVListIterator
-  private static MemPointIterator ordered(TSDataType tsDataType, List<TVList> tvLists) {
-    return new OrderedMultiTVListIterator(tsDataType, tvLists, null, null, null);
-  }
-
   private static MemPointIterator ordered(
-      TSDataType tsDataType, List<TVList> tvLists, List<TimeRange> deletionList) {
-    return new OrderedMultiTVListIterator(tsDataType, tvLists, deletionList, null, null);
+      TSDataType tsDataType,
+      List<TVList> tvLists,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
+    return new OrderedMultiTVListIterator(
+        Ordering.ASC,
+        null,
+        tsDataType,
+        tvLists,
+        null,
+        null,
+        null,
+        null,
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   private static MemPointIterator ordered(
       TSDataType tsDataType,
       List<TVList> tvLists,
       List<TimeRange> deletionList,
-      Integer floatPrecision,
-      TSEncoding encoding) {
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return new OrderedMultiTVListIterator(
-        tsDataType, tvLists, deletionList, floatPrecision, encoding);
+        Ordering.ASC,
+        null,
+        tsDataType,
+        tvLists,
+        null,
+        deletionList,
+        null,
+        null,
+        maxNumberOfPointsInPage,
+        queryContext);
+  }
+
+  private static MemPointIterator ordered(
+      TSDataType tsDataType,
+      List<TVList> tvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
+      List<TimeRange> deletionList,
+      Integer floatPrecision,
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
+    return new OrderedMultiTVListIterator(
+        scanOrder,
+        globalTimeFilter,
+        tsDataType,
+        tvLists,
+        tvListRowCounts,
+        deletionList,
+        floatPrecision,
+        encoding,
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   // AlignedTVListIterator
@@ -92,10 +220,24 @@ public class MemPointIteratorFactory {
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return alignedTvLists
         .get(0)
-        .iterator(tsDataTypes, columnIndexList, null, null, null, null, ignoreAllNullRows);
+        .iterator(
+            Ordering.ASC,
+            alignedTvLists.get(0).rowCount,
+            null,
+            tsDataTypes,
+            columnIndexList,
+            null,
+            null,
+            null,
+            null,
+            ignoreAllNullRows,
+            maxNumberOfPointsInPage,
+            queryContext);
   }
 
   private static MemPointIterator single(
@@ -104,38 +246,55 @@ public class MemPointIteratorFactory {
       List<AlignedTVList> alignedTvLists,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return alignedTvLists
         .get(0)
         .iterator(
+            Ordering.ASC,
+            alignedTvLists.get(0).rowCount,
+            null,
             tsDataTypes,
             columnIndexList,
             timeColumnDeletion,
             valueColumnsDeletionList,
             null,
             null,
-            ignoreAllNullRows);
+            ignoreAllNullRows,
+            maxNumberOfPointsInPage,
+            queryContext);
   }
 
   private static MemPointIterator single(
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return alignedTvLists
         .get(0)
         .iterator(
+            scanOrder,
+            tvListRowCounts.get(0),
+            globalTimeFilter,
             tsDataTypes,
             columnIndexList,
             timeColumnDeletion,
             valueColumnsDeletionList,
             floatPrecision,
             encodingList,
-            ignoreAllNullRows);
+            ignoreAllNullRows,
+            maxNumberOfPointsInPage,
+            queryContext);
   }
 
   // MergeSortMultiAlignedTVListIterator
@@ -143,9 +302,23 @@ public class MemPointIteratorFactory {
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return new MergeSortMultiAlignedTVListIterator(
-        tsDataTypes, columnIndexList, alignedTvLists, null, null, null, null, ignoreAllNullRows);
+        tsDataTypes,
+        columnIndexList,
+        alignedTvLists,
+        null,
+        Ordering.ASC,
+        null,
+        null,
+        null,
+        null,
+        null,
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   private static MemPointIterator mergeSort(
@@ -154,36 +327,53 @@ public class MemPointIteratorFactory {
       List<AlignedTVList> alignedTvLists,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return new MergeSortMultiAlignedTVListIterator(
         tsDataTypes,
         columnIndexList,
         alignedTvLists,
+        null,
+        Ordering.ASC,
+        null,
         timeColumnDeletion,
         valueColumnsDeletionList,
         null,
         null,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   private static MemPointIterator mergeSort(
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return new MergeSortMultiAlignedTVListIterator(
         tsDataTypes,
         columnIndexList,
         alignedTvLists,
+        tvListRowCounts,
+        scanOrder,
+        globalTimeFilter,
         timeColumnDeletion,
         valueColumnsDeletionList,
         floatPrecision,
         encodingList,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   // OrderedMultiAlignedTVListIterator
@@ -191,9 +381,23 @@ public class MemPointIteratorFactory {
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return new OrderedMultiAlignedTVListIterator(
-        tsDataTypes, columnIndexList, alignedTvLists, null, null, null, null, ignoreAllNullRows);
+        tsDataTypes,
+        columnIndexList,
+        alignedTvLists,
+        null,
+        Ordering.ASC,
+        null,
+        null,
+        null,
+        null,
+        null,
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   private static MemPointIterator ordered(
@@ -202,71 +406,115 @@ public class MemPointIteratorFactory {
       List<AlignedTVList> alignedTvLists,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return new OrderedMultiAlignedTVListIterator(
         tsDataTypes,
         columnIndexList,
         alignedTvLists,
+        null,
+        Ordering.ASC,
+        null,
         timeColumnDeletion,
         valueColumnsDeletionList,
         null,
         null,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   private static MemPointIterator ordered(
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return new OrderedMultiAlignedTVListIterator(
         tsDataTypes,
         columnIndexList,
         alignedTvLists,
+        tvListRowCounts,
+        scanOrder,
+        globalTimeFilter,
         timeColumnDeletion,
         valueColumnsDeletionList,
         floatPrecision,
         encodingList,
-        ignoreAllNullRows);
-  }
-
-  public static MemPointIterator create(TSDataType tsDataType, List<TVList> tvLists) {
-    if (tvLists.size() == 1) {
-      return single(tvLists);
-    } else if (isCompleteOrdered(tvLists)) {
-      return ordered(tsDataType, tvLists);
-    } else {
-      return mergeSort(tsDataType, tvLists);
-    }
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   public static MemPointIterator create(
-      TSDataType tsDataType, List<TVList> tvLists, List<TimeRange> deletionList) {
+      TSDataType tsDataType,
+      List<TVList> tvLists,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     if (tvLists.size() == 1) {
-      return single(tvLists, deletionList);
-    } else if (isCompleteOrdered(tvLists)) {
-      return ordered(tsDataType, tvLists, deletionList);
+      return single(tvLists, maxNumberOfPointsInPage, queryContext);
+    } else if (isCompleteOrdered(tvLists, null)) {
+      return ordered(tsDataType, tvLists, maxNumberOfPointsInPage, queryContext);
     } else {
-      return mergeSort(tsDataType, tvLists, deletionList);
+      return mergeSort(tsDataType, tvLists, maxNumberOfPointsInPage, queryContext);
     }
   }
 
   public static MemPointIterator create(
       TSDataType tsDataType,
       List<TVList> tvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> deletionList,
       Integer floatPrecision,
-      TSEncoding encoding) {
+      TSEncoding encoding,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     if (tvLists.size() == 1) {
-      return single(tvLists, deletionList, floatPrecision, encoding);
-    } else if (isCompleteOrdered(tvLists)) {
-      return ordered(tsDataType, tvLists, deletionList, floatPrecision, encoding);
+      return single(
+          tvLists,
+          tvListRowCounts,
+          scanOrder,
+          globalTimeFilter,
+          deletionList,
+          floatPrecision,
+          encoding,
+          maxNumberOfPointsInPage,
+          queryContext);
+    } else if (isCompleteOrdered(tvLists, tvListRowCounts)) {
+      return ordered(
+          tsDataType,
+          tvLists,
+          tvListRowCounts,
+          scanOrder,
+          globalTimeFilter,
+          deletionList,
+          floatPrecision,
+          encoding,
+          maxNumberOfPointsInPage,
+          queryContext);
     } else {
-      return mergeSort(tsDataType, tvLists, deletionList, floatPrecision, encoding);
+      return mergeSort(
+          tsDataType,
+          tvLists,
+          tvListRowCounts,
+          scanOrder,
+          globalTimeFilter,
+          deletionList,
+          floatPrecision,
+          encoding,
+          maxNumberOfPointsInPage,
+          queryContext);
     }
   }
 
@@ -274,47 +522,33 @@ public class MemPointIteratorFactory {
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
-      boolean ignoreAllNullRows) {
-    if (alignedTvLists.size() == 1) {
-      return single(tsDataTypes, columnIndexList, alignedTvLists, ignoreAllNullRows);
-    } else if (isCompleteOrdered(alignedTvLists)) {
-      return ordered(tsDataTypes, columnIndexList, alignedTvLists, ignoreAllNullRows);
-    } else {
-      return mergeSort(tsDataTypes, columnIndexList, alignedTvLists, ignoreAllNullRows);
-    }
-  }
-
-  public static MemPointIterator create(
-      List<TSDataType> tsDataTypes,
-      List<Integer> columnIndexList,
-      List<AlignedTVList> alignedTvLists,
-      List<TimeRange> timeColumnDeletion,
-      List<List<TimeRange>> valueColumnsDeletionList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     if (alignedTvLists.size() == 1) {
       return single(
           tsDataTypes,
           columnIndexList,
           alignedTvLists,
-          timeColumnDeletion,
-          valueColumnsDeletionList,
-          ignoreAllNullRows);
-    } else if (isCompleteOrdered(alignedTvLists)) {
+          ignoreAllNullRows,
+          maxNumberOfPointsInPage,
+          queryContext);
+    } else if (isCompleteOrdered(alignedTvLists, null)) {
       return ordered(
           tsDataTypes,
           columnIndexList,
           alignedTvLists,
-          timeColumnDeletion,
-          valueColumnsDeletionList,
-          ignoreAllNullRows);
+          ignoreAllNullRows,
+          maxNumberOfPointsInPage,
+          queryContext);
     } else {
       return mergeSort(
           tsDataTypes,
           columnIndexList,
           alignedTvLists,
-          timeColumnDeletion,
-          valueColumnsDeletionList,
-          ignoreAllNullRows);
+          ignoreAllNullRows,
+          maxNumberOfPointsInPage,
+          queryContext);
     }
   }
 
@@ -322,59 +556,82 @@ public class MemPointIteratorFactory {
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     if (alignedTvLists.size() == 1) {
       return single(
           tsDataTypes,
           columnIndexList,
           alignedTvLists,
+          tvListRowCounts,
+          scanOrder,
+          globalTimeFilter,
           timeColumnDeletion,
           valueColumnsDeletionList,
           floatPrecision,
           encodingList,
-          ignoreAllNullRows);
-    } else if (isCompleteOrdered(alignedTvLists)) {
+          ignoreAllNullRows,
+          maxNumberOfPointsInPage,
+          queryContext);
+    } else if (isCompleteOrdered(alignedTvLists, tvListRowCounts)) {
       return ordered(
           tsDataTypes,
           columnIndexList,
           alignedTvLists,
+          tvListRowCounts,
+          scanOrder,
+          globalTimeFilter,
           timeColumnDeletion,
           valueColumnsDeletionList,
           floatPrecision,
           encodingList,
-          ignoreAllNullRows);
+          ignoreAllNullRows,
+          maxNumberOfPointsInPage,
+          queryContext);
     } else {
       return mergeSort(
           tsDataTypes,
           columnIndexList,
           alignedTvLists,
+          tvListRowCounts,
+          scanOrder,
+          globalTimeFilter,
           timeColumnDeletion,
           valueColumnsDeletionList,
           floatPrecision,
           encodingList,
-          ignoreAllNullRows);
+          ignoreAllNullRows,
+          maxNumberOfPointsInPage,
+          queryContext);
     }
   }
 
-  private static boolean isCompleteOrdered(List<? extends TVList> tvLists) {
+  private static boolean isCompleteOrdered(
+      List<? extends TVList> tvLists, List<Integer> tvListRowCounts) {
     long time = Long.MIN_VALUE;
     for (int i = 0; i < tvLists.size(); i++) {
       TVList list = tvLists.get(i);
-      if (!list.isSorted()) {
+      int rowCount = tvListRowCounts == null ? list.rowCount() : tvListRowCounts.get(i);
+
+      if (rowCount == 0) {
+        continue;
+      }
+      if (list.seqRowCount() < rowCount) {
         return false;
       }
 
-      if (tvLists.get(i).rowCount() == 0) {
-        continue;
-      }
       if (i > 0 && list.getTime(0) <= time) {
         return false;
       }
-      time = list.getTime(list.rowCount() - 1);
+      time = list.getTime(rowCount - 1);
     }
     return true;
   }

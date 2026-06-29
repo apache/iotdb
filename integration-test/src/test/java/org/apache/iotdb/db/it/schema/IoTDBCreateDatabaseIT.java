@@ -95,7 +95,7 @@ public class IoTDBCreateDatabaseIT extends AbstractSchemaIT {
       throws SQLException {
 
     List<String> resultList = new ArrayList<>();
-    try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+    try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.sg*")) {
       while (resultSet.next()) {
         final String databasePath = resultSet.getString(ColumnHeaderConstant.DATABASE);
         resultList.add(databasePath);

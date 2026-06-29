@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -58,6 +60,7 @@ public class ExtremeAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -90,6 +93,7 @@ public class ExtremeAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -106,24 +110,25 @@ public class ExtremeAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
-        updateIntResult((int) statistics.getMaxValue());
-        updateIntResult((int) statistics.getMinValue());
+        updateIntResult(((Number) statistics.getMaxValue()).intValue());
+        updateIntResult(((Number) statistics.getMinValue()).intValue());
         break;
       case INT64:
-        updateLongResult((long) statistics.getMaxValue());
-        updateLongResult((long) statistics.getMinValue());
+        updateLongResult(((Number) statistics.getMaxValue()).longValue());
+        updateLongResult(((Number) statistics.getMinValue()).longValue());
         break;
       case FLOAT:
-        updateFloatResult((float) statistics.getMaxValue());
-        updateFloatResult((float) statistics.getMinValue());
+        updateFloatResult(((Number) statistics.getMaxValue()).floatValue());
+        updateFloatResult(((Number) statistics.getMinValue()).floatValue());
         break;
       case DOUBLE:
-        updateDoubleResult((double) statistics.getMaxValue());
-        updateDoubleResult((double) statistics.getMinValue());
+        updateDoubleResult(((Number) statistics.getMaxValue()).doubleValue());
+        updateDoubleResult(((Number) statistics.getMinValue()).doubleValue());
         break;
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -155,6 +160,7 @@ public class ExtremeAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -188,6 +194,7 @@ public class ExtremeAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -219,6 +226,7 @@ public class ExtremeAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -262,13 +270,9 @@ public class ExtremeAccumulator implements Accumulator {
   }
 
   private void updateIntResult(int extVal) {
-    int absExtVal = Math.abs(extVal);
     int candidateResult = extremeResult.getInt();
-    int absCandidateResult = Math.abs(extremeResult.getInt());
 
-    if (!initResult
-        || (absExtVal > absCandidateResult)
-        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+    if (!initResult || compareExtreme(extVal, candidateResult) > 0) {
       initResult = true;
       extremeResult.setInt(extVal);
     }
@@ -287,13 +291,9 @@ public class ExtremeAccumulator implements Accumulator {
   }
 
   private void updateLongResult(long extVal) {
-    long absExtVal = Math.abs(extVal);
     long candidateResult = extremeResult.getLong();
-    long absCandidateResult = Math.abs(extremeResult.getLong());
 
-    if (!initResult
-        || (absExtVal > absCandidateResult)
-        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+    if (!initResult || compareExtreme(extVal, candidateResult) > 0) {
       initResult = true;
       extremeResult.setLong(extVal);
     }
@@ -347,5 +347,25 @@ public class ExtremeAccumulator implements Accumulator {
       initResult = true;
       extremeResult.setDouble(extVal);
     }
+  }
+
+  private int compareExtreme(int left, int right) {
+    int absComparison = Long.compare(Math.abs((long) left), Math.abs((long) right));
+    return absComparison == 0 ? Integer.compare(left, right) : absComparison;
+  }
+
+  private int compareExtreme(long left, long right) {
+    int absComparison = compareAbs(left, right);
+    return absComparison == 0 ? Long.compare(left, right) : absComparison;
+  }
+
+  private int compareAbs(long left, long right) {
+    if (left == Long.MIN_VALUE) {
+      return right == Long.MIN_VALUE ? 0 : 1;
+    }
+    if (right == Long.MIN_VALUE) {
+      return -1;
+    }
+    return Long.compare(Math.abs(left), Math.abs(right));
   }
 }

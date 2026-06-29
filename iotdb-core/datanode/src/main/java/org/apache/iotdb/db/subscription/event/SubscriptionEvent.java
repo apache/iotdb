@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
@@ -35,6 +36,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 
+import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +48,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
 public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 
@@ -70,6 +71,9 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   private volatile SubscriptionCommitContext rootCommitContext;
 
   private static final long NACK_COUNT_REPORT_THRESHOLD = 3;
+
+  private static final long POISON_MESSAGE_NACK_THRESHOLD = 10;
+
   private final AtomicLong nackCount = new AtomicLong();
 
   /**
@@ -134,9 +138,10 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   public SubscriptionEvent(
       final SubscriptionPipeEvents pipeEvents,
       final File tsFile,
+      @Nullable final String databaseName,
       final SubscriptionCommitContext commitContext) {
     this.pipeEvents = pipeEvents;
-    this.response = new SubscriptionEventTsFileResponse(tsFile, commitContext);
+    this.response = new SubscriptionEventTsFileResponse(tsFile, databaseName, commitContext);
     this.commitContext = commitContext;
 
     this.fileName = tsFile.getName();
@@ -157,16 +162,15 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   }
 
   public boolean isCommitted() {
-    if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
-      // event with invalid commit id is committed
+    if (!commitContext.isCommittable()) {
+      // fire-and-forget events are treated as already committed
       return true;
     }
     return committedTimestamp.get() != INVALID_TIMESTAMP;
   }
 
   public boolean isCommittable() {
-    if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
-      // event with invalid commit id is uncommittable
+    if (!commitContext.isCommittable()) {
       return false;
     }
     return response.isCommittable();
@@ -242,8 +246,17 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 
     // record nack count
     if (nackCount.getAndIncrement() > NACK_COUNT_REPORT_THRESHOLD) {
-      LOGGER.warn("{} has been nacked {} times", this, nackCount);
+      LOGGER.warn(DataNodeMiscMessages.EVENT_NACKED_TIMES, this, nackCount);
     }
+  }
+
+  /** Returns the current nack count for this event. */
+  public long getNackCount() {
+    return nackCount.get();
+  }
+
+  public boolean isPoisoned() {
+    return nackCount.get() >= POISON_MESSAGE_NACK_THRESHOLD;
   }
 
   public void recordLastPolledConsumerId(final String consumerId) {

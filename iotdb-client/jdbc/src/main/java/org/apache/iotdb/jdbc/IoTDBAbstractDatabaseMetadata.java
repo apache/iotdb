@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
 import org.apache.thrift.TException;
@@ -51,7 +52,7 @@ import java.util.Map;
 public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAbstractDatabaseMetadata.class);
-  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
   protected static final String CONVERT_ERROR_MSG = "Convert tsBlock error: {}";
 
   protected IoTDBConnection connection;
@@ -114,6 +115,12 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   private static final String PSEUDO_COLUMN = "PSEUDO_COLUMN";
   private static final String RADIX = "RADIX";
   protected static final String REMARKS = "REMARKS";
+  protected static final String COLUMN_DEF = "COLUMN_DEF";
+  protected static final String SCOPE_CATALOG = "SCOPE_CATALOG";
+  protected static final String SCOPE_SCHEMA = "SCOPE_SCHEMA";
+  protected static final String SCOPE_TABLE = "SCOPE_TABLE";
+  protected static final String SOURCE_DATA_TYPE = "SOURCE_DATA_TYPE";
+  protected static final String IS_GENERATEDCOLUMN = "IS_GENERATEDCOLUMN";
   private static final String SCALE = "SCALE";
   private static final String SCOPE = "SCOPE";
   private static final String SPECIFIC_NAME = "SPECIFIC_NAME";
@@ -129,7 +136,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   private static final String UPDATE_RULE = "UPDATE_RULE";
 
   private static final String SHOW_FUNCTIONS = "show functions";
-  private static final String SHOW_DATABASES_SQL = "SHOW DATABASES ";
+  protected static final String SHOW_DATABASES_SQL = "SHOW DATABASES ";
 
   private static TsBlockSerde serde = new TsBlockSerde();
 
@@ -390,6 +397,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
           case TEXT:
           case STRING:
           case BLOB:
+          case OBJECT:
             tsBlockBuilder
                 .getColumnBuilder(j)
                 .writeBinary(
@@ -413,7 +421,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
             tsBlockBuilder.getColumnBuilder(j).writeBoolean((boolean) valuesInRow.get(j));
             break;
           default:
-            LOGGER.error("No data type was matched: {}", columnType);
+            LOGGER.error(JdbcMessages.NO_DATA_TYPE_MATCHED, columnType);
             break;
         }
       }
@@ -545,9 +553,9 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     try {
       return client.getProperties().isReadOnly;
     } catch (TException e) {
-      LOGGER.error("Get is readOnly error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_READ_ONLY_ERROR, e.getMessage());
     }
-    throw new SQLException("Can not get the read-only mode");
+    throw new SQLException(JdbcMessages.CANNOT_GET_READ_ONLY_MODE);
   }
 
   @Override
@@ -578,21 +586,14 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   @Override
   public String getDatabaseProductVersion() throws SQLException {
     String serverVersion = "";
-    Statement stmt = this.connection.createStatement();
-    ResultSet rs;
-    try {
-      String sql = "SHOW VERSION";
-      rs = stmt.executeQuery(sql);
-    } catch (SQLException e) {
-      stmt.close();
-      LOGGER.error("Get database product version error: {}", e.getMessage());
-      throw e;
+    String sql = "SHOW VERSION";
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery(sql)) {
+      while (rs.next()) {
+        serverVersion = rs.getString("Version");
+      }
+      return serverVersion;
     }
-    while (rs.next()) {
-      serverVersion = rs.getString("Version");
-    }
-
-    return serverVersion;
   }
 
   @Override
@@ -685,7 +686,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     ResultSet resultSet = null;
     try {
       statement = connection.createStatement();
-      StringBuilder str = new StringBuilder("");
+      StringBuilder str = new StringBuilder();
       resultSet = statement.executeQuery(SHOW_FUNCTIONS);
       while (resultSet.next()) {
         str.append(resultSet.getString(1)).append(",");
@@ -695,7 +696,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         result = result.substring(0, result.length() - 1);
       }
     } catch (Exception ex) {
-      LOGGER.error("Get system functions error: {}", ex.getMessage());
+      LOGGER.error(JdbcMessages.GET_SYSTEM_FUNCTIONS_ERROR, ex.getMessage());
     } finally {
       close(resultSet, statement);
     }
@@ -1040,7 +1041,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     try {
       maxcount = client.getProperties().getMaxConcurrentClientNum();
     } catch (TException e) {
-      LOGGER.error("Get max concurrentClientNUm error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_MAX_CONCURRENT_CLIENT_ERROR, e.getMessage());
     }
     return maxcount;
   }
@@ -1085,7 +1086,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     try {
       return client.getProperties().getThriftMaxFrameSize();
     } catch (TException e) {
-      LOGGER.error("Get max statement length error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_MAX_STATEMENT_LENGTH_ERROR, e.getMessage());
     }
     return 0;
   }
@@ -1166,7 +1167,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get procedures error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_PROCEDURES_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1225,7 +1226,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get procedure columns error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_PROCEDURE_COLUMNS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1248,389 +1249,341 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   }
 
   @Override
-  public abstract ResultSet getTables(
-      String catalog, String schemaPattern, String tableNamePattern, String[] types)
-      throws SQLException;
-
-  @Override
   public ResultSet getSchemas() throws SQLException {
-    Statement stmt = this.connection.createStatement();
-    ResultSet rs;
-    try {
-      rs = stmt.executeQuery(SHOW_DATABASES_SQL);
-    } catch (SQLException e) {
-      stmt.close();
-      throw e;
-    }
-    Field[] fields = new Field[2];
-    fields[0] = new Field("", TABLE_SCHEM, "TEXT");
-    fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery(SHOW_DATABASES_SQL)) {
+      Field[] fields = new Field[2];
+      fields[0] = new Field("", TABLE_SCHEM, "TEXT");
+      fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
 
-    List<TSDataType> tsDataTypeList = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
-
-    while (rs.next()) {
-      List<Object> valueInRow = new ArrayList<>();
+      List<TSDataType> tsDataTypeList = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT);
+      List<String> columnNameList = new ArrayList<>();
+      List<String> columnTypeList = new ArrayList<>();
+      Map<String, Integer> columnNameIndex = new HashMap<>();
+      List<List<Object>> valuesList = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        valueInRow.add(rs.getString(1));
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
       }
-      valuesList.add(valueInRow);
-    }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+      while (rs.next()) {
+        String database = rs.getString(1);
+        List<Object> valueInRow = new ArrayList<>();
+        for (int i = 0; i < fields.length; i++) {
+          valueInRow.add(database);
+        }
+        valuesList.add(valueInRow);
+      }
+
+      ByteBuffer tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          -1,
+          sessionId,
+          Collections.singletonList(tsBlock),
+          null,
+          (long) 60 * 1000,
+          false,
+          zoneId);
     } catch (IOException e) {
-      LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
 
   @Override
   public ResultSet getCatalogs() throws SQLException {
-    Statement stmt = this.connection.createStatement();
-    ResultSet rs;
-    try {
-      rs = stmt.executeQuery(SHOW_DATABASES_SQL);
-    } catch (SQLException e) {
-      stmt.close();
-      throw e;
-    }
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery(SHOW_DATABASES_SQL)) {
+      List<String> columnNameList = new ArrayList<>();
+      List<String> columnTypeList = new ArrayList<>();
+      Map<String, Integer> columnNameIndex = new HashMap<>();
+      List<TSDataType> tsDataTypeList = new ArrayList<>();
+      List<List<Object>> valuesList = new ArrayList<>();
+      tsDataTypeList.add(TSDataType.TEXT);
 
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    List<TSDataType> tsDataTypeList = new ArrayList<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-    tsDataTypeList.add(TSDataType.TEXT);
+      while (rs.next()) {
+        List<Object> values = new ArrayList<>();
+        values.add(rs.getString(1));
+        valuesList.add(values);
+      }
+      columnNameList.add(TYPE_CAT);
+      columnTypeList.add("TEXT");
+      columnNameIndex.put(TYPE_CAT, 0);
 
-    while (rs.next()) {
-      List<Object> values = new ArrayList<>();
-      values.add(rs.getString(1));
-      valuesList.add(values);
-    }
-    columnNameList.add(TYPE_CAT);
-    columnTypeList.add("TEXT");
-    columnNameIndex.put(TYPE_CAT, 0);
+      ByteBuffer tsBlock = convertTsBlock(valuesList, tsDataTypeList);
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          -1,
+          sessionId,
+          Collections.singletonList(tsBlock),
+          null,
+          (long) 60 * 1000,
+          false,
+          zoneId);
     } catch (IOException e) {
-      LOGGER.error("Get catalogs error: {}", e.getMessage());
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
 
   @Override
   public ResultSet getTableTypes() throws SQLException {
-    Statement stmt = this.connection.createStatement();
+    try (Statement stmt = this.connection.createStatement()) {
 
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    List<TSDataType> tsDataTypeList = new ArrayList<>();
-    List<Object> value = new ArrayList<>();
+      List<String> columnNameList = new ArrayList<>();
+      List<String> columnTypeList = new ArrayList<>();
+      Map<String, Integer> columnNameIndex = new HashMap<>();
+      List<TSDataType> tsDataTypeList = new ArrayList<>();
+      List<Object> value = new ArrayList<>();
 
-    tsDataTypeList.add(TSDataType.TEXT);
-    value.add("table");
-    columnNameList.add(TABLE_TYPE);
-    columnTypeList.add("TEXT");
-    columnNameIndex.put(TABLE_TYPE, 0);
+      tsDataTypeList.add(TSDataType.TEXT);
+      value.add("table");
+      columnNameList.add(TABLE_TYPE);
+      columnTypeList.add("TEXT");
+      columnNameIndex.put(TABLE_TYPE, 0);
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(Collections.singletonList(value), tsDataTypeList);
+      ByteBuffer tsBlock = convertTsBlock(Collections.singletonList(value), tsDataTypeList);
+
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          -1,
+          sessionId,
+          Collections.singletonList(tsBlock),
+          null,
+          (long) 60 * 1000,
+          false,
+          zoneId);
     } catch (IOException e) {
-      LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
-    } finally {
-      close(null, stmt);
+      throw new SQLException(e);
     }
-
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
-
-  @Override
-  public abstract ResultSet getColumns(
-      String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
-      throws SQLException;
 
   @Override
   public ResultSet getColumnPrivileges(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
       throws SQLException {
-    Statement stmt = this.connection.createStatement();
+    try (Statement stmt = this.connection.createStatement()) {
 
-    String sql = SHOW_DATABASES_SQL;
-    if (catalog != null && !catalog.isEmpty()) {
-      if (catalog.contains("%")) {
-        catalog = catalog.replace("%", "*");
-      }
-      sql = sql + " " + catalog;
-    } else if (schemaPattern != null && !schemaPattern.isEmpty()) {
-      if (schemaPattern.contains("%")) {
-        schemaPattern = schemaPattern.replace("%", "*");
-      }
-      sql = sql + " " + schemaPattern;
-    }
-    if (((catalog != null && !catalog.isEmpty())
-            || schemaPattern != null && !schemaPattern.isEmpty())
-        && tableNamePattern != null
-        && !tableNamePattern.isEmpty()) {
-      if (tableNamePattern.contains("%")) {
-        tableNamePattern = tableNamePattern.replace("%", "*");
-      }
-      sql = sql + "." + tableNamePattern;
-    }
-
-    if (((catalog != null && !catalog.isEmpty())
-            || schemaPattern != null && !schemaPattern.isEmpty())
-        && tableNamePattern != null
-        && !tableNamePattern.isEmpty()
-        && columnNamePattern != null
-        && !columnNamePattern.isEmpty()) {
-      sql = sql + "." + columnNamePattern;
-    }
-    ResultSet rs;
-    try {
-      rs = stmt.executeQuery(sql);
-    } catch (SQLException e) {
-      stmt.close();
-      throw e;
-    }
-    Field[] fields = new Field[8];
-    fields[0] = new Field("", TABLE_CAT, "TEXT");
-    fields[1] = new Field("", TABLE_SCHEM, "TEXT");
-    fields[2] = new Field("", TABLE_NAME, "TEXT");
-    fields[3] = new Field("", COLUMN_NAME, "TEXT");
-    fields[4] = new Field("", GRANTOR, "TEXT");
-    fields[5] = new Field("", GRANTEE, "TEXT");
-    fields[6] = new Field("", PRIVILEGE, "TEXT");
-    fields[7] = new Field("", IS_GRANTABLE, "TEXT");
-    List<TSDataType> tsDataTypeList =
-        Arrays.asList(
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT);
-
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
-    while (rs.next()) {
-      List<Object> valuesInRow = new ArrayList<>();
-      for (int i = 0; i < fields.length; i++) {
-        if (i < 4) {
-          valuesInRow.add(rs.getString(1));
-        } else if (i == 5) {
-          valuesInRow.add(getUserName());
-        } else if (i == 6) {
-          valuesInRow.add("");
-        } else if (i == 7) {
-          valuesInRow.add("NO");
-        } else {
-          valuesInRow.add("");
+      String sql = SHOW_DATABASES_SQL;
+      if (catalog != null && !catalog.isEmpty()) {
+        if (catalog.contains("%")) {
+          catalog = catalog.replace("%", "*");
         }
+        sql = sql + " " + catalog;
+      } else if (schemaPattern != null && !schemaPattern.isEmpty()) {
+        if (schemaPattern.contains("%")) {
+          schemaPattern = schemaPattern.replace("%", "*");
+        }
+        sql = sql + " " + schemaPattern;
       }
-      valuesList.add(valuesInRow);
-    }
+      if (((catalog != null && !catalog.isEmpty())
+              || schemaPattern != null && !schemaPattern.isEmpty())
+          && tableNamePattern != null
+          && !tableNamePattern.isEmpty()) {
+        if (tableNamePattern.contains("%")) {
+          tableNamePattern = tableNamePattern.replace("%", "*");
+        }
+        sql = sql + "." + tableNamePattern;
+      }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
-    } catch (IOException e) {
-      LOGGER.error("Convert tsBlock error when get column privileges: {}", e.getMessage());
-    } finally {
-      close(rs, stmt);
+      if (((catalog != null && !catalog.isEmpty())
+              || schemaPattern != null && !schemaPattern.isEmpty())
+          && tableNamePattern != null
+          && !tableNamePattern.isEmpty()
+          && columnNamePattern != null
+          && !columnNamePattern.isEmpty()) {
+        sql = sql + "." + columnNamePattern;
+      }
+
+      try (ResultSet rs = stmt.executeQuery(sql)) {
+
+        Field[] fields = new Field[8];
+        fields[0] = new Field("", TABLE_CAT, "TEXT");
+        fields[1] = new Field("", TABLE_SCHEM, "TEXT");
+        fields[2] = new Field("", TABLE_NAME, "TEXT");
+        fields[3] = new Field("", COLUMN_NAME, "TEXT");
+        fields[4] = new Field("", GRANTOR, "TEXT");
+        fields[5] = new Field("", GRANTEE, "TEXT");
+        fields[6] = new Field("", PRIVILEGE, "TEXT");
+        fields[7] = new Field("", IS_GRANTABLE, "TEXT");
+        List<TSDataType> tsDataTypeList =
+            Arrays.asList(
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT);
+
+        List<String> columnNameList = new ArrayList<>();
+        List<String> columnTypeList = new ArrayList<>();
+        Map<String, Integer> columnNameIndex = new HashMap<>();
+        List<List<Object>> valuesList = new ArrayList<>();
+
+        for (int i = 0; i < fields.length; i++) {
+          columnNameList.add(fields[i].getName());
+          columnTypeList.add(fields[i].getSqlType());
+          columnNameIndex.put(fields[i].getName(), i);
+        }
+        while (rs.next()) {
+          List<Object> valuesInRow = new ArrayList<>();
+          for (int i = 0; i < fields.length; i++) {
+            if (i < 4) {
+              valuesInRow.add(rs.getString(1));
+            } else if (i == 5) {
+              valuesInRow.add(getUserName());
+            } else if (i == 6) {
+              valuesInRow.add("");
+            } else if (i == 7) {
+              valuesInRow.add("NO");
+            } else {
+              valuesInRow.add("");
+            }
+          }
+          valuesList.add(valuesInRow);
+        }
+
+        ByteBuffer tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+        return new IoTDBJDBCResultSet(
+            stmt,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            true,
+            client,
+            null,
+            -1,
+            sessionId,
+            Collections.singletonList(tsBlock),
+            null,
+            (long) 60 * 1000,
+            false,
+            zoneId);
+      } catch (IOException e) {
+        throw new SQLException(e);
+      }
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
 
   @Override
   public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern)
       throws SQLException {
-    Statement stmt = this.connection.createStatement();
+    try (Statement stmt = this.connection.createStatement()) {
 
-    String sql = SHOW_DATABASES_SQL;
-    if (catalog != null && !catalog.isEmpty()) {
-      if (catalog.contains("%")) {
-        catalog = catalog.replace("%", "*");
-      }
-      sql = sql + " " + catalog;
-    } else if (schemaPattern != null && !schemaPattern.isEmpty()) {
-      if (schemaPattern.contains("%")) {
-        schemaPattern = schemaPattern.replace("%", "*");
-      }
-      sql = sql + " " + schemaPattern;
-    }
-    if (((catalog != null && !catalog.isEmpty())
-            || schemaPattern != null && !schemaPattern.isEmpty())
-        && tableNamePattern != null
-        && !tableNamePattern.isEmpty()) {
-      if (tableNamePattern.contains("%")) {
-        tableNamePattern = tableNamePattern.replace("%", "*");
-      }
-      sql = sql + "." + tableNamePattern;
-    }
-    ResultSet rs;
-    try {
-      rs = stmt.executeQuery(sql);
-    } catch (SQLException e) {
-      stmt.close();
-      throw e;
-    }
-    Field[] fields = new Field[8];
-    fields[0] = new Field("", TABLE_CAT, "TEXT");
-    fields[1] = new Field("", TABLE_SCHEM, "TEXT");
-    fields[2] = new Field("", TABLE_NAME, "TEXT");
-    fields[3] = new Field("", COLUMN_NAME, "TEXT");
-    fields[4] = new Field("", GRANTOR, "TEXT");
-    fields[5] = new Field("", GRANTEE, "TEXT");
-    fields[6] = new Field("", PRIVILEGE, "TEXT");
-    fields[7] = new Field("", IS_GRANTABLE, "TEXT");
-    List<TSDataType> tsDataTypeList =
-        Arrays.asList(
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT);
-
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
-
-    while (rs.next()) {
-      List<Object> valueInRow = new ArrayList<>();
-      for (int i = 0; i < fields.length; i++) {
-        if (i < 4) {
-          valueInRow.add(rs.getString(1));
-        } else if (i == 5) {
-          valueInRow.add(getUserName());
-        } else if (i == 6) {
-          valueInRow.add("");
-        } else if (i == 7) {
-          valueInRow.add("NO");
-        } else {
-          valueInRow.add("");
+      String sql = SHOW_DATABASES_SQL;
+      if (catalog != null && !catalog.isEmpty()) {
+        if (catalog.contains("%")) {
+          catalog = catalog.replace("%", "*");
         }
+        sql = sql + " " + catalog;
+      } else if (schemaPattern != null && !schemaPattern.isEmpty()) {
+        if (schemaPattern.contains("%")) {
+          schemaPattern = schemaPattern.replace("%", "*");
+        }
+        sql = sql + " " + schemaPattern;
       }
-      valuesList.add(valueInRow);
-    }
+      if (((catalog != null && !catalog.isEmpty())
+              || schemaPattern != null && !schemaPattern.isEmpty())
+          && tableNamePattern != null
+          && !tableNamePattern.isEmpty()) {
+        if (tableNamePattern.contains("%")) {
+          tableNamePattern = tableNamePattern.replace("%", "*");
+        }
+        sql = sql + "." + tableNamePattern;
+      }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
-    } catch (IOException e) {
-      LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
-    } finally {
-      close(rs, stmt);
+      try (ResultSet rs = stmt.executeQuery(sql)) {
+
+        Field[] fields = new Field[8];
+        fields[0] = new Field("", TABLE_CAT, "TEXT");
+        fields[1] = new Field("", TABLE_SCHEM, "TEXT");
+        fields[2] = new Field("", TABLE_NAME, "TEXT");
+        fields[3] = new Field("", COLUMN_NAME, "TEXT");
+        fields[4] = new Field("", GRANTOR, "TEXT");
+        fields[5] = new Field("", GRANTEE, "TEXT");
+        fields[6] = new Field("", PRIVILEGE, "TEXT");
+        fields[7] = new Field("", IS_GRANTABLE, "TEXT");
+        List<TSDataType> tsDataTypeList =
+            Arrays.asList(
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT);
+
+        List<String> columnNameList = new ArrayList<>();
+        List<String> columnTypeList = new ArrayList<>();
+        Map<String, Integer> columnNameIndex = new HashMap<>();
+        List<List<Object>> valuesList = new ArrayList<>();
+        for (int i = 0; i < fields.length; i++) {
+          columnNameList.add(fields[i].getName());
+          columnTypeList.add(fields[i].getSqlType());
+          columnNameIndex.put(fields[i].getName(), i);
+        }
+
+        while (rs.next()) {
+          List<Object> valueInRow = new ArrayList<>();
+          for (int i = 0; i < fields.length; i++) {
+            if (i < 4) {
+              valueInRow.add(rs.getString(1));
+            } else if (i == 5) {
+              valueInRow.add(getUserName());
+            } else if (i == 6) {
+              valueInRow.add("");
+            } else if (i == 7) {
+              valueInRow.add("NO");
+            } else {
+              valueInRow.add("");
+            }
+          }
+          valuesList.add(valueInRow);
+        }
+
+        ByteBuffer tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+        return new IoTDBJDBCResultSet(
+            stmt,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            true,
+            client,
+            null,
+            -1,
+            sessionId,
+            Collections.singletonList(tsBlock),
+            null,
+            (long) 60 * 1000,
+            false,
+            zoneId);
+      } catch (IOException e) {
+        throw new SQLException(e);
+      }
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
 
   @Override
@@ -1658,7 +1611,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get best row identifier error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_BEST_ROW_IDENTIFIER_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1703,7 +1656,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get version columns error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_VERSION_COLUMNS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1757,7 +1710,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get import keys error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_IMPORT_KEYS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1808,7 +1761,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get exported keys error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_EXPORTED_KEYS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1865,7 +1818,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get cross reference error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_CROSS_REFERENCE_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1889,257 +1842,287 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public ResultSet getTypeInfo() throws SQLException {
-    Statement stmt = connection.createStatement();
-    Field[] fields = new Field[18];
-    fields[0] = new Field("", TYPE_NAME, "TEXT");
-    fields[1] = new Field("", DATA_TYPE, INT32);
-    fields[2] = new Field("", PRECISION, INT32);
-    fields[3] = new Field("", "LITERAL_PREFIX", "TEXT");
-    fields[4] = new Field("", "LITERAL_SUFFIX", "TEXT");
-    fields[5] = new Field("", "CREATE_PARAMS", "TEXT");
-    fields[6] = new Field("", NULLABLE, INT32);
-    fields[7] = new Field("", "CASE_SENSITIVE", BOOLEAN);
-    fields[8] = new Field("", "SEARCHABLE", "TEXT");
-    fields[9] = new Field("", "UNSIGNED_ATTRIBUTE", BOOLEAN);
-    fields[10] = new Field("", "FIXED_PREC_SCALE", BOOLEAN);
-    fields[11] = new Field("", "AUTO_INCREMENT", BOOLEAN);
-    fields[12] = new Field("", "LOCAL_TYPE_NAME", "TEXT");
-    fields[13] = new Field("", "MINIMUM_SCALE", INT32);
-    fields[14] = new Field("", "MAXIMUM_SCALE", INT32);
-    fields[15] = new Field("", SQL_DATA_TYPE, INT32);
-    fields[16] = new Field("", SQL_DATETIME_SUB, INT32);
-    fields[17] = new Field("", NUM_PREC_RADIX, INT32);
-    List<TSDataType> tsDataTypeList =
-        Arrays.asList(
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.BOOLEAN,
-            TSDataType.TEXT,
-            TSDataType.BOOLEAN,
-            TSDataType.BOOLEAN,
-            TSDataType.BOOLEAN,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32);
-    List<Object> listValSub1 =
-        Arrays.asList(
-            INT32,
-            Types.INTEGER,
-            10,
-            "",
-            "",
-            "",
-            1,
-            true,
-            "",
-            false,
-            true,
-            false,
-            "",
-            0,
-            10,
-            0,
-            0,
-            10);
-    List<Object> listValSub2 =
-        Arrays.asList(
-            INT64,
-            Types.BIGINT,
-            19,
-            "",
-            "",
-            "",
-            1,
-            true,
-            "",
-            false,
-            true,
-            false,
-            "",
-            0,
-            10,
-            0,
-            0,
-            10);
-    List<Object> listValSub3 =
-        Arrays.asList(
-            BOOLEAN,
-            Types.BOOLEAN,
-            1,
-            "",
-            "",
-            "",
-            1,
-            true,
-            "",
-            false,
-            true,
-            false,
-            "",
-            0,
-            10,
-            0,
-            0,
-            10);
-    List<Object> listValSub4 =
-        Arrays.asList(
-            FLOAT,
-            Types.FLOAT,
-            38,
-            "",
-            "",
-            "",
-            1,
-            true,
-            "",
-            false,
-            true,
-            false,
-            "",
-            0,
-            10,
-            0,
-            0,
-            10);
-    List<Object> listValSub5 =
-        Arrays.asList(
-            DOUBLE,
-            Types.DOUBLE,
-            308,
-            "",
-            "",
-            "",
-            1,
-            true,
-            "",
-            false,
-            true,
-            false,
-            "",
-            0,
-            10,
-            0,
-            0,
-            10);
-    List<Object> listValSub6 =
-        Arrays.asList(
-            "TEXT",
-            Types.LONGVARCHAR,
-            64,
-            "",
-            "",
-            "",
-            1,
-            true,
-            "",
-            false,
-            true,
-            false,
-            "",
-            0,
-            10,
-            0,
-            0,
-            10);
-    List<Object> listValSub7 =
-        Arrays.asList(
-            STRING,
-            Types.VARCHAR,
-            64,
-            "",
-            "",
-            "",
-            1,
-            true,
-            "",
-            false,
-            true,
-            false,
-            "",
-            0,
-            10,
-            0,
-            0,
-            10);
-    List<Object> listValSub8 =
-        Arrays.asList(
-            BLOB, Types.BLOB, 64, "", "", "", 1, true, "", false, true, false, "", 0, 10, 0, 0, 10);
-    List<Object> listValSub9 =
-        Arrays.asList(
-            TIMESTAMP,
-            Types.TIMESTAMP,
-            3,
-            "",
-            "",
-            "",
-            1,
-            true,
-            "",
-            false,
-            true,
-            false,
-            "",
-            0,
-            10,
-            0,
-            0,
-            10);
-    List<Object> listValSub10 =
-        Arrays.asList(
-            DATE, Types.DATE, 0, "", "", "", 1, true, "", false, true, false, "", 0, 10, 0, 0, 10);
-    List<List<Object>> valuesList =
-        Arrays.asList(
-            listValSub1,
-            listValSub2,
-            listValSub3,
-            listValSub4,
-            listValSub5,
-            listValSub6,
-            listValSub7,
-            listValSub8,
-            listValSub9,
-            listValSub10);
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
+    try (Statement stmt = connection.createStatement()) {
+      Field[] fields = new Field[18];
+      fields[0] = new Field("", TYPE_NAME, "TEXT");
+      fields[1] = new Field("", DATA_TYPE, INT32);
+      fields[2] = new Field("", PRECISION, INT32);
+      fields[3] = new Field("", "LITERAL_PREFIX", "TEXT");
+      fields[4] = new Field("", "LITERAL_SUFFIX", "TEXT");
+      fields[5] = new Field("", "CREATE_PARAMS", "TEXT");
+      fields[6] = new Field("", NULLABLE, INT32);
+      fields[7] = new Field("", "CASE_SENSITIVE", BOOLEAN);
+      fields[8] = new Field("", "SEARCHABLE", "TEXT");
+      fields[9] = new Field("", "UNSIGNED_ATTRIBUTE", BOOLEAN);
+      fields[10] = new Field("", "FIXED_PREC_SCALE", BOOLEAN);
+      fields[11] = new Field("", "AUTO_INCREMENT", BOOLEAN);
+      fields[12] = new Field("", "LOCAL_TYPE_NAME", "TEXT");
+      fields[13] = new Field("", "MINIMUM_SCALE", INT32);
+      fields[14] = new Field("", "MAXIMUM_SCALE", INT32);
+      fields[15] = new Field("", SQL_DATA_TYPE, INT32);
+      fields[16] = new Field("", SQL_DATETIME_SUB, INT32);
+      fields[17] = new Field("", NUM_PREC_RADIX, INT32);
+      List<TSDataType> tsDataTypeList =
+          Arrays.asList(
+              TSDataType.TEXT,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.INT32,
+              TSDataType.BOOLEAN,
+              TSDataType.TEXT,
+              TSDataType.BOOLEAN,
+              TSDataType.BOOLEAN,
+              TSDataType.BOOLEAN,
+              TSDataType.TEXT,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.INT32);
+      List<Object> listValSub1 =
+          Arrays.asList(
+              INT32,
+              Types.INTEGER,
+              10,
+              "",
+              "",
+              "",
+              1,
+              true,
+              "",
+              false,
+              true,
+              false,
+              "",
+              0,
+              10,
+              0,
+              0,
+              10);
+      List<Object> listValSub2 =
+          Arrays.asList(
+              INT64,
+              Types.BIGINT,
+              19,
+              "",
+              "",
+              "",
+              1,
+              true,
+              "",
+              false,
+              true,
+              false,
+              "",
+              0,
+              10,
+              0,
+              0,
+              10);
+      List<Object> listValSub3 =
+          Arrays.asList(
+              BOOLEAN,
+              Types.BOOLEAN,
+              1,
+              "",
+              "",
+              "",
+              1,
+              true,
+              "",
+              false,
+              true,
+              false,
+              "",
+              0,
+              10,
+              0,
+              0,
+              10);
+      List<Object> listValSub4 =
+          Arrays.asList(
+              FLOAT,
+              Types.FLOAT,
+              38,
+              "",
+              "",
+              "",
+              1,
+              true,
+              "",
+              false,
+              true,
+              false,
+              "",
+              0,
+              10,
+              0,
+              0,
+              10);
+      List<Object> listValSub5 =
+          Arrays.asList(
+              DOUBLE,
+              Types.DOUBLE,
+              308,
+              "",
+              "",
+              "",
+              1,
+              true,
+              "",
+              false,
+              true,
+              false,
+              "",
+              0,
+              10,
+              0,
+              0,
+              10);
+      List<Object> listValSub6 =
+          Arrays.asList(
+              "TEXT",
+              Types.LONGVARCHAR,
+              64,
+              "",
+              "",
+              "",
+              1,
+              true,
+              "",
+              false,
+              true,
+              false,
+              "",
+              0,
+              10,
+              0,
+              0,
+              10);
+      List<Object> listValSub7 =
+          Arrays.asList(
+              STRING,
+              Types.VARCHAR,
+              64,
+              "",
+              "",
+              "",
+              1,
+              true,
+              "",
+              false,
+              true,
+              false,
+              "",
+              0,
+              10,
+              0,
+              0,
+              10);
+      List<Object> listValSub8 =
+          Arrays.asList(
+              BLOB,
+              Types.BLOB,
+              64,
+              "",
+              "",
+              "",
+              1,
+              true,
+              "",
+              false,
+              true,
+              false,
+              "",
+              0,
+              10,
+              0,
+              0,
+              10);
+      List<Object> listValSub9 =
+          Arrays.asList(
+              TIMESTAMP,
+              Types.TIMESTAMP,
+              3,
+              "",
+              "",
+              "",
+              1,
+              true,
+              "",
+              false,
+              true,
+              false,
+              "",
+              0,
+              10,
+              0,
+              0,
+              10);
+      List<Object> listValSub10 =
+          Arrays.asList(
+              DATE,
+              Types.DATE,
+              0,
+              "",
+              "",
+              "",
+              1,
+              true,
+              "",
+              false,
+              true,
+              false,
+              "",
+              0,
+              10,
+              0,
+              0,
+              10);
+      List<List<Object>> valuesList =
+          Arrays.asList(
+              listValSub1,
+              listValSub2,
+              listValSub3,
+              listValSub4,
+              listValSub5,
+              listValSub6,
+              listValSub7,
+              listValSub8,
+              listValSub9,
+              listValSub10);
+      List<String> columnNameList = new ArrayList<>();
+      List<String> columnTypeList = new ArrayList<>();
+      Map<String, Integer> columnNameIndex = new HashMap<>();
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+      ByteBuffer tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          -1,
+          sessionId,
+          Collections.singletonList(tsBlock),
+          null,
+          (long) 60 * 1000,
+          false,
+          zoneId);
     } catch (IOException e) {
-      LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
-    } finally {
-      close(null, stmt);
+      throw new SQLException(e);
     }
-
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
 
   @Override
@@ -2172,7 +2155,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get index info error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_INDEX_INFO_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2277,7 +2260,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get UDTS error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_UDTS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2345,7 +2328,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get super types error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_SUPER_TYPES_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2386,7 +2369,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get super tables error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_SUPER_TABLES_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2445,7 +2428,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get attributes error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_ATTRIBUTES_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2487,7 +2470,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         majorVersion = Integer.parseInt(versions[0]);
       }
     } catch (TException e) {
-      LOGGER.error("Get database major version error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_DB_MAJOR_VERSION_ERROR, e.getMessage());
     }
     return majorVersion;
   }
@@ -2502,7 +2485,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         minorVersion = Integer.parseInt(versions[1]);
       }
     } catch (TException e) {
-      LOGGER.error("Get database minor version error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_DB_MINOR_VERSION_ERROR, e.getMessage());
     }
     return minorVersion;
   }
@@ -2539,59 +2522,49 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-    Statement stmt = this.connection.createStatement();
-    ResultSet rs;
-    try {
-      rs = stmt.executeQuery(SHOW_DATABASES_SQL);
-    } catch (SQLException e) {
-      stmt.close();
-      throw e;
-    }
-    Field[] fields = new Field[2];
-    fields[0] = new Field("", TABLE_SCHEM, "TEXT");
-    fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery(SHOW_DATABASES_SQL)) {
+      Field[] fields = new Field[2];
+      fields[0] = new Field("", TABLE_SCHEM, "TEXT");
+      fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
 
-    List<TSDataType> tsDataTypeList = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
-    while (rs.next()) {
-      List<Object> valueInRow = new ArrayList<>();
+      List<TSDataType> tsDataTypeList = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT);
+      List<String> columnNameList = new ArrayList<>();
+      List<String> columnTypeList = new ArrayList<>();
+      Map<String, Integer> columnNameIndex = new HashMap<>();
+      List<List<Object>> valuesList = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        valueInRow.add(rs.getString(1));
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
       }
-      valuesList.add(valueInRow);
-    }
+      while (rs.next()) {
+        String database = rs.getString(1);
+        List<Object> valueInRow = new ArrayList<>();
+        valueInRow.add(database);
+        valueInRow.add("");
+        valuesList.add(valueInRow);
+      }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+      ByteBuffer tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          -1,
+          sessionId,
+          Collections.singletonList(tsBlock),
+          null,
+          (long) 60 * 1000,
+          false,
+          zoneId);
     } catch (IOException e) {
-      LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
 
   @Override
@@ -2606,309 +2579,276 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public ResultSet getClientInfoProperties() throws SQLException {
-    Statement stmt = this.connection.createStatement();
-    ResultSet rs;
-    try {
-      rs = stmt.executeQuery(SHOW_DATABASES_SQL);
-    } catch (SQLException e) {
-      stmt.close();
-      throw e;
-    }
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet ignored = stmt.executeQuery(SHOW_DATABASES_SQL)) {
 
-    Field[] fields = new Field[4];
-    fields[0] = new Field("", "NAME", "TEXT");
-    fields[1] = new Field("", "MAX_LEN", INT32);
-    fields[2] = new Field("", "DEFAULT_VALUE", INT32);
-    fields[3] = new Field("", "DESCRIPTION", "TEXT");
-    List<TSDataType> tsDataTypeList =
-        Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32, TSDataType.TEXT);
-    List<Object> values = Arrays.asList("fetch_size", 10, 10, "");
+      Field[] fields = new Field[4];
+      fields[0] = new Field("", "NAME", "TEXT");
+      fields[1] = new Field("", "MAX_LEN", INT32);
+      fields[2] = new Field("", "DEFAULT_VALUE", INT32);
+      fields[3] = new Field("", "DESCRIPTION", "TEXT");
+      List<TSDataType> tsDataTypeList =
+          Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32, TSDataType.TEXT);
+      List<Object> values = Arrays.asList("fetch_size", 10, 10, "");
 
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-    valuesList.add(values);
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
+      List<String> columnNameList = new ArrayList<>();
+      List<String> columnTypeList = new ArrayList<>();
+      Map<String, Integer> columnNameIndex = new HashMap<>();
+      List<List<Object>> valuesList = new ArrayList<>();
+      valuesList.add(values);
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+      ByteBuffer tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          -1,
+          sessionId,
+          Collections.singletonList(tsBlock),
+          null,
+          (long) 60 * 1000,
+          false,
+          zoneId);
     } catch (IOException e) {
-      LOGGER.error("Convert tsBlock error when get client info properties: {}", e.getMessage());
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
 
   @Override
   public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern)
       throws SQLException {
-    Statement stmt = connection.createStatement();
-    ResultSet rs;
-    try {
-      rs = stmt.executeQuery(SHOW_FUNCTIONS);
-    } catch (SQLException e) {
-      stmt.close();
-      throw e;
-    }
+    try (Statement stmt = connection.createStatement();
+        ResultSet rs = stmt.executeQuery(SHOW_FUNCTIONS)) {
 
-    Field[] fields = new Field[6];
-    fields[0] = new Field("", FUNCTION_CAT, "TEXT");
-    fields[1] = new Field("", FUNCTION_SCHEM, "TEXT");
-    fields[2] = new Field("", FUNCTION_NAME, "TEXT");
-    fields[3] = new Field("", REMARKS, "TEXT");
-    fields[4] = new Field("", FUNCTION_TYPE, INT32);
-    fields[5] = new Field("", SPECIFIC_NAME, "TEXT");
-    List<TSDataType> tsDataTypeList =
-        Arrays.asList(
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.TEXT);
+      Field[] fields = new Field[6];
+      fields[0] = new Field("", FUNCTION_CAT, "TEXT");
+      fields[1] = new Field("", FUNCTION_SCHEM, "TEXT");
+      fields[2] = new Field("", FUNCTION_NAME, "TEXT");
+      fields[3] = new Field("", REMARKS, "TEXT");
+      fields[4] = new Field("", FUNCTION_TYPE, INT32);
+      fields[5] = new Field("", SPECIFIC_NAME, "TEXT");
+      List<TSDataType> tsDataTypeList =
+          Arrays.asList(
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.INT32,
+              TSDataType.TEXT);
 
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
-
-    while (rs.next()) {
-      List<Object> valueInRow = new ArrayList<>();
+      List<String> columnNameList = new ArrayList<>();
+      List<String> columnTypeList = new ArrayList<>();
+      Map<String, Integer> columnNameIndex = new HashMap<>();
+      List<List<Object>> valuesList = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        if (i == 2) {
-          valueInRow.add(rs.getString(1));
-        } else if (i == 4) {
-          valueInRow.add(0);
-        } else {
-          valueInRow.add("");
-        }
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
       }
-      valuesList.add(valueInRow);
-    }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+      while (rs.next()) {
+        List<Object> valueInRow = new ArrayList<>();
+        for (int i = 0; i < fields.length; i++) {
+          if (i == 2) {
+            valueInRow.add(rs.getString(1));
+          } else if (i == 4) {
+            valueInRow.add(0);
+          } else {
+            valueInRow.add("");
+          }
+        }
+        valuesList.add(valueInRow);
+      }
+
+      ByteBuffer tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          -1,
+          sessionId,
+          Collections.singletonList(tsBlock),
+          null,
+          (long) 60 * 1000,
+          false,
+          zoneId);
     } catch (IOException e) {
-      LOGGER.error("Convert tsBlock error when get functions: {}", e.getMessage());
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
 
   @Override
   public ResultSet getFunctionColumns(
       String catalog, String schemaPattern, String functionNamePattern, String columnNamePattern)
       throws SQLException {
-    Statement stmt = connection.createStatement();
-    ResultSet rs;
-    try {
-      rs = stmt.executeQuery(SHOW_FUNCTIONS);
-    } catch (SQLException e) {
-      stmt.close();
-      throw e;
-    }
-    Field[] fields = new Field[17];
-    fields[0] = new Field("", FUNCTION_CAT, "TEXT");
-    fields[1] = new Field("", FUNCTION_SCHEM, "TEXT");
-    fields[2] = new Field("", FUNCTION_NAME, "TEXT");
-    fields[3] = new Field("", COLUMN_NAME, "TEXT");
-    fields[4] = new Field("", COLUMN_TYPE, INT32);
-    fields[5] = new Field("", DATA_TYPE, INT32);
-    fields[6] = new Field("", TYPE_NAME, "TEXT");
-    fields[7] = new Field("", PRECISION, INT32);
-    fields[8] = new Field("", LENGTH, INT32);
-    fields[9] = new Field("", SCALE, INT32);
-    fields[10] = new Field("", RADIX, INT32);
-    fields[11] = new Field("", NULLABLE, INT32);
-    fields[12] = new Field("", REMARKS, "TEXT");
-    fields[13] = new Field("", CHAR_OCTET_LENGTH, INT32);
-    fields[14] = new Field("", ORDINAL_POSITION, INT32);
-    fields[15] = new Field("", IS_NULLABLE, "TEXT");
-    fields[16] = new Field("", SPECIFIC_NAME, "TEXT");
-    List<TSDataType> tsDataTypeList =
-        Arrays.asList(
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.TEXT,
-            TSDataType.TEXT);
+    try (Statement stmt = connection.createStatement();
+        ResultSet rs = stmt.executeQuery(SHOW_FUNCTIONS)) {
 
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
+      Field[] fields = new Field[17];
+      fields[0] = new Field("", FUNCTION_CAT, "TEXT");
+      fields[1] = new Field("", FUNCTION_SCHEM, "TEXT");
+      fields[2] = new Field("", FUNCTION_NAME, "TEXT");
+      fields[3] = new Field("", COLUMN_NAME, "TEXT");
+      fields[4] = new Field("", COLUMN_TYPE, INT32);
+      fields[5] = new Field("", DATA_TYPE, INT32);
+      fields[6] = new Field("", TYPE_NAME, "TEXT");
+      fields[7] = new Field("", PRECISION, INT32);
+      fields[8] = new Field("", LENGTH, INT32);
+      fields[9] = new Field("", SCALE, INT32);
+      fields[10] = new Field("", RADIX, INT32);
+      fields[11] = new Field("", NULLABLE, INT32);
+      fields[12] = new Field("", REMARKS, "TEXT");
+      fields[13] = new Field("", CHAR_OCTET_LENGTH, INT32);
+      fields[14] = new Field("", ORDINAL_POSITION, INT32);
+      fields[15] = new Field("", IS_NULLABLE, "TEXT");
+      fields[16] = new Field("", SPECIFIC_NAME, "TEXT");
+      List<TSDataType> tsDataTypeList =
+          Arrays.asList(
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.TEXT,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.TEXT,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.TEXT,
+              TSDataType.TEXT);
 
-    while (rs.next()) {
-      List<Object> valuesInRow = new ArrayList<>();
+      List<String> columnNameList = new ArrayList<>();
+      List<String> columnTypeList = new ArrayList<>();
+      List<List<Object>> valuesList = new ArrayList<>();
+      Map<String, Integer> columnNameIndex = new HashMap<>();
       for (int i = 0; i < fields.length; i++) {
-        if (i == 2) {
-          valuesInRow.add(rs.getString(1));
-        } else if (INT32.equals(fields[i].getSqlType())) {
-          valuesInRow.add(0);
-        } else {
-          valuesInRow.add("");
-        }
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
       }
-      valuesList.add(valuesInRow);
-    }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+      while (rs.next()) {
+        List<Object> valuesInRow = new ArrayList<>();
+        for (int i = 0; i < fields.length; i++) {
+          if (i == 2) {
+            valuesInRow.add(rs.getString(1));
+          } else if (INT32.equals(fields[i].getSqlType())) {
+            valuesInRow.add(0);
+          } else {
+            valuesInRow.add("");
+          }
+        }
+        valuesList.add(valuesInRow);
+      }
+
+      ByteBuffer tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          -1,
+          sessionId,
+          Collections.singletonList(tsBlock),
+          null,
+          (long) 60 * 1000,
+          false,
+          zoneId);
     } catch (IOException e) {
-      LOGGER.error("Convert tsBlock error when get function columns: {}", e.getMessage());
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
 
   @Override
   public ResultSet getPseudoColumns(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
       throws SQLException {
-    Statement stmt = connection.createStatement();
-    Field[] fields = new Field[12];
-    fields[0] = new Field("", TABLE_CAT, "TEXT");
-    fields[1] = new Field("", TABLE_SCHEM, "TEXT");
-    fields[2] = new Field("", TABLE_NAME, "TEXT");
-    fields[3] = new Field("", COLUMN_NAME, "TEXT");
-    fields[4] = new Field("", DATA_TYPE, INT32);
-    fields[5] = new Field("", COLUMN_SIZE, INT32);
-    fields[6] = new Field("", DECIMAL_DIGITS, INT32);
-    fields[7] = new Field("", NUM_PREC_RADIX, INT32);
-    fields[8] = new Field("", "COLUMN_USAGE", "TEXT");
-    fields[9] = new Field("", REMARKS, "TEXT");
-    fields[10] = new Field("", CHAR_OCTET_LENGTH, INT32);
-    fields[11] = new Field("", IS_NULLABLE, "TEXT");
-    List<TSDataType> tsDataTypeList =
-        Arrays.asList(
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.TEXT);
+    try (Statement stmt = connection.createStatement()) {
+      Field[] fields = new Field[12];
+      fields[0] = new Field("", TABLE_CAT, "TEXT");
+      fields[1] = new Field("", TABLE_SCHEM, "TEXT");
+      fields[2] = new Field("", TABLE_NAME, "TEXT");
+      fields[3] = new Field("", COLUMN_NAME, "TEXT");
+      fields[4] = new Field("", DATA_TYPE, INT32);
+      fields[5] = new Field("", COLUMN_SIZE, INT32);
+      fields[6] = new Field("", DECIMAL_DIGITS, INT32);
+      fields[7] = new Field("", NUM_PREC_RADIX, INT32);
+      fields[8] = new Field("", "COLUMN_USAGE", "TEXT");
+      fields[9] = new Field("", REMARKS, "TEXT");
+      fields[10] = new Field("", CHAR_OCTET_LENGTH, INT32);
+      fields[11] = new Field("", IS_NULLABLE, "TEXT");
+      List<TSDataType> tsDataTypeList =
+          Arrays.asList(
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.INT32,
+              TSDataType.TEXT,
+              TSDataType.TEXT,
+              TSDataType.INT32,
+              TSDataType.TEXT);
 
-    List<Object> value =
-        Arrays.asList(
-            catalog, catalog, tableNamePattern, "times", Types.BIGINT, 1, 0, 2, "", "", 13, "NO");
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
+      List<Object> value =
+          Arrays.asList(
+              catalog, catalog, tableNamePattern, "times", Types.BIGINT, 1, 0, 2, "", "", 13, "NO");
+      List<String> columnNameList = new ArrayList<>();
+      List<String> columnTypeList = new ArrayList<>();
+      Map<String, Integer> columnNameIndex = new HashMap<>();
 
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(Collections.singletonList(value), tsDataTypeList);
+      ByteBuffer tsBlock = convertTsBlock(Collections.singletonList(value), tsDataTypeList);
+
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          Collections.singletonList(tsBlock),
+          null,
+          (long) 60 * 1000,
+          false,
+          zoneId);
     } catch (IOException e) {
-      LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
-    } finally {
-      close(null, stmt);
+      throw new SQLException(e);
     }
-
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
   }
 
   @Override

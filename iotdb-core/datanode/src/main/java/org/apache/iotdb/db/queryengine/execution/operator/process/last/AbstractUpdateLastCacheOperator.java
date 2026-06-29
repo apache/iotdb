@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 
@@ -64,12 +64,15 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected String databaseName;
 
+  protected boolean deviceInMultiRegion;
+
   protected AbstractUpdateLastCacheOperator(
       final OperatorContext operatorContext,
       final Operator child,
       final TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       final boolean needUpdateCache,
-      final boolean needUpdateNullEntry) {
+      final boolean needUpdateNullEntry,
+      final boolean deviceInMultiRegion) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.lastCache = treeDeviceSchemaCacheManager;
@@ -78,6 +81,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
     this.dataNodeQueryContext =
         operatorContext.getDriverContext().getFragmentInstanceContext().getDataNodeQueryContext();
+    this.deviceInMultiRegion = deviceInMultiRegion;
   }
 
   @Override
@@ -106,7 +110,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       return;
     }
     try {
-      dataNodeQueryContext.lock();
+      dataNodeQueryContext.lock(deviceInMultiRegion);
       final Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
           dataNodeQueryContext.getSeriesScanInfo(fullPath);
 
@@ -115,13 +119,27 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
         return;
       }
 
+      if (!deviceInMultiRegion) {
+        lastCache.updateLastCacheIfExists(
+            getDatabaseName(),
+            fullPath.getIDeviceID(),
+            new String[] {fullPath.getMeasurement()},
+            new TimeValuePair[] {
+              Objects.nonNull(value)
+                  ? new TimeValuePair(time, value)
+                  : needUpdateNullEntry ? TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN : null
+            },
+            fullPath.isUnderAlignedEntity(),
+            new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
+        return;
+      }
       // update cache in DataNodeQueryContext
       if (seriesScanInfo.right == null || time > seriesScanInfo.right.getTimestamp()) {
         if (Objects.nonNull(value)) {
           seriesScanInfo.right = new TimeValuePair(time, value);
         } else {
           seriesScanInfo.right =
-              needUpdateNullEntry ? TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR : null;
+              needUpdateNullEntry ? TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN : null;
         }
       }
 
@@ -135,7 +153,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
             new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
       }
     } finally {
-      dataNodeQueryContext.unLock();
+      dataNodeQueryContext.unLock(deviceInMultiRegion);
     }
   }
 

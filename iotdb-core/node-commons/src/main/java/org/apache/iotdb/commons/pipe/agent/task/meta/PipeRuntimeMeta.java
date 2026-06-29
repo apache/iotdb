@@ -24,10 +24,10 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -88,8 +88,8 @@ public class PipeRuntimeMeta {
    * <p>1. {@link PipeRuntimeCriticalException}, to record the failure of pushing {@link PipeMeta},
    * and will result in the halt of pipe execution.
    *
-   * <p>2. {@link PipeRuntimeConnectorCriticalException}, to record the exception reported by other
-   * pipes sharing the same connector, and will stop the pipe likewise.
+   * <p>2. {@link PipeRuntimeSinkCriticalException}, to record the exception reported by other pipes
+   * sharing the same connector, and will stop the pipe likewise.
    */
   private final ConcurrentMap<Integer, PipeRuntimeException> nodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();
@@ -134,6 +134,16 @@ public class PipeRuntimeMeta {
 
   public void setIsStoppedByRuntimeException(boolean isStoppedByRuntimeException) {
     this.isStoppedByRuntimeException.set(isStoppedByRuntimeException);
+  }
+
+  /**
+   * We use negative regionId to identify the external pipe source, which is not a consensus group
+   * id. Then we can reuse the regionId to schedule the external pipe source and store the progress
+   * information.
+   */
+  public static boolean isSourceExternal(int regionId) {
+    // regionId that is less than 0 is a special value marking an external pipe source
+    return regionId < 0;
   }
 
   public ByteBuffer serialize() throws IOException {

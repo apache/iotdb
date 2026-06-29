@@ -19,17 +19,18 @@
 
 package org.apache.iotdb.db.exception.ainode;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class ModelException extends RuntimeException {
-  TSStatusCode statusCode;
+import static org.apache.iotdb.rpc.TSStatusCode.representOf;
+
+public class ModelException extends IoTDBRuntimeException {
 
   public ModelException(String message, TSStatusCode code) {
-    super(message);
-    this.statusCode = code;
+    super(message, code.getStatusCode());
   }
 
   public TSStatusCode getStatusCode() {
-    return statusCode;
+    return representOf(getErrorCode());
   }
 }

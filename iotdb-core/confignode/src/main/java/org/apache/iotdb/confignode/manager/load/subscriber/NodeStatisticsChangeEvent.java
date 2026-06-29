@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 
 import org.apache.tsfile.utils.Pair;
 
+import java.util.Collections;
 import java.util.Map;
 
 /** NodeStatisticsChangeEvent represents the change of Node statistics. */
@@ -37,6 +38,6 @@ public class NodeStatisticsChangeEvent {
   }
 
   public Map<Integer, Pair<NodeStatistics, NodeStatistics>> getDifferentNodeStatisticsMap() {
-    return differentNodeStatisticsMap;
+    return Collections.unmodifiableMap(differentNodeStatisticsMap);
   }
 }

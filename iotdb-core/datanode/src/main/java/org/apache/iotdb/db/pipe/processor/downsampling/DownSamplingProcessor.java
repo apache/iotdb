@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -45,7 +46,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
 
 public abstract class DownSamplingProcessor implements PipeProcessor {
-
   protected long memoryLimitInBytes;
 
   protected boolean shouldSplitFile;
@@ -149,9 +149,26 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
       throws Exception {
     if (shouldSplitFile) {
       try {
-        for (final TabletInsertionEvent tabletInsertionEvent :
-            tsFileInsertionEvent.toTabletInsertionEvents()) {
-          process(tabletInsertionEvent, eventCollector);
+        if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+          final AtomicReference<Exception> ex = new AtomicReference<>();
+          ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+              .consumeTabletInsertionEventsWithRetry(
+                  event -> {
+                    try {
+                      process(event, eventCollector);
+                    } catch (Exception e) {
+                      ex.set(e);
+                    }
+                  },
+                  "DownSamplingProcessor::process");
+          if (ex.get() != null) {
+            throw ex.get();
+          }
+        } else {
+          for (final TabletInsertionEvent tabletInsertionEvent :
+              tsFileInsertionEvent.toTabletInsertionEvents()) {
+            process(tabletInsertionEvent, eventCollector);
+          }
         }
       } finally {
         tsFileInsertionEvent.close();

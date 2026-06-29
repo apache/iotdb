@@ -31,5 +31,7 @@ public interface SubscriptionReceiver {
 
   void handleExit();
 
+  void handleTimeout();
+
   long remainingMs();
 }

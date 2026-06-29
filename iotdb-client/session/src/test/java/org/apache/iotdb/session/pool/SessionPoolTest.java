@@ -111,7 +111,7 @@ public class SessionPoolTest {
             .waitToGetSessionTimeoutInMs(2)
             .enableRedirection(true)
             .enableRecordsAutoConvertTablet(true)
-            .enableCompression(true)
+            .enableThriftRpcCompaction(true)
             .zoneId(ZoneOffset.UTC)
             .connectionTimeoutInMs(3)
             .version(Version.V_1_0)
@@ -125,7 +125,7 @@ public class SessionPoolTest {
     assertEquals(1, pool.getFetchSize());
     assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
     assertTrue(pool.isEnableRedirection());
-    assertTrue(pool.isEnableCompression());
+    assertTrue(pool.isEnableThriftCompression());
     assertEquals(3, pool.getConnectionTimeoutInMs());
     assertEquals(ZoneOffset.UTC, pool.getZoneId());
     assertEquals(Version.V_1_0, pool.getVersion());
@@ -143,7 +143,7 @@ public class SessionPoolTest {
             .waitToGetSessionTimeoutInMs(2)
             .enableRedirection(true)
             .enableRecordsAutoConvertTablet(true)
-            .enableCompression(true)
+            .enableThriftRpcCompaction(true)
             .zoneId(ZoneOffset.UTC)
             .connectionTimeoutInMs(3)
             .version(Version.V_1_0)
@@ -157,7 +157,7 @@ public class SessionPoolTest {
     assertEquals(1, pool.getFetchSize());
     assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
     assertTrue(pool.isEnableRedirection());
-    assertTrue(pool.isEnableCompression());
+    assertTrue(pool.isEnableThriftCompression());
     assertEquals(3, pool.getConnectionTimeoutInMs());
     assertEquals(ZoneOffset.UTC, pool.getZoneId());
     assertEquals(Version.V_1_0, pool.getVersion());
@@ -191,7 +191,7 @@ public class SessionPoolTest {
             .host("host")
             .port(11)
             .user("user")
-            .password("password")
+            .password("password123456")
             .maxSize(5)
             .enableAutoFetch(false)
             .build();
@@ -772,6 +772,17 @@ public class SessionPoolTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = Arrays.asList("root.device1.temperature", "root.device1.humidity");
     sessionPool.deleteTimeseries(paths);
+    assertEquals(
+        1,
+        ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
+  }
+
+  @Test
+  public void testDeleteEmptyTimeseriesList()
+      throws IoTDBConnectionException, StatementExecutionException {
+    sessionPool.deleteTimeseries(Collections.emptyList());
+
+    Mockito.verify(session, Mockito.never()).deleteTimeseries(Mockito.<List<String>>any());
     assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());

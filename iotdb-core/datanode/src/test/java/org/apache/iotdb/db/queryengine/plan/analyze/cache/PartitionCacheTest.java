@@ -276,7 +276,10 @@ public class PartitionCacheTest {
 
   private void checkRegionReplicaSet(TConsensusGroupId consensusGroupId) {
     try {
-      assertNotNull(partitionCache.getRegionReplicaSet(consensusGroupId));
+      List<TRegionReplicaSet> regionReplicaSets =
+          partitionCache.getRegionReplicaSet(Collections.singletonList(consensusGroupId));
+      assertEquals(1, regionReplicaSets.size());
+      assertNotNull(regionReplicaSets.get(0));
     } catch (Exception e) {
       fail(e.getMessage());
     }

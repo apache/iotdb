@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.T
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.snapshot.MemMTreeSnapshotUtil;
 
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Constants;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -71,12 +73,12 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 import static org.apache.iotdb.db.schemaengine.schemaregion.tag.TagLogFile.parseByteBuffer;
@@ -183,7 +185,9 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
               genAlignedTimeseriesStatement(
                   // skip common database
                   node, databaseFullPath.concatPath(node.getPartialPath(), 1));
-          statements.push(stmt);
+          if (Objects.nonNull(stmt)) {
+            statements.push(stmt);
+          }
         }
         cleanMTreeNode(node);
         if (ancestors.isEmpty()) {
@@ -285,7 +289,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
           this.tableName = node.getName();
         }
         break;
-      case STORAGE_GROUP_MNODE_TYPE:
+      case DATABASE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeStorageGroupMNode(inputStream);
         break;
@@ -308,9 +312,13 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
       case TABLE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeTableDeviceMNode(inputStream);
+        if (ancestors.size() == 1) {
+          emitDevice();
+          this.tableName = node.getName();
+        }
         break;
       default:
-        throw new IOException("Unrecognized MNode type" + type);
+        throw new IOException(DataNodeMiscMessages.UNRECOGNIZED_MNODE_TYPE + type);
     }
 
     regionStatistics.requestMemory(node.estimateSize());
@@ -416,7 +424,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
             }
           } catch (final IOException ioException) {
             lastExcept = ioException;
-            LOGGER.warn("Error when parser tag and attributes files", ioException);
+            LOGGER.warn(DataNodeMiscMessages.ERROR_PARSER_TAG_ATTRIBUTES, ioException);
           }
           node.setOffset(0);
         }
@@ -441,7 +449,13 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
           attributeNameList = new ArrayList<>(tableAttributes.keySet());
         }
         final List<Object> attributeValues =
-            attributeNameList.stream().map(tableAttributes::remove).collect(Collectors.toList());
+            attributeNameList.stream()
+                .map(
+                    attributeKey -> {
+                      final Object attributeValue = tableAttributes.remove(attributeKey);
+                      return Objects.nonNull(attributeValue) ? attributeValue : Constants.NONE;
+                    })
+                .collect(Collectors.toList());
         tableAttributes.forEach(
             (attributeKey, attributeValue) -> {
               attributeNameList.add(attributeKey);
@@ -509,7 +523,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
           new Pair<>(ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
       return tagsAndAttributes;
     } else {
-      LOGGER.warn("Measurement has set attributes or tags, but not find snapshot files");
+      LOGGER.warn(DataNodeMiscMessages.MEASUREMENT_ATTRIBUTES_NO_SNAPSHOT);
     }
     return null;
   }

@@ -25,15 +25,22 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class LocalFileUserManagerTest {
@@ -59,7 +66,7 @@ public class LocalFileUserManagerTest {
   public void testIllegalInput() {
     // Password contains space
     try {
-      manager.createUser("username1", "password_ ", true);
+      manager.createUser("username1", "password_ 123456", true);
     } catch (AuthException e) {
       assertTrue(e.getMessage().contains("cannot contain spaces"));
     }
@@ -77,5 +84,47 @@ public class LocalFileUserManagerTest {
         manager.createUser("testRaw", AuthUtils.encryptPassword("password1"), true, false));
     User user = manager.getEntity("testRaw");
     Assert.assertEquals(user.getPassword(), AuthUtils.encryptPassword("password1"));
+  }
+
+  @Test
+  public void testConcurrentListAndCreateDropUser() throws Exception {
+    AtomicReference<Throwable> error = new AtomicReference<>();
+    AtomicBoolean running = new AtomicBoolean(true);
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+
+    pool.submit(
+        () -> {
+          try {
+            barrier.await();
+            while (running.get()) {
+              manager.listAllEntities();
+              manager.listAllEntitiesInfo();
+            }
+          } catch (Throwable t) {
+            error.compareAndSet(null, t);
+          }
+        });
+
+    pool.submit(
+        () -> {
+          try {
+            barrier.await();
+            for (int i = 0; i < 500; i++) {
+              String name = "user_" + i;
+              manager.createUser(name, "password_" + i, false);
+              manager.deleteEntity(name);
+            }
+          } catch (Throwable t) {
+            error.compareAndSet(null, t);
+          } finally {
+            running.set(false);
+          }
+        });
+
+    pool.shutdown();
+    assertTrue(pool.awaitTermination(30, TimeUnit.SECONDS));
+    assertNull(
+        "ConcurrentModificationException during concurrent list/create/drop user", error.get());
   }
 }

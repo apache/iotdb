@@ -24,14 +24,15 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -41,6 +42,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -94,7 +96,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       snapshotDir.mkdir();
       schemaRegion.createSnapshot(snapshotDir);
 
-      schemaRegion.loadSnapshot(snapshotDir);
+      Assert.assertTrue(schemaRegion.loadSnapshot(snapshotDir));
 
       List<ITimeSeriesSchemaInfo> result =
           SchemaRegionTestUtil.showTimeseries(
@@ -110,7 +112,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       simulateRestart();
 
       ISchemaRegion newSchemaRegion = getSchemaRegion("root.sg", 0);
-      newSchemaRegion.loadSnapshot(snapshotDir);
+      Assert.assertTrue(newSchemaRegion.loadSnapshot(snapshotDir));
       result =
           SchemaRegionTestUtil.showTimeseries(
               newSchemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
@@ -169,7 +171,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       snapshotDir.mkdir();
       schemaRegion.createSnapshot(snapshotDir);
 
-      schemaRegion.loadSnapshot(snapshotDir);
+      Assert.assertTrue(schemaRegion.loadSnapshot(snapshotDir));
 
       List<ITimeSeriesSchemaInfo> result =
           SchemaRegionTestUtil.showTimeseries(
@@ -180,12 +182,32 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       simulateRestart();
 
       ISchemaRegion newSchemaRegion = getSchemaRegion("root.sg", 0);
-      newSchemaRegion.loadSnapshot(snapshotDir);
+      Assert.assertTrue(newSchemaRegion.loadSnapshot(snapshotDir));
       result =
           SchemaRegionTestUtil.showTimeseries(
               newSchemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
 
       Assert.assertEquals(0, result.size());
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
+  }
+
+  @Test
+  public void testLoadSnapshotReportsFailureWhenSnapshotIsMissing() throws Exception {
+    String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+
+      // Loading from a directory that does not contain a snapshot must report failure rather than
+      // silently falling back to an empty region and reporting success. Callers (the AddPeer flow
+      // and the Ratis snapshot-install path) rely on this success/failure contract.
+      File missingSnapshotDir =
+          new File(config.getSchemaDir() + File.separator + "non-existent-snapshot");
+      Assert.assertFalse(missingSnapshotDir.exists());
+
+      Assert.assertFalse(schemaRegion.loadSnapshot(missingSnapshotDir));
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
@@ -229,5 +251,15 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
+  }
+
+  @Test
+  public void testSchemaRegionPlanType() throws Exception {
+    Assert.assertEquals(
+        SchemaRegionPlanType.values().length,
+        Arrays.stream(SchemaRegionPlanType.values())
+            .map(SchemaRegionPlanType::getPlanType)
+            .distinct()
+            .count());
   }
 }

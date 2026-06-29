@@ -1,0 +1,166 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
+
+import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.pipe.api.event.Event;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSinkSubtaskLifeCycle.class);
+
+  protected final PipeSinkSubtaskExecutor executor;
+  protected final PipeSinkSubtask subtask;
+  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
+
+  protected int runningTaskCount;
+  protected int registeredTaskCount;
+
+  public PipeSinkSubtaskLifeCycle(
+      final PipeSinkSubtaskExecutor executor,
+      final PipeSinkSubtask subtask,
+      final UnboundedBlockingPendingQueue<Event> pendingQueue) {
+    this.executor = executor;
+    this.subtask = subtask;
+    this.pendingQueue = pendingQueue;
+
+    runningTaskCount = 0;
+    registeredTaskCount = 0;
+  }
+
+  public PipeSinkSubtask getSubtask() {
+    return subtask;
+  }
+
+  public UnboundedBlockingPendingQueue<Event> getPendingQueue() {
+    return pendingQueue;
+  }
+
+  public synchronized void register() {
+    if (registeredTaskCount < 0) {
+      throw new IllegalStateException(DataNodePipeMessages.REGISTEREDTASKCOUNT_0);
+    }
+
+    if (registeredTaskCount == 0) {
+      executor.register(subtask);
+      runningTaskCount = 0;
+
+      PipeDataNodeResourceManager.compaction().registerPipeConnectorSubtaskLifeCycle(this);
+    }
+
+    registeredTaskCount++;
+    LOGGER.info(
+        DataNodePipeMessages.REGISTER_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
+        subtask.getDisplayTaskID(),
+        runningTaskCount,
+        registeredTaskCount);
+  }
+
+  /**
+   * Deregister the {@link PipeSinkSubtask}. If the {@link PipeSinkSubtask} is the last one, close
+   * the {@link PipeSinkSubtask}.
+   *
+   * <p>Note that this method should be called after the {@link PipeSinkSubtask} is stopped.
+   * Otherwise, the {@link PipeSinkSubtaskLifeCycle#runningTaskCount} might be inconsistent with the
+   * {@link PipeSinkSubtaskLifeCycle#registeredTaskCount} because of parallel connector scheduling.
+   *
+   * @param committerKey committer key of the pipe task to deregister
+   * @return {@code true} if the {@link PipeSinkSubtask} is out of life cycle, indicating that the
+   *     {@link PipeSinkSubtask} should never be used again
+   * @throws IllegalStateException if {@link PipeSinkSubtaskLifeCycle#registeredTaskCount} <= 0
+   */
+  public synchronized boolean deregister(final CommitterKey committerKey) {
+    if (registeredTaskCount <= 0) {
+      throw new IllegalStateException(DataNodePipeMessages.REGISTEREDTASKCOUNT_0_1);
+    }
+
+    subtask.discardEventsOfPipe(committerKey);
+
+    try {
+      if (registeredTaskCount > 1) {
+        return false;
+      }
+
+      close();
+      // This subtask is out of life cycle, should never be used again
+      return true;
+    } finally {
+      registeredTaskCount--;
+      LOGGER.info(
+          DataNodePipeMessages.DEREGISTER_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
+          subtask.getDisplayTaskID(),
+          runningTaskCount,
+          registeredTaskCount);
+    }
+  }
+
+  public synchronized void start() {
+    if (runningTaskCount < 0) {
+      throw new IllegalStateException(DataNodePipeMessages.RUNNINGTASKCOUNT_0);
+    }
+
+    if (runningTaskCount == 0) {
+      try {
+        subtask.increaseHighPriorityTaskCount();
+        executor.start(subtask.getTaskID());
+      } finally {
+        subtask.decreaseHighPriorityTaskCount();
+      }
+    }
+
+    runningTaskCount++;
+    LOGGER.info(
+        DataNodePipeMessages.START_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
+        subtask.getDisplayTaskID(),
+        runningTaskCount,
+        registeredTaskCount);
+  }
+
+  public synchronized void stop() {
+    if (runningTaskCount <= 0) {
+      throw new IllegalStateException(DataNodePipeMessages.RUNNINGTASKCOUNT_0_1);
+    }
+
+    if (runningTaskCount == 1) {
+      executor.stop(subtask.getTaskID());
+    }
+
+    runningTaskCount--;
+    LOGGER.info(
+        DataNodePipeMessages.STOP_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
+        subtask.getDisplayTaskID(),
+        runningTaskCount,
+        registeredTaskCount);
+  }
+
+  @Override
+  public synchronized void close() {
+    executor.deregister(subtask.getTaskID());
+
+    PipeDataNodeResourceManager.compaction().deregisterPipeConnectorSubtaskLifeCycle(this);
+  }
+}

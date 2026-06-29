@@ -19,77 +19,27 @@
 
 package org.apache.iotdb.db.storageengine.load.limiter;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.sink.limiter.GlobalRateLimiter;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 
-import com.google.common.util.concurrent.AtomicDouble;
-import com.google.common.util.concurrent.RateLimiter;
-
-import java.util.concurrent.TimeUnit;
-
-public class LoadTsFileRateLimiter {
+public class LoadTsFileRateLimiter extends GlobalRateLimiter {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private final AtomicDouble throughputBytesPerSecond =
-      new AtomicDouble(CONFIG.getLoadWriteThroughputBytesPerSecond());
-  private final RateLimiter loadWriteRateLimiter;
-
+  @Override
   public void acquire(long bytes) {
     LoadTsFileCostMetricsSet.getInstance().recordDiskIO(bytes);
-
-    if (reloadParams()) {
-      return;
-    }
-
-    while (bytes > 0) {
-      if (bytes > Integer.MAX_VALUE) {
-        tryAcquireWithRateCheck(Integer.MAX_VALUE);
-        bytes -= Integer.MAX_VALUE;
-      } else {
-        tryAcquireWithRateCheck((int) bytes);
-        return;
-      }
-    }
+    super.acquire(bytes);
   }
 
-  private void tryAcquireWithRateCheck(final int bytes) {
-    while (!loadWriteRateLimiter.tryAcquire(
-        bytes,
-        PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs(),
-        TimeUnit.MILLISECONDS)) {
-      if (reloadParams()) {
-        return;
-      }
-    }
-  }
-
-  private boolean reloadParams() {
-    final double throughputBytesPerSecondLimit = CONFIG.getLoadWriteThroughputBytesPerSecond();
-
-    if (throughputBytesPerSecond.get() != throughputBytesPerSecondLimit) {
-      throughputBytesPerSecond.set(throughputBytesPerSecondLimit);
-      loadWriteRateLimiter.setRate(
-          // if throughput <= 0, disable rate limiting
-          throughputBytesPerSecondLimit <= 0 ? Double.MAX_VALUE : throughputBytesPerSecondLimit);
-    }
-
-    // For performance, we don't need to acquire rate limiter if throughput <= 0
-    return throughputBytesPerSecondLimit <= 0;
+  @Override
+  protected double getThroughputBytesPerSecond() {
+    return CONFIG.getLoadWriteThroughputBytesPerSecond();
   }
 
   //////////////////////////// Singleton ////////////////////////////
-
-  private LoadTsFileRateLimiter() {
-    final double throughputBytesPerSecondLimit = throughputBytesPerSecond.get();
-    loadWriteRateLimiter =
-        // if throughput <= 0, disable rate limiting
-        throughputBytesPerSecondLimit <= 0
-            ? RateLimiter.create(Double.MAX_VALUE)
-            : RateLimiter.create(throughputBytesPerSecondLimit);
-  }
 
   private static class LoadTsFileRateLimiterHolder {
 

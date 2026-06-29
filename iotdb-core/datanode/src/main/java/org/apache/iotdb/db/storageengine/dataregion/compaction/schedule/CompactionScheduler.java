@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.Cr
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,14 +119,18 @@ public class CompactionScheduler {
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {
-      LOGGER.error("Meet error in compaction schedule.", e);
+      LOGGER.error(StorageEngineMessages.MEET_ERROR_IN_COMPACTION_SCHEDULE, e);
     }
   }
 
   @TestOnly
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition)
       throws InterruptedException {
-    scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleContext());
+    scheduleCompaction(
+        tsFileManager,
+        timePartition,
+        new CompactionScheduleContext(
+            EncryptDBUtils.getFirstEncryptParamFromDatabase(tsFileManager.getStorageGroupName())));
   }
 
   public static int tryToSubmitInnerSpaceCompactionTask(
@@ -160,9 +166,7 @@ public class CompactionScheduler {
     long startTime = System.currentTimeMillis();
     List<InnerSpaceCompactionTask> innerSpaceTaskList =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
-            sequence
-                ? tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)
-                : tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
+            tsFileManager.getTsFileListSnapshot(timePartition, sequence));
     CompactionMetrics.getInstance()
         .updateCompactionTaskSelectionTimeCost(
             sequence ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ,
@@ -245,8 +249,8 @@ public class CompactionScheduler {
 
     List<CrossCompactionTaskResource> selectedTasks =
         selector.selectInsertionCrossSpaceTask(
-            tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),
-            tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
+            tsFileManager.getTsFileListSnapshot(timePartition, true),
+            tsFileManager.getTsFileListSnapshot(timePartition, false));
     if (selectedTasks.isEmpty()) {
       return 0;
     }
@@ -287,8 +291,8 @@ public class CompactionScheduler {
 
     List<CrossCompactionTaskResource> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
-            tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),
-            tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
+            tsFileManager.getTsFileListSnapshot(timePartition, true),
+            tsFileManager.getTsFileListSnapshot(timePartition, false));
     List<Long> memoryCost =
         taskList.stream()
             .map(CrossCompactionTaskResource::getTotalMemoryCost)
@@ -337,12 +341,12 @@ public class CompactionScheduler {
     if (config.isEnableSeqSpaceCompaction()) {
       taskList.addAll(
           settleSelector.selectSettleTask(
-              tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)));
+              tsFileManager.getTsFileListSnapshot(timePartition, true)));
     }
     if (config.isEnableUnseqSpaceCompaction()) {
       taskList.addAll(
           settleSelector.selectSettleTask(
-              tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition)));
+              tsFileManager.getTsFileListSnapshot(timePartition, false)));
     }
     CompactionMetrics.getInstance()
         .updateCompactionTaskSelectionTimeCost(

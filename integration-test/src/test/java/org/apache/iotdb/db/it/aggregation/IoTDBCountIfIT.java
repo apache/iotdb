@@ -209,6 +209,19 @@ public class IoTDBCountIfIT {
   }
 
   @Test
+  public void testMultiAttributes() {
+    String[] expectedHeader =
+        new String[] {
+          "Count_if(root.db.d1.s3, 1, \"attr1\"=\"1\", \"attr2\"=\"2\", \"attr3\"=\"3\")"
+        };
+    String[] retArray = new String[] {"1,"};
+    resultSetEqualTest(
+        "select Count_if(s3, 1, \"attr1\"=\"1\",\"attr2\"=\"2\",\"attr3\"=\"3\") from root.db.d1",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
   public void testContIfWithGroupByLevel() {
     String[] expectedHeader = new String[] {"Count_if(root.db.*.s1 = 0 & root.db.*.s2 = 0, 3)"};
     String[] retArray = new String[] {"4,"};

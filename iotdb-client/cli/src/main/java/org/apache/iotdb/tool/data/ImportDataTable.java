@@ -29,13 +29,14 @@ import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
 
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
+import org.apache.tsfile.external.commons.collections4.MapUtils;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -62,75 +63,91 @@ public class ImportDataTable extends AbstractImportData {
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static ITableSessionPool sessionPool;
   private static Map<String, TSDataType> dataTypes = new HashMap<>();
-  private static Map<String, Tablet.ColumnCategory> columnCategory = new HashMap<>();
+  private static Map<String, ColumnCategory> columnCategory = new HashMap<>();
+
+  private static final Pattern DB_FROM_SQL_PATTERN;
+
+  static {
+    // group N:   双引号标识符 (""转义)
+    // group N+1: 反引号标识符 (``转义)
+    // group N+2: 普通标识符
+    String id = "(?:\"((?:[^\"]|\"\")*)\"" + "|`((?:[^`]|``)*)`" + "|(\\w+))";
+    DB_FROM_SQL_PATTERN =
+        Pattern.compile("into\\s+" + id + "\\s*\\.\\s*" + id, Pattern.CASE_INSENSITIVE);
+  }
 
   public void init() throws InterruptedException {
-    sessionPool =
+    TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
             .nodeUrls(Collections.singletonList(host + ":" + port))
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
-            .enableCompression(false)
+            .enableThriftCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
-            .database(database)
-            .build();
+            .database(database);
+    if (useSsl) {
+      tableSessionPoolBuilder = configureSsl(tableSessionPoolBuilder);
+    }
+    sessionPool = tableSessionPoolBuilder.build();
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
       ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
       System.exit(Constants.CODE_ERROR);
     }
     // checkDataBase
-    SessionDataSet sessionDataSet = null;
-    try (ITableSession session = sessionPool.getSession()) {
-      List<String> databases = new ArrayList<>();
-      sessionDataSet = session.executeQueryStatement("show databases");
-      while (sessionDataSet.hasNext()) {
-        RowRecord rowRecord = sessionDataSet.next();
-        databases.add(rowRecord.getField(0).getStringValue());
-      }
-      if (!databases.contains(database)) {
-        ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
-        System.exit(1);
-      }
-      if (Constants.CSV_SUFFIXS.equals(fileType)) {
-        if (StringUtils.isNotBlank(table)) {
-          sessionDataSet = session.executeQueryStatement("show tables");
-          List<String> tables = new ArrayList<>();
-          while (sessionDataSet.hasNext()) {
-            RowRecord rowRecord = sessionDataSet.next();
-            tables.add(rowRecord.getField(0).getStringValue());
-          }
-          if (!tables.contains(table)) {
-            ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, table));
-            System.exit(1);
-          }
-          sessionDataSet = session.executeQueryStatement("describe " + table);
-          while (sessionDataSet.hasNext()) {
-            RowRecord rowRecord = sessionDataSet.next();
-            final String columnName = rowRecord.getField(0).getStringValue();
-            final String category = rowRecord.getField(2).getStringValue();
-            if (!timeColumn.equalsIgnoreCase(category)) {
-              dataTypes.put(columnName, getType(rowRecord.getField(1).getStringValue()));
-              columnCategory.put(columnName, getColumnCategory(category));
-            }
-          }
-        } else {
-          ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, null));
+    if (!Constants.SQL_SUFFIXS.equals(fileType)) {
+      SessionDataSet sessionDataSet = null;
+      try (ITableSession session = sessionPool.getSession()) {
+        List<String> databases = new ArrayList<>();
+        sessionDataSet = session.executeQueryStatement("show databases");
+        while (sessionDataSet.hasNext()) {
+          RowRecord rowRecord = sessionDataSet.next();
+          databases.add(rowRecord.getField(0).getStringValue());
+        }
+        if (!databases.contains(database)) {
+          ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
           System.exit(1);
         }
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      System.exit(1);
-    } catch (IoTDBConnectionException e) {
-      throw new RuntimeException(e);
-    } finally {
-      if (ObjectUtils.isNotEmpty(sessionDataSet)) {
-        try {
-          sessionDataSet.close();
-        } catch (Exception e) {
+        if (Constants.CSV_SUFFIXS.equals(fileType)) {
+          if (StringUtils.isNotBlank(table)) {
+            sessionDataSet = session.executeQueryStatement("show tables");
+            List<String> tables = new ArrayList<>();
+            while (sessionDataSet.hasNext()) {
+              RowRecord rowRecord = sessionDataSet.next();
+              tables.add(rowRecord.getField(0).getStringValue());
+            }
+            if (!tables.contains(table)) {
+              ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, table));
+              System.exit(1);
+            }
+            sessionDataSet = session.executeQueryStatement("describe " + table);
+            while (sessionDataSet.hasNext()) {
+              RowRecord rowRecord = sessionDataSet.next();
+              final String columnName = rowRecord.getField(0).getStringValue();
+              final String category = rowRecord.getField(2).getStringValue();
+              if (!timeColumn.equalsIgnoreCase(category)) {
+                dataTypes.put(columnName, getType(rowRecord.getField(1).getStringValue()));
+                columnCategory.put(columnName, getColumnCategory(category));
+              }
+            }
+          } else {
+            ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, null));
+            System.exit(1);
+          }
+        }
+      } catch (StatementExecutionException e) {
+        ioTPrinter.println(Constants.IMPORT_INIT_MEET_ERROR_MSG + e.getMessage());
+        System.exit(1);
+      } catch (IoTDBConnectionException e) {
+        throw new RuntimeException(e);
+      } finally {
+        if (ObjectUtils.isNotEmpty(sessionDataSet)) {
+          try {
+            sessionDataSet.close();
+          } catch (Exception e) {
+          }
         }
       }
     }
@@ -153,6 +170,18 @@ public class ImportDataTable extends AbstractImportData {
     loadFileSuccessfulNum.increment();
   }
 
+  private static String extractDbFromSql(String sql) {
+
+    Matcher matcher = DB_FROM_SQL_PATTERN.matcher(sql);
+    if (matcher.find()) {
+      // db name: group 1 (双引号), group 2 (反引号), group 3 (普通)
+      if (matcher.group(1) != null) return matcher.group(1).replace("\"\"", "\"");
+      if (matcher.group(2) != null) return matcher.group(2).replace("``", "`");
+      return matcher.group(3);
+    }
+    return null;
+  }
+
   @SuppressWarnings("java:S2259")
   protected void importFromSqlFile(File file) {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
@@ -166,9 +195,22 @@ public class ImportDataTable extends AbstractImportData {
       String sql;
       while ((sql = br.readLine()) != null) {
         try (ITableSession session = sessionPool.getSession()) {
-          sql = sql.replace(";", "");
+          sql = sql.trim();
+          if (sql.endsWith(";")) {
+            sql = sql.substring(0, sql.length() - 1);
+          }
+          String dbName = extractDbFromSql(sql);
+          if (database != null && dbName != null && !dbName.equalsIgnoreCase(database)) {
+            ioTPrinter.println(
+                String.format(
+                    "The extracted database '%s' in SQL statement does not match the target database '%s'",
+                    dbName, database));
+            failedRecords.add(Collections.singletonList(sql));
+            continue;
+          }
           session.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
+          ioTPrinter.println(e.getMessage());
           failedRecords.add(Collections.singletonList(sql));
         }
       }
@@ -255,8 +297,8 @@ public class ImportDataTable extends AbstractImportData {
         });
     List<String> headNames = new LinkedList<>(dataTypes.keySet());
     List<TSDataType> columnTypes = new LinkedList<>(dataTypes.values());
-    List<Tablet.ColumnCategory> columnCategorys = new LinkedList<>(columnCategory.values());
-    Tablet tablet = new Tablet(table, headNames, columnTypes, columnCategorys);
+    List<ColumnCategory> columnCategorys = new LinkedList<>(columnCategory.values());
+    Tablet tablet = new Tablet(table, headNames, columnTypes, columnCategorys, batchPointSize);
     for (CSVRecord recordObj : records) {
       boolean isFail = false;
       final int rowSize = tablet.getRowSize();
@@ -276,14 +318,14 @@ public class ImportDataTable extends AbstractImportData {
               if (newIndex >= columnTypes.size()) {
                 headNames.add(headerName);
                 columnTypes.add(type);
-                columnCategorys.add(Tablet.ColumnCategory.FIELD);
+                columnCategorys.add(ColumnCategory.FIELD);
               } else {
                 headNames.add(headerName);
                 columnTypes.add(newIndex, type);
-                columnCategorys.add(newIndex, Tablet.ColumnCategory.FIELD);
+                columnCategorys.add(newIndex, ColumnCategory.FIELD);
               }
               writeAndEmptyDataSet(tablet, 3);
-              tablet = new Tablet(table, headNames, columnTypes, columnCategorys);
+              tablet = new Tablet(table, headNames, columnTypes, columnCategorys, batchPointSize);
               tablet.addTimestamp(rowSize, rowTimeStamp);
             } else {
               ioTPrinter.printf(
@@ -314,7 +356,7 @@ public class ImportDataTable extends AbstractImportData {
         failedRecords.add(recordObj.stream().collect(Collectors.toList()));
       }
     }
-    if (tablet.getValues().length > 0) {
+    if (tablet.getRowSize() > 0) {
       writeAndEmptyDataSet(tablet, 3);
     }
 

@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -30,13 +33,14 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
-import org.apache.commons.collections4.map.LRUMap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.external.commons.collections4.map.LRUMap;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 
-import java.io.File;
+import javax.annotation.Nullable;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -54,14 +58,42 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractCompactionEstimator {
 
-  private static final Map<File, FileInfo> globalFileInfoCacheForFailedCompaction =
-      Collections.synchronizedMap(
-          new LRUMap<>(
-              IoTDBDescriptor.getInstance().getConfig().getGlobalCompactionFileInfoCacheSize()));
-  protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
-  protected Map<TsFileResource, ArrayDeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
+  /** The size of global compaction estimation file info cahce. */
+  private static int globalCompactionFileInfoCacheSize = 1000;
+
+  /** The size of global compaction estimation rough file info cahce. */
+  private static int globalCompactionRoughFileInfoCacheSize = 100000;
+
+  private static final double maxRatioToAllocateFileInfoCache = 0.1;
+  private static boolean globalFileInfoCacheEnabled;
+  private static Map<TsFileID, FileInfo> globalFileInfoCacheForFailedCompaction;
+  private static Map<TsFileID, FileInfo.RoughFileInfo> globalRoughInfoCacheForCompaction;
 
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  public static long allocateMemoryCostForFileInfoCache(long compactionMemorySize) {
+    long fixedMemoryCost =
+        globalCompactionFileInfoCacheSize * FileInfo.MEMORY_COST_OF_FILE_INFO_ENTRY_IN_CACHE
+            + globalCompactionRoughFileInfoCacheSize
+                * FileInfo.MEMORY_COST_OF_ROUGH_FILE_INFO_ENTRY_IN_CACHE;
+    globalFileInfoCacheEnabled =
+        compactionMemorySize * maxRatioToAllocateFileInfoCache > fixedMemoryCost;
+    if (globalFileInfoCacheEnabled) {
+      globalRoughInfoCacheForCompaction =
+          Collections.synchronizedMap(new LRUMap<>(globalCompactionFileInfoCacheSize));
+      globalFileInfoCacheForFailedCompaction =
+          Collections.synchronizedMap(new LRUMap<>(globalCompactionRoughFileInfoCacheSize));
+    } else {
+      globalRoughInfoCacheForCompaction = Collections.emptyMap();
+      globalFileInfoCacheForFailedCompaction = Collections.emptyMap();
+    }
+    return globalFileInfoCacheEnabled ? fixedMemoryCost : 0;
+  }
+
+  protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
+  protected Map<TsFileResource, FileInfo.RoughFileInfo> roughInfoMap = new HashMap<>();
+  protected Map<TsFileResource, ArrayDeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
+
   protected TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   protected long fixedMemoryBudget =
       (long)
@@ -99,10 +131,10 @@ public abstract class AbstractCompactionEstimator {
     if (fileInfoCache.containsKey(resource)) {
       return fileInfoCache.get(resource);
     }
-    File file = new File(resource.getTsFilePath());
+    TsFileID tsFileID = resource.getTsFileID();
     synchronized (globalFileInfoCacheForFailedCompaction) {
-      if (globalFileInfoCacheForFailedCompaction.containsKey(file)) {
-        FileInfo fileInfo = globalFileInfoCacheForFailedCompaction.get(file);
+      FileInfo fileInfo = globalFileInfoCacheForFailedCompaction.get(tsFileID);
+      if (fileInfo != null) {
         fileInfoCache.put(resource, fileInfo);
         return fileInfo;
       }
@@ -110,20 +142,26 @@ public abstract class AbstractCompactionEstimator {
     try (TsFileSequenceReader reader = getReader(resource.getTsFilePath())) {
       FileInfo fileInfo = CompactionEstimateUtils.calculateFileInfo(reader);
       fileInfoCache.put(resource, fileInfo);
-      synchronized (globalFileInfoCacheForFailedCompaction) {
-        globalFileInfoCacheForFailedCompaction.put(file, fileInfo);
+      if (globalFileInfoCacheEnabled) {
+        synchronized (globalFileInfoCacheForFailedCompaction) {
+          globalFileInfoCacheForFailedCompaction.put(tsFileID, fileInfo);
+        }
+        synchronized (globalRoughInfoCacheForCompaction) {
+          globalRoughInfoCacheForCompaction.put(tsFileID, fileInfo.getSimpleFileInfo());
+        }
       }
       return fileInfo;
     }
   }
 
   @SuppressWarnings("OptionalGetWithoutIsPresent")
-  protected int calculatingMaxOverlapFileNumInSubCompactionTask(List<TsFileResource> resources)
+  protected int calculatingMaxOverlapFileNumInSubCompactionTask(
+      @Nullable CompactionScheduleContext context, List<TsFileResource> resources)
       throws IOException {
     Set<IDeviceID> devices = new HashSet<>();
     List<ArrayDeviceTimeIndex> resourceDevices = new ArrayList<>(resources.size());
     for (TsFileResource resource : resources) {
-      ArrayDeviceTimeIndex deviceTimeIndex = getDeviceTimeIndexFromCache(resource);
+      ArrayDeviceTimeIndex deviceTimeIndex = getDeviceTimeIndexFromCache(context, resource);
       devices.addAll(deviceTimeIndex.getDevices());
       resourceDevices.add(deviceTimeIndex);
     }
@@ -166,10 +204,17 @@ public abstract class AbstractCompactionEstimator {
     return maxOverlapFileNumInSubCompactionTask;
   }
 
-  private ArrayDeviceTimeIndex getDeviceTimeIndexFromCache(TsFileResource resource)
-      throws IOException {
+  private ArrayDeviceTimeIndex getDeviceTimeIndexFromCache(
+      @Nullable CompactionScheduleContext context, TsFileResource resource) throws IOException {
     if (deviceTimeIndexCache.containsKey(resource)) {
       return deviceTimeIndexCache.get(resource);
+    }
+    if (context != null) {
+      ArrayDeviceTimeIndex timeIndex = context.getResourceDeviceInfo(resource);
+      if (timeIndex != null) {
+        deviceTimeIndexCache.put(resource, timeIndex);
+        return timeIndex;
+      }
     }
     ITimeIndex timeIndex = resource.getTimeIndex();
     if (timeIndex instanceof FileTimeIndex) {
@@ -184,12 +229,61 @@ public abstract class AbstractCompactionEstimator {
     fileInfoCache.clear();
   }
 
+  public boolean hasCachedRoughFileInfo(TsFileResource resource) {
+    return getRoughFileInfo(resource) != null;
+  }
+
+  public FileInfo.RoughFileInfo getRoughFileInfo(TsFileResource resource) {
+    FileInfo.RoughFileInfo roughFileInfo = roughInfoMap.get(resource);
+    if (roughFileInfo != null) {
+      return roughFileInfo;
+    }
+    synchronized (globalRoughInfoCacheForCompaction) {
+      roughFileInfo = globalRoughInfoCacheForCompaction.get(resource.getTsFileID());
+    }
+    if (roughFileInfo != null) {
+      roughInfoMap.put(resource, roughFileInfo);
+    }
+    return roughFileInfo;
+  }
+
+  public boolean supportsRoughEstimation() {
+    return true;
+  }
+
   public static void removeFileInfoFromGlobalFileInfoCache(TsFileResource resource) {
     if (resource == null || resource.getTsFile() == null) {
       return;
     }
-    synchronized (globalFileInfoCacheForFailedCompaction) {
-      globalFileInfoCacheForFailedCompaction.remove(resource.getTsFile());
+    if (globalFileInfoCacheEnabled) {
+      synchronized (globalFileInfoCacheForFailedCompaction) {
+        globalFileInfoCacheForFailedCompaction.remove(resource.getTsFileID());
+      }
+      synchronized (globalRoughInfoCacheForCompaction) {
+        globalRoughInfoCacheForCompaction.remove(resource.getTsFileID());
+      }
     }
+  }
+
+  @TestOnly
+  public static void enableFileInfoCacheForTest(
+      int globalCompactionFileInfoCacheSize, int globalCompactionRoughFileInfoCacheSize) {
+    globalFileInfoCacheEnabled = true;
+    globalRoughInfoCacheForCompaction =
+        Collections.synchronizedMap(new LRUMap<>(globalCompactionFileInfoCacheSize));
+    globalFileInfoCacheForFailedCompaction =
+        Collections.synchronizedMap(new LRUMap<>(globalCompactionRoughFileInfoCacheSize));
+  }
+
+  @TestOnly
+  public static void disableFileInfoCacheForTest() {
+    globalFileInfoCacheEnabled = false;
+    globalRoughInfoCacheForCompaction = Collections.emptyMap();
+    globalFileInfoCacheForFailedCompaction = Collections.emptyMap();
+  }
+
+  @TestOnly
+  public static boolean isGlobalFileInfoCacheEnabled() {
+    return globalFileInfoCacheEnabled;
   }
 }

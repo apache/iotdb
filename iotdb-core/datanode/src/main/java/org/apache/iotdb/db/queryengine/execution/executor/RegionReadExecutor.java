@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.executor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
@@ -29,11 +31,11 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -100,21 +102,25 @@ public class RegionReadExecutor {
                 });
         return resp;
       }
-    } catch (ConsensusGroupNotExistException e) {
-      LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
-      RegionExecutionResult resp =
+    } catch (final ConsensusGroupNotExistException e) {
+      LOGGER.warn(
+          DataNodeQueryMessages.EXECUTE_FRAGMENTINSTANCE_IN_CONSENSUSGROUP_FAILED, groupId, e);
+      final String errorMsg = String.format(ERROR_MSG_FORMAT, e.getMessage());
+      final RegionExecutionResult resp =
           RegionExecutionResult.create(
               false,
-              String.format(ERROR_MSG_FORMAT, e.getMessage()),
-              new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()));
+              errorMsg,
+              new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode())
+                  .setMessage(errorMsg));
       resp.setReadNeedRetry(true);
       return resp;
     } catch (Throwable e) {
-      LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
+      LOGGER.warn(
+          DataNodeQueryMessages.EXECUTE_FRAGMENTINSTANCE_IN_CONSENSUSGROUP_FAILED, groupId, e);
       RegionExecutionResult resp =
           RegionExecutionResult.create(
               false, String.format(ERROR_MSG_FORMAT, e.getMessage()), null);
-      Throwable t = ErrorHandlingUtils.getRootCause(e);
+      Throwable t = ErrorHandlingCommonUtils.getRootCause(e);
       if (t instanceof ReadException
           || t instanceof ReadIndexException
           || t instanceof NotLeaderException
@@ -122,6 +128,13 @@ public class RegionReadExecutor {
           || t instanceof InterruptedException) {
         resp.setReadNeedRetry(true);
         resp.setStatus(new TSStatus(TSStatusCode.RATIS_READ_UNAVAILABLE.getStatusCode()));
+      } else if (t instanceof IoTDBRuntimeException) {
+        // Carry the original status code (e.g. REPEATED_RPC_CALL) back to the dispatcher so it is
+        // not downgraded to EXECUTE_STATEMENT_ERROR; needRetryHelper decides retryability.
+        TSStatus status = new TSStatus(((IoTDBRuntimeException) t).getErrorCode());
+        status.setMessage(t.getMessage());
+        resp.setStatus(status);
+        resp.setReadNeedRetry(StatusUtils.needRetryHelper(status));
       }
       return resp;
     }
@@ -135,11 +148,35 @@ public class RegionReadExecutor {
       FragmentInstanceInfo info =
           fragmentInstanceManager.execDataQueryFragmentInstance(
               fragmentInstance, VirtualDataRegion.getInstance());
-      return RegionExecutionResult.create(!info.getState().isFailed(), info.getMessage(), null);
+      if (info == null) {
+        LOGGER.error(RESPONSE_NULL_ERROR_MSG);
+        return RegionExecutionResult.create(false, RESPONSE_NULL_ERROR_MSG, null);
+      } else {
+        RegionExecutionResult resp =
+            RegionExecutionResult.create(!info.getState().isFailed(), info.getMessage(), null);
+        info.getErrorCode()
+            .ifPresent(
+                s -> {
+                  resp.setStatus(s);
+                  resp.setReadNeedRetry(StatusUtils.needRetryHelper(s));
+                });
+        return resp;
+      }
     } catch (Throwable t) {
-      LOGGER.error("Execute FragmentInstance in QueryExecutor failed.", t);
-      return RegionExecutionResult.create(
-          false, String.format(ERROR_MSG_FORMAT, t.getMessage()), null);
+      LOGGER.warn(DataNodeQueryMessages.EXECUTE_FRAGMENTINSTANCE_IN_QUERYEXECUTOR_FAILED, t);
+      RegionExecutionResult resp =
+          RegionExecutionResult.create(
+              false, String.format(ERROR_MSG_FORMAT, t.getMessage()), null);
+      Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(t);
+      if (rootCause instanceof IoTDBRuntimeException) {
+        // Carry the original status code (e.g. REPEATED_RPC_CALL) back to the dispatcher so it is
+        // not downgraded to EXECUTE_STATEMENT_ERROR; needRetryHelper decides retryability.
+        TSStatus status = new TSStatus(((IoTDBRuntimeException) rootCause).getErrorCode());
+        status.setMessage(rootCause.getMessage());
+        resp.setStatus(status);
+        resp.setReadNeedRetry(StatusUtils.needRetryHelper(status));
+      }
+      return resp;
     }
   }
 }

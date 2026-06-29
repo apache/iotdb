@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,6 +34,8 @@ import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFact
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.truncateTailingNull;
 
 public class FetchDevice extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(FetchDevice.class);
 
   private final String database;
 
@@ -66,8 +74,8 @@ public class FetchDevice extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitFetchDevice(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitFetchDevice(this, context);
   }
 
   @Override
@@ -106,5 +114,21 @@ public class FetchDevice extends Statement {
         + ", deviceIdList="
         + deviceIdList
         + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(tableName);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfObjectArrayList(deviceIdList);
+    if (partitionKeyList != null) {
+      size += RamUsageEstimator.shallowSizeOf(partitionKeyList);
+      for (IDeviceID deviceID : partitionKeyList) {
+        size += deviceID == null ? 0L : deviceID.ramBytesUsed();
+      }
+    }
+    return size;
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.data;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -38,9 +39,9 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -99,17 +100,17 @@ public class ImportData extends AbstractDataTool {
       System.exit(Constants.CODE_ERROR);
     }
     final List<String> argList = Arrays.asList(args);
-    int helpIndex = argList.indexOf(Constants.MINUS + Constants.HELP_ARGS);
     int sql_dialect = argList.indexOf(Constants.MINUS + Constants.SQL_DIALECT_ARGS); // -sql_dialect
-    if (sql_dialect >= 0
-        && !Constants.SQL_DIALECT_VALUE_TREE.equalsIgnoreCase(argList.get(sql_dialect + 1))) {
+    if (sql_dialect >= 0) {
+      // sql_dialect specified (default: tree)
       final String sqlDialectValue = argList.get(sql_dialect + 1);
       if (Constants.SQL_DIALECT_VALUE_TABLE.equalsIgnoreCase(sqlDialectValue)) {
         sqlDialectTree = false;
         tsFileOptions = OptionsUtil.createTableImportTsFileOptions();
         csvOptions = OptionsUtil.createTableImportCsvOptions();
         sqlOptions = OptionsUtil.createTableImportSqlOptions();
-      } else {
+      } else if (!Constants.SQL_DIALECT_VALUE_TREE.equalsIgnoreCase(sqlDialectValue)) {
+        // sql_dialect neither tree nor table
         ioTPrinter.println(String.format("sql_dialect %s is not support", sqlDialectValue));
         printHelpOptions(
             Constants.IMPORT_CLI_HEAD,
@@ -126,9 +127,11 @@ public class ImportData extends AbstractDataTool {
     if (ftIndex < 0) {
       ftIndex = argList.indexOf(Constants.MINUS + Constants.FILE_TYPE_NAME); // -file_type
     }
+    int helpIndex = argList.indexOf(Constants.MINUS + Constants.HELP_ARGS);
     if (helpIndex >= 0) {
       fileType = argList.get(helpIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
+        // print help info according to file type
         if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           printHelpOptions(null, Constants.IMPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
         } else if (Constants.CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
@@ -147,6 +150,7 @@ public class ImportData extends AbstractDataTool {
               true);
         }
       } else {
+        // print help info for all file types
         printHelpOptions(
             Constants.IMPORT_CLI_HEAD,
             Constants.IMPORT_CLI_PREFIX,
@@ -160,6 +164,7 @@ public class ImportData extends AbstractDataTool {
     } else if (ftIndex >= 0) {
       fileType = argList.get(ftIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
+        // parse command line according to file type
         if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
             commandLine = parser.parse(tsFileOptions, args);
@@ -199,16 +204,12 @@ public class ImportData extends AbstractDataTool {
         }
       } else {
         ioTPrinter.println(
-            String.format(
-                "Invalid args: Required values for option '%s' not provided",
-                Constants.FILE_TYPE_NAME));
+            String.format(Constants.REQUIRED_ARGS_ERROR_MSG, Constants.FILE_TYPE_NAME));
         System.exit(Constants.CODE_ERROR);
       }
     } else {
       ioTPrinter.println(
-          String.format(
-              "Invalid args: Required values for option '%s' not provided",
-              Constants.FILE_TYPE_NAME));
+          String.format(Constants.REQUIRED_ARGS_ERROR_MSG, Constants.FILE_TYPE_NAME));
       System.exit(Constants.CODE_ERROR);
     }
 
@@ -329,6 +330,12 @@ public class ImportData extends AbstractDataTool {
       successOperation = ImportTsFileOperation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
       failOperation = ImportTsFileOperation.getOperation(onFail, isFailDirEqualsSourceDir);
     }
+    if (!sqlDialectTree
+        && Constants.CSV_SUFFIXS.equalsIgnoreCase(fileType)
+        && StringUtils.isBlank(table)) {
+      ioTPrinter.println("Invalid args: Required values for option table not provided.");
+      System.exit(Constants.CODE_ERROR);
+    }
   }
 
   public static boolean isFileStoreEquals(String pathString, File dir) {
@@ -373,29 +380,29 @@ public class ImportData extends AbstractDataTool {
 
   private static void applyTypeInferArgs(String key, String value) throws ArgsErrorException {
     if (!Constants.TYPE_INFER_KEY_DICT.containsKey(key)) {
-      throw new ArgsErrorException("Unknown type infer key: " + key);
+      throw new ArgsErrorException(String.format(CliMessages.UNKNOWN_TYPE_INFER_KEY, key));
     }
     if (!Constants.TYPE_INFER_VALUE_DICT.containsKey(value)) {
-      throw new ArgsErrorException("Unknown type infer value: " + value);
+      throw new ArgsErrorException(String.format(CliMessages.UNKNOWN_TYPE_INFER_VALUE, value));
     }
     if (key.equals(Constants.DATATYPE_NAN)
         && !(value.equals(Constants.DATATYPE_FLOAT)
             || value.equals(Constants.DATATYPE_DOUBLE)
             || value.equals(Constants.DATATYPE_TEXT)
             || value.equals(Constants.DATATYPE_STRING))) {
-      throw new ArgsErrorException("NaN can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.NAN_CANNOT_CONVERT, value));
     }
     if (key.equals(Constants.DATATYPE_BOOLEAN)
         && !(value.equals(Constants.DATATYPE_BOOLEAN)
             || value.equals(Constants.DATATYPE_TEXT)
             || value.equals(Constants.DATATYPE_STRING))) {
-      throw new ArgsErrorException("Boolean can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.BOOLEAN_CANNOT_CONVERT, value));
     }
     if (key.equals(Constants.DATATYPE_DATE)
         && !(value.equals(Constants.DATATYPE_DATE)
             || value.equals(Constants.DATATYPE_TEXT)
             || value.equals(Constants.DATATYPE_STRING))) {
-      throw new ArgsErrorException("Date can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.DATE_CANNOT_CONVERT, value));
     }
     if (key.equals(Constants.DATATYPE_TIMESTAMP)
         && !(value.equals(Constants.DATATYPE_TIMESTAMP)
@@ -403,15 +410,15 @@ public class ImportData extends AbstractDataTool {
             || value.equals(Constants.DATATYPE_STRING)
             || value.equals(Constants.DATATYPE_DOUBLE)
             || value.equals(Constants.DATATYPE_LONG))) {
-      throw new ArgsErrorException("Timestamp can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.TIMESTAMP_CANNOT_CONVERT, value));
     }
     if (key.equals(Constants.DATATYPE_BLOB) && !(value.equals(Constants.DATATYPE_BLOB))) {
-      throw new ArgsErrorException("Blob can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.BLOB_CANNOT_CONVERT, value));
     }
     final TSDataType srcType = Constants.TYPE_INFER_VALUE_DICT.get(key);
     final TSDataType dstType = Constants.TYPE_INFER_VALUE_DICT.get(value);
     if (dstType.getType() < srcType.getType()) {
-      throw new ArgsErrorException(key + " can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.CANNOT_CONVERT, key, value));
     }
     Constants.TYPE_INFER_KEY_DICT.put(key, Constants.TYPE_INFER_VALUE_DICT.get(value));
   }

@@ -24,6 +24,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public enum TableNodeStatus {
   PRE_CREATE((byte) 0),
@@ -44,6 +45,19 @@ public enum TableNodeStatus {
 
   public static TableNodeStatus deserialize(final InputStream inputStream) throws IOException {
     switch (ReadWriteIOUtils.readByte(inputStream)) {
+      case 0:
+        return PRE_CREATE;
+      case 1:
+        return USING;
+      case 2:
+        return PRE_DELETE;
+      default:
+        throw new IllegalArgumentException();
+    }
+  }
+
+  public static TableNodeStatus deserialize(final ByteBuffer buffer) {
+    switch (ReadWriteIOUtils.readByte(buffer)) {
       case 0:
         return PRE_CREATE;
       case 1:

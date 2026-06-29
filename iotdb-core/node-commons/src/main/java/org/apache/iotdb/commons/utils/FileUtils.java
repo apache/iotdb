@@ -20,9 +20,10 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.FilenameUtils;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
+import org.apache.tsfile.external.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -141,31 +143,25 @@ public class FileUtils {
     File[] files = parentFolder.listFiles();
     if (parentFolder.isDirectory() && (files == null || files.length == 0)) {
       if (!parentFolder.delete()) {
-        LOGGER.warn("Delete folder failed: {}", parentFolder.getAbsolutePath());
+        LOGGER.warn(UtilMessages.DELETE_FOLDER_FAILED, parentFolder.getAbsolutePath());
       }
     }
   }
 
   public static boolean copyDir(File sourceDir, File targetDir) throws IOException {
     if (!sourceDir.exists() || !sourceDir.isDirectory()) {
-      LOGGER.error(
-          "Failed to copy folder, because source folder [{}] doesn't exist.",
-          sourceDir.getAbsolutePath());
+      LOGGER.error(UtilMessages.COPY_FOLDER_SOURCE_NOT_EXIST, sourceDir.getAbsolutePath());
       return false;
     }
     if (!targetDir.exists() && !targetDir.mkdirs()) {
       synchronized (FileUtils.class) {
         if (!targetDir.exists() && !targetDir.mkdirs()) {
-          LOGGER.error(
-              "Failed to copy folder, because failed to create target folder[{}].",
-              targetDir.getAbsolutePath());
+          LOGGER.error(UtilMessages.COPY_FOLDER_CREATE_TARGET_FAILED, targetDir.getAbsolutePath());
           return false;
         }
       }
     } else if (!targetDir.isDirectory()) {
-      LOGGER.error(
-          "Failed to copy folder, because target folder [{}] already exist.",
-          targetDir.getAbsolutePath());
+      LOGGER.error(UtilMessages.COPY_FOLDER_TARGET_ALREADY_EXISTS, targetDir.getAbsolutePath());
       return false;
     }
     File[] files = sourceDir.listFiles();
@@ -193,7 +189,7 @@ public class FileUtils {
           out.flush();
           fileOutputStream.getFD().sync(); // after try block, stream will call close automatically
         } catch (IOException e) {
-          LOGGER.warn("get ioexception on file {}", file.getAbsolutePath(), e);
+          LOGGER.warn(UtilMessages.IO_EXCEPTION_ON_FILE, file.getAbsolutePath(), e);
           throw e;
         }
       }
@@ -228,15 +224,15 @@ public class FileUtils {
     if (file.isDirectory()) {
       File[] files = file.listFiles();
       if (files == null || files.length == 0) {
-        org.apache.commons.io.FileUtils.deleteDirectory(file);
+        org.apache.tsfile.external.commons.io.FileUtils.deleteDirectory(file);
       } else {
         for (File f : files) {
           recursivelyDeleteFolder(f.getAbsolutePath());
         }
-        org.apache.commons.io.FileUtils.deleteDirectory(file);
+        org.apache.tsfile.external.commons.io.FileUtils.deleteDirectory(file);
       }
     } else {
-      org.apache.commons.io.FileUtils.delete(file);
+      org.apache.tsfile.external.commons.io.FileUtils.delete(file);
     }
   }
 
@@ -263,53 +259,50 @@ public class FileUtils {
    */
   public static boolean moveFileSafe(File source, File target) {
     if (target.exists()) {
-      LOGGER.info(
-          "won't move file again because target file already exists: {}", target.getAbsolutePath());
-      LOGGER.info("you may manually delete source file if necessary: {}", source.getAbsolutePath());
+      LOGGER.info(UtilMessages.MOVE_FILE_TARGET_ALREADY_EXISTS, target.getAbsolutePath());
+      LOGGER.info(UtilMessages.MOVE_FILE_DELETE_SOURCE_HINT, source.getAbsolutePath());
       return true;
     }
 
     final String fromTo =
         String.format("from %s to %s", source.getAbsolutePath(), target.getAbsolutePath());
-    LOGGER.info("start to move file, {}", fromTo);
+    LOGGER.info(UtilMessages.MOVE_FILE_START, fromTo);
 
     // Prepare the xxx.unfinished File, delete it if it's already exist
     File unfinishedTarget = new File(target.getAbsolutePath() + ".unfinished");
     try {
       if (unfinishedTarget.exists()) {
         if (unfinishedTarget.isFile()) {
-          org.apache.commons.io.FileUtils.delete(unfinishedTarget);
+          org.apache.tsfile.external.commons.io.FileUtils.delete(unfinishedTarget);
         } else {
           recursivelyDeleteFolder(unfinishedTarget.getAbsolutePath());
         }
       }
     } catch (IOException e) {
       LOGGER.error(
-          "delete unfinished target file failed: {}", unfinishedTarget.getAbsolutePath(), e);
+          UtilMessages.DELETE_UNFINISHED_TARGET_FAILED, unfinishedTarget.getAbsolutePath(), e);
       return false;
     }
-    LOGGER.info(
-        "unfinished target file which was created last time has been deleted: {}",
-        unfinishedTarget.getAbsolutePath());
+    LOGGER.info(UtilMessages.UNFINISHED_TARGET_DELETED, unfinishedTarget.getAbsolutePath());
 
     // Copy
     try {
       if (source.isDirectory()) {
         if (!copyDir(source, unfinishedTarget)) {
-          LOGGER.error("file copy fail");
+          LOGGER.error(UtilMessages.FILE_COPY_FAIL);
           return false;
         }
       } else {
-        org.apache.commons.io.FileUtils.copyFile(source, unfinishedTarget);
+        org.apache.tsfile.external.commons.io.FileUtils.copyFile(source, unfinishedTarget);
       }
     } catch (IOException e) {
-      LOGGER.error("file copy fail", e);
+      LOGGER.error(UtilMessages.FILE_COPY_FAIL, e);
       return false;
     }
 
     // Rename
     if (!unfinishedTarget.renameTo(target)) {
-      LOGGER.error("file rename fail");
+      LOGGER.error(UtilMessages.FILE_RENAME_FAIL);
       return false;
     }
 
@@ -318,13 +311,13 @@ public class FileUtils {
       if (source.isDirectory()) {
         recursivelyDeleteFolder(source.getAbsolutePath());
       } else {
-        org.apache.commons.io.FileUtils.delete(source);
+        org.apache.tsfile.external.commons.io.FileUtils.delete(source);
       }
     } catch (IOException e) {
-      LOGGER.error("delete source file fail: {}", source.getAbsolutePath(), e);
+      LOGGER.error(UtilMessages.DELETE_SOURCE_FILE_FAIL, source.getAbsolutePath(), e);
     }
 
-    LOGGER.info("move file success, {}", fromTo);
+    LOGGER.info(UtilMessages.MOVE_FILE_SUCCESS, fromTo);
     return true;
   }
 
@@ -334,15 +327,44 @@ public class FileUtils {
         if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
           throw new IOException(
               String.format(
-                  "failed to create hardlink %s for file %s: failed to create parent dir %s",
-                  hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
+                  UtilMessages.FAILED_TO_CREATE_HARDLINK_PARENT_DIR,
+                  hardlink.getPath(),
+                  sourceFile.getPath(),
+                  hardlink.getParentFile().getPath()));
         }
       }
     }
 
     final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
     final Path linkPath = FileSystems.getDefault().getPath(hardlink.getAbsolutePath());
-    Files.createLink(linkPath, sourcePath);
+    try {
+      Files.createLink(linkPath, sourcePath);
+    } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
+      if (haveSameMD5(sourceFile, hardlink)) {
+        LOGGER.warn(
+            UtilMessages.HARDLINK_ALREADY_EXISTS,
+            hardlink.getAbsolutePath(),
+            sourceFile.getAbsolutePath());
+      } else {
+        LOGGER.warn(
+            UtilMessages.HARDLINK_MISMATCH_RETRY,
+            hardlink.getAbsolutePath(),
+            sourceFile.getAbsolutePath());
+        deleteFileIfExist(hardlink);
+        try {
+          Files.createLink(linkPath, sourcePath);
+        } catch (final Exception e) {
+          deleteFileIfExist(linkPath.toFile());
+          LOGGER.error(
+              UtilMessages.FAILED_TO_CREATE_HARDLINK,
+              hardlink.getAbsolutePath(),
+              sourceFile.getAbsolutePath(),
+              e.getMessage(),
+              e);
+          throw e;
+        }
+      }
+    }
     return hardlink;
   }
 
@@ -352,7 +374,7 @@ public class FileUtils {
         if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
           throw new IOException(
               String.format(
-                  "failed to copy file %s to %s: failed to create parent dir %s",
+                  UtilMessages.FAILED_TO_COPY_FILE_PARENT_DIR,
                   sourceFile.getPath(),
                   targetFile.getPath(),
                   targetFile.getParentFile().getPath()));
@@ -384,25 +406,130 @@ public class FileUtils {
       throws IOException {
     final String sourceFileName = sourceFile.getName();
     final File targetFile = new File(targetDir, sourceFileName);
-
     if (targetFile.exists()) {
-      if (haveSameMD5(sourceFile, targetFile)) {
-        org.apache.commons.io.FileUtils.forceDelete(sourceFile);
-        LOGGER.info(
-            "Deleted the file {} because it already exists in the target directory: {}",
-            sourceFile.getName(),
-            targetDir.getAbsolutePath());
-      } else {
-        renameWithMD5(sourceFile, targetDir);
-        LOGGER.info(
-            "Renamed file {} to {} because it already exists in the target directory: {}",
-            sourceFile.getName(),
-            targetFile.getName(),
-            targetDir.getAbsolutePath());
-      }
+      moveFile(sourceFile, targetDir);
     } else {
-      org.apache.commons.io.FileUtils.moveFileToDirectory(sourceFile, targetDir, true);
+      org.apache.tsfile.external.commons.io.FileUtils.moveFileToDirectory(
+          sourceFile, targetDir, true);
     }
+  }
+
+  private static void moveFile(File sourceFile, File targetDir) throws IOException {
+    String sourceFileName = sourceFile.getName();
+    final File exitsFile = new File(targetDir, sourceFileName);
+
+    // First check file sizes
+    long sourceFileSize = sourceFile.length();
+    long existsFileSize = exitsFile.length();
+
+    if (sourceFileSize != existsFileSize) {
+      File file = renameWithSize(sourceFile, sourceFileSize, targetDir);
+      if (!file.exists()) {
+        moveFileRename(sourceFile, file);
+      }
+      return;
+    }
+
+    // If sizes are equal, check MD5
+    String sourceFileMD5;
+    String existsFileMD5;
+    try (final FileInputStream is1 = new FileInputStream(sourceFile);
+        final FileInputStream is2 = new FileInputStream(exitsFile); ) {
+      sourceFileMD5 = DigestUtils.md5Hex(is1);
+      existsFileMD5 = DigestUtils.md5Hex(is2);
+    }
+
+    if (sourceFileMD5.equals(existsFileMD5)) {
+      org.apache.tsfile.external.commons.io.FileUtils.forceDelete(sourceFile);
+      LOGGER.info(
+          UtilMessages.DELETED_DUPLICATE_FILE, sourceFile.getName(), targetDir.getAbsolutePath());
+    } else {
+      File file = renameWithMD5(sourceFile, sourceFileMD5, targetDir);
+      moveFileRename(sourceFile, file);
+    }
+  }
+
+  public static void copyFileWithMD5Check(final File sourceFile, final File targetDir)
+      throws IOException {
+    final String sourceFileName = sourceFile.getName();
+    final File targetFile = new File(targetDir, sourceFileName);
+    if (targetFile.exists()) {
+      copyFileWithMD5(sourceFile, targetDir);
+    } else {
+      try {
+        Files.createDirectories(targetDir.toPath());
+      } catch (IOException e) {
+        LOGGER.warn(UtilMessages.FAILED_TO_CREATE_TARGET_DIRECTORY, targetDir.getAbsolutePath());
+        throw e;
+      }
+
+      Files.copy(
+          sourceFile.toPath(),
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.COPY_ATTRIBUTES);
+    }
+  }
+
+  private static File renameWithMD5(
+      final File sourceFile, final String sourceFileMD5, final File targetDir) throws IOException {
+    final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
+    final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
+
+    final String targetFileName =
+        sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
+    return new File(targetDir, targetFileName);
+  }
+
+  private static void copyFileWithMD5(final File sourceFile, final File targetDir)
+      throws IOException {
+    String sourceFileName = sourceFile.getName();
+    final File exitsFile = new File(targetDir, sourceFileName);
+
+    // First check file sizes
+    long sourceFileSize = sourceFile.length();
+    long exitsFileSize = exitsFile.length();
+
+    if (sourceFileSize != exitsFileSize) {
+      File file = renameWithSize(sourceFile, sourceFileSize, targetDir);
+      if (!file.exists()) {
+        copyFileRename(sourceFile, file);
+      }
+      return;
+    }
+
+    // If sizes are equal, check MD5
+    String sourceFileMD5;
+    String exitsFileMD5;
+    try (final FileInputStream is1 = new FileInputStream(sourceFile);
+        final FileInputStream is2 = new FileInputStream(exitsFile); ) {
+      sourceFileMD5 = DigestUtils.md5Hex(is1);
+      exitsFileMD5 = DigestUtils.md5Hex(is2);
+    }
+
+    if (sourceFileMD5.equals(exitsFileMD5)) {
+      return;
+    }
+
+    File file = renameWithMD5(sourceFile, sourceFileMD5, targetDir);
+    if (!file.exists()) {
+      copyFileRename(sourceFile, file);
+    }
+  }
+
+  private static File renameWithSize(
+      final File sourceFile, final long sourceFileSize, final File targetDir) {
+    final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
+    final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
+
+    // If the file sizes are different, rename the source file by appending its size and the
+    // current timestamp
+    final String newFileName =
+        String.format(
+            "%s_%s_%s.%s",
+            sourceFileBaseName, sourceFileSize, System.currentTimeMillis(), sourceFileExtension);
+
+    return new File(targetDir, newFileName);
   }
 
   private static boolean haveSameMD5(final File file1, final File file2) {
@@ -414,18 +541,42 @@ public class FileUtils {
     }
   }
 
-  private static void renameWithMD5(File sourceFile, File targetDir) throws IOException {
-    try (final InputStream is = Files.newInputStream(sourceFile.toPath())) {
-      final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
-      final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
-      final String sourceFileMD5 = DigestUtils.md5Hex(is);
+  private static void moveFileRename(File sourceFile, File targetFile) throws IOException {
+    org.apache.tsfile.external.commons.io.FileUtils.moveFile(
+        sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
 
-      final String targetFileName =
-          sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
-      final File targetFile = new File(targetDir, targetFileName);
+    LOGGER.info(
+        UtilMessages.RENAMED_FILE_ALREADY_EXISTS,
+        sourceFile.getName(),
+        targetFile.getName(),
+        targetFile.getParentFile().getAbsolutePath());
+  }
 
-      org.apache.commons.io.FileUtils.moveFile(
-          sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+  private static void copyFileRename(final File sourceFile, final File targetFile)
+      throws IOException {
+    Files.copy(
+        sourceFile.toPath(),
+        targetFile.toPath(),
+        StandardCopyOption.REPLACE_EXISTING,
+        StandardCopyOption.COPY_ATTRIBUTES);
+
+    LOGGER.info(
+        UtilMessages.COPIED_FILE_ALREADY_EXISTS,
+        sourceFile.getName(),
+        targetFile,
+        targetFile.getParentFile().getAbsolutePath());
+  }
+
+  public static String getIllegalError4Directory(final String path) {
+    if (path == null || path.isEmpty()) {
+      return UtilMessages.ILLEGAL_EMPTY_PATH;
     }
+    if (path.equals(".") || path.equals("..") || path.contains("/") || path.contains("\\")) {
+      return UtilMessages.ILLEGAL_PATH_DOTS_OR_SEPARATORS;
+    }
+    if (!WindowsOSUtils.isLegalPathSegment4Windows(path)) {
+      return WindowsOSUtils.OS_SEGMENT_ERROR;
+    }
+    return null;
   }
 }

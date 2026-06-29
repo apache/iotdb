@@ -20,8 +20,9 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +49,7 @@ public class PipeHeartbeatRPCHandler extends DataNodeAsyncRequestRPCHandler<TPip
     // Put response
     responseMap.put(requestId, response);
     nodeLocationMap.remove(requestId);
-    LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+    LOGGER.debug(ConfigNodeMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
 
     // Always CountDown
     countDownLatch.countDown();
@@ -57,7 +58,7 @@ public class PipeHeartbeatRPCHandler extends DataNodeAsyncRequestRPCHandler<TPip
   @Override
   public void onError(Exception e) {
     LOGGER.error(
-        "Failed to {} on DataNode: {}, exception: {}",
+        ConfigNodeMessages.FAILED_TO_ON_DATANODE_EXCEPTION,
         requestType,
         formattedTargetLocation,
         e.getMessage());

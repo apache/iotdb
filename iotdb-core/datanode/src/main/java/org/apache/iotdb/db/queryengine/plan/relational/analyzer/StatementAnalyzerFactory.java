@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -33,16 +34,21 @@ public class StatementAnalyzerFactory {
   private final Metadata metadata;
   private final SqlParser sqlParser;
   private final AccessControl accessControl;
+  private final TypeManager typeManager;
 
   public StatementAnalyzerFactory(
-      final Metadata metadata, final SqlParser sqlParser, final AccessControl accessControl) {
+      final Metadata metadata,
+      final SqlParser sqlParser,
+      final AccessControl accessControl,
+      final TypeManager typeManager) {
     this.metadata = requireNonNull(metadata, "plannerContext is null");
     this.sqlParser = sqlParser;
     this.accessControl = requireNonNull(accessControl, "accessControl is null");
+    this.typeManager = requireNonNull(typeManager, "typeManager is null");
   }
 
   public StatementAnalyzerFactory withSpecializedAccessControl(AccessControl accessControl) {
-    return new StatementAnalyzerFactory(metadata, sqlParser, accessControl);
+    return new StatementAnalyzerFactory(metadata, sqlParser, accessControl, typeManager);
   }
 
   public StatementAnalyzer createStatementAnalyzer(
@@ -59,15 +65,20 @@ public class StatementAnalyzerFactory {
         warningCollector,
         session,
         metadata,
-        correlationSupport);
+        correlationSupport,
+        typeManager);
   }
 
   public static StatementAnalyzerFactory createTestingStatementAnalyzerFactory(
-      Metadata metadata, AccessControl accessControl) {
-    return new StatementAnalyzerFactory(metadata, new SqlParser(), accessControl);
+      Metadata metadata, AccessControl accessControl, TypeManager typeManager) {
+    return new StatementAnalyzerFactory(metadata, new SqlParser(), accessControl, typeManager);
   }
 
   public AccessControl getAccessControl() {
     return accessControl;
+  }
+
+  public SqlParser getSqlParser() {
+    return sqlParser;
   }
 }

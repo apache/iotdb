@@ -23,22 +23,26 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeNonAlignedDeviceViewAggregationScanOperator;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.tsfile.read.reader.series.PaginationController;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class SeriesScanOptions {
+public class SeriesScanOptions implements Accountable {
 
   private Filter globalTimeFilter;
+  private final Filter originalTimeFilter;
 
-  private final AtomicBoolean timeFilterUpdatedByTll = new AtomicBoolean(false);
+  private final AtomicBoolean timeFilterUpdatedByTtl = new AtomicBoolean(false);
 
   private final Filter pushDownFilter;
 
@@ -49,6 +53,11 @@ public class SeriesScanOptions {
 
   private final boolean pushLimitToEachDevice;
   private PaginationController paginationController;
+  private boolean isTableViewForTreeModel;
+  private long ttlForTableView = Long.MAX_VALUE;
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(
+          TreeNonAlignedDeviceViewAggregationScanOperator.class);
 
   public SeriesScanOptions(
       Filter globalTimeFilter,
@@ -56,13 +65,16 @@ public class SeriesScanOptions {
       long pushDownLimit,
       long pushDownOffset,
       Set<String> allSensors,
-      boolean pushLimitToEachDevice) {
+      boolean pushLimitToEachDevice,
+      boolean isTableViewForTreeModel) {
     this.globalTimeFilter = globalTimeFilter;
+    this.originalTimeFilter = globalTimeFilter;
     this.pushDownFilter = pushDownFilter;
     this.pushDownLimit = pushDownLimit;
     this.pushDownOffset = pushDownOffset;
     this.allSensors = allSensors;
     this.pushLimitToEachDevice = pushLimitToEachDevice;
+    this.isTableViewForTreeModel = isTableViewForTreeModel;
   }
 
   public static SeriesScanOptions getDefaultSeriesScanOptions(IFullPath seriesPath) {
@@ -75,6 +87,11 @@ public class SeriesScanOptions {
               Collections.singletonList(((NonAlignedFullPath) seriesPath).getMeasurement())));
     }
     return builder.build();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 
   public Filter getGlobalTimeFilter() {
@@ -112,14 +129,26 @@ public class SeriesScanOptions {
     }
   }
 
-  public boolean timeFilterNeedUpdatedByTll() {
-    return !timeFilterUpdatedByTll.get();
+  public boolean timeFilterNeedUpdatedByTtl() {
+    return !timeFilterUpdatedByTtl.get();
   }
 
-  public void setTTL(long dataTTL) {
-    if (timeFilterUpdatedByTll.compareAndSet(false, true)) {
+  public void setTTLForTableDevice(long dataTTL) {
+    // Devices in the table model share a same table ttl, so it only needs to be set once
+    if (timeFilterUpdatedByTtl.compareAndSet(false, true)) {
       this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
     }
+  }
+
+  public void setTTLForTreeDevice(long dataTTL) {
+    // ttlForTableView should be set before calling setTTL.
+    // Different devices have different ttl, so we regenerate the globalTimeFilter each time
+    this.globalTimeFilter =
+        updateFilterUsingTTL(originalTimeFilter, Math.min(ttlForTableView, dataTTL));
+  }
+
+  public void setTTLForTableView(long ttlForTableView) {
+    this.ttlForTableView = ttlForTableView;
   }
 
   /**
@@ -136,6 +165,14 @@ public class SeriesScanOptions {
       }
     }
     return filter;
+  }
+
+  public boolean isTableViewForTreeModel() {
+    return isTableViewForTreeModel;
+  }
+
+  public void setIsTableViewForTreeModel(boolean isTableViewForTreeModel) {
+    this.isTableViewForTreeModel = isTableViewForTreeModel;
   }
 
   /**
@@ -159,6 +196,7 @@ public class SeriesScanOptions {
     private Set<String> allSensors;
 
     private boolean pushLimitToEachDevice = true;
+    private boolean isTableViewForTreeModel = false;
 
     public Builder withGlobalTimeFilter(Filter globalTimeFilter) {
       this.globalTimeFilter = globalTimeFilter;
@@ -185,6 +223,11 @@ public class SeriesScanOptions {
       return this;
     }
 
+    public Builder withIsTableViewForTreeModel(boolean isTableViewForTreeModel) {
+      this.isTableViewForTreeModel = isTableViewForTreeModel;
+      return this;
+    }
+
     public void withAllSensors(Set<String> allSensors) {
       this.allSensors = allSensors;
     }
@@ -196,7 +239,8 @@ public class SeriesScanOptions {
           pushDownLimit,
           pushDownOffset,
           allSensors,
-          pushLimitToEachDevice);
+          pushLimitToEachDevice,
+          isTableViewForTreeModel);
     }
   }
 }

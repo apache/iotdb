@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.itbase.constant;
 
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -42,7 +44,14 @@ public enum BuiltinAggregationFunctionEnum {
   AVG("avg"),
   SUM("sum"),
   MAX_BY("max_by"),
-  MIN_BY("min_by");
+  MIN_BY("min_by"),
+  CORR("corr"),
+  COVAR_POP("covar_pop"),
+  COVAR_SAMP("covar_samp"),
+  REGR_SLOPE("regr_slope"),
+  REGR_INTERCEPT("regr_intercept"),
+  SKEWNESS("skewness"),
+  KURTOSIS("kurtosis");
 
   private final String functionName;
 
@@ -56,8 +65,8 @@ public enum BuiltinAggregationFunctionEnum {
 
   private static final Set<String> NATIVE_FUNCTION_NAMES =
       new HashSet<>(
-          Arrays.stream(org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction.values())
-              .map(org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction::getFunctionName)
+          Arrays.stream(BuiltinAggregationFunction.values())
+              .map(BuiltinAggregationFunction::getFunctionName)
               .collect(Collectors.toList()));
 
   public static Set<String> getNativeFunctionNames() {

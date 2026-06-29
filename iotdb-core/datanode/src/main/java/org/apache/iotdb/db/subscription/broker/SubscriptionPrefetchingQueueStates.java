@@ -133,7 +133,7 @@ public class SubscriptionPrefetchingQueueStates {
   }
 
   private boolean isMemoryEnough() {
-    return PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
+    return PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
             * PREFETCH_MEMORY_THRESHOLD
         > PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes();
   }

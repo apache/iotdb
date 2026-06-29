@@ -55,17 +55,12 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptFlag(boolean encryptFlag) {
-    return this;
-  }
-
-  @Override
   public CommonConfig setEncryptType(String encryptType) {
     return this;
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
     return this;
   }
 
@@ -146,7 +141,12 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+  public CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy) {
     return this;
   }
 
@@ -249,12 +249,6 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     return this;
   }
@@ -275,7 +269,27 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
     return this;
   }
 
@@ -325,11 +339,33 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode) {
     return this;
   }
 
-  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  @Override
+  public CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
+      long subscriptionOwnerLeaseDurationMsMin) {
     return this;
   }
 
@@ -350,6 +386,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
     return this;
   }
 
@@ -382,7 +423,114 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePath(String keyStorePath) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePath(String trustStorePath) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePwd(String keyStorePwd) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePwd(String trustStorePwd) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableAuditLog(boolean enableAuditLog) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationType(String auditableOperationType) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationLevel(String auditableOperationLevel) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
     return this;
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -39,7 +40,7 @@ public abstract class AbstractChunkOffset {
   }
 
   public abstract IChunkHandle generateChunkHandle(
-      String filePath, Statistics<? extends Serializable> statistics);
+      String filePath, TsFileID tsFileID, Statistics<? extends Serializable> statistics);
 
   public IDeviceID getDeviceID() {
     return deviceID;

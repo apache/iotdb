@@ -20,24 +20,25 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
@@ -60,6 +61,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -259,6 +261,57 @@ public class TTLTest {
     assertTrue(cnt == 0);
   }
 
+  @Test
+  public void testTTLRead2() throws IllegalPathException {
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test1.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test1.d1.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test2.**", 500);
+    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test2.d1.**", 500);
+    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test1.**", 500);
+    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test.sg1.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test.sg2.**", 500);
+    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test.sg1.d1.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+
+    DataNodeTTLCache.getInstance().setTTLForTree("root.`1.1`.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.`1.1`"));
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
+  }
+
   private NonAlignedFullPath mockMeasurementPath() {
     return new NonAlignedFullPath(
         IDeviceID.Factory.DEFAULT_FACTORY.create(sg1Device),
@@ -275,7 +328,8 @@ public class TTLTest {
       throws StorageEngineException,
           WriteProcessException,
           IllegalPathException,
-          InterruptedException {
+          InterruptedException,
+          DiskSpaceInsufficientException {
     boolean isEnableCrossCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);

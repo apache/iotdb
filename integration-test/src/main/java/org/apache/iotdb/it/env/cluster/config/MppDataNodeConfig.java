@@ -57,6 +57,18 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
+    properties.setProperty("metric_prometheus_reporter_username", username);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMetricPrometheusReporterPassword(String password) {
+    properties.setProperty("metric_prometheus_reporter_password", password);
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setEnableRestService(boolean enableRestService) {
     properties.setProperty("enable_rest_service", String.valueOf(enableRestService));
     return this;
@@ -78,6 +90,31 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad) {
+    properties.setProperty(
+        "max_allocate_memory_ratio_for_load", String.valueOf(maxAllocateMemoryRatioForLoad));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+      long loadTsFileTabletConversionBatchMemorySizeInBytes) {
+    properties.setProperty(
+        "load_tsfile_tablet_conversion_batch_memory_size_in_bytes",
+        String.valueOf(loadTsFileTabletConversionBatchMemorySizeInBytes));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadActiveListeningCheckIntervalSeconds(
+      long loadActiveListeningCheckIntervalSeconds) {
+    properties.setProperty(
+        "load_active_listening_check_interval_seconds",
+        String.valueOf(loadActiveListeningCheckIntervalSeconds));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval) {
     properties.setProperty(
         "compaction_schedule_interval_in_ms", String.valueOf(compactionScheduleInterval));
@@ -93,6 +130,54 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   @Override
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
+    setProperty("last_cache_operation_on_load", strategyName);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
+    setProperty("cache_last_values_for_load", String.valueOf(cacheLastValuesForLoad));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setWalThrottleSize(long walThrottleSize) {
+    setProperty("wal_throttle_threshold_in_byte", String.valueOf(walThrottleSize));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
+    setProperty("delete_wal_files_period_in_ms", String.valueOf(deleteWalFilesPeriodInMs));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    setProperty("datanode_memory_proportion", dataNodeMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow) {
+    setProperty("query_cost_stat_window", String.valueOf(queryCostStatWindow));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDnDataDirs(String dnDataDirs) {
+    setProperty("dn_data_dirs", dnDataDirs);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy) {
+    setProperty("dn_multi_dir_strategy", multiDirStrategy);
     return this;
   }
 }

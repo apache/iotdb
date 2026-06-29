@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.sync;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -111,7 +112,7 @@ public abstract class PipeInfo {
       serialize(dataOutputStream);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
-      LOGGER.error("Unexpected error occurred when serializing PipeInfo.");
+      LOGGER.error(CommonMessages.UNEXPECTED_SERIALIZATION_ERROR);
       throw new SerializationRunTimeException(e);
     }
   }

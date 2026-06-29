@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Objects;
 
@@ -27,9 +30,12 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class ShowTopics extends SubscriptionStatement {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowTopics.class);
+
   private final String topicName;
 
-  public ShowTopics(@Nullable final String topicName) {
+  public ShowTopics(final String topicName) {
     this.topicName = topicName;
   }
 
@@ -38,8 +44,8 @@ public class ShowTopics extends SubscriptionStatement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitShowTopics(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitShowTopics(this, context);
   }
 
   @Override
@@ -62,5 +68,13 @@ public class ShowTopics extends SubscriptionStatement {
   @Override
   public String toString() {
     return toStringHelper(this).add("topicName", topicName).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(topicName);
+    return size;
   }
 }

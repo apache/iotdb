@@ -213,64 +213,60 @@ conditions of the following licenses.
 The binary distribution of this product bundles these dependencies under the
 following license. See licenses/ for text of these licenses.
 
-Apache Software Foundation License 2.0
+Apache License 2.0
 --------------------------------------
 commons-cli:commons-cli:1.5.0
-commons-codec:commons-codec:1.16.1
-org.apache.commons:commons-collections4:4.4
-commons-io:commons-io:2.14.0
-org.apache.commons:commons-lang3:3.13.0
-com.nimbusds:content-type:2.2
-com.google.code.gson:gson:2.10.1
+com.google.code.gson:gson:2.13.1
 com.google.guava.guava:32.1.2-jre
-com.fasterxml.jackson.core:jackson-annotations:2.15.4
-com.fasterxml.jackson.core:jackson-core:2.15.4
-com.fasterxml.jackson.core:jackson-databind:2.15.4
-jakarta.inject:jakarta.inject:2.6.1
-org.lz4:lz4-java:1.8.0
-com.github.stephenc.jcip:jcip-annotations:1.0-1
+com.fasterxml.jackson.core:jackson-annotations:2.16.2
+com.fasterxml.jackson.core:jackson-core:2.16.2
+com.fasterxml.jackson.core:jackson-databind:2.16.2
+com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base:2.18.6
+com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.18.6
+com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations:2.18.6
+io.swagger.core.v3:swagger-annotations-jakarta:2.2.50
+io.swagger.core.v3:swagger-core-jakarta:2.2.50
+io.swagger.core.v3:swagger-integration-jakarta:2.2.50
+io.swagger.core.v3:swagger-jaxrs2-jakarta:2.2.50
+io.swagger.core.v3:swagger-models-jakarta:2.2.50
+jakarta.inject:jakarta.inject-api:2.0.1
+at.yawk.lz4:lz4-java:1.10.0
 com.github.ben-manes.caffeine:caffeine:2.9.3
-org.eclipse.jetty:jetty-http:9.4.56.v20240826
-org.eclipse.jetty:jetty-io:9.4.56.v20240826
-org.eclipse.jetty:jetty-security:9.4.56.v20240826
-org.eclipse.jetty:jetty-server:9.4.56.v20240826
-org.eclipse.jetty:jetty-servlet:9.4.56.v20240826
-org.eclipse.jetty:jetty-util:9.4.56.v20240826
-io.jsonwebtoken:jjwt-api:0.11.5
-io.jsonwebtoken:jjwt-impl:0.11.5
-io.jsonwebtoken:jjwt-jackson:0.11.5
-net.minidev:json-smart:2.5.0
+org.eclipse.jetty:jetty-http:12.0.36
+org.eclipse.jetty:jetty-io:12.0.36
+org.eclipse.jetty:jetty-security:12.0.36
+org.eclipse.jetty:jetty-server:12.0.36
+org.eclipse.jetty:jetty-session:12.0.36
+org.eclipse.jetty.ee10:jetty-ee10-servlet:12.0.36
+org.eclipse.jetty:jetty-util:12.0.36
 com.google.code.findbugs:jsr305:3.0.2
-com.nimbusds:lang-tag:1.7
 com.librato.metrics:librato-java:2.1.0
-org.apache.thrift:libthrift:0.14.1
+org.apache.thrift:libthrift:0.23.0
 io.dropwizard.metrics:metrics-core:4.2.19
 io.dropwizard.metrics:metrics-jvm:3.2.2
 com.librato.metrics:metrics-librato:5.1.0
-de.fraunhofer.iosb.io.moquette:moquette-broker:0.17
-io.netty:netty-buffer:4.1.110.Final
-io.netty:netty-codec:4.1.110.Final
-io.netty:netty-codec-http:4.1.110.Final
-io.netty:netty-codec-mqtt:4.1.110.Final
-io.netty:netty-common:4.1.110.Final
-io.netty:netty-handler:4.1.110.Final
-io.netty:netty-resolver:4.1.110.Final
-io.netty:netty-transport:4.1.110.Final
-io.netty:netty-transport-native-epoll:4.1.110.Final:linux-x86_64
-io.netty:netty-transport-native-unix-common:4.1.110.Final
-com.nimbusds:nimbus-jose-jwt:9.37.3
-com.nimbusds:oauth2-oidc-sdk:10.15
+com.github.moquette-io.moquette:moquette-broker:0.18
+io.netty:netty-buffer:4.1.134.Final
+io.netty:netty-codec:4.1.134.Final
+io.netty:netty-codec-http:4.1.134.Final
+io.netty:netty-codec-mqtt:4.1.134.Final
+io.netty:netty-common:4.1.134.Final
+io.netty:netty-handler:4.1.134.Final
+io.netty:netty-resolver:4.1.134.Final
+io.netty:netty-transport:4.1.134.Final
+io.netty:netty-transport-native-epoll:4.1.134.Final:linux-aarch_64
+io.netty:netty-transport-native-epoll:4.1.134.Final:linux-x86_64
+io.netty:netty-transport-native-unix-common:4.1.134.Final
 org.osgi:org.osgi.core:7.0.0
 org.osgi:osgi.cmpn:7.0.0
 org.ops4j.pax.jdbc:pax-jdbc-common:1.5.6
 org.xerial.snappy:snappy-java:1.1.10.5
 io.airlift.airline:0.9
-net.minidev:accessors-smart:2.5.0
 
 
 BSD 3-Clause
 ------------
-org.antlr:antlr-runtime:4.9.3
+org.antlr:antlr4-runtime:4.13.2
 org.ow2.asm:asm:9.3
 org.jline:jline:3.26.2
 
@@ -284,19 +280,29 @@ MIT License
 ------------
 org.slf4j:slf4j-api:2.0.9
 com.bugsnag:bugsnag:3.7.2
+io.github.classgraph:classgraph:4.8.184
 
 
 EPL 1.0
 ------------
 com.h2database:h2-mvstore:2.1.212
-ch.qos.logback:logback-classic:1.3.14
-ch.qos.logback:logback-core:1.3.14
+
+
+EPL 2.0
+------------
+ch.qos.logback:logback-classic:1.5.34
+ch.qos.logback:logback-core:1.5.34
+jakarta.annotation:jakarta.annotation-api:3.0.0
+jakarta.servlet:jakarta.servlet-api:6.0.0
+
+EDL 1.0
+------------
+jakarta.activation:jakarta.activation-api:2.1.0
+jakarta.xml.bind:jakarta.xml.bind-api:3.0.1
 
 
 CDDL 1.1
 ------------
-jakarta.annotation:jakarta.annotation-api:1.3.5
-jakarta.servlet:jakarta.servlet-api:4.0.4
 javax.xml.bind:jaxb-api:2.4.0-b180725.0427
 org.glassfish.jaxb:jaxb-runtime:2.3.6
 

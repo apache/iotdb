@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -45,7 +46,14 @@ public class LoadConvertedInsertTabletStatementTSStatusVisitor
     return visitInsertBase(insertTabletStatement, context);
   }
 
-  private TSStatus visitInsertBase(
+  @Override
+  public TSStatus visitInsertMultiTablets(
+      final InsertMultiTabletsStatement insertMultiTabletsStatement, final TSStatus context) {
+    return visitInsertBase(insertMultiTabletsStatement, context);
+  }
+
+  @Override
+  public TSStatus visitInsertBase(
       final InsertBaseStatement insertBaseStatement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
         || context.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {

@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 
@@ -47,9 +48,15 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       AlignedPath seriesPath,
       TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
-      boolean needUpdateNullEntry) {
+      boolean needUpdateNullEntry,
+      boolean deviceInMultiRegion) {
     super(
-        operatorContext, child, treeDeviceSchemaCacheManager, needUpdateCache, needUpdateNullEntry);
+        operatorContext,
+        child,
+        treeDeviceSchemaCacheManager,
+        needUpdateCache,
+        needUpdateNullEntry,
+        deviceInMultiRegion);
     this.seriesPath = seriesPath;
     this.devicePath = seriesPath.getDevicePath();
   }
@@ -65,7 +72,8 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
     }
 
     if (res.getPositionCount() != 1) {
-      throw new IllegalArgumentException("last read result should only have one record");
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.LAST_READ_RESULT_SHOULD_ONLY_HAVE_ONE_RECORD);
     }
 
     tsBlockBuilder.reset();
@@ -95,8 +103,8 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
 
   protected void appendLastValueToTsBlockBuilder(
       long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath, String type) {
-    LastQueryUtil.appendLastValue(
-        tsBlockBuilder, lastTime, measurementPath.getFullPath(), lastValue.getStringValue(), type);
+    LastQueryUtil.appendLastValueRespectBlob(
+        tsBlockBuilder, lastTime, measurementPath.getFullPath(), lastValue, type);
   }
 
   @Override

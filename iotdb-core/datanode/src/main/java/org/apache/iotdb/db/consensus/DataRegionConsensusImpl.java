@@ -21,18 +21,22 @@ package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig.RPC;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
+import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
+import org.apache.iotdb.consensus.config.IoTConsensusV2Config.ReplicateMode;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
@@ -40,9 +44,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeDispatcher;
-import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeRuntimeAgentGuardian;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -50,7 +53,10 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -59,15 +65,21 @@ import java.util.concurrent.TimeUnit;
  */
 public class DataRegionConsensusImpl {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataRegionConsensusImpl.class);
+
   private DataRegionConsensusImpl() {
     // do nothing
+  }
+
+  @TestOnly
+  public static void setInstance(final IConsensus instance) {
+    DataRegionConsensusImplHolder.INSTANCE = instance;
   }
 
   public static IConsensus getInstance() {
     return DataRegionConsensusImplHolder.INSTANCE;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     DataRegionConsensusImpl.DataRegionConsensusImplHolder.reinitializeStatics();
   }
@@ -79,6 +91,7 @@ public class DataRegionConsensusImpl {
   private static class DataRegionConsensusImplHolder {
 
     private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
+    private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
     private static final DataNodeMemoryConfig MEMORY_CONFIG =
         IoTDBDescriptor.getInstance().getMemoryConfig();
 
@@ -87,7 +100,7 @@ public class DataRegionConsensusImpl {
     // Make sure both statics are initialized.
     static {
       reinitializeStatics();
-      PipeDataNodeAgent.receiver().pipeConsensus().initConsensusInRuntime();
+      PipeDataNodeAgent.receiver().iotConsensusV2().initConsensusInRuntime();
       DeletionResourceManager.build();
     }
 
@@ -107,6 +120,11 @@ public class DataRegionConsensusImpl {
 
     private static DataRegionStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
       DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
+      if (dataRegion == null) {
+        String errorMsg = String.format(StorageEngineMessages.FAILED_TO_FIND_DATA_REGION, gid);
+        LOGGER.error(errorMsg);
+        throw new IllegalArgumentException(errorMsg);
+      }
       if (ConsensusFactory.IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
         return new IoTConsensusDataRegionStateMachine(dataRegion);
       } else {
@@ -123,14 +141,16 @@ public class DataRegionConsensusImpl {
           .setThisNodeId(CONF.getDataNodeId())
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
           .setStorageDir(CONF.getDataRegionConsensusDir())
+          .setRecvSnapshotDirs(Arrays.asList(CONF.getLocalDataDirs()))
+          // IoTConsensus always balances received snapshot files by least occupied space,
+          // independent of the global dn_multi_dir_strategy.
+          .setDirectoryStrategyType(DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY)
           .setConsensusGroupType(TConsensusGroupType.DataRegion)
           .setIoTConsensusConfig(
               IoTConsensusConfig.newBuilder()
                   .setRpc(
                       RPC.newBuilder()
                           .setConnectionTimeoutInMs(CONF.getConnectionTimeoutInMS())
-                          .setRpcSelectorThreadNum(CONF.getRpcSelectorThreadCount())
-                          .setRpcMinConcurrentClientNum(CONF.getRpcMinConcurrentClientNum())
                           .setRpcMaxConcurrentClientNum(CONF.getRpcMaxConcurrentClientNum())
                           .setRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnable())
                           .setSelectorNumOfClientManager(CONF.getSelectorNumOfClientManager())
@@ -138,6 +158,11 @@ public class DataRegionConsensusImpl {
                               CONF.getThriftServerAwaitTimeForStopService())
                           .setThriftMaxFrameSize(CONF.getThriftMaxFrameSize())
                           .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                          .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
+                          .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
+                          .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
+                          .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
+                          .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
                           .build())
                   .setReplication(
                       IoTConsensusConfig.Replication.newBuilder()
@@ -149,38 +174,42 @@ public class DataRegionConsensusImpl {
                           .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
                           .setRegionMigrationSpeedLimitBytesPerSecond(
                               CONF.getRegionMigrationSpeedLimitBytesPerSecond())
+                          .setSubscriptionWalRetentionSizeInBytes(
+                              COMMON_CONF.getSubscriptionConsensusWalRetentionSizeInBytes())
+                          .setSubscriptionWalRetentionTimeMs(
+                              COMMON_CONF.getSubscriptionConsensusWalRetentionTimeMs())
+                          .setSnapshotTransmissionProgressLogIntervalMs(
+                              CONF.getDataRegionIotSnapshotTransmissionProgressLogIntervalMs())
                           .build())
                   .build())
-          .setPipeConsensusConfig(
-              PipeConsensusConfig.newBuilder()
+          .setIoTConsensusV2Config(
+              IoTConsensusV2Config.newBuilder()
                   .setRPC(
-                      PipeConsensusConfig.RPC
+                      IoTConsensusV2Config.RPC
                           .newBuilder()
                           .setConnectionTimeoutInMs(CONF.getConnectionTimeoutInMS())
-                          .setRpcSelectorThreadNum(CONF.getRpcSelectorThreadCount())
-                          .setRpcMinConcurrentClientNum(CONF.getRpcMinConcurrentClientNum())
                           .setRpcMaxConcurrentClientNum(CONF.getRpcMaxConcurrentClientNum())
                           .setIsRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnable())
                           .setThriftServerAwaitTimeForStopService(
                               CONF.getThriftServerAwaitTimeForStopService())
                           .setThriftMaxFrameSize(CONF.getThriftMaxFrameSize())
+                          .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
+                          .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
+                          .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
+                          .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
+                          .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
                           .build())
                   .setPipe(
-                      PipeConsensusConfig.Pipe.newBuilder()
+                      IoTConsensusV2Config.Pipe.newBuilder()
                           .setExtractorPluginName(
                               BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
                           .setProcessorPluginName(
-                              BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName())
+                              BuiltinPipePlugin.IOT_CONSENSUS_V2_PROCESSOR.getPipePluginName())
                           .setConnectorPluginName(
-                              BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName())
-                          // name
-                          .setConsensusPipeDispatcher(new ConsensusPipeDataNodeDispatcher())
-                          .setConsensusPipeGuardian(new ConsensusPipeDataNodeRuntimeAgentGuardian())
-                          .setConsensusPipeSelector(
-                              () -> PipeDataNodeAgent.task().getAllConsensusPipe())
-                          .setConsensusPipeReceiver(PipeDataNodeAgent.receiver().pipeConsensus())
+                              BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_CONNECTOR
+                                  .getPipePluginName())
+                          .setConsensusPipeReceiver(PipeDataNodeAgent.receiver().iotConsensusV2())
                           .setProgressIndexManager(new ReplicateProgressDataNodeManager())
-                          .setConsensusPipeGuardJobIntervalInSeconds(300)
                           .build())
                   .setReplicateMode(ReplicateMode.fromValue(CONF.getIotConsensusV2Mode()))
                   .build())
@@ -189,6 +218,10 @@ public class DataRegionConsensusImpl {
                   // An empty log is committed after each restart, even if no data is
                   // written. This setting ensures that compaction work is not discarded
                   // even if there are frequent restarts
+                  .setUtils(
+                      RatisConfig.Utils.newBuilder()
+                          .setTransferLeaderTimeoutMs(CONF.getRatisTransferLeaderTimeoutMs())
+                          .build())
                   .setSnapshot(
                       Snapshot.newBuilder()
                           .setCreationGap(1)
@@ -210,6 +243,11 @@ public class DataRegionConsensusImpl {
                                   CONF.getDataRatisConsensusGrpcFlowControlWindow()))
                           .setLeaderOutstandingAppendsMax(
                               CONF.getDataRatisConsensusGrpcLeaderOutstandingAppendsMax())
+                          .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
+                          .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
+                          .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
+                          .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
+                          .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
                           .build())
                   .setRpc(
                       RatisConfig.Rpc.newBuilder()
@@ -245,6 +283,8 @@ public class DataRegionConsensusImpl {
                               CONF.getDataRatisConsensusInitialSleepTimeMs())
                           .setClientRetryMaxSleepTimeMs(CONF.getDataRatisConsensusMaxSleepTimeMs())
                           .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                          .setReconfigurationMaxRetryAttempts(
+                              CONF.getDataRatisConsensusReconfigurationMaxRetryAttempts())
                           .build())
                   .setImpl(
                       RatisConfig.Impl.newBuilder()

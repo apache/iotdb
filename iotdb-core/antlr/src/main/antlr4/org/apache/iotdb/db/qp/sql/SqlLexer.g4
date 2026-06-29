@@ -37,12 +37,20 @@ WS
 
 // Common Keywords
 
+ACCOUNT
+    : A C C O U N T
+    ;
+
 ADD
     : A D D
     ;
 
 AFTER
     : A F T E R
+    ;
+
+AI_DEVICES
+    : A I '_' D E V I C E S
     ;
 
 ALIAS
@@ -129,6 +137,10 @@ CACHE
     : C A C H E
     ;
 
+CALCULATION
+    : C A L C U L A T I O N
+    ;
+
 CALL
     : C A L L
     ;
@@ -151,6 +163,10 @@ CLUSTER
 
 CLUSTERID
     : C L U S T E R I D
+    ;
+
+COMMENT
+    : C O M M E N T
     ;
 
 CONCAT
@@ -221,6 +237,10 @@ DATA
     : D A T A
     ;
 
+TYPE
+    : T Y P E
+    ;
+
 DATABASE
     : D A T A B A S E
     ;
@@ -242,6 +262,14 @@ DATANODES
     : D A T A N O D E S
     ;
 
+AVAILABLE
+    : A V A I L A B L E
+    ;
+
+URLS
+    : U R L S
+    ;
+
 DATASET
     : D A T A S E T
     ;
@@ -256,6 +284,10 @@ DEBUG
 
 DELETE
     : D E L E T E
+    ;
+
+DEFAULT
+    : D E F A U L T
     ;
 
 DESC
@@ -284,6 +316,10 @@ DISABLE
 
 DISCARD
     : D I S C A R D
+    ;
+
+DISK_USAGE
+    : D I S K '_' U S A G E
     ;
 
 DROP
@@ -330,6 +366,10 @@ FALSE
     : F A L S E
     ;
 
+FIELD
+    : F I E L D
+    ;
+
 FILL
     : F I L L
     ;
@@ -349,6 +389,11 @@ FLUSH
 FOR
     : F O R
     ;
+
+FORCEDLY
+    : F O R C E D L Y
+    ;
+
 
 FROM
     : F R O M
@@ -466,6 +511,10 @@ LOAD
     : L O A D
     ;
 
+LOADED
+    : L O A D E D
+    ;
+
 LOCAL
     : L O C A L
     ;
@@ -484,6 +533,10 @@ METADATA
 
 MIGRATE
     : M I G R A T E
+    ;
+
+AINODE
+    : A I N O D E
     ;
 
 AINODES
@@ -574,8 +627,16 @@ PASSWORD
     : P A S S W O R D
     ;
 
+PATH
+    : P A T H
+    ;
+
 PATHS
     : P A T H S
+    ;
+
+PERMITTED
+    : P E R M I T T E D
     ;
 
 PIPE
@@ -604,6 +665,14 @@ PIPEPLUGIN
 
 PIPEPLUGINS
     : P I P E P L U G I N S
+    ;
+
+POINT
+    : P O I N T
+    ;
+
+POINTS
+    : P O I N T S
     ;
 
 POLICY
@@ -702,6 +771,10 @@ REPLACE
     : R E P L A C E
     ;
 
+RESTRICT
+    : R E S T R I C T
+    ;
+
 REVOKE
     : R E V O K E
     ;
@@ -734,6 +807,14 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+SERVICE
+    : S E R V I C E
+    ;
+
+SERVICES
+    : S E R V I C E S
+    ;
+
 SESSION
     : S E S S I O N
     ;
@@ -756,6 +837,10 @@ SHOW
 
 SINK
     : S I N K
+    ;
+
+SIZEINBYTES
+    : S I Z E I N B Y T E S
     ;
 
 SLIMIT
@@ -806,6 +891,14 @@ STOP
     : S T O P
     ;
 
+STORAGE_PROPERTIES
+    : S T O R A G E '_' P R O P E R T I E S
+    ;
+
+SUBSCRIPTION
+    : S U B S C R I P T I O N
+    ;
+
 SUBSCRIPTIONS
     : S U B S C R I P T I O N S
     ;
@@ -820,6 +913,10 @@ SYSTEM
 
 TABLE
     : T A B L E
+    ;
+
+TAG
+    : T A G
     ;
 
 TAGS
@@ -920,6 +1017,10 @@ UNLINK
 
 UNLOAD
     : U N L O A D
+    ;
+
+UNLOCK
+    : U N L O C K
     ;
 
 UNSET
@@ -1098,6 +1199,18 @@ MAINTAIN
     : M A I N T A I N
     ;
 
+SECURITY
+    : S E C U R I T Y
+    ;
+
+AUDIT
+    : A U D I T
+    ;
+
+AUTH
+    : A U T H
+    ;
+
 REPAIR
     : R E P A I R
     ;
@@ -1114,12 +1227,12 @@ TIME_PARTITION_INTERVAL
     : T I M E '_' P A R T I T I O N '_' I N T E R V A L
     ;
 
-SCHEMA_REGION_GROUP_NUM
-    : S C H E M A '_' R E G I O N '_' G R O U P '_' N U M
+MAX_SCHEMA_REGION_GROUP_NUM
+    : M A X '_' S C H E M A '_' R E G I O N '_' G R O U P '_' N U M
     ;
 
-DATA_REGION_GROUP_NUM
-    : D A T A '_' R E G I O N '_' G R O U P '_' N U M
+MAX_DATA_REGION_GROUP_NUM
+    : M A X '_' D A T A '_' R E G I O N '_' G R O U P '_' N U M
     ;
 
 CURRENT_TIMESTAMP
@@ -1162,6 +1275,7 @@ OPERATOR_NOT : '!';
  * 4. Constructors Symbols
  */
 
+AT : '@';
 DOT : '.';
 COMMA : ',';
 SEMI: ';';

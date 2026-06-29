@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +65,7 @@ public class MetaFormatUtils {
   private static void checkNameFormat(String name) throws MetadataException {
     if (!((name.startsWith("`") && name.endsWith("`")))
         && (name.contains(".") || name.contains("*"))) {
-      throw new MetadataException(String.format("%s is an illegal name.", name));
+      throw new MetadataException(String.format(DataNodeSchemaMessages.ILLEGAL_NAME, name));
     }
   }
 
@@ -72,7 +73,7 @@ public class MetaFormatUtils {
   private static void checkCharacters(String timeseries) throws MetadataException {
     if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
       throw new MetadataException(
-          String.format("The name, %s, contains unsupported character.", timeseries));
+          String.format(DataNodeSchemaMessages.NAME_CONTAINS_UNSUPPORTED_CHAR, timeseries));
     }
   }
 
@@ -81,7 +82,7 @@ public class MetaFormatUtils {
     String processedName = name.trim().toLowerCase(Locale.ENGLISH);
     for (String reservedName : RESERVED_NODE_NAMES) {
       if (reservedName.equals(processedName)) {
-        throw new MetadataException(String.format("%s is an illegal name.", name));
+        throw new MetadataException(String.format(DataNodeSchemaMessages.ILLEGAL_NAME, name));
       }
     }
   }
@@ -103,11 +104,9 @@ public class MetaFormatUtils {
 
   /** check whether the database name uses illegal characters */
   public static void checkDatabase(final String database) throws IllegalPathException {
-    if (!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(database).matches()) {
+    if (!IoTDBConfig.DATABASE_PATTERN.matcher(database).matches()) {
       throw new IllegalPathException(
-          String.format(
-              "The database name can only contain english or chinese characters, numbers, backticks and underscores. %s",
-              database));
+          String.format(DataNodeSchemaMessages.DATABASE_NAME_ILLEGAL_CHARS, database));
     }
   }
 
@@ -123,17 +122,19 @@ public class MetaFormatUtils {
   private static void checkSDTFormat(String path, Map<String, String> props)
       throws IllegalParameterOfPathException {
     if (!props.containsKey(SDT_COMP_DEV)) {
-      throw new IllegalParameterOfPathException("SDT compression deviation is required", path);
+      throw new IllegalParameterOfPathException(
+          DataNodeSchemaMessages.SDT_COMPRESSION_DEVIATION_REQUIRED, path);
     }
 
     try {
       double d = Double.parseDouble(props.get(SDT_COMP_DEV));
       if (d < 0) {
         throw new IllegalParameterOfPathException(
-            "SDT compression deviation cannot be negative", path);
+            DataNodeSchemaMessages.SDT_COMPRESSION_DEVIATION_NEGATIVE, path);
       }
     } catch (NumberFormatException e) {
-      throw new IllegalParameterOfPathException("SDT compression deviation formatting error", path);
+      throw new IllegalParameterOfPathException(
+          DataNodeSchemaMessages.SDT_COMPRESSION_DEVIATION_FORMAT_ERROR, path);
     }
 
     long compMinTime = sdtCompressionTimeFormat(SDT_COMP_MIN_TIME, props, path);
@@ -141,7 +142,7 @@ public class MetaFormatUtils {
 
     if (compMaxTime <= compMinTime) {
       throw new IllegalParameterOfPathException(
-          "SDT compression maximum time needs to be greater than compression minimum time", path);
+          DataNodeSchemaMessages.SDT_COMPRESSION_MAX_GREATER_THAN_MIN, path);
     }
   }
 
@@ -156,14 +157,14 @@ public class MetaFormatUtils {
         time = Long.parseLong(props.get(compTime));
         if (time < 0) {
           throw new IllegalParameterOfPathException(
-              String.format("SDT compression %s time cannot be negative", s), path);
+              String.format(DataNodeSchemaMessages.SDT_COMPRESSION_TIME_NEGATIVE, s), path);
         }
       } catch (IllegalParameterOfPathException e) {
         throw new IllegalParameterOfPathException(
-            String.format("SDT compression %s time formatting error", s), path);
+            String.format(DataNodeSchemaMessages.SDT_COMPRESSION_TIME_FORMAT_ERROR, s), path);
       }
     } else {
-      logger.info("{} enabled SDT but did not set compression {} time", path, s);
+      logger.info(DataNodeSchemaMessages.SDT_ENABLED_NO_COMPRESSION_TIME, path, s);
     }
     return time;
   }

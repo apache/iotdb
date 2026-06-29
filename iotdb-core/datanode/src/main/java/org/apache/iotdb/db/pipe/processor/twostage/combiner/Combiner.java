@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.processor.twostage.combiner;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.twostage.operator.Operator;
 import org.apache.iotdb.db.pipe.processor.twostage.state.State;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -38,8 +39,6 @@ public class Combiner {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Combiner.class);
 
-  private static final long MAX_COMBINER_LIVE_TIME_IN_MS =
-      PipeConfig.getInstance().getTwoStageAggregateMaxCombinerLiveTimeInMs();
   private final long creationTimeInMs;
 
   private final Operator operator;
@@ -73,7 +72,7 @@ public class Combiner {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Combiner combine: regionId: {}, state: {}, receivedRegionIdSet: {}, expectedRegionIdSet: {}",
+          DataNodePipeMessages.COMBINER_COMBINE_REGIONID_STATE_RECEIVEDREGIONIDSET_EXPECTEDREGI,
           regionId,
           state,
           receivedRegionIdSet,
@@ -86,7 +85,7 @@ public class Combiner {
 
       if (LOGGER.isInfoEnabled()) {
         LOGGER.info(
-            "Combiner combine completed: regionId: {}, state: {}, receivedRegionIdSet: {}, expectedRegionIdSet: {}",
+            DataNodePipeMessages.COMBINER_COMBINE_COMPLETED_REGIONID_STATE_RECEIVEDREGIONIDSET_EX,
             regionId,
             state,
             receivedRegionIdSet,
@@ -98,7 +97,8 @@ public class Combiner {
   }
 
   public boolean isOutdated() {
-    return System.currentTimeMillis() - creationTimeInMs > MAX_COMBINER_LIVE_TIME_IN_MS;
+    return System.currentTimeMillis() - creationTimeInMs
+        > PipeConfig.getInstance().getTwoStageAggregateMaxCombinerLiveTimeInMs();
   }
 
   public boolean isComplete() {

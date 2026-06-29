@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
@@ -501,6 +502,17 @@ public class DatabasePartitionTable {
     }
   }
 
+  public Set<TRegionReplicaSet> getRegionGroupsByTime(
+      TTimePartitionSlot startTimeSlot, TTimePartitionSlot endTimeSlot) {
+    List<TConsensusGroupId> regionIds =
+        dataPartitionTable.getRegionId(new TSeriesPartitionSlot(-1), startTimeSlot, endTimeSlot);
+    return regionIds.stream()
+        .distinct()
+        .filter(regionGroupMap::containsKey)
+        .map(id -> regionGroupMap.get(id).getReplicaSet())
+        .collect(Collectors.toSet());
+  }
+
   public List<TTimePartitionSlot> getTimeSlotList(
       TSeriesPartitionSlot seriesSlotId, TConsensusGroupId regionId, long startTime, long endTime) {
     return dataPartitionTable.getTimeSlotList(seriesSlotId, regionId, startTime, endTime);
@@ -522,14 +534,14 @@ public class DatabasePartitionTable {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
       LOGGER.warn(
-          "Cannot find RegionGroup for region {} when addRegionNewLocation in {}",
+          ConfigNodeMessages.CANNOT_FIND_REGIONGROUP_FOR_REGION_WHEN_ADDREGIONNEWLOCATION_IN,
           regionId,
           databaseName);
       return;
     }
     if (regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info(
-          "Node is already in region locations when addRegionNewLocation in {}, "
+          ConfigNodeMessages.NODE_IS_ALREADY_IN_REGION_LOCATIONS_WHEN_ADDREGIONNEWLOCATION_IN
               + "node: {}, region: {}",
           databaseName,
           node,
@@ -539,25 +551,27 @@ public class DatabasePartitionTable {
     regionGroup.addRegionLocation(node);
   }
 
-  void removeRegionLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
+  void removeRegionLocation(TConsensusGroupId regionId, int nodeId) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
       LOGGER.warn(
-          "Cannot find RegionGroup for region {} when removeRegionOldLocation in {}",
+          ConfigNodeMessages.CANNOT_FIND_REGIONGROUP_FOR_REGION_WHEN_REMOVEREGIONOLDLOCATION_IN,
           regionId,
           databaseName);
       return;
     }
-    if (!regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
+    if (regionGroup.getReplicaSet().getDataNodeLocations().stream()
+        .map(TDataNodeLocation::getDataNodeId)
+        .noneMatch(id -> id == nodeId)) {
       LOGGER.info(
-          "Node is not in region locations when removeRegionOldLocation in {}, "
+          ConfigNodeMessages.NODE_IS_NOT_IN_REGION_LOCATIONS_WHEN_REMOVEREGIONOLDLOCATION_IN
               + "no need to remove it, node: {}, region: {}",
           databaseName,
-          node,
+          nodeId,
           regionId);
       return;
     }
-    regionGroup.removeRegionLocation(node);
+    regionGroup.removeRegionLocation(nodeId);
   }
 
   /**
@@ -626,7 +640,7 @@ public class DatabasePartitionTable {
             .toArray();
     if (removedTimePartitionSlots.length > 0) {
       LOGGER.info(
-          "[PartitionTableCleaner] The TimePartitions: {} are removed from Database: {}",
+          ConfigNodeMessages.PARTITIONTABLECLEANER_THE_TIMEPARTITIONS_ARE_REMOVED_FROM_DATABASE,
           removedTimePartitionSlots,
           databaseName);
     }

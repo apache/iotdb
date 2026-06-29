@@ -18,14 +18,26 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
+import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
+import org.apache.iotdb.calc.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.calc.execution.operator.process.fill.IFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.ConstantColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -37,17 +49,12 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.IntoOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TreeIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryCollectOperator;
@@ -76,17 +83,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindowParam
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowParameter;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
 
 import com.google.common.collect.Sets;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -227,7 +228,9 @@ public class OperatorMemoryTest {
 
   @Test
   public void exchangeOperatorTest() {
-    ExchangeOperator exchangeOperator = new ExchangeOperator(null, null, null);
+    OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
+    Mockito.when(operatorContext.getSpecifiedInfo()).thenReturn(new java.util.HashMap<>());
+    ExchangeOperator exchangeOperator = new ExchangeOperator(operatorContext, null, null);
 
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, exchangeOperator.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, exchangeOperator.calculateMaxReturnSize());
@@ -241,8 +244,10 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
+    OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
+    Mockito.when(operatorContext.getSpecifiedInfo()).thenReturn(new java.util.HashMap<>());
     ExchangeOperator exchangeOperator =
-        new ExchangeOperator(null, null, null, child.calculateMaxReturnSize());
+        new ExchangeOperator(operatorContext, null, null, child.calculateMaxReturnSize());
 
     assertEquals(1024L, exchangeOperator.calculateMaxPeekMemory());
     assertEquals(1024L, exchangeOperator.calculateMaxReturnSize());
@@ -524,13 +529,13 @@ public class OperatorMemoryTest {
             null);
 
     assertEquals(
-        2048 + 512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        2048 + 512 + CommonDescriptor.getInstance().getConfig().getSortBufferSize(),
         treeSortOperator.calculateMaxPeekMemory());
     assertEquals(
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
         treeSortOperator.calculateMaxReturnSize());
     assertEquals(
-        512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        512 + CommonDescriptor.getInstance().getConfig().getSortBufferSize(),
         treeSortOperator.calculateRetainedSizeAfterCallingNext());
   }
 
@@ -1462,60 +1467,44 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
 
     long statementSizePerLine1 = 8 + 1000 * (4 + 8 + 4 + 8 + 1 + 512);
-    IntoOperator intoOperator1 = createIntoOperator(child, statementSizePerLine1);
+    TreeIntoOperator intoOperator1 = createIntoOperator(child, statementSizePerLine1);
     int expectedMaxRowNumber = 195;
-    long expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine1;
     assertEquals(expectedMaxRowNumber, intoOperator1.getMaxRowNumberInStatement());
-    assertEquals(
-        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator1.calculateMaxPeekMemory());
+    assertEquals(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator1.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator1.calculateMaxReturnSize());
     assertEquals(
-        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator1.calculateRetainedSizeAfterCallingNext());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator1.calculateRetainedSizeAfterCallingNext());
 
     long statementSizePerLine2 = 8 + 1000 * (4 + 8 + 4 + 8 + 1);
-    IntoOperator intoOperator2 = createIntoOperator(child, statementSizePerLine2);
+    TreeIntoOperator intoOperator2 = createIntoOperator(child, statementSizePerLine2);
     expectedMaxRowNumber = 4192;
-    expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine2;
     assertEquals(expectedMaxRowNumber, intoOperator2.getMaxRowNumberInStatement());
-    assertEquals(
-        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator2.calculateMaxPeekMemory());
+    assertEquals(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator2.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator2.calculateMaxReturnSize());
     assertEquals(
-        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator2.calculateRetainedSizeAfterCallingNext());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator2.calculateRetainedSizeAfterCallingNext());
 
     long statementSizePerLine3 = 8 + 100 * (4 + 8 + 4 + 8 + 1);
-    IntoOperator intoOperator3 = createIntoOperator(child, statementSizePerLine3);
+    TreeIntoOperator intoOperator3 = createIntoOperator(child, statementSizePerLine3);
     expectedMaxRowNumber = 10000;
-    expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine3;
     assertEquals(expectedMaxRowNumber, intoOperator3.getMaxRowNumberInStatement());
-    assertEquals(
-        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator3.calculateMaxPeekMemory());
+    assertEquals(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator3.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator3.calculateMaxReturnSize());
     assertEquals(
-        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator3.calculateRetainedSizeAfterCallingNext());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator3.calculateRetainedSizeAfterCallingNext());
 
     long statementSizePerLine4 = 8 + 1000000 * (4 + 8 + 4 + 8 + 1 + 512);
-    IntoOperator intoOperator4 = createIntoOperator(child, statementSizePerLine4);
+    TreeIntoOperator intoOperator4 = createIntoOperator(child, statementSizePerLine4);
     expectedMaxRowNumber = 1;
-    expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine4;
     assertEquals(expectedMaxRowNumber, intoOperator4.getMaxRowNumberInStatement());
-    assertEquals(
-        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator4.calculateMaxPeekMemory());
+    assertEquals(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator4.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator4.calculateMaxReturnSize());
     assertEquals(
-        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        intoOperator4.calculateRetainedSizeAfterCallingNext());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator4.calculateRetainedSizeAfterCallingNext());
   }
 
-  private IntoOperator createIntoOperator(Operator child, long statementSizePerLine) {
-    return new IntoOperator(
+  private TreeIntoOperator createIntoOperator(Operator child, long statementSizePerLine) {
+    return new TreeIntoOperator(
         Mockito.mock(OperatorContext.class),
         child,
         Collections.emptyList(),

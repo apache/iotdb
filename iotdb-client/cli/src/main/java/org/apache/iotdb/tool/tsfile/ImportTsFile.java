@@ -358,7 +358,7 @@ public class ImportTsFile extends AbstractTsFileTool {
               .user(username)
               .password(password)
               .maxSize(threadNum + 1)
-              .enableCompression(false)
+              .enableIoTDBRpcCompression(false)
               .enableRedirection(false)
               .enableAutoFetch(false)
               .build();
@@ -402,7 +402,9 @@ public class ImportTsFile extends AbstractTsFileTool {
     // ImportTsFileRemotely
     ImportTsFileRemotely.setHost(host);
     ImportTsFileRemotely.setPort(port);
+    // TODO: Figure out how to fetch userId here
     ImportTsFileRemotely.setUsername(username);
+    ImportTsFileRemotely.setCliHostname(host);
     ImportTsFileRemotely.setPassword(password);
     ImportTsFileRemotely.setValidateTsFile(verify);
 

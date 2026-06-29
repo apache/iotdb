@@ -21,14 +21,13 @@ package org.apache.iotdb.commons.schema.filter;
 
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
-import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
@@ -57,7 +56,8 @@ public abstract class SchemaFilterVisitor<C> {
     return visitNode(filter, context);
   }
 
-  public Boolean visitTagFilter(TagFilter tagFilter, C context) {
+  public Boolean visitTagFilter(
+      org.apache.iotdb.commons.schema.filter.impl.TagFilter tagFilter, C context) {
     return visitFilter(tagFilter, context);
   }
 
@@ -116,7 +116,7 @@ public abstract class SchemaFilterVisitor<C> {
     return result;
   }
 
-  public Boolean visitIdFilter(final IdFilter filter, final C context) {
+  public Boolean visitTagFilter(final TagFilter filter, final C context) {
     return visitFilter(filter, context);
   }
 

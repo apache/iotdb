@@ -30,13 +30,13 @@ ip = "127.0.0.1"
 port_ = "6667"
 username_ = "root"
 password_ = "root"
-# session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8", enable_redirection=True)
+# session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="Asia/Shanghai", enable_redirection=True)
 session = Session.init_from_node_urls(
     node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
     user="root",
     password="root",
     fetch_size=1024,
-    zone_id="UTC+8",
+    zone_id="Asia/Shanghai",
     enable_redirection=True,
 )
 session.open(False)
@@ -410,6 +410,12 @@ with session.execute_query_statement(
 ) as dataset:
     df = dataset.todf()
     print(df.to_string())
+
+with session.execute_query_statement(
+    "select s_01,s_02,s_03,s_04 from root.sg_test_01.d_04"
+) as dataset:
+    while dataset.has_next_df():
+        print(dataset.next_df())
 
 # delete database
 session.delete_storage_group("root.sg_test_01")

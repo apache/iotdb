@@ -56,8 +56,8 @@ public abstract class AbstractLoadCache {
             new PhiAccrualDetector(
                 CONF.getFailureDetectorPhiThreshold(),
                 CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
-                CONF.getHeartbeatIntervalInMs() * 200_000L,
-                60,
+                CONF.getFailureDetectorHeartbeatIntervalInMs() * 200_000L,
+                IFailureDetector.PHI_COLD_START_THRESHOLD,
                 new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
         break;
       case IFailureDetector.FIXED_DETECTOR:
@@ -95,6 +95,10 @@ public abstract class AbstractLoadCache {
    */
   public AbstractHeartbeatSample getLastSample() {
     return slidingWindow.isEmpty() ? null : slidingWindow.get(slidingWindow.size() - 1);
+  }
+
+  public boolean hasHeartbeatSample() {
+    return getLastSample() != null;
   }
 
   /**

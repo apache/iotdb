@@ -61,19 +61,15 @@ public class ShowPathSetTemplateTask implements IConfigTask {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    try {
-      if (listPath != null) {
-        // template.get
-        for (PartialPath path : listPath) {
-          builder.getTimeColumnBuilder().writeLong(0L);
-          builder
-              .getColumnBuilder(0)
-              .writeBinary(new Binary(path.getFullPath(), TSFileConfig.STRING_CHARSET));
-          builder.declarePosition();
-        }
+    if (listPath != null) {
+      // template.get
+      for (PartialPath path : listPath) {
+        builder.getTimeColumnBuilder().writeLong(0L);
+        builder
+            .getColumnBuilder(0)
+            .writeBinary(new Binary(path.getFullPath(), TSFileConfig.STRING_CHARSET));
+        builder.declarePosition();
       }
-    } catch (Exception e) {
-      e.printStackTrace();
     }
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPathSetTemplateHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

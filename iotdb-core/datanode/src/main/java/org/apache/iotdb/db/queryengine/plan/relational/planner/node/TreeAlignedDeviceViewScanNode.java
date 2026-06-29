@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import java.io.DataOutputStream;
@@ -43,7 +44,7 @@ public class TreeAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
       Expression pushDownPredicate,
@@ -59,7 +60,7 @@ public class TreeAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -74,8 +75,8 @@ public class TreeAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
   public TreeAlignedDeviceViewScanNode() {}
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTreeAlignedDeviceViewScan(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitTreeAlignedDeviceViewScan(this, context);
   }
 
   @Override
@@ -86,7 +87,7 @@ public class TreeAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -114,7 +115,7 @@ public class TreeAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
 
   public static TreeAlignedDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
     TreeAlignedDeviceViewScanNode node = new TreeAlignedDeviceViewScanNode();
-    TreeDeviceViewScanNode.deserializeMemberVariables(byteBuffer, node, true);
+    TreeDeviceViewScanNode.deserializeMemberVariables(byteBuffer, node);
 
     node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return node;

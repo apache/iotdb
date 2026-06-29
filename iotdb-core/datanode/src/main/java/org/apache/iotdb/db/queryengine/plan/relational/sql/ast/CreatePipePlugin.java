@@ -19,12 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class CreatePipePlugin extends PipeStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CreatePipePlugin.class);
 
   private final String pluginName;
   private final boolean ifNotExistsCondition;
@@ -59,8 +66,8 @@ public class CreatePipePlugin extends PipeStatement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitCreatePipePlugin(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitCreatePipePlugin(this, context);
   }
 
   @Override
@@ -91,5 +98,15 @@ public class CreatePipePlugin extends PipeStatement {
         .add("className", className)
         .add("uriString", uriString)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(pluginName);
+    size += RamUsageEstimator.sizeOf(className);
+    size += RamUsageEstimator.sizeOf(uriString);
+    return size;
   }
 }

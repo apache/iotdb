@@ -19,7 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -30,19 +38,24 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class SetTableComment extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SetTableComment.class);
   private final QualifiedName tableName;
   private final boolean ifExists;
   @Nullable private final String comment;
+  private final boolean view;
 
   public SetTableComment(
       final @Nonnull NodeLocation location,
       final QualifiedName tableName,
       final boolean ifExists,
-      final @Nullable String comment) {
+      final @Nullable String comment,
+      final boolean view) {
     super(location);
     this.tableName = tableName;
     this.ifExists = ifExists;
     this.comment = comment;
+    this.view = view;
   }
 
   public QualifiedName getTableName() {
@@ -58,9 +71,13 @@ public class SetTableComment extends Statement {
     return comment;
   }
 
+  public boolean isView() {
+    return view;
+  }
+
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitSetTableComment(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitSetTableComment(this, context);
   }
 
   @Override
@@ -70,7 +87,7 @@ public class SetTableComment extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, ifExists, comment);
+    return Objects.hash(tableName, ifExists, comment, view);
   }
 
   @Override
@@ -84,7 +101,8 @@ public class SetTableComment extends Statement {
     final SetTableComment that = (SetTableComment) o;
     return ifExists == that.ifExists
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(comment, that.comment);
+        && Objects.equals(comment, that.comment)
+        && view == that.view;
   }
 
   @Override
@@ -93,6 +111,16 @@ public class SetTableComment extends Statement {
         .add("tableName", tableName)
         .add("ifExists", ifExists)
         .add("comment", comment)
+        .add("view", view)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += tableName == null ? 0L : tableName.ramBytesUsed();
+    size += RamUsageEstimator.sizeOf(comment);
+    return size;
   }
 }

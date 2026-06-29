@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 
 public abstract class SinkNode extends PlanNode implements AutoCloseable {
 

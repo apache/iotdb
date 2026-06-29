@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.rank;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
+import org.apache.iotdb.calc.execution.operator.process.window.function.rank.NTileFunction;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.PartitionExecutor;
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -34,8 +36,6 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class NTileFunctionTest {
   private final List<TSDataType> inputDataTypes = Collections.singletonList(TSDataType.INT32);
@@ -48,8 +48,8 @@ public class NTileFunctionTest {
     int[] inputs = {1, 2, 3};
     int[] expected = {1, 2, 3};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
-    NTileFunction function = new NTileFunction(n);
+    TsBlock tsBlock = createTsBlockWithN(inputs, n);
+    NTileFunction function = new NTileFunction(1);
     List<Integer> sortedColumns = Collections.singletonList(0);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
@@ -61,7 +61,8 @@ public class NTileFunctionTest {
 
     TsBlock result =
         tsBlockBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -76,8 +77,8 @@ public class NTileFunctionTest {
     int[] inputs = {1, 2, 3, 4, 5, 6};
     int[] expected = {1, 1, 2, 2, 3, 3};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
-    NTileFunction function = new NTileFunction(n);
+    TsBlock tsBlock = createTsBlockWithN(inputs, n);
+    NTileFunction function = new NTileFunction(1);
     List<Integer> sortedColumns = Collections.singletonList(0);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
@@ -89,7 +90,8 @@ public class NTileFunctionTest {
 
     TsBlock result =
         tsBlockBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -104,8 +106,8 @@ public class NTileFunctionTest {
     int[] inputs = {1, 2, 3, 4, 5, 6, 7};
     int[] expected = {1, 1, 1, 2, 2, 3, 3};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
-    NTileFunction function = new NTileFunction(n);
+    TsBlock tsBlock = createTsBlockWithN(inputs, n);
+    NTileFunction function = new NTileFunction(1);
     List<Integer> sortedColumns = Collections.singletonList(0);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
@@ -117,12 +119,28 @@ public class NTileFunctionTest {
 
     TsBlock result =
         tsBlockBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
     for (int i = 0; i < expected.length; i++) {
       Assert.assertEquals(column.getLong(i), expected[i]);
     }
+  }
+
+  private static TsBlock createTsBlockWithN(int[] inputs, int n) {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    for (int input : inputs) {
+      columnBuilders[0].writeInt(input);
+      columnBuilders[1].writeInt(n);
+      tsBlockBuilder.declarePosition();
+    }
+
+    return tsBlockBuilder.build(
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 }

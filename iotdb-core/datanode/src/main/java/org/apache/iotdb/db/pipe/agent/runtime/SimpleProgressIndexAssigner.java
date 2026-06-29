@@ -23,9 +23,10 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,18 +59,22 @@ public class SimpleProgressIndexAssigner {
   public void start() {
     isSimpleConsensusEnable =
         IOTDB_CONFIG.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS);
-    LOGGER.info("Starting SimpleProgressIndexAssigner ...");
+    LOGGER.info(DataNodePipeMessages.STARTING_SIMPLEPROGRESSINDEXASSIGNER);
 
     try {
       makeDirIfNecessary();
       parseRebootTimes();
       recordRebootTimes();
       LOGGER.info(
-          "SimpleProgressIndexAssigner started successfully. isSimpleConsensusEnable: {}, rebootTimes: {}",
+          DataNodePipeMessages
+              .SIMPLEPROGRESSINDEXASSIGNER_STARTED_SUCCESSFULLY_ISSIMPLECONSENSUSENABLE_R,
           isSimpleConsensusEnable,
           rebootTimes);
     } catch (Exception e) {
-      LOGGER.error("Cannot start SimpleProgressIndexAssigner because of {}", e.getMessage(), e);
+      LOGGER.error(
+          DataNodePipeMessages.CANNOT_START_SIMPLEPROGRESSINDEXASSIGNER_BECAUSE_OF,
+          e.getMessage(),
+          e);
     }
   }
 
@@ -93,7 +98,7 @@ public class SimpleProgressIndexAssigner {
     } catch (final Exception e) {
       rebootTimes = (int) (System.currentTimeMillis() / 1000);
       LOGGER.error(
-          "Cannot parse reboot times from file {}, set the current time in seconds ({}) as the reboot times",
+          DataNodePipeMessages.CANNOT_PARSE_REBOOT_TIMES_FROM_FILE_SET,
           file.getAbsolutePath(),
           rebootTimes);
     }
@@ -107,7 +112,7 @@ public class SimpleProgressIndexAssigner {
       fos.getFD().sync();
     } catch (final Exception e) {
       LOGGER.error(
-          "Cannot record reboot times {} to file {}, the reboot times will not be updated",
+          DataNodePipeMessages.CANNOT_RECORD_REBOOT_TIMES_TO_FILE_THE,
           rebootTimes,
           file.getAbsolutePath());
     }

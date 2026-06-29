@@ -83,7 +83,11 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2StreamIT
 
   @Test
   public void originalCrashDuringAddPeerDone() throws Exception {
-    failTest(
+    // Once the add-peer phase is done, the new peer already holds the data, so the migration is
+    // designed to tolerate the original (source) DataNode crashing afterwards: it completes
+    // successfully and merely leaves the region files on the dead node to be cleaned up later.
+    // Hence this is a successTest, not a failTest.
+    successTest(
         2,
         2,
         1,

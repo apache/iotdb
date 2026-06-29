@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,18 +69,25 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
     final Map<Integer, TDataNodeLocation> nodeLocationMap = context.getNodeLocationMap();
     final Map<Integer, ?> responseMap = context.getResponseMap();
     final CountDownLatch countDownLatch = context.getCountDownLatch();
+    final boolean keepSilent;
     switch (requestType) {
       case TEST_CONNECTION:
+        keepSilent = true;
+        break;
       case UPDATE_ATTRIBUTE:
-        return new AsyncTSStatusRPCHandler(
-            requestType,
-            requestId,
-            targetDataNode,
-            nodeLocationMap,
-            (Map<Integer, TSStatus>) responseMap,
-            countDownLatch);
+        keepSilent = false;
+        break;
       default:
-        throw new UnsupportedOperationException("request type is not supported: " + requestType);
+        throw new UnsupportedOperationException(
+            DataNodeMiscMessages.REQUEST_TYPE_NOT_SUPPORTED + requestType);
     }
+    return new AsyncTSStatusRPCHandler(
+        requestType,
+        requestId,
+        targetDataNode,
+        nodeLocationMap,
+        (Map<Integer, TSStatus>) responseMap,
+        countDownLatch,
+        keepSilent);
   }
 }

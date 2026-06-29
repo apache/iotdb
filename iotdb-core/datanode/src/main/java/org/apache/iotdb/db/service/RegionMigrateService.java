@@ -39,6 +39,7 @@ import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
@@ -49,12 +50,12 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class RegionMigrateService implements IService {
@@ -75,9 +76,49 @@ public class RegionMigrateService implements IService {
   private static final ConcurrentHashMap<Long, TRegionMigrateResult> taskResultMap =
       new ConcurrentHashMap<>();
 
-  private static final AtomicLong lastNotifyTime = new AtomicLong(Long.MIN_VALUE);
-
   private static final TRegionMigrateResult unfinishedResult = new TRegionMigrateResult();
+
+  private static class RegionMigrationStatusCache {
+
+    private long logicalClock = -1;
+    private long timestamp = -1;
+
+    private List<TConsensusGroupId> currentMigratingConsensusGroupIds = Collections.emptyList();
+
+    private long lastNotifyMigratingTime = Long.MIN_VALUE;
+
+    public synchronized void update(
+        long newLogicalClock, long newTimestamp, List<TConsensusGroupId> currentRegionOperations) {
+      if (newLogicalClock < logicalClock
+          || (newLogicalClock == logicalClock && newTimestamp <= timestamp)) {
+        return;
+      }
+      logicalClock = newLogicalClock;
+      timestamp = newTimestamp;
+
+      currentMigratingConsensusGroupIds = currentRegionOperations;
+
+      if (currentRegionOperations != null && !currentRegionOperations.isEmpty()) {
+        lastNotifyMigratingTime = System.currentTimeMillis();
+      }
+    }
+
+    public synchronized void notifyMigrating() {
+      lastNotifyMigratingTime = System.currentTimeMillis();
+    }
+
+    public synchronized boolean hasMigratingRegions() {
+      return currentMigratingConsensusGroupIds != null
+          && !currentMigratingConsensusGroupIds.isEmpty();
+    }
+
+    public synchronized long getLastNotifyMigratingTime() {
+      return lastNotifyMigratingTime;
+    }
+  }
+
+  private final RegionMigrationStatusCache regionMigrationStatusCache =
+      new RegionMigrationStatusCache();
 
   private RegionMigrateService() {}
 
@@ -86,16 +127,25 @@ public class RegionMigrateService implements IService {
   }
 
   public void notifyRegionMigration(TNotifyRegionMigrationReq req) {
-    lastNotifyTime.set(System.currentTimeMillis());
-    if (req.isIsStart()) {
-      LOGGER.info("Region {} is notified to begin migrating", req.getRegionId());
-    } else {
-      LOGGER.info("Region {} is notified to finish migrating", req.getRegionId());
+    regionMigrationStatusCache.update(
+        req.getLogicalClock(), req.getTimestamp(), req.getCurrentRegionOperations());
+
+    if (req.isSetIsStart() && req.isSetRegionId()) {
+      regionMigrationStatusCache.notifyMigrating();
+      if (req.isIsStart()) {
+        LOGGER.info(DataNodeMiscMessages.REGION_BEGIN_MIGRATING, req.getRegionId());
+      } else {
+        LOGGER.info(DataNodeMiscMessages.REGION_FINISH_MIGRATING, req.getRegionId());
+      }
     }
   }
 
-  public long getLastNotifyTime() {
-    return lastNotifyTime.get();
+  public long getLastNotifyMigratingTime() {
+    return regionMigrationStatusCache.getLastNotifyMigratingTime();
+  }
+
+  public boolean mayHaveMigratingRegions() {
+    return regionMigrationStatusCache.hasMigratingRegions();
   }
 
   /**
@@ -205,7 +255,7 @@ public class RegionMigrateService implements IService {
           regionId,
           e);
     } catch (ConsensusException e) {
-      LOGGER.error("reset peer list fail", e);
+      LOGGER.error(DataNodeMiscMessages.RESET_PEER_LIST_FAIL, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -219,7 +269,7 @@ public class RegionMigrateService implements IService {
   public void start() throws StartupException {
     regionMigratePool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.REGION_MIGRATE.getName());
-    LOGGER.info("Region migrate service start");
+    LOGGER.info(DataNodeMiscMessages.REGION_MIGRATE_SERVICE_START);
   }
 
   @Override
@@ -227,7 +277,7 @@ public class RegionMigrateService implements IService {
     if (regionMigratePool != null) {
       regionMigratePool.shutdown();
     }
-    LOGGER.info("Region migrate service stop");
+    LOGGER.info(DataNodeMiscMessages.REGION_MIGRATE_SERVICE_STOP);
   }
 
   @Override
@@ -310,7 +360,8 @@ public class RegionMigrateService implements IService {
           destEndpoint,
           regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("addPeer " + destEndpoint + " for region " + regionId + " succeed");
+      status.setMessage(
+          String.format(DataNodeMiscMessages.ADD_PEER_FOR_REGION_SUCCEED, destEndpoint, regionId));
       return status;
     }
 
@@ -412,7 +463,9 @@ public class RegionMigrateService implements IService {
           destEndPoint,
           regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("removePeer " + destEndPoint + " for region " + regionId + " succeed");
+      status.setMessage(
+          String.format(
+              DataNodeMiscMessages.REMOVE_PEER_FOR_REGION_SUCCEED, destEndPoint, regionId));
       return status;
     }
 
@@ -501,7 +554,8 @@ public class RegionMigrateService implements IService {
       }
       taskLogger.info(
           "{}, Succeed to deletePeer {} from consensus group", REGION_MIGRATE_PROCESS, regionId);
-      status.setMessage("deletePeer from consensus group " + regionId + "succeed");
+      status.setMessage(
+          String.format(DataNodeMiscMessages.DELETE_PEER_FROM_CONSENSUS_GROUP_SUCCEED, regionId));
       return status;
     }
 
@@ -522,10 +576,11 @@ public class RegionMigrateService implements IService {
       } catch (Exception e) {
         taskLogger.error("{}, deleteRegion {} error", REGION_MIGRATE_PROCESS, regionId, e);
         status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
-        status.setMessage("deleteRegion " + regionId + " error, " + e.getMessage());
+        status.setMessage(
+            String.format(DataNodeMiscMessages.DELETE_REGION_ERROR, regionId, e.getMessage()));
         return status;
       }
-      status.setMessage("deleteRegion " + regionId + " succeed");
+      status.setMessage(String.format(DataNodeMiscMessages.DELETE_REGION_SUCCEED, regionId));
       taskLogger.info("{}, Succeed to deleteRegion {}", REGION_MIGRATE_PROCESS, regionId);
       return status;
     }

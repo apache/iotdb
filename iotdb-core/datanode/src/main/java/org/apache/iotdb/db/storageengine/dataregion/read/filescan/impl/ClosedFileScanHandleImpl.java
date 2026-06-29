@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -29,11 +30,13 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.Abstract
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AlignedDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceChunkMetaData;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileDeviceStartEndTimeIterator;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -48,24 +51,28 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class ClosedFileScanHandleImpl implements IFileScanHandle {
 
   private final TsFileResource tsFileResource;
   private final QueryContext queryContext;
+  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> curFileModEntries = null;
+  // Used to cache the device-level modifications
+  private final Map<IDeviceID, List<TimeRange>> deviceToDeletionRanges;
   // Used to cache the modifications of each timeseries
   private final Map<IDeviceID, Map<String, List<TimeRange>>> deviceToModifications;
 
   public ClosedFileScanHandleImpl(TsFileResource tsFileResource, QueryContext context) {
     this.tsFileResource = tsFileResource;
     this.queryContext = context;
-    this.deviceToModifications = new HashMap<>();
+    this.deviceToDeletionRanges = new ConcurrentHashMap<>();
+    this.deviceToModifications = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -79,28 +86,47 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp)
       throws IllegalPathException {
-    List<ModEntry> modifications = queryContext.getPathModifications(tsFileResource, deviceID);
-    List<TimeRange> timeRangeList =
-        modifications.stream().map(ModEntry::getTimeRange).collect(Collectors.toList());
-    return ModificationUtils.isPointDeletedWithoutOrderedRange(timestamp, timeRangeList);
+    curFileModEntries =
+        curFileModEntries != null
+            ? curFileModEntries
+            : queryContext.loadAllModificationsFromDisk(tsFileResource);
+    List<TimeRange> timeRangeList = deviceToDeletionRanges.get(deviceID);
+    if (timeRangeList == null) {
+      final List<TimeRange> computedTimeRangeList =
+          getMergedTimeRanges(queryContext.getPathModifications(curFileModEntries, deviceID));
+      final List<TimeRange> existingTimeRangeList =
+          deviceToDeletionRanges.putIfAbsent(deviceID, computedTimeRangeList);
+      timeRangeList = existingTimeRangeList == null ? computedTimeRangeList : existingTimeRangeList;
+    }
+    return ModificationUtils.isPointDeleted(timestamp, timeRangeList);
+  }
+
+  private static List<TimeRange> getMergedTimeRanges(List<ModEntry> modifications) {
+    List<TimeRange> timeRangeList = new ArrayList<>(modifications.size());
+    for (ModEntry modification : modifications) {
+      timeRangeList.add(modification.getTimeRange());
+    }
+    TimeRange.sortAndMerge(timeRangeList);
+    return timeRangeList;
   }
 
   @Override
   public boolean isTimeSeriesTimeDeleted(IDeviceID deviceID, String timeSeriesName, long timestamp)
       throws IllegalPathException {
-
+    curFileModEntries =
+        curFileModEntries != null
+            ? curFileModEntries
+            : queryContext.loadAllModificationsFromDisk(tsFileResource);
     Map<String, List<TimeRange>> modificationTimeRange = deviceToModifications.get(deviceID);
     if (modificationTimeRange != null && modificationTimeRange.containsKey(timeSeriesName)) {
       return ModificationUtils.isPointDeleted(timestamp, modificationTimeRange.get(timeSeriesName));
     }
 
     List<ModEntry> modifications =
-        queryContext.getPathModifications(tsFileResource, deviceID, timeSeriesName);
-    List<TimeRange> timeRangeList =
-        modifications.stream().map(ModEntry::getTimeRange).collect(Collectors.toList());
-    TimeRange.sortAndMerge(timeRangeList);
+        queryContext.getPathModifications(curFileModEntries, deviceID, timeSeriesName);
+    List<TimeRange> timeRangeList = getMergedTimeRanges(modifications);
     deviceToModifications
-        .computeIfAbsent(deviceID, k -> new HashMap<>())
+        .computeIfAbsent(deviceID, k -> new ConcurrentHashMap<>())
         .put(timeSeriesName, timeRangeList);
     return ModificationUtils.isPointDeleted(timestamp, timeRangeList);
   }
@@ -108,7 +134,8 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public Iterator<AbstractDeviceChunkMetaData> getAllDeviceChunkMetaData() throws IOException {
 
-    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(getFilePath(), true);
+    TsFileSequenceReader tsFileReader =
+        FileReaderManager.getInstance().get(getFilePath(), tsFileResource.getTsFileID(), true);
     TsFileDeviceIterator deviceIterator = tsFileReader.getAllDevicesIteratorWithIsAligned();
 
     List<AbstractDeviceChunkMetaData> deviceChunkMetaDataList = new LinkedList<>();
@@ -161,10 +188,12 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
       List<Statistics<? extends Serializable>> statisticsList,
       List<Integer> orderedIndexList) {
     String filePath = tsFileResource.getTsFilePath();
+    TsFileID tsFileID = tsFileResource.getTsFileID();
     List<IChunkHandle> chunkHandleList = new ArrayList<>();
     for (int i : orderedIndexList) {
       AbstractChunkOffset chunkOffset = chunkInfoList.get(i);
-      chunkHandleList.add(chunkOffset.generateChunkHandle(filePath, statisticsList.get(i)));
+      chunkHandleList.add(
+          chunkOffset.generateChunkHandle(filePath, tsFileID, statisticsList.get(i)));
     }
     return chunkHandleList.iterator();
   }

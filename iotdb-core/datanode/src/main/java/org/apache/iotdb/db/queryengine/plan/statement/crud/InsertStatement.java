@@ -19,14 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,19 +51,6 @@ public class InsertStatement extends Statement {
       ret.add(fullPath);
     }
     return ret;
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    List<PartialPath> checkedPaths = getPaths();
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_DATA),
-        checkedPaths,
-        PrivilegeType.WRITE_DATA);
   }
 
   public PartialPath getDevice() {

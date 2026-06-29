@@ -59,10 +59,10 @@ public class TableModelReadPointCompactionPerformerTest extends AbstractCompacti
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
     for (TsFileResource tsFileResource : seqResources) {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFileID());
     }
     for (TsFileResource tsFileResource : unseqResources) {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFileID());
     }
   }
 

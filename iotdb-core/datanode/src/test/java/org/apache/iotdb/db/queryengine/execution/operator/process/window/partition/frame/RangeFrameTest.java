@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
+import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.FrameInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -156,7 +157,12 @@ public class RangeFrameTest {
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING,
-            FrameInfo.FrameBoundType.CURRENT_ROW);
+            -1,
+            FrameInfo.FrameBoundType.CURRENT_ROW,
+            -1,
+            0,
+            SortOrder.ASC_NULLS_LAST // Sort channel does not matter
+            );
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
 
@@ -752,7 +758,12 @@ public class RangeFrameTest {
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.CURRENT_ROW,
-            FrameInfo.FrameBoundType.CURRENT_ROW);
+            -1,
+            FrameInfo.FrameBoundType.CURRENT_ROW,
+            -1,
+            0,
+            SortOrder.ASC_NULLS_LAST // Sort Order doest not matter
+            );
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
 
@@ -884,7 +895,11 @@ public class RangeFrameTest {
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.CURRENT_ROW,
-            FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING);
+            -1,
+            FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING,
+            0,
+            SortOrder.ASC_NULLS_FIRST // Sort channel does not matter
+            );
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
 

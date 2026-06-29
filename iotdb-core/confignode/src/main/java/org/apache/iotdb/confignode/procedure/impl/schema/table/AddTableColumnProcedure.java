@@ -25,10 +25,12 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -47,7 +49,7 @@ public class AddTableColumnProcedure
     extends AbstractAlterOrDropTableProcedure<AddTableColumnState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
-  private List<TsTableColumnSchema> addedColumnList;
+  protected List<TsTableColumnSchema> addedColumnList;
 
   public AddTableColumnProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -65,34 +67,40 @@ public class AddTableColumnProcedure
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case COLUMN_CHECK:
-          LOGGER.info("Column check for table {}.{} when adding column", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.COLUMN_CHECK_FOR_TABLE_WHEN_ADDING_COLUMN, database, tableName);
           columnCheck(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.PRE_RELEASE_INFO_OF_TABLE_WHEN_ADDING_COLUMN, database, tableName);
           preRelease(env);
           break;
         case ADD_COLUMN:
-          LOGGER.info("Add column to table {}.{}", database, tableName);
+          LOGGER.info(ProcedureMessages.ADD_COLUMN_TO_TABLE, database, tableName);
           addColumn(env);
           break;
         case COMMIT_RELEASE:
-          LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_ADDING_COLUMN,
+              database,
+              tableName);
           commitRelease(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
+          setFailure(
+              new ProcedureException(ProcedureMessages.UNRECOGNIZED_ADDTABLECOLUMNSTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "AddTableColumn-{}.{}-{} costs {}ms",
+          ProcedureMessages.ADDTABLECOLUMN_COSTS_MS,
           database,
           tableName,
           state,
@@ -100,16 +108,16 @@ public class AddTableColumnProcedure
     }
   }
 
-  private void columnCheck(final ConfigNodeProcedureEnv env) {
+  protected void columnCheck(final ConfigNodeProcedureEnv env) {
     try {
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .tableColumnCheckForColumnExtension(database, tableName, addedColumnList);
+              .tableColumnCheckForColumnExtension(
+                  database, tableName, addedColumnList, this instanceof AddViewColumnProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        setFailure(new ProcedureException(new IoTDBException(status)));
         return;
       }
       table = result.getRight();
@@ -129,9 +137,13 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .addTableColumn(database, tableName, addedColumnList, isGeneratedByPipe);
+            .executePlan(
+                this instanceof AddViewColumnProcedure
+                    ? new AddTableViewColumnPlan(database, tableName, addedColumnList, false)
+                    : new AddTableColumnPlan(database, tableName, addedColumnList, false),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
       setNextState(AddTableColumnState.COMMIT_RELEASE);
     }
@@ -150,20 +162,24 @@ public class AddTableColumnProcedure
       switch (state) {
         case ADD_COLUMN:
           LOGGER.info(
-              "Start rollback Add column to table {}.{} when adding column",
+              ProcedureMessages.START_ROLLBACK_ADD_COLUMN_TO_TABLE_WHEN_ADDING_COLUMN,
               database,
               table.getTableName());
           rollbackAddColumn(env);
           break;
         case PRE_RELEASE:
           LOGGER.info(
-              "Start rollback pre release info of table {}.{}", database, table.getTableName());
+              ProcedureMessages.START_ROLLBACK_PRE_RELEASE_INFO_OF_TABLE,
+              database,
+              table.getTableName());
           rollbackPreRelease(env);
           break;
       }
     } finally {
       LOGGER.info(
-          "Rollback DropTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.ROLLBACK_DROPTABLE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -174,9 +190,13 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .rollbackAddTableColumn(database, tableName, addedColumnList);
+            .executePlan(
+                this instanceof AddViewColumnProcedure
+                    ? new AddTableViewColumnPlan(database, tableName, addedColumnList, true)
+                    : new AddTableColumnPlan(database, tableName, addedColumnList, true),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -201,8 +221,11 @@ public class AddTableColumnProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE.getTypeCode()
             : ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
-    super.serialize(stream);
+    innerSerialize(stream);
+  }
 
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
+    super.serialize(stream);
     TsTableColumnSchemaUtil.serialize(addedColumnList, stream);
   }
 

@@ -74,7 +74,6 @@ public class SessionPoolExample {
 
     service = Executors.newFixedThreadPool(10);
     insertRecord();
-    queryByRowRecord();
     Thread.sleep(1000);
     queryByIterator();
     sessionPool.close();
@@ -102,28 +101,6 @@ public class SessionPoolExample {
     }
   }
 
-  private static void queryByRowRecord() {
-    for (int i = 0; i < 1; i++) {
-      service.submit(
-          () -> {
-            SessionDataSetWrapper wrapper = null;
-            try {
-              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
-              System.out.println(wrapper.getColumnNames());
-              System.out.println(wrapper.getColumnTypes());
-              while (wrapper.hasNext()) {
-                System.out.println(wrapper.next());
-              }
-            } catch (IoTDBConnectionException | StatementExecutionException e) {
-              LOGGER.error("Query by row record error", e);
-            } finally {
-              // remember to close data set finally!
-              sessionPool.closeResultSet(wrapper);
-            }
-          });
-    }
-  }
-
   private static void queryByIterator() {
     for (int i = 0; i < 1; i++) {
       service.submit(
@@ -138,7 +115,7 @@ public class SessionPoolExample {
               while (dataIterator.next()) {
                 StringBuilder builder = new StringBuilder();
                 for (String columnName : wrapper.getColumnNames()) {
-                  builder.append(dataIterator.getString(columnName) + " ");
+                  builder.append(dataIterator.getString(columnName)).append(" ");
                 }
                 System.out.println(builder);
               }

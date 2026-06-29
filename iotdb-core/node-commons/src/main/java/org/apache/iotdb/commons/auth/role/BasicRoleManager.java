@@ -23,9 +23,12 @@ import org.apache.iotdb.commons.auth.entity.IEntityAccessor;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -33,9 +36,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class reads roles from local files through LocalFileRoleAccessor and manages them in a hash
@@ -56,16 +60,16 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
   }
 
   protected String getNoSuchEntityError() {
-    return "No such role %s";
+    return AuthMessages.NO_SUCH_ROLE_FMT;
   }
 
   protected BasicRoleManager() {
-    this.entityMap = new HashMap<>();
+    this.entityMap = new ConcurrentHashMap<>();
     this.lock = new HashLock();
   }
 
   protected BasicRoleManager(IEntityAccessor accessor) {
-    this.entityMap = new HashMap<>();
+    this.entityMap = new ConcurrentHashMap<>();
     this.accessor = accessor;
     this.lock = new HashLock();
     this.accessor.reset();
@@ -76,6 +80,10 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
     Role role = entityMap.get(entityName);
     lock.readUnlock(entityName);
     return role;
+  }
+
+  public Role getEntity(long entityId) {
+    return null;
   }
 
   public boolean createRole(String entityName) {
@@ -139,7 +147,7 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
           }
           break;
         default:
-          LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
+          LOGGER.warn(AuthMessages.NOT_SUPPORT_MODEL_TYPE, privilegeUnion.getModelType());
       }
     } finally {
       lock.writeUnlock(entityName);
@@ -202,7 +210,7 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
           role.revokeSysPrivilege(privilegeType);
           return;
         default:
-          LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
+          LOGGER.warn(AuthMessages.NOT_SUPPORT_MODEL_TYPE, privilegeUnion.getModelType());
       }
     } finally {
       lock.writeUnlock(entityName);
@@ -216,7 +224,7 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
       try {
         entityMap.put(entityName, accessor.loadEntity(entityName));
       } catch (IOException e) {
-        LOGGER.warn("Get exception when load role {}", entityName);
+        LOGGER.warn(AuthMessages.LOAD_ROLE_EXCEPTION, entityName);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }
@@ -227,6 +235,21 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
     List<String> rtlist = new ArrayList<>();
     entityMap.forEach((name, item) -> rtlist.add(name));
     rtlist.sort(null);
+    return rtlist;
+  }
+
+  public List<TListUserInfo> listAllEntitiesInfo() {
+
+    List<TListUserInfo> rtlist = new ArrayList<>();
+    for (Role r : entityMap.values()) {
+      TListUserInfo userInfo = new TListUserInfo();
+      userInfo.userId = ((User) r).getUserId();
+      userInfo.username = r.getName();
+      userInfo.maxSessionPerUser = r.getMaxSessionPerUser();
+      userInfo.minSessionPerUser = r.getMinSessionPerUser();
+      rtlist.add(userInfo);
+    }
+    rtlist.sort(Comparator.comparingLong(TListUserInfo::getUserId));
     return rtlist;
   }
 }

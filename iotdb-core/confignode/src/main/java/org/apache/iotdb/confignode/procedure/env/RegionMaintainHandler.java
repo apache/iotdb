@@ -32,6 +32,10 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
@@ -42,9 +46,13 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
@@ -64,6 +72,24 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_CONSENSUS_GROUP_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_CONSENSUS_PIPE_NAME;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY;
+import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
@@ -107,15 +133,15 @@ public class RegionMaintainHandler {
     TSStatus status;
     List<TDataNodeLocation> regionReplicaNodes = findRegionLocations(regionId);
     if (regionReplicaNodes.isEmpty()) {
-      LOGGER.warn("Cannot find region replica nodes, region: {}", regionId);
+      LOGGER.warn(ProcedureMessages.CANNOT_FIND_REGION_REPLICA_NODES_REGION, regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage("Cannot find region replica nodes, region: " + regionId);
+      status.setMessage(ProcedureMessages.CANNOT_FIND_REGION_REPLICA_NODES_REGION + regionId);
       return null;
     }
 
     Optional<TDataNodeLocation> newNode = pickNewReplicaNodeForRegion(regionReplicaNodes);
     if (!newNode.isPresent()) {
-      LOGGER.warn("No enough Data node to migrate region: {}", regionId);
+      LOGGER.warn(ProcedureMessages.NO_ENOUGH_DATA_NODE_TO_MIGRATE_REGION, regionId);
       return null;
     }
     return newNode.get();
@@ -137,11 +163,12 @@ public class RegionMaintainHandler {
     List<TDataNodeLocation> regionReplicaNodes = findRegionLocations(regionId);
     if (regionReplicaNodes.isEmpty()) {
       LOGGER.warn(
-          "{}, Cannot find region replica nodes in createPeer, regionId: {}",
+          ProcedureMessages.CANNOT_FIND_REGION_REPLICA_NODES_IN_CREATEPEER_REGIONID,
           REGION_MIGRATE_PROCESS,
           regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage("Not find region replica nodes in createPeer, regionId: " + regionId);
+      status.setMessage(
+          ProcedureMessages.NOT_FIND_REGION_REPLICA_NODES_IN_CREATEPEER_REGIONID + regionId);
       return status;
     }
 
@@ -149,9 +176,14 @@ public class RegionMaintainHandler {
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
         && (IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())
             || IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass()))) {
-      // parameter of createPeer for MultiLeader should be all peers
+      // parameter of createPeer for MultiLeader should be all peers; callers (e.g.
+      // AddRegionPeerProcedure) may have already inserted destDataNode into the partition
+      // table before reaching here, so append only when not already present to avoid
+      // sending a peer list with duplicates.
       currentPeerNodes = new ArrayList<>(regionReplicaNodes);
-      currentPeerNodes.add(destDataNode);
+      if (!currentPeerNodes.contains(destDataNode)) {
+        currentPeerNodes.add(destDataNode);
+      }
     } else {
       // parameter of createPeer for Ratis can be empty
       currentPeerNodes = Collections.emptyList();
@@ -170,13 +202,13 @@ public class RegionMaintainHandler {
 
     if (isSucceed(status)) {
       LOGGER.info(
-          "{}, Send action createNewRegionPeer finished, regionId: {}, newPeerDataNodeId: {}",
+          ProcedureMessages.SEND_ACTION_CREATENEWREGIONPEER_FINISHED_REGIONID_NEWPEERDATANODEID,
           REGION_MIGRATE_PROCESS,
           regionId,
           getIdWithRpcEndpoint(destDataNode));
     } else {
       LOGGER.error(
-          "{}, Send action createNewRegionPeer error, regionId: {}, newPeerDataNodeId: {}, result: {}",
+          ProcedureMessages.SEND_ACTION_CREATENEWREGIONPEER_ERROR_REGIONID_NEWPEERDATANODEID_RESULT,
           REGION_MIGRATE_PROCESS,
           regionId,
           getIdWithRpcEndpoint(destDataNode),
@@ -214,7 +246,8 @@ public class RegionMaintainHandler {
                     maintainPeerReq,
                     CnToDnSyncRequestType.ADD_REGION_PEER);
     LOGGER.info(
-        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}, status: {}",
+        ProcedureMessages
+            .SEND_ACTION_ADDREGIONPEER_FINISHED_REGIONID_RPCDATANODE_DESTDATANODE_STATUS,
         REGION_MIGRATE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(coordinator),
@@ -251,7 +284,7 @@ public class RegionMaintainHandler {
                     maintainPeerReq,
                     CnToDnSyncRequestType.REMOVE_REGION_PEER);
     LOGGER.info(
-        "{}, Send action removeRegionPeer finished, regionId: {}, rpcDataNode: {}",
+        ProcedureMessages.SEND_ACTION_REMOVEREGIONPEER_FINISHED_REGIONID_RPCDATANODE,
         REGION_MIGRATE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(coordinator));
@@ -275,28 +308,42 @@ public class RegionMaintainHandler {
     TMaintainPeerReq maintainPeerReq =
         new TMaintainPeerReq(regionId, originalDataNode, procedureId);
 
+    final NodeStatus nodeStatus = getDataNodeStatus(originalDataNode.getDataNodeId());
+    final boolean useFullRetry = !NodeStatus.Unknown.equals(nodeStatus);
+    if (!useFullRetry) {
+      LOGGER.info(
+          ProcedureMessages.DATANODE_IS_SUBMIT_DELETE_OLD_REGION_PEER_WITH_A_SINGLE,
+          REGION_MIGRATE_PROCESS,
+          simplifiedLocation(originalDataNode),
+          nodeStatus);
+    }
+
     status =
-        configManager.getLoadManager().getNodeStatus(originalDataNode.getDataNodeId())
-                == NodeStatus.Unknown
-            ? (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithGivenRetry(
-                        originalDataNode.getInternalEndPoint(),
-                        maintainPeerReq,
-                        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER,
-                        1)
-            : (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithRetry(
-                        originalDataNode.getInternalEndPoint(),
-                        maintainPeerReq,
-                        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER);
+        submitDataNodeSyncRequest(
+            originalDataNode.getInternalEndPoint(),
+            maintainPeerReq,
+            CnToDnSyncRequestType.DELETE_OLD_REGION_PEER,
+            useFullRetry);
     LOGGER.info(
-        "{}, Send action deleteOldRegionPeer finished, regionId: {}, dataNodeId: {}",
+        ProcedureMessages.SEND_ACTION_DELETEOLDREGIONPEER_FINISHED_REGIONID_DATANODEID,
         REGION_MIGRATE_PROCESS,
         regionId,
         originalDataNode.getInternalEndPoint());
     return status;
+  }
+
+  protected NodeStatus getDataNodeStatus(int dataNodeId) {
+    return configManager.getLoadManager().getNodeStatus(dataNodeId);
+  }
+
+  protected TSStatus submitDataNodeSyncRequest(
+      TEndPoint endPoint, Object request, CnToDnSyncRequestType requestType, boolean useFullRetry) {
+    return (TSStatus)
+        (useFullRetry
+            ? SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(endPoint, request, requestType)
+            : SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithGivenRetry(endPoint, request, requestType, 1));
   }
 
   public Map<Integer, TSStatus> resetPeerList(
@@ -314,10 +361,26 @@ public class RegionMaintainHandler {
 
   // TODO: will use 'procedure yield' to refactor later
   public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
+    return waitTaskFinish(taskId, dataNodeLocation, null);
+  }
+
+  /**
+   * Poll the coordinator DataNode until the region-maintain task identified by {@code taskId}
+   * reaches a terminal state.
+   *
+   * @param killPoint if non-null, fired once right after the first poll confirms the task is still
+   *     PROCESSING. At that point the worker thread is provably blocked inside this method, so
+   *     tests can use the kill point to deterministically interrupt the wait (e.g. by gracefully
+   *     stopping the ConfigNode leader) and exercise the interrupted-PROCESSING path. It is a no-op
+   *     outside integration tests.
+   */
+  public <T extends Enum<T>> TRegionMigrateResult waitTaskFinish(
+      long taskId, TDataNodeLocation dataNodeLocation, T killPoint) {
     final long MAX_DISCONNECTION_TOLERATE_MS = 600_000;
     final long INITIAL_DISCONNECTION_TOLERATE_MS = 60_000;
     long startTime = System.nanoTime();
     long lastReportTime = System.nanoTime();
+    boolean killPointTriggered = false;
     while (true) {
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
@@ -325,6 +388,12 @@ public class RegionMaintainHandler {
         lastReportTime = System.nanoTime();
         if (report.getTaskStatus() != TRegionMaintainTaskStatus.PROCESSING) {
           return report;
+        }
+        // The task is confirmed still running and this thread is blocked here, so it is now safe to
+        // fire the kill point that tests use to interrupt waitTaskFinish() deterministically.
+        if (killPoint != null && !killPointTriggered) {
+          setKillPoint(killPoint);
+          killPointTriggered = true;
         }
       } catch (Exception ignore) {
 
@@ -337,7 +406,7 @@ public class RegionMaintainHandler {
       long disconnectionTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime);
       if (disconnectionTime > waitTime) {
         LOGGER.warn(
-            "{} task {} cannot get task report from DataNode {}, last report time is {} ago",
+            ProcedureMessages.TASK_CANNOT_GET_TASK_REPORT_FROM_DATANODE_LAST_REPORT_TIME,
             REGION_MIGRATE_PROCESS,
             taskId,
             dataNodeLocation,
@@ -362,7 +431,7 @@ public class RegionMaintainHandler {
     AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
     TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
     LOGGER.info(
-        "AddRegionLocation finished, add region {} to {}, result is {}",
+        ProcedureMessages.ADDREGIONLOCATION_FINISHED_ADD_REGION_TO_RESULT_IS,
         regionId,
         getIdWithRpcEndpoint(newLocation),
         status);
@@ -384,12 +453,302 @@ public class RegionMaintainHandler {
     RemoveRegionLocationPlan req = new RemoveRegionLocationPlan(regionId, deprecatedLocation);
     TSStatus status = configManager.getPartitionManager().removeRegionLocation(req);
     LOGGER.info(
-        "RemoveRegionLocation remove region {} from DataNode {}, result is {}",
+        ProcedureMessages.REMOVEREGIONLOCATION_REMOVE_REGION_FROM_DATANODE_RESULT_IS,
         regionId,
         getIdWithRpcEndpoint(deprecatedLocation),
         status);
     configManager.getLoadManager().removeRegionCache(regionId, deprecatedLocation.getDataNodeId());
     configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
+  }
+
+  /**
+   * Create bidirectional consensus pipes between the target DataNode and all existing peers. Only
+   * applies to IoTConsensusV2 DataRegions. Called by AddRegionPeerProcedure before
+   * DO_ADD_REGION_PEER so that pipes exist before the coordinator starts data transfer.
+   */
+  public void createConsensusPipesForAddPeer(
+      TConsensusGroupId regionId, TDataNodeLocation targetDataNode) {
+    if (!isIoTConsensusV2DataRegion(regionId)) {
+      return;
+    }
+
+    List<TDataNodeLocation> existingLocations = findRegionLocations(regionId);
+    for (TDataNodeLocation existingLocation : existingLocations) {
+      if (existingLocation.getDataNodeId() == targetDataNode.getDataNodeId()) {
+        continue;
+      }
+      // Pipe: existingPeer → targetPeer
+      createSingleConsensusPipe(
+          regionId,
+          existingLocation.getDataNodeId(),
+          existingLocation.getDataRegionConsensusEndPoint(),
+          targetDataNode.getDataNodeId(),
+          targetDataNode.getDataRegionConsensusEndPoint());
+      // Pipe: targetPeer → existingPeer
+      createSingleConsensusPipe(
+          regionId,
+          targetDataNode.getDataNodeId(),
+          targetDataNode.getDataRegionConsensusEndPoint(),
+          existingLocation.getDataNodeId(),
+          existingLocation.getDataRegionConsensusEndPoint());
+    }
+  }
+
+  /**
+   * Create bidirectional consensus pipes among all peers for newly created RegionGroups. Only
+   * applies to IoTConsensusV2 DataRegions. Called by CreateRegionGroupsProcedure after all regions
+   * are activated.
+   */
+  public void createInitialConsensusPipes(CreateRegionGroupsPlan persistPlan) {
+    if (!IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass())) {
+      return;
+    }
+
+    persistPlan
+        .getRegionGroupMap()
+        .forEach(
+            (database, regionReplicaSets) ->
+                regionReplicaSets.forEach(
+                    regionReplicaSet -> {
+                      TConsensusGroupId regionId = regionReplicaSet.getRegionId();
+                      if (!TConsensusGroupType.DataRegion.equals(regionId.getType())) {
+                        return;
+                      }
+                      List<TDataNodeLocation> locations = regionReplicaSet.getDataNodeLocations();
+                      for (int i = 0; i < locations.size(); i++) {
+                        for (int j = 0; j < locations.size(); j++) {
+                          if (i == j) {
+                            continue;
+                          }
+                          createSingleConsensusPipeAsync(
+                              regionId,
+                              locations.get(i).getDataNodeId(),
+                              locations.get(i).getDataRegionConsensusEndPoint(),
+                              locations.get(j).getDataNodeId(),
+                              locations.get(j).getDataRegionConsensusEndPoint());
+                        }
+                      }
+                    }));
+  }
+
+  /**
+   * Drop consensus pipes related to the target DataNode for a region. Only applies to
+   * IoTConsensusV2 DataRegions. Called by RemoveRegionPeerProcedure after DELETE_OLD_REGION_PEER.
+   */
+  public void dropConsensusPipesForRemovePeer(
+      TConsensusGroupId regionId, TDataNodeLocation targetDataNode) {
+    if (!isIoTConsensusV2DataRegion(regionId)) {
+      return;
+    }
+
+    DataRegionId dataRegionId = new DataRegionId(regionId.getId());
+    List<TDataNodeLocation> existingLocations = findRegionLocations(regionId);
+    for (TDataNodeLocation existingLocation : existingLocations) {
+      if (existingLocation.getDataNodeId() == targetDataNode.getDataNodeId()) {
+        continue;
+      }
+      // Drop pipe: existingPeer → targetPeer
+      String pipeName1 =
+          new ConsensusPipeName(
+                  dataRegionId, existingLocation.getDataNodeId(), targetDataNode.getDataNodeId())
+              .toString();
+      configManager.getProcedureManager().dropConsensusPipeAsync(pipeName1);
+      // Drop pipe: targetPeer → existingPeer
+      String pipeName2 =
+          new ConsensusPipeName(
+                  dataRegionId, targetDataNode.getDataNodeId(), existingLocation.getDataNodeId())
+              .toString();
+      configManager.getProcedureManager().dropConsensusPipeAsync(pipeName2);
+    }
+  }
+
+  /**
+   * Periodically called by PipeMetaSyncer to reconcile expected consensus pipes (derived from
+   * PartitionManager replica sets) with actually existing consensus pipes (from PipeTaskInfo).
+   * Creates missing pipes, drops unexpected pipes, and restarts stopped pipes.
+   */
+  public void checkAndRepairConsensusPipes() {
+    if (!IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass())) {
+      return;
+    }
+
+    Map<TConsensusGroupId, TRegionReplicaSet> allDataRegionReplicaSets =
+        configManager.getPartitionManager().getAllReplicaSetsMap(TConsensusGroupType.DataRegion);
+
+    // Build expected pipe name -> TRegionReplicaSet for creation purposes
+    Map<String, TRegionReplicaSet> expectedPipeToReplicaSet = new HashMap<>();
+    for (TRegionReplicaSet replicaSet : allDataRegionReplicaSets.values()) {
+      List<TDataNodeLocation> locations = replicaSet.getDataNodeLocations();
+      DataRegionId regionId = new DataRegionId(replicaSet.getRegionId().getId());
+      for (int i = 0; i < locations.size(); i++) {
+        for (int j = 0; j < locations.size(); j++) {
+          if (i != j) {
+            String pipeName =
+                new ConsensusPipeName(
+                        regionId,
+                        locations.get(i).getDataNodeId(),
+                        locations.get(j).getDataNodeId())
+                    .toString();
+            expectedPipeToReplicaSet.put(pipeName, replicaSet);
+          }
+        }
+      }
+    }
+
+    Map<String, PipeStatus> actualPipes =
+        configManager.getPipeManager().getPipeTaskCoordinator().getConsensusPipeStatusMap();
+
+    // Create missing pipes
+    for (Map.Entry<String, TRegionReplicaSet> entry : expectedPipeToReplicaSet.entrySet()) {
+      String pipeName = entry.getKey();
+      if (!actualPipes.containsKey(pipeName)) {
+        LOGGER.warn(
+            ProcedureMessages.CONSENSUSPIPEGUARDIAN_CONSENSUS_PIPE_MISSING_CREATING_ASYNCHRONOUSLY,
+            pipeName);
+        TRegionReplicaSet replicaSet = entry.getValue();
+        ConsensusPipeName parsed = new ConsensusPipeName(pipeName);
+        TDataNodeLocation senderLocation =
+            findLocationByNodeId(replicaSet.getDataNodeLocations(), parsed.getSenderDataNodeId());
+        TDataNodeLocation receiverLocation =
+            findLocationByNodeId(replicaSet.getDataNodeLocations(), parsed.getReceiverDataNodeId());
+        if (senderLocation != null && receiverLocation != null) {
+          createSingleConsensusPipeAsync(
+              replicaSet.getRegionId(),
+              senderLocation.getDataNodeId(),
+              senderLocation.getDataRegionConsensusEndPoint(),
+              receiverLocation.getDataNodeId(),
+              receiverLocation.getDataRegionConsensusEndPoint());
+        }
+      }
+    }
+
+    // Drop unexpected pipes and restart stopped pipes
+    for (Map.Entry<String, PipeStatus> entry : actualPipes.entrySet()) {
+      String pipeName = entry.getKey();
+      PipeStatus status = entry.getValue();
+      if (!expectedPipeToReplicaSet.containsKey(pipeName)) {
+        LOGGER.warn(
+            ProcedureMessages
+                .CONSENSUSPIPEGUARDIAN_UNEXPECTED_CONSENSUS_PIPE_EXISTS_DROPPING_ASYNCHRONOUSLY,
+            pipeName);
+        configManager.getProcedureManager().dropConsensusPipeAsync(pipeName);
+      } else if (PipeStatus.STOPPED.equals(status)) {
+        LOGGER.warn(
+            ProcedureMessages
+                .CONSENSUSPIPEGUARDIAN_CONSENSUS_PIPE_IS_STOPPED_RESTARTING_ASYNCHRONOUSLY,
+            pipeName);
+        configManager.getProcedureManager().startConsensusPipe(pipeName);
+      }
+    }
+  }
+
+  private static TDataNodeLocation findLocationByNodeId(
+      List<TDataNodeLocation> locations, int nodeId) {
+    for (TDataNodeLocation location : locations) {
+      if (location.getDataNodeId() == nodeId) {
+        return location;
+      }
+    }
+    return null;
+  }
+
+  private boolean isIoTConsensusV2DataRegion(TConsensusGroupId regionId) {
+    return TConsensusGroupType.DataRegion.equals(regionId.getType())
+        && IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass());
+  }
+
+  private TCreatePipeReq buildConsensusPipeReq(
+      TConsensusGroupId regionId,
+      int senderNodeId,
+      TEndPoint senderEndpoint,
+      int receiverNodeId,
+      TEndPoint receiverEndpoint) {
+    DataRegionId dataRegionId = new DataRegionId(regionId.getId());
+    ConsensusPipeName pipeName = new ConsensusPipeName(dataRegionId, senderNodeId, receiverNodeId);
+
+    String replicateMode = CONF.getIotConsensusV2Mode();
+
+    Map<String, String> extractorAttributes = new HashMap<>();
+    extractorAttributes.put(EXTRACTOR_KEY, BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
+    extractorAttributes.put(EXTRACTOR_INCLUSION_KEY, "data");
+    extractorAttributes.put(EXTRACTOR_CONSENSUS_GROUP_ID_KEY, dataRegionId.toString());
+    extractorAttributes.put(
+        EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY, String.valueOf(senderNodeId));
+    extractorAttributes.put(
+        EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY, String.valueOf(receiverNodeId));
+    extractorAttributes.put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode);
+    extractorAttributes.put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true));
+    extractorAttributes.put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true));
+    extractorAttributes.put(
+        EXTRACTOR_IOTDB_USER_KEY, CommonDescriptor.getInstance().getConfig().getDefaultAdminName());
+
+    Map<String, String> processorAttributes = new HashMap<>();
+    processorAttributes.put(
+        PROCESSOR_KEY, BuiltinPipePlugin.IOT_CONSENSUS_V2_PROCESSOR.getPipePluginName());
+
+    Map<String, String> connectorAttributes = new HashMap<>();
+    connectorAttributes.put(
+        CONNECTOR_KEY, BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_CONNECTOR.getPipePluginName());
+    connectorAttributes.put(CONNECTOR_CONSENSUS_GROUP_ID_KEY, String.valueOf(dataRegionId.getId()));
+    connectorAttributes.put(CONNECTOR_CONSENSUS_PIPE_NAME, pipeName.toString());
+    connectorAttributes.put(CONNECTOR_IOTDB_IP_KEY, receiverEndpoint.ip);
+    connectorAttributes.put(CONNECTOR_IOTDB_PORT_KEY, String.valueOf(receiverEndpoint.port));
+    connectorAttributes.put(CONNECTOR_IOTDB_PARALLEL_TASKS_KEY, String.valueOf(1));
+    connectorAttributes.put(CONNECTOR_REALTIME_FIRST_KEY, String.valueOf(false));
+
+    return new TCreatePipeReq()
+        .setPipeName(pipeName.toString())
+        .setNeedManuallyStart(false)
+        .setExtractorAttributes(extractorAttributes)
+        .setProcessorAttributes(processorAttributes)
+        .setConnectorAttributes(connectorAttributes);
+  }
+
+  /**
+   * Create a single consensus pipe synchronously (blocks until procedure finishes or times out with
+   * optimistic success). Used by AddRegionPeerProcedure where pipes must exist before data sync.
+   */
+  private void createSingleConsensusPipe(
+      TConsensusGroupId regionId,
+      int senderNodeId,
+      TEndPoint senderEndpoint,
+      int receiverNodeId,
+      TEndPoint receiverEndpoint) {
+    TCreatePipeReq req =
+        buildConsensusPipeReq(
+            regionId, senderNodeId, senderEndpoint, receiverNodeId, receiverEndpoint);
+    TSStatus status = configManager.getProcedureManager().createConsensusPipe(req);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_CREATE_CONSENSUS_PIPE,
+          REGION_MIGRATE_PROCESS,
+          req.getPipeName(),
+          status);
+    } else {
+      LOGGER.info(
+          ProcedureMessages.CREATED_CONSENSUS_PIPE, REGION_MIGRATE_PROCESS, req.getPipeName());
+    }
+  }
+
+  /**
+   * Create a single consensus pipe asynchronously (fire-and-forget). Used by
+   * CreateRegionGroupsProcedure where blocking would cause deadlock and new regions have no data to
+   * lose.
+   */
+  private void createSingleConsensusPipeAsync(
+      TConsensusGroupId regionId,
+      int senderNodeId,
+      TEndPoint senderEndpoint,
+      int receiverNodeId,
+      TEndPoint receiverEndpoint) {
+    TCreatePipeReq req =
+        buildConsensusPipeReq(
+            regionId, senderNodeId, senderEndpoint, receiverNodeId, receiverEndpoint);
+    configManager.getProcedureManager().createConsensusPipeAsync(req);
+    LOGGER.info(
+        ProcedureMessages.SUBMITTED_ASYNC_CONSENSUS_PIPE_CREATION,
+        REGION_MIGRATE_PROCESS,
+        req.getPipeName());
   }
 
   /**
@@ -498,11 +857,15 @@ public class RegionMaintainHandler {
           break;
         }
         if (retryTime++ > MAX_RETRY_TIME) {
-          LOGGER.warn("[RemoveRegion] Ratis transfer leader fail, but procedure will continue.");
+          LOGGER.warn(
+              ProcedureMessages
+                  .REMOVEREGION_RATIS_TRANSFER_LEADER_FAIL_BUT_PROCEDURE_WILL_CONTINUE);
           return;
         }
         LOGGER.warn(
-            "Call changeRegionLeader fail for the {} time, will sleep {} ms", retryTime, sleepTime);
+            ProcedureMessages.CALL_CHANGEREGIONLEADER_FAIL_FOR_THE_TIME_WILL_SLEEP_MS,
+            retryTime,
+            sleepTime);
         Thread.sleep(sleepTime);
       }
     }
@@ -516,7 +879,7 @@ public class RegionMaintainHandler {
     configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
 
     LOGGER.info(
-        "{}, Change region leader finished, regionId: {}, newLeaderNode: {}",
+        ProcedureMessages.CHANGE_REGION_LEADER_FINISHED_REGIONID_NEWLEADERNODE,
         REGION_MIGRATE_PROCESS,
         regionId,
         newLeaderNode);
@@ -559,7 +922,7 @@ public class RegionMaintainHandler {
       NodeStatus... allowingStatus) {
     List<TDataNodeLocation> regionLocations = findRegionLocations(regionId);
     if (regionLocations.isEmpty()) {
-      LOGGER.warn("Cannot find DataNodes contain the given region: {}", regionId);
+      LOGGER.warn(ProcedureMessages.CANNOT_FIND_DATANODES_CONTAIN_THE_GIVEN_REGION, regionId);
       return Optional.empty();
     }
 

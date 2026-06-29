@@ -21,11 +21,12 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.i18n.RatisMessages;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
@@ -97,7 +98,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   }
 
   @Override
-  public void reinitialize() {
+  public void reinitialize() throws IOException {
     setLastAppliedTermIndex(null);
     loadSnapshot(snapshotStorage.findLatestSnapshotDir());
     if (getLifeCycleState() == LifeCycle.State.PAUSED) {
@@ -154,11 +155,11 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         ret = new ResponseMessage(result);
         break;
       } catch (Throwable rte) {
-        logger.error("application statemachine throws a runtime exception: ", rte);
+        logger.error(RatisMessages.STATEMACHINE_RUNTIME_EXCEPTION, rte);
         ret =
             new ResponseMessage(
                 new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-                    .setMessage("internal error. statemachine throws a runtime exception: " + rte));
+                    .setMessage(RatisMessages.INTERNAL_ERROR_STATEMACHINE_RUNTIME_EXCEPTION + rte));
         if (Utils.stallApply(consensusGroupType)) {
           waitUntilSystemAllowApply();
         } else {
@@ -189,7 +190,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
           "waitUntilSystemAllowApply",
           logger);
     } catch (InterruptedException e) {
-      logger.warn("{}: interrupted when waiting until system ready: ", this, e);
+      logger.warn(RatisMessages.INTERRUPTED_WAITING_SYSTEM_READY, this, e);
       Thread.currentThread().interrupt();
     }
   }
@@ -198,7 +199,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   public CompletableFuture<Message> query(Message request) {
     if (!(request instanceof RequestMessage)) {
       // return null dataset to indicate an error
-      logger.error("An RequestMessage is required but got {}", request);
+      logger.error(RatisMessages.REQUEST_MESSAGE_REQUIRED, request);
       return CompletableFuture.completedFuture(new ResponseMessage(null));
     }
     RequestMessage requestMessage = (RequestMessage) request;
@@ -222,7 +223,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
     snapshotTmpDir.mkdirs();
     if (!snapshotTmpDir.isDirectory()) {
-      logger.error("Unable to create temp snapshotDir at {}", snapshotTmpDir);
+      logger.error(RatisMessages.UNABLE_TO_CREATE_TEMP_SNAPSHOT_DIR, snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
 
@@ -240,12 +241,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     try {
       Files.move(snapshotTmpDir.toPath(), snapshotDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
     } catch (IOException e) {
-      logger.error(
-          "{} atomic rename {} to {} failed with exception {}",
-          this,
-          snapshotTmpDir,
-          snapshotDir,
-          e);
+      logger.error(RatisMessages.ATOMIC_RENAME_FAILED, this, snapshotTmpDir, snapshotDir, e);
       deleteIncompleteSnapshot(snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
@@ -260,19 +256,26 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     // statemachine is supposed to clear snapshotDir on failure
     boolean isEmpty = snapshotDir.delete();
     if (!isEmpty) {
-      logger.info("Snapshot directory is incomplete, deleting {}", snapshotDir.getAbsolutePath());
+      logger.info(RatisMessages.SNAPSHOT_DIR_INCOMPLETE_DELETING, snapshotDir.getAbsolutePath());
       FileUtils.deleteFully(snapshotDir);
     }
   }
 
-  private void loadSnapshot(File latestSnapshotDir) {
+  private void loadSnapshot(File latestSnapshotDir) throws IOException {
     snapshotStorage.updateSnapshotCache();
     if (latestSnapshotDir == null) {
       return;
     }
 
     // require the application statemachine to load the latest snapshot
-    applicationStateMachine.loadSnapshot(latestSnapshotDir);
+    if (!applicationStateMachine.loadSnapshot(latestSnapshotDir)) {
+      // The application state machine rejected this snapshot. Do not advance lastAppliedTermIndex:
+      // claiming the snapshot as applied would let Ratis proceed as if it were installed and run on
+      // incomplete data (silent data loss). Fail (re)initialization instead so the snapshot install
+      // is treated as failed and can be retried.
+      throw new IOException(
+          String.format("%s: failed to load snapshot from %s", this, latestSnapshotDir));
+    }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
     updateLastAppliedTermIndex(snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
   }

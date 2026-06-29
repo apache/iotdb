@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.metrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -42,6 +43,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
   public static final String LOAD_LOCALLY = "load_locally";
   public static final String SCHEDULER_CAST_TABLETS = "scheduler_cast_tablets";
   public static final String ANALYSIS_CAST_TABLETS = "analysis_cast_tablets";
+  public static final String ANALYSIS_ASYNC_MOVE = "analysis_async_move";
 
   private LoadTsFileCostMetricsSet() {
     // empty constructor
@@ -53,6 +55,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
   private Timer loadLocallyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer schedulerCastTabletsTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer analysisCastTabletsTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer analysisAsyncMoveTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private Counter diskIOCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
@@ -76,8 +79,11 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
       case ANALYSIS_CAST_TABLETS:
         analysisCastTabletsTimer.updateNanos(costTimeInNanos);
         break;
+      case ANALYSIS_ASYNC_MOVE:
+        analysisAsyncMoveTimer.updateNanos(costTimeInNanos);
+        break;
       default:
-        throw new UnsupportedOperationException("Unsupported stage: " + stage);
+        throw new UnsupportedOperationException(StorageEngineMessages.UNSUPPORTED_STAGE + stage);
     }
   }
 
@@ -120,6 +126,12 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             ANALYSIS_CAST_TABLETS);
+    analysisAsyncMoveTimer =
+        metricService.getOrCreateTimer(
+            Metric.LOAD_TIME_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            ANALYSIS_ASYNC_MOVE);
 
     diskIOCounter =
         metricService.getOrCreateCounter(
@@ -137,7 +149,8 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
             SECOND_PHASE,
             LOAD_LOCALLY,
             SCHEDULER_CAST_TABLETS,
-            ANALYSIS_CAST_TABLETS)
+            ANALYSIS_CAST_TABLETS,
+            ANALYSIS_ASYNC_MOVE)
         .forEach(
             stage ->
                 metricService.remove(
@@ -147,7 +160,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
                     stage));
 
     metricService.remove(
-        MetricType.RATE,
+        MetricType.COUNTER,
         Metric.LOAD_DISK_IO.toString(),
         Tag.NAME.toString(),
         String.valueOf(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));

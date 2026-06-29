@@ -24,18 +24,24 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
-import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
+import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -43,6 +49,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +95,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.subtaskCreationTime = System.currentTimeMillis();
 
     // Only register dataRegions
-    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
+    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
+        || PipeRuntimeMeta.isSourceExternal(regionId)) {
       PipeProcessorMetrics.getInstance().register(this);
     }
   }
@@ -138,12 +146,57 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
         if (event instanceof TabletInsertionEvent) {
-          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+          if (event instanceof PipeInsertNodeTabletInsertionEvent
+              && ((PipeInsertNodeTabletInsertionEvent) event).shouldParse4Privilege()) {
+            final AtomicReference<Exception> ex = new AtomicReference<>();
+            ((PipeInsertNodeTabletInsertionEvent) event)
+                .toRawTabletInsertionEvents()
+                .forEach(
+                    rawTabletInsertionEvent -> {
+                      try {
+                        pipeProcessor.process(rawTabletInsertionEvent, outputEventCollector);
+                      } catch (Exception e) {
+                        ex.set(e);
+                      }
+                    });
+            if (ex.get() != null) {
+              throw ex.get();
+            }
+          } else {
+            pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+          }
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
         } else if (event instanceof TsFileInsertionEvent) {
-          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+          // We have to parse the privilege first, to avoid passing no-privilege data to processor
+          if (event instanceof PipeTsFileInsertionEvent
+              && ((PipeTsFileInsertionEvent) event).shouldParse4Privilege()) {
+            try (final PipeTsFileInsertionEvent tsFileInsertionEvent =
+                (PipeTsFileInsertionEvent) event) {
+              final AtomicReference<Exception> ex = new AtomicReference<>();
+              tsFileInsertionEvent.consumeTabletInsertionEventsWithRetry(
+                  event1 -> {
+                    try {
+                      pipeProcessor.process(event1, outputEventCollector);
+                    } catch (Exception e) {
+                      ex.set(e);
+                    }
+                  },
+                  "PipeProcessorSubtask::executeOnce");
+              if (tsFileInsertionEvent.isGeneratedByHistoricalExtractor()) {
+                PipeTerminateEvent.markHistoricalTsFileSplit(
+                    tsFileInsertionEvent.getPipeName(),
+                    tsFileInsertionEvent.getCreationTime(),
+                    regionId);
+              }
+              if (ex.get() != null) {
+                throw ex.get();
+              }
+            }
+          } else {
+            pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+          }
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
-          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+          PipeDataNodeSinglePipeMetrics.getInstance()
               .markTsFileCollectInvocationCount(
                   pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
@@ -175,7 +228,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               // been released, and the progress of the event can not be reported.
               && !outputEventCollector.isFailedToIncreaseReferenceCount()
               // Events generated from consensusPipe's transferred data should never be reported.
-              && !(pipeProcessor instanceof PipeConsensusProcessor);
+              && !(pipeProcessor instanceof IoTConsensusV2Processor);
       if (shouldReport
           && event instanceof EnrichedEvent
           && outputEventCollector.hasNoCollectInvocationAfterReset()) {
@@ -190,23 +243,33 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
       decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.info(
-          "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
-          e);
+      PipeLogger.log(
+          LOGGER::info,
+          "Temporarily out of memory in pipe event processing, will wait for the memory to release. Message: %s",
+          e.getMessage());
       return false;
     } catch (final Exception e) {
+      if (ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
+        PipeLogger.log(
+            LOGGER::info,
+            "Temporarily out of memory in pipe event processing, will wait for the memory to release. Message: %s",
+            e.getMessage());
+        return false;
+      }
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(
                 "Exception in pipe process, subtask: %s, last event: %s, root cause: %s",
-                taskID,
+                getDisplayTaskID(),
                 lastEvent instanceof EnrichedEvent
                     ? ((EnrichedEvent) lastEvent).coreReportMessage()
                     : lastEvent,
-                ErrorHandlingUtils.getRootCause(e).getMessage()),
+                ErrorHandlingCommonUtils.getRootCause(e).getMessage()),
             e);
       } else {
-        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
+        LOGGER.info(
+            DataNodePipeMessages.EXCEPTION_IN_PIPE_EVENT_PROCESSING_IGNORED_BECAUSE,
+            e.getMessage() != null ? " Message: " + e.getMessage() : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     }
@@ -236,9 +299,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       // closed, the execution thread may still deliver events downstream.
     } catch (final Exception e) {
       LOGGER.info(
-          "Exception occurred when closing pipe processor subtask {}, root cause: {}",
-          taskID,
-          ErrorHandlingUtils.getRootCause(e).getMessage(),
+          DataNodePipeMessages.EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_PROCESSOR_SUBTASK,
+          getDisplayTaskID(),
+          ErrorHandlingCommonUtils.getRootCause(e).getMessage(),
           e);
     } finally {
       // should be called after pipeProcessor.close()
@@ -278,20 +341,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return regionId;
   }
 
-  public int getEventCount(final boolean ignoreHeartbeat) {
-    // Avoid potential NPE in "getPipeName"
-    final EnrichedEvent event =
-        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
-    return Objects.nonNull(event) && !(ignoreHeartbeat && event instanceof PipeHeartbeatEvent)
-        ? 1
-        : 0;
-  }
-
   //////////////////////////// Error report ////////////////////////////
 
   @Override
   protected String getRootCause(final Throwable throwable) {
-    return ErrorHandlingUtils.getRootCause(throwable).getMessage();
+    return ErrorHandlingCommonUtils.getRootCause(throwable).getMessage();
   }
 
   @Override

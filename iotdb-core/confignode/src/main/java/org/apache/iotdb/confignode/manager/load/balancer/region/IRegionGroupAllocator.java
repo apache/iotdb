@@ -47,4 +47,25 @@ public interface IRegionGroupAllocator {
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId);
+
+  /**
+   * Select the optimal DataNode to place the new replica on along with the remaining replica set.
+   *
+   * @param availableDataNodeMap DataNodes that can be used for allocation
+   * @param freeDiskSpaceMap The free disk space of the DataNodes
+   * @param allocatedRegionGroups Allocated RegionGroups
+   * @param regionDatabaseMap A mapping from each region identifier to its corresponding database
+   *     name
+   * @param databaseAllocatedRegionGroupMap Allocated RegionGroups within the same Database with the
+   *     replica set
+   * @param remainReplicasMap the remaining replica set excluding the removed DataNodes
+   * @return The optimal DataNode to place the new replica on along with the remaining replicas
+   */
+  Map<TConsensusGroupId, TDataNodeConfiguration> removeNodeReplicaSelect(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      Map<TConsensusGroupId, String> regionDatabaseMap,
+      Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap);
 }

@@ -21,16 +21,16 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
@@ -98,6 +98,61 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   }
 
   @Override
+  public SearchNode setSearchIndex(final long searchIndex) {
+    deleteDataNode.setSearchIndex(searchIndex);
+    return this;
+  }
+
+  @Override
+  public long getSearchIndex() {
+    return deleteDataNode.getSearchIndex();
+  }
+
+  @Override
+  public long getRoutingEpoch() {
+    return deleteDataNode.getRoutingEpoch();
+  }
+
+  @Override
+  public SearchNode setRoutingEpoch(final long routingEpoch) {
+    deleteDataNode.setRoutingEpoch(routingEpoch);
+    return this;
+  }
+
+  @Override
+  public long getPhysicalTime() {
+    return deleteDataNode.getPhysicalTime();
+  }
+
+  @Override
+  public SearchNode setPhysicalTime(final long physicalTime) {
+    deleteDataNode.setPhysicalTime(physicalTime);
+    return this;
+  }
+
+  @Override
+  public int getNodeId() {
+    return deleteDataNode.getNodeId();
+  }
+
+  @Override
+  public SearchNode setNodeId(final int nodeId) {
+    deleteDataNode.setNodeId(nodeId);
+    return this;
+  }
+
+  @Override
+  public long getSyncIndex() {
+    return deleteDataNode.getSyncIndex();
+  }
+
+  @Override
+  public SearchNode setSyncIndex(final long syncIndex) {
+    deleteDataNode.setSyncIndex(syncIndex);
+    return this;
+  }
+
+  @Override
   public List<PlanNode> getChildren() {
     return deleteDataNode.getChildren();
   }
@@ -114,19 +169,19 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
 
   @Override
   public PlanNode clone() {
-    return new PipeEnrichedDeleteDataNode((DeleteDataNode) deleteDataNode.clone());
+    return new PipeEnrichedDeleteDataNode((AbstractDeleteDataNode) deleteDataNode.clone());
   }
 
   @Override
   public PlanNode createSubNode(final int subNodeId, final int startIndex, final int endIndex) {
     return new PipeEnrichedDeleteDataNode(
-        (DeleteDataNode) deleteDataNode.createSubNode(subNodeId, startIndex, endIndex));
+        (AbstractDeleteDataNode) deleteDataNode.createSubNode(subNodeId, startIndex, endIndex));
   }
 
   @Override
   public PlanNode cloneWithChildren(final List<PlanNode> children) {
     return new PipeEnrichedDeleteDataNode(
-        (DeleteDataNode) deleteDataNode.cloneWithChildren(children));
+        (AbstractDeleteDataNode) deleteDataNode.cloneWithChildren(children));
   }
 
   @Override
@@ -140,8 +195,8 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitPipeEnrichedDeleteDataNode(this, context);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C context) {
+    return ((PlanVisitor<R, C>) visitor).visitPipeEnrichedDeleteDataNode(this, context);
   }
 
   @Override
@@ -157,7 +212,8 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   }
 
   public static PipeEnrichedDeleteDataNode deserialize(final ByteBuffer buffer) {
-    return new PipeEnrichedDeleteDataNode((DeleteDataNode) PlanNodeType.deserialize(buffer));
+    return new PipeEnrichedDeleteDataNode(
+        (AbstractDeleteDataNode) PlanNodeType.deserialize(buffer));
   }
 
   @Override
@@ -183,7 +239,7 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
             plan ->
                 plan instanceof PipeEnrichedDeleteDataNode
                     ? plan
-                    : new PipeEnrichedDeleteDataNode((DeleteDataNode) plan))
+                    : new PipeEnrichedDeleteDataNode((AbstractDeleteDataNode) plan))
         .collect(Collectors.toList());
   }
 
@@ -206,6 +262,6 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
                     (SearchNode) ((PipeEnrichedDeleteDataNode) searchNode).getDeleteDataNode())
             .collect(Collectors.toList());
     return new PipeEnrichedDeleteDataNode(
-        (DeleteDataNode) deleteDataNode.merge(unrichedDeleteDataNodes));
+        (AbstractDeleteDataNode) deleteDataNode.merge(unrichedDeleteDataNodes));
   }
 }

@@ -28,7 +28,7 @@ config = TableSessionConfig(
     node_urls=["localhost:6667"],
     username="root",
     password="root",
-    time_zone="UTC+8",
+    time_zone="Asia/Shanghai",
 )
 session = TableSession(config)
 
@@ -69,7 +69,7 @@ config = TableSessionConfig(
     username="root",
     password="root",
     database="test1",
-    time_zone="UTC+8",
+    time_zone="Asia/Shanghai",
 )
 session = TableSession(config)
 
@@ -157,6 +157,10 @@ with session.execute_query_statement("select * from table5 order by time") as da
 with session.execute_query_statement("select * from table5 order by time") as dataset:
     df = dataset.todf()
     print(df)
+
+with session.execute_query_statement("select * from table5 order by time") as dataset:
+    while dataset.has_next_df():
+        print(dataset.next_df())
 
 # close session connection.
 session.close()

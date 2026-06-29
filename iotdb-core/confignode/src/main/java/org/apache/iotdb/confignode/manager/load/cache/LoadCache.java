@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
@@ -49,12 +50,15 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSamp
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 
+import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -78,6 +82,7 @@ public class LoadCache {
       Math.max(
           ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),
           TimeUnit.SECONDS.toMillis(10));
+  private static final int MAX_UNREADY_ENTITY_PRINT = 10;
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -90,18 +95,25 @@ public class LoadCache {
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   // Map<NodeId, Map<RegionGroupId, RegionSize>>
   private final Map<Integer, Map<Integer, Long>> regionSizeMap;
+  // Map<NodeId, Map<RegionGroupId, RegionRawSize>>
+  private final Map<Integer, Map<Integer, Long>> regionRawSizeMap;
   // Map<RegionGroupId, ConsensusGroupCache>
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
   private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;
+  private Map<Integer, Set<Integer>> topologyGraph;
+  private final AtomicBoolean topologyUpdated;
 
   public LoadCache() {
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.heartbeatProcessingMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
     this.regionSizeMap = new ConcurrentHashMap<>();
+    this.regionRawSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
+    this.topologyGraph = new HashMap<>();
+    this.topologyUpdated = new AtomicBoolean(false);
   }
 
   public void initHeartbeatCache(final IManager configManager) {
@@ -175,6 +187,7 @@ public class LoadCache {
                       regionGroupId,
                       new RegionGroupCache(
                           database,
+                          regionGroupId,
                           regionReplicaSet.getDataNodeLocations().stream()
                               .map(TDataNodeLocation::getDataNodeId)
                               .collect(Collectors.toSet()),
@@ -287,7 +300,8 @@ public class LoadCache {
       String database, TConsensusGroupId regionGroupId, Set<Integer> dataNodeIds) {
     boolean isStrongConsistency = CONF.isConsensusGroupStrongConsistency(regionGroupId);
     regionGroupCacheMap.put(
-        regionGroupId, new RegionGroupCache(database, dataNodeIds, isStrongConsistency));
+        regionGroupId,
+        new RegionGroupCache(database, regionGroupId, dataNodeIds, isStrongConsistency));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
   }
 
@@ -299,7 +313,7 @@ public class LoadCache {
    */
   public void createRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
     Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
-        .ifPresent(cache -> cache.createRegionCache(dataNodeId));
+        .ifPresent(cache -> cache.createRegionCache(dataNodeId, regionGroupId));
   }
 
   /**
@@ -481,6 +495,32 @@ public class LoadCache {
             consensusGroupStatisticsMap.put(
                 regionGroupId, consensusGroupCache.getCurrentStatistics()));
     return consensusGroupStatisticsMap;
+  }
+
+  public List<String> getNodeHeartbeatUnreadyReasons() {
+    List<Integer> unreadyNodes = new ArrayList<>();
+    nodeCacheMap.forEach(
+        (nodeId, nodeCache) -> {
+          if (nodeId == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
+            return;
+          }
+          if ((nodeCache instanceof ConfigNodeHeartbeatCache
+                  || nodeCache instanceof DataNodeHeartbeatCache)
+              && !nodeCache.hasHeartbeatSample()) {
+            unreadyNodes.add(nodeId);
+          }
+        });
+    if (unreadyNodes.isEmpty()) {
+      return Collections.emptyList();
+    }
+    Collections.sort(unreadyNodes);
+    List<Integer> nodesToPrint =
+        unreadyNodes.subList(0, Math.min(MAX_UNREADY_ENTITY_PRINT, unreadyNodes.size()));
+    String suffix =
+        unreadyNodes.size() > MAX_UNREADY_ENTITY_PRINT
+            ? "...(" + (unreadyNodes.size() - MAX_UNREADY_ENTITY_PRINT) + " more)"
+            : "";
+    return Collections.singletonList("nodes=" + nodesToPrint + suffix);
   }
 
   /**
@@ -741,7 +781,8 @@ public class LoadCache {
    */
   public void waitForLeaderElection(List<TConsensusGroupId> regionGroupIds) {
     long startTime = System.currentTimeMillis();
-    LOGGER.info("[RegionElection] Wait for leader election of RegionGroups: {}", regionGroupIds);
+    LOGGER.info(
+        ManagerMessages.REGIONELECTION_WAIT_FOR_LEADER_ELECTION_OF_REGIONGROUPS, regionGroupIds);
     while (System.currentTimeMillis() - startTime <= LEADER_ELECTION_WAITING_TIMEOUT) {
       AtomicBoolean allRegionLeaderElected = new AtomicBoolean(true);
       regionGroupIds.forEach(
@@ -752,21 +793,53 @@ public class LoadCache {
             }
           });
       if (allRegionLeaderElected.get()) {
-        LOGGER.info("[RegionElection] The leader of RegionGroups: {} is elected.", regionGroupIds);
+        LOGGER.info(
+            ManagerMessages.REGIONELECTION_THE_LEADER_OF_REGIONGROUPS_IS_ELECTED, regionGroupIds);
         return;
       }
       try {
         TimeUnit.MILLISECONDS.sleep(WAIT_LEADER_INTERVAL);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupt when wait for leader election", e);
+        LOGGER.warn(ManagerMessages.INTERRUPT_WHEN_WAIT_FOR_LEADER_ELECTION, e);
         return;
       }
     }
 
     LOGGER.warn(
-        "[RegionElection] The leader of RegionGroups: {} is not determined after 10 heartbeat interval. Some function might fail.",
+        ManagerMessages.REGIONELECTION_THE_LEADER_OF_REGIONGROUPS_IS_NOT_DETERMINED_AFTER_10,
         regionGroupIds);
+  }
+
+  public void updateTopology(Map<Integer, Set<Integer>> latestTopology) {
+    if (!latestTopology.equals(topologyGraph)) {
+      LOGGER.info(ManagerMessages.TOPOLOGY_CLUSTER_TOPOLOGY_CHANGED_LATEST, latestTopology);
+      for (int fromId : latestTopology.keySet()) {
+        for (int toId : latestTopology.keySet()) {
+          boolean originReachable =
+              topologyGraph.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          boolean newReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          if (originReachable != newReachable) {
+            LOGGER.info(
+                ManagerMessages.TOPOLOGY_TOPOLOGY_OF_DATANODE_IS_NOW_TO_DATANODE,
+                fromId,
+                newReachable ? "reachable" : "unreachable",
+                toId);
+          }
+        }
+      }
+      topologyGraph = latestTopology;
+      topologyUpdated.set(true);
+    }
+  }
+
+  @Nullable
+  public Map<Integer, Set<Integer>> getTopology() {
+    if (topologyUpdated.compareAndSet(true, false)) {
+      return Collections.unmodifiableMap(topologyGraph);
+    }
+    return null;
   }
 
   public void updateConfirmedConfigNodeEndPoints(
@@ -782,7 +855,15 @@ public class LoadCache {
     this.regionSizeMap.put(dataNodeId, regionSizeMap);
   }
 
+  public void updateRegionRawSizeMap(int dataNodeId, Map<Integer, Long> regionRawSizeMap) {
+    this.regionRawSizeMap.put(dataNodeId, regionRawSizeMap);
+  }
+
   public Map<Integer, Map<Integer, Long>> getRegionSizeMap() {
     return regionSizeMap;
+  }
+
+  public Map<Integer, Map<Integer, Long>> getRegionRawSizeMap() {
+    return regionRawSizeMap;
   }
 }

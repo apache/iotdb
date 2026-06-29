@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -30,9 +31,9 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.nio.charset.Charset;
 import java.sql.BatchUpdateException;
@@ -45,6 +46,8 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import static org.apache.iotdb.jdbc.Constant.TABLE;
 import static org.apache.iotdb.jdbc.Constant.TREE;
@@ -53,7 +56,7 @@ public class IoTDBStatement implements Statement {
 
   private final IoTDBConnection connection;
 
-  private ResultSet resultSet = null;
+  protected ResultSet resultSet = null;
   private int fetchSize;
   private int maxRows = 0;
 
@@ -64,7 +67,7 @@ public class IoTDBStatement implements Statement {
    * Timeout of query can be set by users. Unit: s. A negative number means using the default
    * configuration of server. And value 0 will disable the function of query timeout.
    */
-  private int queryTimeout = -1;
+  protected int queryTimeout = -1;
 
   protected IClientRPCService.Iface client;
   private List<String> batchSQLList;
@@ -80,7 +83,7 @@ public class IoTDBStatement implements Statement {
   /** Add SQLWarnings to the warningChain if needed. */
   private SQLWarning warningChain = null;
 
-  private long sessionId;
+  protected long sessionId;
   private long stmtId = -1;
   private long queryId = -1;
 
@@ -184,7 +187,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    throw new SQLException("Cannot unwrap to " + iface);
+    throw new SQLException(JdbcMessages.CANNOT_UNWRAP_TO + iface);
   }
 
   @Override
@@ -208,7 +211,7 @@ public class IoTDBStatement implements Statement {
         RpcUtils.verifySuccess(closeResp);
       }
     } catch (Exception e) {
-      throw new SQLException("Error occurs when canceling statement.", e);
+      throw new SQLException(JdbcMessages.CANCEL_STATEMENT_ERROR, e);
     }
     isCancelled = true;
   }
@@ -236,7 +239,7 @@ public class IoTDBStatement implements Statement {
         stmtId = -1;
       }
     } catch (Exception e) {
-      throw new SQLException("Error occurs when closing statement.", e);
+      throw new SQLException(JdbcMessages.CLOSE_STATEMENT_ERROR, e);
     }
   }
 
@@ -252,7 +255,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public void closeOnCompletion() throws SQLException {
-    throw new SQLException("Not support closeOnCompletion");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_CLOSE_ON_COMPLETION);
   }
 
   /**
@@ -274,18 +277,10 @@ public class IoTDBStatement implements Statement {
     try {
       return executeSQL(sql);
     } catch (TException e) {
-      if (reConnect()) {
-        try {
-          return executeSQL(sql);
-        } catch (TException e2) {
-          throw new SQLException(e2);
-        }
-      } else {
-        throw new SQLException(
-            String.format(
-                "Fail to reconnect to server when executing %s. please check server status", sql),
-            e);
-      }
+      throw new SQLException(
+          String.format(
+              "Fail to reconnect to server when executing %s. please check server status", sql),
+          e);
     }
   }
 
@@ -304,6 +299,54 @@ public class IoTDBStatement implements Statement {
     throw new SQLException(NOT_SUPPORT_EXECUTE);
   }
 
+  private interface TFunction<T> {
+    T run() throws TException;
+  }
+
+  private <T> T callWithRetryAndReconnect(TFunction<T> rpc, Function<T, TSStatus> statusGetter)
+      throws SQLException, TException {
+    TException lastTException = null;
+    T result = null;
+    int retryAttempt;
+    int maxRetryCount = 5;
+    int retryIntervalInMs = 1000;
+    for (retryAttempt = 0; retryAttempt <= maxRetryCount; retryAttempt++) {
+      // 1. try to execute the rpc
+      try {
+        result = rpc.run();
+        lastTException = null;
+      } catch (TException e) {
+        result = null;
+        lastTException = e;
+      }
+
+      TSStatus status = null;
+      if (result != null) {
+        status = statusGetter.apply(result);
+      }
+      // success, return immediately
+      if (status != null && !(status.isSetNeedRetry() && status.isNeedRetry())) {
+        return result;
+      }
+
+      // prepare for the next retry
+      if (lastTException != null) {
+        reConnect();
+      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      }
+    }
+
+    if (result == null && lastTException != null) {
+      throw lastTException;
+    }
+    return result;
+  }
+
   /**
    * There are two kinds of sql here: (1) query sql (2) update sql.
    *
@@ -318,7 +361,13 @@ public class IoTDBStatement implements Statement {
     }
     execReq.setFetchSize(rows);
     execReq.setTimeout((long) queryTimeout * 1000);
-    TSExecuteStatementResp execResp = client.executeStatementV2(execReq);
+    TSExecuteStatementResp execResp =
+        callWithRetryAndReconnect(
+            () -> client.executeStatementV2(execReq), TSExecuteStatementResp::getStatus);
+
+    if (execResp.isSetOperationType() && execResp.getOperationType().equals("dropDB")) {
+      connection.changeDefaultDatabase(null);
+    }
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (StatementExecutionException e) {
@@ -330,13 +379,13 @@ public class IoTDBStatement implements Statement {
     }
 
     if (execResp.isSetTableModel()) {
-      connection.changeDefaultSqlDialect(execResp.tableModel ? TABLE : TREE);
+      connection.mayChangeDefaultSqlDialect(execResp.tableModel ? TABLE : TREE);
     }
 
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
       if (execResp.queryResult == null) {
-        throw new SQLException("execResp.queryResult should never be null.");
+        throw new SQLException(JdbcMessages.QUERY_RESULT_SHOULD_NOT_BE_NULL);
       } else {
         this.resultSet =
             new IoTDBJDBCResultSet(
@@ -370,26 +419,18 @@ public class IoTDBStatement implements Statement {
     try {
       return executeBatchSQL();
     } catch (TException e) {
-      if (reConnect()) {
-        try {
-          return executeBatchSQL();
-        } catch (TException e2) {
-          throw new SQLException(
-              "Fail to execute batch sqls after reconnecting. please check server status", e2);
-        }
-      } else {
-        throw new SQLException(
-            "Fail to reconnect to server when executing batch sqls. please check server status", e);
-      }
+      throw new SQLException(
+          "Fail to reconnect to server when executing batch sqls. please check server status", e);
     } finally {
       clearBatch();
     }
   }
 
-  private int[] executeBatchSQL() throws TException, BatchUpdateException {
+  private int[] executeBatchSQL() throws TException, BatchUpdateException, SQLException {
     isCancelled = false;
     TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionId, batchSQLList);
-    TSStatus execResp = client.executeBatchStatement(execReq);
+    TSStatus execResp =
+        callWithRetryAndReconnect(() -> client.executeBatchStatement(execReq), status -> status);
     int[] result = new int[batchSQLList.size()];
     boolean allSuccess = true;
     StringBuilder message = new StringBuilder(System.lineSeparator());
@@ -418,10 +459,7 @@ public class IoTDBStatement implements Statement {
     }
     if (execResp.isSetSubStatus() && execResp.getSubStatus() != null) {
       for (TSStatus status : execResp.getSubStatus()) {
-        if (status.getCode() == TSStatusCode.USE_DB.getStatusCode()
-            && status.isSetMessage()
-            && status.getMessage() != null
-            && !status.getMessage().isEmpty()) {
+        if (status.getCode() == TSStatusCode.USE_OR_DROP_DB.getStatusCode()) {
           connection.changeDefaultDatabase(status.getMessage());
           break;
         }
@@ -444,20 +482,9 @@ public class IoTDBStatement implements Statement {
     try {
       return executeQuerySQL(sql, timeoutInMS);
     } catch (TException e) {
-      if (reConnect()) {
-        try {
-          return executeQuerySQL(sql, timeoutInMS);
-        } catch (TException e2) {
-          throw new SQLException(
-              "Fail to executeQuery " + sql + "after reconnecting. please check server status", e2);
-        }
-      } else {
-        throw new SQLException(
-            "Fail to reconnect to server when execute query "
-                + sql
-                + ". please check server status",
-            e);
-      }
+      throw new SQLException(
+          "Fail to reconnect to server when execute query " + sql + ". please check server status",
+          e);
     }
   }
 
@@ -471,7 +498,9 @@ public class IoTDBStatement implements Statement {
     execReq.setFetchSize(rows);
     execReq.setTimeout(timeoutInMS);
     execReq.setJdbcQuery(true);
-    TSExecuteStatementResp execResp = client.executeQueryStatementV2(execReq);
+    TSExecuteStatementResp execResp =
+        callWithRetryAndReconnect(
+            () -> client.executeQueryStatementV2(execReq), TSExecuteStatementResp::getStatus);
     queryId = execResp.getQueryId();
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -480,7 +509,7 @@ public class IoTDBStatement implements Statement {
     }
 
     if (!execResp.isSetQueryResult()) {
-      throw new SQLException("execResp.queryResult should never be null.");
+      throw new SQLException(JdbcMessages.QUERY_RESULT_SHOULD_NOT_BE_NULL);
     } else {
       this.resultSet =
           new IoTDBJDBCResultSet(
@@ -520,21 +549,9 @@ public class IoTDBStatement implements Statement {
     try {
       return executeUpdateSQL(sql);
     } catch (TException e) {
-      if (reConnect()) {
-        try {
-          return executeUpdateSQL(sql);
-        } catch (TException e2) {
-          throw new SQLException(
-              "Fail to execute update " + sql + "after reconnecting. please check server status",
-              e2);
-        }
-      } else {
-        throw new SQLException(
-            "Fail to reconnect to server when execute update "
-                + sql
-                + ". please check server status",
-            e);
-      }
+      throw new SQLException(
+          "Fail to reconnect to server when execute update " + sql + ". please check server status",
+          e);
     }
   }
 
@@ -553,9 +570,12 @@ public class IoTDBStatement implements Statement {
     throw new SQLException(NOT_SUPPORT_EXECUTE_UPDATE);
   }
 
-  private int executeUpdateSQL(final String sql) throws TException, IoTDBSQLException {
+  private int executeUpdateSQL(final String sql)
+      throws TException, IoTDBSQLException, SQLException {
     final TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    final TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
+    final TSExecuteStatementResp execResp =
+        callWithRetryAndReconnect(
+            () -> client.executeUpdateStatement(execReq), TSExecuteStatementResp::getStatus);
     if (execResp.isSetQueryId()) {
       queryId = execResp.getQueryId();
     }
@@ -582,7 +602,7 @@ public class IoTDBStatement implements Statement {
   public void setFetchDirection(int direction) throws SQLException {
     checkConnection("setFetchDirection");
     if (direction != ResultSet.FETCH_FORWARD) {
-      throw new SQLException(String.format("direction %d is not supported!", direction));
+      throw new SQLException(String.format(JdbcMessages.DIRECTION_NOT_SUPPORTED, direction));
     }
   }
 
@@ -596,24 +616,25 @@ public class IoTDBStatement implements Statement {
   public void setFetchSize(int fetchSize) throws SQLException {
     checkConnection("setFetchSize");
     if (fetchSize < 0) {
-      throw new SQLException(String.format("fetchSize %d must be >= 0!", fetchSize));
+      throw new SQLException(
+          String.format(JdbcMessages.FETCH_SIZE_MUST_BE_NON_NEGATIVE, fetchSize));
     }
     this.fetchSize = fetchSize == 0 ? Config.DEFAULT_FETCH_SIZE : fetchSize;
   }
 
   @Override
   public ResultSet getGeneratedKeys() throws SQLException {
-    throw new SQLException("Not support getGeneratedKeys");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_GENERATED_KEYS);
   }
 
   @Override
   public int getMaxFieldSize() throws SQLException {
-    throw new SQLException("Not support getMaxFieldSize");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_MAX_FIELD_SIZE);
   }
 
   @Override
   public void setMaxFieldSize(int arg0) throws SQLException {
-    throw new SQLException("Not support getMaxFieldSize");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_MAX_FIELD_SIZE);
   }
 
   @Override
@@ -625,7 +646,7 @@ public class IoTDBStatement implements Statement {
   public void setMaxRows(int num) throws SQLException {
     checkConnection("setMaxRows");
     if (num < 0) {
-      throw new SQLException(String.format("maxRows %d must be >= 0!", num));
+      throw new SQLException(String.format(JdbcMessages.MAX_ROWS_MUST_BE_NON_NEGATIVE, num));
     }
     this.maxRows = num;
   }
@@ -637,7 +658,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean getMoreResults(int arg0) throws SQLException {
-    throw new SQLException("Not support getMoreResults");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_MORE_RESULTS);
   }
 
   @Override
@@ -659,12 +680,12 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getResultSetConcurrency() throws SQLException {
-    throw new SQLException("Not support getResultSetConcurrency");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_RESULT_SET_CONCURRENCY);
   }
 
   @Override
   public int getResultSetHoldability() throws SQLException {
-    throw new SQLException("Not support getResultSetHoldability");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_RESULT_SET_HOLDABILITY);
   }
 
   @Override
@@ -685,7 +706,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean isCloseOnCompletion() throws SQLException {
-    throw new SQLException("Not support isCloseOnCompletion");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_IS_CLOSE_ON_COMPLETION);
   }
 
   @Override
@@ -695,27 +716,27 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean isPoolable() throws SQLException {
-    throw new SQLException("Not support isPoolable");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_IS_POOLABLE);
   }
 
   @Override
   public void setPoolable(boolean arg0) throws SQLException {
-    throw new SQLException("Not support setPoolable");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_POOLABLE);
   }
 
   @Override
   public void setCursorName(String arg0) throws SQLException {
-    throw new SQLException("Not support setCursorName");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_CURSOR_NAME);
   }
 
   @Override
   public void setEscapeProcessing(boolean enable) throws SQLException {
-    throw new SQLException("Not support setEscapeProcessing");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_ESCAPE_PROCESSING);
   }
 
   private void checkConnection(String action) throws SQLException {
     if (connection == null || connection.isClosed()) {
-      throw new SQLException(String.format("Cannot %s after connection has been closed!", action));
+      throw new SQLException(String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action));
     }
   }
 

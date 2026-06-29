@@ -89,7 +89,7 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
     DataRegion mockDataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(tsFileManager);
     Mockito.when(mockDataRegion.getDatabaseName()).thenReturn("root.testsg");
-    Mockito.when(mockDataRegion.getDataRegionId()).thenReturn("0");
+    Mockito.when(mockDataRegion.getDataRegionIdString()).thenReturn("0");
     Mockito.when(mockDataRegion.getTimePartitions()).thenReturn(Collections.singletonList(0L));
 
     TsFileResource seqResource1 = createEmptyFileAndResource(true);
@@ -136,7 +136,7 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
     DataRegion mockDataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(tsFileManager);
     Mockito.when(mockDataRegion.getDatabaseName()).thenReturn("root.testsg");
-    Mockito.when(mockDataRegion.getDataRegionId()).thenReturn("0");
+    Mockito.when(mockDataRegion.getDataRegionIdString()).thenReturn("0");
     Mockito.when(mockDataRegion.getTimePartitions()).thenReturn(Collections.singletonList(0L));
 
     TsFileResource seqResource1 = createEmptyFileAndResource(true);
@@ -206,7 +206,7 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
     DataRegion mockDataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(tsFileManager);
     Mockito.when(mockDataRegion.getDatabaseName()).thenReturn("root.testsg");
-    Mockito.when(mockDataRegion.getDataRegionId()).thenReturn("0");
+    Mockito.when(mockDataRegion.getDataRegionIdString()).thenReturn("0");
     Mockito.when(mockDataRegion.getTimePartitions()).thenReturn(Collections.singletonList(0L));
 
     TsFileResource seqResource1 = createEmptyFileAndResource(true);
@@ -265,7 +265,7 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
     DataRegion mockDataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(tsFileManager);
     Mockito.when(mockDataRegion.getDatabaseName()).thenReturn("root.testsg");
-    Mockito.when(mockDataRegion.getDataRegionId()).thenReturn("0");
+    Mockito.when(mockDataRegion.getDataRegionIdString()).thenReturn("0");
     Mockito.when(mockDataRegion.getTimePartitions()).thenReturn(Collections.singletonList(0L));
 
     TsFileResource seqResource1 = createEmptyFileAndResource(true);
@@ -313,7 +313,7 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
     DataRegion mockDataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(tsFileManager);
     Mockito.when(mockDataRegion.getDatabaseName()).thenReturn("root.testsg");
-    Mockito.when(mockDataRegion.getDataRegionId()).thenReturn("0");
+    Mockito.when(mockDataRegion.getDataRegionIdString()).thenReturn("0");
     Mockito.when(mockDataRegion.getTimePartitions()).thenReturn(Collections.singletonList(0L));
 
     TsFileResource seqResource1 = createEmptyFileAndResource(true);

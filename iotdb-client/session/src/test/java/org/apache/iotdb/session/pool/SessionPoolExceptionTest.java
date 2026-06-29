@@ -74,7 +74,7 @@ public class SessionPoolExceptionTest {
         new SessionPool.Builder()
             .nodeUrls(Collections.singletonList("host:11"))
             .user("user")
-            .password("password")
+            .password("password123456")
             .maxSize(10)
             .enableAutoFetch(false)
             .build();

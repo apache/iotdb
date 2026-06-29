@@ -34,23 +34,34 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       TTransport underlying,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean copyBinary) {
+      boolean copyBinary)
+      throws TTransportException {
     super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
-    writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
-    readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
+    try {
+      writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+      readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
+    } catch (IOException e) {
+      closeAllocatedBuffers();
+      throw new TTransportException(e);
+    }
+  }
+
+  @Override
+  protected void closeAllocatedBuffers() {
+    super.closeAllocatedBuffers();
+    if (writeCompressBuffer != null) {
+      writeCompressBuffer.close();
+    }
+    if (readCompressBuffer != null) {
+      readCompressBuffer.close();
+    }
   }
 
   @Override
   protected void readFrame() throws TTransportException {
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
-
-    if (size < 0) {
-      close();
-      throw new TTransportException(
-          TTransportException.CORRUPTED_DATA, "Read a negative frame size (" + size + ")!");
-    }
-
+    validateFrame(size);
     readBuffer.fill(underlying, size);
     RpcStat.readCompressedBytes.addAndGet(size);
     try {
@@ -75,6 +86,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       writeCompressBuffer.resizeIfNecessary(maxCompressedLength);
       int compressedLength =
           compress(writeBuffer.getBuffer(), 0, length, writeCompressBuffer.getBuffer(), 0);
+      checkWriteFrameSize(compressedLength);
       RpcStat.writeCompressedBytes.addAndGet(compressedLength);
       TFramedTransport.encodeFrameSize(compressedLength, i32buf);
       underlying.write(i32buf, 0, 4);
@@ -85,7 +97,11 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
 
     writeBuffer.reset();
     if (thriftDefaultBufferSize < length) {
-      writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
+      try {
+        writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
+      } catch (IOException e) {
+        throw new TTransportException(e);
+      }
     }
     underlying.flush();
   }

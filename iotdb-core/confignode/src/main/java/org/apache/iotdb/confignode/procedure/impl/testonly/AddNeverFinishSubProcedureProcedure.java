@@ -20,10 +20,9 @@
 package org.apache.iotdb.confignode.procedure.impl.testonly;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -42,7 +41,7 @@ public class AddNeverFinishSubProcedureProcedure
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, Integer state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     if (state == 0) {
       // the sub procedure will never finish, so the father procedure should never be called again
       addChildProcedure(new NeverFinishProcedure());
@@ -51,7 +50,7 @@ public class AddNeverFinishSubProcedureProcedure
     }
     if (state == 1) {
       // test fail
-      LOGGER.error("AddNeverFinishSubProcedureProcedure run again, which should never happen");
+      LOGGER.error(ProcedureMessages.NEVER_FINISH_PROCEDURE_RAN_AGAIN);
       ProcedureTestUtils.createDatabase(env.getConfigManager(), FAIL_DATABASE_NAME);
     }
     return Flow.NO_MORE_STATE;

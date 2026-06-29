@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.metric.source;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningQueue;
+import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningQueue;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;

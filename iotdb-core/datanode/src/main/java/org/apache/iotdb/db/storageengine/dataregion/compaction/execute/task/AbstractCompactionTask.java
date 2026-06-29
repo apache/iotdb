@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
@@ -73,6 +74,7 @@ public abstract class AbstractCompactionTask {
   protected CompactionTaskSummary summary;
   protected long serialId;
   protected CompactionTaskStage taskStage;
+  protected long roughMemoryCost = -1L;
   protected long memoryCost = 0L;
 
   protected boolean recoverMemoryStatus;
@@ -163,13 +165,26 @@ public abstract class AbstractCompactionTask {
     } else if (e instanceof InterruptedException
         || Thread.interrupted()
         || e instanceof StopReadTsFileByInterruptException
-        || !tsFileManager.isAllowCompaction()) {
+        || !tsFileManager.isAllowCompaction()
+        || CompactionTaskManager.getInstance().isStopAllCompactionWorker()) {
       logger.warn(
           "{}-{} [Compaction] {} task interrupted",
           storageGroupName,
           dataRegionId,
           getCompactionTaskType());
       Thread.currentThread().interrupt();
+    } else if (e instanceof ChunkTypeInconsistentException) {
+      ChunkTypeInconsistentException chunkTypeInconsistentException =
+          (ChunkTypeInconsistentException) e;
+      logger.error(
+          "Unexpected chunk type detected when reading non-aligned chunk reader. "
+              + "The chunk metadata indicates a non-aligned chunk, "
+              + "but the actual chunk read from tsfile is a value chunk of aligned series. "
+              + "tsFile={}, device={}, measurement={}, offsetOfChunkHeader={}",
+          chunkTypeInconsistentException.filePath,
+          chunkTypeInconsistentException.deviceId,
+          chunkTypeInconsistentException.measurement,
+          chunkTypeInconsistentException.offsetOfChunkHeader);
     } else {
       logger.error(
           "{}-{} [Compaction] {} task meets error: {}.",
@@ -253,6 +268,15 @@ public abstract class AbstractCompactionTask {
         throw new FileCannotTransitToCompactingException(f);
       }
     }
+  }
+
+  @TestOnly
+  public long getRoughMemoryCost() {
+    return roughMemoryCost;
+  }
+
+  public void setRoughMemoryCost(long memoryCost) {
+    this.roughMemoryCost = memoryCost;
   }
 
   public abstract long getEstimatedMemoryCost();
@@ -501,6 +525,9 @@ public abstract class AbstractCompactionTask {
           sourceSeqFiles,
           sourceUnseqFiles,
           targetFiles);
+      if (!IoTDBDescriptor.getInstance().getConfig().isEnableAutoRepairCompaction()) {
+        throw new CompactionValidationFailedException(overlapFilesInTimePartition);
+      }
       for (TsFileResource resource : overlapFilesInTimePartition) {
         if (resource.getTsFileRepairStatus() != TsFileRepairStatus.CAN_NOT_REPAIR) {
           resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);

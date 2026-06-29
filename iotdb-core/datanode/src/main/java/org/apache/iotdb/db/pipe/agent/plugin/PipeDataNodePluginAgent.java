@@ -24,10 +24,14 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.pipe.api.PipePlugin;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -37,6 +41,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeDataNodePluginAgent {
@@ -69,7 +74,7 @@ public class PipeDataNodePluginAgent {
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
 
-  public void register(PipePluginMeta pipePluginMeta, ByteBuffer jarFile)
+  public void register(final PipePluginMeta pipePluginMeta, final ByteBuffer jarFile)
       throws IOException, PipeException {
     lock.lock();
     try {
@@ -85,7 +90,7 @@ public class PipeDataNodePluginAgent {
     }
   }
 
-  private void checkIfRegistered(PipePluginMeta pipePluginMeta) throws PipeException {
+  private void checkIfRegistered(final PipePluginMeta pipePluginMeta) throws PipeException {
     final String pluginName = pipePluginMeta.getPluginName();
     final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
     if (information == null) {
@@ -95,8 +100,8 @@ public class PipeDataNodePluginAgent {
     if (information.isBuiltin()) {
       String errorMessage =
           String.format(
-              "Failed to register PipePlugin %s, because "
-                  + "the given PipePlugin name is the same as a built-in PipePlugin name.",
+              DataNodePipeMessages
+                  .FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_NAME_CONFLICTS_WITH_BUILTIN,
               pluginName);
       LOGGER.warn(errorMessage);
       throw new PipeException(errorMessage);
@@ -108,10 +113,9 @@ public class PipeDataNodePluginAgent {
         && !PipePluginExecutableManager.getInstance().isLocalJarMatched(pipePluginMeta)) {
       String errMsg =
           String.format(
-              "Failed to register PipePlugin %s, because "
-                  + "existed md5 of jar file for pipe plugin %s "
-                  + "is different from the new jar file.",
-              pluginName, pluginName);
+              DataNodePipeMessages.FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_JAR_MD5_MISMATCH,
+              pluginName,
+              pluginName);
       LOGGER.warn(errMsg);
       throw new PipeException(errMsg);
     }
@@ -120,7 +124,8 @@ public class PipeDataNodePluginAgent {
     // we allow users to register the same pipe plugin multiple times without any error
   }
 
-  private void saveJarFileIfNeeded(String pluginName, String jarName, ByteBuffer byteBuffer)
+  private void saveJarFileIfNeeded(
+      final String pluginName, final String jarName, final ByteBuffer byteBuffer)
       throws IOException {
     if (byteBuffer != null) {
       PipePluginExecutableManager.getInstance()
@@ -135,7 +140,7 @@ public class PipeDataNodePluginAgent {
    * @param pipePluginMeta the meta information of the PipePlugin
    * @throws PipeException if the PipePlugin can not be loaded or its instance can not be created
    */
-  public void doRegister(PipePluginMeta pipePluginMeta) throws PipeException {
+  public void doRegister(final PipePluginMeta pipePluginMeta) throws PipeException {
     final String pluginName = pipePluginMeta.getPluginName();
     final String className = pipePluginMeta.getClassName();
 
@@ -155,7 +160,7 @@ public class PipeDataNodePluginAgent {
       pipePluginMetaKeeper.addPipePluginVisibility(
           pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
       classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
-    } catch (IOException
+    } catch (final IOException
         | InstantiationException
         | InvocationTargetException
         | NoSuchMethodException
@@ -164,22 +169,50 @@ public class PipeDataNodePluginAgent {
         | ClassCastException e) {
       String errorMessage =
           String.format(
-              "Failed to register PipePlugin %s(%s), because "
-                  + "its instance can not be constructed successfully. Exception: %s",
-              pluginName.toUpperCase(), className, e);
+              DataNodePipeMessages
+                  .FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_INSTANCE_CONSTRUCTION_FAILED,
+              pluginName.toUpperCase(),
+              className,
+              e);
       LOGGER.warn(errorMessage, e);
       throw new PipeException(errorMessage);
     }
   }
 
-  public void deregister(String pluginName, boolean needToDeleteJar) throws PipeException {
+  public void markPluginLoadFailure(
+      final PipePluginMeta pipePluginMeta, final Throwable throwable) {
+    final String pluginName = pipePluginMeta.getPluginName();
+    pipePluginMetaKeeper.addPipePluginMeta(
+        pluginName,
+        new PipePluginMeta(
+            pipePluginMeta.getPluginName(),
+            pipePluginMeta.getClassName(),
+            pipePluginMeta.isBuiltin(),
+            pipePluginMeta.getJarName(),
+            pipePluginMeta.getJarMD5(),
+            getRootCauseMessage(throwable)));
+    pipePluginMetaKeeper.addPipePluginVisibility(pluginName, Visibility.BOTH);
+  }
+
+  private String getRootCauseMessage(final Throwable throwable) {
+    Throwable current = throwable;
+    while (current.getCause() != null && current.getCause() != current) {
+      current = current.getCause();
+    }
+    final String message = current.getMessage();
+    return current.getClass().getSimpleName() + (message == null ? "" : (": " + message));
+  }
+
+  public void deregister(final String pluginName, final boolean needToDeleteJar)
+      throws PipeException {
     lock.lock();
     try {
       final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
 
       if (information != null && information.isBuiltin()) {
         String errorMessage =
-            String.format("Failed to deregister builtin PipePlugin %s.", pluginName);
+            String.format(
+                DataNodePipeMessages.FAILED_TO_DEREGISTER_BUILTIN_PIPE_PLUGIN, pluginName);
         LOGGER.warn(errorMessage);
         throw new PipeException(errorMessage);
       }
@@ -196,7 +229,7 @@ public class PipeDataNodePluginAgent {
         PipePluginExecutableManager.getInstance()
             .removeFileUnderTemporaryRoot(pluginName.toUpperCase() + ".txt");
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new PipeException(e.getMessage(), e);
     } finally {
       lock.unlock();
@@ -205,14 +238,32 @@ public class PipeDataNodePluginAgent {
 
   // TODO: validate pipe plugin attributes for config node
   public void validate(
-      String pipeName,
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      final String pipeName,
+      final Map<String, String> sourceAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> sinkAttributes)
       throws Exception {
-    dataRegionAgent.validate(
-        pipeName, extractorAttributes, processorAttributes, connectorAttributes);
-    schemaRegionAgent.validate(
-        pipeName, extractorAttributes, processorAttributes, connectorAttributes);
+    dataRegionAgent.validate(pipeName, sourceAttributes, processorAttributes, sinkAttributes);
+
+    if (SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
+        new PipeParameters(sinkAttributes))) {
+      schemaRegionAgent.validate(pipeName, sourceAttributes, processorAttributes, sinkAttributes);
+    }
+  }
+
+  public boolean checkIfPluginSameType(final String oldPluginName, final String newPluginName) {
+    final PipePluginMeta oldPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(oldPluginName);
+    final PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
+
+    if (oldPipePluginMeta == null) {
+      throw new PipeException(
+          String.format(DataNodePipeMessages.PLUGIN_NOT_REGISTERED_FMT, oldPluginName));
+    }
+    if (newPipePluginMeta == null) {
+      throw new PipeException(
+          String.format(DataNodePipeMessages.PLUGIN_NOT_REGISTERED_FMT, newPluginName));
+    }
+
+    return Objects.equals(oldPipePluginMeta.getClassName(), (newPipePluginMeta.getClassName()));
   }
 }

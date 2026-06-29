@@ -19,22 +19,36 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements ICacheEntryGroup<FK, SK, V, T> {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CacheEntryGroupImpl.class)
+          + RamUsageEstimator.shallowSizeOfInstance(AtomicLong.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class)
+          // Calculate the outer entry of the "firstKeyMap" here
+          + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+
   private final FK firstKey;
 
   private final Map<SK, T> cacheEntryMap = new ConcurrentHashMap<>();
+  private final ICacheSizeComputer<FK, SK, V> sizeComputer;
+  private final AtomicLong memory;
 
-  CacheEntryGroupImpl(final FK firstKey) {
+  CacheEntryGroupImpl(final FK firstKey, final ICacheSizeComputer<FK, SK, V> sizeComputer) {
     this.firstKey = firstKey;
+    this.sizeComputer = sizeComputer;
+    this.memory = new AtomicLong(INSTANCE_SIZE + sizeComputer.computeFirstKeySize(firstKey));
   }
 
   @Override
@@ -53,18 +67,29 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public T computeCacheEntry(final SK secondKey, final BiFunction<SK, T, T> computation) {
-    return cacheEntryMap.compute(secondKey, computation);
+  public T computeCacheEntry(
+      final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation) {
+    return cacheEntryMap.compute(secondKey, computation.apply(memory));
   }
 
   @Override
-  public T computeCacheEntryIfAbsent(final SK secondKey, final Function<SK, T> computation) {
-    return cacheEntryMap.computeIfAbsent(secondKey, computation);
+  public T computeCacheEntryIfPresent(
+      final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation) {
+    return cacheEntryMap.computeIfPresent(secondKey, computation.apply(memory));
   }
 
   @Override
-  public T removeCacheEntry(final SK secondKey) {
-    return cacheEntryMap.remove(secondKey);
+  public long removeCacheEntry(final SK secondKey) {
+    final T result = cacheEntryMap.remove(secondKey);
+    if (Objects.nonNull(result)) {
+      final long delta =
+          sizeComputer.computeSecondKeySize(result.getSecondKey())
+              + sizeComputer.computeValueSize(result.getValue())
+              + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+      memory.addAndGet(-delta);
+      return delta;
+    }
+    return 0;
   }
 
   @Override
@@ -73,10 +98,24 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
+  public long getMemory() {
+    return memory.get();
+  }
+
+  @Override
+  public int getEntriesCount() {
+    return cacheEntryMap.size();
+  }
+
+  @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    CacheEntryGroupImpl<?, ?, ?, ?> that = (CacheEntryGroupImpl<?, ?, ?, ?>) o;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final CacheEntryGroupImpl<?, ?, ?, ?> that = (CacheEntryGroupImpl<?, ?, ?, ?>) o;
     return Objects.equals(firstKey, that.firstKey);
   }
 

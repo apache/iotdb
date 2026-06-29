@@ -19,29 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
-import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
-import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -53,37 +49,32 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator.appendDataIntoBuilder;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperator {
-  private static final long INSTANCE_SIZE =
+  protected static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
-
-  public static final String CURRENT_DEVICE_INDEX_STRING = "CurrentDeviceIndex";
-
-  public static final LongColumn TIME_COLUMN_TEMPLATE =
-      new LongColumn(1, Optional.empty(), new long[] {0});
 
   private final List<ColumnSchema> columnSchemas;
 
   private final int[] columnsIndexArray;
 
-  private final List<DeviceEntry> deviceEntries;
+  protected final List<DeviceEntry> deviceEntries;
 
-  private final int deviceCount;
+  protected final int deviceCount;
 
-  private final Ordering scanOrder;
-  private final SeriesScanOptions seriesScanOptions;
+  protected final Ordering scanOrder;
+  protected final SeriesScanOptions seriesScanOptions;
 
-  private final List<String> measurementColumnNames;
+  protected final List<String> measurementColumnNames;
 
-  private final Set<String> allSensors;
+  protected final Set<String> allSensors;
 
-  private final List<IMeasurementSchema> measurementSchemas;
+  protected final List<IMeasurementSchema> measurementSchemas;
 
-  private final List<TSDataType> measurementColumnTSDataTypes;
+  protected final List<TSDataType> measurementColumnTSDataTypes;
 
   private TsBlockBuilder measurementDataBuilder;
 
@@ -93,7 +84,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   private QueryDataSource queryDataSource;
 
-  private int currentDeviceIndex;
+  protected int currentDeviceIndex;
 
   public AbstractTableScanOperator(AbstractTableScanOperatorParameter parameter) {
     this.sourceId = parameter.sourceId;
@@ -114,15 +105,15 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
             .map(IMeasurementSchema::getType)
             .collect(Collectors.toList());
     this.currentDeviceIndex = 0;
-    this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
+    this.operatorContext.recordSpecifiedInfo(
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
 
+    // allSensors include time and all field columns
     this.maxReturnSize =
         Math.min(
             maxReturnSize,
-            (1L + parameter.columnsIndexArray.length)
-                * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+            allSensors.size() * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = parameter.maxTsBlockLineNum;
-
     constructAlignedSeriesScanUtil();
   }
 
@@ -147,11 +138,19 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
          * 2. consume chunk data secondly
          * 3. consume next file finally
          */
-        if (!readPageData() && !readChunkData() && !readFileData()) {
-          currentDeviceNoMoreData = true;
-          break;
+        if (readPageData()) {
+          continue;
         }
-
+        Optional<Boolean> b = readChunkData();
+        if (!b.isPresent() || b.get()) {
+          continue;
+        }
+        b = readFileData();
+        if (!b.isPresent() || b.get()) {
+          continue;
+        }
+        currentDeviceNoMoreData = true;
+        break;
       } while (System.nanoTime() - start < maxRuntime
           && !measurementDataBuilder.isFull()
           && measurementDataBlock == null);
@@ -160,12 +159,11 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       if (measurementDataBuilder.isEmpty()
           && measurementDataBlock == null
           && currentDeviceNoMoreData) {
-        currentDeviceIndex++;
-        prepareForNextDevice();
+        moveToNextDevice();
       }
 
     } catch (IOException e) {
-      throw new RuntimeException("Error happened while scanning the file", e);
+      throw new RuntimeException(DataNodeQueryMessages.ERROR_HAPPENED_WHILE_SCANNING_THE_FILE, e);
     }
 
     // get all measurement column data and time column data
@@ -200,56 +198,17 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   private void constructResultTsBlock() {
-    int positionCount = measurementDataBlock.getPositionCount();
     DeviceEntry currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-    Column[] valueColumns = new Column[columnsIndexArray.length];
-    for (int i = 0; i < columnsIndexArray.length; i++) {
-      switch (columnSchemas.get(i).getColumnCategory()) {
-        case TAG:
-          String idColumnValue = getNthIdColumnValue(currentDeviceEntry, columnsIndexArray[i]);
-
-          valueColumns[i] =
-              getIdOrAttributeValueColumn(
-                  idColumnValue == null
-                      ? null
-                      : new Binary(idColumnValue, TSFileConfig.STRING_CHARSET),
-                  positionCount);
-          break;
-        case ATTRIBUTE:
-          Binary attributeColumnValue =
-              currentDeviceEntry.getAttributeColumnValues()[columnsIndexArray[i]];
-          valueColumns[i] = getIdOrAttributeValueColumn(attributeColumnValue, positionCount);
-          break;
-        case FIELD:
-          valueColumns[i] = measurementDataBlock.getColumn(columnsIndexArray[i]);
-          break;
-        case TIME:
-          valueColumns[i] = measurementDataBlock.getTimeColumn();
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "Unexpected column category: " + columnSchemas.get(i).getColumnCategory());
-      }
-    }
     this.resultTsBlock =
-        new TsBlock(
-            positionCount,
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount),
-            valueColumns);
+        MeasurementToTableViewAdaptorUtils.toTableBlock(
+            measurementDataBlock,
+            columnsIndexArray,
+            columnSchemas,
+            deviceEntries.get(currentDeviceIndex),
+            idColumnIndex -> getNthIdColumnValue(currentDeviceEntry, idColumnIndex));
   }
 
   abstract String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex);
-
-  private RunLengthEncodedColumn getIdOrAttributeValueColumn(Binary value, int positionCount) {
-    if (value == null) {
-      return new RunLengthEncodedColumn(
-          new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
-          positionCount);
-    } else {
-      return new RunLengthEncodedColumn(
-          new BinaryColumn(1, Optional.empty(), new Binary[] {value}), positionCount);
-    }
-  }
 
   @Override
   public boolean hasNext() throws Exception {
@@ -264,8 +223,10 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   @Override
   public long calculateMaxPeekMemory() {
-    return (1L + columnsIndexArray.length)
-        * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    // allSensors have included time column and all field columns
+    return Math.max(
+        maxReturnSize,
+        allSensors.size() * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
@@ -289,7 +250,8 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     this.measurementDataBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
   }
 
-  private void prepareForNextDevice() {
+  protected void moveToNextDevice() {
+    currentDeviceIndex++;
     if (currentDeviceIndex < deviceCount) {
       // construct AlignedSeriesScanUtil for next device
       constructAlignedSeriesScanUtil();
@@ -298,12 +260,12 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       queryDataSource.reset();
       this.seriesScanUtil.initQueryDataSource(queryDataSource);
       this.operatorContext.recordSpecifiedInfo(
-          CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
+          CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
     }
   }
 
-  private void constructAlignedSeriesScanUtil() {
-    if (this.deviceEntries.isEmpty()) {
+  protected void constructAlignedSeriesScanUtil() {
+    if (this.deviceEntries.isEmpty() || currentDeviceIndex >= deviceCount) {
       // no need to construct SeriesScanUtil, hasNext will return false
       return;
     }
@@ -321,7 +283,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
             alignedPath,
             scanOrder,
             seriesScanOptions,
-            operatorContext.getInstanceContext(),
+            ((OperatorContext) operatorContext).getInstanceContext(),
             true,
             measurementColumnTSDataTypes);
   }

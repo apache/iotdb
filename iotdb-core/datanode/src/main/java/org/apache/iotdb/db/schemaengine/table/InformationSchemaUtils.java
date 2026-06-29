@@ -21,12 +21,14 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -39,7 +41,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
-import java.util.function.Predicate;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
@@ -51,19 +53,13 @@ public class InformationSchemaUtils {
     if (dbName.equals(INFORMATION_DATABASE)) {
       throw new SemanticException(
           new IoTDBException(
-              "The database 'information_schema' can only be queried",
+              DataNodeSchemaMessages.INFORMATION_SCHEMA_READ_ONLY,
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
     }
   }
 
   public static void buildDatabaseTsBlock(
-      final Predicate<String> canSeenDB,
-      final TsBlockBuilder builder,
-      final boolean details,
-      final boolean withTime) {
-    if (!canSeenDB.test(INFORMATION_DATABASE)) {
-      return;
-    }
+      final TsBlockBuilder builder, final boolean details, final boolean withTime) {
     if (withTime) {
       builder.getTimeColumnBuilder().writeLong(0L);
     }
@@ -78,8 +74,11 @@ public class InformationSchemaUtils {
     builder.getColumnBuilder(3).appendNull();
     builder.getColumnBuilder(4).appendNull();
     if (details) {
-      builder.getColumnBuilder(5).appendNull();
-      builder.getColumnBuilder(6).appendNull();
+      for (int columnIndex = 5;
+          columnIndex < builder.getValueColumnBuilders().length;
+          columnIndex++) {
+        builder.getColumnBuilder(columnIndex).appendNull();
+      }
     }
     builder.declarePosition();
   }
@@ -114,13 +113,18 @@ public class InformationSchemaUtils {
             .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (final String schemaTable : getSchemaTables().keySet()) {
+    for (final String schemaTable :
+        getSchemaTables().keySet().stream().sorted().collect(Collectors.toList())) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(schemaTable, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeBinary(new Binary("INF", TSFileConfig.STRING_CHARSET));
       if (isDetails) {
         builder.getColumnBuilder(2).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
-        builder.getColumnBuilder(3).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(3).appendNull();
+        // Does not support comment
+        builder
+            .getColumnBuilder(4)
+            .writeBinary(new Binary(TableType.SYSTEM_VIEW.getName(), TSFileConfig.STRING_CHARSET));
       }
       builder.declarePosition();
     }
@@ -139,6 +143,7 @@ public class InformationSchemaUtils {
       final String database,
       final String tableName,
       final boolean isDetails,
+      final Boolean isShowOrCreateView,
       final SettableFuture<ConfigTaskResult> future) {
     if (!database.equals(INFORMATION_DATABASE)) {
       return false;
@@ -148,6 +153,9 @@ public class InformationSchemaUtils {
           new TableNotExistsException(INFORMATION_DATABASE, tableName);
       future.setException(new IoTDBException(exception.getMessage(), exception.getErrorCode()));
       return true;
+    }
+    if (Objects.nonNull(isShowOrCreateView)) {
+      throw new SemanticException(DataNodeSchemaMessages.SYSTEM_VIEW_NOT_SUPPORT_SHOW_CREATE);
     }
     final TsTable table = getSchemaTables().get(tableName);
 
@@ -172,7 +180,7 @@ public class InformationSchemaUtils {
               new Binary(columnSchema.getColumnCategory().name(), TSFileConfig.STRING_CHARSET));
       if (isDetails) {
         builder.getColumnBuilder(3).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
-        builder.getColumnBuilder(4).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(4).appendNull();
       }
       builder.declarePosition();
     }

@@ -50,6 +50,7 @@ public class ShowSubscriptionsTask implements IConfigTask {
   public ShowSubscriptionsTask(final ShowSubscriptions showSubscriptions) {
     this.showSubscriptionsStatement = new ShowSubscriptionsStatement();
     this.showSubscriptionsStatement.setTopicName(showSubscriptions.getTopicName());
+    this.showSubscriptionsStatement.setTableModel(true);
   }
 
   @Override
@@ -69,15 +70,24 @@ public class ShowSubscriptionsTask implements IConfigTask {
 
     for (final TShowSubscriptionInfo tSubscriptionInfo : subscriptionInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
+      final StringBuilder subscriptionId =
+          new StringBuilder(
+              tSubscriptionInfo.getTopicName() + "_" + tSubscriptionInfo.getConsumerGroupId());
+      if (tSubscriptionInfo.getCreationTime() != 0) {
+        subscriptionId.append("_").append(tSubscriptionInfo.getCreationTime());
+      }
       builder
           .getColumnBuilder(0)
-          .writeBinary(new Binary(tSubscriptionInfo.getTopicName(), TSFileConfig.STRING_CHARSET));
+          .writeBinary(new Binary(subscriptionId.toString(), TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(1)
+          .writeBinary(new Binary(tSubscriptionInfo.getTopicName(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(2)
           .writeBinary(
               new Binary(tSubscriptionInfo.getConsumerGroupId(), TSFileConfig.STRING_CHARSET));
       builder
-          .getColumnBuilder(2)
+          .getColumnBuilder(3)
           .writeBinary(
               new Binary(
                   tSubscriptionInfo.getConsumerIds().toString(), TSFileConfig.STRING_CHARSET));

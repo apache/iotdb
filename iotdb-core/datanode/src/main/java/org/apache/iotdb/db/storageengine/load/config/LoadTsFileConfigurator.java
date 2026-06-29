@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.load.config;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import javax.annotation.Nullable;
 
@@ -45,6 +46,7 @@ public class LoadTsFileConfigurator {
         validateOnSuccessParam(value);
         break;
       case DATABASE_NAME_KEY:
+      case DATABASE_KEY:
       case TABLET_CONVERSION_THRESHOLD_KEY:
         break;
       case CONVERT_ON_TYPE_MISMATCH_KEY:
@@ -53,26 +55,44 @@ public class LoadTsFileConfigurator {
       case VERIFY_KEY:
         validateVerifyParam(value);
         break;
+      case PIPE_GENERATED_KEY:
+        validatePipeGeneratedParam(value);
+        break;
+      case ASYNC_LOAD_KEY:
+        validateAsyncLoadParam(value);
+        break;
       default:
-        throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
+        throw new SemanticException(
+            StorageEngineMessages.INVALID_PARAMETER + key + "' for LOAD TSFILE command.");
+    }
+  }
+
+  public static void validateSynonymParameters(final Map<String, String> parameters) {
+    if (parameters.containsKey(DATABASE_KEY) && parameters.containsKey(DATABASE_NAME_KEY)) {
+      throw new SemanticException(
+          "The parameter key '"
+              + DATABASE_KEY
+              + "' and '"
+              + DATABASE_NAME_KEY
+              + "' cannot co-exist.");
     }
   }
 
   public static final String DATABASE_LEVEL_KEY = "database-level";
   private static final int DATABASE_LEVEL_DEFAULT_VALUE =
-      IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+      IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
   private static final int DATABASE_LEVEL_MIN_VALUE = 1;
 
   public static void validateDatabaseLevelParam(final String databaseLevel) {
     try {
-      int level = Integer.parseInt(databaseLevel);
+      final int level = Integer.parseInt(databaseLevel);
       if (level < DATABASE_LEVEL_MIN_VALUE) {
         throw new SemanticException(
             String.format(
                 "Given database level %d is less than the minimum value %d, please input a valid database level.",
                 level, DATABASE_LEVEL_MIN_VALUE));
       }
-    } catch (Exception e) {
+    } catch (final NumberFormatException e) {
       throw new SemanticException(
           String.format(
               "Given database level %s is not a valid integer, please input a valid database level.",
@@ -87,9 +107,13 @@ public class LoadTsFileConfigurator {
   }
 
   public static final String DATABASE_NAME_KEY = "database-name";
+  public static final String DATABASE_KEY = "database";
 
   public static @Nullable String parseDatabaseName(final Map<String, String> loadAttributes) {
-    final String databaseName = loadAttributes.get(DATABASE_NAME_KEY);
+    String databaseName = loadAttributes.get(DATABASE_NAME_KEY);
+    if (Objects.isNull(databaseName)) {
+      databaseName = loadAttributes.get(DATABASE_KEY);
+    }
     return Objects.nonNull(databaseName) ? databaseName.toLowerCase(Locale.ENGLISH) : null;
   }
 
@@ -164,7 +188,39 @@ public class LoadTsFileConfigurator {
         loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
   }
 
+  public static final String PIPE_GENERATED_KEY = "pipe-generated";
+
+  public static void validatePipeGeneratedParam(final String pipeGenerated) {
+    if (!"true".equalsIgnoreCase(pipeGenerated) && !"false".equalsIgnoreCase(pipeGenerated)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              PIPE_GENERATED_KEY, pipeGenerated));
+    }
+  }
+
+  public static boolean parseOrGetDefaultPipeGenerated(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(loadAttributes.getOrDefault(PIPE_GENERATED_KEY, "false"));
+  }
+
+  public static final String ASYNC_LOAD_KEY = "async";
+  private static final boolean ASYNC_LOAD_DEFAULT_VALUE = false;
+
+  public static void validateAsyncLoadParam(final String asyncLoad) {
+    if (!"true".equalsIgnoreCase(asyncLoad) && !"false".equalsIgnoreCase(asyncLoad)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              ASYNC_LOAD_KEY, asyncLoad));
+    }
+  }
+
+  public static boolean parseOrGetDefaultAsyncLoad(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(ASYNC_LOAD_KEY, String.valueOf(ASYNC_LOAD_DEFAULT_VALUE)));
+  }
+
   private LoadTsFileConfigurator() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(StorageEngineMessages.UTILITY_CLASS);
   }
 }

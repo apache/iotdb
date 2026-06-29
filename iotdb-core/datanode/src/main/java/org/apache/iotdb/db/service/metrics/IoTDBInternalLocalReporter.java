@@ -19,23 +19,26 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -88,7 +91,14 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
   public IoTDBInternalLocalReporter() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
-    sessionInfo = new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+    sessionInfo =
+        new SessionInfo(
+            0,
+            new UserEntity(
+                AuthorityChecker.SUPER_USER_ID,
+                AuthorityChecker.SUPER_USER,
+                IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+            ZoneId.systemDefault());
 
     IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
         ConfigNodeClientManager.getInstance();
@@ -106,12 +116,12 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
         databaseSchema.setIsTableModel(false);
         TSStatus tsStatus = client.setDatabase(databaseSchema);
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-          LOGGER.error("IoTDBSessionReporter checkOrCreateDatabase failed.");
+          LOGGER.error(DataNodeMiscMessages.CHECK_OR_CREATE_DATABASE_FAILED);
         }
       }
     } catch (ClientManagerException | TException e) {
       // do nothing
-      LOGGER.warn("IoTDBSessionReporter checkOrCreateDatabase failed because ", e);
+      LOGGER.warn(DataNodeMiscMessages.CHECK_OR_CREATE_DATABASE_FAILED_BECAUSE, e);
     }
   }
 
@@ -123,19 +133,17 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
   @Override
   public boolean start() {
     if (currentServiceFuture != null) {
-      LOGGER.warn("IoTDB Internal Reporter already start");
+      LOGGER.warn(DataNodeMiscMessages.INTERNAL_REPORTER_ALREADY_STARTED);
       return false;
     }
     currentServiceFuture =
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
             service,
-            () -> {
-              writeMetricToIoTDB(autoGauges);
-            },
+            () -> writeMetricToIoTDB(autoGauges),
             1,
             MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
             TimeUnit.SECONDS);
-    LOGGER.info("IoTDBInternalReporter start!");
+    LOGGER.info(DataNodeMiscMessages.INTERNAL_REPORTER_START);
     return true;
   }
 
@@ -146,7 +154,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       currentServiceFuture = null;
     }
     clear();
-    LOGGER.info("IoTDBInternalReporter stop!");
+    LOGGER.info(DataNodeMiscMessages.INTERNAL_REPORTER_STOP);
     return true;
   }
 
@@ -166,7 +174,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
               result = insertRecord(valueMap, prefix, time);
             }
             if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              LOGGER.warn("Failed to update the value of metric with status {}", result);
+              LOGGER.warn(DataNodeMiscMessages.FAILED_UPDATE_METRIC_VALUE, result);
             }
           } catch (IoTDBConnectionException e1) {
             LOGGER.warn(
@@ -191,7 +199,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       types.add(inferType(value));
       values.add(value);
     }
-    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values, measurements);
 
     request.setPrefixPath(prefix);
     request.setTimestamp(time);
@@ -220,7 +228,8 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       TSDataType type = inferType(entry.getValue());
       types.add(type.ordinal());
       encodings.add((int) getDefaultEncoding(type).serialize());
-      compressors.add((int) TSFileDescriptor.getInstance().getConfig().getCompressor().serialize());
+      compressors.add(
+          (int) TSFileDescriptor.getInstance().getConfig().getCompressor(type).serialize());
     }
     request.setPaths(paths);
     request.setDataTypes(types);
@@ -233,7 +242,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
         COORDINATOR.executeForTreeModel(
             s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
     if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to auto create timeseries for {} with status {}", paths, result.status);
+      LOGGER.warn(DataNodeMiscMessages.FAILED_AUTO_CREATE_TIMESERIES, paths, result.status);
     }
   }
 

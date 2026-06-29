@@ -185,25 +185,23 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
         InsertType.SQL_INSERT,
         (isAligned) -> {
           // Partial null
-          if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          TestUtils.executeNonQueries(
               senderEnv,
               isAligned
                   ? Collections.singletonList(
                       "insert into root.sg.d1(time, s0, s1) aligned values (3, null, 25.34)")
                   : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"))) {
-            fail();
-          }
+                      "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"),
+              null);
           // All null
-          if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          TestUtils.executeNonQueries(
               senderEnv,
               isAligned
                   ? Collections.singletonList(
                       "insert into root.sg.d1(time, s0, s1) aligned values (4, null, null)")
                   : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (4, null, null)"))) {
-            fail();
-          }
+                      "insert into root.sg.d1(time, s0, s1) values (4, null, null)"),
+              null);
         });
   }
 
@@ -217,46 +215,42 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       if (withParsing) {
-        extractorAttributes.put("start-time", "1970-01-01T08:00:00.000+08:00");
-        extractorAttributes.put("end-time", "1970-01-01T09:00:00.000+08:00");
-        extractorAttributes.put("extractor.pattern", "root.sg.d1");
+        sourceAttributes.put("start-time", "1970-01-01T08:00:00.000+08:00");
+        sourceAttributes.put("end-time", "1970-01-01T09:00:00.000+08:00");
+        sourceAttributes.put("source.pattern", "root.sg.d1");
       }
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("test", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("test", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        receiverEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL)) {
-      fail();
-    }
+    TestUtils.executeNonQueries(
+        receiverEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL, null);
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        senderEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL)) {
-      fail();
-    }
+    TestUtils.executeNonQueries(
+        senderEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL, null);
 
     INSERT_NULL_VALUE_MAP.get(insertType).accept(isAligned);
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-      fail();
-    }
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.**",
+        "select count(*) from root.sg.**",
         "count(root.sg.d1.s0),count(root.sg.d1.s1),",
         Collections.singleton("0,1,"));
   }

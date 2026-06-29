@@ -19,19 +19,23 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
@@ -45,6 +49,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,8 +59,11 @@ import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.DATE_BIN_PREFIX;
 
 public class AggregationTableScanNode extends DeviceTableScanNode {
   // if there is date_bin function of time, we should use this field to transform time input
@@ -67,13 +75,15 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
   protected AggregationNode.Step step;
   protected Optional<Symbol> groupIdSymbol;
 
+  private Map<DeviceEntry, Integer> deviceCountMap;
+
   public AggregationTableScanNode(
       PlanNodeId id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
       Expression pushDownPredicate,
@@ -93,7 +103,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -126,10 +136,16 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
     this.step = step;
 
+    List<Symbol> groupingKeys = groupingSets.getGroupingKeys();
+    for (int i = 0; i < groupingKeys.size(); i++) {
+      if (groupingKeys.get(i).getName().startsWith(DATE_BIN_PREFIX)) {
+        checkArgument(
+            i == groupingKeys.size() - 1, "date_bin function must be the last GroupingKey");
+      }
+    }
     requireNonNull(preGroupedSymbols, "preGroupedSymbols is null");
     checkArgument(
-        preGroupedSymbols.isEmpty()
-            || groupingSets.getGroupingKeys().containsAll(preGroupedSymbols),
+        preGroupedSymbols.isEmpty() || groupingKeys.containsAll(preGroupedSymbols),
         "Pre-grouped symbols must be a subset of the grouping keys");
     this.preGroupedSymbols = ImmutableList.copyOf(preGroupedSymbols);
 
@@ -158,8 +174,9 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       Symbol symbol = entry.getKey();
       AggregationNode.Aggregation aggregation = entry.getValue();
       if (aggregation.getArguments().isEmpty()) {
-        AggregationNode.Aggregation countStarAggregation = getCountStarAggregation(aggregation);
-        if (!getTimeColumn(assignments).isPresent()) {
+        AggregationNode.Aggregation countStarAggregation;
+        Optional<Symbol> timeSymbol = getTimeColumn(assignments);
+        if (!timeSymbol.isPresent()) {
           assignments.put(
               Symbol.of(TABLE_TIME_COLUMN_NAME),
               new ColumnSchema(
@@ -167,6 +184,9 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
                   TimestampType.TIMESTAMP,
                   false,
                   TsTableColumnCategory.TIME));
+          countStarAggregation = getCountStarAggregation(aggregation, TABLE_TIME_COLUMN_NAME);
+        } else {
+          countStarAggregation = getCountStarAggregation(aggregation, timeSymbol.get().getName());
         }
         resultBuilder.put(symbol, countStarAggregation);
       } else {
@@ -178,7 +198,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
   }
 
   private static AggregationNode.Aggregation getCountStarAggregation(
-      AggregationNode.Aggregation aggregation) {
+      AggregationNode.Aggregation aggregation, String timeSymbolName) {
     ResolvedFunction resolvedFunction = aggregation.getResolvedFunction();
     ResolvedFunction countStarFunction =
         new ResolvedFunction(
@@ -190,7 +210,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
             resolvedFunction.getFunctionNullability());
     return new AggregationNode.Aggregation(
         countStarFunction,
-        Collections.singletonList(new SymbolReference(TABLE_TIME_COLUMN_NAME)),
+        Collections.singletonList(new SymbolReference(timeSymbolName)),
         aggregation.isDistinct(),
         aggregation.getFilter(),
         aggregation.getOrderingScheme(),
@@ -249,7 +269,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         outputSymbols,
         assignments,
         deviceEntries,
-        idAndAttributeIndexMap,
+        tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
         pushDownPredicate,
@@ -266,8 +286,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitAggregationTableScan(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitAggregationTableScan(this, context);
   }
 
   public static AggregationTableScanNode combineAggregationAndTableScan(
@@ -275,6 +295,34 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       AggregationNode aggregationNode,
       ProjectNode projectNode,
       DeviceTableScanNode tableScanNode) {
+    if (tableScanNode instanceof ExternalTsFileScanNode) {
+      ExternalTsFileScanNode externalTsFileScanNode = (ExternalTsFileScanNode) tableScanNode;
+      ExternalTsFileAggregationScanNode scanNode =
+          new ExternalTsFileAggregationScanNode(
+              id,
+              tableScanNode.getQualifiedObjectName(),
+              tableScanNode.getOutputSymbols(),
+              tableScanNode.getAssignments(),
+              tableScanNode.getTagAndAttributeIndexMap(),
+              tableScanNode.getScanOrder(),
+              tableScanNode.getTimePredicate().orElse(null),
+              tableScanNode.getPushDownPredicate(),
+              tableScanNode.getPushDownLimit(),
+              tableScanNode.getPushDownOffset(),
+              tableScanNode.isPushLimitToEachDevice(),
+              tableScanNode.containsNonAlignedDevice(),
+              projectNode == null ? null : projectNode.getAssignments(),
+              aggregationNode.getAggregations(),
+              aggregationNode.getGroupingSets(),
+              aggregationNode.getPreGroupedSymbols(),
+              aggregationNode.getStep(),
+              aggregationNode.getGroupIdSymbol(),
+              externalTsFileScanNode.getExternalTsFileQueryResource(),
+              externalTsFileScanNode.getDeviceEntryIndexes(),
+              externalTsFileScanNode.getDeviceTaskPartitionIndex(),
+              externalTsFileScanNode.getSchemaFilter());
+      return scanNode;
+    }
     if (tableScanNode instanceof TreeDeviceViewScanNode) {
       TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
       return new AggregationTreeDeviceViewScanNode(
@@ -283,7 +331,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
           tableScanNode.getOutputSymbols(),
           tableScanNode.getAssignments(),
           tableScanNode.getDeviceEntries(),
-          tableScanNode.getIdAndAttributeIndexMap(),
+          tableScanNode.getTagAndAttributeIndexMap(),
           tableScanNode.getScanOrder(),
           tableScanNode.getTimePredicate().orElse(null),
           tableScanNode.getPushDownPredicate(),
@@ -307,7 +355,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         tableScanNode.getOutputSymbols(),
         tableScanNode.getAssignments(),
         tableScanNode.getDeviceEntries(),
-        tableScanNode.getIdAndAttributeIndexMap(),
+        tableScanNode.getTagAndAttributeIndexMap(),
         tableScanNode.getScanOrder(),
         tableScanNode.getTimePredicate().orElse(null),
         tableScanNode.getPushDownPredicate(),
@@ -329,6 +377,32 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       ProjectNode projectNode,
       DeviceTableScanNode tableScanNode,
       AggregationNode.Step step) {
+    if (tableScanNode instanceof ExternalTsFileScanNode) {
+      ExternalTsFileScanNode externalTsFileScanNode = (ExternalTsFileScanNode) tableScanNode;
+      return new ExternalTsFileAggregationScanNode(
+          id,
+          tableScanNode.getQualifiedObjectName(),
+          tableScanNode.getOutputSymbols(),
+          tableScanNode.getAssignments(),
+          tableScanNode.getTagAndAttributeIndexMap(),
+          tableScanNode.getScanOrder(),
+          tableScanNode.getTimePredicate().orElse(null),
+          tableScanNode.getPushDownPredicate(),
+          tableScanNode.getPushDownLimit(),
+          tableScanNode.getPushDownOffset(),
+          tableScanNode.isPushLimitToEachDevice(),
+          tableScanNode.containsNonAlignedDevice(),
+          projectNode == null ? null : projectNode.getAssignments(),
+          aggregationNode.getAggregations(),
+          aggregationNode.getGroupingSets(),
+          aggregationNode.getPreGroupedSymbols(),
+          step,
+          aggregationNode.getGroupIdSymbol(),
+          externalTsFileScanNode.getExternalTsFileQueryResource(),
+          externalTsFileScanNode.getDeviceEntryIndexes(),
+          externalTsFileScanNode.getDeviceTaskPartitionIndex(),
+          externalTsFileScanNode.getSchemaFilter());
+    }
     if (tableScanNode instanceof TreeDeviceViewScanNode) {
       TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
       return new AggregationTreeDeviceViewScanNode(
@@ -337,7 +411,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
           tableScanNode.getOutputSymbols(),
           tableScanNode.getAssignments(),
           tableScanNode.getDeviceEntries(),
-          tableScanNode.getIdAndAttributeIndexMap(),
+          tableScanNode.getTagAndAttributeIndexMap(),
           tableScanNode.getScanOrder(),
           tableScanNode.getTimePredicate().orElse(null),
           tableScanNode.getPushDownPredicate(),
@@ -361,7 +435,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         tableScanNode.getOutputSymbols(),
         tableScanNode.getAssignments(),
         tableScanNode.getDeviceEntries(),
-        tableScanNode.getIdAndAttributeIndexMap(),
+        tableScanNode.getTagAndAttributeIndexMap(),
         tableScanNode.getScanOrder(),
         tableScanNode.getTimePredicate().orElse(null),
         tableScanNode.getPushDownPredicate(),
@@ -375,6 +449,23 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         aggregationNode.getPreGroupedSymbols(),
         step,
         aggregationNode.getGroupIdSymbol());
+  }
+
+  public boolean mayUseLastCache() {
+    // Only made a simple judgment is here, if Aggregations is not empty and all of them are LAST or
+    // LAST_BY
+    if (aggregations.isEmpty()) {
+      return false;
+    }
+
+    for (AggregationNode.Aggregation aggregation : aggregations.values()) {
+      String functionName = aggregation.getResolvedFunction().getSignature().getName();
+      if (!LAST_BY.getFunctionName().equals(functionName)
+          && !LAST.getFunctionName().equals(functionName)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
@@ -445,6 +536,17 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     if (node.groupIdSymbol.isPresent()) {
       Symbol.serialize(node.groupIdSymbol.get(), byteBuffer);
     }
+
+    if (node.deviceCountMap != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(node.deviceCountMap.size(), byteBuffer);
+      for (Map.Entry<DeviceEntry, Integer> entry : node.deviceCountMap.entrySet()) {
+        entry.getKey().serialize(byteBuffer);
+        ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
   }
 
   protected static void serializeMemberVariables(
@@ -481,6 +583,17 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     ReadWriteIOUtils.write(node.groupIdSymbol.isPresent(), stream);
     if (node.groupIdSymbol.isPresent()) {
       Symbol.serialize(node.groupIdSymbol.get(), stream);
+    }
+
+    if (node.deviceCountMap != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(node.deviceCountMap.size(), stream);
+      for (Map.Entry<DeviceEntry, Integer> entry : node.deviceCountMap.entrySet()) {
+        entry.getKey().serialize(stream);
+        ReadWriteIOUtils.write(entry.getValue(), stream);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, stream);
     }
   }
 
@@ -527,6 +640,16 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     node.groupIdSymbol = groupIdSymbol;
 
     node.outputSymbols = constructOutputSymbols(node.getGroupingSets(), node.getAggregations());
+
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      Map<DeviceEntry, Integer> deviceRegionCountMap = new HashMap<>(size);
+      while (size-- > 0) {
+        DeviceEntry deviceEntry = DeviceEntry.deserialize(byteBuffer);
+        deviceRegionCountMap.put(deviceEntry, ReadWriteIOUtils.readInt(byteBuffer));
+      }
+      node.setDeviceCountMap(deviceRegionCountMap);
+    }
   }
 
   @Override
@@ -549,5 +672,25 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
     node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return node;
+  }
+
+  public void setDeviceCountMap(Map<DeviceEntry, Integer> deviceCountMap) {
+    this.deviceCountMap = deviceCountMap;
+  }
+
+  public Map<DeviceEntry, Integer> getDeviceCountMap() {
+    return deviceCountMap;
+  }
+
+  @Override
+  public void setPushDownLimit(long pushDownLimit) {
+    throw new IllegalStateException(
+        DataNodeQueryMessages.SHOULD_NEVER_PUSH_DOWN_LIMIT_TO_AGGREGATIONTABLESCANNODE);
+  }
+
+  @Override
+  public void setPushDownOffset(long pushDownOffset) {
+    throw new IllegalStateException(
+        DataNodeQueryMessages.SHOULD_NEVER_PUSH_DOWN_OFFSET_TO_AGGREGATIONTABLESCANNODE);
   }
 }

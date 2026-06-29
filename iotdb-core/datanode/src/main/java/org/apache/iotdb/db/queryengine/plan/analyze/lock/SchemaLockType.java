@@ -47,5 +47,17 @@ public enum SchemaLockType {
    *   <li>Release write lock after finishing invalidating schema cache.
    * </ol>
    */
-  VALIDATE_VS_DELETION,
+  VALIDATE_VS_DELETION_TREE,
+
+  /**
+   * This lock is used for guarantee no data without table device after table related deletion.
+   *
+   * <ol>
+   *   <li>Take read lock before validating schema during inserting data or loading TsFile.
+   *   <li>Release read lock after finishing inserting data or loading TsFile.
+   *   <li>Take write lock before invalidating table device cache during table related deletion.
+   *   <li>Release write lock after finishing invalidating schema cache.
+   * </ol>
+   */
+  VALIDATE_VS_DELETION_TABLE,
 }

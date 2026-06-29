@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getDataRegionMap;
-import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeITFramework.getConnectionWithSQLType;
+import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.getConnectionWithSQLType;
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
 public class IoTDBRemoveConfigNodeITFramework {

@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.schema.filter.impl;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
@@ -85,7 +85,7 @@ public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
   }
 
   @Override
-  public Boolean visitIdFilter(final IdFilter filter, final String context) {
+  public Boolean visitTagFilter(final TagFilter filter, final String context) {
     return filter.getChild().accept(this, context);
   }
 

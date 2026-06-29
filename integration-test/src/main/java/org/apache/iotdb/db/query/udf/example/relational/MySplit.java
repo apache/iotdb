@@ -21,7 +21,9 @@ package org.apache.iotdb.db.query.udf.example.relational;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
@@ -40,8 +42,8 @@ import java.util.List;
 import java.util.Map;
 
 public class MySplit implements TableFunction {
-  private final String INPUT_PARAMETER_NAME = "INPUT";
-  private final String SPLIT_PARAMETER_NAME = "SPLIT";
+  private final String INPUT_PARAMETER_NAME = "input";
+  private final String SPLIT_PARAMETER_NAME = "split";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -57,17 +59,34 @@ public class MySplit implements TableFunction {
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
     DescribedSchema schema = DescribedSchema.builder().addField("output", Type.STRING).build();
-    return TableFunctionAnalysis.builder().properColumnSchema(schema).build();
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty(
+                INPUT_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(INPUT_PARAMETER_NAME)).getValue())
+            .addProperty(
+                SPLIT_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(SPLIT_PARAMETER_NAME)).getValue())
+            .build();
+    return TableFunctionAnalysis.builder().properColumnSchema(schema).handle(handle).build();
   }
 
   @Override
-  public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new MapTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionLeafProcessor getSplitProcessor() {
         return new SplitProcessor(
-            (String) ((ScalarArgument) arguments.get(INPUT_PARAMETER_NAME)).getValue(),
-            (String) ((ScalarArgument) arguments.get(SPLIT_PARAMETER_NAME)).getValue());
+            (String)
+                ((MapTableFunctionHandle) tableFunctionHandle).getProperty(INPUT_PARAMETER_NAME),
+            (String)
+                ((MapTableFunctionHandle) tableFunctionHandle).getProperty(SPLIT_PARAMETER_NAME));
       }
     };
   }

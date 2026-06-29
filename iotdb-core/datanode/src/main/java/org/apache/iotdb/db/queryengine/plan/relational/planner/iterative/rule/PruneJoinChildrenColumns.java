@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -58,6 +58,11 @@ public class PruneJoinChildrenColumns implements Rule<JoinNode> {
             .addAll(globallyUsableInputs)
             .addAll(
                 joinNode.getCriteria().stream().map(JoinNode.EquiJoinClause::getLeft).iterator())
+            .addAll(
+                joinNode
+                    .getAsofCriteria()
+                    .map(criteria -> ImmutableSet.of(criteria.getLeft()))
+                    .orElse(ImmutableSet.of()))
             // .addAll(joinNode.getLeftHashSymbol().map(ImmutableSet::of).orElse(ImmutableSet.of()))
             .build();
 
@@ -66,6 +71,11 @@ public class PruneJoinChildrenColumns implements Rule<JoinNode> {
             .addAll(globallyUsableInputs)
             .addAll(
                 joinNode.getCriteria().stream().map(JoinNode.EquiJoinClause::getRight).iterator())
+            .addAll(
+                joinNode
+                    .getAsofCriteria()
+                    .map(criteria -> ImmutableSet.of(criteria.getRight()))
+                    .orElse(ImmutableSet.of()))
             // .addAll(joinNode.getRightHashSymbol().map(ImmutableSet::of).orElse(ImmutableSet.of()))
             .build();
 

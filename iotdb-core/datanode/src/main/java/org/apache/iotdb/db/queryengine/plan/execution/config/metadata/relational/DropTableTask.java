@@ -30,13 +30,14 @@ public class DropTableTask extends AbstractAlterOrDropTableTask {
       final String database,
       final String tableName,
       final String queryId,
-      final boolean tableIfExists) {
-    super(database, tableName, queryId, tableIfExists);
+      final boolean tableIfExists,
+      final boolean view) {
+    super(database, tableName, queryId, tableIfExists, view);
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.dropTable(database, tableName, queryId, tableIfExists);
+    return configTaskExecutor.dropTable(database, tableName, queryId, tableIfExists, view);
   }
 }

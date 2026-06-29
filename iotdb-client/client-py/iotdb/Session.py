@@ -20,15 +20,15 @@ import logging
 import random
 import sys
 import struct
-import time
 import warnings
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
+from tzlocal import get_localzone_name
 
 from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
 from .template.TemplateQueryType import TemplateQueryType
-from .thrift.common.ttypes import TEndPoint, TSStatus
+from .thrift.common.ttypes import TEndPoint
 from .thrift.rpc.IClientRPCService import (
     Client,
     TSCreateTimeseriesReq,
@@ -59,21 +59,19 @@ from .thrift.rpc.ttypes import (
     TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
 )
-from .tsfile.utils.DateUtils import parse_date_to_int
-from .utils.IoTDBConnectionException import IoTDBConnectionException
+from .tsfile.utils.date_utils import parse_date_to_int
+from .utils import rpc_utils
+from .utils.exception import IoTDBConnectionException, RedirectException
 
 logger = logging.getLogger("IoTDB")
 warnings.simplefilter("always", DeprecationWarning)
 
 
 class Session(object):
-    SUCCESS_STATUS = 200
-    MULTIPLE_ERROR = 302
-    REDIRECTION_RECOMMEND = 400
     DEFAULT_FETCH_SIZE = 5000
     DEFAULT_USER = "root"
     DEFAULT_PASSWORD = "root"
-    DEFAULT_ZONE_ID = time.strftime("%z")
+    DEFAULT_ZONE_ID = get_localzone_name()
     RETRY_NUM = 3
     SQL_DIALECT = "tree"
 
@@ -97,7 +95,13 @@ class Session(object):
         self.__default_endpoint = TEndPoint(self.__host, self.__port)
         self.__user = user
         self.__password = password
-        self.__fetch_size = fetch_size
+        if fetch_size > 0:
+            self.__fetch_size = fetch_size
+        else:
+            logger.warning(
+                f"fetch_size {fetch_size} is illegal, use default fetch_size {self.DEFAULT_FETCH_SIZE}"
+            )
+            self.__fetch_size = self.DEFAULT_FETCH_SIZE
         self.__is_close = True
         self.__client = None
         self.__default_connection = None
@@ -114,6 +118,7 @@ class Session(object):
         self.__use_ssl = use_ssl
         self.__ca_certs = ca_certs
         self.__connection_timeout_in_ms = connection_timeout_in_ms
+        self.__time_precision = "ms"
 
     @classmethod
     def init_from_node_urls(
@@ -207,7 +212,12 @@ class Session(object):
 
         try:
             open_resp = client.openSession(open_req)
-            Session.verify_success(open_resp.status)
+            rpc_utils.verify_success(open_resp.status)
+            if open_resp.configuration is not None:
+                if "timestamp_precision" in open_resp.configuration:
+                    self.__time_precision = open_resp.configuration[
+                        "timestamp_precision"
+                    ]
 
             if self.protocol_version != open_resp.serverProtocolVersion:
                 logger.exception(
@@ -288,13 +298,13 @@ class Session(object):
         :param group_name: String, database name (starts from root)
         """
         try:
-            return Session.verify_success(
+            return rpc_utils.verify_success(
                 self.__client.setStorageGroup(self.__session_id, group_name)
             )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.setStorageGroup(self.__session_id, group_name)
                     )
                 except TTransport.TException as e1:
@@ -316,13 +326,13 @@ class Session(object):
         :param storage_group_lst: List, paths of the target databases.
         """
         try:
-            return Session.verify_success(
+            return rpc_utils.verify_success(
                 self.__client.deleteStorageGroups(self.__session_id, storage_group_lst)
             )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.deleteStorageGroups(
                             self.__session_id, storage_group_lst
                         )
@@ -366,12 +376,12 @@ class Session(object):
             alias,
         )
         try:
-            return Session.verify_success(self.__client.createTimeseries(request))
+            return rpc_utils.verify_success(self.__client.createTimeseries(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.createTimeseries(request)
                     )
                 except TTransport.TException as e1:
@@ -400,14 +410,14 @@ class Session(object):
             compressor_lst,
         )
         try:
-            return Session.verify_success(
+            return rpc_utils.verify_success(
                 self.__client.createAlignedTimeseries(request)
             )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.createAlignedTimeseries(request)
                     )
                 except TTransport.TException as e1:
@@ -450,12 +460,14 @@ class Session(object):
             alias_lst,
         )
         try:
-            return Session.verify_success(self.__client.createMultiTimeseries(request))
+            return rpc_utils.verify_success(
+                self.__client.createMultiTimeseries(request)
+            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.createMultiTimeseries(request)
                     )
                 except TTransport.TException as e1:
@@ -469,13 +481,13 @@ class Session(object):
         :param paths_list: List of time series path, which should be complete (starts from root)
         """
         try:
-            return Session.verify_success(
+            return rpc_utils.verify_success(
                 self.__client.deleteTimeseries(self.__session_id, paths_list)
             )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.deleteTimeseries(self.__session_id, paths_list)
                     )
                 except TTransport.TException as e1:
@@ -504,12 +516,12 @@ class Session(object):
             self.__session_id, paths_list, -9223372036854775808, end_time
         )
         try:
-            return Session.verify_success(self.__client.deleteData(request))
+            return rpc_utils.verify_success(self.__client.deleteData(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.deleteData(request))
+                    return rpc_utils.verify_success(self.__client.deleteData(request))
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -524,12 +536,12 @@ class Session(object):
         """
         request = TSDeleteDataReq(self.__session_id, paths_list, start_time, end_time)
         try:
-            return Session.verify_success(self.__client.deleteData(request))
+            return rpc_utils.verify_success(self.__client.deleteData(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.deleteData(request))
+                    return rpc_utils.verify_success(self.__client.deleteData(request))
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -556,7 +568,7 @@ class Session(object):
         try:
             connection = self.get_connection(device_id)
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertStringRecord(request)
             )
         except RedirectException as e:
@@ -565,7 +577,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.insertStringRecord(request)
                     )
                 except TTransport.TException as e1:
@@ -596,7 +608,7 @@ class Session(object):
         try:
             connection = self.get_connection(device_id)
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertStringRecord(request)
             )
         except RedirectException as e:
@@ -605,7 +617,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.insertStringRecord(request)
                     )
                 except TTransport.TException as e1:
@@ -645,7 +657,7 @@ class Session(object):
         try:
             connection = self.get_connection(device_id)
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertRecord(request)
             )
         except RedirectException as e:
@@ -654,7 +666,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.insertRecord(request))
+                    return rpc_utils.verify_success(self.__client.insertRecord(request))
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -701,7 +713,7 @@ class Session(object):
                 )
             for client, request in request_group.items():
                 try:
-                    Session.verify_success_with_redirection_for_multi_devices(
+                    rpc_utils.verify_success_with_redirection_for_multi_devices(
                         client.insertRecords(request), request.prefixPaths
                     )
                 except RedirectException as e:
@@ -711,7 +723,9 @@ class Session(object):
                     if self.reconnect():
                         try:
                             request.sessionId = self.__session_id
-                            Session.verify_success(self.__client.insertRecords(request))
+                            rpc_utils.verify_success(
+                                self.__client.insertRecords(request)
+                            )
                         except TTransport.TException as e1:
                             raise IoTDBConnectionException(e1) from None
                     else:
@@ -725,12 +739,12 @@ class Session(object):
                 device_ids, times, measurements_lst, types_lst, values_lst
             )
             try:
-                return Session.verify_success(self.__client.insertRecords(request))
+                return rpc_utils.verify_success(self.__client.insertRecords(request))
             except TTransport.TException as e:
                 if self.reconnect():
                     try:
                         request.sessionId = self.__session_id
-                        return Session.verify_success(
+                        return rpc_utils.verify_success(
                             self.__client.insertRecords(request)
                         )
                     except TTransport.TException as e1:
@@ -774,7 +788,7 @@ class Session(object):
         try:
             connection = self.get_connection(device_id)
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertRecord(request)
             )
         except RedirectException as e:
@@ -783,7 +797,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.insertRecord(request))
+                    return rpc_utils.verify_success(self.__client.insertRecord(request))
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -830,7 +844,7 @@ class Session(object):
                 )
             for client, request in request_group.items():
                 try:
-                    Session.verify_success_with_redirection_for_multi_devices(
+                    rpc_utils.verify_success_with_redirection_for_multi_devices(
                         client.insertRecords(request), request.prefixPaths
                     )
                 except RedirectException as e:
@@ -840,7 +854,9 @@ class Session(object):
                     if self.reconnect():
                         try:
                             request.sessionId = self.__session_id
-                            Session.verify_success(self.__client.insertRecords(request))
+                            rpc_utils.verify_success(
+                                self.__client.insertRecords(request)
+                            )
                         except TTransport.TException as e1:
                             raise IoTDBConnectionException(e1) from None
                     else:
@@ -854,12 +870,12 @@ class Session(object):
                 device_ids, times, measurements_lst, types_lst, values_lst, True
             )
             try:
-                return Session.verify_success(self.__client.insertRecords(request))
+                return rpc_utils.verify_success(self.__client.insertRecords(request))
             except TTransport.TException as e:
                 if self.reconnect():
                     try:
                         request.sessionId = self.__session_id
-                        return Session.verify_success(
+                        return rpc_utils.verify_success(
                             self.__client.insertRecords(request)
                         )
                     except TTransport.TException as e1:
@@ -885,11 +901,11 @@ class Session(object):
             device_id, timestamp, measurements, data_types, values
         )
         try:
-            return Session.verify_success(self.__client.testInsertRecord(request))
+            return rpc_utils.verify_success(self.__client.testInsertRecord(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.testInsertRecord(request)
                     )
                 except TTransport.TException as e1:
@@ -913,11 +929,11 @@ class Session(object):
             device_ids, times, measurements_lst, types_lst, values_lst
         )
         try:
-            return Session.verify_success(self.__client.testInsertRecords(request))
+            return rpc_utils.verify_success(self.__client.testInsertRecords(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.testInsertRecords(request)
                     )
                 except TTransport.TException as e1:
@@ -1008,7 +1024,7 @@ class Session(object):
         try:
             connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertTablet(request)
             )
         except RedirectException as e:
@@ -1019,7 +1035,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.insertTablet(request))
+                    return rpc_utils.verify_success(self.__client.insertTablet(request))
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -1048,7 +1064,7 @@ class Session(object):
                 request.typesList.append(tablet_lst[i].get_data_types())
             for client, request in request_group.items():
                 try:
-                    Session.verify_success_with_redirection_for_multi_devices(
+                    rpc_utils.verify_success_with_redirection_for_multi_devices(
                         client.insertTablets(request), request.prefixPaths
                     )
                 except RedirectException as e:
@@ -1058,7 +1074,9 @@ class Session(object):
                     if self.reconnect():
                         try:
                             request.sessionId = self.__session_id
-                            Session.verify_success(self.__client.insertTablets(request))
+                            rpc_utils.verify_success(
+                                self.__client.insertTablets(request)
+                            )
                         except TTransport.TException as e1:
                             raise IoTDBConnectionException(e1) from None
                     else:
@@ -1070,12 +1088,12 @@ class Session(object):
         else:
             request = self.gen_insert_tablets_req(tablet_lst)
             try:
-                return Session.verify_success(self.__client.insertTablets(request))
+                return rpc_utils.verify_success(self.__client.insertTablets(request))
             except TTransport.TException as e:
                 if self.reconnect():
                     try:
                         request.sessionId = self.__session_id
-                        return Session.verify_success(
+                        return rpc_utils.verify_success(
                             self.__client.insertTablets(request)
                         )
                     except TTransport.TException as e1:
@@ -1101,7 +1119,7 @@ class Session(object):
         try:
             connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertTablet(request)
             )
         except RedirectException as e:
@@ -1112,7 +1130,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.insertTablet(request))
+                    return rpc_utils.verify_success(self.__client.insertTablet(request))
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -1141,7 +1159,7 @@ class Session(object):
                 request.typesList.append(tablet_lst[i].get_data_types())
             for client, request in request_group.items():
                 try:
-                    Session.verify_success_with_redirection_for_multi_devices(
+                    rpc_utils.verify_success_with_redirection_for_multi_devices(
                         client.insertTablets(request), request.prefixPaths
                     )
                 except RedirectException as e:
@@ -1151,7 +1169,9 @@ class Session(object):
                     if self.reconnect():
                         try:
                             request.sessionId = self.__session_id
-                            Session.verify_success(self.__client.insertTablets(request))
+                            rpc_utils.verify_success(
+                                self.__client.insertTablets(request)
+                            )
                         except TTransport.TException as e1:
                             raise IoTDBConnectionException(e1) from None
                     else:
@@ -1163,12 +1183,12 @@ class Session(object):
         else:
             request = self.gen_insert_tablets_req(tablet_lst, True)
             try:
-                return Session.verify_success(self.__client.insertTablets(request))
+                return rpc_utils.verify_success(self.__client.insertTablets(request))
             except TTransport.TException as e:
                 if self.reconnect():
                     try:
                         request.sessionId = self.__session_id
-                        return Session.verify_success(
+                        return rpc_utils.verify_success(
                             self.__client.insertTablets(request)
                         )
                     except TTransport.TException as e1:
@@ -1191,7 +1211,7 @@ class Session(object):
         try:
             connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertTablet(request)
             )
         except RedirectException as e:
@@ -1202,7 +1222,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.insertTablet(request))
+                    return rpc_utils.verify_success(self.__client.insertTablet(request))
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -1261,7 +1281,7 @@ class Session(object):
         try:
             connection = self.get_connection(device_id)
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertRecordsOfOneDevice(request)
             )
         except RedirectException as e:
@@ -1270,7 +1290,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.insertRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
@@ -1333,7 +1353,7 @@ class Session(object):
         try:
             connection = self.get_connection(device_id)
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertRecordsOfOneDevice(request)
             )
         except RedirectException as e:
@@ -1342,7 +1362,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.insertRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
@@ -1387,12 +1407,12 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet)
         try:
-            return Session.verify_success(self.__client.testInsertTablet(request))
+            return rpc_utils.verify_success(self.__client.testInsertTablet(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.testInsertTablet(request)
                     )
                 except TTransport.TException as e1:
@@ -1408,12 +1428,12 @@ class Session(object):
         """
         request = self.gen_insert_tablets_req(tablet_list)
         try:
-            return Session.verify_success(self.__client.testInsertTablets(request))
+            return rpc_utils.verify_success(self.__client.testInsertTablets(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.testInsertTablets(request)
                     )
                 except TTransport.TException as e1:
@@ -1483,30 +1503,36 @@ class Session(object):
             self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
         )
         try:
-            resp = self.__client.executeQueryStatement(request)
+            resp = self.__client.executeQueryStatementV2(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__client.executeQueryStatement(request)
+                    resp = self.__client.executeQueryStatementV2(request)
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
-        Session.verify_success(resp.status)
+        rpc_utils.verify_success(resp.status)
         return SessionDataSet(
             sql,
             resp.columns,
             resp.dataTypeList,
             resp.columnNameIndexMap,
             resp.queryId,
+            self.__session_id,
             self.__client,
             self.__statement_id,
-            self.__session_id,
-            resp.queryDataSet,
+            resp.queryResult,
             resp.ignoreTimeStamp,
+            timeout,
+            resp.moreData,
+            self.__fetch_size,
+            self.__zone_id,
+            self.__time_precision,
+            resp.columnIndex2TsBlockColumnIndexList,
         )
 
     def execute_non_query_statement(self, sql):
@@ -1516,13 +1542,13 @@ class Session(object):
         """
         request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id)
         try:
-            resp = self.__client.executeUpdateStatement(request)
+            resp = self.__client.executeUpdateStatementV2(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__client.executeUpdateStatement(request)
+                    resp = self.__client.executeUpdateStatementV2(request)
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
@@ -1540,26 +1566,26 @@ class Session(object):
                         connection.change_database(sql)
                     except Exception as e:
                         self.__endpoint_to_connection.pop(endpoint)
-        return Session.verify_success(resp.status)
+        return rpc_utils.verify_success(resp.status)
 
     def execute_statement(self, sql: str, timeout=0):
         request = TSExecuteStatementReq(
             self.__session_id, sql, self.__statement_id, timeout
         )
         try:
-            resp = self.__client.executeStatement(request)
+            resp = self.__client.executeStatementV2(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__client.executeStatement(request)
+                    resp = self.__client.executeStatementV2(request)
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
-        Session.verify_success(resp.status)
+        rpc_utils.verify_success(resp.status)
         if resp.columns:
             return SessionDataSet(
                 sql,
@@ -1567,11 +1593,17 @@ class Session(object):
                 resp.dataTypeList,
                 resp.columnNameIndexMap,
                 resp.queryId,
+                self.__session_id,
                 self.__client,
                 self.__statement_id,
-                self.__session_id,
-                resp.queryDataSet,
+                resp.queryResult,
                 resp.ignoreTimeStamp,
+                timeout,
+                resp.moreData,
+                self.__fetch_size,
+                self.__zone_id,
+                self.__time_precision,
+                resp.columnIndex2TsBlockColumnIndexList,
             )
         else:
             return None
@@ -1686,61 +1718,6 @@ class Session(object):
                 return False
         return True
 
-    @staticmethod
-    def verify_success(status: TSStatus):
-        """
-        verify success of operation
-        :param status: execution result status
-        """
-        if status.code == Session.MULTIPLE_ERROR:
-            Session.verify_success_by_list(status.subStatus)
-            return 0
-        if (
-            status.code == Session.SUCCESS_STATUS
-            or status.code == Session.REDIRECTION_RECOMMEND
-        ):
-            return 0
-
-        raise RuntimeError(f"{status.code}: {status.message}")
-
-    @staticmethod
-    def verify_success_by_list(status_list: list):
-        """
-        verify success of operation
-        :param status_list: execution result status
-        """
-        error_messages = [
-            status.message
-            for status in status_list
-            if status.code
-            not in {Session.SUCCESS_STATUS, Session.REDIRECTION_RECOMMEND}
-        ]
-        if error_messages:
-            message = f"{Session.MULTIPLE_ERROR}: {'; '.join(error_messages)}"
-            raise RuntimeError(message)
-
-    @staticmethod
-    def verify_success_with_redirection(status: TSStatus):
-        Session.verify_success(status)
-        if status.redirectNode is not None:
-            raise RedirectException(status.redirectNode)
-        return 0
-
-    @staticmethod
-    def verify_success_with_redirection_for_multi_devices(
-        status: TSStatus, devices: list
-    ):
-        Session.verify_success(status)
-        if (
-            status.code == Session.MULTIPLE_ERROR
-            or status.code == Session.REDIRECTION_RECOMMEND
-        ):
-            device_to_endpoint = {}
-            for i in range(len(status.subStatus)):
-                if status.subStatus[i].redirectNode is not None:
-                    device_to_endpoint[devices[i]] = status.subStatus[i].redirectNode
-            raise RedirectException(device_to_endpoint)
-
     def execute_raw_data_query(
         self, paths: list, start_time: int, end_time: int
     ) -> SessionDataSet:
@@ -1761,29 +1738,35 @@ class Session(object):
             enableRedirectQuery=False,
         )
         try:
-            resp = self.__client.executeRawDataQuery(request)
+            resp = self.__client.executeRawDataQueryV2(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__client.executeRawDataQuery(request)
+                    resp = self.__client.executeRawDataQueryV2(request)
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
-        Session.verify_success(resp.status)
+        rpc_utils.verify_success(resp.status)
         return SessionDataSet(
             "",
             resp.columns,
             resp.dataTypeList,
             resp.columnNameIndexMap,
             resp.queryId,
+            self.__session_id,
             self.__client,
             self.__statement_id,
-            self.__session_id,
-            resp.queryDataSet,
+            resp.queryResult,
             resp.ignoreTimeStamp,
+            0,
+            resp.moreData,
+            self.__fetch_size,
+            self.__zone_id,
+            self.__time_precision,
+            resp.columnIndex2TsBlockColumnIndexList,
         )
 
     def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
@@ -1802,29 +1785,35 @@ class Session(object):
             enableRedirectQuery=False,
         )
         try:
-            resp = self.__client.executeLastDataQuery(request)
+            resp = self.__client.executeLastDataQueryV2(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__client.executeLastDataQuery(request)
+                    resp = self.__client.executeLastDataQueryV2(request)
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
             else:
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
-        Session.verify_success(resp.status)
+        rpc_utils.verify_success(resp.status)
         return SessionDataSet(
             "",
             resp.columns,
             resp.dataTypeList,
             resp.columnNameIndexMap,
             resp.queryId,
-            self.__client,
             self.__statement_id,
+            self.__client,
             self.__session_id,
-            resp.queryDataSet,
+            resp.queryResult,
             resp.ignoreTimeStamp,
+            0,
+            resp.moreData,
+            self.__fetch_size,
+            self.__zone_id,
+            self.__time_precision,
+            resp.columnIndex2TsBlockColumnIndexList,
         )
 
     def insert_string_records_of_one_device(
@@ -1855,7 +1844,7 @@ class Session(object):
         try:
             connection = self.get_connection(device_id)
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertStringRecordsOfOneDevice(request)
             )
         except RedirectException as e:
@@ -1864,7 +1853,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.insertStringRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
@@ -1890,7 +1879,7 @@ class Session(object):
         try:
             connection = self.get_connection(device_id)
             request.sessionId = connection.session_id
-            return Session.verify_success_with_redirection(
+            return rpc_utils.verify_success_with_redirection(
                 connection.client.insertStringRecordsOfOneDevice(request)
             )
         except RedirectException as e:
@@ -1899,7 +1888,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.insertStringRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
@@ -2076,12 +2065,12 @@ class Session(object):
             self.__session_id, template.get_name(), bytes_array
         )
         try:
-            return Session.verify_success(self.__client.createSchemaTemplate(request))
+            return rpc_utils.verify_success(self.__client.createSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.createSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
@@ -2101,12 +2090,12 @@ class Session(object):
         """
         request = TSDropSchemaTemplateReq(self.__session_id, template_name)
         try:
-            return Session.verify_success(self.__client.dropSchemaTemplate(request))
+            return rpc_utils.verify_success(self.__client.dropSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.dropSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
@@ -2148,12 +2137,12 @@ class Session(object):
             compressors,
         )
         try:
-            return Session.verify_success(self.__client.appendSchemaTemplate(request))
+            return rpc_utils.verify_success(self.__client.appendSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.appendSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
@@ -2174,12 +2163,12 @@ class Session(object):
         """
         request = TSPruneSchemaTemplateReq(self.__session_id, template_name, path)
         try:
-            return Session.verify_success(self.__client.pruneSchemaTemplate(request))
+            return rpc_utils.verify_success(self.__client.pruneSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.pruneSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
@@ -2200,12 +2189,12 @@ class Session(object):
         """
         request = TSSetSchemaTemplateReq(self.__session_id, template_name, prefix_path)
         try:
-            return Session.verify_success(self.__client.setSchemaTemplate(request))
+            return rpc_utils.verify_success(self.__client.setSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.setSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
@@ -2229,12 +2218,12 @@ class Session(object):
             self.__session_id, prefix_path, template_name
         )
         try:
-            return Session.verify_success(self.__client.unsetSchemaTemplate(request))
+            return rpc_utils.verify_success(self.__client.unsetSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
+                    return rpc_utils.verify_success(
                         self.__client.unsetSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
@@ -2265,7 +2254,7 @@ class Session(object):
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
-                    Session.verify_success(response.status)
+                    rpc_utils.verify_success(response.status)
                     return response.count
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
@@ -2291,14 +2280,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
-            Session.verify_success(response.status)
+            rpc_utils.verify_success(response.status)
             return response.result
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
-                    Session.verify_success(response.status)
+                    rpc_utils.verify_success(response.status)
                     return response.result
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
@@ -2321,14 +2310,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
-            Session.verify_success(response.status)
+            rpc_utils.verify_success(response.status)
             return response.result
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
-                    Session.verify_success(response.status)
+                    rpc_utils.verify_success(response.status)
                     return response.result
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
@@ -2354,14 +2343,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
-            Session.verify_success(response.status)
+            rpc_utils.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
-                    Session.verify_success(response.status)
+                    rpc_utils.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
@@ -2384,14 +2373,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
-            Session.verify_success(response.status)
+            rpc_utils.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
-                    Session.verify_success(response.status)
+                    rpc_utils.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
@@ -2413,14 +2402,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
-            Session.verify_success(response.status)
+            rpc_utils.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
-                    Session.verify_success(response.status)
+                    rpc_utils.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
@@ -2444,14 +2433,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
-            Session.verify_success(response.status)
+            rpc_utils.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
-                    Session.verify_success(response.status)
+                    rpc_utils.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
                     raise IoTDBConnectionException(e1) from None
@@ -2474,7 +2463,7 @@ class SessionConnection(object):
 
     def change_database(self, sql):
         try:
-            self.client.executeUpdateStatement(
+            self.client.executeUpdateStatementV2(
                 TSExecuteStatementReq(self.session_id, sql, self.statement_id)
             )
         except TTransport.TException as e:
@@ -2494,12 +2483,3 @@ class SessionConnection(object):
         finally:
             if self.transport is not None:
                 self.transport.close()
-
-
-class RedirectException(Exception):
-    def __init__(self, redirect_info):
-        Exception.__init__(self)
-        if isinstance(redirect_info, TEndPoint):
-            self.redirect_node = redirect_info
-        else:
-            self.device_to_endpoint = redirect_info

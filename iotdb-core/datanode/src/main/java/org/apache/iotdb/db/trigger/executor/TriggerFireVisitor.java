@@ -25,16 +25,18 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -67,7 +69,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEvent> {
+import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
+
+public class TriggerFireVisitor implements PlanVisitor<TriggerFireResult, TriggerEvent> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireVisitor.class);
 
@@ -269,17 +273,20 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     // The index of measurement and schema is the same now.
     // However, in case one day the order changes, we need to construct an index map.
     Map<String, Integer> indexMap = new HashMap<>();
+    if (measurements == null || schemas == null) {
+      return indexMap;
+    }
     for (int i = 0, n = measurements.length; i < n; i++) {
-      if (measurements[i] == null) {
+      if (measurements[i] == null || i >= schemas.length) {
         continue;
       }
       // It is the same now
-      if (schemas[i] != null && schemas[i].getMeasurementName().equals(measurements[i])) {
+      if (schemas[i] != null && measurements[i].equals(schemas[i].getMeasurementName())) {
         indexMap.put(measurements[i], i);
         continue;
       }
       for (int j = 0, m = schemas.length; j < m; j++) {
-        if (schemas[j] != null && schemas[j].getMeasurementName().equals(measurements[i])) {
+        if (schemas[j] != null && measurements[i].equals(schemas[j].getMeasurementName())) {
           indexMap.put(measurements[i], j);
           break;
         }
@@ -291,10 +298,18 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   private Map<String, List<String>> constructTriggerNameToMeasurementListMap(
       InsertNode node, TriggerEvent event) {
     PartialPath device = node.getTargetPath();
+    // audit write should never be triggerred
+    if (includeByAuditTreeDB(device)) {
+      return Collections.emptyMap();
+    }
     List<String> measurements = new ArrayList<>();
-    for (String measurement : node.getMeasurements()) {
-      if (measurement != null) {
-        measurements.add(measurement);
+    final String[] nodeMeasurements = node.getMeasurements();
+    if (nodeMeasurements == null) {
+      return Collections.emptyMap();
+    }
+    for (int i = 0; i < nodeMeasurements.length; i++) {
+      if (isTriggerableMeasurement(node, i)) {
+        measurements.add(nodeMeasurements[i]);
       }
     }
 
@@ -325,6 +340,39 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       }
     }
     return triggerNameToPaths;
+  }
+
+  private boolean isTriggerableMeasurement(final InsertNode node, final int index) {
+    final String[] measurements = node.getMeasurements();
+    final MeasurementSchema[] schemas = node.getMeasurementSchemas();
+    if (measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null
+        || schemas == null
+        || index >= schemas.length
+        || schemas[index] == null
+        || schemas[index].getMeasurementName() == null
+        || schemas[index].getType() == null
+        || !isFieldMeasurement(node, index)) {
+      return false;
+    }
+    if (node instanceof InsertTabletNode) {
+      final Object[] columns = ((InsertTabletNode) node).getColumns();
+      return columns != null && index < columns.length && columns[index] != null;
+    }
+    if (node instanceof InsertRowNode) {
+      final Object[] values = ((InsertRowNode) node).getValues();
+      return values != null && index < values.length;
+    }
+    return true;
+  }
+
+  private boolean isFieldMeasurement(final InsertNode node, final int index) {
+    final TsTableColumnCategory[] columnCategories = node.getColumnCategories();
+    return columnCategories == null
+        || index < columnCategories.length
+            && columnCategories[index] == TsTableColumnCategory.FIELD;
   }
 
   private TriggerFireResult fire(String triggerName, Tablet tablet, TriggerEvent event) {
@@ -364,7 +412,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           // update TDataNodeLocation of stateful trigger through config node
           updateLocationOfStatefulTrigger(triggerName, tDataNodeLocation.getDataNodeId());
         } catch (InterruptedException e) {
-          LOGGER.warn("{} interrupted when sleep", triggerName);
+          LOGGER.warn(DataNodeMiscMessages.TRIGGER_INTERRUPTED_SLEEP, triggerName);
           Thread.currentThread().interrupt();
         } catch (Exception e) {
           LOGGER.warn(

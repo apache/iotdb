@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.udf.service;
 
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -51,7 +52,7 @@ public class UDFClassLoaderManager implements IService {
 
   private UDFClassLoaderManager(String libRoot) {
     this.libRoot = libRoot;
-    LOGGER.info("UDF lib root: {}", libRoot);
+    LOGGER.info(CommonMessages.UDF_LIB_ROOT, libRoot);
     queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
   }
 

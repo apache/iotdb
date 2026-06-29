@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import java.io.IOException;
 import java.util.List;
 
 public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
@@ -31,9 +30,17 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
+    long maxAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(fileInfo -> fileInfo.maxMemToReadAlignedSeries)
+            .sum();
+    long maxNonAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(fileInfo -> fileInfo.maxMemToReadNonAlignedSeries)
+            .sum();
     cost +=
         Math.min(
-            taskInfo.getTotalChunkMetadataSize(),
+            Math.max(maxAlignedSeriesMemCost, maxNonAlignedSeriesMemCost),
             taskInfo.getFileInfoList().size()
                 * taskInfo.getMaxChunkMetadataNumInDevice()
                 * taskInfo.getMaxChunkMetadataSize());
@@ -73,14 +80,16 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   }
 
   @Override
-  public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
-      throws IOException {
+  public long roughEstimateInnerCompactionMemory(
+      CompactionScheduleContext context, List<TsFileResource> resources) {
     if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
       return -1L;
     }
-    MetadataInfo metadataInfo =
-        CompactionEstimateUtils.collectMetadataInfo(resources, CompactionType.INNER_SEQ_COMPACTION);
-    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum();
+    CompactionTaskMetadataInfo metadataInfo =
+        CompactionEstimateUtils.collectMetadataInfoFromCachedFileInfo(
+            resources, roughInfoMap, false);
+
+    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum(false);
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
     // source files (chunk + uncompressed page)

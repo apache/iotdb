@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.TableSessionBuilder;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
 
@@ -33,9 +34,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.SessionExample.printDataSet;
+
 public class TableModelSessionExample {
 
   private static final String LOCAL_URL = "127.0.0.1:6667";
+  private static final String SHOW_TABLES = "SHOW TABLES";
 
   public static void main(String[] args) {
 
@@ -60,7 +64,7 @@ public class TableModelSessionExample {
           "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
 
       // show tables from current database
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement(SHOW_TABLES)) {
         System.out.println(dataSet.getColumnNames());
         while (dataSet.hasNext()) {
           System.out.println(dataSet.next());
@@ -70,10 +74,7 @@ public class TableModelSessionExample {
       // show tables by specifying another database
       // using SHOW tables FROM
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES FROM test1")) {
-        System.out.println(dataSet.getColumnNames());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
       // insert table data by tablet
@@ -87,15 +88,15 @@ public class TableModelSessionExample {
               TSDataType.STRING,
               TSDataType.FLOAT,
               TSDataType.DOUBLE);
-      List<Tablet.ColumnCategory> columnTypeList =
+      List<ColumnCategory> columnTypeList =
           new ArrayList<>(
               Arrays.asList(
-                  Tablet.ColumnCategory.TAG,
-                  Tablet.ColumnCategory.TAG,
-                  Tablet.ColumnCategory.TAG,
-                  Tablet.ColumnCategory.ATTRIBUTE,
-                  Tablet.ColumnCategory.FIELD,
-                  Tablet.ColumnCategory.FIELD));
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.ATTRIBUTE,
+                  ColumnCategory.FIELD,
+                  ColumnCategory.FIELD));
       Tablet tablet = new Tablet("test1", columnNameList, dataTypeList, columnTypeList, 100);
       for (long timestamp = 0; timestamp < 100; timestamp++) {
         int rowIndex = tablet.getRowSize();
@@ -121,11 +122,7 @@ public class TableModelSessionExample {
           session.executeQueryStatement(
               "select * from test1 "
                   + "where region_id = '1' and plant_id in ('3', '5') and device_id = '3'")) {
-        System.out.println(dataSet.getColumnNames());
-        System.out.println(dataSet.getColumnTypes());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
     } catch (IoTDBConnectionException e) {
@@ -144,11 +141,8 @@ public class TableModelSessionExample {
             .build()) {
 
       // show tables from current database
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
-        System.out.println(dataSet.getColumnNames());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+      try (SessionDataSet dataSet = session.executeQueryStatement(SHOW_TABLES)) {
+        printDataSet(dataSet);
       }
 
       // change database to test2
@@ -156,11 +150,8 @@ public class TableModelSessionExample {
 
       // show tables by specifying another database
       // using SHOW tables FROM
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
-        System.out.println(dataSet.getColumnNames());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+      try (SessionDataSet dataSet = session.executeQueryStatement(SHOW_TABLES)) {
+        printDataSet(dataSet);
       }
 
     } catch (IoTDBConnectionException e) {

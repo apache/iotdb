@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParameter;
@@ -89,6 +91,7 @@ public class RawDataAggregationNode extends SingleChildProcessNode {
     this.scanOrder = scanOrder;
   }
 
+  // used by clone & deserialize
   public RawDataAggregationNode(
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
@@ -98,7 +101,7 @@ public class RawDataAggregationNode extends SingleChildProcessNode {
       boolean outputEndTime,
       Ordering scanOrder) {
     super(id);
-    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
     this.scanOrder = scanOrder;
     this.groupByParameter = groupByParameter;
@@ -199,7 +202,7 @@ public class RawDataAggregationNode extends SingleChildProcessNode {
       outputColumnNames.add(ColumnHeaderConstant.ENDTIME);
     }
     outputColumnNames.addAll(
-        aggregationDescriptorList.stream()
+        AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList).stream()
             .map(AggregationDescriptor::getOutputColumnNames)
             .flatMap(List::stream)
             .collect(Collectors.toList()));
@@ -208,8 +211,8 @@ public class RawDataAggregationNode extends SingleChildProcessNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitRawDataAggregation(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitRawDataAggregation(this, context);
   }
 
   @Override

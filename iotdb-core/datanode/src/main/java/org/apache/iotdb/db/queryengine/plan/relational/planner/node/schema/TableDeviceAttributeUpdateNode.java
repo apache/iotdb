@@ -20,17 +20,18 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
@@ -57,10 +58,10 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
   protected List<ColumnHeader> columnHeaderList;
 
   protected TRegionReplicaSet schemaRegionReplicaSet;
-  protected final List<List<SchemaFilter>> idDeterminedPredicateList;
+  protected final List<List<SchemaFilter>> tagDeterminedPredicateList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  protected final Expression idFuzzyPredicate;
+  protected final Expression tagFuzzyPredicate;
 
   private final List<UpdateAssignment> assignments;
   private final SessionInfo sessionInfo;
@@ -74,8 +75,8 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,
-      final List<List<SchemaFilter>> idDeterminedPredicateList,
-      final Expression idFuzzyPredicate,
+      final List<List<SchemaFilter>> tagDeterminedPredicateList,
+      final Expression tagFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
       final TRegionReplicaSet schemaRegionReplicaSet,
       final List<UpdateAssignment> assignments,
@@ -85,8 +86,8 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
     this.tableName = tableName;
     this.columnHeaderList = columnHeaderList;
     this.schemaRegionReplicaSet = schemaRegionReplicaSet;
-    this.idDeterminedPredicateList = idDeterminedPredicateList;
-    this.idFuzzyPredicate = idFuzzyPredicate;
+    this.tagDeterminedPredicateList = tagDeterminedPredicateList;
+    this.tagFuzzyPredicate = tagFuzzyPredicate;
     this.assignments = assignments;
     this.sessionInfo = sessionInfo;
   }
@@ -103,12 +104,12 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
     return columnHeaderList;
   }
 
-  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
-    return idDeterminedPredicateList;
+  public List<List<SchemaFilter>> getTagDeterminedFilterList() {
+    return tagDeterminedPredicateList;
   }
 
-  public Expression getIdFuzzyPredicate() {
-    return idFuzzyPredicate;
+  public Expression getTagFuzzyPredicate() {
+    return tagFuzzyPredicate;
   }
 
   public List<UpdateAssignment> getAssignments() {
@@ -120,8 +121,8 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitTableDeviceAttributeUpdate(this, context);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C context) {
+    return ((PlanVisitor<R, C>) visitor).visitTableDeviceAttributeUpdate(this, context);
   }
 
   @Override
@@ -130,17 +131,17 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
     ReadWriteIOUtils.write(database, byteBuffer);
     ReadWriteIOUtils.write(tableName, byteBuffer);
 
-    ReadWriteIOUtils.write(idDeterminedPredicateList.size(), byteBuffer);
-    for (final List<SchemaFilter> filterList : idDeterminedPredicateList) {
+    ReadWriteIOUtils.write(tagDeterminedPredicateList.size(), byteBuffer);
+    for (final List<SchemaFilter> filterList : tagDeterminedPredicateList) {
       ReadWriteIOUtils.write(filterList.size(), byteBuffer);
       for (final SchemaFilter filter : filterList) {
         SchemaFilter.serialize(filter, byteBuffer);
       }
     }
 
-    ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, byteBuffer);
-    if (idFuzzyPredicate != null) {
-      Expression.serialize(idFuzzyPredicate, byteBuffer);
+    ReadWriteIOUtils.write(tagFuzzyPredicate == null ? (byte) 0 : (byte) 1, byteBuffer);
+    if (tagFuzzyPredicate != null) {
+      Expression.serialize(tagFuzzyPredicate, byteBuffer);
     }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), byteBuffer);
@@ -165,17 +166,17 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
 
-    ReadWriteIOUtils.write(idDeterminedPredicateList.size(), stream);
-    for (final List<SchemaFilter> filterList : idDeterminedPredicateList) {
+    ReadWriteIOUtils.write(tagDeterminedPredicateList.size(), stream);
+    for (final List<SchemaFilter> filterList : tagDeterminedPredicateList) {
       ReadWriteIOUtils.write(filterList.size(), stream);
       for (final SchemaFilter filter : filterList) {
         SchemaFilter.serialize(filter, stream);
       }
     }
 
-    ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, stream);
-    if (idFuzzyPredicate != null) {
-      Expression.serialize(idFuzzyPredicate, stream);
+    ReadWriteIOUtils.write(tagFuzzyPredicate == null ? (byte) 0 : (byte) 1, stream);
+    if (tagFuzzyPredicate != null) {
+      Expression.serialize(tagFuzzyPredicate, stream);
     }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
@@ -265,8 +266,8 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
         getPlanNodeId(),
         database,
         tableName,
-        idDeterminedPredicateList,
-        idFuzzyPredicate,
+        tagDeterminedPredicateList,
+        tagFuzzyPredicate,
         columnHeaderList,
         schemaRegionReplicaSet,
         assignments,
@@ -301,9 +302,9 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
         + tableName
         + '\''
         + ", idDeterminedPredicateList="
-        + idDeterminedPredicateList
+        + tagDeterminedPredicateList
         + ", idFuzzyPredicate="
-        + idFuzzyPredicate
+        + tagFuzzyPredicate
         + ", columnHeaderList="
         + columnHeaderList
         + ", schemaRegionReplicaSet="
@@ -327,8 +328,8 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
                         getPlanNodeId(),
                         database,
                         tableName,
-                        idDeterminedPredicateList,
-                        idFuzzyPredicate,
+                        tagDeterminedPredicateList,
+                        tagFuzzyPredicate,
                         columnHeaderList,
                         replicaSet,
                         assignments,

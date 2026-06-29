@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.security.encrypt;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,29 +31,29 @@ import java.security.NoSuchAlgorithmException;
 public class MessageDigestEncrypt implements AsymmetricEncrypt {
   private static final Logger logger = LoggerFactory.getLogger(MessageDigestEncrypt.class);
 
-  private static final String ENCRYPT_ALGORITHM = "MD5";
   private static final String STRING_ENCODING = "utf-8";
 
   @Override
   public void init(String providerParameters) {}
 
   @Override
-  public String encrypt(String originPassword) {
+  public String encrypt(String originPassword, DigestAlgorithm digestAlgorithm) {
     try {
-      MessageDigest messageDigest = MessageDigest.getInstance(ENCRYPT_ALGORITHM);
+      MessageDigest messageDigest = MessageDigest.getInstance(digestAlgorithm.getAlgorithmName());
       messageDigest.update(originPassword.getBytes(STRING_ENCODING));
       return new String(messageDigest.digest(), STRING_ENCODING);
     } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-      logger.error("meet error while encrypting password.", e);
+      logger.error(CommonMessages.ENCRYPT_PASSWORD_ERROR, e);
       return originPassword;
     }
   }
 
   @Override
-  public boolean validate(String originPassword, String encryptPassword) {
+  public boolean validate(
+      String originPassword, String encryptPassword, DigestAlgorithm digestAlgorithm) {
     if (originPassword == null) {
       return false;
     }
-    return encrypt(originPassword).equals(encryptPassword);
+    return encrypt(originPassword, digestAlgorithm).equals(encryptPassword);
   }
 }

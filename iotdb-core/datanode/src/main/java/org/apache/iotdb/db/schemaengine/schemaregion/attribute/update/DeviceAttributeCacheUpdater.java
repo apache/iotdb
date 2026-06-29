@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceCacheAttributeGuard;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
@@ -256,7 +257,7 @@ public class DeviceAttributeCacheUpdater {
   public void afterUpdate() {
     version.incrementAndGet();
     degrade();
-    GeneralRegionAttributeSecurityService.getInstance().notifyBroadCast();
+    GeneralRegionAttributeSecurityService.getInstance().advanceExecution();
   }
 
   private void degrade() {
@@ -308,13 +309,12 @@ public class DeviceAttributeCacheUpdater {
       }
       if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(
-            "Failed to delete old snapshot {} while creating device attribute remote updater snapshot.",
-            snapshot.getName());
+            DataNodeSchemaMessages.FAILED_TO_DELETE_OLD_SNAPSHOT_UPDATER, snapshot.getName());
         return false;
       }
       if (!snapshotTmp.renameTo(snapshot)) {
         logger.error(
-            "Failed to rename {} to {} while creating device attribute remote updater snapshot.",
+            DataNodeSchemaMessages.FAILED_TO_RENAME_SNAPSHOT_UPDATER,
             snapshotTmp.getName(),
             snapshot.getName());
         FileUtils.deleteFileIfExist(snapshot);
@@ -323,8 +323,7 @@ public class DeviceAttributeCacheUpdater {
 
       return true;
     } catch (final IOException e) {
-      logger.error(
-          "Failed to create device attribute remote updater snapshot due to {}", e.getMessage(), e);
+      logger.error(DataNodeSchemaMessages.FAILED_TO_CREATE_UPDATER_SNAPSHOT, e.getMessage(), e);
       FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {
@@ -353,17 +352,14 @@ public class DeviceAttributeCacheUpdater {
         SystemFileFactory.INSTANCE.getFile(
             snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_REMOTE_UPDATER_SNAPSHOT);
     if (!snapshot.exists()) {
-      logger.info(
-          "Device attribute remote updater snapshot {} not found, consider it as upgraded from the older version, will not update remote",
-          snapshot);
+      logger.info(DataNodeSchemaMessages.UPDATER_SNAPSHOT_NOT_FOUND, snapshot);
       return;
     }
     try (final BufferedInputStream inputStream =
         new BufferedInputStream(Files.newInputStream(snapshot.toPath()))) {
       deserialize(inputStream);
     } catch (final Exception e) {
-      logger.warn(
-          "Load device attribute remote updater snapshot from {} failed, continue...", snapshotDir);
+      logger.warn(DataNodeSchemaMessages.LOAD_UPDATER_SNAPSHOT_FAILED, snapshotDir);
     }
   }
 
@@ -440,17 +436,23 @@ public class DeviceAttributeCacheUpdater {
     if (size > 0) {
       requestMemory(size);
     } else {
-      releaseMemory(size);
+      releaseMemory(-size);
     }
   }
 
   private void requestMemory(final long size) {
+    if (size < 0) {
+      throw new UnsupportedOperationException(DataNodeSchemaMessages.REQUEST_MEMORY_SIZE_NEGATIVE);
+    }
     if (regionStatistics != null) {
       regionStatistics.requestMemory(size);
     }
   }
 
   private void releaseMemory(final long size) {
+    if (size < 0) {
+      throw new UnsupportedOperationException(DataNodeSchemaMessages.RELEASE_MEMORY_SIZE_NEGATIVE);
+    }
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
     }

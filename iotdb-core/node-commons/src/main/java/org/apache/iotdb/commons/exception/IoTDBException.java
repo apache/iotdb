@@ -20,6 +20,8 @@
 
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+
 public class IoTDBException extends Exception {
 
   private static final long serialVersionUID = 8480450962311247736L;
@@ -30,6 +32,8 @@ public class IoTDBException extends Exception {
    * the full stack of the exception
    */
   private final boolean isUserException;
+
+  private TSStatus status;
 
   public IoTDBException(String message, int errorCode) {
     super(message);
@@ -61,11 +65,22 @@ public class IoTDBException extends Exception {
     this.isUserException = isUserException;
   }
 
+  public IoTDBException(final TSStatus status) {
+    super(status.message);
+    this.errorCode = status.getCode();
+    this.status = status;
+    this.isUserException = false;
+  }
+
   public boolean isUserException() {
     return isUserException;
   }
 
   public int getErrorCode() {
     return errorCode;
+  }
+
+  public TSStatus getStatus() {
+    return status;
   }
 }

@@ -19,17 +19,20 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
+import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFilePublicResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -41,6 +44,9 @@ import java.util.stream.Collectors;
 
 public class TsFileInsertionEventParserProvider {
 
+  private final String pipeName;
+  private final long creationTime;
+
   private final File tsFile;
   private final TreePattern treePattern;
   private final TablePattern tablePattern;
@@ -49,43 +55,72 @@ public class TsFileInsertionEventParserProvider {
 
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
-  private final String userName;
+  private final IAuditEntity entity;
 
   public TsFileInsertionEventParserProvider(
+      final String pipeName,
+      final long creationTime,
       final File tsFile,
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final String userName,
+      final IAuditEntity entity,
       final PipeTsFileInsertionEvent sourceEvent) {
+    this.pipeName = pipeName;
+    this.creationTime = creationTime;
     this.tsFile = tsFile;
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
     this.startTime = startTime;
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.userName = userName;
+    this.entity = entity;
     this.sourceEvent = sourceEvent;
   }
 
-  public TsFileInsertionEventParser provide() throws IOException {
+  public TsFileInsertionEventParser provide(final boolean isWithMod)
+      throws IOException, IllegalPathException {
+    if (pipeName != null) {
+      PipeTsFileToTabletsMetrics.getInstance()
+          .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
+    }
+
     if (sourceEvent.isTableModelEvent()) {
       return new TsFileInsertionEventTableParser(
-          tsFile, tablePattern, startTime, endTime, pipeTaskMeta, userName, sourceEvent);
+          pipeName,
+          creationTime,
+          tsFile,
+          tablePattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          entity,
+          sourceEvent,
+          isWithMod);
     }
 
     // Use scan container to save memory
     if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
-            / PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
-        > PipeTsFileResource.MEMORY_SUFFICIENT_THRESHOLD) {
+            / PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
+        > PipeTsFilePublicResource.MEMORY_SUFFICIENT_THRESHOLD) {
       return new TsFileInsertionEventScanParser(
-          tsFile, treePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          pipeName,
+          creationTime,
+          tsFile,
+          treePattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          sourceEvent,
+          isWithMod);
     }
 
-    if (treePattern instanceof IoTDBTreePattern
-        && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
+    if (treePattern instanceof IoTDBTreePatternOperations
+        && !((IoTDBTreePatternOperations) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
       // If the pattern matches only one time series in one device, use query container here
       // because there is no timestamps merge overhead.
       //
@@ -93,7 +128,18 @@ public class TsFileInsertionEventParserProvider {
       // hard to know whether it only matches one timeseries, while matching multiple is often the
       // case.
       return new TsFileInsertionEventQueryParser(
-          tsFile, treePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          pipeName,
+          creationTime,
+          tsFile,
+          treePattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          sourceEvent,
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          null,
+          false);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -102,7 +148,17 @@ public class TsFileInsertionEventParserProvider {
       // If we failed to get from cache, it indicates that the memory usage is high.
       // We use scan data container because it requires less memory.
       return new TsFileInsertionEventScanParser(
-          tsFile, treePattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+          pipeName,
+          creationTime,
+          tsFile,
+          treePattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          sourceEvent,
+          isWithMod);
     }
 
     final int originalSize = deviceIsAlignedMap.size();
@@ -112,15 +168,30 @@ public class TsFileInsertionEventParserProvider {
     return (double) filteredDeviceIsAlignedMap.size() / originalSize
             > PipeConfig.getInstance().getPipeTsFileScanParsingThreshold()
         ? new TsFileInsertionEventScanParser(
-            tsFile, treePattern, startTime, endTime, pipeTaskMeta, sourceEvent)
+            pipeName,
+            creationTime,
+            tsFile,
+            treePattern,
+            startTime,
+            endTime,
+            pipeTaskMeta,
+            entity,
+            sourceEvent.isSkipIfNoPrivileges(),
+            sourceEvent,
+            isWithMod)
         : new TsFileInsertionEventQueryParser(
+            pipeName,
+            creationTime,
             tsFile,
             treePattern,
             startTime,
             endTime,
             pipeTaskMeta,
             sourceEvent,
-            filteredDeviceIsAlignedMap);
+            entity,
+            sourceEvent.isSkipIfNoPrivileges(),
+            filteredDeviceIsAlignedMap,
+            isWithMod);
   }
 
   private Map<IDeviceID, Boolean> filterDeviceIsAlignedMapByPattern(

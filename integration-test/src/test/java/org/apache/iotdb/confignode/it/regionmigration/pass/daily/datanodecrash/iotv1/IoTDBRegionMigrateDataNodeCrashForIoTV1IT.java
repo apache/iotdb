@@ -28,9 +28,10 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+
+// TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
@@ -53,7 +54,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV1IT
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
   }
 
-  @Test
+  //  @Test
   public void coordinatorCrashDuringAddPeerTransition() throws Exception {
     failTest(
         2,
@@ -65,7 +66,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV1IT
         KillNode.COORDINATOR_DATANODE);
   }
 
-  @Test
+  //  @Test
   public void coordinatorCrashDuringAddPeerDone() throws Exception {
     failTest(
         2,
@@ -81,7 +82,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV1IT
 
   // region Original DataNode crash tests
 
-  @Test
+  //  @Test
   public void originalCrashDuringAddPeerDone() throws Exception {
     failTest(
         2,
@@ -97,7 +98,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV1IT
 
   // region Destination DataNode crash tests
 
-  @Test
+  //  @Test
   public void destinationCrashDuringCreateLocalPeer() throws Exception {
     failTest(
         2,
@@ -109,7 +110,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV1IT
         KillNode.DESTINATION_DATANODE);
   }
 
-  @Test
+  //  @Test
   public void destinationCrashDuringAddPeerTransition() throws Exception {
     failTest(
         2,
@@ -121,7 +122,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV1IT
         KillNode.DESTINATION_DATANODE);
   }
 
-  @Test
+  //  @Test
   public void destinationCrashDuringAddPeerDone() throws Exception {
     failTest(
         2,

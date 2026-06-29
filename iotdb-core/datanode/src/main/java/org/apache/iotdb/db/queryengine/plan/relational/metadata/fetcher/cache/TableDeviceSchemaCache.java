@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
@@ -34,10 +35,11 @@ import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -111,7 +113,7 @@ public class TableDeviceSchemaCache {
     memoryBlock =
         memoryConfig
             .getSchemaCacheMemoryManager()
-            .exactAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
+            .exactAllocate(DataNodeMemoryConfig.SCHEMA_CACHE, MemoryBlockType.STATIC);
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
@@ -137,14 +139,9 @@ public class TableDeviceSchemaCache {
 
   // The input deviceId shall have its tailing nulls trimmed
   public Map<String, Binary> getDeviceAttribute(final String database, final IDeviceID deviceId) {
-    readWriteLock.readLock().lock();
-    try {
-      final TableDeviceCacheEntry entry =
-          dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
-      return entry == null ? null : entry.getAttributeMap();
-    } finally {
-      readWriteLock.readLock().unlock();
-    }
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
+    return entry == null ? null : entry.getAttributeMap();
   }
 
   // The input deviceId shall have its tailing nulls trimmed
@@ -154,7 +151,7 @@ public class TableDeviceSchemaCache {
     try {
       // Avoid stale table
       if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
         return;
       }
       dualKeyCache.update(
@@ -214,10 +211,12 @@ public class TableDeviceSchemaCache {
    *
    * <p>- Second time put the calculated {@link TimeValuePair}s, and use {@link
    * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[])}. The input {@link
-   * TimeValuePair}s shall never be or contain {@code null}, if a measurement is with all {@code
-   * null}s, its {@link TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
-   * For time column, the input measurement shall be "", and the value shall be {@link
-   * TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE}. If the time column is not explicitly specified, the
+   * TimeValuePair}s shall never be or contain {@code null}. If a measurement is with all {@code
+   * null}s, its {@link TimeValuePair} shall be {@link
+   * TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN}; if it is known to be {@code null} at a concrete
+   * last-row time, preserve that time and use {@link TableDeviceLastCache#PLACEHOLDER_NO_VALUE} as
+   * the value. For time column, the input measurement shall be "", and the value shall be {@link
+   * TableDeviceLastCache#PLACEHOLDER_NO_VALUE}. If the time column is not explicitly specified, the
    * device's last time won't be updated because we cannot guarantee the completeness of the
    * existing measurements in cache.
    *
@@ -239,7 +238,7 @@ public class TableDeviceSchemaCache {
     try {
       // Avoid stale table
       if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
         return;
       }
       dualKeyCache.update(
@@ -265,18 +264,40 @@ public class TableDeviceSchemaCache {
    * @param deviceId {@link IDeviceID}
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
+   * @param invalidateNull when true invalidate cache entries where timeValuePairs[i] == null; when
+   *     false ignore cache entries where timeValuePairs[i] == null
+   */
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final TimeValuePair[] timeValuePairs,
+      boolean invalidateNull) {
+    dualKeyCache.update(
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
+        null,
+        entry -> entry.tryUpdateLastCache(measurements, timeValuePairs, invalidateNull),
+        false);
+  }
+
+  /**
+   * Update the last cache in writing or the second push of last cache query. If a measurement is
+   * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be
+   * {@code null}. For correctness, this will put the cache lazily and only update the existing last
+   * caches of measurements.
+   *
+   * @param database the device's database, without "root"
+   * @param deviceId {@link IDeviceID}
+   * @param measurements the fetched measurements
+   * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
   public void updateLastCacheIfExists(
       final String database,
       final IDeviceID deviceId,
       final String[] measurements,
       final TimeValuePair[] timeValuePairs) {
-    dualKeyCache.update(
-        new TableId(database, deviceId.getTableName()),
-        deviceId,
-        null,
-        entry -> entry.tryUpdateLastCache(measurements, timeValuePairs),
-        false);
+    updateLastCacheIfExists(database, deviceId, measurements, timeValuePairs, false);
   }
 
   /**
@@ -285,8 +306,8 @@ public class TableDeviceSchemaCache {
    * @param database the device's database, without "root", {@code null} for tree model
    * @param deviceId {@link IDeviceID}
    * @param measurement the measurement to get
-   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
-   *     cache hit but result is {@code null}, and the result value otherwise.
+   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN} iff
+   *     cache hit but the measurement has no values at all, and the result value otherwise.
    */
   public TimeValuePair getLastEntry(
       final @Nullable String database, final IDeviceID deviceId, final String measurement) {
@@ -297,13 +318,13 @@ public class TableDeviceSchemaCache {
 
   /**
    * Get the last {@link TimeValuePair}s of given measurements, the measurements shall never be
-   * "time".
+   * "time". If you want to get the last of "time", use "" to represent.
    *
    * @param database the device's database, without "root", {@code null} for tree model
    * @param deviceId {@link IDeviceID}
    * @param measurements the measurements to get
-   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
-   *     cache hit but result is {@code null}, and the result value otherwise.
+   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN} iff
+   *     cache hit but the measurement has no values at all, and the result value otherwise.
    */
   public TimeValuePair[] getLastEntries(
       final @Nullable String database, final IDeviceID deviceId, final String[] measurements) {
@@ -326,8 +347,10 @@ public class TableDeviceSchemaCache {
    *     the {@link Pair#left} will be the source measurement's last time, (OptionalLong.empty() iff
    *     the source measurement is all {@code null}); {@link Pair#right} will be an {@link
    *     TsPrimitiveType} array, whose element will be {@code null} if cache miss, {@link
-   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and the measurement is without any
-   *     values when last by the source measurement's time, and the result value otherwise.
+   *     TableDeviceLastCache#PLACEHOLDER_NO_VALUE} iff cache hit and the measurement is known to be
+   *     {@code null} when last by the source measurement's time, {@link
+   *     TableDeviceLastCache#PLACEHOLDER_STALE_VALUE} iff cache hit but the target measurement is
+   *     stale under a newer source time, and the result value otherwise.
    */
   public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final String database,
@@ -369,9 +392,7 @@ public class TableDeviceSchemaCache {
 
   /////////////////////////////// Tree model ///////////////////////////////
 
-  // Shall be accessed through "TreeDeviceSchemaCacheManager"
-
-  void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
+  public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
     final PartialPath devicePath = deviceSchemaInfo.getDevicePath();
     final IDeviceID deviceID = devicePath.getIDeviceID();
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
@@ -386,10 +407,13 @@ public class TableDeviceSchemaCache {
         true);
   }
 
-  IDeviceSchema getDeviceSchema(final String[] devicePath) {
-    final IDeviceID deviceID =
+  public IDeviceSchema getDeviceSchema(final String[] devicePath) {
+    return getDeviceSchema(
         IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(devicePath));
+            StringArrayDeviceID.splitDeviceIdString(devicePath)));
+  }
+
+  public IDeviceSchema getDeviceSchema(final IDeviceID deviceID) {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(null, deviceID.getTableName()), deviceID);
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
@@ -427,12 +451,17 @@ public class TableDeviceSchemaCache {
         Objects.isNull(timeValuePairs));
   }
 
+  public boolean getLastCache(
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> inputMap) {
+    return dualKeyCache.batchApply(inputMap, TableDeviceCacheEntry::updateInputMap);
+  }
+
   // WARNING: This is not guaranteed to affect table model's cache
   void invalidateLastCache(final PartialPath devicePath, final String measurement) {
     final ToIntFunction<TableDeviceCacheEntry> updateFunction =
         PathPatternUtil.hasWildcard(measurement)
             ? entry -> -entry.invalidateLastCache()
-            : entry -> -entry.invalidateLastCache(measurement, false);
+            : entry -> -entry.invalidateLastCache(measurement);
 
     if (!devicePath.hasWildcard()) {
       final IDeviceID deviceID = devicePath.getIDeviceID();
@@ -457,7 +486,7 @@ public class TableDeviceSchemaCache {
           },
           cachedDeviceID -> {
             try {
-              return new PartialPath(cachedDeviceID).matchFullPath(devicePath);
+              return devicePath.matchFullPath(cachedDeviceID);
             } catch (final IllegalPathException e) {
               logger.warn(
                   "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",
@@ -496,8 +525,8 @@ public class TableDeviceSchemaCache {
           cachedDeviceID -> {
             try {
               return isMultiLevelWildcardMeasurement
-                  ? devicePath.matchPrefixPath(new PartialPath(cachedDeviceID))
-                  : devicePath.matchFullPath(new PartialPath(cachedDeviceID));
+                  ? devicePath.matchPrefixPath(cachedDeviceID)
+                  : devicePath.matchFullPath(cachedDeviceID);
             } catch (final IllegalPathException e) {
               logger.warn(
                   "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",
@@ -519,7 +548,7 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
-  long getMemoryUsage() {
+  public long getMemoryUsage() {
     return dualKeyCache.stats().memoryUsage();
   }
 
@@ -643,6 +672,7 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  @TableModel
   public void invalidate(
       final String database,
       final String tableName,
@@ -655,8 +685,8 @@ public class TableDeviceSchemaCache {
       final ToIntFunction<TableDeviceCacheEntry> updateFunction =
           isAttributeColumn
               ? entry -> -entry.invalidateAttributeColumn(columnName)
-              : entry -> -entry.invalidateLastCache(columnName, true);
-      dualKeyCache.update(new TableId(null, tableName), deviceID -> true, updateFunction);
+              : entry -> -entry.invalidateLastCache(columnName);
+      dualKeyCache.update(new TableId(database, tableName), deviceID -> true, updateFunction);
     } finally {
       readWriteLock.writeLock().unlock();
     }

@@ -19,15 +19,20 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet.parser;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -38,7 +43,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -70,7 +75,7 @@ public abstract class TabletInsertionEventParser {
   protected String[] columnNameStringList;
 
   protected long[] timestampColumn;
-  protected Tablet.ColumnCategory[] valueColumnTypes;
+  protected ColumnCategory[] valueColumnTypes;
   protected TSDataType[] valueColumnDataTypes;
   // Each column of Object[] is a column of primitive type array
   protected Object[] valueColumns;
@@ -111,7 +116,9 @@ public abstract class TabletInsertionEventParser {
   //////////////////////////// parse ////////////////////////////
 
   protected void parse(final InsertRowNode insertRowNode) {
-    final int originColumnSize = insertRowNode.getMeasurements().length;
+    final String[] originColumnNameStringList = insertRowNode.getMeasurements();
+    final int originColumnSize =
+        originColumnNameStringList == null ? 0 : originColumnNameStringList.length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     // The full path is always cached when device path is deserialized
@@ -123,27 +130,32 @@ public abstract class TabletInsertionEventParser {
     final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
+    final MeasurementSchema[] originMeasurementSchemaList = insertRowNode.getMeasurementSchemas();
+    final TsTableColumnCategory[] originColumnCategories = insertRowNode.getColumnCategories();
+    final TSDataType[] originValueDataTypes = insertRowNode.getDataTypes();
+    final Object[] originValues = insertRowNode.getValues();
+
     generateColumnIndexMapper(
-        insertRowNode.getMeasurements(), originColumnIndex2FilteredColumnIndexMapperList);
+        originColumnNameStringList, originColumnIndex2FilteredColumnIndexMapperList);
 
     final int filteredColumnSize =
-        Arrays.stream(originColumnIndex2FilteredColumnIndexMapperList)
-            .filter(Objects::nonNull)
-            .toArray()
-            .length;
+        compactColumnIndexMapper(
+            originColumnIndex2FilteredColumnIndexMapperList,
+            i ->
+                isValidOriginColumn(
+                        originColumnNameStringList,
+                        originMeasurementSchemaList,
+                        originValueDataTypes,
+                        i)
+                    && originValues != null
+                    && i < originValues.length);
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
     this.valueColumnDataTypes = new TSDataType[filteredColumnSize];
-    this.valueColumnTypes = new Tablet.ColumnCategory[filteredColumnSize];
+    this.valueColumnTypes = new ColumnCategory[filteredColumnSize];
     this.valueColumns = new Object[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
-
-    final MeasurementSchema[] originMeasurementSchemaList = insertRowNode.getMeasurementSchemas();
-    final String[] originColumnNameStringList = insertRowNode.getMeasurements();
-    final TsTableColumnCategory[] originColumnCategories = insertRowNode.getColumnCategories();
-    final TSDataType[] originValueDataTypes = insertRowNode.getDataTypes();
-    final Object[] originValues = insertRowNode.getValues();
 
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
@@ -151,9 +163,11 @@ public abstract class TabletInsertionEventParser {
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList[i];
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] =
-            originColumnCategories != null && originColumnCategories[i] != null
+            originColumnCategories != null
+                    && i < originColumnCategories.length
+                    && originColumnCategories[i] != null
                 ? originColumnCategories[i].toTsFileColumnType()
-                : Tablet.ColumnCategory.FIELD;
+                : ColumnCategory.FIELD;
         this.valueColumnDataTypes[filteredColumnIndex] = originValueDataTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValues[i]) || Objects.isNull(originValueDataTypes[i])) {
@@ -166,21 +180,17 @@ public abstract class TabletInsertionEventParser {
         } else {
           this.valueColumns[filteredColumnIndex] =
               filterValueColumnsByRowIndexList(
-                  originValueDataTypes[i],
-                  originValues[i],
-                  rowIndexList,
-                  true,
-                  bitMap, // use the output bitmap since there is no bitmap in InsertRowNode
-                  bitMap);
+                  originValueDataTypes[i], originValues[i], rowIndexList, true, null, bitMap);
         }
         this.nullValueColumnBitmaps[filteredColumnIndex] = bitMap;
       }
     }
 
     this.rowCount = this.timestampColumn.length;
+    this.nullValueColumnBitmaps = PipeTabletUtils.compactBitMaps(nullValueColumnBitmaps, rowCount);
     if (this.rowCount == 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "InsertRowNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          DataNodePipeMessages.INSERTROWNODE_IS_PARSED_TO_ZERO_ROWS_ACCORDING,
           insertRowNode,
           getPattern(),
           this.sourceEvent.getStartTime(),
@@ -189,8 +199,10 @@ public abstract class TabletInsertionEventParser {
     }
   }
 
-  protected void parse(final InsertTabletNode insertTabletNode) {
-    final int originColumnSize = insertTabletNode.getMeasurements().length;
+  protected void parse(final InsertTabletNode insertTabletNode) throws IllegalPathException {
+    final String[] originColumnNameStringList = insertTabletNode.getMeasurements();
+    final int originColumnSize =
+        originColumnNameStringList == null ? 0 : originColumnNameStringList.length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     // The full path is always cached when device path is deserialized
@@ -199,44 +211,43 @@ public abstract class TabletInsertionEventParser {
     this.isAligned = insertTabletNode.isAligned();
 
     final long[] originTimestampColumn = insertTabletNode.getTimes();
-    final int originRowSize = originTimestampColumn.length;
-    final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
-    this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
-
-    generateColumnIndexMapper(
-        insertTabletNode.getMeasurements(), originColumnIndex2FilteredColumnIndexMapperList);
-
-    final int filteredColumnSize =
-        Arrays.stream(originColumnIndex2FilteredColumnIndexMapperList)
-            .filter(Objects::nonNull)
-            .toArray()
-            .length;
-
-    this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
-    this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumnTypes = new Tablet.ColumnCategory[filteredColumnSize];
-    this.valueColumnDataTypes = new TSDataType[filteredColumnSize];
-    this.valueColumns = new Object[filteredColumnSize];
-    this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
+    final int originRowCount = insertTabletNode.getRowCount();
+    final long[] actualTimestampColumn =
+        originTimestampColumn.length == originRowCount
+            ? originTimestampColumn
+            : Arrays.copyOf(originTimestampColumn, originRowCount);
+    final List<Integer> rowIndexList = generateRowIndexList(actualTimestampColumn);
+    this.timestampColumn = rowIndexList.stream().mapToLong(i -> actualTimestampColumn[i]).toArray();
 
     final MeasurementSchema[] originMeasurementSchemaList =
         insertTabletNode.getMeasurementSchemas();
-    final String[] originColumnNameStringList = insertTabletNode.getMeasurements();
     final TsTableColumnCategory[] originColumnCategories = insertTabletNode.getColumnCategories();
     final TSDataType[] originValueColumnDataTypes = insertTabletNode.getDataTypes();
     final Object[] originValueColumns = insertTabletNode.getColumns();
-    final BitMap[] originBitMapList =
-        (insertTabletNode.getBitMaps() == null
-            ? IntStream.range(0, originColumnSize)
-                .boxed()
-                .map(o -> new BitMap(originRowSize))
-                .toArray(BitMap[]::new)
-            : insertTabletNode.getBitMaps());
-    for (int i = 0; i < originBitMapList.length; i++) {
-      if (originBitMapList[i] == null) {
-        originBitMapList[i] = new BitMap(originRowSize);
-      }
-    }
+    final BitMap[] originBitMapList = insertTabletNode.getBitMaps();
+
+    generateColumnIndexMapper(
+        originColumnNameStringList, originColumnIndex2FilteredColumnIndexMapperList);
+
+    final int filteredColumnSize =
+        compactColumnIndexMapper(
+            originColumnIndex2FilteredColumnIndexMapperList,
+            i ->
+                isValidOriginColumn(
+                        originColumnNameStringList,
+                        originMeasurementSchemaList,
+                        originValueColumnDataTypes,
+                        i)
+                    && originValueColumns != null
+                    && i < originValueColumns.length
+                    && originValueColumns[i] != null);
+
+    this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
+    this.columnNameStringList = new String[filteredColumnSize];
+    this.valueColumnTypes = new ColumnCategory[filteredColumnSize];
+    this.valueColumnDataTypes = new TSDataType[filteredColumnSize];
+    this.valueColumns = new Object[filteredColumnSize];
+    this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
@@ -244,9 +255,11 @@ public abstract class TabletInsertionEventParser {
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList[i];
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] =
-            originColumnCategories != null && originColumnCategories[i] != null
+            originColumnCategories != null
+                    && i < originColumnCategories.length
+                    && originColumnCategories[i] != null
                 ? originColumnCategories[i].toTsFileColumnType()
-                : Tablet.ColumnCategory.FIELD;
+                : ColumnCategory.FIELD;
         this.valueColumnDataTypes[filteredColumnIndex] = originValueColumnDataTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i])
@@ -264,7 +277,7 @@ public abstract class TabletInsertionEventParser {
                   originValueColumns[i],
                   rowIndexList,
                   false,
-                  originBitMapList[i],
+                  getBitMap(originBitMapList, i),
                   bitMap);
         }
         this.nullValueColumnBitmaps[filteredColumnIndex] = bitMap;
@@ -272,9 +285,10 @@ public abstract class TabletInsertionEventParser {
     }
 
     this.rowCount = this.timestampColumn.length;
+    this.nullValueColumnBitmaps = PipeTabletUtils.compactBitMaps(nullValueColumnBitmaps, rowCount);
     if (rowCount == 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "InsertTabletNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          DataNodePipeMessages.INSERTTABLETNODE_IS_PARSED_TO_ZERO_ROWS_ACCORDING,
           insertTabletNode,
           getPattern(),
           sourceEvent.getStartTime(),
@@ -309,43 +323,31 @@ public abstract class TabletInsertionEventParser {
         originMeasurementList, originColumnIndex2FilteredColumnIndexMapperList);
 
     final int filteredColumnSize =
-        Arrays.stream(originColumnIndex2FilteredColumnIndexMapperList)
-            .filter(Objects::nonNull)
-            .toArray()
-            .length;
+        compactColumnIndexMapper(
+            originColumnIndex2FilteredColumnIndexMapperList,
+            i -> isValidOriginColumn(originMeasurementSchemaList, i));
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumnTypes = new Tablet.ColumnCategory[filteredColumnSize];
+    this.valueColumnTypes = new ColumnCategory[filteredColumnSize];
     this.valueColumnDataTypes = new TSDataType[filteredColumnSize];
     this.valueColumns = new Object[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
     final String[] originColumnNameStringList = new String[originColumnSize];
-    final Tablet.ColumnCategory[] originColumnTypes = new Tablet.ColumnCategory[originColumnSize];
+    final ColumnCategory[] originColumnTypes = new ColumnCategory[originColumnSize];
     final TSDataType[] originValueColumnDataTypes = new TSDataType[originColumnSize];
     for (int i = 0; i < originColumnSize; i++) {
       originColumnNameStringList[i] = originMeasurementSchemaList.get(i).getMeasurementName();
       originColumnTypes[i] =
           tablet.getColumnTypes() != null && tablet.getColumnTypes().get(i) != null
               ? tablet.getColumnTypes().get(i)
-              : Tablet.ColumnCategory.FIELD;
+              : ColumnCategory.FIELD;
       originValueColumnDataTypes[i] = originMeasurementSchemaList.get(i).getType();
     }
     final Object[] originValueColumns =
         tablet.getValues(); // we do not reduce value columns here by origin row size
-    final BitMap[] originBitMapList =
-        tablet.getBitMaps() == null
-            ? IntStream.range(0, originColumnSize)
-                .boxed()
-                .map(o -> new BitMap(tablet.getMaxRowNumber()))
-                .toArray(BitMap[]::new)
-            : tablet.getBitMaps(); // We do not reduce bitmaps here by origin row size
-    for (int i = 0; i < originBitMapList.length; i++) {
-      if (originBitMapList[i] == null) {
-        originBitMapList[i] = new BitMap(tablet.getMaxRowNumber());
-      }
-    }
+    final BitMap[] originBitMapList = tablet.getBitMaps();
 
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
@@ -353,7 +355,7 @@ public abstract class TabletInsertionEventParser {
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList.get(i);
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] =
-            originColumnTypes[i] != null ? originColumnTypes[i] : Tablet.ColumnCategory.FIELD;
+            originColumnTypes[i] != null ? originColumnTypes[i] : ColumnCategory.FIELD;
         this.valueColumnDataTypes[filteredColumnIndex] = originValueColumnDataTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i])
@@ -371,7 +373,7 @@ public abstract class TabletInsertionEventParser {
                   originValueColumns[i],
                   rowIndexList,
                   false,
-                  originBitMapList[i],
+                  getBitMap(originBitMapList, i),
                   bitMap);
         }
         this.nullValueColumnBitmaps[filteredColumnIndex] = bitMap;
@@ -379,9 +381,10 @@ public abstract class TabletInsertionEventParser {
     }
 
     this.rowCount = this.timestampColumn.length;
+    this.nullValueColumnBitmaps = PipeTabletUtils.compactBitMaps(nullValueColumnBitmaps, rowCount);
     if (this.rowCount == 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Tablet({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          DataNodePipeMessages.TABLET_IS_PARSED_TO_ZERO_ROWS_ACCORDING,
           tablet,
           getPattern(),
           this.sourceEvent.getStartTime(),
@@ -394,8 +397,51 @@ public abstract class TabletInsertionEventParser {
       final String[] originMeasurementList,
       final Integer[] originColumnIndex2FilteredColumnIndexMapperList);
 
+  private static int compactColumnIndexMapper(
+      final Integer[] originColumnIndex2FilteredColumnIndexMapperList,
+      final IntPredicate columnValidator) {
+    int filteredCount = 0;
+    for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
+      if (originColumnIndex2FilteredColumnIndexMapperList[i] != null && columnValidator.test(i)) {
+        originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
+      } else {
+        originColumnIndex2FilteredColumnIndexMapperList[i] = null;
+      }
+    }
+    return filteredCount;
+  }
+
+  private static boolean isValidOriginColumn(
+      final String[] originColumnNameStringList,
+      final MeasurementSchema[] originMeasurementSchemaList,
+      final TSDataType[] originValueDataTypes,
+      final int index) {
+    return originColumnNameStringList != null
+        && index < originColumnNameStringList.length
+        && originColumnNameStringList[index] != null
+        && originMeasurementSchemaList != null
+        && index < originMeasurementSchemaList.length
+        && originMeasurementSchemaList[index] != null
+        && originMeasurementSchemaList[index].getType() != null
+        && originValueDataTypes != null
+        && index < originValueDataTypes.length
+        && originValueDataTypes[index] != null;
+  }
+
+  private static boolean isValidOriginColumn(
+      final List<IMeasurementSchema> originMeasurementSchemaList, final int index) {
+    return originMeasurementSchemaList != null
+        && index < originMeasurementSchemaList.size()
+        && originMeasurementSchemaList.get(index) != null
+        && originMeasurementSchemaList.get(index).getMeasurementName() != null
+        && originMeasurementSchemaList.get(index).getType() != null;
+  }
+
   private List<Integer> generateRowIndexList(final long[] originTimestampColumn) {
     final int rowCount = originTimestampColumn.length;
+    if (rowCount == 0) {
+      return generateFullRowIndexList(rowCount);
+    }
     if (Objects.isNull(sourceEvent) || !sourceEvent.shouldParseTime()) {
       return generateFullRowIndexList(rowCount);
     }
@@ -425,12 +471,12 @@ public abstract class TabletInsertionEventParser {
   }
 
   private static Object filterValueColumnsByRowIndexList(
-      @NonNull final TSDataType type,
-      @NonNull final Object originValueColumn,
-      @NonNull final List<Integer> rowIndexList,
+      final TSDataType type,
+      final Object originValueColumn,
+      final List<Integer> rowIndexList,
       final boolean isSingleOriginValueColumn,
-      @NonNull final BitMap originNullValueColumnBitmap,
-      @NonNull final BitMap nullValueColumnBitmap /* output parameters */) {
+      final BitMap originNullValueColumnBitmap,
+      final BitMap nullValueColumnBitmap /* output parameters */) {
     switch (type) {
       case INT32:
         {
@@ -440,7 +486,7 @@ public abstract class TabletInsertionEventParser {
                   : (int[]) originValueColumn;
           final int[] valueColumns = new int[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = 0;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -462,7 +508,7 @@ public abstract class TabletInsertionEventParser {
                     : (LocalDate[]) originValueColumn;
 
             for (int i = 0; i < rowIndexList.size(); ++i) {
-              if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+              if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
                 valueColumns[i] = EMPTY_LOCALDATE;
                 nullValueColumnBitmap.mark(i);
               } else {
@@ -476,7 +522,7 @@ public abstract class TabletInsertionEventParser {
                     ? new int[] {(int) originValueColumn}
                     : (int[]) originValueColumn;
             for (int i = 0; i < rowIndexList.size(); ++i) {
-              if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+              if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
                 valueColumns[i] = EMPTY_LOCALDATE;
                 nullValueColumnBitmap.mark(i);
               } else {
@@ -496,7 +542,7 @@ public abstract class TabletInsertionEventParser {
                   : (long[]) originValueColumn;
           final long[] valueColumns = new long[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = 0L;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -513,7 +559,7 @@ public abstract class TabletInsertionEventParser {
                   : (float[]) originValueColumn;
           final float[] valueColumns = new float[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = 0F;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -530,7 +576,7 @@ public abstract class TabletInsertionEventParser {
                   : (double[]) originValueColumn;
           final double[] valueColumns = new double[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = 0D;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -547,7 +593,7 @@ public abstract class TabletInsertionEventParser {
                   : (boolean[]) originValueColumn;
           final boolean[] valueColumns = new boolean[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = false;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -568,7 +614,7 @@ public abstract class TabletInsertionEventParser {
           for (int i = 0; i < rowIndexList.size(); ++i) {
             if (Objects.isNull(binaryValueColumns[rowIndexList.get(i)])
                 || Objects.isNull(binaryValueColumns[rowIndexList.get(i)].getValues())
-                || originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+                || isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = Binary.EMPTY_VALUE;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -628,6 +674,14 @@ public abstract class TabletInsertionEventParser {
     }
   }
 
+  private static BitMap getBitMap(final BitMap[] bitMaps, final int index) {
+    return Objects.nonNull(bitMaps) && index < bitMaps.length ? bitMaps[index] : null;
+  }
+
+  private static boolean isNullValue(final BitMap bitMap, final int rowIndex) {
+    return Objects.nonNull(bitMap) && bitMap.isMarked(rowIndex);
+  }
+
   ////////////////////////////  process  ////////////////////////////
 
   public abstract List<TabletInsertionEvent> processRowByRow(
@@ -635,6 +689,9 @@ public abstract class TabletInsertionEventParser {
 
   public abstract List<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer);
+
+  public abstract List<TabletInsertionEvent> processTabletWithCollect(
+      final BiConsumer<Tablet, TabletCollector> consumer);
 
   public abstract Tablet convertToTablet();
 }

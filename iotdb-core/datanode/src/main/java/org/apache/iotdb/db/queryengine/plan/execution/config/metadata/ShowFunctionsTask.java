@@ -20,23 +20,24 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinScalarFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinTableFunction;
-import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
-import org.apache.iotdb.commons.udf.utils.TreeUDFUtils;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.udf.TreeUDFUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -72,7 +73,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEF
 
 public class ShowFunctionsTask implements IConfigTask {
 
-  private static final Map<String, Binary> BINARY_MAP = new HashMap<>();
+  public static final Map<String, Binary> BINARY_MAP = new HashMap<>();
 
   static {
     BINARY_MAP.put(FUNCTION_TYPE_NATIVE, BytesUtils.valueOf(FUNCTION_TYPE_NATIVE));
@@ -156,6 +157,11 @@ public class ShowFunctionsTask implements IConfigTask {
     appendFunctions(
         builder,
         TableBuiltinTableFunction.getBuiltInTableFunctionName(),
+        BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC),
+        BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
+    appendFunctions(
+        builder,
+        DataNodeTableBuiltinTableFunction.getBuiltInTableFunctionName(),
         BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC),
         BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowFunctionsHeader();
@@ -257,7 +263,7 @@ public class ShowFunctionsTask implements IConfigTask {
     }
   }
 
-  private static Binary getFunctionType(UDFInformation udfInformation) {
+  public static Binary getFunctionType(UDFInformation udfInformation) {
     UDFType type = udfInformation.getUdfType();
     if (udfInformation.isAvailable()) {
       if (type.isTreeModel()) {
@@ -279,7 +285,7 @@ public class ShowFunctionsTask implements IConfigTask {
     return BINARY_MAP.get(FUNCTION_TYPE_UNKNOWN);
   }
 
-  private static Binary getFunctionState(UDFInformation udfInformation) {
+  public static Binary getFunctionState(UDFInformation udfInformation) {
     if (udfInformation.isAvailable()) {
       return BINARY_MAP.get(FUNCTION_STATE_AVAILABLE);
     } else {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table.processor;
 
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 
@@ -33,6 +34,11 @@ public interface TableFunctionDataProcessor {
     // do nothing
   }
 
+  /** Same as {@link #beforeStart()} with access to {@link IoTDBLocal} for embedded queries. */
+  default void beforeStart(IoTDBLocal local) {
+    beforeStart();
+  }
+
   /**
    * This method processes a portion of data. It is called multiple times until the partition is
    * fully processed.
@@ -43,7 +49,8 @@ public interface TableFunctionDataProcessor {
    * @param properColumnBuilders A list of {@link ColumnBuilder} for each column in the output
    *     table.
    * @param passThroughIndexBuilder A {@link ColumnBuilder} for pass through columns. Index is
-   *     started from 0 of the whole partition.
+   *     started from 0 of the whole partition. It will be null if table argument is not declared
+   *     with PASS_THROUGH_COLUMNS.
    */
   void process(
       Record input,
@@ -51,14 +58,50 @@ public interface TableFunctionDataProcessor {
       ColumnBuilder passThroughIndexBuilder);
 
   /**
+   * Same as {@link #process(Record, List, ColumnBuilder)} with access to {@link IoTDBLocal} for
+   * embedded queries.
+   */
+  default void process(
+      Record input,
+      List<ColumnBuilder> properColumnBuilders,
+      ColumnBuilder passThroughIndexBuilder,
+      IoTDBLocal local) {
+    process(input, properColumnBuilders, passThroughIndexBuilder);
+  }
+
+  /**
    * This method is called after all data is processed. It is used to finalize the output table and
    * close resource. All remaining data should be written to the columnBuilders.
    *
-   * @param columnBuilders A list of {@link ColumnBuilder} for each column in the output table.
+   * @param properColumnBuilders A list of {@link ColumnBuilder} for each column in the output
+   *     table.
    * @param passThroughIndexBuilder A {@link ColumnBuilder} for pass through columns. Index is
-   *     started from 0 of the whole partition.
+   *     started from 0 of the whole partition. It will be null if table argument is not declared
+   *     with PASS_THROUGH_COLUMNS.
    */
-  default void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
+  default void finish(
+      List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
     // do nothing
+  }
+
+  /**
+   * Same as {@link #finish(List, ColumnBuilder)} with access to {@link IoTDBLocal} for embedded
+   * queries.
+   */
+  default void finish(
+      List<ColumnBuilder> properColumnBuilders,
+      ColumnBuilder passThroughIndexBuilder,
+      IoTDBLocal local) {
+    finish(properColumnBuilders, passThroughIndexBuilder);
+  }
+
+  /** This method is mainly used to release the resources used in the UDF. */
+  default void beforeDestroy() {
+    // do nothing
+  }
+
+  /** Same as {@link #beforeDestroy()} with access to {@link IoTDBLocal}. */
+  default void beforeDestroy(IoTDBLocal local) {
+    beforeDestroy();
   }
 }

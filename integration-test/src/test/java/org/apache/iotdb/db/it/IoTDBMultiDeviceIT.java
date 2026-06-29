@@ -24,8 +24,8 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.TestConstant;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -45,8 +45,8 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBMultiDeviceIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     // use small page
     EnvFactory.getEnv()
         .getConfig()
@@ -64,8 +64,8 @@ public class IoTDBMultiDeviceIT {
     insertData();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -202,7 +202,7 @@ public class IoTDBMultiDeviceIT {
   }
 
   private void testSelectAll() {
-    String selectSql = "select * from root.**";
+    String selectSql = "select * from root.fans.**,root.car.**";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -226,7 +226,7 @@ public class IoTDBMultiDeviceIT {
   }
 
   private void testSelectAfterDelete() {
-    String selectSql = "select * from root.**";
+    String selectSql = "select * from root.fans.**,root.car.**";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

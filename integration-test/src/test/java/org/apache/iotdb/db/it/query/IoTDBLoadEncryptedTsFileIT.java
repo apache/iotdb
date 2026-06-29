@@ -48,11 +48,7 @@ public class IoTDBLoadEncryptedTsFileIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setEncryptFlag(true)
-        .setEncryptType("UNENCRYPTED");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEncryptType("UNENCRYPTED");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -113,7 +109,6 @@ public class IoTDBLoadEncryptedTsFileIT {
     File tsfile = new File(tempDir + File.separator + tsfileName);
     Files.createFile(tsfile.toPath());
     TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-    config.setEncryptFlag("true");
     config.setEncryptType("UNENCRYPTED");
 
     try (TsFileIOWriter writer = new TsFileIOWriter(tsfile, config)) {
@@ -131,7 +126,6 @@ public class IoTDBLoadEncryptedTsFileIT {
       writer.endChunkGroup();
       writer.endFile();
     }
-    config.setEncryptFlag("false");
     config.setEncryptType("org.apache.tsfile.encrypt.UNENCRYPTED");
     return tsfile;
   }

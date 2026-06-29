@@ -57,7 +57,7 @@ public class SetSystemStatusStatement extends Statement implements IConfigStatem
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

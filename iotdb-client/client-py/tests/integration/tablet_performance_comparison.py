@@ -113,7 +113,9 @@ def create_open_session():
     port_ = "6667"
     username_ = "root"
     password_ = "root"
-    session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
+    session = Session(
+        ip, port_, username_, password_, fetch_size=1024, zone_id="Asia/Shanghai"
+    )
     session.open(False)
     return session
 

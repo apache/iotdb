@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.relational.it.query.old.builtinfunction.scalar;
 
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -1338,6 +1338,7 @@ public class IoTDBCastFunctionTableIT {
 
   @Test
   public void testDateOutOfRange() {
+    DateTimeUtils.initTimestampPrecision();
     tableAssertTestFail(
         String.format(
             "select CAST((s1 + %d) AS TIMESTAMP) from dateType where time = 1",

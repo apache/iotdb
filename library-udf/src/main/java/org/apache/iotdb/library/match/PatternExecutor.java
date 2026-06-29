@@ -154,7 +154,7 @@ public class PatternExecutor {
 
   /** Execute the query in a particular smooth iteration */
   private void executeQueryInSI(PatternContext queryCtx) {
-    int dsi = 0;
+    int dsi = 0; // dsi: data section index
     if (queryCtx.getDatasetSize() == null) {
       queryCtx.setDatasetSize(
           queryCtx.getDataPoints().get(queryCtx.getDataPoints().size() - 1).getX()
@@ -237,11 +237,13 @@ public class PatternExecutor {
    */
   private List<Section> findCurveSections(
       List<Double> tangents, List<Point> points, double minHeightPerc) {
+
     List<Section> sections = new ArrayList<>();
     Double lastTg = null;
     Point lastPt = null;
     double totalHeight = calcHeight(points);
     double lastSectHeight = 0;
+
     for (int i = 0; i < tangents.size(); i++) {
       Double tangent = tangents.get(i);
       Point pt = points.get(i);
@@ -257,6 +259,7 @@ public class PatternExecutor {
               && (!(minHeightPerc > 0) || lastSectHeight / totalHeight > minHeightPerc)) {
             Section newSection = new Section(sign);
             sections.add(newSection);
+
             newSection.getPoints().add(lastPt);
             newSection.getTangents().add(lastTg);
           }
@@ -340,7 +343,6 @@ public class PatternExecutor {
             || currSect.getNext().get(0).getSize() == currSect.getNext().get(0).getTimes())) {
       matchValue = this.calculateMatch(dataSectsForQ, newQSections, queryCtx, false);
       if (matchValue != null) {
-
         // Keep only one (best) match if the same area is selected in different smooth iterations
         int duplicateMatchIdx =
             PatternMatchConfig.REMOVE_EQUAL_MATCHES
@@ -488,6 +490,7 @@ public class PatternExecutor {
       querySect.setPoints(querySections.get(si).getPoints());
       querySect.setWidth(calcWidth(querySect.getPoints()));
       querySect.setHeight(calcHeight(querySect.getPoints()));
+
       if (querySect.getHeight() == 0) {
         continue;
       }
@@ -507,6 +510,7 @@ public class PatternExecutor {
       }
       dataSect.setWidth(calcWidth(dataSect.getPoints()));
       dataSect.setHeight(calcHeight(dataSect.getPoints()));
+
       if (dataSect.getHeight() == 0) {
         continue;
       }
@@ -540,6 +544,7 @@ public class PatternExecutor {
                 * scaleFactorY);
       }
       querySect.setCentroidY(querySect.getCentroidY() / querySect.getPoints().size());
+
       centroidsDifference =
           querySect.getPoints().get(0).getY()
                   * (PatternMatchConfig.RESCALING_Y

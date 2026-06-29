@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 
 import java.util.List;
 import java.util.Optional;
@@ -81,6 +81,8 @@ public class PruneTableFunctionProcessorColumns
             prunedPassThroughSpecifications,
             node.getRequiredSymbols(),
             node.getDataOrganizationSpecification(),
-            node.getArguments()));
+            node.isRowSemantic(),
+            node.getTableFunctionHandle(),
+            node.isRequireRecordSnapshot()));
   }
 }

@@ -19,7 +19,7 @@ import warnings
 
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from .TemplateNode import TemplateNode
-from ..tsfile.utils.ReadWriteIOUtils import ReadWriteUtils
+from ..tsfile.utils.read_write_io_utils import ReadWriteUtils
 
 warnings.simplefilter("always", DeprecationWarning)
 

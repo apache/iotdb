@@ -26,11 +26,15 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.role.BasicRoleManager;
 import org.apache.iotdb.commons.auth.user.BasicUserManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -48,8 +52,8 @@ import java.util.Set;
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
   // works at config node.
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicAuthorizer.class);
-  private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
-  private static final String NO_SUCH_USER_EXCEPTION = "No such user : %s";
+  private static final String NO_SUCH_ROLE_EXCEPTION = AuthMessages.NO_SUCH_ROLE;
+  private static final String NO_SUCH_USER_EXCEPTION = AuthMessages.NO_SUCH_USER;
 
   BasicUserManager userManager;
   BasicRoleManager roleManager;
@@ -62,7 +66,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   protected void init() throws AuthException {
     userManager.reset();
     roleManager.reset();
-    LOGGER.info("Initialization of Authorizer completes");
+    LOGGER.info(AuthMessages.AUTHORIZER_INIT_COMPLETE);
   }
 
   /**
@@ -72,7 +76,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
    */
   public static IAuthorizer getInstance() throws AuthException {
     if (InstanceHolder.instance == null) {
-      throw new AuthException(TSStatusCode.INIT_AUTH_ERROR, "Authorizer uninitialized");
+      throw new AuthException(TSStatusCode.INIT_AUTH_ERROR, AuthMessages.AUTHORIZER_UNINITIALIZED);
     }
     return InstanceHolder.instance;
   }
@@ -87,49 +91,79 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
             (Class<BasicAuthorizer>)
                 Class.forName(CommonDescriptor.getInstance().getConfig().getAuthorizerProvider());
         LOGGER.info(
-            "Authorizer provider class: {}",
+            AuthMessages.AUTHORIZER_PROVIDER_CLASS,
             CommonDescriptor.getInstance().getConfig().getAuthorizerProvider());
         instance = c.getDeclaredConstructor().newInstance();
       } catch (Exception e) {
         // startup failed.
-        throw new IllegalStateException("Authorizer could not be initialized!", e);
+        throw new IllegalStateException(AuthMessages.AUTHORIZER_INIT_FAILED, e);
       }
     }
   }
 
-  /** Checks if a user has admin privileges */
-  protected abstract boolean isAdmin(String username);
-
-  private void checkAdmin(String username, String errmsg) throws AuthException {
-    if (isAdmin(username)) {
+  private void checkAdmin(long userId, String errmsg) throws AuthException {
+    if (userId == IoTDBConstant.SUPER_USER_ID) {
       throw new AuthException(TSStatusCode.NO_PERMISSION, errmsg);
     }
   }
 
   @Override
-  public boolean login(String username, String password) throws AuthException {
+  public boolean login(
+      final String username, final String password, final boolean useEncryptedPassword)
+      throws AuthException {
     User user = userManager.getEntity(username);
-    return user != null
-        && password != null
-        && AuthUtils.validatePassword(password, user.getPassword());
+    if (user == null || password == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format(AuthMessages.USER_NOT_EXIST, username));
+    }
+    if (useEncryptedPassword) {
+      return password.equals(user.getPassword());
+    }
+    if (AuthUtils.validatePassword(
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
+      return true;
+    }
+    if (AuthUtils.validatePassword(
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
+      try {
+        forceUpdateUserPassword(username, password);
+      } catch (AuthException ignore) {
+      }
+      return true;
+    }
+    throw new AuthException(TSStatusCode.WRONG_LOGIN_PASSWORD, AuthMessages.INCORRECT_PASSWORD);
   }
 
   @Override
   public String login4Pipe(final String username, final String password) {
     final User user = userManager.getEntity(username);
-    return (user != null
-                && password != null
-                && AuthUtils.validatePassword(password, user.getPassword())
-            || Objects.isNull(password))
-        ? user.getPassword()
-        : null;
+    if (user == null) {
+      return null;
+    }
+    if (Objects.isNull(password)) {
+      return user.getPassword();
+    }
+    if (AuthUtils.validatePassword(
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
+      return user.getPassword();
+    }
+    if (AuthUtils.validatePassword(
+        password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
+      try {
+        forceUpdateUserPassword(username, password);
+      } catch (AuthException ignore) {
+      }
+      return userManager.getEntity(username).getPassword();
+    }
+    return null;
   }
 
   @Override
   public void createUser(String username, String password) throws AuthException {
     if (!userManager.createUser(username, password, true, true)) {
       throw new AuthException(
-          TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
+          TSStatusCode.USER_ALREADY_EXIST,
+          String.format(AuthMessages.USER_ALREADY_EXISTS, username));
     }
   }
 
@@ -137,7 +171,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void createUserWithoutCheck(String username, String password) throws AuthException {
     if (!userManager.createUser(username, password, false, true)) {
       throw new AuthException(
-          TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
+          TSStatusCode.USER_ALREADY_EXIST,
+          String.format(AuthMessages.USER_ALREADY_EXISTS, username));
     }
   }
 
@@ -145,38 +180,39 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void createUserWithRawPassword(String username, String password) throws AuthException {
     if (!userManager.createUser(username, password, true, false)) {
       throw new AuthException(
-          TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
+          TSStatusCode.USER_ALREADY_EXIST,
+          String.format(AuthMessages.USER_ALREADY_EXISTS, username));
     }
   }
 
   @Override
   public void deleteUser(String username) throws AuthException {
-    checkAdmin(username, "Default administrator cannot be deleted");
+    checkAdmin(userManager.getUserId(username), AuthMessages.ADMIN_CANNOT_BE_DELETED);
     if (!userManager.deleteEntity(username)) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
+          TSStatusCode.USER_NOT_EXIST, String.format(AuthMessages.USER_DOES_NOT_EXIST, username));
     }
   }
 
   @Override
   public void grantPrivilegeToUser(String username, PrivilegeUnion union) throws AuthException {
-    checkAdmin(username, "Invalid operation, administrator already has all privileges");
+    checkAdmin(userManager.getUserId(username), AuthMessages.ADMIN_ALREADY_HAS_ALL_PRIVILEGES);
     userManager.grantPrivilegeToEntity(username, union);
   }
 
   @Override
   public void revokePrivilegeFromUser(String username, PrivilegeUnion union) throws AuthException {
-    checkAdmin(username, "Invalid operation, administrator must have all privileges");
+    checkAdmin(userManager.getUserId(username), AuthMessages.ADMIN_MUST_HAVE_ALL_PRIVILEGES);
     userManager.revokePrivilegeFromEntity(username, union);
   }
 
   @Override
   public void revokeAllPrivilegeFromUser(String userName) throws AuthException {
-    checkAdmin(userName, "Invalid operation, administrator cannot revoke privileges");
+    checkAdmin(userManager.getUserId(userName), AuthMessages.ADMIN_CANNOT_REVOKE_PRIVILEGES);
     User user = userManager.getEntity(userName);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", userName));
+          TSStatusCode.USER_NOT_EXIST, String.format(AuthMessages.USER_DOES_NOT_EXIST, userName));
     }
     user.revokeAllRelationalPrivileges();
   }
@@ -185,9 +221,10 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void createRole(String roleName) throws AuthException {
     AuthUtils.validateRolename(roleName);
     if (!roleManager.createRole(roleName)) {
-      LOGGER.error("Role {} already exists", roleName);
+      LOGGER.error(AuthMessages.ROLE_ALREADY_EXISTS_LOG, roleName);
       throw new AuthException(
-          TSStatusCode.ROLE_ALREADY_EXIST, String.format("Role %s already exists", roleName));
+          TSStatusCode.ROLE_ALREADY_EXIST,
+          String.format(AuthMessages.ROLE_ALREADY_EXISTS, roleName));
     }
   }
 
@@ -196,7 +233,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     boolean success = roleManager.deleteEntity(roleName);
     if (!success) {
       throw new AuthException(
-          TSStatusCode.ROLE_NOT_EXIST, String.format("Role %s does not exist", roleName));
+          TSStatusCode.ROLE_NOT_EXIST, String.format(AuthMessages.ROLE_DOES_NOT_EXIST, roleName));
     } else {
       // proceed to revoke the role in all users
       List<String> users = userManager.listAllEntities();
@@ -204,11 +241,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         try {
           userManager.revokeRoleFromUser(roleName, user);
         } catch (AuthException e) {
-          LOGGER.warn(
-              "Error encountered when revoking a role {} from user {} after deletion",
-              roleName,
-              user,
-              e);
+          LOGGER.warn(AuthMessages.REVOKE_ROLE_FROM_USER_ERROR, roleName, user, e);
         }
       }
     }
@@ -229,14 +262,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     Role role = roleManager.getEntity(roleName);
     if (role == null) {
       throw new AuthException(
-          TSStatusCode.ROLE_NOT_EXIST, String.format("Role %s does not exist", roleName));
+          TSStatusCode.ROLE_NOT_EXIST, String.format(AuthMessages.ROLE_DOES_NOT_EXIST, roleName));
     }
     role.revokeAllRelationalPrivileges();
   }
 
   @Override
   public void grantRoleToUser(String roleName, String userName) throws AuthException {
-    checkAdmin(userName, "Invalid operation, cannot grant role to administrator");
+    checkAdmin(userManager.getUserId(userName), AuthMessages.CANNOT_GRANT_ROLE_TO_ADMIN);
     Role role = roleManager.getEntity(roleName);
     if (role == null) {
       throw new AuthException(
@@ -253,9 +286,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void revokeRoleFromUser(String roleName, String userName) throws AuthException {
-    if (isAdmin(userName)) {
+    if (userManager.getUserId(userName) == IoTDBConstant.SUPER_USER_ID) {
       throw new AuthException(
-          TSStatusCode.NO_PERMISSION, "Invalid operation, cannot revoke role from administrator ");
+          TSStatusCode.NO_PERMISSION, AuthMessages.CANNOT_REVOKE_ROLE_FROM_ADMIN);
     }
 
     Role role = roleManager.getEntity(roleName);
@@ -287,15 +320,29 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void updateUserPassword(String userName, String newPassword) throws AuthException {
-    if (!userManager.updateUserPassword(userName, newPassword)) {
+    if (!userManager.updateUserPassword(userName, newPassword, false)) {
       throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER, "password " + newPassword + " is illegal");
+          TSStatusCode.ILLEGAL_PARAMETER,
+          String.format(AuthMessages.PASSWORD_IS_ILLEGAL, newPassword));
+    }
+  }
+
+  @Override
+  public void renameUser(String username, String newUsername) throws AuthException {
+    userManager.renameUser(username, newUsername);
+  }
+
+  private void forceUpdateUserPassword(String userName, String newPassword) throws AuthException {
+    if (!userManager.updateUserPassword(userName, newPassword, true)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          String.format(AuthMessages.PASSWORD_IS_ILLEGAL, newPassword));
     }
   }
 
   @Override
   public boolean checkUserPrivileges(String userName, PrivilegeUnion union) throws AuthException {
-    if (isAdmin(userName)) {
+    if (userManager.getUserId(userName) == IoTDBConstant.SUPER_USER_ID) {
       return true;
     }
     User user = userManager.getEntity(userName);
@@ -370,7 +417,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       try {
         allUsers.put(userName, getUser(userName));
       } catch (AuthException e) {
-        LOGGER.error("get all users failed, No such user: {}", userName);
+        LOGGER.error(AuthMessages.GET_ALL_USERS_FAILED, userName);
       }
     }
     return allUsers;
@@ -384,7 +431,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       try {
         allRoles.put(roleName, getRole(roleName));
       } catch (AuthException e) {
-        LOGGER.error("get all roles failed, No such role: {}", roleName);
+        LOGGER.error(AuthMessages.GET_ALL_ROLES_FAILED, roleName);
       }
     }
     return allRoles;
@@ -420,6 +467,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public List<TListUserInfo> listAllUsersInfo() {
+    return userManager.listAllEntitiesInfo();
+  }
+
+  @Override
   public List<String> listAllRoles() {
     return roleManager.listAllEntities();
   }
@@ -432,6 +484,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public User getUser(String username) throws AuthException {
     return userManager.getEntity(username);
+  }
+
+  @Override
+  public User getUser(long userId) throws AuthException {
+    return userManager.getEntity(userId);
   }
 
   @Override

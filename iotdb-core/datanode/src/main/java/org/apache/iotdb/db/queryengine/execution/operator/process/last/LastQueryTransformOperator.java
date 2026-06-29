@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -74,11 +74,11 @@ public class LastQueryTransformOperator implements ProcessOperator {
         if (tsBlock.getColumn(1).isNull(0)) {
           return null;
         }
-        LastQueryUtil.appendLastValue(
+        LastQueryUtil.appendLastValueRespectBlob(
             tsBlockBuilder,
             tsBlock.getColumn(0).getLong(0),
             viewPath,
-            tsBlock.getColumn(1).getTsPrimitiveType(0).getStringValue(),
+            tsBlock.getColumn(1).getTsPrimitiveType(0),
             dataType);
       }
     } else {

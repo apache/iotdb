@@ -22,13 +22,19 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import java.util.Optional;
+
 /** The interface is used to indicate where to execute a FragmentInstance */
 public interface ExecutorType {
 
   /** Indicate if ExecutorType is StorageExecutor */
   boolean isStorageExecutor();
 
-  TDataNodeLocation getDataNodeLocation();
+  /**
+   * @return Optional.empty() iff {@link #isStorageExecutor()} and all candidate replica locations
+   *     are unreachable
+   */
+  Optional<TDataNodeLocation> getDataNodeLocation();
 
   default TRegionReplicaSet getRegionReplicaSet() {
     throw new UnsupportedOperationException(getClass().getName());

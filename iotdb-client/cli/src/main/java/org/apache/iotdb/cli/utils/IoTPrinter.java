@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cli.utils;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.io.PrintStream;
 import java.lang.Character.UnicodeScript;

@@ -304,7 +304,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void deleteTimeSeriesCrossStorageGroupTest() throws Exception {
+  public void deleteTimeSeriesCrossDatabaseTest() throws Exception {
     String[] retArray1 = new String[] {"4,4,4,4"};
 
     String insertSql = "insert into root.sg%d.d1(time, s1, s2) values(%d, %d, %d)";
@@ -422,14 +422,14 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
       statement.execute("SET DEVICE TEMPLATE t1 to root.db");
       statement.execute("CREATE TIMESERIES USING DEVICE TEMPLATE ON root.db.d1");
       try {
-        statement.execute("DELETE TIMESERIES root.**");
+        statement.execute("DELETE TIMESERIES root.db.**");
         Assert.fail();
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage()
                 .contains(
                     TSStatusCode.PATH_NOT_EXIST.getStatusCode()
-                        + ": Timeseries [root.**] does not exist or is represented by device template"));
+                        + ": Timeseries [root.db.**] does not exist or is represented by device template"));
       }
       try {
         statement.execute("DELETE TIMESERIES root.db.**");
@@ -449,14 +449,14 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
-        statement.execute("delete timeseries root.**");
+        statement.execute("delete timeseries root.db.**");
         Assert.fail();
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage()
                 .contains(
                     TSStatusCode.PATH_NOT_EXIST.getStatusCode()
-                        + ": Timeseries [root.**] does not exist or is represented by device template"));
+                        + ": Timeseries [root.db.**] does not exist or is represented by device template"));
       }
 
       String[] retArray1 = new String[] {"4,4,4,4"};

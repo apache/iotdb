@@ -58,7 +58,7 @@ public class RenameDatabaseProcessor implements PipeProcessor {
                   + "should match the pattern %s, and the length should not exceed %d",
               newDatabaseName,
               PATH_SEPARATOR,
-              IoTDBConfig.STORAGE_GROUP_PATTERN,
+              IoTDBConfig.DATABASE_PATTERN,
               MAX_DATABASE_NAME_LENGTH),
           e);
     }

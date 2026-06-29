@@ -26,7 +26,9 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
@@ -43,7 +45,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ite
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -554,7 +555,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           file.clear();
           file.close();
         } catch (MetadataException | IOException e) {
-          LOGGER.error("Error occurred during PBTree clear, {}", e.getMessage(), e);
+          LOGGER.error(DataNodeSchemaMessages.ERROR_DURING_PBTREE_CLEAR, e.getMessage(), e);
         }
       }
       file = null;
@@ -628,13 +629,13 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
     } catch (Throwable e) {
       LOGGER.error(
-          "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
+          DataNodeSchemaMessages.ERROR_DURING_MTREE_FLUSH_SCHEMA_REGION, schemaRegionId, e);
     } finally {
       long time = System.currentTimeMillis() - startTime;
       if (time > 10_000) {
-        LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+        LOGGER.info(DataNodeSchemaMessages.MTREE_FLUSH_COST, time, schemaRegionId);
       } else {
-        LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+        LOGGER.debug(DataNodeSchemaMessages.MTREE_FLUSH_COST, time, schemaRegionId);
       }
       recordFlushMetrics(time, flushNodeNum.get(), flushMemSize.get());
       if (needLock) {

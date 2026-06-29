@@ -26,8 +26,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -96,7 +96,7 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
     }
   }
 
-  private boolean needRetry(Exception e) {
+  public static boolean needRetry(Exception e) {
     Throwable rootCause = ExceptionUtils.getRootCause(e);
     // 1. connection broken it means that the remote node may go offline
     // 2. or the method call is time out

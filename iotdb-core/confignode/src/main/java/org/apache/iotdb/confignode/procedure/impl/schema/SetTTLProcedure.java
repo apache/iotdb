@@ -22,18 +22,20 @@ package org.apache.iotdb.confignode.procedure.impl.schema;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTTLState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -47,14 +49,21 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
 public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEnv, SetTTLState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLProcedure.class);
+  // Distinguishes no previous TTL from TTLCache.NULL_TTL, the explicit unset marker for rollback.
+  private static final long TTL_NOT_EXIST = Long.MIN_VALUE;
+  private static final int ROLLBACK_STATE_BYTES = Byte.BYTES + Long.BYTES * 2;
 
   private SetTTLPlan plan;
+  private long previousTTL = TTL_NOT_EXIST;
+  private long previousDatabaseWildcardTTL = TTL_NOT_EXIST;
+  private boolean previousTTLStateCaptured = false;
 
   public SetTTLProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -67,10 +76,14 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, SetTTLState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     long startTime = System.currentTimeMillis();
     try {
       switch (state) {
+        case CAPTURE_PREVIOUS_TTL:
+          capturePreviousTTLState(env);
+          setNextState(SetTTLState.SET_CONFIGNODE_TTL);
+          return Flow.HAS_MORE_STATE;
         case SET_CONFIGNODE_TTL:
           setConfigNodeTTL(env);
           return Flow.HAS_MORE_STATE;
@@ -81,58 +94,197 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
           return Flow.NO_MORE_STATE;
       }
     } finally {
-      LOGGER.info("SetTTL-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+      LOGGER.info(
+          ProcedureMessages.SETTTL_COSTS_MS, state, (System.currentTimeMillis() - startTime));
     }
   }
 
-  private void setConfigNodeTTL(ConfigNodeProcedureEnv env) {
-    TSStatus res;
-    try {
-      res =
-          env.getConfigManager()
-              .getConsensusManager()
-              .write(isGeneratedByPipe ? new PipeEnrichedPlan(this.plan) : this.plan);
-    } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-      res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(e.getMessage());
+  void setConfigNodeTTL(final ConfigNodeProcedureEnv env) {
+    if (!previousTTLStateCaptured) {
+      capturePreviousTTLState(env);
+      setNextState(SetTTLState.SET_CONFIGNODE_TTL);
+      return;
     }
+    final TSStatus res = writeConfigNodePlan(env, plan);
     if (res.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info("Failed to execute plan {} because {}", plan, res.message);
-      setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
+      LOGGER.info(ProcedureMessages.FAILED_TO_EXECUTE_PLAN_BECAUSE, plan, res.message);
+      setFailure(new ProcedureException(new IoTDBException(res)));
     } else {
       setNextState(SetTTLState.UPDATE_DATANODE_CACHE);
     }
   }
 
-  private void updateDataNodeTTL(ConfigNodeProcedureEnv env) {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+  void updateDataNodeTTL(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.SET_TTL,
-            new TSetTTLReq(
-                Collections.singletonList(String.join(".", plan.getPathPattern())),
-                plan.getTTL(),
-                plan.isDataBase()),
-            dataNodeLocationMap);
+    final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
+        sendTTLRequest(
+            dataNodeLocationMap,
+            buildSetTTLReq(plan.getPathPattern(), plan.getTTL(), plan.isDataBase()));
+    if (hasFailedDataNode(clientHandler)) {
+      LOGGER.error(ProcedureMessages.FAILED_TO_UPDATE_TTL_CACHE_OF_DATANODE);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.UPDATE_DATANODE_TTL_CACHE_FAILED)));
+    }
+  }
+
+  private void capturePreviousTTLState(final ConfigNodeProcedureEnv env) {
+    if (previousTTLStateCaptured) {
+      return;
+    }
+    previousTTL = getTTLOrDefault(env, plan.getPathPattern());
+    if (plan.isDataBase()) {
+      previousDatabaseWildcardTTL =
+          getTTLOrDefault(env, getDatabaseWildcardPathPattern(plan.getPathPattern()));
+    }
+    previousTTLStateCaptured = true;
+  }
+
+  TSStatus writeConfigNodePlan(final ConfigNodeProcedureEnv env, final SetTTLPlan setTTLPlan) {
+    try {
+      return env.getConfigManager()
+          .getConsensusManager()
+          .write(isGeneratedByPipe ? new PipeEnrichedPlan(setTTLPlan) : setTTLPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
+  }
+
+  DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> sendTTLRequest(
+      final Map<Integer, TDataNodeLocation> dataNodeLocationMap, final TSetTTLReq req) {
+    final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.SET_TTL, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related schemaengine cache
+    return clientHandler;
+  }
+
+  private TSetTTLReq buildSetTTLReq(
+      final String[] pathPattern, final long ttl, final boolean isDataBase) {
+    return new TSetTTLReq(
+        Collections.singletonList(String.join(".", pathPattern)), ttl, isDataBase);
+  }
+
+  private boolean hasFailedDataNode(
+      final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler) {
+    if (!clientHandler.getRequestIndices().isEmpty()) {
+      return true;
+    }
+    for (TSStatus status : clientHandler.getResponseMap().values()) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to update ttl cache of dataNode.");
-        setFailure(
-            new ProcedureException(new MetadataException("Update dataNode ttl cache failed")));
-        return;
+        return true;
       }
+    }
+    return false;
+  }
+
+  private long getTTLOrDefault(final ConfigNodeProcedureEnv env, final String[] pathPattern) {
+    final long ttl = env.getConfigManager().getTTLManager().getTTL(pathPattern);
+    return ttl == TTLCache.NULL_TTL ? TTL_NOT_EXIST : ttl;
+  }
+
+  private String[] getDatabaseWildcardPathPattern(final String[] pathPattern) {
+    final String[] pathNodes = Arrays.copyOf(pathPattern, pathPattern.length + 1);
+    pathNodes[pathNodes.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+    return pathNodes;
+  }
+
+  private void rollbackConfigNodeTTL(final ConfigNodeProcedureEnv env) throws ProcedureException {
+    restoreTTLOnConfigNode(env, plan.getPathPattern(), previousTTL);
+    if (plan.isDataBase()) {
+      restoreTTLOnConfigNode(
+          env, getDatabaseWildcardPathPattern(plan.getPathPattern()), previousDatabaseWildcardTTL);
+    }
+  }
+
+  private void restoreTTLOnConfigNode(
+      final ConfigNodeProcedureEnv env, final String[] pathPattern, final long ttl)
+      throws ProcedureException {
+    // TTL_NOT_EXIST means the original ttl was absent; NULL_TTL asks the executor to unset it.
+    final SetTTLPlan rollbackPlan =
+        new SetTTLPlan(pathPattern, ttl == TTL_NOT_EXIST ? TTLCache.NULL_TTL : ttl);
+    // Database rollback restores the database path and db.** separately, so avoid auto-expansion.
+    rollbackPlan.setDataBase(false);
+    final TSStatus status = writeConfigNodePlan(env, rollbackPlan);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ProcedureException(
+          new MetadataException(
+              "Rollback ConfigNode ttl failed for "
+                  + String.join(".", pathPattern)
+                  + ": "
+                  + status.getMessage()));
+    }
+  }
+
+  private void rollbackDataNodeTTL(final ConfigNodeProcedureEnv env) throws ProcedureException {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    restoreTTLOnDataNodes(dataNodeLocationMap, plan.getPathPattern(), previousTTL);
+    if (plan.isDataBase()) {
+      restoreTTLOnDataNodes(
+          dataNodeLocationMap,
+          getDatabaseWildcardPathPattern(plan.getPathPattern()),
+          previousDatabaseWildcardTTL);
+    }
+  }
+
+  private void restoreTTLOnDataNodes(
+      final Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      final String[] pathPattern,
+      final long ttl)
+      throws ProcedureException {
+    if (dataNodeLocationMap.isEmpty()) {
+      return;
+    }
+    final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
+        sendTTLRequest(
+            dataNodeLocationMap,
+            buildSetTTLReq(pathPattern, ttl == TTL_NOT_EXIST ? TTLCache.NULL_TTL : ttl, false));
+    if (hasFailedDataNode(clientHandler)) {
+      throw new ProcedureException(
+          new MetadataException(
+              "Rollback dataNode ttl cache failed for " + String.join(".", pathPattern)));
+    }
+  }
+
+  /**
+   * Best-effort rollback: restore both sides, throw the earliest failure, and suppress later ones.
+   */
+  @Override
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final SetTTLState setTTLState)
+      throws IOException, InterruptedException, ProcedureException {
+    if (setTTLState != SetTTLState.UPDATE_DATANODE_CACHE || !previousTTLStateCaptured) {
+      return;
+    }
+    ProcedureException rollbackFailure = null;
+    try {
+      rollbackConfigNodeTTL(env);
+    } catch (ProcedureException e) {
+      LOGGER.error("Failed to rollback ConfigNode ttl state.", e);
+      rollbackFailure = e;
+    }
+    try {
+      rollbackDataNodeTTL(env);
+    } catch (ProcedureException e) {
+      LOGGER.error("Failed to rollback DataNode ttl cache.", e);
+      if (rollbackFailure == null) {
+        rollbackFailure = e;
+      } else {
+        rollbackFailure.addSuppressed(e);
+      }
+    }
+    if (rollbackFailure != null) {
+      throw rollbackFailure;
     }
   }
 
   @Override
-  protected void rollbackState(
-      ConfigNodeProcedureEnv configNodeProcedureEnv, SetTTLState setTTLState)
-      throws IOException, InterruptedException, ProcedureException {}
+  protected boolean isRollbackSupported(final SetTTLState state) {
+    return state == SetTTLState.UPDATE_DATANODE_CACHE;
+  }
 
   @Override
   protected SetTTLState getState(int stateId) {
@@ -146,7 +298,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
 
   @Override
   protected SetTTLState getInitialState() {
-    return SetTTLState.SET_CONFIGNODE_TTL;
+    return SetTTLState.CAPTURE_PREVIOUS_TTL;
   }
 
   @Override
@@ -157,16 +309,27 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
             : ProcedureType.SET_TTL_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(plan.serializeToByteBuffer(), stream);
+    stream.writeBoolean(previousTTLStateCaptured);
+    stream.writeLong(previousTTL);
+    stream.writeLong(previousDatabaseWildcardTTL);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     try {
-      ReadWriteIOUtils.readInt(byteBuffer);
+      final int length = ReadWriteIOUtils.readInt(byteBuffer);
+      final int position = byteBuffer.position();
       this.plan = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
+      // The serialized plan buffer may include padding; skip to the actual payload end.
+      byteBuffer.position(position + length);
+      if (byteBuffer.remaining() >= ROLLBACK_STATE_BYTES) {
+        this.previousTTLStateCaptured = byteBuffer.get() != 0;
+        this.previousTTL = byteBuffer.getLong();
+        this.previousDatabaseWildcardTTL = byteBuffer.getLong();
+      }
     } catch (IOException e) {
-      LOGGER.error("IO error when deserialize setTTL plan.", e);
+      LOGGER.error(ProcedureMessages.IO_ERROR_WHEN_DESERIALIZE_SETTTL_PLAN, e);
     }
   }
 
@@ -178,12 +341,21 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    return this.plan.equals(((SetTTLProcedure) o).plan)
-        && this.isGeneratedByPipe == (((SetTTLProcedure) o).isGeneratedByPipe);
+    final SetTTLProcedure that = (SetTTLProcedure) o;
+    return this.isGeneratedByPipe == that.isGeneratedByPipe
+        && this.previousTTL == that.previousTTL
+        && this.previousDatabaseWildcardTTL == that.previousDatabaseWildcardTTL
+        && this.previousTTLStateCaptured == that.previousTTLStateCaptured
+        && this.plan.equals(that.plan);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(plan, isGeneratedByPipe);
+    return Objects.hash(
+        plan,
+        isGeneratedByPipe,
+        previousTTL,
+        previousDatabaseWildcardTTL,
+        previousTTLStateCaptured);
   }
 }

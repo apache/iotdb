@@ -19,7 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,24 +37,29 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class DropColumn extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DropColumn.class);
 
   private final QualifiedName table;
   private final Identifier field;
 
   private final boolean tableIfExists;
   private final boolean columnIfExists;
+  private final boolean view;
 
   public DropColumn(
       final NodeLocation location,
       final QualifiedName table,
       final Identifier field,
       final boolean tableIfExists,
-      final boolean columnIfExists) {
+      final boolean columnIfExists,
+      final boolean view) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.field = requireNonNull(field, "field is null");
     this.tableIfExists = tableIfExists;
     this.columnIfExists = columnIfExists;
+    this.view = view;
   }
 
   public QualifiedName getTable() {
@@ -64,9 +78,13 @@ public class DropColumn extends Statement {
     return columnIfExists;
   }
 
+  public boolean isView() {
+    return view;
+  }
+
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitDropColumn(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitDropColumn(this, context);
   }
 
   @Override
@@ -86,12 +104,13 @@ public class DropColumn extends Statement {
     return tableIfExists == that.tableIfExists
         && columnIfExists == that.columnIfExists
         && Objects.equals(table, that.table)
-        && Objects.equals(field, that.field);
+        && Objects.equals(field, that.field)
+        && view == that.view;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table, field, tableIfExists, columnIfExists);
+    return Objects.hash(table, field, tableIfExists, columnIfExists, view);
   }
 
   @Override
@@ -101,6 +120,16 @@ public class DropColumn extends Statement {
         .add("field", field)
         .add("tableIfExists", tableIfExists)
         .add("columnIfExists", columnIfExists)
+        .add("view", view)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += table == null ? 0L : table.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(field);
+    return size;
   }
 }

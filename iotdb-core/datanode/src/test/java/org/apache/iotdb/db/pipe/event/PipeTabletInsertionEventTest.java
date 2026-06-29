@@ -19,14 +19,30 @@
 
 package org.apache.iotdb.db.pipe.event;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
+import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -39,7 +55,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import static org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern.buildUnionPattern;
 
 public class PipeTabletInsertionEventTest {
 
@@ -184,11 +205,6 @@ public class PipeTabletInsertionEventTest {
     final Object[] values = new Object[schemas.length];
 
     // create tablet for insertRowNode
-    BitMap[] bitMapsForInsertRowNode = new BitMap[schemas.length];
-    for (int i = 0; i < schemas.length; i++) {
-      bitMapsForInsertRowNode[i] = new BitMap(1);
-    }
-
     values[0] = new int[1];
     values[1] = new long[1];
     values[2] = new float[1];
@@ -214,20 +230,9 @@ public class PipeTabletInsertionEventTest {
     }
 
     tabletForInsertRowNode =
-        new Tablet(
-            deviceId,
-            Arrays.asList(schemas),
-            new long[] {times[0]},
-            values,
-            bitMapsForInsertRowNode,
-            1);
+        new Tablet(deviceId, Arrays.asList(schemas), new long[] {times[0]}, values, null, 1);
 
     // create tablet for insertTabletNode
-    BitMap[] bitMapsForInsertTabletNode = new BitMap[schemas.length];
-    for (int i = 0; i < schemas.length; i++) {
-      bitMapsForInsertTabletNode[i] = new BitMap(times.length);
-    }
-
     values[0] = new int[times.length];
     values[1] = new long[times.length];
     values[2] = new float[times.length];
@@ -254,17 +259,11 @@ public class PipeTabletInsertionEventTest {
 
     tabletForInsertTabletNode = new Tablet(deviceId, Arrays.asList(schemas), times.length);
     tabletForInsertTabletNode =
-        new Tablet(
-            deviceId,
-            Arrays.asList(schemas),
-            times,
-            values,
-            bitMapsForInsertTabletNode,
-            times.length);
+        new Tablet(deviceId, Arrays.asList(schemas), times, values, null, times.length);
   }
 
   @Test
-  public void convertToTabletForTest() {
+  public void convertToTabletForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(insertRowNode, new PrefixTreePattern(pattern));
     Tablet tablet1 = container1.convertToTablet();
@@ -295,7 +294,7 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
-  public void convertToAlignedTabletForTest() {
+  public void convertToAlignedTabletForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(
             insertRowNodeAligned, new PrefixTreePattern(pattern));
@@ -328,13 +327,167 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
-  public void convertToTabletWithFilteredRowsForTest() {
+  public void processAlignedTabletWithCollectPreservesAlignmentForTest() {
+    final PipeRawTabletInsertionEvent event =
+        new PipeRawTabletInsertionEvent(
+            tabletForInsertTabletNode, true, new PrefixTreePattern(pattern));
+
+    final List<TabletInsertionEvent> events = new ArrayList<>();
+    event
+        .processTabletWithCollect(
+            (tablet, collector) -> {
+              try {
+                collector.collectTablet(tablet);
+              } catch (final Exception e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .forEach(events::add);
+
+    Assert.assertEquals(1, events.size());
+    final PipeRawTabletInsertionEvent collectedEvent = (PipeRawTabletInsertionEvent) events.get(0);
+    Assert.assertEquals(tabletForInsertTabletNode, collectedEvent.convertToTablet());
+    Assert.assertTrue(collectedEvent.isAligned());
+  }
+
+  @Test
+  public void collectRowWithOverriddenTreeDatabaseForTest() {
+    final PipeRowCollector rowCollector = new PipeRowCollector(null, null, "root.test.sg_0", false);
+    rowCollector.resetDatabaseInfo("root.userResultDB", false, null, "root.userResultDB");
+
+    final MeasurementSchema[] outputSchemas = {new MeasurementSchema("avg", TSDataType.INT32)};
+    rowCollector.collectRow(
+        new PipeResetTabletRow(
+            0,
+            "root.userResultDB.d_0.s_1",
+            false,
+            outputSchemas,
+            new long[] {1L},
+            new TSDataType[] {TSDataType.INT32},
+            new Object[] {new int[] {1}},
+            null,
+            new String[] {"avg"}));
+
+    final List<org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent> events =
+        rowCollector.convertToTabletInsertionEvents(false);
+    Assert.assertEquals(1, events.size());
+
+    final PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) events.get(0);
+    Assert.assertEquals("root.userResultDB", event.getSourceDatabaseNameFromDataRegion());
+    Assert.assertFalse(event.isTableModelEvent());
+    Assert.assertEquals("root.userResultDB", event.getTreeModelDatabaseName());
+    Assert.assertEquals("root.userResultDB.d_0.s_1", event.convertToTablet().getDeviceId());
+  }
+
+  @Test
+  public void convertToTabletSkipsUnnecessaryBitMapsForTest() throws Exception {
+    final BitMap[] bitMaps = new BitMap[schemas.length];
+    bitMaps[0] = new BitMap(times.length);
+    bitMaps[1] = new BitMap(times.length);
+    bitMaps[1].mark(1);
+
+    final InsertTabletNode nodeWithSparseColumn =
+        new InsertTabletNode(
+            new PlanNodeId("plannode bitmap"),
+            new PartialPath(deviceId),
+            false,
+            measurementIds,
+            dataTypes,
+            schemas,
+            times,
+            bitMaps,
+            insertTabletNode.getColumns(),
+            times.length);
+
+    final Tablet tablet =
+        new TabletInsertionEventTreePatternParser(
+                nodeWithSparseColumn, new PrefixTreePattern(pattern))
+            .convertToTablet();
+
+    Assert.assertNotNull(tablet.getBitMaps());
+    Assert.assertNull(tablet.getBitMaps()[0]);
+    Assert.assertNotNull(tablet.getBitMaps()[1]);
+    Assert.assertTrue(tablet.isNull(1, 1));
+  }
+
+  @Test
+  public void convertToTabletSkipsFailedMeasurementsForCoveredTreePattern() throws Exception {
+    final InsertRowNode rowNode =
+        new InsertRowNode(
+            new PlanNodeId("plan node failed row"),
+            new PartialPath(deviceId),
+            false,
+            Arrays.copyOf(measurementIds, measurementIds.length),
+            Arrays.copyOf(dataTypes, dataTypes.length),
+            Arrays.copyOf(schemas, schemas.length),
+            times[0],
+            Arrays.copyOf(insertRowNode.getValues(), schemas.length),
+            false);
+    rowNode.markFailedMeasurement(1);
+
+    final Tablet rowTablet =
+        new TabletInsertionEventTreePatternParser(rowNode, new PrefixTreePattern(pattern))
+            .convertToTablet();
+    assertTabletDoesNotContainMeasurement(rowTablet, "s2", schemas.length - 1);
+
+    final InsertTabletNode tabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("plan node failed tablet"),
+            new PartialPath(deviceId),
+            false,
+            Arrays.copyOf(measurementIds, measurementIds.length),
+            Arrays.copyOf(dataTypes, dataTypes.length),
+            Arrays.copyOf(schemas, schemas.length),
+            times,
+            null,
+            Arrays.copyOf(insertTabletNode.getColumns(), schemas.length),
+            times.length);
+    tabletNode.markFailedMeasurement(1);
+
+    final Tablet tablet =
+        new TabletInsertionEventTreePatternParser(tabletNode, new PrefixTreePattern(pattern))
+            .convertToTablet();
+    assertTabletDoesNotContainMeasurement(tablet, "s2", schemas.length - 1);
+  }
+
+  @Test
+  public void convertToTabletSkipsFailedMeasurementsForTablePattern() throws Exception {
+    final TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[schemas.length];
+    Arrays.fill(columnCategories, TsTableColumnCategory.FIELD);
+    columnCategories[0] = TsTableColumnCategory.TAG;
+    columnCategories[2] = TsTableColumnCategory.ATTRIBUTE;
+
+    final RelationalInsertTabletNode tabletNode =
+        new RelationalInsertTabletNode(
+            new PlanNodeId("plan node failed relational tablet"),
+            new PartialPath("table1", false),
+            false,
+            Arrays.copyOf(measurementIds, measurementIds.length),
+            Arrays.copyOf(dataTypes, dataTypes.length),
+            times,
+            null,
+            Arrays.copyOf(insertTabletNode.getColumns(), schemas.length),
+            times.length,
+            columnCategories);
+    tabletNode.setMeasurementSchemas(Arrays.copyOf(schemas, schemas.length));
+    tabletNode.markFailedMeasurement(1);
+
+    final Tablet tablet =
+        new TabletInsertionEventTablePatternParser(
+                null, null, tabletNode, new TablePattern(true, null, null))
+            .convertToTablet();
+    assertTabletDoesNotContainMeasurement(tablet, "s2", schemas.length - 1);
+  }
+
+  @Test
+  public void convertToTabletWithFilteredRowsForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 111L, 113L),
             insertRowNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet1 = container1.convertToTablet();
     Assert.assertEquals(0, tablet1.getRowSize());
     boolean isAligned1 = container1.isAligned();
@@ -345,7 +498,8 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 110L, 110L),
             insertRowNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet2 = container2.convertToTablet();
     Assert.assertEquals(1, tablet2.getRowSize());
     boolean isAligned2 = container2.isAligned();
@@ -356,7 +510,8 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 111L, 113L),
             insertTabletNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet3 = container3.convertToTablet();
     Assert.assertEquals(3, tablet3.getRowSize());
     boolean isAligned3 = container3.isAligned();
@@ -367,7 +522,8 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 109L),
             insertTabletNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet4 = container4.convertToTablet();
     Assert.assertEquals(0, tablet4.getRowSize());
     boolean isAligned4 = container4.isAligned();
@@ -393,5 +549,204 @@ public class PipeTabletInsertionEventTest {
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
     event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 115L, Long.MAX_VALUE);
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
+  }
+
+  @Test
+  public void isEventTimeOverlappedWithTimeRangeUsesActualRowSizeForTest() throws Exception {
+    final long[] timestamps = new long[] {110L, 111L, 112L, 0L, 0L};
+
+    final Tablet partialTablet = new Tablet(deviceId, Arrays.asList(schemas), times.length);
+    partialTablet.setTimestamps(timestamps);
+    partialTablet.setRowSize(3);
+
+    PipeRawTabletInsertionEvent rawEvent =
+        new PipeRawTabletInsertionEvent(partialTablet, 111L, 112L);
+    Assert.assertTrue(rawEvent.mayEventTimeOverlappedWithTimeRange());
+    rawEvent = new PipeRawTabletInsertionEvent(partialTablet, 113L, Long.MAX_VALUE);
+    Assert.assertFalse(rawEvent.mayEventTimeOverlappedWithTimeRange());
+
+    final InsertTabletNode partialInsertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("partial tablet node"),
+            new PartialPath(deviceId),
+            false,
+            measurementIds,
+            dataTypes,
+            schemas,
+            timestamps,
+            null,
+            insertTabletNode.getColumns(),
+            3);
+
+    final Tablet convertedTablet =
+        new TabletInsertionEventTreePatternParser(
+                partialInsertTabletNode, new PrefixTreePattern(pattern))
+            .convertToTablet();
+    Assert.assertEquals(3, convertedTablet.getRowSize());
+    Assert.assertArrayEquals(
+        new long[] {110L, 111L, 112L},
+        Arrays.copyOf(convertedTablet.getTimestamps(), convertedTablet.getRowSize()));
+
+    PipeInsertNodeTabletInsertionEvent insertNodeEvent =
+        new PipeInsertNodeTabletInsertionEvent(
+            false,
+            "root.sg",
+            partialInsertTabletNode,
+            null,
+            0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            111L,
+            112L);
+    Assert.assertTrue(insertNodeEvent.mayEventTimeOverlappedWithTimeRange());
+    insertNodeEvent =
+        new PipeInsertNodeTabletInsertionEvent(
+            false,
+            "root.sg",
+            partialInsertTabletNode,
+            null,
+            0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            113L,
+            Long.MAX_VALUE);
+    Assert.assertFalse(insertNodeEvent.mayEventTimeOverlappedWithTimeRange());
+  }
+
+  @Test
+  public void testAuthCheck() {
+    PipeInsertNodeTabletInsertionEvent event;
+
+    event =
+        new PipeInsertNodeTabletInsertionEvent(
+            false,
+            "root.db",
+            insertRowNode,
+            null,
+            0,
+            null,
+            buildUnionPattern(false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    try {
+      AuthorityChecker.setAccessControl(new PipeTsFileInsertionEventTest.TestAccessControl());
+      Assert.assertThrows(AccessDeniedException.class, event::throwIfNoPrivilege);
+
+      event =
+          new PipeInsertNodeTabletInsertionEvent(
+              true,
+              "db",
+              new RelationalInsertRowNode(
+                  new PlanNodeId("plan node 1"),
+                  new PartialPath("tb", false),
+                  false,
+                  new String[] {"s1", "s4"},
+                  new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
+                  2000L,
+                  new Object[] {2.0, false},
+                  false,
+                  new TsTableColumnCategory[] {
+                    TsTableColumnCategory.TAG,
+                    TsTableColumnCategory.ATTRIBUTE,
+                    TsTableColumnCategory.FIELD
+                  }),
+              null,
+              0,
+              null,
+              buildUnionPattern(
+                  false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+              new TablePattern(true, null, null),
+              "0",
+              "user",
+              "localhost",
+              false,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      Assert.assertThrows(AccessDeniedException.class, event::throwIfNoPrivilege);
+    } finally {
+      AuthorityChecker.setAccessControl(oldControl);
+      event.close();
+    }
+  }
+
+  @Test
+  public void testAuthCheckIgnoresNullMeasurementInPartialInsert() throws Exception {
+    insertRowNode.markFailedMeasurement(1);
+
+    final PipeInsertNodeTabletInsertionEvent event =
+        new PipeInsertNodeTabletInsertionEvent(
+            false,
+            "root.db",
+            insertRowNode,
+            null,
+            0,
+            null,
+            new PrefixTreePattern(pattern),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    final NullMeasurementRejectingAccessControl accessControl =
+        new NullMeasurementRejectingAccessControl();
+    try {
+      AuthorityChecker.setAccessControl(accessControl);
+
+      event.throwIfNoPrivilege();
+
+      Assert.assertFalse(accessControl.hasNullMeasurementPath);
+      Assert.assertFalse(event.shouldParse4Privilege());
+    } finally {
+      AuthorityChecker.setAccessControl(oldControl);
+      event.close();
+    }
+  }
+
+  private static class NullMeasurementRejectingAccessControl
+      extends PipeTsFileInsertionEventTest.TestAccessControl {
+
+    private boolean hasNullMeasurementPath = false;
+
+    @Override
+    public TSStatus checkSeriesPrivilege4Pipe(
+        final IAuditEntity context,
+        final java.util.List<? extends PartialPath> checkedPathsSupplier,
+        final PrivilegeType permission) {
+      hasNullMeasurementPath =
+          checkedPathsSupplier.stream().anyMatch(path -> path.getFullPath().endsWith(".null"));
+      return hasNullMeasurementPath
+          ? AuthorityChecker.getTSStatus(
+              Collections.singletonList(0), checkedPathsSupplier, permission)
+          : new TSStatus(org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+  }
+
+  private static void assertTabletDoesNotContainMeasurement(
+      final Tablet tablet, final String measurement, final int expectedSchemaSize) {
+    Assert.assertEquals(expectedSchemaSize, tablet.getSchemas().size());
+    for (int i = 0; i < tablet.getSchemas().size(); i++) {
+      Assert.assertNotNull(tablet.getSchemas().get(i));
+      Assert.assertNotEquals(measurement, tablet.getSchemas().get(i).getMeasurementName());
+      Assert.assertNotNull(tablet.getValues()[i]);
+    }
   }
 }

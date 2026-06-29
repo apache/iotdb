@@ -33,6 +33,7 @@ import java.util.List;
 public class DetectorTest {
 
   final long sec = 1_000_000_000L;
+  final long id = 114514L; // ;)
   final FixedDetector fixedDetector = new FixedDetector(20 * sec);
   final PhiAccrualDetector phiAccrualDetector =
       new PhiAccrualDetector(30, 10 * sec, (long) (0.2 * sec), 0, fixedDetector);
@@ -53,13 +54,13 @@ public class DetectorTest {
     final long lastHeartbeatTs = System.nanoTime() - 21 * sec;
     final List<AbstractHeartbeatSample> history =
         Collections.singletonList(new NodeHeartbeatSample(lastHeartbeatTs, NodeStatus.Running));
-    Assert.assertFalse(fixedDetector.isAvailable(history));
+    Assert.assertFalse(fixedDetector.isAvailable(id, history));
 
     final long lastAvailableHeartbeat = System.nanoTime() - 18 * sec;
     final List<AbstractHeartbeatSample> history2 =
         Collections.singletonList(
             new NodeHeartbeatSample(lastAvailableHeartbeat, NodeStatus.Running));
-    Assert.assertTrue(fixedDetector.isAvailable(history2));
+    Assert.assertTrue(fixedDetector.isAvailable(id, history2));
   }
 
   @Test
@@ -107,8 +108,8 @@ public class DetectorTest {
   public void testComparisonQuickFailureDetection() {
     long[] interval = new long[] {sec, sec, sec};
     List<AbstractHeartbeatSample> history = fromInterval(interval, 13 * sec);
-    Assert.assertTrue(fixedDetector.isAvailable(history));
-    Assert.assertFalse(phiAccrualDetector.isAvailable(history));
+    Assert.assertTrue(fixedDetector.isAvailable(id, history));
+    Assert.assertFalse(phiAccrualDetector.isAvailable(id, history));
   }
 
   /**
@@ -121,8 +122,8 @@ public class DetectorTest {
     long[] interval = new long[] {sec, sec, sec};
     long gcPause = 15 * sec;
     List<AbstractHeartbeatSample> history = fromInterval(interval, gcPause + 2 * sec);
-    Assert.assertTrue(fixedDetector.isAvailable(history));
-    Assert.assertFalse(phiAccrualDetector.isAvailable(history));
+    Assert.assertTrue(fixedDetector.isAvailable(id, history));
+    Assert.assertFalse(phiAccrualDetector.isAvailable(id, history));
   }
 
   /**
@@ -148,8 +149,8 @@ public class DetectorTest {
           sec
         };
     List<AbstractHeartbeatSample> history = fromInterval(interval, 21 * sec);
-    Assert.assertFalse(fixedDetector.isAvailable(history));
-    Assert.assertTrue(phiAccrualDetector.isAvailable(history));
+    Assert.assertFalse(fixedDetector.isAvailable(id, history));
+    Assert.assertTrue(phiAccrualDetector.isAvailable(id, history));
   }
 
   /**
@@ -161,8 +162,8 @@ public class DetectorTest {
         new PhiAccrualDetector(30, 10 * sec, (long) (0.2 * sec), 60, fixedDetector);
     long[] interval = new long[] {sec, sec, sec};
     List<AbstractHeartbeatSample> history = fromInterval(interval, 21 * sec);
-    Assert.assertFalse(fixedDetector.isAvailable(history));
-    Assert.assertFalse(coldStartPhi.isAvailable(history));
+    Assert.assertFalse(fixedDetector.isAvailable(id, history));
+    Assert.assertFalse(coldStartPhi.isAvailable(id, history));
   }
 
   private List<AbstractHeartbeatSample> fromInterval(long[] interval, long timeElapsed) {

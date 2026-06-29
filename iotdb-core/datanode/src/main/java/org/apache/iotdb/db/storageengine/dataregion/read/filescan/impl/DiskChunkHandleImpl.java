@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
@@ -48,6 +49,7 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   private final IDeviceID deviceID;
   private final String measurement;
   private final String filePath;
+  private final TsFileID tsFileID;
   private EncryptParameter encryptParam;
   protected ChunkHeader currentChunkHeader;
   protected PageHeader currentPageHeader;
@@ -66,6 +68,7 @@ public class DiskChunkHandleImpl implements IChunkHandle {
       IDeviceID deviceID,
       String measurement,
       String filePath,
+      TsFileID tsFileID,
       boolean isTsFileClosed,
       long offset,
       Statistics<? extends Serializable> chunkStatistics) {
@@ -74,6 +77,7 @@ public class DiskChunkHandleImpl implements IChunkHandle {
     this.chunkStatistic = chunkStatistics;
     this.offset = offset;
     this.filePath = filePath;
+    this.tsFileID = tsFileID;
     this.tsFileClosed = isTsFileClosed;
   }
 
@@ -98,7 +102,8 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   public void nextPage() throws IOException {
     // read chunk from disk if needed
     if (currentChunkDataBuffer == null) {
-      TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, tsFileClosed);
+      TsFileSequenceReader reader =
+          FileReaderManager.getInstance().get(filePath, tsFileID, tsFileClosed);
       init(reader);
     }
     if (currentChunkDataBuffer.hasRemaining()) {
