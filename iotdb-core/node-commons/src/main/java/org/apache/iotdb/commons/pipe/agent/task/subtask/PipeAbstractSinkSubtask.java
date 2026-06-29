@@ -36,11 +36,13 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
@@ -62,6 +64,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
   protected long sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
   protected long lastExceptionTime = Long.MAX_VALUE;
+  private long nextSchedulingDelayInMs = 0;
 
   protected PipeAbstractSinkSubtask(
       final String taskID, final long creationTime, final PipeConnector outputPipeSink) {
@@ -72,9 +75,11 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   @Override
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      final ListeningScheduledExecutorService subtaskWorkerScheduledExecutor,
       final ExecutorService subtaskCallbackListeningExecutor,
       final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
+    this.subtaskWorkerScheduledExecutor = subtaskWorkerScheduledExecutor;
     this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
     this.subtaskScheduler = subtaskScheduler;
   }
@@ -230,9 +235,50 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       return;
     }
 
+    final long schedulingDelayInMs = getNextSchedulingDelayInMs();
+    if (schedulingDelayInMs > 0) {
+      isSubmitted = true;
+      subtaskWorkerScheduledExecutor.schedule(
+          // Keep the isSubmitted placeholder set before the delayed submission to avoid duplicate
+          // schedules, so the delayed task should not mark it again.
+          () -> submitSelfToWorker(false), schedulingDelayInMs, TimeUnit.MILLISECONDS);
+      return;
+    }
+
+    submitSelfToWorker(true);
+  }
+
+  @Override
+  protected boolean shouldStopSubmittingSelfInCurrentCall() {
+    nextSchedulingDelayInMs = consumeSchedulingDelayInMs();
+    return nextSchedulingDelayInMs > 0;
+  }
+
+  private synchronized void submitSelfToWorker(final boolean shouldMarkSubmitted) {
+    if (shouldStopSubmittingSelf.get()) {
+      isSubmitted = false;
+      return;
+    }
+
     final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
     registerCallbackHookAfterSubmit(nextFuture);
-    isSubmitted = true;
+    if (shouldMarkSubmitted) {
+      isSubmitted = true;
+    }
+  }
+
+  private long getNextSchedulingDelayInMs() {
+    if (nextSchedulingDelayInMs <= 0) {
+      return consumeSchedulingDelayInMs();
+    }
+
+    final long delayInMs = nextSchedulingDelayInMs;
+    nextSchedulingDelayInMs = 0;
+    return delayInMs;
+  }
+
+  protected long consumeSchedulingDelayInMs() {
+    return 0;
   }
 
   protected void registerCallbackHookAfterSubmit(final ListenableFuture<Boolean> future) {

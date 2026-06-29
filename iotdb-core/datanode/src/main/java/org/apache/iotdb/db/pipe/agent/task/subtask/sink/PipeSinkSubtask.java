@@ -114,10 +114,6 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       return false;
     }
 
-    if (waitForSchedulingDelayIfNecessary() && isClosed.get()) {
-      return false;
-    }
-
     final Event event =
         lastEvent != null
             ? lastEvent
@@ -167,15 +163,16 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     return true;
   }
 
-  private boolean waitForSchedulingDelayIfNecessary() {
+  @Override
+  protected long consumeSchedulingDelayInMs() {
     if (!(outputPipeSink instanceof PipeSinkWithSchedulingDelay)) {
-      return false;
+      return 0;
     }
 
     final long remainingSchedulingDelayMs =
         ((PipeSinkWithSchedulingDelay) outputPipeSink).consumeSchedulingDelayMs();
     if (remainingSchedulingDelayMs <= 0) {
-      return false;
+      return 0;
     }
 
     if (LOGGER.isDebugEnabled()) {
@@ -185,13 +182,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
           remainingSchedulingDelayMs);
     }
 
-    try {
-      Thread.sleep(remainingSchedulingDelayMs);
-    } catch (final InterruptedException ignore) {
-      // Do not restore the interrupted status here because this sink worker thread is reused by the
-      // thread pool.
-    }
-    return true;
+    return remainingSchedulingDelayMs;
   }
 
   private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
