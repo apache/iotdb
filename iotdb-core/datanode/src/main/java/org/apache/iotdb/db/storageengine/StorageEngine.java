@@ -259,14 +259,7 @@ public class StorageEngine implements IService {
               try {
                 dataRegion = buildNewDataRegion(sgName, dataRegionId);
               } catch (DataRegionException e) {
-                LOGGER.error(
-                    "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
-                WALRecoverManager.getInstance()
-                    .getAllDataRegionScannedLatch()
-                    .countDownWithException(e.getMessage());
-                if (e instanceof DirectBufferMemoryAllocationException) {
-                  throw e;
-                }
+                handleDataRegionRecoverFailure(sgName, dataRegionId, e);
                 return null;
               }
               dataRegionMap.put(dataRegionId, dataRegion);
@@ -278,6 +271,17 @@ public class StorageEngine implements IService {
             };
         futures.add(cachedThreadPool.submit(recoverDataRegionTask));
       }
+    }
+  }
+
+  void handleDataRegionRecoverFailure(
+      String sgName, DataRegionId dataRegionId, DataRegionException e) throws DataRegionException {
+    LOGGER.error("Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
+    WALRecoverManager.getInstance()
+        .getAllDataRegionScannedLatch()
+        .countDownWithException(e.getMessage());
+    if (e instanceof DirectBufferMemoryAllocationException) {
+      throw e;
     }
   }
 

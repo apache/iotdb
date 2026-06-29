@@ -55,10 +55,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.And;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.SegmentExactMatch;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -457,7 +457,7 @@ public class AnalyzeUtils {
     Queue<Expression> expressionQueue = new LinkedList<>();
     expressionQueue.add(expression);
     DeletionPredicate predicate = new DeletionPredicate(table.getTableName());
-    IDPredicate tagPredicate = null;
+    TagPredicate tagPredicate = null;
     TimeRange timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true);
     while (!expressionQueue.isEmpty()) {
       Expression currExp = expressionQueue.remove();
@@ -474,7 +474,7 @@ public class AnalyzeUtils {
       }
     }
     if (tagPredicate != null) {
-      predicate.setIdPredicate(tagPredicate);
+      predicate.setTagPredicate(tagPredicate);
     }
     if (timeRange.getStartTime() > timeRange.getEndTime()) {
       throw new SemanticException(
@@ -494,8 +494,8 @@ public class AnalyzeUtils {
     expressionQueue.addAll(expression.getTerms());
   }
 
-  private static IDPredicate parseIsNull(
-      IsNullPredicate isNullPredicate, IDPredicate oldPredicate, TsTable table) {
+  private static TagPredicate parseIsNull(
+      IsNullPredicate isNullPredicate, TagPredicate oldPredicate, TsTable table) {
     Expression leftHandExp = isNullPredicate.getValue();
     if (!(leftHandExp instanceof Identifier)) {
       throw new SemanticException(
@@ -509,25 +509,26 @@ public class AnalyzeUtils {
     }
 
     // the first segment is the table name, so + 1
-    IDPredicate newPredicate = new SegmentExactMatch(null, tagColumnOrdinal + 1);
+    TagPredicate newPredicate = new SegmentExactMatch(null, tagColumnOrdinal + 1);
     return combinePredicates(oldPredicate, newPredicate);
   }
 
-  private static IDPredicate combinePredicates(IDPredicate oldPredicate, IDPredicate newPredicate) {
+  private static TagPredicate combinePredicates(
+      TagPredicate oldPredicate, TagPredicate newPredicate) {
     if (oldPredicate == null) {
       return newPredicate;
     }
-    if (oldPredicate instanceof IDPredicate.And) {
+    if (oldPredicate instanceof TagPredicate.And) {
       ((And) oldPredicate).add(newPredicate);
       return oldPredicate;
     }
-    return new IDPredicate.And(oldPredicate, newPredicate);
+    return new TagPredicate.And(oldPredicate, newPredicate);
   }
 
-  private static IDPredicate parseComparison(
+  private static TagPredicate parseComparison(
       ComparisonExpression comparisonExpression,
       TimeRange timeRange,
-      IDPredicate oldPredicate,
+      TagPredicate oldPredicate,
       TsTable table) {
     Expression left = comparisonExpression.getLeft();
     Expression right = comparisonExpression.getRight();
@@ -580,7 +581,7 @@ public class AnalyzeUtils {
           "The column '" + columnName + "' does not exist or is not a tag column");
     }
 
-    IDPredicate newPredicate = getTagPredicate(comparisonExpression, right, tagColumnOrdinal);
+    TagPredicate newPredicate = getTagPredicate(comparisonExpression, right, tagColumnOrdinal);
     return combinePredicates(oldPredicate, newPredicate);
   }
 
@@ -595,7 +596,7 @@ public class AnalyzeUtils {
     return timeColumnSchema.getColumnName();
   }
 
-  private static IDPredicate getTagPredicate(
+  private static TagPredicate getTagPredicate(
       ComparisonExpression comparisonExpression, Expression right, int tagColumnOrdinal) {
     if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
       throw new SemanticException(

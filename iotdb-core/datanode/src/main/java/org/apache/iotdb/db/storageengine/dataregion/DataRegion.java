@@ -120,10 +120,10 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -3487,12 +3487,12 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> deletedByMods = new ArrayList<>();
     List<TsFileResource> deletedByFiles = new ArrayList<>();
     boolean isDropMeasurementExist = false;
-    IDPredicate.IDPredicateType idPredicateType = null;
+    TagPredicate.TagPredicateType tagPredicateType = null;
 
     if (deletion instanceof TableDeletionEntry) {
       TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
       isDropMeasurementExist = !tableDeletionEntry.getPredicate().getMeasurementNames().isEmpty();
-      idPredicateType = tableDeletionEntry.getPredicate().getIdPredicateType();
+      tagPredicateType = tableDeletionEntry.getPredicate().getTagPredicateType();
     }
 
     for (TsFileResource sealedTsFile : sealedTsFiles) {
@@ -3565,7 +3565,7 @@ public class DataRegion implements IDataRegionForQuery {
                   fileEndTime);
             }
             if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)
-                && idPredicateType.equals(IDPredicate.IDPredicateType.NOP)
+                && tagPredicateType.equals(TagPredicate.TagPredicateType.NOP)
                 && !isDropMeasurementExist) {
               ++matchSize;
             } else {
