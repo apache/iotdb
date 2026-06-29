@@ -130,6 +130,18 @@ public class IoTConsensusServerImpl {
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
   private FolderManager recvFolderManager = null;
+
+  /**
+   * Per-snapshotId map of TsFile group key ({@code fileKey}) to the chosen receive folder. It keeps
+   * all companion files of one TsFile ({@code .tsfile}/{@code .tsfile.resource}/{@code
+   * .tsfile.mods2}/...) in the same receive folder, so the load phase can hard-link them inside a
+   * single data dir instead of falling back to a cross-disk copy. The {@code fileKey} rule matches
+   * {@code SnapshotLoader#createLinksFromSnapshotToSourceDir} so grouping is consistent end to end.
+   * Entries are removed once the snapshot is loaded or cleaned up.
+   */
+  private final ConcurrentHashMap<String, ConcurrentHashMap<String, String>>
+      snapshotReceiveFolderMap = new ConcurrentHashMap<>();
+
   private final TreeSet<Peer> configuration;
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
@@ -172,6 +184,7 @@ public class IoTConsensusServerImpl {
   public IoTConsensusServerImpl(
       String storageDir,
       List<String> recvSnapshotDirs,
+      DirectoryStrategyType recvFolderStrategyType,
       Peer thisNode,
       TreeSet<Peer> configuration,
       IStateMachine stateMachine,
@@ -191,9 +204,7 @@ public class IoTConsensusServerImpl {
       snapshotDirs.add(storageDir);
     }
 
-    this.recvFolderManager =
-        new FolderManager(
-            snapshotDirs, DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY);
+    this.recvFolderManager = new FolderManager(snapshotDirs, recvFolderStrategyType);
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
     this.cacheQueueMap = new ConcurrentHashMap<>();
@@ -371,33 +382,42 @@ public class IoTConsensusServerImpl {
   public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<File> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
-    AtomicLong snapshotSizeSumAtomic = new AtomicLong();
-    StringBuilder allFilesStr = new StringBuilder();
-    snapshotPaths.forEach(
-        file -> {
-          long fileSize = file.length();
-          snapshotSizeSumAtomic.addAndGet(fileSize);
-          allFilesStr
-              .append("\n")
-              .append(file.getName())
-              .append(" ")
-              .append(humanReadableByteCountSI(fileSize));
-        });
-    final long snapshotSizeSum = snapshotSizeSumAtomic.get();
+    long snapshotSizeSum = 0;
+    for (File file : snapshotPaths) {
+      snapshotSizeSum += file.length();
+    }
     long transitedSnapshotSizeSum = 0;
     long transitedFilesNum = 0;
     long startTime = System.nanoTime();
+    long lastProgressLogTime = startTime;
+    // Throttle the per-file progress log to at most once per this interval; a snapshot may contain
+    // hundreds of thousands of files, so one INFO line per file is itself a heavy cost.
+    long progressLogIntervalNs =
+        TimeUnit.MILLISECONDS.toNanos(
+            config.getReplication().getSnapshotTransmissionProgressLogIntervalMs());
     logger.info(
         IoTConsensusMessages.SNAPSHOT_TRANSMISSION_START,
         snapshotPaths.size(),
         humanReadableByteCountSI(snapshotSizeSum),
         snapshotDir);
-    logger.info(IoTConsensusMessages.SNAPSHOT_TRANSMISSION_ALL_FILES, allFilesStr);
+    if (logger.isDebugEnabled()) {
+      StringBuilder allFilesStr = new StringBuilder();
+      for (File file : snapshotPaths) {
+        allFilesStr
+            .append("\n")
+            .append(file.getName())
+            .append(" ")
+            .append(humanReadableByteCountSI(file.length()));
+      }
+      logger.debug(IoTConsensusMessages.SNAPSHOT_TRANSMISSION_ALL_FILES, allFilesStr);
+    }
+    ByteBuffer fragmentBuffer =
+        ByteBuffer.allocate(SnapshotFragmentReader.DEFAULT_FILE_FRAGMENT_SIZE);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (File file : snapshotPaths) {
         SnapshotFragmentReader reader =
-            new SnapshotFragmentReader(newSnapshotDirName, file.toPath());
+            new SnapshotFragmentReader(newSnapshotDirName, file.toPath(), fragmentBuffer);
         try {
           while (reader.hasNext()) {
             // TODO: zero copy ?
@@ -412,16 +432,20 @@ public class IoTConsensusServerImpl {
           }
           transitedSnapshotSizeSum += reader.getTotalReadSize();
           transitedFilesNum++;
-          logger.info(
-              IoTConsensusMessages.SNAPSHOT_TRANSMISSION_PROGRESS,
-              newSnapshotDirName,
-              transitedFilesNum,
-              snapshotPaths.size(),
-              humanReadableByteCountSI(transitedSnapshotSizeSum),
-              humanReadableByteCountSI(snapshotSizeSum),
-              CommonDateTimeUtils.convertMillisecondToDurationStr(
-                  (System.nanoTime() - startTime) / 1_000_000),
-              file);
+          long now = System.nanoTime();
+          if (now - lastProgressLogTime >= progressLogIntervalNs
+              || transitedFilesNum == snapshotPaths.size()) {
+            lastProgressLogTime = now;
+            logger.info(
+                IoTConsensusMessages.SNAPSHOT_TRANSMISSION_PROGRESS,
+                newSnapshotDirName,
+                transitedFilesNum,
+                snapshotPaths.size(),
+                humanReadableByteCountSI(transitedSnapshotSizeSum),
+                humanReadableByteCountSI(snapshotSizeSum),
+                CommonDateTimeUtils.convertMillisecondToDurationStr((now - startTime) / 1_000_000),
+                file);
+          }
         } finally {
           reader.close();
         }
@@ -448,11 +472,32 @@ public class IoTConsensusServerImpl {
         return;
       }
 
-      recvFolderManager.getNextWithRetry(
-          folder -> {
-            writeSnapshotFragment(getSnapshotPath(folder, targetFilePath), fileChunk, fileOffset);
-            return null;
-          });
+      // Place every companion file of the same TsFile into one receive folder. The fileKey rule
+      // (filename before the first '.') matches SnapshotLoader so the group stays together. The
+      // folder is selected at most once per fileKey via computeIfAbsent, which is safe under the
+      // concurrent IoTConsensusRPC-Processor receivers.
+      String fileKey = getSnapshotFileKey(targetFilePath);
+      ConcurrentHashMap<String, String> folderMap =
+          snapshotReceiveFolderMap.computeIfAbsent(snapshotId, k -> new ConcurrentHashMap<>());
+      String folder;
+      try {
+        folder =
+            folderMap.computeIfAbsent(
+                fileKey,
+                k -> {
+                  try {
+                    return recvFolderManager.getNextFolder();
+                  } catch (DiskSpaceInsufficientException ex) {
+                    throw new RuntimeException(ex);
+                  }
+                });
+      } catch (RuntimeException re) {
+        if (re.getCause() instanceof DiskSpaceInsufficientException) {
+          throw (DiskSpaceInsufficientException) re.getCause();
+        }
+        throw re;
+      }
+      writeSnapshotFragment(getSnapshotPath(folder, targetFilePath), fileChunk, fileOffset);
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
           String.format(IoTConsensusMessages.ERROR_RECEIVING_SNAPSHOT, snapshotId), e);
@@ -493,6 +538,14 @@ public class IoTConsensusServerImpl {
     return originalFilePath.substring(originalFilePath.indexOf(snapshotId));
   }
 
+  /**
+   * Groups companion files of one TsFile. Uses the same rule as {@code
+   * SnapshotLoader#createLinksFromSnapshotToSourceDir}: the file name up to the first {@code '.'}.
+   */
+  private String getSnapshotFileKey(String targetFilePath) {
+    return new File(targetFilePath).getName().split("\\.")[0];
+  }
+
   private void clearOldSnapshot() {
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
@@ -526,17 +579,22 @@ public class IoTConsensusServerImpl {
     // Note: an empty region produces a snapshot with zero fragments, so none of the receive folders
     // contains it. That is a legitimate (no-op) load, not a failure, so an absent snapshot must not
     // be reported as failure here.
-    List<File> snapshotDirs = new ArrayList<>();
-    for (String dir : recvFolderManager.getFolders()) {
-      File snapshotDir = getSnapshotPath(dir, snapshotId);
-      if (snapshotDir.exists()) {
-        snapshotDirs.add(snapshotDir);
+    try {
+      List<File> snapshotDirs = new ArrayList<>();
+      for (String dir : recvFolderManager.getFolders()) {
+        File snapshotDir = getSnapshotPath(dir, snapshotId);
+        if (snapshotDir.exists()) {
+          snapshotDirs.add(snapshotDir);
+        }
       }
+      if (snapshotDirs.isEmpty()) {
+        return true;
+      }
+      return stateMachine.loadSnapshot(snapshotDirs);
+    } finally {
+      // Receiving is finished for this snapshot; drop its receive-folder mapping.
+      snapshotReceiveFolderMap.remove(snapshotId);
     }
-    if (snapshotDirs.isEmpty()) {
-      return true;
-    }
-    return stateMachine.loadSnapshot(snapshotDirs);
   }
 
   private File getSnapshotPath(String curStorageDir, String snapshotRelativePath) {
@@ -1178,6 +1236,7 @@ public class IoTConsensusServerImpl {
   }
 
   public void cleanupSnapshot(String snapshotId) throws ConsensusGroupModifyPeerException {
+    snapshotReceiveFolderMap.remove(snapshotId);
     List<String> allDirs = new ArrayList<>(Collections.singletonList(storageDir));
     allDirs.addAll(recvFolderManager.getFolders());
     for (String dir : allDirs) {

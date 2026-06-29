@@ -301,6 +301,7 @@ public final class DataNodeQueryMessages {
       "select into: the i of ${i} should be an integer.";
   public static final String FAILED_TO_GET_DATABASE_MAP =
       "Failed to get database Map";
+  public static final String UNKNOWN_DATABASE = "Unknown database %s";
   public static final String LOAD_ANALYSIS_STAGE_ALL_TSFILES_HAVE_BEEN_ANALYZED =
       "Load - Analysis Stage: all tsfiles have been analyzed.";
   public static final String ASYNC_LOAD_HAS_FAILED_AND_IS_NOW_TRYING =
@@ -313,6 +314,12 @@ public final class DataNodeQueryMessages {
       "Empty file detected, will skip loading this file: {}";
   public static final String AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR =
       "Auto create or verify schema error.";
+  public static final String LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
+      "Device %s does not exist in IoTDB and can not be created. Please check whether auto-create-schema is enabled.";
+  public static final String LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
+      "Measurement %s does not exist in IoTDB and can not be created. Please check whether auto-create-schema is enabled.";
+  public static final String PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA =
+      "Pipe generated LoadTsFile is waiting for schema metadata to be transferred. Detail: %s";
   public static final String FAILED_TO_FIND_TAG_COLUMN_MAPPING_FOR_TABLE =
       "Failed to find tag column mapping for table {}";
   public static final String AUTO_CREATE_DATABASE_FAILED_BECAUSE =

@@ -803,6 +803,7 @@ partition_table_recover_max_read_megabytes_per_second=10
 # Memory Allocation Ratio: StorageEngine, QueryEngine, SchemaEngine, Consensus, StreamingEngine and Free Memory.
 # The parameter form is a:b:c:d:e:f, where a, b, c, d, e and f are integers. for example: 1:1:1:1:1:1 , 6:2:1:1:1:1
 # If you have high level of writing pressure and low level of reading pressure, please adjust it to for example 6:1:1:1:1:1
+# 50% of Free Memory is used by AutoResizingBuffer memory control.
 # effectiveMode: restart
 datanode_memory_proportion=3:3:1:1:1:1
 
@@ -1729,6 +1730,13 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # effectiveMode: hot_reload
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
+
+# The minimum interval (in ms) between two per-file progress logs while transmitting a snapshot in
+# IoTConsensus. A snapshot may contain a huge number of files, so logging one line per file is
+# costly; this throttles it to at most once per interval. A value <= 0 logs every file.
+# effectiveMode: hot_reload
+# Datatype: long
+data_region_iot_snapshot_transmission_progress_log_interval_ms = 5000
 
 # When loading snapshot, try keeping TsFiles in the same disk as the snapshot dir.
 # This may reduce file copies but may also result in a worse disk load-balance
