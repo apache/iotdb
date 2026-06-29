@@ -713,8 +713,8 @@ TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDelete]") {
 
   const char* dev = "root.cov_types.d1";
   const char* names[] = {"sb", "si", "sf", "sd", "st", "sstr", "sdate", "sblob"};
-  TSDataType_C types[] = {TS_TYPE_BOOLEAN, TS_TYPE_INT32, TS_TYPE_FLOAT, TS_TYPE_DOUBLE,
-                          TS_TYPE_TEXT, TS_TYPE_STRING, TS_TYPE_DATE, TS_TYPE_BLOB};
+  TSDataType_C types[] = {TS_TYPE_BOOLEAN, TS_TYPE_INT32,  TS_TYPE_FLOAT, TS_TYPE_DOUBLE,
+                          TS_TYPE_TEXT,    TS_TYPE_STRING, TS_TYPE_DATE,  TS_TYPE_BLOB};
   bool bv = true;
   int32_t iv = 42;
   float fv = 2.5f;
