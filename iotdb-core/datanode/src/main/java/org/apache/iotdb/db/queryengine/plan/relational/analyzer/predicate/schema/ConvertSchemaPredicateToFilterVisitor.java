@@ -19,6 +19,23 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
@@ -32,28 +49,13 @@ import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,19 +64,19 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
+import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
 
 /**
  * The {@link ConvertSchemaPredicateToFilterVisitor} will convert a predicate to {@link
  * SchemaFilter}. For the predicates which can not be converted, this will return {@code null}.
- * However, for IdDeterminedPredicate, this visitor shall never return {@code null}.
+ * However, for tag-determined predicates, this visitor shall never return {@code null}.
  */
 public class ConvertSchemaPredicateToFilterVisitor
     extends PredicateVisitor<SchemaFilter, ConvertSchemaPredicateToFilterVisitor.Context> {
 
   @Override
-  protected @Nullable SchemaFilter visitInPredicate(final InPredicate node, final Context context) {
+  public @Nullable SchemaFilter visitInPredicate(final InPredicate node, final Context context) {
     final Expression valueList = node.getValueList();
     checkArgument(valueList instanceof InListExpression);
     final List<Expression> values = ((InListExpression) valueList).getValues();
@@ -84,7 +86,7 @@ public class ConvertSchemaPredicateToFilterVisitor
       }
     }
 
-    return wrapIdOrAttributeFilter(
+    return wrapTagOrAttributeFilter(
         new InFilter(
             values.stream()
                 .map(value -> ((StringLiteral) value).getValue())
@@ -94,29 +96,29 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  protected SchemaFilter visitIsNullPredicate(final IsNullPredicate node, final Context context) {
-    return wrapIdOrAttributeFilter(
+  public SchemaFilter visitIsNullPredicate(final IsNullPredicate node, final Context context) {
+    return wrapTagOrAttributeFilter(
         new PreciseFilter((String) null), ((SymbolReference) node.getValue()).getName(), context);
   }
 
   @Override
-  protected SchemaFilter visitIsNotNullPredicate(
+  public SchemaFilter visitIsNotNullPredicate(
       final IsNotNullPredicate node, final Context context) {
-    return wrapIdOrAttributeFilter(
+    return wrapTagOrAttributeFilter(
         new NotFilter(new PreciseFilter((String) null)),
         ((SymbolReference) node.getValue()).getName(),
         context);
   }
 
   @Override
-  protected @Nullable SchemaFilter visitLikePredicate(
+  public @Nullable SchemaFilter visitLikePredicate(
       final LikePredicate node, final Context context) {
-    // TODO: Support stringLiteral like id/attr?
+    // TODO: Support stringLiteral like tag/attr?
     if (!(node.getValue() instanceof SymbolReference)
         || !(node.getPattern() instanceof StringLiteral)) {
       return null;
     }
-    return wrapIdOrAttributeFilter(
+    return wrapTagOrAttributeFilter(
         new LikeFilter(
             (((StringLiteral) node.getPattern()).getValue()),
             node.getEscape().isPresent()
@@ -127,7 +129,7 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  protected @Nullable SchemaFilter visitLogicalExpression(
+  public @Nullable SchemaFilter visitLogicalExpression(
       final LogicalExpression node, final Context context) {
     final List<SchemaFilter> children = new ArrayList<>();
     for (final Expression term : node.getTerms()) {
@@ -144,33 +146,37 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  protected @Nullable SchemaFilter visitNotExpression(
+  public @Nullable SchemaFilter visitNotExpression(
       final NotExpression node, final Context context) {
     final SchemaFilter result = node.getValue().accept(this, context);
     return Objects.nonNull(result) ? new NotFilter(result) : null;
   }
 
   @Override
-  protected @Nullable SchemaFilter visitComparisonExpression(
+  public @Nullable SchemaFilter visitComparisonExpression(
       final ComparisonExpression node, final Context context) {
     final String columnName;
     final String value;
     final boolean isOrdered;
     if (node.getLeft() instanceof Literal) {
       value = ((StringLiteral) (node.getLeft())).getValue();
-      checkArgument(isSymbolReference(node.getRight()));
+      if (!isSymbolReference(node.getRight())) {
+        return null;
+      }
       columnName = ((SymbolReference) (node.getRight())).getName();
       isOrdered = false;
     } else if (node.getRight() instanceof Literal) {
       value = ((StringLiteral) (node.getRight())).getValue();
-      checkArgument(isSymbolReference(node.getLeft()));
+      if (!isSymbolReference(node.getLeft())) {
+        return null;
+      }
       columnName = ((SymbolReference) (node.getLeft())).getName();
       isOrdered = true;
     } else {
       return null;
     }
 
-    return wrapIdOrAttributeFilter(
+    return wrapTagOrAttributeFilter(
         node.getOperator() == ComparisonExpression.Operator.EQUAL
             ? new PreciseFilter(value)
             : new ComparisonFilter(
@@ -201,66 +207,79 @@ public class ConvertSchemaPredicateToFilterVisitor
             ? ComparisonFilter.Operator.GREATER_THAN_OR_EQUAL
             : ComparisonFilter.Operator.LESS_THAN_OR_EQUAL;
       default:
-        throw new UnsupportedOperationException("Unsupported operator " + operator);
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_OPERATOR_2 + operator);
     }
   }
 
   @Override
-  protected SchemaFilter visitSimpleCaseExpression(
+  public SchemaFilter visitSimpleCaseExpression(
       final SimpleCaseExpression node, final Context context) {
     return visitExpression(node, context);
   }
 
   @Override
-  protected SchemaFilter visitSearchedCaseExpression(
+  public SchemaFilter visitSearchedCaseExpression(
       final SearchedCaseExpression node, final Context context) {
     return visitExpression(node, context);
   }
 
   @Override
-  protected SchemaFilter visitIfExpression(final IfExpression node, final Context context) {
+  public SchemaFilter visitIfExpression(final IfExpression node, final Context context) {
     return visitExpression(node, context);
   }
 
   @Override
-  protected SchemaFilter visitNullIfExpression(final NullIfExpression node, final Context context) {
+  public SchemaFilter visitNullIfExpression(final NullIfExpression node, final Context context) {
     return visitExpression(node, context);
   }
 
   @Override
-  protected SchemaFilter visitBetweenPredicate(final BetweenPredicate node, final Context context) {
-    return visitExpression(node, context);
+  public @Nullable SchemaFilter visitBetweenPredicate(
+      final BetweenPredicate node, final Context context) {
+    final SchemaFilter lowerBoundFilter =
+        new ComparisonExpression(
+                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL, node.getMin(), node.getValue())
+            .accept(this, context);
+    final SchemaFilter upperBoundFilter =
+        new ComparisonExpression(
+                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL, node.getValue(), node.getMax())
+            .accept(this, context);
+    if (Objects.isNull(lowerBoundFilter) || Objects.isNull(upperBoundFilter)) {
+      return null;
+    }
+    return new AndFilter(Arrays.asList(lowerBoundFilter, upperBoundFilter));
   }
 
-  private SchemaFilter wrapIdOrAttributeFilter(
+  private SchemaFilter wrapTagOrAttributeFilter(
       final SchemaFilter filter, final String columnName, final Context context) {
     return context
             .table
             .getColumnSchema(columnName)
             .getColumnCategory()
             .equals(TsTableColumnCategory.TAG)
-        ? new TagFilter(filter, context.idColumnIndexMap.get(columnName))
+        ? new TagFilter(filter, context.tagColumnIndexMap.get(columnName))
         : new AttributeFilter(filter, columnName);
   }
 
   public static class Context {
 
     private final TsTable table;
-    private final Map<String, Integer> idColumnIndexMap;
+    private final Map<String, Integer> tagColumnIndexMap;
 
     public Context(final TsTable table) {
       this.table = table;
-      this.idColumnIndexMap = getIdColumnIndex(table);
+      this.tagColumnIndexMap = getTagColumnIndex(table);
     }
 
-    private Map<String, Integer> getIdColumnIndex(final TsTable table) {
+    private Map<String, Integer> getTagColumnIndex(final TsTable table) {
       Map<String, Integer> map = new HashMap<>();
       List<TsTableColumnSchema> columnSchemaList = table.getColumnList();
-      int idIndex = 0;
+      int tagIndex = 0;
       for (TsTableColumnSchema columnSchema : columnSchemaList) {
         if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-          map.put(columnSchema.getColumnName(), idIndex);
-          idIndex++;
+          map.put(columnSchema.getColumnName(), tagIndex);
+          tagIndex++;
         }
       }
       return map;

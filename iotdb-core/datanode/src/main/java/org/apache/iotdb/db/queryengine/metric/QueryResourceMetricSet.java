@@ -41,10 +41,12 @@ public class QueryResourceMetricSet implements IMetricSet {
   public static final String UNSEQUENCE_TSFILE = "unsequence_tsfile";
   public static final String FLUSHING_MEMTABLE = "flushing_memtable";
   public static final String WORKING_MEMTABLE = "working_memtable";
+  public static final String INIT_QUERY_RESOURCE_RETRY_COUNT = "retry_count";
   private Histogram sequenceTsFileHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram unsequenceTsFileHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram flushingMemTableHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram workingMemTableHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram retryCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   public void recordQueryResourceNum(String type, int count) {
     switch (type) {
@@ -60,8 +62,19 @@ public class QueryResourceMetricSet implements IMetricSet {
       case WORKING_MEMTABLE:
         workingMemTableHistogram.update(count);
         break;
+      case INIT_QUERY_RESOURCE_RETRY_COUNT:
+        if (count > 0) {
+          retryCountHistogram.update(count);
+        }
+        break;
       default:
         break;
+    }
+  }
+
+  public void recordInitQueryResourceRetryCount(int count) {
+    if (count > 0) {
+      retryCountHistogram.update(count);
     }
   }
 
@@ -91,11 +104,22 @@ public class QueryResourceMetricSet implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             WORKING_MEMTABLE);
+    retryCountHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.QUERY_RESOURCE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            INIT_QUERY_RESOURCE_RETRY_COUNT);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    Arrays.asList(SEQUENCE_TSFILE, UNSEQUENCE_TSFILE, FLUSHING_MEMTABLE, WORKING_MEMTABLE)
+    Arrays.asList(
+            SEQUENCE_TSFILE,
+            UNSEQUENCE_TSFILE,
+            FLUSHING_MEMTABLE,
+            WORKING_MEMTABLE,
+            INIT_QUERY_RESOURCE_RETRY_COUNT)
         .forEach(
             type ->
                 metricService.remove(

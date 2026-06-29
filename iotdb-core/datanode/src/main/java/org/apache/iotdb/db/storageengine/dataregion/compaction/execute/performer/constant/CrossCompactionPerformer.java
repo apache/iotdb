@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionPerformerException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
+
+import org.apache.tsfile.encrypt.EncryptParameter;
 
 public enum CrossCompactionPerformer {
   READ_POINT,
@@ -38,12 +41,25 @@ public enum CrossCompactionPerformer {
         "Illegal compaction performer for cross compaction " + name);
   }
 
+  @TestOnly
   public ICrossCompactionPerformer createInstance() {
     switch (this) {
       case READ_POINT:
         return new ReadPointCompactionPerformer();
       case FAST:
         return new FastCompactionPerformer(true);
+      default:
+        throw new IllegalCompactionPerformerException(
+            "Illegal compaction performer for cross compaction " + this);
+    }
+  }
+
+  public ICrossCompactionPerformer createInstance(EncryptParameter encryptParameter) {
+    switch (this) {
+      case READ_POINT:
+        return new ReadPointCompactionPerformer(encryptParameter);
+      case FAST:
+        return new FastCompactionPerformer(true, encryptParameter);
       default:
         throw new IllegalCompactionPerformerException(
             "Illegal compaction performer for cross compaction " + this);

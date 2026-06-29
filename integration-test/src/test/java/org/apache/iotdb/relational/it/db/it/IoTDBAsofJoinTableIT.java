@@ -63,12 +63,15 @@ public class IoTDBAsofJoinTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
         .setMaxTsBlockLineNumber(2)
-        .setMaxNumberOfPointsInPage(5);
+        .setMaxNumberOfPointsInPage(5)
+        .setDataNodeMemoryProportion("2:4:1:1:1:1")
+        .setQueryMemoryProportion("1:100:100:10:400:200:100:50")
+        .setSortBufferSize(1024 * 1024);
+    EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 

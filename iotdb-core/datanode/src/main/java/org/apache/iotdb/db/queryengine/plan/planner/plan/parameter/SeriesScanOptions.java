@@ -23,18 +23,21 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeNonAlignedDeviceViewAggregationScanOperator;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.tsfile.read.reader.series.PaginationController;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class SeriesScanOptions {
+public class SeriesScanOptions implements Accountable {
 
   private Filter globalTimeFilter;
   private final Filter originalTimeFilter;
@@ -52,6 +55,9 @@ public class SeriesScanOptions {
   private PaginationController paginationController;
   private boolean isTableViewForTreeModel;
   private long ttlForTableView = Long.MAX_VALUE;
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(
+          TreeNonAlignedDeviceViewAggregationScanOperator.class);
 
   public SeriesScanOptions(
       Filter globalTimeFilter,
@@ -81,6 +87,11 @@ public class SeriesScanOptions {
               Collections.singletonList(((NonAlignedFullPath) seriesPath).getMeasurement())));
     }
     return builder.build();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 
   public Filter getGlobalTimeFilter() {

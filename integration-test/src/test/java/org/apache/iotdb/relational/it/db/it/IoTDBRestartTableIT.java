@@ -287,7 +287,7 @@ public class IoTDBRestartTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**")) {
         assertNotNull(resultSet);
         int cnt = 0;
         assertEquals(3, resultSet.getMetaData().getColumnCount());
@@ -318,7 +318,7 @@ public class IoTDBRestartTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**")) {
         assertNotNull(resultSet);
         int cnt = 0;
         assertEquals(2, resultSet.getMetaData().getColumnCount());

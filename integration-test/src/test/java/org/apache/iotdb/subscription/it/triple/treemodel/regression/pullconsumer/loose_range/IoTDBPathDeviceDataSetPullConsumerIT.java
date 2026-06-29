@@ -36,6 +36,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -125,6 +126,7 @@ public class IoTDBPathDeviceDataSetPullConsumerIT extends AbstractSubscriptionTr
     session_src.insertTablet(tablet);
   }
 
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,

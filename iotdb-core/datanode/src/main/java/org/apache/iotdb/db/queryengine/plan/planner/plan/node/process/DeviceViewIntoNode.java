@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 
@@ -91,8 +93,8 @@ public class DeviceViewIntoNode extends SingleChildProcessNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeviceViewInto(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitDeviceViewInto(this, context);
   }
 
   @Override

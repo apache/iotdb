@@ -55,7 +55,6 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     // All the schema operations must be under the same database to
     // be in the same region, therefore a non-idempotent operation can block the next one
     // and fail the IT
@@ -63,17 +62,30 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
         // of the tested idempotent sql.
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
+        .setSchemaRegionGroupExtensionPolicy("CUSTOM")
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        .setSchemaRegionGroupExtensionPolicy("CUSTOM")
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
@@ -89,7 +101,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -100,7 +112,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)",
         "create timeSeries root.ln.wf01.wt01.status1(status) with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("3,"));
   }
@@ -111,7 +123,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.emptyList(),
         "create timeSeries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN",
         "create timeSeries root.ln.wf01.wt01.status1(status1) with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -120,9 +132,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testInternalCreateTimeSeriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "insert into root.ln.wf01.wt01(time, status0) values(now(), false); flush;",
+        "insert into root.ln.wf01.wt01(time, status0) values(now(), false)",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -134,7 +146,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 ADD TAGS tag3=v3;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -146,7 +158,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "create timeSeries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -159,7 +171,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "ALTER timeSeries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;"),
         "ALTER timeSeries root.ln.wf01.wt01.status0 RENAME attr1 TO newAttr1;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-        "count timeSeries",
+        "count timeSeries root.ln.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }
@@ -247,7 +259,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "set schema template t1 to root.sg1"),
         "create timeSeries using device template on root.sg1.d1",
         "create timeSeries using device template on root.sg1.d2",
-        "count timeSeries",
+        "count timeSeries root.sg1.**",
         "count(timeseries),",
         Collections.singleton("6,"));
   }
@@ -283,7 +295,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testAlterDatabaseIdempotent() throws Exception {
     testIdempotent(
         Collections.singletonList("create database root.sg1"),
-        "ALTER DATABASE root.sg1 WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3;",
+        "ALTER DATABASE root.sg1 WITH MAX_SCHEMA_REGION_GROUP_NUM=2, MAX_DATA_REGION_GROUP_NUM=3;",
         "create database root.sg2",
         "count databases",
         "count,",
@@ -305,7 +317,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testCreateUserIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "create user `ln_write_user` 'write_pwd'",
+        "create user `ln_write_user` 'write_pwd123456'",
         "create database root.sg1",
         "count databases",
         "count,",
@@ -326,7 +338,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   @Test
   public void testGrantRoleToUserIdempotent() throws Exception {
     testIdempotent(
-        Arrays.asList("create user `ln_write_user` 'write_pwd'", "create role `test`"),
+        Arrays.asList("create user `ln_write_user` 'write_pwd123456'", "create role `test`"),
         "grant role test to ln_write_user",
         "create database root.sg1",
         "count databases",
@@ -338,7 +350,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testRevokeUserIdempotent() throws Exception {
     testIdempotent(
         Arrays.asList(
-            "create user `ln_write_user` 'write_pwd'",
+            "create user `ln_write_user` 'write_pwd123456'",
             "GRANT READ_DATA, WRITE_DATA ON root.t1.** TO USER ln_write_user;"),
         "REVOKE READ_DATA, WRITE_DATA ON root.t1.** FROM USER ln_write_user;",
         "create database root.sg1",
@@ -362,7 +374,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testRevokeRoleFromUserIdempotent() throws Exception {
     testIdempotent(
         Arrays.asList(
-            "create user `ln_write_user` 'write_pwd'",
+            "create user `ln_write_user` 'write_pwd123456'",
             "create role `test`",
             "grant role test to ln_write_user"),
         "revoke role test from ln_write_user",
@@ -375,7 +387,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   @Test
   public void testDropUserIdempotent() throws Exception {
     testIdempotent(
-        Collections.singletonList("create user `ln_write_user` 'write_pwd'"),
+        Collections.singletonList("create user `ln_write_user` 'write_pwd123456'"),
         "drop user `ln_write_user`",
         "create database root.sg1",
         "count databases",
@@ -394,8 +406,6 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.singleton("1,"));
   }
 
-  // Table model
-
   private void testIdempotent(
       final List<String> beforeSqlList,
       final String testSql,
@@ -411,24 +421,26 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "all");
-      extractorAttributes.put("extractor.inclusion.exclusion", "");
-      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
-      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+      sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("source.inclusion.exclusion", "");
+      sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
+      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -437,18 +449,12 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, beforeSqlList)) {
-      return;
-    }
+    TestUtils.executeNonQueries(senderEnv, beforeSqlList, null);
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, testSql)) {
-      return;
-    }
+    TestUtils.tryExecuteNonQuery(receiverEnv, testSql, null);
 
     // Create an idempotent conflict, after sql shall be executed on the same region as testSql
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Arrays.asList(testSql, afterSql))) {
-      return;
-    }
+    TestUtils.executeNonQueries(senderEnv, Arrays.asList(testSql, afterSql), null);
 
     // Assume that the afterSql is executed on receiverEnv
     TestUtils.assertDataEventuallyOnEnv(receiverEnv, afterSqlQuery, expectedHeader, expectedResSet);

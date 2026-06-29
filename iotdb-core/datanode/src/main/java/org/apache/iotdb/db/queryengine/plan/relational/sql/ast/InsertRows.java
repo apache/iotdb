@@ -19,21 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class InsertRows extends WrappedInsertStatement {
 
@@ -45,8 +48,8 @@ public class InsertRows extends WrappedInsertStatement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitInsertRows(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitInsertRows(this, context);
   }
 
   @Override
@@ -90,21 +93,8 @@ public class InsertRows extends WrappedInsertStatement {
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
-      final TableSchema incomingTableSchema = toTableSchema(insertRowStatement);
-      final TableSchema realSchema =
-          metadata
-              .validateTableHeaderSchema(
-                  AnalyzeUtils.getDatabaseName(insertRowStatement, context),
-                  incomingTableSchema,
-                  context,
-                  allowCreateTable,
-                  false)
-              .orElse(null);
-      if (realSchema == null) {
-        throw new SemanticException(
-            "Schema validation failed, table cannot be created: " + incomingTableSchema);
-      }
-      validateTableSchema(realSchema, incomingTableSchema, insertRowStatement);
+      final String database = AnalyzeUtils.getDatabaseName(insertRowStatement, context);
+      super.validateTableSchema(metadata, context, insertRowStatement, database, allowCreateTable);
     }
   }
 
@@ -132,8 +122,14 @@ public class InsertRows extends WrappedInsertStatement {
 
       @Override
       public List<Object[]> getDeviceIdList() {
-        Object[] idSegments = insertRowStatement.getTableDeviceID().getSegments();
-        return Collections.singletonList(Arrays.copyOfRange(idSegments, 1, idSegments.length));
+        final Object[] tagSegments = insertRowStatement.getTableDeviceID().getSegments();
+        if (Objects.nonNull(insertRowStatement.getMeasurementSchemas())
+            && Arrays.stream(insertRowStatement.getMeasurementSchemas())
+                .anyMatch(
+                    schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
+          TableDeviceSchemaValidator.checkObject4DeviceId(tagSegments);
+        }
+        return Collections.singletonList(Arrays.copyOfRange(tagSegments, 1, tagSegments.length));
       }
 
       @Override
@@ -144,9 +140,17 @@ public class InsertRows extends WrappedInsertStatement {
       @Override
       public List<Object[]> getAttributeValueList() {
         List<Object> attributeValueList = new ArrayList<>();
-        for (int i = 0; i < insertRowStatement.getColumnCategories().length; i++) {
-          if (insertRowStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
-            attributeValueList.add(insertRowStatement.getValues()[i]);
+        final TsTableColumnCategory[] columnCategories = insertRowStatement.getColumnCategories();
+        final String[] measurements = insertRowStatement.getMeasurements();
+        final Object[] values = insertRowStatement.getValues();
+        for (int i = 0; columnCategories != null && i < columnCategories.length; i++) {
+          if (columnCategories[i] == TsTableColumnCategory.ATTRIBUTE
+              && measurements != null
+              && i < measurements.length
+              && measurements[i] != null
+              && values != null
+              && i < values.length) {
+            attributeValueList.add(values[i]);
           }
         }
         return Collections.singletonList(attributeValueList.toArray());

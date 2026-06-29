@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -72,7 +73,6 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         .getConfig()
         .getCommonConfig()
         .setEnableAutoLeaderBalanceForRatisConsensus(true)
-        .setEnableAutoLeaderBalanceForIoTConsensus(true)
         .setSchemaRegionConsensusProtocolClass(TEST_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS)
         .setDataRegionConsensusProtocolClass(TEST_DATA_REGION_CONSENSUS_PROTOCOL_CLASS)
         .setSchemaReplicationFactor(TEST_REPLICATION_FACTOR)
@@ -116,6 +116,12 @@ public class IoTDBRegionGroupLeaderDistributionIT {
       // Check the number of RegionGroup-leader in each DataNode.
       Map<Integer, Integer> leaderCounter = new TreeMap<>();
       TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+      showRegionResp
+          .getRegionInfoList()
+          .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+      showRegionResp
+          .getRegionInfoList()
+          .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
       showRegionResp
           .getRegionInfoList()
           .forEach(
@@ -166,6 +172,12 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         showRegionResp = client.showRegion(new TShowRegionReq());
         showRegionResp
             .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
             .forEach(
                 regionInfo -> {
                   if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
@@ -203,6 +215,12 @@ public class IoTDBRegionGroupLeaderDistributionIT {
       for (int retry = 0; retry < retryNum; retry++) {
         leaderCounter.clear();
         showRegionResp = client.showRegion(new TShowRegionReq());
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
         showRegionResp
             .getRegionInfoList()
             .forEach(
@@ -270,6 +288,12 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         showRegionResp = client.showRegion(new TShowRegionReq());
         showRegionResp
             .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
             .forEach(
                 regionInfo -> {
                   if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
@@ -318,6 +342,12 @@ public class IoTDBRegionGroupLeaderDistributionIT {
       for (int retry = 0; retry < retryNum; retry++) {
         isDistributionBalanced.set(true);
         showRegionResp = client.showRegion(new TShowRegionReq());
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
         showRegionResp
             .getRegionInfoList()
             .forEach(

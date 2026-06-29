@@ -19,25 +19,29 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode.isTimeColumn;
+import static org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode.isTimeColumn;
 
 /**
  * <b>Optimization phase:</b> Logical plan planning.
@@ -59,7 +63,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
         new Rewriter(context.getAnalysis(), context.getQueryContext()), new Context());
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, Context> {
+  private static class Rewriter implements PlanVisitor<PlanNode, Context> {
     private final Analysis analysis;
     private final MPPQueryContext queryContext;
 
@@ -90,8 +94,21 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       context.setCanTransform(false);
 
       DeviceTableScanNode deviceTableScanNode = context.getTableScanNode();
-      Map<Symbol, ColumnSchema> tableColumnSchema =
-          analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
+      Map<Symbol, ColumnSchema> tableColumnSchema;
+      if (deviceTableScanNode instanceof ExternalTsFileScanNode) {
+        tableColumnSchema =
+            ((ExternalTsFileScanNode) deviceTableScanNode)
+                .getExternalTsFileQueryResource()
+                .getTableColumnSchema();
+      } else if (deviceTableScanNode instanceof ExternalTsFileAggregationScanNode) {
+        tableColumnSchema =
+            ((ExternalTsFileAggregationScanNode) deviceTableScanNode)
+                .getExternalTsFileQueryResource()
+                .getTableColumnSchema();
+      } else {
+        tableColumnSchema =
+            analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
+      }
 
       OrderingScheme orderingScheme = node.getOrderingScheme();
       int streamSortIndex = -1;
@@ -107,7 +124,11 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
       if (streamSortIndex >= 0) {
         boolean orderByAllIdsAndTime =
-            isOrderByAllIdsAndTime(tableColumnSchema, orderingScheme, streamSortIndex);
+            isOrderByAllIdsAndTime(
+                tableColumnSchema,
+                deviceTableScanNode.getAssignments(),
+                orderingScheme,
+                streamSortIndex);
 
         return new StreamSortNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -127,7 +148,19 @@ public class TransformSortToStreamSort implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitCteScan(CteScanNode node, Context context) {
+      context.setCanTransform(false);
+      return node;
+    }
+
+    @Override
     public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
+      context.setTableScanNode(node);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitExternalTsFileScan(ExternalTsFileScanNode node, Context context) {
       context.setTableScanNode(node);
       return node;
     }
@@ -150,20 +183,41 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       context.setCanTransform(false);
       return visitTableScan(node, context);
     }
+
+    @Override
+    public PlanNode visitUnion(UnionNode node, Context context) {
+      context.setCanTransform(false);
+      return visitMultiChildProcess(node, context);
+    }
   }
 
+  /**
+   * @param tableColumnSchema The ColumnSchema of original Table, but the symbol name maybe rewrite
+   *     by Join
+   * @param nodeColumnSchema The ColumnSchema of current node, which has been column pruned
+   */
   public static boolean isOrderByAllIdsAndTime(
       Map<Symbol, ColumnSchema> tableColumnSchema,
+      Map<Symbol, ColumnSchema> nodeColumnSchema,
       OrderingScheme orderingScheme,
       int streamSortIndex) {
-    for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
-      if (entry.getValue().getColumnCategory() == TsTableColumnCategory.TAG
-          && !orderingScheme.getOrderings().containsKey(entry.getKey())) {
-        return false;
+    int tagCount = 0;
+    for (ColumnSchema columnSchema : tableColumnSchema.values()) {
+      if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
+        tagCount++;
       }
     }
-    return orderingScheme.getOrderings().size() == streamSortIndex + 1
-        || isTimeColumn(orderingScheme.getOrderBy().get(streamSortIndex + 1), tableColumnSchema);
+
+    for (Symbol orderBy : orderingScheme.getOrderBy()) {
+      ColumnSchema columnSchema = nodeColumnSchema.get(orderBy);
+      if (columnSchema != null && columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
+        tagCount--;
+      }
+    }
+    return tagCount == 0
+        && (orderingScheme.getOrderings().size() == streamSortIndex + 1
+            || isTimeColumn(
+                orderingScheme.getOrderBy().get(streamSortIndex + 1), tableColumnSchema));
   }
 
   private static class Context {

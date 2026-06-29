@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.agent.task.execution;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -30,17 +31,26 @@ import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public abstract class PipeSubtaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutor.class);
 
-  private static final ExecutorService subtaskCallbackListeningExecutor =
+  private static final long WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS = 60L;
+
+  private static final ExecutorService globalSubtaskCallbackListeningExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
           ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName());
+
+  private final ExecutorService subtaskCallbackListeningExecutor;
 
   protected final WrappedThreadPoolExecutor underlyingThreadPool;
   protected final ListeningExecutorService subtaskWorkerThreadPoolExecutor;
@@ -49,16 +59,42 @@ public abstract class PipeSubtaskExecutor {
 
   private final int corePoolSize;
   private int runningSubtaskNumber;
+  private final String workingThreadName;
+  private final String callbackThreadName;
 
   protected PipeSubtaskExecutor(
-      final int corePoolSize, final ThreadName threadName, final boolean disableLogInThreadPool) {
+      final int corePoolSize,
+      final String workingThreadName,
+      final boolean disableLogInThreadPool) {
+    this(corePoolSize, workingThreadName, null, disableLogInThreadPool);
+  }
+
+  protected PipeSubtaskExecutor(
+      final int corePoolSize,
+      final String workingThreadName,
+      final @Nullable String callbackThreadName,
+      final boolean disableLogInThreadPool) {
+    this.workingThreadName = workingThreadName;
+    this.callbackThreadName =
+        Objects.nonNull(callbackThreadName)
+            ? callbackThreadName
+            : ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName();
     underlyingThreadPool =
         (WrappedThreadPoolExecutor)
-            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName());
+            IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
+                corePoolSize,
+                WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS,
+                TimeUnit.SECONDS,
+                workingThreadName);
     if (disableLogInThreadPool) {
       underlyingThreadPool.disableErrorLog();
     }
     subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(underlyingThreadPool);
+    subtaskCallbackListeningExecutor =
+        Objects.nonNull(callbackThreadName)
+            ? IoTDBThreadPoolFactory.newSingleThreadExecutor(
+                callbackThreadName, new ThreadPoolExecutor.DiscardPolicy())
+            : globalSubtaskCallbackListeningExecutor;
 
     registeredIdSubtaskMapper = new ConcurrentHashMap<>();
 
@@ -70,7 +106,7 @@ public abstract class PipeSubtaskExecutor {
 
   public final synchronized void register(final PipeSubtask subtask) {
     if (registeredIdSubtaskMapper.containsKey(subtask.getTaskID())) {
-      LOGGER.warn("The subtask {} is already registered.", subtask.getTaskID());
+      LOGGER.warn(PipeMessages.SUBTASK_ALREADY_REGISTERED, subtask.getDisplayTaskID());
       return;
     }
 
@@ -79,32 +115,36 @@ public abstract class PipeSubtaskExecutor {
         subtaskWorkerThreadPoolExecutor, subtaskCallbackListeningExecutor, schedulerSupplier(this));
   }
 
+  private static String getSafeSubtaskStr(final String subtaskID) {
+    return subtaskID.replaceAll("password=[^,}]*", "password=******");
+  }
+
   protected PipeSubtaskScheduler schedulerSupplier(final PipeSubtaskExecutor executor) {
     return new PipeSubtaskScheduler(executor);
   }
 
   public final synchronized void start(final String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
-      LOGGER.warn("The subtask {} is not registered.", subTaskID);
+      LOGGER.warn(PipeMessages.SUBTASK_NOT_REGISTERED, getSafeSubtaskStr(subTaskID));
       return;
     }
 
     final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
     if (subtask.isSubmittingSelf()) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("The subtask {} is already running.", subTaskID);
+        LOGGER.debug(PipeMessages.SUBTASK_ALREADY_RUNNING, subtask.getDisplayTaskID());
       }
     } else {
       subtask.allowSubmittingSelf();
       subtask.submitSelf();
       ++runningSubtaskNumber;
-      LOGGER.info("The subtask {} is started to submit self.", subTaskID);
+      LOGGER.info(PipeMessages.SUBTASK_STARTED, subtask.getDisplayTaskID());
     }
   }
 
   public final synchronized void stop(final String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
-      LOGGER.warn("The subtask {} is not registered.", subTaskID);
+      LOGGER.warn(PipeMessages.SUBTASK_NOT_REGISTERED, getSafeSubtaskStr(subTaskID));
       return;
     }
 
@@ -121,9 +161,9 @@ public abstract class PipeSubtaskExecutor {
     if (subtask != null) {
       try {
         subtask.close();
-        LOGGER.info("The subtask {} is closed successfully.", subTaskID);
+        LOGGER.info(PipeMessages.SUBTASK_CLOSED, subtask.getDisplayTaskID());
       } catch (final Exception e) {
-        LOGGER.error("Failed to close the subtask {}.", subTaskID, e);
+        LOGGER.error(PipeMessages.SUBTASK_CLOSE_FAILED, subtask.getDisplayTaskID(), e);
       }
     }
   }
@@ -151,6 +191,9 @@ public abstract class PipeSubtaskExecutor {
     }
 
     subtaskWorkerThreadPoolExecutor.shutdown();
+    if (subtaskCallbackListeningExecutor != globalSubtaskCallbackListeningExecutor) {
+      subtaskCallbackListeningExecutor.shutdown();
+    }
   }
 
   public final boolean isShutdown() {
@@ -171,7 +214,11 @@ public abstract class PipeSubtaskExecutor {
     // return getAvailableThreadCount() > 0;
   }
 
-  private int getAvailableThreadCount() {
-    return underlyingThreadPool.getCorePoolSize() - underlyingThreadPool.getActiveCount();
+  public String getWorkingThreadName() {
+    return workingThreadName;
+  }
+
+  public String getCallbackThreadName() {
+    return callbackThreadName;
   }
 }

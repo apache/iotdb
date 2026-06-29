@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -31,7 +32,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseTy
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +70,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     }
   }
 
-  private @NonNull SubscriptionEvent pollTabletsInternal(
+  private SubscriptionEvent pollTabletsInternal(
       final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
     final AtomicReference<SubscriptionEvent> eventRef = new AtomicReference<>();
     inFlightEvents.compute(
@@ -135,7 +135,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           // 2. Check previous response type and offset
           final short responseType = response.getResponseType();
           if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-            final String errorMessage = String.format("unexpected response type: %s", responseType);
+            final String errorMessage =
+                String.format(DataNodeMiscMessages.UNEXPECTED_RESPONSE_TYPE_FMT, responseType);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return ev;
@@ -157,7 +158,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             default:
               {
                 final String errorMessage =
-                    String.format("unexpected response type: %s", responseType);
+                    String.format(DataNodeMiscMessages.UNEXPECTED_RESPONSE_TYPE_FMT, responseType);
                 LOGGER.warn(errorMessage);
                 eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
                 return ev;
@@ -193,7 +194,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
-    return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
+    try {
+      return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
+    } catch (final Exception e) {
+      LOGGER.error(DataNodeMiscMessages.SUBSCRIPTION_UNEXPECTED_EXCEPTION, e, e);
+    }
+    return false;
   }
 
   /////////////////////////////// stringify ///////////////////////////////

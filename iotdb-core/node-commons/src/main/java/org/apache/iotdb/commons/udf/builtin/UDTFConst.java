@@ -57,6 +57,7 @@ public class UDTFConst implements UDTF {
     VALID_TYPES.add(TSDataType.TEXT.name());
     VALID_TYPES.add(TSDataType.STRING.name());
     VALID_TYPES.add(TSDataType.BLOB.name());
+    VALID_TYPES.add(TSDataType.OBJECT.name());
   }
 
   private TSDataType dataType;
@@ -107,6 +108,7 @@ public class UDTFConst implements UDTF {
         binaryValue = BytesUtils.valueOf(parameters.getString("value"));
         break;
       case BLOB:
+      case OBJECT:
         binaryValue = new Binary(BlobUtils.parseBlobString(parameters.getString("value")));
         break;
       default:
@@ -141,6 +143,7 @@ public class UDTFConst implements UDTF {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         collector.putBinary(row.getTime(), UDFBinaryTransformer.transformToUDFBinary(binaryValue));
         break;
       default:
@@ -166,6 +169,7 @@ public class UDTFConst implements UDTF {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         return UDFBinaryTransformer.transformToUDFBinary(binaryValue);
       default:
         throw new UnsupportedOperationException();
@@ -257,6 +261,7 @@ public class UDTFConst implements UDTF {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         for (int i = 0; i < count; i++) {
           boolean hasWritten = false;
           for (int j = 0; j < columns.length - 1; j++) {

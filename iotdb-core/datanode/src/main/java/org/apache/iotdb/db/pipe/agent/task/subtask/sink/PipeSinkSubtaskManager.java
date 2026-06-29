@@ -1,0 +1,330 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
+
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
+import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
+import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
+
+public class PipeSinkSubtaskManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSinkSubtaskManager.class);
+
+  private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
+      "Failed to deregister PipeConnectorSubtask. No such subtask: ";
+
+  private final Map<String, List<PipeSinkSubtaskLifeCycle>>
+      attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
+
+  private final Map<String, String> attributeSortedString2DisplayString = new HashMap<>();
+
+  public synchronized String register(
+      final Supplier<? extends PipeSinkSubtaskExecutor> executorSupplier,
+      final PipeParameters pipeSinkParameters,
+      final PipeTaskSinkRuntimeEnvironment environment) {
+    final String connectorName =
+        PipeSinkConstant.getConnectorOrSinkNameWithDefault(pipeSinkParameters);
+    final String connectorKey =
+        connectorName
+            // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase
+            // for matching in `CONNECTOR_CONSTRUCTORS`
+            .toLowerCase();
+    PipeEventCommitManager.getInstance()
+        .register(
+            environment.getPipeName(),
+            environment.getCreationTime(),
+            environment.getRegionId(),
+            connectorKey);
+
+    final boolean isDataRegionSink =
+        StorageEngine.getInstance()
+                .getAllDataRegionIds()
+                .contains(new DataRegionId(environment.getRegionId()))
+            || PipeRuntimeMeta.isSourceExternal(environment.getRegionId());
+
+    final int sinkNum;
+    boolean realTimeFirst = false;
+    boolean serializeByRegion = false;
+    String attributeSortedString = generateAttributeSortedString(pipeSinkParameters);
+    final String attributeDisplayString = generateAttributeDisplayString(pipeSinkParameters);
+    if (isDataRegionSink) {
+      serializeByRegion = PipeSinkConstant.isSerializeByRegionEnabled(pipeSinkParameters);
+      sinkNum =
+          serializeByRegion
+              ? 1
+              : pipeSinkParameters.getIntOrDefault(
+                  Arrays.asList(
+                      PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
+                      PipeSinkConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
+                  PipeSinkConstant.SINGLE_THREAD_DEFAULT_SINK.contains(connectorKey)
+                      ? 1
+                      : PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+      realTimeFirst =
+          pipeSinkParameters.getBooleanOrDefault(
+              Arrays.asList(
+                  PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
+                  PipeSinkConstant.SINK_REALTIME_FIRST_KEY),
+              PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
+      attributeSortedString =
+          serializeByRegion
+              ? "data_region_" + environment.getRegionId() + "_" + attributeSortedString
+              : "data_" + attributeSortedString;
+    } else {
+      // Do not allow parallel tasks for schema region connectors
+      // to avoid the potential disorder of the schema region data transfer
+      sinkNum = 1;
+      attributeSortedString = "schema_" + attributeSortedString;
+    }
+    final String attributeDisplayStringWithPrefix =
+        isDataRegionSink
+            ? serializeByRegion
+                ? "data_region_" + environment.getRegionId() + "_" + attributeDisplayString
+                : "data_" + attributeDisplayString
+            : "schema_" + attributeDisplayString;
+    environment.setAttributeSortedString(attributeDisplayStringWithPrefix);
+
+    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+      final PipeSinkSubtaskExecutor executor = executorSupplier.get();
+      final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList = new ArrayList<>(sinkNum);
+
+      AtomicInteger counter = new AtomicInteger(0);
+      // Shared pending queue for all subtasks
+      final UnboundedBlockingPendingQueue<Event> pendingQueue =
+          realTimeFirst
+              ? new PipeRealtimePriorityBlockingQueue()
+              : new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
+
+      if (realTimeFirst) {
+        ((PipeRealtimePriorityBlockingQueue) pendingQueue).setOfferTsFileCounter(counter);
+      }
+
+      for (int sinkIndex = 0; sinkIndex < sinkNum; sinkIndex++) {
+        final String taskID =
+            String.format(
+                "%s_%s_%s", attributeSortedString, environment.getCreationTime(), sinkIndex);
+        environment.setSinkTaskId(taskID);
+
+        final PipeConnector pipeSink =
+            isDataRegionSink
+                ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeSinkParameters)
+                : PipeDataNodeAgent.plugin().schemaRegion().reflectSink(pipeSinkParameters);
+        // 1. Construct, validate and customize PipeConnector, and then handshake (create
+        // connection) with the target
+        try {
+          if (pipeSink instanceof IoTDBDataRegionAsyncSink) {
+            ((IoTDBDataRegionAsyncSink) pipeSink).setTransferTsFileCounter(counter);
+          }
+          pipeSink.validate(new PipeParameterValidator(pipeSinkParameters));
+          pipeSink.customize(pipeSinkParameters, new PipeTaskRuntimeConfiguration(environment));
+          pipeSink.handshake();
+        } catch (final Exception e) {
+          try {
+            pipeSink.close();
+          } catch (final Exception closeException) {
+            LOGGER.warn(
+                "Failed to close connector after failed to initialize connector. "
+                    + "Ignore this exception.",
+                closeException);
+          }
+          throw new PipeException(
+              DataNodePipeMessages.FAILED_TO_CONSTRUCT_PIPECONNECTOR_BECAUSE_OF + e.getMessage(),
+              e);
+        }
+
+        // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
+        final PipeSinkSubtask pipeSinkSubtask =
+            new PipeSinkSubtask(
+                taskID,
+                environment.getCreationTime(),
+                attributeSortedString,
+                attributeDisplayStringWithPrefix,
+                sinkIndex,
+                pendingQueue,
+                pipeSink);
+        final PipeSinkSubtaskLifeCycle pipeSinkSubtaskLifeCycle =
+            new PipeSinkSubtaskLifeCycle(executor, pipeSinkSubtask, pendingQueue);
+        pipeSinkSubtaskLifeCycleList.add(pipeSinkSubtaskLifeCycle);
+      }
+
+      LOGGER.info(
+          DataNodePipeMessages.PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED,
+          attributeDisplayStringWithPrefix,
+          executor.getWorkingThreadName(),
+          executor.getCallbackThreadName());
+      attributeSortedString2SubtaskLifeCycleMap.put(
+          attributeSortedString, pipeSinkSubtaskLifeCycleList);
+      attributeSortedString2DisplayString.put(
+          attributeSortedString, attributeDisplayStringWithPrefix);
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+      lifeCycle.register();
+    }
+
+    return attributeSortedString;
+  }
+
+  public synchronized void deregister(
+      final String pipeName,
+      final long creationTime,
+      final int regionId,
+      final String attributeSortedString) {
+    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+      throwNoSuchSubtaskException(attributeSortedString);
+    }
+
+    final List<PipeSinkSubtaskLifeCycle> lifeCycles =
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
+
+    // Shall not be empty
+    final PipeSinkSubtaskExecutor executor = lifeCycles.get(0).executor;
+
+    final CommitterKey committerKey =
+        PipeEventCommitManager.getInstance().getCommitterKey(pipeName, creationTime, regionId);
+
+    lifeCycles.removeIf(o -> o.deregister(committerKey));
+
+    if (lifeCycles.isEmpty()) {
+      attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
+      attributeSortedString2DisplayString.remove(attributeSortedString);
+      executor.shutdown();
+      LOGGER.info(
+          DataNodePipeMessages.THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN,
+          executor.getWorkingThreadName(),
+          executor.getCallbackThreadName());
+    }
+
+    PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
+    // Reset IoTV2 replicate index to prevent index jumps. Do this when a consensus pipe no longer
+    // replicates data, since extractor and processor are already dropped now.
+    ReplicateProgressDataNodeManager.resetReplicateIndexForIoTV2(pipeName);
+  }
+
+  public synchronized void start(final String attributeSortedString) {
+    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+      throwNoSuchSubtaskException(attributeSortedString);
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+      lifeCycle.start();
+    }
+  }
+
+  public synchronized void stop(final String attributeSortedString) {
+    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+      throwNoSuchSubtaskException(attributeSortedString);
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+      lifeCycle.stop();
+    }
+  }
+
+  public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue(
+      final String attributeSortedString) {
+    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+      throw new PipeException(
+          DataNodePipeMessages.FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK
+              + getDisplayStringForException(attributeSortedString));
+    }
+
+    // All subtasks share the same pending queue
+    return attributeSortedString2SubtaskLifeCycleMap
+        .get(attributeSortedString)
+        .get(0)
+        .getPendingQueue();
+  }
+
+  private static String generateAttributeSortedString(
+      final PipeParameters pipeConnectorParameters) {
+    final TreeMap<String, String> sortedStringSourceMap =
+        new TreeMap<>(pipeConnectorParameters.getAttribute());
+    sortedStringSourceMap.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
+    return sortedStringSourceMap.toString();
+  }
+
+  /**
+   * Attribute string for logs, metrics and exception messages with sensitive attributes removed.
+   */
+  static String generateAttributeDisplayString(final PipeParameters pipeConnectorParameters) {
+    final TreeMap<String, String> filteredAttributes =
+        new TreeMap<>(pipeConnectorParameters.getAttribute());
+    filteredAttributes.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
+    filteredAttributes.keySet().removeIf(PipeParameters.ValueHider::isHiddenKey);
+    return filteredAttributes.toString();
+  }
+
+  private void throwNoSuchSubtaskException(final String attributeSortedString) {
+    throw new PipeException(
+        FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE
+            + getDisplayStringForException(attributeSortedString));
+  }
+
+  private String getDisplayStringForException(final String attributeSortedString) {
+    return attributeSortedString2DisplayString.getOrDefault(attributeSortedString, "unknown");
+  }
+
+  /////////////////////////  Singleton Instance Holder  /////////////////////////
+
+  private PipeSinkSubtaskManager() {
+    // Do nothing
+  }
+
+  private static class PipeSubtaskManagerHolder {
+    private static final PipeSinkSubtaskManager INSTANCE = new PipeSinkSubtaskManager();
+  }
+
+  public static PipeSinkSubtaskManager instance() {
+    return PipeSubtaskManagerHolder.INSTANCE;
+  }
+}

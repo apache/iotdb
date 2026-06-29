@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.component;
 
+import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
 

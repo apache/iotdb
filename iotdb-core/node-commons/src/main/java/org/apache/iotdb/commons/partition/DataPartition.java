@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
@@ -142,11 +143,14 @@ public class DataPartition extends Partition {
       final IDeviceID deviceId, final Filter timeFilter) {
     final String storageGroup = getDatabaseNameByDevice(deviceId);
     final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
-    if (!dataPartitionMap.containsKey(storageGroup)
-        || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetMap =
+        dataPartitionMap
+            .getOrDefault(storageGroup, Collections.emptyMap())
+            .getOrDefault(seriesPartitionSlot, Collections.emptyMap());
+    if (regionReplicaSetMap.isEmpty()) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
-    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+    return regionReplicaSetMap.entrySet().stream()
         .filter(
             entry ->
                 TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime))
@@ -218,15 +222,22 @@ public class DataPartition extends Partition {
     final List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
     final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         dataBasePartitionMap = dataPartitionMap.get(databaseName);
+    if (dataBasePartitionMap == null) {
+      throw new RuntimeException(
+          String.format(CommonMessages.DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED, databaseName));
+    }
     final Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
+    if (slotReplicaSetMap == null) {
+      throw new RuntimeException(
+          String.format(
+              CommonMessages.DATA_PARTITION_EMPTY, deviceID, seriesPartitionSlot, databaseName));
+    }
     for (final TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
       final List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
       if (targetRegionList == null || targetRegionList.isEmpty()) {
         throw new RuntimeException(
-            String.format(
-                "targetRegionList is empty. device: %s, timeSlot: %s",
-                deviceID, timePartitionSlot));
+            String.format(CommonMessages.TARGET_REGION_LIST_EMPTY, deviceID, timePartitionSlot));
       } else {
         dataRegionReplicaSets.add(targetRegionList.get(targetRegionList.size() - 1));
       }
@@ -247,9 +258,7 @@ public class DataPartition extends Partition {
         databasePartitionMap = dataPartitionMap.get(databaseName);
     if (databasePartitionMap == null) {
       throw new RuntimeException(
-          "Database "
-              + databaseName
-              + " not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+          String.format(CommonMessages.DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED, databaseName));
     }
     final List<TRegionReplicaSet> regions =
         databasePartitionMap.get(seriesPartitionSlot).get(timePartitionSlot);
@@ -264,7 +273,7 @@ public class DataPartition extends Partition {
         deviceID, timePartitionSlot, getDatabaseNameByDevice(deviceID));
   }
 
-  private String getDatabaseNameByDevice(IDeviceID deviceID) {
+  public String getDatabaseNameByDevice(IDeviceID deviceID) {
     for (String storageGroup : dataPartitionMap.keySet()) {
       if (PathUtils.isStartWith(deviceID, storageGroup)) {
         return storageGroup;

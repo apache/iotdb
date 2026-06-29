@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,11 +49,22 @@ public class CommonDateTimeUtils {
     }
     // To avoid integer overflow
     if (result < 0) {
-      LOGGER.warn(
-          "Integer overflow when converting {}ms to {}{}.", milliTime, result, timePrecision);
+      LOGGER.warn(UtilMessages.INTEGER_OVERFLOW_CONVERTING_TIME, milliTime, result, timePrecision);
       result = Long.MAX_VALUE;
     }
     return result;
+  }
+
+  public static long convertIoTDBTimeToMillis(long time) {
+    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        return time / 1000_000;
+      case "us":
+        return time / 1000;
+      default:
+        return time;
+    }
   }
 
   public static long currentTime() {

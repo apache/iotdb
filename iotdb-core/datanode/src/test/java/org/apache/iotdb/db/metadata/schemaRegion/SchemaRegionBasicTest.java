@@ -40,8 +40,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWrite
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
@@ -1181,6 +1181,28 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     final Set<String> actualPathList = new HashSet<>();
     for (int index = 0; index < expectedSize; index++) {
       actualPathList.add(result.get(index).getFullPath());
+    }
+    Assert.assertEquals(expectedPathList, actualPathList);
+  }
+
+  @Test
+  public void testShowTimeseriesWildcardSuffixWithNestedAndLeafDevices() throws Exception {
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.test", 0);
+
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
+        schemaRegion,
+        Arrays.asList(
+            "root.test.d1.s1", "root.test.d1.a.d2.s1", "root.test.d3.s1", "root.test.d4.s2"));
+
+    final List<ITimeSeriesSchemaInfo> result =
+        SchemaRegionTestUtil.showTimeseries(schemaRegion, new PartialPath("root.test.**.s1"));
+    final Set<String> expectedPathList =
+        new HashSet<>(Arrays.asList("root.test.d1.s1", "root.test.d1.a.d2.s1", "root.test.d3.s1"));
+    Assert.assertEquals(expectedPathList.size(), result.size());
+
+    final Set<String> actualPathList = new HashSet<>();
+    for (final ITimeSeriesSchemaInfo timeSeriesSchemaInfo : result) {
+      actualPathList.add(timeSeriesSchemaInfo.getFullPath());
     }
     Assert.assertEquals(expectedPathList, actualPathList);
   }

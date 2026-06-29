@@ -37,12 +37,20 @@ WS
 
 // Common Keywords
 
+ACCOUNT
+    : A C C O U N T
+    ;
+
 ADD
     : A D D
     ;
 
 AFTER
     : A F T E R
+    ;
+
+AI_DEVICES
+    : A I '_' D E V I C E S
     ;
 
 ALIAS
@@ -127,6 +135,10 @@ BY
 
 CACHE
     : C A C H E
+    ;
+
+CALCULATION
+    : C A L C U L A T I O N
     ;
 
 CALL
@@ -225,6 +237,10 @@ DATA
     : D A T A
     ;
 
+TYPE
+    : T Y P E
+    ;
+
 DATABASE
     : D A T A B A S E
     ;
@@ -244,6 +260,14 @@ DATANODEID
 DATANODES
 
     : D A T A N O D E S
+    ;
+
+AVAILABLE
+    : A V A I L A B L E
+    ;
+
+URLS
+    : U R L S
     ;
 
 DATASET
@@ -292,6 +316,10 @@ DISABLE
 
 DISCARD
     : D I S C A R D
+    ;
+
+DISK_USAGE
+    : D I S K '_' U S A G E
     ;
 
 DROP
@@ -361,6 +389,11 @@ FLUSH
 FOR
     : F O R
     ;
+
+FORCEDLY
+    : F O R C E D L Y
+    ;
+
 
 FROM
     : F R O M
@@ -478,6 +511,10 @@ LOAD
     : L O A D
     ;
 
+LOADED
+    : L O A D E D
+    ;
+
 LOCAL
     : L O C A L
     ;
@@ -496,6 +533,10 @@ METADATA
 
 MIGRATE
     : M I G R A T E
+    ;
+
+AINODE
+    : A I N O D E
     ;
 
 AINODES
@@ -594,6 +635,10 @@ PATHS
     : P A T H S
     ;
 
+PERMITTED
+    : P E R M I T T E D
+    ;
+
 PIPE
     : P I P E
     ;
@@ -620,6 +665,14 @@ PIPEPLUGIN
 
 PIPEPLUGINS
     : P I P E P L U G I N S
+    ;
+
+POINT
+    : P O I N T
+    ;
+
+POINTS
+    : P O I N T S
     ;
 
 POLICY
@@ -754,6 +807,14 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+SERVICE
+    : S E R V I C E
+    ;
+
+SERVICES
+    : S E R V I C E S
+    ;
+
 SESSION
     : S E S S I O N
     ;
@@ -776,6 +837,10 @@ SHOW
 
 SINK
     : S I N K
+    ;
+
+SIZEINBYTES
+    : S I Z E I N B Y T E S
     ;
 
 SLIMIT
@@ -824,6 +889,10 @@ STATEMENT
 
 STOP
     : S T O P
+    ;
+
+STORAGE_PROPERTIES
+    : S T O R A G E '_' P R O P E R T I E S
     ;
 
 SUBSCRIPTION
@@ -948,6 +1017,10 @@ UNLINK
 
 UNLOAD
     : U N L O A D
+    ;
+
+UNLOCK
+    : U N L O C K
     ;
 
 UNSET
@@ -1126,6 +1199,18 @@ MAINTAIN
     : M A I N T A I N
     ;
 
+SECURITY
+    : S E C U R I T Y
+    ;
+
+AUDIT
+    : A U D I T
+    ;
+
+AUTH
+    : A U T H
+    ;
+
 REPAIR
     : R E P A I R
     ;
@@ -1142,12 +1227,12 @@ TIME_PARTITION_INTERVAL
     : T I M E '_' P A R T I T I O N '_' I N T E R V A L
     ;
 
-SCHEMA_REGION_GROUP_NUM
-    : S C H E M A '_' R E G I O N '_' G R O U P '_' N U M
+MAX_SCHEMA_REGION_GROUP_NUM
+    : M A X '_' S C H E M A '_' R E G I O N '_' G R O U P '_' N U M
     ;
 
-DATA_REGION_GROUP_NUM
-    : D A T A '_' R E G I O N '_' G R O U P '_' N U M
+MAX_DATA_REGION_GROUP_NUM
+    : M A X '_' D A T A '_' R E G I O N '_' G R O U P '_' N U M
     ;
 
 CURRENT_TIMESTAMP
@@ -1190,6 +1275,7 @@ OPERATOR_NOT : '!';
  * 4. Constructors Symbols
  */
 
+AT : '@';
 DOT : '.';
 COMMA : ',';
 SEMI: ';';

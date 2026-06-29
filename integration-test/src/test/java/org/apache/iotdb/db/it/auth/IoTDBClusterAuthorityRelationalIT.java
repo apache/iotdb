@@ -42,8 +42,8 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -58,14 +58,15 @@ import static org.junit.Assert.assertTrue;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class, TableClusterIT.class})
 public class IoTDBClusterAuthorityRelationalIT {
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     // Init 1C1D environment
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -82,7 +83,16 @@ public class IoTDBClusterAuthorityRelationalIT {
     // clean user
     TAuthorizerRelationalReq authorizerReq =
         new TAuthorizerRelationalReq(
-            AuthorRType.LIST_USER.ordinal(), "", "", "", "", "", Collections.emptySet(), false);
+            AuthorRType.LIST_USER.ordinal(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            0,
+            "");
 
     TAuthorizerResp authorizerResp = client.queryRPermission(authorizerReq);
     status = authorizerResp.getStatus();
@@ -100,7 +110,9 @@ public class IoTDBClusterAuthorityRelationalIT {
                 "",
                 "",
                 Collections.emptySet(),
-                false);
+                false,
+                0,
+                "");
         status = client.operateRPermission(authorizerReq);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
@@ -109,7 +121,16 @@ public class IoTDBClusterAuthorityRelationalIT {
     // clean role
     authorizerReq =
         new TAuthorizerRelationalReq(
-            AuthorRType.LIST_ROLE.ordinal(), "", "", "", "", "", Collections.emptySet(), false);
+            AuthorRType.LIST_ROLE.ordinal(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            0,
+            "");
 
     authorizerResp = client.queryRPermission(authorizerReq);
     status = authorizerResp.getStatus();
@@ -119,7 +140,16 @@ public class IoTDBClusterAuthorityRelationalIT {
     for (String role : allRoles) {
       authorizerReq =
           new TAuthorizerRelationalReq(
-              AuthorRType.DROP_ROLE.ordinal(), role, "", "", "", "", Collections.emptySet(), false);
+              AuthorRType.DROP_ROLE.ordinal(),
+              role,
+              "",
+              "",
+              "",
+              "",
+              Collections.emptySet(),
+              false,
+              0,
+              "");
       status = client.operateRPermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
@@ -138,7 +168,9 @@ public class IoTDBClusterAuthorityRelationalIT {
             "",
             "",
             Collections.emptySet(),
-            false);
+            false,
+            0,
+            "");
     status = client.operateRPermission(authorizerReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     authorizerReq =
@@ -150,7 +182,9 @@ public class IoTDBClusterAuthorityRelationalIT {
             "",
             "",
             Collections.emptySet(),
-            false);
+            false,
+            0,
+            "");
     TAuthorizerResp resp = client.queryRPermission(authorizerReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
     assertTrue(resp.getMemberInfo().contains(name));
@@ -174,7 +208,9 @@ public class IoTDBClusterAuthorityRelationalIT {
             "",
             "",
             Collections.singleton(sysPriv.ordinal()),
-            grantOpt);
+            grantOpt,
+            0,
+            "");
 
     status = client.operateRPermission(authorizerRelationalReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -228,7 +264,9 @@ public class IoTDBClusterAuthorityRelationalIT {
             union.getDBName() == null ? "" : union.getDBName(),
             union.getTbName() == null ? "" : union.getTbName(),
             Collections.singleton(union.getPrivilegeType().ordinal()),
-            union.isGrantOption());
+            union.isGrantOption(),
+            0,
+            "");
     status = client.operateRPermission(authorizerRelationalReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     int reqtype = -1;
@@ -333,7 +371,7 @@ public class IoTDBClusterAuthorityRelationalIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       cleanUserAndRole(client);
-      createUserORRoleAndCheck(client, "user1", true, "password");
+      createUserORRoleAndCheck(client, "user1", true, "password123456");
       createUserORRoleAndCheck(client, "role1", false, "");
       runAndCheck(
           client,
@@ -345,7 +383,9 @@ public class IoTDBClusterAuthorityRelationalIT {
               "",
               "",
               Collections.emptySet(),
-              false));
+              false,
+              0,
+              ""));
       grantSysPrivilegeAndCheck(client, "user1", "role1", true, PrivilegeType.MANAGE_USER, false);
       grantSysPrivilegeAndCheck(client, "user1", "role1", true, PrivilegeType.MANAGE_ROLE, true);
       grantPrivilegeAndCheck(
@@ -378,7 +418,7 @@ public class IoTDBClusterAuthorityRelationalIT {
       //        "database2".*       create(with grant option);
 
       // check login
-      TLoginReq req = new TLoginReq("user1", "password");
+      TLoginReq req = new TLoginReq("user1", "password123456");
       expectSuccess(client.login(req));
 
       // check user has role.
@@ -391,7 +431,9 @@ public class IoTDBClusterAuthorityRelationalIT {
               "",
               Collections.emptySet(),
               false,
-              AuthUtils.serializePartialPathList(Collections.emptyList()));
+              AuthUtils.serializePartialPathList(Collections.emptyList()),
+              0,
+              "");
       expectSuccess(client.checkRoleOfUser(user_role_req));
 
       // check db is visible

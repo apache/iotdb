@@ -20,14 +20,15 @@
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.io.IOUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -76,7 +77,8 @@ public class TemplateTable {
     try {
       Template template = templateMap.get(name);
       if (template == null) {
-        throw new MetadataException(String.format("Template %s does not exist", name));
+        throw new MetadataException(
+            String.format(ConfigNodeMessages.TEMPLATE_DOES_NOT_EXIST, name));
       }
       return templateMap.get(name);
     } finally {
@@ -90,7 +92,7 @@ public class TemplateTable {
       Template template = templateIdMap.get(templateId);
       if (template == null) {
         throw new MetadataException(
-            String.format("Template with id=%s does not exist", templateId));
+            String.format(ConfigNodeMessages.TEMPLATE_WITH_ID_DOES_NOT_EXIST, templateId));
       }
       return template;
     } finally {
@@ -113,8 +115,9 @@ public class TemplateTable {
       final Template temp = this.templateMap.get(template.getName());
       if (temp != null) {
         LOGGER.error(
-            "Failed to create template, because template name {} exists", template.getName());
-        throw new MetadataException("Duplicated template name: " + temp.getName());
+            ConfigNodeMessages.FAILED_TO_CREATE_TEMPLATE_BECAUSE_TEMPLATE_NAME_EXISTS,
+            template.getName());
+        throw new MetadataException(ConfigNodeMessages.DUPLICATED_TEMPLATE_NAME + temp.getName());
       }
       template.setId(templateIdGenerator.getAndIncrement());
       this.templateMap.put(template.getName(), template);
@@ -129,7 +132,7 @@ public class TemplateTable {
     try {
       Template temp = this.templateMap.remove(templateName);
       if (temp == null) {
-        LOGGER.error("Undefined template {}", templateName);
+        LOGGER.error(ConfigNodeMessages.UNDEFINED_TEMPLATE, templateName);
         throw new UndefinedTemplateException(templateName);
       }
       templateIdMap.remove(temp.getId());
@@ -156,7 +159,7 @@ public class TemplateTable {
               dataTypeList.get(i),
               encodingList == null ? getDefaultEncoding(dataTypeList.get(i)) : encodingList.get(i),
               compressionTypeList == null
-                  ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                  ? TSFileDescriptor.getInstance().getConfig().getCompressor(dataTypeList.get(i))
                   : compressionTypeList.get(i));
         } else {
           if (!measurementSchema.getType().equals(dataTypeList.get(i))
@@ -166,8 +169,10 @@ public class TemplateTable {
                   && !measurementSchema.getCompressor().equals(compressionTypeList.get(i)))) {
             throw new MetadataException(
                 String.format(
-                    "Schema of measurement %s is not compatible with existing measurement in template %s",
-                    measurementList.get(i), template.getName()));
+                    ConfigNodeMessages
+                        .SCHEMA_OF_MEASUREMENT_IS_NOT_COMPATIBLE_WITH_EXISTING_MEASUREMENT_IN,
+                    measurementList.get(i),
+                    template.getName()));
           }
         }
       }
@@ -185,12 +190,8 @@ public class TemplateTable {
     }
   }
 
-  private void serializeTemplate(Template template, OutputStream outputStream) {
-    try {
-      template.serialize(outputStream);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+  private void serializeTemplate(Template template, OutputStream outputStream) throws IOException {
+    template.serialize(outputStream);
   }
 
   private void deserialize(InputStream inputStream) throws IOException {
@@ -215,7 +216,7 @@ public class TemplateTable {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "template failed to take snapshot, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.TEMPLATE_FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -240,7 +241,8 @@ public class TemplateTable {
           break;
         } else {
           LOGGER.warn(
-              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+              ConfigNodeMessages.CAN_T_DELETE_TEMPORARY_SNAPSHOT_FILE_RETRYING,
+              tmpFile.getAbsolutePath());
         }
       }
       templateReadWriteLock.writeLock().unlock();
@@ -251,7 +253,7 @@ public class TemplateTable {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
           snapshotFile.getAbsolutePath());
       return;
     }

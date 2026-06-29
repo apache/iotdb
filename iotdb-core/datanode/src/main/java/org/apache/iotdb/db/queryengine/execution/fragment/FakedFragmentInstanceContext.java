@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.FakedMemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -35,7 +35,7 @@ import java.util.List;
 public class FakedFragmentInstanceContext extends FragmentInstanceContext {
 
   public FakedFragmentInstanceContext(Filter timeFilter, DataRegion dataRegion) {
-    super(0, new FakedMemoryReservationManager(), timeFilter, dataRegion);
+    super(0, new FakedMemoryReservationManager(), timeFilter, dataRegion, false, false);
   }
 
   public QueryDataSource getSharedQueryDataSource(IFullPath sourcePath)
@@ -48,7 +48,7 @@ public class FakedFragmentInstanceContext extends FragmentInstanceContext {
 
   public void initQueryDataSource(IFullPath sourcePath) throws QueryProcessException {
 
-    dataRegion.readLock();
+    dataRegion.tryReadLock(Long.MAX_VALUE);
     try {
       this.sharedQueryDataSource =
           dataRegion.query(
@@ -56,7 +56,8 @@ public class FakedFragmentInstanceContext extends FragmentInstanceContext {
               sourcePath.getDeviceId(),
               this,
               getGlobalTimeFilter(),
-              null);
+              null,
+              Long.MAX_VALUE);
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge

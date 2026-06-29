@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+
+import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
@@ -66,6 +69,15 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
   }
 
   @Override
+  public void reserveMemoryImmediately(final long size) {
+    if (size != 0) {
+      LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
+          size, reservedBytesInTotal, queryId.getId(), contextHolder);
+      reservedBytesInTotal += size;
+    }
+  }
+
+  @Override
   public void releaseMemoryCumulatively(final long size) {
     bytesToBeReleased += size;
     if (bytesToBeReleased >= MEMORY_BATCH_THRESHOLD) {
@@ -90,5 +102,26 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
       bytesToBeReserved = 0;
       bytesToBeReleased = 0;
     }
+  }
+
+  @Override
+  public Pair<Long, Long> releaseMemoryVirtually(final long size) {
+    if (bytesToBeReserved >= size) {
+      bytesToBeReserved -= size;
+      return new Pair<>(size, 0L);
+    } else {
+      long releasedBytesInReserved = bytesToBeReserved;
+      long releasedBytesInTotal = size - bytesToBeReserved;
+      bytesToBeReserved = 0;
+      reservedBytesInTotal -= releasedBytesInTotal;
+      return new Pair<>(releasedBytesInReserved, releasedBytesInTotal);
+    }
+  }
+
+  @Override
+  public void reserveMemoryVirtually(
+      final long bytesToBeReserved, final long bytesAlreadyReserved) {
+    reservedBytesInTotal += bytesAlreadyReserved;
+    reserveMemoryCumulatively(bytesToBeReserved);
   }
 }

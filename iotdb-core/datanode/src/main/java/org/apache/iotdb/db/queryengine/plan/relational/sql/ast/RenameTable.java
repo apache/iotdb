@@ -19,7 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,6 +39,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class RenameTable extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RenameTable.class);
+
   private final QualifiedName source;
   private final Identifier target;
 
@@ -46,8 +60,8 @@ public class RenameTable extends Statement {
     this.tableIfExists = tableIfExists;
     this.view = view;
     if (!view) {
-      throw new UnsupportedOperationException(
-          "The renaming for base table is currently unsupported");
+      throw new SemanticException(
+          DataNodeQueryMessages.THE_RENAMING_FOR_BASE_TABLE_IS_CURRENTLY_UNSUPPORTED);
     }
   }
 
@@ -68,8 +82,8 @@ public class RenameTable extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitRenameTable(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitRenameTable(this, context);
   }
 
   @Override
@@ -105,5 +119,14 @@ public class RenameTable extends Statement {
         .add("tableIfExists", tableIfExists)
         .add("view", view)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += source == null ? 0L : source.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(target);
+    return size;
   }
 }

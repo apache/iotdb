@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetecto
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -58,6 +59,10 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
   @Override
   protected void columnCheck(final ConfigNodeProcedureEnv env) {
     super.columnCheck(env);
+    // Check failure
+    if (getState().equals(ProcedureState.FAILED)) {
+      return;
+    }
 
     final Map<String, Set<FieldColumnSchema>> fields2Detect = new HashMap<>();
     for (final TsTableColumnSchema schema : addedColumnList) {
@@ -76,8 +81,7 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
           new TreeDeviceViewFieldDetector(env.getConfigManager(), table, fields2Detect)
               .detectMissingFieldTypes();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        setFailure(new ProcedureException(new IoTDBException(status)));
       }
     }
   }

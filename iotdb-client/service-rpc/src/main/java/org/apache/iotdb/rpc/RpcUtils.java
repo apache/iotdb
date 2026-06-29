@@ -21,6 +21,7 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -30,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Proxy;
+import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -149,8 +151,7 @@ public class RpcUtils {
   }
 
   public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
-    StringBuilder errMsgs =
-        new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getStatusCode()).append(": ");
+    StringBuilder errMsgs = new StringBuilder();
     for (TSStatus status : statuses) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -158,7 +159,8 @@ public class RpcUtils {
       }
     }
     if (errMsgs.length() > 0) {
-      throw new BatchExecutionException(statuses, errMsgs.toString());
+      throw new BatchExecutionException(
+          statuses, TSStatusCode.MULTIPLE_ERROR.getStatusCode() + ": " + errMsgs);
     }
   }
 
@@ -179,15 +181,27 @@ public class RpcUtils {
       for (TSStatus subStatus : statusList) {
         if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && subStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          if (!msgSet.contains(status)) {
-            errMsg.append(status).append("; ");
-            msgSet.add(status);
+          if (!msgSet.contains(subStatus)) {
+            errMsg.append(subStatus).append("; ");
+            msgSet.add(subStatus);
           }
         }
       }
       LOGGER.debug(errMsg.toString(), new Exception(errMsg.toString()));
     }
     return status;
+  }
+
+  public static TSStatus extractFailureStatues(final TSStatus input) {
+    return input.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
+        ? new TSStatus(input.getCode())
+            .setMessage(input.getMessage())
+            .setSubStatus(
+                input.getSubStatus().stream()
+                    .filter(
+                        status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                    .collect(Collectors.toList()))
+        : input;
   }
 
   /**
@@ -206,6 +220,38 @@ public class RpcUtils {
   public static TSStatus getStatus(int code, String message) {
     TSStatus status = new TSStatus(code);
     status.setMessage(message);
+    return status;
+  }
+
+  /**
+   * Build a {@link TSStatus} with code, optional message and optional binary payload (Thrift {@code
+   * binary} maps to {@link ByteBuffer}).
+   *
+   * @param tsStatusCode status code
+   * @param message optional message; if null, message field is left unset
+   * @param responseData optional serialized payload; if null, responseData field is left unset
+   */
+  public static TSStatus getStatus(
+      final TSStatusCode tsStatusCode, final String message, final ByteBuffer responseData) {
+    return getStatus(tsStatusCode.getStatusCode(), message, responseData);
+  }
+
+  /**
+   * Build a {@link TSStatus} with code, optional message and optional binary payload.
+   *
+   * @param code status code
+   * @param message optional message; if null, message field is left unset
+   * @param responseData optional serialized payload; if null, responseData field is left unset
+   */
+  public static TSStatus getStatus(
+      final int code, final String message, final ByteBuffer responseData) {
+    final TSStatus status = new TSStatus(code);
+    if (message != null) {
+      status.setMessage(message);
+    }
+    if (responseData != null) {
+      status.setResponseData(responseData);
+    }
     return status;
   }
 
@@ -414,7 +460,7 @@ public class RpcUtils {
           case NANOSECOND:
             return 1_000_000_000;
           default:
-            throw new IllegalArgumentException("Unknown time precision: " + precision);
+            throw new IllegalArgumentException(RpcMessages.UNKNOWN_TIME_PRECISION + precision);
         }
       }
     }
@@ -430,7 +476,7 @@ public class RpcUtils {
       case 1_000_000_000:
         return NANOSECOND;
       default:
-        throw new IllegalArgumentException("Unknown time factor: " + timeFactor);
+        throw new IllegalArgumentException(RpcMessages.UNKNOWN_TIME_FACTOR + timeFactor);
     }
   }
 }

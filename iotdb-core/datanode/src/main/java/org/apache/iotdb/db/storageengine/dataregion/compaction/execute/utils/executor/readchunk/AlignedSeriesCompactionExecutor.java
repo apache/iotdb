@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -82,7 +83,9 @@ public class AlignedSeriesCompactionExecutor {
     this.writer = writer;
     this.targetResource = targetResource;
     schemaList = collectSchemaFromAlignedChunkMetadataList(readerAndChunkMetadataList);
-    chunkWriter = new AlignedChunkWriterImpl(schemaList);
+    chunkWriter =
+        new AlignedChunkWriterImpl(
+            schemaList, EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
     this.summary = summary;
   }
 

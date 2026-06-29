@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -50,6 +50,7 @@ public class ShowQueriesOperator implements SourceOperator {
   private boolean hasConsumed;
 
   private final Coordinator coordinator;
+  private final String allowedUsername;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
@@ -58,10 +59,14 @@ public class ShowQueriesOperator implements SourceOperator {
       RamUsageEstimator.shallowSizeOfInstance(ShowQueriesOperator.class);
 
   public ShowQueriesOperator(
-      OperatorContext operatorContext, PlanNodeId sourceId, Coordinator coordinator) {
+      OperatorContext operatorContext,
+      PlanNodeId sourceId,
+      Coordinator coordinator,
+      String allowedUsername) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.coordinator = coordinator;
+    this.allowedUsername = allowedUsername;
   }
 
   @Override
@@ -132,7 +137,10 @@ public class ShowQueriesOperator implements SourceOperator {
       int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
 
       for (IQueryExecution queryExecution : queryExecutions) {
-        if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TREE)) {
+        if (allowedUsername != null && !allowedUsername.equals(queryExecution.getUser())) {
+          continue;
+        }
+        if (queryExecution.getSQLDialect().equals(SqlDialect.TREE)) {
           timeColumnBuilder.writeLong(
               TimestampPrecisionUtils.convertToCurrPrecision(
                   queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));
@@ -142,6 +150,10 @@ public class ShowQueriesOperator implements SourceOperator {
               (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
           columnBuilders[3].writeBinary(
               BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
+          columnBuilders[4].writeFloat(
+              (float) queryExecution.getTotalExecutionTime() / 1000_000_000);
+          columnBuilders[5].writeBinary(BytesUtils.valueOf(queryExecution.getClientHostname()));
+          columnBuilders[6].writeLong(queryExecution.getTimeout());
           builder.declarePosition();
         }
       }

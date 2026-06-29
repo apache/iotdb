@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -29,8 +30,8 @@ import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.data.ImportDataScanTool;
 
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.RowRecord;
 
 import java.io.BufferedReader;
@@ -48,17 +49,20 @@ public class ImportSchemaTable extends AbstractImportSchema {
   private static ITableSessionPool sessionPool;
 
   public void init() throws InterruptedException {
-    sessionPool =
+    TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
             .nodeUrls(Collections.singletonList(host + ":" + port))
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
-            .enableCompression(false)
+            .enableThriftCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
-            .database(database)
-            .build();
+            .database(database);
+    if (useSsl) {
+      tableSessionPoolBuilder = configureSsl(tableSessionPoolBuilder);
+    }
+    sessionPool = tableSessionPoolBuilder.build();
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
       ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
@@ -183,6 +187,6 @@ public class ImportSchemaTable extends AbstractImportSchema {
 
   @Override
   protected void importSchemaFromCsvFile(File file) {
-    throw new UnsupportedOperationException("Not supported yet.");
+    throw new UnsupportedOperationException(CliMessages.NOT_SUPPORTED_YET);
   }
 }

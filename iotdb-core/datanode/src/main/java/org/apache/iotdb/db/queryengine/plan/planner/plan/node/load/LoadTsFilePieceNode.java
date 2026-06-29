@@ -21,10 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 
@@ -34,7 +35,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -104,7 +104,8 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of load piece TsFile is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CLONE_OF_LOAD_PIECE_TSFILE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -125,7 +126,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       serializeAttributes(stream);
       byteBuffer.put(byteOutputStream.toByteArray());
     } catch (IOException e) {
-      LOGGER.error("Serialize to ByteBuffer error.", e);
+      LOGGER.error(DataNodeQueryMessages.SERIALIZE_TO_BYTEBUFFER_ERROR, e);
     }
   }
 
@@ -148,11 +149,14 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
-    throw new NotImplementedException("split load piece TsFile is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.SPLIT_LOAD_PIECE_TSFILE_IS_NOT_IMPLEMENTED);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
-    InputStream stream = new ByteArrayInputStream(buffer.array());
+    buffer = buffer.duplicate();
+    buffer.position(0);
+    ByteBufferInputStream stream = new ByteBufferInputStream(buffer);
     try {
       ReadWriteIOUtils.readShort(stream); // read PlanNodeType
       final File tsFile = new File(ReadWriteIOUtils.readString(stream));
@@ -165,7 +169,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       pieceNode.setPlanNodeId(PlanNodeId.deserialize(stream));
       return pieceNode;
     } catch (IOException | PageException | IllegalPathException e) {
-      LOGGER.error("Deserialize {} error.", LoadTsFilePieceNode.class.getName(), e);
+      LOGGER.error(DataNodeQueryMessages.DESERIALIZE_ERROR, LoadTsFilePieceNode.class.getName(), e);
       return null;
     }
   }
@@ -192,5 +196,43 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   @Override
   public String toString() {
     return "LoadTsFilePieceNode{" + "tsFile=" + tsFile + ", dataSize=" + dataSize + '}';
+  }
+
+  public static class ByteBufferInputStream extends InputStream {
+    private final ByteBuffer buffer;
+
+    public ByteBufferInputStream(ByteBuffer buffer) {
+      this.buffer = buffer;
+    }
+
+    @Override
+    public int read() {
+      if (!buffer.hasRemaining()) {
+        return -1;
+      }
+      return buffer.get() & 0xFF;
+    }
+
+    @Override
+    public int read(byte[] b, int off, int len) {
+      if (!buffer.hasRemaining()) {
+        return -1;
+      }
+      int toRead = Math.min(len, buffer.remaining());
+      buffer.get(b, off, toRead);
+      return toRead;
+    }
+
+    public ByteBuffer read(int length) {
+      if (length < 0 || length > buffer.remaining()) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.INVALID_LENGTH_FOR_SLICING + length);
+      }
+      ByteBuffer slicedBuffer = buffer.slice();
+      slicedBuffer.limit(length);
+
+      buffer.position(buffer.position() + length);
+      return slicedBuffer;
+    }
   }
 }

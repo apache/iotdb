@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.RepairUnsortedFileCompactionWriter;
@@ -28,6 +29,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
+
+import org.apache.tsfile.encrypt.EncryptParameter;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -37,8 +41,13 @@ import java.util.List;
 /** Used for fixing files which contains internal unsorted data */
 public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPerformer {
 
+  @TestOnly
   public RepairUnsortedFileCompactionPerformer() {
-    super();
+    super(EncryptDBUtils.getDefaultFirstEncryptParam());
+  }
+
+  public RepairUnsortedFileCompactionPerformer(EncryptParameter encryptParameter) {
+    super(encryptParameter);
   }
 
   @Override
@@ -47,7 +56,8 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources)
       throws IOException {
-    return new RepairUnsortedFileCompactionWriter(targetFileResources.get(0));
+    return new RepairUnsortedFileCompactionWriter(
+        targetFileResources.get(0), getEncryptParameter());
   }
 
   @Override

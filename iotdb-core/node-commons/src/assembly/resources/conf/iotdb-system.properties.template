@@ -73,7 +73,7 @@ cn_consensus_port=10720
 # Could set 127.0.0.1(for local test) or ipv4 address
 # effectiveMode: restart
 # Datatype: String
-dn_rpc_address=0.0.0.0
+dn_rpc_address=127.0.0.1
 
 # Used for connection of IoTDB native clients(Session)
 # Bind with dn_rpc_address
@@ -139,7 +139,7 @@ schema_replication_factor=1
 # These consensus protocols are currently supported:
 # 1. org.apache.iotdb.consensus.ratis.RatisConsensus
 # 2. org.apache.iotdb.consensus.simple.SimpleConsensus   (The schema_replication_factor can only be set to 1)
-# effectiveMode: first_restart
+# effectiveMode: first_start
 # Datatype: string
 schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
 
@@ -438,26 +438,49 @@ dn_metric_internal_reporter_type=MEMORY
 ### SSL Configuration
 ####################
 
-# Does dn_rpc_port enable SSL
+# Whether enable SSL for thrift client connections
 # effectiveMode: restart
 # Datatype: boolean
+# Privilege: SECURITY
 enable_thrift_ssl=false
 
-# Rest Service enabled SSL
+# Whether enable SSL for Rest Service
 # effectiveMode: restart
 # Datatype: boolean
+# Privilege: SECURITY
 enable_https=false
 
 # SSL key store path
 # linux e.g. /home/iotdb/server.keystore (absolute path) or server.keystore (relative path)
 # windows e.g. C:\\iotdb\\server.keystore (absolute path) or server.keystore (relative path)
 # effectiveMode: restart
+# Privilege: SECURITY
 key_store_path=
 
 # SSL key store password
 # effectiveMode: restart
 # Datatype: String
+# Privilege: SECURITY
 key_store_pwd=
+
+# SSL trust store path
+# linux e.g. /home/iotdb/server.truststore (absolute path) or server.truststore (relative path)
+# windows e.g. C:\\iotdb\\server.truststore (absolute path) or server.truststore (relative path)
+# effectiveMode: restart
+trust_store_path=
+
+# SSL trust store password
+# effectiveMode: restart
+# Datatype: String
+trust_store_pwd=
+
+# SSL protocol used by server-side SSL services.
+# The protocol is passed to the current JSSE provider, such as TLS, TLSv1.2,
+# TLSv1.3, or another provider-specific SSL protocol name.
+# effectiveMode: restart
+# Datatype: String
+# Privilege: SECURITY
+ssl_protocol=TLS
 
 ####################
 ### Connection Configuration
@@ -479,9 +502,10 @@ cn_rpc_max_concurrent_client_num=3000
 cn_connection_timeout_ms=60000
 
 # selector thread (TAsyncClientManager) nums for async thread in a clientManager
+# When <= 0, use max(1, CPU core number / 4).
 # effectiveMode: restart
 # Datatype: int
-cn_selector_thread_nums_of_client_manager=1
+cn_selector_thread_nums_of_client_manager=0
 
 # The maximum number of clients that can be allocated for a node in a clientManager.
 # when the number of the client to a single node exceeds this number, the thread for applying for a client will be blocked
@@ -489,6 +513,14 @@ cn_selector_thread_nums_of_client_manager=1
 # effectiveMode: restart
 # Datatype: int
 cn_max_client_count_for_each_node_in_client_manager=1000
+
+# The maximum number of idle clients that can be retained for a node in a clientManager.
+# When the number of idle clients to a single node exceeds this number, excess idle clients will be evicted.
+# Idle clients are determined by a time threshold (default 1 minute of inactivity).
+# 0 means no idle clients will be retained, connections are destroyed immediately upon return.
+# effectiveMode: restart
+# Datatype: int
+cn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
@@ -508,20 +540,15 @@ dn_rpc_thrift_compression_enable=false
 # this feature is under development, set this as false before it is done.
 dn_rpc_advanced_compression_enable=false
 
-# the number of rpc selector
-# effectiveMode: restart
-# Datatype: int
-dn_rpc_selector_thread_count=1
-
 # The maximum number of concurrent clients that can be connected to the dataNode.
 # effectiveMode: restart
 # Datatype: int
 dn_rpc_max_concurrent_client_num=1000
 
-# thrift max frame size, 512MB by default
+# thrift max frame size in bytes. When set to 0, use min(64MB, datanode heap memory / 64)
 # effectiveMode: restart
 # Datatype: int
-dn_thrift_max_frame_size=536870912
+dn_thrift_max_frame_size=0
 
 # thrift init buffer size
 # effectiveMode: restart
@@ -534,9 +561,10 @@ dn_thrift_init_buffer_size=1024
 dn_connection_timeout_ms=60000
 
 # selector thread (TAsyncClientManager) nums for async thread in a clientManager
+# When <= 0, use max(1, CPU core number / 4).
 # effectiveMode: restart
 # Datatype: int
-dn_selector_thread_count_of_client_manager=1
+dn_selector_thread_nums_of_client_manager=0
 
 # The maximum number of clients that can be allocated for a node in a clientManager.
 # When the number of the client to a single node exceeds this number, the thread for applying for a client will be blocked
@@ -544,6 +572,14 @@ dn_selector_thread_count_of_client_manager=1
 # effectiveMode: restart
 # Datatype: int
 dn_max_client_count_for_each_node_in_client_manager=1000
+
+# The maximum number of idle clients that can be retained for a node in a clientManager.
+# When the number of idle clients to a single node exceeds this number, excess idle clients will be evicted.
+# Idle clients are determined by a time threshold (default 1 minute of inactivity).
+# 0 means no idle clients will be retained, connections are destroyed immediately upon return.
+# effectiveMode: restart
+# Datatype: int
+dn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 ####################
 ### REST Service Configuration
@@ -559,7 +595,7 @@ enable_rest_service=false
 # Datatype: int
 rest_service_port=18080
 
-# Whether to display rest service interface information through swagger. eg: http://ip:port/swagger.json
+# Whether to display rest service interface information through OpenAPI. eg: http://ip:port/openapi.json
 # effectiveMode: restart
 # Datatype: boolean
 enable_swagger=false
@@ -569,34 +605,10 @@ enable_swagger=false
 # Datatype: int
 rest_query_default_row_size_limit=10000
 
-# the expiration time of the user login information cache (in seconds)
-# effectiveMode: restart
-# Datatype: int
-cache_expire_in_seconds=28800
-
-# maximum number of users can be stored in the user login cache.
-# effectiveMode: restart
-# Datatype: int
-cache_max_num=100
-
-# init capacity of users can be stored in the user login cache.
-# effectiveMode: restart
-# Datatype: int
-cache_init_num=10
-
 # Is client authentication required
 # effectiveMode: restart
 # Datatype: boolean
 client_auth=false
-
-# SSL trust store path
-# effectiveMode: restart
-trust_store_path=""
-
-# SSL trust store password.
-# effectiveMode: restart
-# Datatype: String
-trust_store_pwd=""
 
 # SSL timeout (in seconds)
 # effectiveMode: restart
@@ -630,7 +642,7 @@ series_partition_executor_class=org.apache.iotdb.commons.partition.executor.hash
 # These policies are currently supported:
 # 1. CUSTOM(Each Database will allocate schema_region_group_per_database RegionGroups as soon as created)
 # 2. AUTO(Each Database will automatically extend SchemaRegionGroups based on the data it has)
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: String
 schema_region_group_extension_policy=AUTO
 
@@ -638,7 +650,7 @@ schema_region_group_extension_policy=AUTO
 # this parameter is the default number of SchemaRegionGroups for each Database.
 # When set schema_region_group_extension_policy=AUTO,
 # this parameter is the default minimal number of SchemaRegionGroups for each Database.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: Integer
 default_schema_region_group_num_per_database=1
 
@@ -646,7 +658,7 @@ default_schema_region_group_num_per_database=1
 # This parameter is the maximum number of SchemaRegions expected to be managed by each DataNode.
 # Notice: Since each Database requires at least one SchemaRegionGroup to manage its schema,
 # this parameter doesn't limit the upper bound of cluster SchemaRegions when there are too many Databases.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: Integer
 schema_region_per_data_node=1
 
@@ -654,7 +666,7 @@ schema_region_per_data_node=1
 # These policies are currently supported:
 # 1. CUSTOM(Each Database will allocate data_region_group_per_database DataRegionGroups as soon as created)
 # 2. AUTO(Each Database will automatically extend DataRegionGroups based on the data it has)
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: String
 data_region_group_extension_policy=AUTO
 
@@ -662,7 +674,7 @@ data_region_group_extension_policy=AUTO
 # this parameter is the default number of DataRegionGroups for each Database.
 # When set data_region_group_extension_policy=AUTO,
 # this parameter is the default minimal number of DataRegionGroups for each Database.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: Integer
 default_data_region_group_num_per_database=2
 
@@ -671,9 +683,18 @@ default_data_region_group_num_per_database=2
 # Set to 0 means that each node automatically has the number of CPU cores / 2 regions
 # Notice: Since each Database requires at least two DataRegionGroups to manage its data,
 # this parameter doesn't limit the upper bound of cluster DataRegions when there are too many Databases.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: Integer
 data_region_per_data_node=0
+
+# The policy of allocating new RegionGroup replicas to DataNodes.
+# These policies are currently supported:
+# 1. GREEDY (Each replica is placed on the DataNode that currently holds the fewest regions; database-aware tie-break)
+# 2. GCR (Greedy + CopySet; balances cluster regions, per-database regions, and 2-region scatter)
+# 3. PGP (Partite-Graph Placement; based on the PGP paper, with database-aware balance)
+# effectiveMode: restart
+# Datatype: String
+region_group_allocate_policy=GCR
 
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
@@ -681,13 +702,6 @@ data_region_per_data_node=0
 # effectiveMode: restart
 # Datatype: Boolean
 enable_auto_leader_balance_for_ratis_consensus=true
-
-# Whether to enable auto leader balance for IoTConsensus protocol.
-# The ConfigNode-leader will balance the leader of IoTConsensus-RegionGroups by leader_distribution_policy if set true.
-# Notice: Default is true because the IoTConsensus depends on this function to distribute leader.
-# effectiveMode: restart
-# Datatype: Boolean
-enable_auto_leader_balance_for_iot_consensus=true
 
 ####################
 ### Cluster management
@@ -707,7 +721,7 @@ time_partition_origin=0
 time_partition_interval=604800000
 
 # The heartbeat interval in milliseconds, default is 1000ms
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: long
 heartbeat_interval_in_ms=1000
 
@@ -731,10 +745,49 @@ failure_detector_phi_threshold=30
 # Datatype: long
 failure_detector_phi_acceptable_pause_in_ms=10000
 
+# Whether to enable topology probing between DataNodes
+# effectiveMode: hot_reload
+# Datatype: Boolean
+enable_topology_probing=false
+
+# Base interval in ms for topology probing between DataNodes
+# effectiveMode: restart
+# Datatype: long
+topology_probing_base_interval_in_ms=5000
+
+# Ratio of probing timeout to probing interval (must be less than 1.0)
+# effectiveMode: restart
+# Datatype: double
+topology_probing_timeout_ratio=0.5
+
 # Disk remaining threshold at which DataNode is set to ReadOnly status
 # effectiveMode: restart
 # Datatype: double(percentage)
 disk_space_warning_threshold=0.05
+
+# The refresh interval in milliseconds for the occupied-space cache used by
+# MinFolderOccupiedSpaceFirstStrategy. The default is 60000 (60 seconds).
+# effectiveMode: restart
+# Datatype: long
+min_folder_occupied_space_cache_refresh_interval_ms=60000
+
+# The number of folder selections after which MinFolderOccupiedSpaceFirstStrategy refreshes its
+# occupied-space cache. The default is 1000.
+# effectiveMode: restart
+# Datatype: int
+min_folder_occupied_space_cache_refresh_selection_threshold=1000
+
+# Purpose: for data partition repair
+# The number of threads used for parallel scanning in the partition table recovery
+# effectiveMode: restart
+# Datatype: Integer
+partition_table_recover_worker_num=10
+
+# Purpose: for data partition repair
+# Limit the number of bytes read per second from a file, the unit is MB
+# effectiveMode: restart
+# Datatype: Integer
+partition_table_recover_max_read_megabytes_per_second=10
 
 ####################
 ### Memory Control Configuration
@@ -743,6 +796,7 @@ disk_space_warning_threshold=0.05
 # Memory Allocation Ratio: StorageEngine, QueryEngine, SchemaEngine, Consensus, StreamingEngine and Free Memory.
 # The parameter form is a:b:c:d:e:f, where a, b, c, d, e and f are integers. for example: 1:1:1:1:1:1 , 6:2:1:1:1:1
 # If you have high level of writing pressure and low level of reading pressure, please adjust it to for example 6:1:1:1:1:1
+# 50% of Free Memory is used by AutoResizingBuffer memory control.
 # effectiveMode: restart
 datanode_memory_proportion=3:3:1:1:1:1
 
@@ -805,6 +859,11 @@ device_path_cache_proportion=0.05
 # Datatype: double
 write_memory_variation_report_proportion=0.001
 
+# The maximum memory size in bytes for DataNode to table schema cache
+# effectiveMode: restart
+# Datatype: long
+data_node_table_schema_cache_max_size_in_bytes=1048576
+
 # When an inserting is rejected, waiting period (in ms) to check system again, 50 by default.
 # If the insertion has been rejected and the read load is low, it can be set larger.
 # effectiveMode: restart
@@ -820,6 +879,11 @@ io_task_queue_size_for_flushing=10
 # effectiveMode: hot_reload
 # Datatype: bool
 enable_query_memory_estimation=true
+
+# max sub task num on a DataNode for InformationTableScan
+# effectiveMode: hot_reload
+# Datatype: int
+max_sub_task_num_for_information_table_scan=4
 
 ####################
 ### Schema Engine Configuration
@@ -858,6 +922,12 @@ tag_attribute_flush_interval=1000
 # effectiveMode: first_start
 # Datatype: int
 tag_attribute_total_size=700
+
+# The maximum number of single measurement check results cached by PathUtils.
+# Set to 0 to disable this cache.
+# effectiveMode: restart
+# Datatype: int
+single_measurement_check_cache_size=10000
 
 # max measurement num of internal request
 # When creating timeseries with Session.createMultiTimeseries, the user input plan, the timeseries num of
@@ -919,7 +989,7 @@ enable_auto_create_schema=true
 # Default: 1
 # When illegal: report an error and change nothing during hot-reload; use the default value in
 # start-up
-default_storage_group_level=1
+default_database_level=1
 
 # ALL data types: BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
 
@@ -977,6 +1047,36 @@ default_double_encoding=GORILLA
 # Datatype: TSEncoding
 default_text_encoding=PLAIN
 
+# BOOLEAN compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+boolean_compressor=LZ4
+
+# INT32/DATE compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+int32_compressor=LZ4
+
+# INT64/TIMESTAMP compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+int64_compressor=LZ4
+
+# FLOAT compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+float_compressor=LZ4
+
+# DOUBLE compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+double_compressor=LZ4
+
+# TEXT/BINARY/BLOB compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+text_compressor=LZ4
+
 ####################
 ### Query Configurations
 ####################
@@ -985,7 +1085,7 @@ default_text_encoding=PLAIN
 # These consistency levels are currently supported:
 # 1. strong(Default, read from the leader replica)
 # 2. weak(Read from a random replica)
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: string
 read_consistency_level=strong
 
@@ -993,6 +1093,11 @@ read_consistency_level=strong
 # effectiveMode: restart
 # Datatype: boolean
 meta_data_cache_enable=true
+
+# Whether to cache a placeholder for non-exist series.
+# effectiveMode: restart
+# Datatype: boolean
+may_cache_nonexist_series=true
 
 # Read memory Allocation Ratio: BloomFilterCache : ChunkCache : TimeSeriesMetadataCache : Coordinator : Operators : DataExchange : timeIndex in TsFileResourceList : others.
 # The parameter form is a:b:c:d:e:f:g:h, where a, b, c, d, e, f, g and h are integers. for example: 1:1:1:1:1:1:1:1 , 1:100:200:50:200:200:200:50
@@ -1039,6 +1144,12 @@ max_tsblock_line_number=1000
 # Datatype: long
 slow_query_threshold=10000
 
+# Time window threshold(min) for record of history queries.
+# effectiveMode: hot_reload
+# Datatype: int
+# Privilege: SYSTEM
+query_cost_stat_window=0
+
 # The max executing time of query. unit: ms
 # effectiveMode: restart
 # Datatype: int
@@ -1070,9 +1181,33 @@ mode_map_size_threshold=10000
 batch_size=100000
 
 # The memory for external sort in sort operator, when the data size is smaller than sort_buffer_size_in_bytes, the sort operator will use in-memory sort.
-# effectiveMode: restart
+# if sort_buffer_size_in_bytes <= 0, default value will be used, default value = min(32MB, memory for query operators / query_thread_count / 2)
+# if sort_buffer_size_in_bytes > 0, the specified value will be used.
+# effectiveMode: hot_reload
 # Datatype: long
-sort_buffer_size_in_bytes=1048576
+sort_buffer_size_in_bytes=0
+
+# The buffer size for CTE materialization. If cte_buffer_size_in_bytes <= 0, a default value of 128 KB is used; otherwise the specified value
+# will be used.
+# effectiveMode: hot_reload
+# Datatype: long
+# Privilege: SYSTEM
+# Unit: bytes
+cte_buffer_size_in_bytes=131072
+
+
+# Max rows for CTE materialization
+# effectiveMode: hot_reload
+# Datatype: int
+# Privilege: SYSTEM
+max_rows_in_cte_buffer=1000
+
+# The maximum mod entries size that each FragmentInstance can cache.
+# if mods_cache_size_limit_per_fi_in_bytes <= 0, default value will be used, default value = min(32MB, memory for query operators / query_thread_count / 2)
+# if mods_cache_size_limit_per_fi_in_bytes > 0, the specified value will be used.
+# effectiveMode: hot_reload
+# Datatype: long
+mods_cache_size_limit_per_fi_in_bytes=0
 
 # The threshold of operator count in the result set of EXPLAIN ANALYZE, if the number of operator in the result set is larger than this threshold, operator will be merged.
 # effectiveMode: hot_reload
@@ -1182,6 +1317,38 @@ unseq_memtable_flush_interval_in_ms=600000
 # Datatype: long
 unseq_memtable_flush_check_interval_in_ms=30000
 
+# Whether to enable delay analyzer for tracking data arrival delays and calculating safe watermarks.
+# The delay analyzer tracks the delay between data generation time and arrival time to calculate
+# safe watermarks for handling out-of-order data.
+# effectiveMode: restart
+# Datatype: boolean
+enable_delay_analyzer=true
+
+# Default window size for delay analyzer, empirical value: 10000 sample points.
+# A larger window provides more accurate P99 calculations but increases memory and sorting overhead.
+# effectiveMode: restart
+# Datatype: int
+delay_analyzer_window_size=10000
+
+# Minimum window size for delay analyzer validation.
+# Window size must be between min and max window size.
+# effectiveMode: restart
+# Datatype: int
+delay_analyzer_min_window_size=1000
+
+# Maximum window size for delay analyzer validation.
+# Window size must be between min and max window size.
+# effectiveMode: restart
+# Datatype: int
+delay_analyzer_max_window_size=100000
+
+# Default confidence level for delay analyzer: 99% (0.99).
+# Used for calculating safe watermarks based on delay quantiles.
+# Range: (0, 1], e.g., 0.99 represents 99% quantile (P99).
+# effectiveMode: restart
+# Datatype: double
+delay_analyzer_confidence_level=0.99
+
 # The sort algorithms used in the memtable's TVList
 # TIM: default tim sort,
 # QUICK: quick sort,
@@ -1249,6 +1416,7 @@ tier_ttl_in_ms=-1
 ####################
 ### Compaction Configurations
 ####################
+
 # sequence space compaction: only compact the sequence files
 # effectiveMode: hot_reload
 # Datatype: boolean
@@ -1453,14 +1621,14 @@ max_wal_nodes_num=0
 # Duration a wal flush operation will wait before calling fsync in the async mode
 # A duration greater than 0 batches multiple wal fsync calls into one. This is useful when disks are slow or WAL write contention exists.
 # Notice: this value affects write performance significantly, values in the range of 10ms-2000ms are recommended.
-# effective: hot_reload
+# effectiveMode: hot_reload
 # Datatype: long
 wal_async_mode_fsync_delay_in_ms=1000
 
 # Duration a wal flush operation will wait before calling fsync in the sync mode
 # A duration greater than 0 batches multiple wal fsync calls into one. This is useful when disks are slow or WAL write contention exists.
 # Notice: this value affects write performance significantly, values in the range of 0ms-10ms are recommended.
-# effective: hot_reload
+# effectiveMode: hot_reload
 # Datatype: long
 wal_sync_mode_fsync_delay_in_ms=3
 
@@ -1556,9 +1724,23 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
 
+# The minimum interval (in ms) between two per-file progress logs while transmitting a snapshot in
+# IoTConsensus. A snapshot may contain a huge number of files, so logging one line per file is
+# costly; this throttles it to at most once per interval. A value <= 0 logs every file.
+# effectiveMode: hot_reload
+# Datatype: long
+data_region_iot_snapshot_transmission_progress_log_interval_ms = 5000
+
+# When loading snapshot, try keeping TsFiles in the same disk as the snapshot dir.
+# This may reduce file copies but may also result in a worse disk load-balance
+# effectiveMode: hot_reload
+# Datatype: boolean
+keep_same_disk_when_loading_snapshot=true
+
 ####################
 ### Blob Allocator Configuration
 ####################
+
 # Whether to enable binary allocator.
 # For scenarios where large binary streams cause severe GC, enabling this parameter significantly improves performance.
 # effectiveMode: hot_reload
@@ -1638,13 +1820,9 @@ compressor=LZ4
 ####################
 
 # which class to serve for authorization. By default, it is LocalFileAuthorizer.
-# Another choice is org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer
 # effectiveMode: restart
+# Privilege: SECURITY
 authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer
-
-# If OpenIdAuthorizer is enabled, then openID_url must be set.
-# effectiveMode: restart
-openID_url=
 
 # encryption provider class
 # effectiveMode: first_start
@@ -1761,7 +1939,7 @@ into_operation_execution_thread_count=2
 continuous_query_submit_thread_count=2
 
 # The minimum value of the continuous query execution time interval
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: long(duration)
 continuous_query_min_every_interval_in_ms=1000
 
@@ -1820,6 +1998,15 @@ pipe_air_gap_receiver_port=9780
 # effectiveMode: hot_reload
 # Datatype: double
 pipe_all_sinks_rate_limit_bytes_per_second=-1
+
+####################
+### Subscription Consensus Configuration
+####################
+
+# The interval at which an idle consensus-subscription queue advances its writer safe-time barrier by watermark.
+# effectiveMode: restart
+# Datatype: long(duration)
+subscription_consensus_idle_safe_time_barrier_interval_ms=10000
 
 ####################
 ### RatisConsensus Configuration
@@ -1901,11 +2088,27 @@ data_region_ratis_max_retry_attempts=10
 data_region_ratis_initial_sleep_time_ms=100
 data_region_ratis_max_sleep_time_ms=10000
 
+# Max retry attempts for a Ratis configuration change (add/remove peer), e.g. during region
+# migration or cluster scale-in/out. Unlike the request retry policy above, reconfiguration retries
+# use a fixed 2s interval, so this roughly caps the wait at (attempts * 2s). Bounding it (instead of
+# retrying forever) prevents a killed ADDING peer that can never catch up from blocking the
+# reconfiguration -- and therefore the whole region migration -- indefinitely.
+# effectiveMode: restart
+# Datatype: int
+config_node_ratis_reconfiguration_max_retry_attempts=15
+schema_region_ratis_reconfiguration_max_retry_attempts=15
+data_region_ratis_reconfiguration_max_retry_attempts=15
+
 # first election timeout
 # effectiveMode: restart
 # Datatype: int
 ratis_first_election_timeout_min_ms=50
 ratis_first_election_timeout_max_ms=150
+
+# the timeout threshold for transferring leader in ratis
+# effectiveMode: restart
+# Datatype: int
+ratis_transfer_leader_timeout_ms=30000
 
 # preserve certain logs when take snapshot and purge
 # effectiveMode: restart
@@ -1931,6 +2134,7 @@ data_region_ratis_periodic_snapshot_interval=86400
 ####################
 ### IoTConsensusV2 Configuration
 ####################
+
 # Default event buffer size for connector and receiver in iot consensus v2
 # effectiveMode: restart
 # DataType: int
@@ -2045,6 +2249,17 @@ load_clean_up_task_execution_delay_time_seconds=1800
 # Datatype: int
 load_write_throughput_bytes_per_second=-1
 
+# Whether the load_tsfile supports path allowed dirs check.
+# effectiveMode: hot_reload
+# Datatype: String
+load_tsfile_source_path_check_enable=false
+
+# Comma-separated list of directories from which user-issued LOAD TSFILE statements can read.
+# If empty, IoTDB only permits LOAD sources under the internal load TsFile directories.
+# effectiveMode: hot_reload
+# Datatype: String
+load_tsfile_allowed_dirs=
+
 # Whether to enable the active listening mode for tsfile loading.
 # effectiveMode: hot_reload
 # Datatype: Boolean
@@ -2062,6 +2277,18 @@ load_active_listening_enable=true
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 load_active_listening_dirs=ext/load/pending
+
+# The directory to be actively listened for tsfile loading from Pipe.
+# Only one directory can be configured.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_pipe_dir=ext\\load\\pipe
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_pipe_dir=ext/load/pipe
 
 # The directory where tsfile are moved if the active listening mode fails to load them.
 # Only one directory can be configured.
@@ -2092,17 +2319,20 @@ load_active_listening_check_interval_seconds=5
 # UPDATE_NO_BLOB: similar to UPDATE, but will invalidate LastCache for blob series;
 # CLEAN_DEVICE: invalidate LastCache of devices contained in the TsFile;
 # CLEAN_ALL: clean the whole LastCache.
+# effectiveMode: restart
 last_cache_operation_on_load=UPDATE_NO_BLOB
 
 # Whether to cache last values before loading a TsFile. Only effective when
 # last_cache_operation_on_load=UPDATE_NO_BLOB or last_cache_operation_on_load=UPDATE.
 # When set to true, blob series will be ignored even with last_cache_operation_on_load=UPDATE.
 # Enabling this will increase the memory footprint during loading TsFiles.
+# effectiveMode: restart
 cache_last_values_for_load=true
 
 # When cache_last_values_for_load=true, the maximum memory that can be used to cache last values.
 # If this value is exceeded, the cached values will be abandoned and last values will be read from
 # the TsFile in a streaming manner.
+# effectiveMode: restart
 cache_last_values_memory_budget_in_byte=4194304
 
 ####################
@@ -2122,3 +2352,8 @@ write_request_remote_dispatch_max_retry_duration_in_ms=60000
 # effectiveMode: hot_reload
 # Datatype: boolean
 enable_retry_for_unknown_error=false
+
+# The switch to control if allow null value be included in the "quantity total" metric statistic.
+# effectiveMode: hot_reload
+# Datatype: Boolean
+include_null_value_in_write_throughput_metric=false

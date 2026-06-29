@@ -65,6 +65,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTest {
   private final String oldThreadName = Thread.currentThread().getName();
+  private boolean prevUseMultiType = false;
 
   @Before
   public void setUp()
@@ -75,6 +76,8 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
+    prevUseMultiType = org.apache.tsfile.utils.TsFileGeneratorUtils.useMultiType;
+    org.apache.tsfile.utils.TsFileGeneratorUtils.useMultiType = true;
   }
 
   @After
@@ -82,11 +85,12 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
     for (TsFileResource tsFileResource : seqResources) {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFileID());
     }
     for (TsFileResource tsFileResource : unseqResources) {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFileID());
     }
+    org.apache.tsfile.utils.TsFileGeneratorUtils.useMultiType = prevUseMultiType;
   }
 
   @Test

@@ -21,16 +21,19 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class DistributedQueryPlan {
   private final SubPlan rootSubPlan;
   private final List<FragmentInstance> instances;
+  private final List<String> planText;
 
   public DistributedQueryPlan(SubPlan rootSubPlan, List<FragmentInstance> instances) {
     this.rootSubPlan = rootSubPlan;
     this.instances = instances;
+    this.planText = new ArrayList<>();
   }
 
   @TestOnly
@@ -44,5 +47,13 @@ public class DistributedQueryPlan {
 
   public List<FragmentInstance> getInstances() {
     return instances;
+  }
+
+  public List<String> getPlanText() {
+    return planText;
+  }
+
+  public void addPlanText(List<String> plan) {
+    planText.addAll(plan);
   }
 }

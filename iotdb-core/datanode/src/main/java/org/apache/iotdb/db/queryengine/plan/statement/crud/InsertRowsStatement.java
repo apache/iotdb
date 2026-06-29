@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
@@ -56,6 +56,7 @@ public class InsertRowsStatement extends InsertBaseStatement {
     statementType = StatementType.BATCH_INSERT_ROWS;
   }
 
+  @Override
   public List<PartialPath> getDevicePaths() {
     List<PartialPath> partialPaths = new ArrayList<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
@@ -192,6 +193,12 @@ public class InsertRowsStatement extends InsertBaseStatement {
     insertRowStatementList.forEach(InsertRowStatement::toLowerCase);
   }
 
+  @TableModel
+  @Override
+  public void toLowerCaseForDevicePath() {
+    insertRowStatementList.forEach(InsertRowStatement::toLowerCaseForDevicePath);
+  }
+
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE
@@ -235,5 +242,10 @@ public class InsertRowsStatement extends InsertBaseStatement {
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     insertRowStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
+  }
+
+  @Override
+  public String toString() {
+    return "InsertRowsStatement{" + "insertRowStatementList=" + insertRowStatementList + '}';
   }
 }

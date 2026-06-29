@@ -535,7 +535,7 @@ public interface ISessionPool {
 
   long getWaitToGetSessionTimeoutInMs();
 
-  boolean isEnableCompression();
+  boolean isEnableThriftCompression();
 
   void setEnableRedirection(boolean enableRedirection);
 

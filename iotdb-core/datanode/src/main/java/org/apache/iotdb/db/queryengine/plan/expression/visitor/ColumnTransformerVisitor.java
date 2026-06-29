@@ -19,7 +19,39 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
-import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.TreeCaseWhenThenColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.ArithmeticModuloColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.ArithmeticMultiplicationColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.ArithmeticSubtractionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.CompareEqualToColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.CompareGreaterEqualColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.CompareGreaterThanColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.CompareLessThanColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.CompareNonEqualColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.LogicAndColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.LogicOrColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.LongDivisionLongColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.LongModulusLongColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.ConstantColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.NullColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.MappableUDFColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.ternary.BetweenColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.InColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.IsNullColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.LikeColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.LogicNotColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.RegularColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
@@ -38,37 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.TreeCaseWhenThenColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticModuloColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticMultiplicationColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticSubtractionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareEqualToColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareGreaterEqualColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareGreaterThanColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareLessThanColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareNonEqualColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LogicAndColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LogicOrColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MappableUDFColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.InColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LikeColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
-import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 
 import org.apache.tsfile.common.regexp.LikePattern;
@@ -84,6 +86,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionType.BETWEEN;
 import static org.apache.tsfile.enums.TSDataType.UNKNOWN;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 /** Responsible for constructing {@link ColumnTransformer} through Expression. */
 public class ColumnTransformerVisitor
@@ -474,9 +477,17 @@ public class ColumnTransformerVisitor
         return new ArithmeticMultiplicationColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
       case DIVISION:
+        if (returnType == INT64) {
+          return new LongDivisionLongColumnTransformer(
+              returnType, leftColumnTransformer, rightColumnTransformer);
+        }
         return new ArithmeticDivisionColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
       case MODULO:
+        if (returnType == INT64) {
+          return new LongModulusLongColumnTransformer(
+              returnType, leftColumnTransformer, rightColumnTransformer);
+        }
         return new ArithmeticModuloColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
       case EQUAL_TO:

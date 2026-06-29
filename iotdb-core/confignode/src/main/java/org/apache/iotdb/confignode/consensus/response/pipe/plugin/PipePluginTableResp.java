@@ -51,7 +51,7 @@ public class PipePluginTableResp implements DataSet {
   public TGetPipePluginTableResp convertToThriftResponse() throws IOException {
     final List<ByteBuffer> pipePluginInformationByteBuffers = new ArrayList<>();
     for (PipePluginMeta pipePluginMeta : allPipePluginMeta) {
-      pipePluginInformationByteBuffers.add(pipePluginMeta.serialize());
+      pipePluginInformationByteBuffers.add(pipePluginMeta.serializeForShowPipePlugin());
     }
     return new TGetPipePluginTableResp(status, pipePluginInformationByteBuffers);
   }

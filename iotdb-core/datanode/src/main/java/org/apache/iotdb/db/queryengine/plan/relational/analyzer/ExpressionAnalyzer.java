@@ -19,91 +19,99 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.FunctionNullability;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Columns;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentDatabase;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentTime;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentUser;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DecimalLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ProcessingMode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RangeQuantifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubsetDefinition;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ClassifierDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.MatchNumberDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.Navigation;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationMode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternFunctionAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StackableAstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 
 import javax.annotation.Nullable;
@@ -111,47 +119,57 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.collect.Iterators.getOnlyElement;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isCharType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.CURRENT_ROW;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.FOLLOWING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.PRECEDING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_FOLLOWING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame.Type.GROUPS;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame.Type.RANGE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame.Type.ROWS;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractExpressions;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.CURRENT_ROW;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.FOLLOWING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.PRECEDING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_FOLLOWING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.GROUPS;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.RANGE;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.ROWS;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 
 public class ExpressionAnalyzer {
@@ -464,7 +482,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitRow(Row node, StackableAstVisitorContext<Context> context) {
+    public Type visitRow(Row node, StackableAstVisitorContext<Context> context) {
       List<Type> types =
           node.getItems().stream().map(child -> process(child, context)).collect(toImmutableList());
 
@@ -473,7 +491,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitCurrentTime(CurrentTime node, StackableAstVisitorContext<Context> context) {
+    public Type visitCurrentTime(CurrentTime node, StackableAstVisitorContext<Context> context) {
       if (requireNonNull(node.getFunction()) == CurrentTime.Function.TIMESTAMP) {
         return setExpressionType(node, INT64);
       }
@@ -481,7 +499,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSymbolReference(
+    public Type visitSymbolReference(
         SymbolReference node, StackableAstVisitorContext<Context> context) {
       //      if (context.getContext().isInLambda()) {
       //        Optional<ResolvedField> resolvedField =
@@ -498,7 +516,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIdentifier(Identifier node, StackableAstVisitorContext<Context> context) {
+    public Type visitIdentifier(Identifier node, StackableAstVisitorContext<Context> context) {
       ResolvedField resolvedField =
           context.getContext().getScope().resolveField(node, QualifiedName.of(node.getValue()));
 
@@ -559,10 +577,10 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitDereferenceExpression(
+    public Type visitDereferenceExpression(
         DereferenceExpression node, StackableAstVisitorContext<Context> context) {
       if (isQualifiedAllFieldsReference(node)) {
-        throw new SemanticException("<identifier>.* not allowed in this context");
+        throw new SemanticException(DataNodeQueryMessages.IDENTIFIER_NOT_ALLOWED_IN_THIS_CONTEXT);
       }
 
       QualifiedName qualifiedName = DereferenceExpression.getQualifiedName(node);
@@ -623,7 +641,7 @@ public class ExpressionAnalyzer {
           return handleResolvedField(node, resolvedField.get(), context);
         }
         if (!scope.isColumnReference(qualifiedName)) {
-          TableMetadataImpl.throwColumnNotExistsException(qualifiedName);
+          CommonMetadataUtils.throwColumnNotExistsException(qualifiedName);
         }
       }
 
@@ -636,7 +654,9 @@ public class ExpressionAnalyzer {
       RowType rowType = (RowType) baseType;
 
       Identifier field =
-          node.getField().orElseThrow(() -> new NoSuchElementException("No value present"));
+          node.getField()
+              .orElseThrow(
+                  () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT));
       String fieldName = field.getValue();
 
       boolean foundFieldName = false;
@@ -653,14 +673,14 @@ public class ExpressionAnalyzer {
       }
 
       if (rowFieldType == null) {
-        TableMetadataImpl.throwColumnNotExistsException(qualifiedName);
+        CommonMetadataUtils.throwColumnNotExistsException(qualifiedName);
       }
 
       return setExpressionType(node, rowFieldType);
     }
 
     @Override
-    protected Type visitNotExpression(
+    public Type visitNotExpression(
         NotExpression node, StackableAstVisitorContext<Context> context) {
       coerceType(context, node.getValue(), BOOLEAN, "Value of logical NOT expression");
 
@@ -668,7 +688,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitLogicalExpression(
+    public Type visitLogicalExpression(
         LogicalExpression node, StackableAstVisitorContext<Context> context) {
       for (Expression term : node.getTerms()) {
         coerceType(context, term, BOOLEAN, "Logical expression term");
@@ -678,7 +698,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitComparisonExpression(
+    public Type visitComparisonExpression(
         ComparisonExpression node, StackableAstVisitorContext<Context> context) {
       OperatorType operatorType = null;
       switch (node.getOperator()) {
@@ -703,7 +723,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIsNullPredicate(
+    public Type visitIsNullPredicate(
         IsNullPredicate node, StackableAstVisitorContext<Context> context) {
       process(node.getValue(), context);
 
@@ -711,7 +731,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIsNotNullPredicate(
+    public Type visitIsNotNullPredicate(
         IsNotNullPredicate node, StackableAstVisitorContext<Context> context) {
       process(node.getValue(), context);
 
@@ -719,7 +739,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitNullIfExpression(
+    public Type visitNullIfExpression(
         NullIfExpression node, StackableAstVisitorContext<Context> context) {
       Type firstType = process(node.getFirst(), context);
       Type secondType = process(node.getSecond(), context);
@@ -733,8 +753,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIfExpression(
-        IfExpression node, StackableAstVisitorContext<Context> context) {
+    public Type visitIfExpression(IfExpression node, StackableAstVisitorContext<Context> context) {
       coerceType(context, node.getCondition(), BOOLEAN, "IF condition");
 
       Type type;
@@ -754,7 +773,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSearchedCaseExpression(
+    public Type visitSearchedCaseExpression(
         SearchedCaseExpression node, StackableAstVisitorContext<Context> context) {
       for (WhenClause whenClause : node.getWhenClauses()) {
         coerceType(context, whenClause.getOperand(), BOOLEAN, "CASE WHEN clause");
@@ -776,7 +795,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSimpleCaseExpression(
+    public Type visitSimpleCaseExpression(
         SimpleCaseExpression node, StackableAstVisitorContext<Context> context) {
       coerceCaseOperandToToSingleType(node, context);
 
@@ -839,7 +858,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitCoalesceExpression(
+    public Type visitCoalesceExpression(
         CoalesceExpression node, StackableAstVisitorContext<Context> context) {
       Type type = coerceToSingleType(context, "All COALESCE operands", node.getOperands());
 
@@ -847,7 +866,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitArithmeticUnary(
+    public Type visitArithmeticUnary(
         ArithmeticUnaryExpression node, StackableAstVisitorContext<Context> context) {
       switch (node.getSign()) {
         case PLUS:
@@ -865,12 +884,12 @@ public class ExpressionAnalyzer {
         case MINUS:
           return getOperator(context, node, OperatorType.NEGATION, node.getValue());
         default:
-          throw new IllegalArgumentException("Unknown sign: " + node.getSign());
+          throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_SIGN + node.getSign());
       }
     }
 
     @Override
-    protected Type visitArithmeticBinary(
+    public Type visitArithmeticBinary(
         ArithmeticBinaryExpression node, StackableAstVisitorContext<Context> context) {
       return getOperator(
           context,
@@ -881,7 +900,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitLikePredicate(
+    public Type visitLikePredicate(
         LikePredicate node, StackableAstVisitorContext<Context> context) {
       Type valueType = process(node.getValue(), context);
       if (!isCharType(valueType)) {
@@ -913,19 +932,19 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitStringLiteral(
+    public Type visitStringLiteral(
         StringLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, STRING);
     }
 
     @Override
-    protected Type visitBinaryLiteral(
+    public Type visitBinaryLiteral(
         BinaryLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, BLOB);
     }
 
     @Override
-    protected Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context) {
+    public Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context) {
       if (node.getParsedValue() >= Integer.MIN_VALUE
           && node.getParsedValue() <= Integer.MAX_VALUE) {
         return setExpressionType(node, INT32);
@@ -935,46 +954,54 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitDoubleLiteral(
+    public Type visitDoubleLiteral(
         DoubleLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, DOUBLE);
     }
 
     @Override
-    protected Type visitDecimalLiteral(
-        DecimalLiteral node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException("DecimalLiteral is not supported yet.");
+    public Type visitFloatLiteral(FloatLiteral node, StackableAstVisitorContext<Context> context) {
+      return setExpressionType(node, FLOAT);
     }
 
     @Override
-    protected Type visitBooleanLiteral(
+    public Type visitDecimalLiteral(
+        DecimalLiteral node, StackableAstVisitorContext<Context> context) {
+      throw new SemanticException(DataNodeQueryMessages.DECIMALLITERAL_IS_NOT_SUPPORTED_YET);
+    }
+
+    @Override
+    public Type visitBooleanLiteral(
         BooleanLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitGenericLiteral(
+    public Type visitGenericLiteral(
         GenericLiteral node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException("GenericLiteral is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.GENERICLITERAL_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
-    protected Type visitNullLiteral(NullLiteral node, StackableAstVisitorContext<Context> context) {
+    public Type visitNullLiteral(NullLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, UNKNOWN);
     }
 
     @Override
-    protected Type visitFunctionCall(
-        FunctionCall node, StackableAstVisitorContext<Context> context) {
+    public Type visitFunctionCall(FunctionCall node, StackableAstVisitorContext<Context> context) {
       String functionName = node.getName().getSuffix();
       boolean isAggregation = metadata.isAggregationFunction(session, functionName, accessControl);
+      boolean isRowPatternCount =
+          context.getContext().isPatternRecognition()
+              && isAggregation
+              && node.getName().getSuffix().equalsIgnoreCase("count");
       // argument of the form `label.*` is only allowed for row pattern count function
       node.getArguments().stream()
           .filter(DereferenceExpression::isQualifiedAllFieldsReference)
           .findAny()
           .ifPresent(
               allRowsReference -> {
-                if (node.getArguments().size() > 1) {
+                if (!isRowPatternCount || node.getArguments().size() > 1) {
                   throw new SemanticException(
                       "label.* syntax is only supported as the only argument of row pattern count function");
                 }
@@ -988,12 +1015,18 @@ public class ExpressionAnalyzer {
         windowFunctions.add(NodeRef.of(node));
       } else {
         if (node.isDistinct() && !isAggregation) {
-          throw new SemanticException("DISTINCT is not supported for non-aggregation functions");
+          throw new SemanticException(
+              DataNodeQueryMessages.DISTINCT_IS_NOT_SUPPORTED_FOR_NON_AGGREGATION_FUNCTIONS);
         }
       }
 
       if (context.getContext().isPatternRecognition()) {
-        if (isPatternRecognitionFunction(node)) {
+        if (isAggregation) {
+          if (node.isDistinct()) {
+            throw new SemanticException(
+                "Cannot use DISTINCT with aggregate function in pattern recognition context");
+          }
+        } else if (isPatternRecognitionFunction(node)) {
           validatePatternRecognitionFunction(node);
 
           String name = node.getName().getSuffix().toUpperCase(ENGLISH);
@@ -1009,13 +1042,8 @@ public class ExpressionAnalyzer {
             case "NEXT":
               return setExpressionType(node, analyzePhysicalNavigation(node, context, name));
             default:
-              throw new SemanticException("unexpected pattern recognition function " + name);
-          }
-
-        } else if (isAggregation) {
-          if (node.isDistinct()) {
-            throw new SemanticException(
-                "Cannot use DISTINCT with aggregate function in pattern recognition context");
+              throw new SemanticException(
+                  DataNodeQueryMessages.UNEXPECTED_PATTERN_RECOGNITION_FUNCTION + name);
           }
         }
       }
@@ -1037,7 +1065,40 @@ public class ExpressionAnalyzer {
       }
 
       if (node.isDistinct() && !isAggregation) {
-        throw new SemanticException("DISTINCT is not supported for non-aggregation functions");
+        throw new SemanticException(
+            DataNodeQueryMessages.DISTINCT_IS_NOT_SUPPORTED_FOR_NON_AGGREGATION_FUNCTIONS);
+      }
+
+      int argumentsNum = node.getArguments().size();
+      RelationType relationType = context.getContext().getScope().getRelationType();
+      // Syntactic sugar: first(s1) => first(s1,time), first_by(s1,s2) => first_by(s1,s2,time)
+      // So do last and last_by.
+      switch (functionName.toLowerCase()) {
+        case FIRST_AGGREGATION:
+        case LAST_AGGREGATION:
+          if (argumentsNum == 1) {
+            addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
+          } else if (argumentsNum == 2) {
+            if (!checkArgumentIsTimestamp(
+                node.getArguments().get(1), (List<Field>) relationType.getVisibleFields())) {
+              throw new SemanticException(
+                  String.format(
+                      "The second argument of %s function must be actual time name", functionName));
+            }
+          }
+          break;
+        case FIRST_BY_AGGREGATION:
+        case LAST_BY_AGGREGATION:
+          if (argumentsNum == 2) {
+            addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
+          } else if (argumentsNum == 3) {
+            if (!checkArgumentIsTimestamp(
+                node.getArguments().get(2), (List<Field>) relationType.getVisibleFields())) {
+              throw new SemanticException(
+                  String.format(
+                      "The third argument of %s function must be actual time name", functionName));
+            }
+          }
       }
 
       List<Type> argumentTypes = getCallArgumentTypes(node.getArguments(), context);
@@ -1090,6 +1151,12 @@ public class ExpressionAnalyzer {
               true,
               functionNullability);
       resolvedFunctions.put(NodeRef.of(node), resolvedFunction);
+
+      // must run after arguments are processed and labels are recorded
+      if (context.getContext().isPatternRecognition() && isAggregation) {
+        analyzePatternAggregation(node, resolvedFunction);
+      }
+
       return setExpressionType(node, type);
     }
 
@@ -1115,10 +1182,76 @@ public class ExpressionAnalyzer {
       return argumentTypesBuilder.build();
     }
 
+    private void addTimeArgument(List<Expression> arguments, String actualTimeField) {
+
+      if (arguments.get(0) instanceof DereferenceExpression) {
+        arguments.add(
+            new DereferenceExpression(
+                ((DereferenceExpression) arguments.get(0)).getBase(),
+                new Identifier(actualTimeField.toLowerCase(Locale.ENGLISH))));
+      } else {
+        arguments.add(new Identifier(actualTimeField.toLowerCase(Locale.ENGLISH)));
+      }
+    }
+
+    private boolean checkArgumentIsTimestamp(Expression argument, List<Field> visibleFields) {
+
+      String argumentName =
+          (argument instanceof DereferenceExpression)
+              ? ((DereferenceExpression) argument)
+                  .getField()
+                  .orElseThrow(
+                      () ->
+                          new SemanticException(
+                              DataNodeQueryMessages.THE_INPUT_FIELD_DOES_NOT_EXIST))
+                  .toString()
+              : argument.toString();
+
+      for (Field field : visibleFields) {
+        if (field
+            .getName()
+            .orElseThrow(
+                () ->
+                    new SemanticException(
+                        DataNodeQueryMessages.THE_FIELD_IN_TABLE_DOES_NOT_HAVE_A_NAME))
+            .equalsIgnoreCase(argumentName)) {
+          return field.getType() == TIMESTAMP;
+        }
+      }
+      // should never reach here
+      throw new SemanticException(DataNodeQueryMessages.THE_INPUT_ARGUMENT_DOES_NOT_EXIST);
+    }
+
+    /** Retrieves the effective time column name from the relation's visible fields. */
+    private String getActualTimeFieldName(RelationType relation) {
+
+      // Priority 1: Try to find a column explicitly marked as TIME category
+      Optional<String> timeColumn =
+          relation.getVisibleFields().stream()
+              .filter(field -> field.getColumnCategory() == TsTableColumnCategory.TIME)
+              .findFirst()
+              .flatMap(Field::getName);
+
+      if (timeColumn.isPresent()) {
+        return timeColumn.get();
+      }
+
+      // Priority 2: Fallback to the first TIMESTAMP column (e.g., for system schema compatibility)
+      return relation.getVisibleFields().stream()
+          .filter(field -> field.getType() == TIMESTAMP)
+          .findFirst()
+          .flatMap(Field::getName)
+          .orElseThrow(
+              () ->
+                  new SemanticException(
+                      "Missing valid time column. The table must contain either a column with the TIME category or at least one TIMESTAMP column."));
+    }
+
     private Type analyzeMatchNumber(
         FunctionCall node, StackableAstVisitorContext<Context> context) {
       if (!node.getArguments().isEmpty()) {
-        throw new SemanticException("MATCH_NUMBER pattern recognition function takes no arguments");
+        throw new SemanticException(
+            DataNodeQueryMessages.MATCH_NUMBER_PATTERN_RECOGNITION_FUNCTION_TAKES_NO_ARGUMENTS);
       }
 
       patternRecognitionInputs.add(new PatternFunctionAnalysis(node, new MatchNumberDescriptor()));
@@ -1211,7 +1344,8 @@ public class ExpressionAnalyzer {
           anchor = PatternRecognitionAnalysis.NavigationAnchor.LAST;
           break;
         default:
-          throw new IllegalStateException("Unexpected navigation anchor: " + name);
+          throw new IllegalStateException(
+              DataNodeQueryMessages.UNEXPECTED_NAVIGATION_ANCHOR + name);
       }
 
       Type type =
@@ -1245,7 +1379,8 @@ public class ExpressionAnalyzer {
           case RUNNING:
             return NavigationMode.RUNNING;
           default:
-            throw new IllegalArgumentException("Unexpected mode: " + mode.getMode());
+            throw new IllegalArgumentException(
+                DataNodeQueryMessages.UNEXPECTED_MODE + mode.getMode());
         }
       } else {
         return NavigationMode.RUNNING;
@@ -1375,6 +1510,95 @@ public class ExpressionAnalyzer {
       return identifier.getCanonicalValue();
     }
 
+    private ArgumentLabel validateLabelConsistency(FunctionCall node, int argumentIndex) {
+      Set<Optional<String>> referenceLabels =
+          extractExpressions(node.getArguments(), Expression.class).stream()
+              .map(child -> labels.get(NodeRef.of(child)))
+              .filter(Objects::nonNull)
+              .collect(toImmutableSet());
+
+      Set<Optional<String>> classifierLabels =
+          extractExpressions(
+                  ImmutableList.of(node.getArguments().get(argumentIndex)), FunctionCall.class)
+              .stream()
+              .filter(this::isClassifierFunction)
+              .map(
+                  functionCall ->
+                      functionCall.getArguments().stream()
+                          .findFirst()
+                          .map(argument -> label((Identifier) argument)))
+              .collect(toImmutableSet());
+
+      Set<Optional<String>> allLabels =
+          ImmutableSet.<Optional<String>>builder()
+              .addAll(referenceLabels)
+              .addAll(classifierLabels)
+              .build();
+
+      if (allLabels.isEmpty()) {
+        return ArgumentLabel.noLabel();
+      }
+
+      if (allLabels.size() > 1) {
+        String name = node.getName().getSuffix();
+        throw new SemanticException(
+            String.format("All labels and classifiers inside the call to '%s' must match", name));
+      }
+
+      Optional<String> label = Iterables.getOnlyElement(allLabels);
+      return label.map(ArgumentLabel::explicitLabel).orElseGet(ArgumentLabel::universalLabel);
+    }
+
+    private Set<String> analyzeAggregationLabels(FunctionCall node) {
+      if (node.getArguments().isEmpty()) {
+        return ImmutableSet.of();
+      }
+
+      Set<Optional<String>> argumentLabels = new HashSet<>();
+      for (int i = 0; i < node.getArguments().size(); i++) {
+        ArgumentLabel argumentLabel = validateLabelConsistency(node, i);
+        if (argumentLabel.hasLabel()) {
+          argumentLabels.add(argumentLabel.getLabel());
+        }
+      }
+      if (argumentLabels.size() > 1) {
+        throw new SemanticException(
+            "All aggregate function arguments must apply to rows matched with the same label");
+      }
+
+      return argumentLabels.stream()
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .collect(Collectors.toSet());
+    }
+
+    private void analyzePatternAggregation(FunctionCall node, ResolvedFunction function) {
+      checkNoNestedAggregations(node);
+      checkNoNestedNavigations(node);
+      Set<String> labels = analyzeAggregationLabels(node);
+
+      List<FunctionCall> matchNumberCalls =
+          extractExpressions(node.getArguments(), FunctionCall.class).stream()
+              .filter(this::isMatchNumberFunction)
+              .collect(toImmutableList());
+
+      List<FunctionCall> classifierCalls =
+          extractExpressions(node.getArguments(), FunctionCall.class).stream()
+              .filter(this::isClassifierFunction)
+              .collect(toImmutableList());
+
+      patternRecognitionInputs.add(
+          new PatternFunctionAnalysis(
+              node,
+              new AggregationDescriptor(
+                  function,
+                  node.getArguments(),
+                  mapProcessingMode(node.getProcessingMode()),
+                  labels,
+                  matchNumberCalls,
+                  classifierCalls)));
+    }
+
     private void checkNoNestedAggregations(FunctionCall node) {
       extractExpressions(node.getArguments(), FunctionCall.class).stream()
           .filter(
@@ -1405,18 +1629,18 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitCurrentDatabase(
+    public Type visitCurrentDatabase(
         CurrentDatabase node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, STRING);
     }
 
     @Override
-    protected Type visitCurrentUser(CurrentUser node, StackableAstVisitorContext<Context> context) {
+    public Type visitCurrentUser(CurrentUser node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, STRING);
     }
 
     @Override
-    protected Type visitTrim(Trim node, StackableAstVisitorContext<Context> context) {
+    public Type visitTrim(Trim node, StackableAstVisitorContext<Context> context) {
       ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
 
       argumentTypes.add(process(node.getTrimSource(), context));
@@ -1431,10 +1655,10 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitParameter(Parameter node, StackableAstVisitorContext<Context> context) {
+    public Type visitParameter(Parameter node, StackableAstVisitorContext<Context> context) {
 
       if (parameters.isEmpty()) {
-        throw new SemanticException("Query takes no parameters");
+        throw new SemanticException(DataNodeQueryMessages.QUERY_TAKES_NO_PARAMETERS);
       }
       if (node.getId() >= parameters.size()) {
         throw new SemanticException(
@@ -1445,14 +1669,31 @@ public class ExpressionAnalyzer {
 
       Expression providedValue = parameters.get(NodeRef.of(node));
       if (providedValue == null) {
-        throw new SemanticException("No value provided for parameter");
+        throw new SemanticException(DataNodeQueryMessages.NO_VALUE_PROVIDED_FOR_PARAMETER);
       }
       Type resultType = process(providedValue, context);
       return setExpressionType(node, resultType);
     }
 
     @Override
-    protected Type visitBetweenPredicate(
+    public Type visitExtract(Extract node, StackableAstVisitorContext<Context> context) {
+      if (node.getExpression() instanceof LongLiteral) {
+        // Don't visit child here to avoid setting its Type to INT32
+        setExpressionType(node.getExpression(), INT64);
+      } else {
+        Type type = process(node.getExpression(), context);
+
+        if (!(type instanceof TimestampType)) {
+          throw new SemanticException(
+              String.format(DataNodeQueryMessages.CANNOT_EXTRACT_FROM, type));
+        }
+      }
+
+      return setExpressionType(node, INT64);
+    }
+
+    @Override
+    public Type visitBetweenPredicate(
         BetweenPredicate node, StackableAstVisitorContext<Context> context) {
       Type valueType = process(node.getValue(), context);
       Type minType = process(node.getMin(), context);
@@ -1479,23 +1720,25 @@ public class ExpressionAnalyzer {
       try {
         type = metadata.getType(toTypeSignature(node.getType()));
       } catch (TypeNotFoundException e) {
-        throw new SemanticException(String.format("Unknown type: %s", node.getType()));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.UNKNOWN_TYPE, node.getType()));
       }
 
       if (type.equals(UNKNOWN)) {
-        throw new SemanticException("UNKNOWN is not a valid type");
+        throw new SemanticException(DataNodeQueryMessages.UNKNOWN_IS_NOT_A_VALID_TYPE);
       }
 
       Type value = process(node.getExpression(), context);
       if (!value.equals(UNKNOWN) && !node.isTypeOnly() && (!metadata.canCoerce(value, type))) {
-        throw new SemanticException(String.format("Cannot cast %s to %s", value, type));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.CANNOT_CAST_TO, value, type));
       }
 
       return setExpressionType(node, type);
     }
 
     @Override
-    protected Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context) {
+    public Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context) {
       Expression value = node.getValue();
       // Attention: remove this check after supporting RowType
       if (value instanceof Row) {
@@ -1547,7 +1790,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSubqueryExpression(
+    public Type visitSubqueryExpression(
         SubqueryExpression node, StackableAstVisitorContext<Context> context) {
       Type type = analyzeSubquery(node, context);
 
@@ -1595,12 +1838,12 @@ public class ExpressionAnalyzer {
       return subqueryType;
     }
 
-    private Type analyzeSubquery(
-        SubqueryExpression node, StackableAstVisitorContext<Context> context) {
+    private Type analyzeSubquery(SubqueryExpression node, StackableAstVisitorContext<Context> ctx) {
       StatementAnalyzer analyzer =
-          statementAnalyzerFactory.apply(node, context.getContext().getCorrelationSupport());
-      Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
+          statementAnalyzerFactory.apply(node, ctx.getContext().getCorrelationSupport());
+      Scope subqueryScope = Scope.builder().withParent(ctx.getContext().getScope()).build();
       Scope queryScope = analyzer.analyze(node.getQuery(), subqueryScope);
+      context.addSubQueryTables(node.getQuery(), queryScope.getTables());
 
       ImmutableList.Builder<RowType.Field> fields = ImmutableList.builder();
       for (int i = 0; i < queryScope.getRelationType().getAllFieldCount(); i++) {
@@ -1677,10 +1920,12 @@ public class ExpressionAnalyzer {
         FrameBound.Type endType =
             frame.getEnd().orElse(new FrameBound(null, CURRENT_ROW)).getType();
         if (startType == UNBOUNDED_FOLLOWING) {
-          throw new SemanticException("Window frame start cannot be UNBOUNDED FOLLOWING");
+          throw new SemanticException(
+              DataNodeQueryMessages.WINDOW_FRAME_START_CANNOT_BE_UNBOUNDED_FOLLOWING);
         }
         if (endType == UNBOUNDED_PRECEDING) {
-          throw new SemanticException("Window frame end cannot be UNBOUNDED PRECEDING");
+          throw new SemanticException(
+              DataNodeQueryMessages.WINDOW_FRAME_END_CANNOT_BE_UNBOUNDED_PRECEDING);
         }
         if ((startType == CURRENT_ROW) && (endType == PRECEDING)) {
           throw new SemanticException(
@@ -1758,7 +2003,8 @@ public class ExpressionAnalyzer {
             }
           }
         } else {
-          throw new SemanticException("Unsupported frame type: " + frame.getType());
+          throw new SemanticException(
+              DataNodeQueryMessages.UNSUPPORTED_FRAME_TYPE + frame.getType());
         }
       }
     }
@@ -1809,7 +2055,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitExists(ExistsPredicate node, StackableAstVisitorContext<Context> context) {
+    public Type visitExists(ExistsPredicate node, StackableAstVisitorContext<Context> context) {
       StatementAnalyzer analyzer =
           statementAnalyzerFactory.apply(node, context.getContext().getCorrelationSupport());
       Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
@@ -1839,7 +2085,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitQuantifiedComparisonExpression(
+    public Type visitQuantifiedComparisonExpression(
         QuantifiedComparisonExpression node, StackableAstVisitorContext<Context> context) {
       quantifiedComparisons.add(NodeRef.of(node));
 
@@ -1885,20 +2131,20 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitExpression(Expression node, StackableAstVisitorContext<Context> context) {
+    public Type visitExpression(Expression node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException(
           String.format("not yet implemented: %s", node.getClass().getName()));
     }
 
     @Override
-    protected Type visitNode(Node node, StackableAstVisitorContext<Context> context) {
+    public Type visitNode(Node node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException(
           String.format("not yet implemented: %s", node.getClass().getName()));
     }
 
     @Override
-    protected Type visitColumns(Columns node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException("Columns only support to be used in SELECT and WHERE clause");
+    public Type visitColumns(Columns node, StackableAstVisitorContext<Context> context) {
+      throw new SemanticException(DataNodeQueryMessages.COLUMNS_ONLY_SUPPORT_TO_BE_USED_IN_SELECT);
     }
 
     private Type getOperator(
@@ -1958,7 +2204,8 @@ public class ExpressionAnalyzer {
       }
 
       if (!firstType.equals(secondType)) {
-        throw new SemanticException(String.format("%s: %s vs %s", message, firstType, secondType));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.TYPE_MISMATCH_FMT, message, firstType, secondType));
       }
 
       return firstType;
@@ -2191,6 +2438,10 @@ public class ExpressionAnalyzer {
     }
   }
 
+  /**
+   * Checks if the given function call is a specific function for pattern recognition, excluding
+   * aggregation functions.
+   */
   public static boolean isPatternRecognitionFunction(FunctionCall node) {
     QualifiedName qualifiedName = node.getName();
     if (qualifiedName.getParts().size() > 1) {
@@ -2212,7 +2463,8 @@ public class ExpressionAnalyzer {
         || name.equals("NEXT")
         || name.equals("CLASSIFIER")
         || name.equals("MATCH_NUMBER"))) {
-      throw new SemanticException("Unknown pattern recognition function: " + name);
+      throw new SemanticException(
+          DataNodeQueryMessages.UNKNOWN_PATTERN_RECOGNITION_FUNCTION + name);
     } else {
       return true;
     }
@@ -2440,10 +2692,10 @@ public class ExpressionAnalyzer {
         parameters,
         warningCollector,
         expression -> {
-          throw new IllegalStateException("Cannot access preanalyzed types");
+          throw new IllegalStateException(DataNodeQueryMessages.CANNOT_ACCESS_PREANALYZED_TYPES);
         },
         functionCall -> {
-          throw new IllegalStateException("Cannot access resolved windows");
+          throw new IllegalStateException(DataNodeQueryMessages.CANNOT_ACCESS_RESOLVED_WINDOWS);
         });
   }
 
@@ -2474,6 +2726,37 @@ public class ExpressionAnalyzer {
 
     public Optional<Identifier> getColumn() {
       return column;
+    }
+  }
+
+  private static class ArgumentLabel {
+    private final boolean hasLabel; // whether the parameter is bound with a label
+    private final Optional<String> label;
+
+    private ArgumentLabel(boolean hasLabel, Optional<String> label) {
+      this.hasLabel = hasLabel;
+      this.label = label;
+    }
+
+    public static ArgumentLabel noLabel() {
+      return new ArgumentLabel(false, Optional.empty());
+    }
+
+    public static ArgumentLabel universalLabel() {
+      return new ArgumentLabel(true, Optional.empty());
+    }
+
+    public static ArgumentLabel explicitLabel(String label) {
+      return new ArgumentLabel(true, Optional.of(label));
+    }
+
+    public boolean hasLabel() {
+      return hasLabel;
+    }
+
+    public Optional<String> getLabel() {
+      checkState(hasLabel, "no label available");
+      return label;
     }
   }
 }

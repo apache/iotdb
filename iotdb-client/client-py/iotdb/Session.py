@@ -95,7 +95,13 @@ class Session(object):
         self.__default_endpoint = TEndPoint(self.__host, self.__port)
         self.__user = user
         self.__password = password
-        self.__fetch_size = fetch_size
+        if fetch_size > 0:
+            self.__fetch_size = fetch_size
+        else:
+            logger.warning(
+                f"fetch_size {fetch_size} is illegal, use default fetch_size {self.DEFAULT_FETCH_SIZE}"
+            )
+            self.__fetch_size = self.DEFAULT_FETCH_SIZE
         self.__is_close = True
         self.__client = None
         self.__default_connection = None

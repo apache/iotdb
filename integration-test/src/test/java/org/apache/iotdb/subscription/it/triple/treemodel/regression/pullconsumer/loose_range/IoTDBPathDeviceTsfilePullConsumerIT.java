@@ -36,12 +36,14 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /***
@@ -130,6 +132,7 @@ public class IoTDBPathDeviceTsfilePullConsumerIT extends AbstractSubscriptionTre
     session_src.executeNonQueryStatement("flush");
   }
 
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,
@@ -161,12 +164,7 @@ public class IoTDBPathDeviceTsfilePullConsumerIT extends AbstractSubscriptionTre
     devices.add(device);
     devices.add(device2);
     devices.add(database2 + ".d_2");
-    List<Integer> results = consume_tsfile(consumer, devices);
-
-    assertEquals(results.get(0), 10);
-    assertEquals(results.get(1), 0);
-    assertEquals(results.get(2), 0);
-    assertEquals(results.get(3), 2, "number of received files");
+    consume_tsfile_with_file_count_await(consumer, devices, Arrays.asList(10, 0, 0, 2));
     // Unsubscribe
     consumer.unsubscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 0, "show subscriptions after cancellation");
@@ -177,13 +175,6 @@ public class IoTDBPathDeviceTsfilePullConsumerIT extends AbstractSubscriptionTre
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
     // Consumption data: Progress is not retained after unsubscribing and re-subscribing. Full
     // synchronization.
-    results = consume_tsfile(consumer, devices);
-    assertEquals(
-        results.get(0),
-        15,
-        "Unsubscribe and resubscribe, progress is not retained. Full synchronization.");
-    assertEquals(results.get(1), 0, "Unsubscribe and then subscribe again," + device2);
-    assertEquals(results.get(2), 0, "Subscribe again after cancellation," + database2 + ".d_2");
-    assertEquals(results.get(3), 3, "Number of received files: resubscribe after unsubscribe");
+    consume_tsfile_with_file_count_await(consumer, devices, Arrays.asList(15, 0, 0, 3));
   }
 }

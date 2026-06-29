@@ -20,17 +20,19 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.ConnectionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import javax.annotation.Nullable;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 
@@ -44,6 +46,8 @@ public abstract class IClientSession {
 
   private TimeZone timeZone;
 
+  private long userId;
+
   private String username;
 
   private boolean login = false;
@@ -53,6 +57,8 @@ public abstract class IClientSession {
   private SqlDialect sqlDialect = SqlDialect.TREE;
 
   @Nullable private String databaseName;
+
+  private long lastActiveTime = CommonDateTimeUtils.currentTime();
 
   public abstract String getClientAddress();
 
@@ -87,6 +93,14 @@ public abstract class IClientSession {
   public void setTimeZone(TimeZone timeZone) {
     this.timeZone = timeZone;
     this.zoneId = timeZone.toZoneId();
+  }
+
+  public long getUserId() {
+    return userId;
+  }
+
+  public void setUserId(long userId) {
+    this.userId = userId;
   }
 
   public String getUsername() {
@@ -130,6 +144,11 @@ public abstract class IClientSession {
         getUsername(), getLogInTime(), getConnectionId(), getConnectionType());
   }
 
+  public ConnectionInfo convertToConnectionInfo() {
+    return new ConnectionInfo(
+        getUserId(), getUsername(), getId(), getLastActiveTime(), getClientAddress());
+  }
+
   /**
    * statementIds that this client opens.<br>
    * For JDBC clients, each Statement instance has a statement id.<br>
@@ -156,6 +175,9 @@ public abstract class IClientSession {
   }
 
   public void setSqlDialectAndClean(SqlDialect sqlDialect) {
+    if (this.sqlDialect == sqlDialect) {
+      return;
+    }
     this.sqlDialect = sqlDialect;
     // clean database to avoid misuse of it between different SqlDialect
     this.databaseName = null;
@@ -166,42 +188,53 @@ public abstract class IClientSession {
     return databaseName;
   }
 
+  @TableModel
   public void setDatabaseName(@Nullable String databaseName) {
     this.databaseName = databaseName;
+    if (Objects.nonNull(databaseName) && !PathUtils.isTableModelDatabase(databaseName)) {
+      throw new SemanticException(
+          "The database name "
+              + databaseName
+              + " is a tree model database, which is not allowed to set in the client session.");
+    }
   }
 
-  public enum SqlDialect {
-    TREE((byte) 0),
-    TABLE((byte) 1);
+  /**
+   * Add a prepared statement to this session.
+   *
+   * @param statementName the name of the prepared statement
+   * @param info the prepared statement information
+   */
+  public abstract void addPreparedStatement(String statementName, PreparedStatementInfo info);
 
-    private final byte dialect;
+  /**
+   * Remove a prepared statement from this session.
+   *
+   * @param statementName the name of the prepared statement
+   * @return the removed prepared statement info, or null if not found
+   */
+  public abstract PreparedStatementInfo removePreparedStatement(String statementName);
 
-    SqlDialect(byte dialect) {
-      this.dialect = dialect;
-    }
+  /**
+   * Get a prepared statement from this session.
+   *
+   * @param statementName the name of the prepared statement
+   * @return the prepared statement info, or null if not found
+   */
+  public abstract PreparedStatementInfo getPreparedStatement(String statementName);
 
-    public byte getDialect() {
-      return dialect;
-    }
+  /**
+   * Get all prepared statement names in this session.
+   *
+   * @return set of prepared statement names
+   */
+  public abstract Set<String> getPreparedStatementNames();
 
-    public void serialize(final DataOutputStream stream) throws IOException {
-      ReadWriteIOUtils.write(dialect, stream);
-    }
+  public long getLastActiveTime() {
+    return lastActiveTime;
+  }
 
-    public void serialize(final ByteBuffer buffer) {
-      ReadWriteIOUtils.write(dialect, buffer);
-    }
-
-    public static SqlDialect deserializeFrom(final ByteBuffer buffer) {
-      byte b = ReadWriteIOUtils.readByte(buffer);
-      switch (b) {
-        case 0:
-          return TREE;
-        case 1:
-          return TABLE;
-        default:
-          throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", b));
-      }
-    }
+  public void setLastActiveTime(long lastActiveTime) {
+    this.lastActiveTime = lastActiveTime;
   }
 }

@@ -21,13 +21,22 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
@@ -42,6 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.Optional;
+import java.util.concurrent.Semaphore;
 
 public class LoadTsFileDataTypeConverter {
 
@@ -49,52 +59,163 @@ public class LoadTsFileDataTypeConverter {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
+  private static Semaphore getTabletConversionSemaphore() {
+    return TabletConversionSemaphoreHolder.INSTANCE;
+  }
+
+  private static int getTabletConversionPermitCount() {
+    final int configuredThreadCount =
+        Math.max(
+            1,
+            IoTDBDescriptor.getInstance().getConfig().getLoadTsFileTabletConversionThreadCount());
+    if (!PipeConfig.getInstance().getPipeMemoryManagementEnabled()) {
+      return configuredThreadCount;
+    }
+    final long memorySafePermitCount =
+        getAllowedPipeTabletMemorySizeInBytes() / estimatePipeTabletMemorySizePerConversion();
+    return (int) Math.max(1, Math.min((long) configuredThreadCount, memorySafePermitCount));
+  }
+
+  private static long estimatePipeTabletMemorySizePerConversion() {
+    final PipeConfig pipeConfig = PipeConfig.getInstance();
+    final long tabletSize =
+        Math.max(
+            1L, IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
+    final long maxReaderChunkSize = Math.max(0L, pipeConfig.getPipeMaxReaderChunkSize());
+    final long tableSize =
+        Math.max(
+            1L,
+            Math.min(tabletSize, IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize()));
+
+    // Both conversion paths keep source/converted tablet data and the current reader chunk in
+    // memory. Table-model conversion may additionally keep source/converted table-sized batches, so
+    // use the larger estimate as the per-conversion working set.
+    final long treeParserMemorySize = 2L * tabletSize + maxReaderChunkSize;
+    final long tableParserMemorySize = 2L * tabletSize + 2L * tableSize + maxReaderChunkSize;
+    return Math.max(1L, Math.max(treeParserMemorySize, tableParserMemorySize));
+  }
+
+  private static long getAllowedPipeTabletMemorySizeInBytes() {
+    final PipeConfig pipeConfig = PipeConfig.getInstance();
+    return (long)
+        ((pipeConfig.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
+                + pipeConfig.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() / 2)
+            * PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes());
+  }
+
+  private static Optional<TSStatus> getInterruptedConversionStatus(final InterruptedException e) {
+    Thread.currentThread().interrupt();
+    return Optional.of(
+        new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+            .setMessage(
+                StorageEngineMessages.INTERRUPTED_WAITING_TABLET_CONVERSION_SLOT + e.getMessage()));
+  }
+
+  public static boolean isMemoryPressureException(final Throwable throwable) {
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof LoadRuntimeOutOfMemoryException
+          || current instanceof PipeRuntimeOutOfMemoryCriticalException) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
+  public static TSStatus getMemoryPressureStatus(final Throwable throwable) {
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof LoadRuntimeOutOfMemoryException
+          || current instanceof PipeRuntimeOutOfMemoryCriticalException) {
+        return new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+            .setMessage(current.getMessage());
+      }
+      current = current.getCause();
+    }
+
+    return new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+        .setMessage(throwable == null ? null : throwable.getMessage());
+  }
+
+  private static class TabletConversionSemaphoreHolder {
+    private static final Semaphore INSTANCE = new Semaphore(getTabletConversionPermitCount());
+  }
+
   public static final LoadConvertedInsertTabletStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
       new LoadConvertedInsertTabletStatementTSStatusVisitor();
-  public static final LoadConvertedInsertTabletStatementExceptionVisitor
-      STATEMENT_EXCEPTION_VISITOR = new LoadConvertedInsertTabletStatementExceptionVisitor();
+  public static final LoadTreeConvertedInsertTabletStatementExceptionVisitor
+      TREE_STATEMENT_EXCEPTION_VISITOR =
+          new LoadTreeConvertedInsertTabletStatementExceptionVisitor();
+  public static final LoadTableConvertedInsertTabletStatementExceptionVisitor
+      TABLE_STATEMENT_EXCEPTION_VISITOR =
+          new LoadTableConvertedInsertTabletStatementExceptionVisitor();
 
   private final boolean isGeneratedByPipe;
+  private final MPPQueryContext context;
 
   private final SqlParser relationalSqlParser = new SqlParser();
   private final LoadTableStatementDataTypeConvertExecutionVisitor
-      tableStatementDataTypeConvertExecutionVisitor =
-          new LoadTableStatementDataTypeConvertExecutionVisitor(this::executeForTableModel);
+      tableStatementDataTypeConvertExecutionVisitor;
   private final LoadTreeStatementDataTypeConvertExecutionVisitor
-      treeStatementDataTypeConvertExecutionVisitor =
-          new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
+      treeStatementDataTypeConvertExecutionVisitor;
 
-  public LoadTsFileDataTypeConverter(final boolean isGeneratedByPipe) {
+  public LoadTsFileDataTypeConverter(
+      final MPPQueryContext context, final boolean isGeneratedByPipe) {
+    this.context = context;
     this.isGeneratedByPipe = isGeneratedByPipe;
+
+    tableStatementDataTypeConvertExecutionVisitor =
+        new LoadTableStatementDataTypeConvertExecutionVisitor(this::executeForTableModel);
+    treeStatementDataTypeConvertExecutionVisitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
   }
 
   public Optional<TSStatus> convertForTableModel(final LoadTsFile loadTsFileTableStatement) {
+    boolean isPermitAcquired = false;
     try {
+      getTabletConversionSemaphore().acquire();
+      isPermitAcquired = true;
       return loadTsFileTableStatement.accept(
           tableStatementDataTypeConvertExecutionVisitor, loadTsFileTableStatement.getDatabase());
+    } catch (final InterruptedException e) {
+      return getInterruptedConversionStatus(e);
     } catch (Exception e) {
+      if (isMemoryPressureException(e)) {
+        return Optional.of(getMemoryPressureStatus(e));
+      }
       LOGGER.warn(
           "Failed to convert data types for table model statement {}.",
           loadTsFileTableStatement,
           e);
       return Optional.of(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+    } finally {
+      if (isPermitAcquired) {
+        getTabletConversionSemaphore().release();
+      }
     }
   }
 
   private TSStatus executeForTableModel(final Statement statement, final String databaseName) {
-    final IClientSession session =
-        new InternalClientSession(
-            String.format(
-                "%s_%s",
-                LoadTsFileDataTypeConverter.class.getSimpleName(),
-                Thread.currentThread().getName()));
-    session.setUsername(AuthorityChecker.SUPER_USER);
-    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-    session.setZoneId(ZoneId.systemDefault());
-    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    final IClientSession session;
+    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
+    if (needToCreateSession) {
+      session =
+          new InternalClientSession(
+              String.format(
+                  "%s_%s",
+                  LoadTsFileDataTypeConverter.class.getSimpleName(),
+                  Thread.currentThread().getName()));
+      session.setUsername(AuthorityChecker.SUPER_USER);
+      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+      session.setZoneId(ZoneId.systemDefault());
+      session.setSqlDialect(SqlDialect.TABLE);
 
-    SESSION_MANAGER.registerSession(session);
+      SESSION_MANAGER.registerSession(session);
+    } else {
+      session = SESSION_MANAGER.getCurrSession();
+    }
     try {
       return Coordinator.getInstance()
           .executeForTableModel(
@@ -108,47 +229,75 @@ public class LoadTsFileDataTypeConverter {
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
           .status;
     } finally {
-      SESSION_MANAGER.removeCurrSession();
+      if (needToCreateSession) {
+        SESSION_MANAGER.removeCurrSession();
+      }
     }
   }
 
   public Optional<TSStatus> convertForTreeModel(final LoadTsFileStatement loadTsFileTreeStatement) {
+    DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+    boolean isPermitAcquired = false;
     try {
+      getTabletConversionSemaphore().acquire();
+      isPermitAcquired = true;
       return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
+    } catch (final InterruptedException e) {
+      return getInterruptedConversionStatus(e);
     } catch (Exception e) {
+      if (isMemoryPressureException(e)) {
+        return Optional.of(getMemoryPressureStatus(e));
+      }
       LOGGER.warn(
           "Failed to convert data types for tree model statement {}.", loadTsFileTreeStatement, e);
       return Optional.of(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+    } finally {
+      if (isPermitAcquired) {
+        getTabletConversionSemaphore().release();
+      }
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
     }
   }
 
   private TSStatus executeForTreeModel(final Statement statement) {
-    final IClientSession session =
-        new InternalClientSession(
-            String.format(
-                "%s_%s",
-                LoadTsFileDataTypeConverter.class.getSimpleName(),
-                Thread.currentThread().getName()));
-    session.setUsername(AuthorityChecker.SUPER_USER);
-    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-    session.setZoneId(ZoneId.systemDefault());
+    final IClientSession session;
+    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
+    if (needToCreateSession) {
+      session =
+          new InternalClientSession(
+              String.format(
+                  "%s_%s",
+                  LoadTsFileDataTypeConverter.class.getSimpleName(),
+                  Thread.currentThread().getName()));
+      session.setUsername(AuthorityChecker.SUPER_USER);
+      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+      session.setZoneId(ZoneId.systemDefault());
+      session.setSqlDialect(SqlDialect.TREE);
 
-    SESSION_MANAGER.registerSession(session);
+      SESSION_MANAGER.registerSession(session);
+    } else {
+      session = SESSION_MANAGER.getCurrSession();
+    }
+
     try {
       return Coordinator.getInstance()
           .executeForTreeModel(
               isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfo(session),
+              SESSION_MANAGER.getSessionInfoOfTreeModel(session),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+              false,
               false)
           .status;
     } finally {
-      SESSION_MANAGER.removeCurrSession();
+      if (needToCreateSession) {
+        SESSION_MANAGER.removeCurrSession();
+      }
     }
   }
 

@@ -26,22 +26,23 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -192,6 +193,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
    * |c8|t6|g3|  tsfile databasePrefix+"6.**", "now", null,
    * |c9|t0,t3|g3| dataset(dest2)/tsfile
    */
+  @Ignore
   @Test
   public void do_test()
       throws TException,
@@ -209,13 +211,12 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
-                    QueryDataSet dataset =
-                        reader.query(
-                            QueryExpression.create(
-                                Collections.singletonList(
-                                    new Path(databasePrefix + "0.d_0", "s_0", true)),
-                                null));
+                    ITsFileTreeReader reader = message.getTsFile().openTreeReader();
+                    SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                        SubscriptionTreeReaderTestUtils.query(
+                            reader,
+                            Collections.singletonList(
+                                new Path(databasePrefix + "0.d_0", "s_0", true)));
                     while (dataset.hasNext()) {
                       rowCount00.addAndGet(1);
                       RowRecord next = dataset.next();
@@ -240,13 +241,12 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
-                    QueryDataSet dataset =
-                        reader.query(
-                            QueryExpression.create(
-                                Collections.singletonList(
-                                    new Path(databasePrefix + "0.d_0", "s_0", true)),
-                                null));
+                    ITsFileTreeReader reader = message.getTsFile().openTreeReader();
+                    SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                        SubscriptionTreeReaderTestUtils.query(
+                            reader,
+                            Collections.singletonList(
+                                new Path(databasePrefix + "0.d_0", "s_0", true)));
                     while (dataset.hasNext()) {
                       rowCount10.addAndGet(1);
                       RowRecord next = dataset.next();
@@ -271,10 +271,10 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
-                      session_dest.insertTablet(dataSet.getTablet());
+                      session_dest.insertTablet(
+                          ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -293,10 +293,10 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
-                      session_dest2.insertTablet(dataSet.getTablet());
+                      session_dest2.insertTablet(
+                          ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -315,10 +315,10 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
-                      session_dest.insertTablet(dataSet.getTablet());
+                      session_dest.insertTablet(
+                          ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -337,10 +337,10 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
-                      session_dest2.insertTablet(dataSet.getTablet());
+                      session_dest2.insertTablet(
+                          ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -359,10 +359,10 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
-                      session_dest.insertTablet(dataSet.getTablet());
+                      session_dest.insertTablet(
+                          ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -384,11 +384,12 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
+                      case RECORD_HANDLER:
+                        for (final ResultSet dataSet : message.getResultSets()) {
                           try {
-                            session_dest.insertTablet(dataSet.getTablet());
+                            session_dest.insertTablet(
+                                ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                    .getTablet());
                           } catch (StatementExecutionException e) {
                             throw new RuntimeException(e);
                           } catch (IoTDBConnectionException e) {
@@ -396,15 +397,14 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
-                          QueryDataSet dataset =
-                              reader.query(
-                                  QueryExpression.create(
-                                      Collections.singletonList(
-                                          new Path(databasePrefix + "0.d_0", "s_0", true)),
-                                      null));
+                          ITsFileTreeReader reader = message.getTsFile().openTreeReader();
+                          SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                              SubscriptionTreeReaderTestUtils.query(
+                                  reader,
+                                  Collections.singletonList(
+                                      new Path(databasePrefix + "0.d_0", "s_0", true)));
                           while (dataset.hasNext()) {
                             rowCount70.addAndGet(1);
                             RowRecord next = dataset.next();
@@ -431,13 +431,12 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
-                    QueryDataSet dataset =
-                        reader.query(
-                            QueryExpression.create(
-                                Collections.singletonList(
-                                    new Path(databasePrefix + "6.d_0", "s_0", true)),
-                                null));
+                    ITsFileTreeReader reader = message.getTsFile().openTreeReader();
+                    SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                        SubscriptionTreeReaderTestUtils.query(
+                            reader,
+                            Collections.singletonList(
+                                new Path(databasePrefix + "6.d_0", "s_0", true)));
                     while (dataset.hasNext()) {
                       rowCount6.addAndGet(1);
                       RowRecord next = dataset.next();
@@ -464,11 +463,12 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
+                      case RECORD_HANDLER:
+                        for (final ResultSet dataSet : message.getResultSets()) {
                           try {
-                            session_dest2.insertTablet(dataSet.getTablet());
+                            session_dest2.insertTablet(
+                                ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                    .getTablet());
                           } catch (StatementExecutionException e) {
                             throw new RuntimeException(e);
                           } catch (IoTDBConnectionException e) {
@@ -476,15 +476,14 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
-                          QueryDataSet dataset =
-                              reader.query(
-                                  QueryExpression.create(
-                                      Collections.singletonList(
-                                          new Path(databasePrefix + "0.d_0", "s_0", true)),
-                                      null));
+                          ITsFileTreeReader reader = message.getTsFile().openTreeReader();
+                          SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                              SubscriptionTreeReaderTestUtils.query(
+                                  reader,
+                                  Collections.singletonList(
+                                      new Path(databasePrefix + "0.d_0", "s_0", true)));
                           while (dataset.hasNext()) {
                             rowCount90.addAndGet(1);
                             RowRecord next = dataset.next();

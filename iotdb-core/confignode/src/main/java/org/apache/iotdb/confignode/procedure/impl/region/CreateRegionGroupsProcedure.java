@@ -23,21 +23,27 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,7 +120,8 @@ public class CreateRegionGroupsProcedure
                             // all RegionReplicas were created successfully
                             persistPlan.addRegionGroup(database, regionReplicaSet);
                             LOGGER.info(
-                                "[CreateRegionGroups] All replicas of RegionGroup: {} are created successfully!",
+                                ProcedureMessages
+                                    .CREATEREGIONGROUPS_ALL_REPLICAS_OF_REGIONGROUP_ARE_CREATED_SUCCESSFULLY,
                                 regionReplicaSet.getRegionId());
                           } else {
                             final TRegionReplicaSet failedRegionReplicas =
@@ -143,7 +150,8 @@ public class CreateRegionGroupsProcedure
                                       });
 
                               LOGGER.info(
-                                  "[CreateRegionGroups] Failed to create some replicas of RegionGroup: {}, but this RegionGroup can still be used.",
+                                  ProcedureMessages
+                                      .CREATEREGIONGROUPS_FAILED_TO_CREATE_SOME_REPLICAS_OF_REGIONGROUP_BUT_THIS,
                                   regionReplicaSet.getRegionId());
                             } else {
                               // The redundant RegionReplicas should be deleted otherwise
@@ -162,17 +170,38 @@ public class CreateRegionGroupsProcedure
                                       });
 
                               LOGGER.info(
-                                  "[CreateRegionGroups] Failed to create most of replicas in RegionGroup: {}, The redundant replicas in this RegionGroup will be deleted.",
+                                  ProcedureMessages
+                                      .CREATEREGIONGROUPS_FAILED_TO_CREATE_MOST_OF_REPLICAS_IN_REGIONGROUP_THE,
                                   regionReplicaSet.getRegionId());
                             }
                           }
                         }));
 
-        env.persistRegionGroup(persistPlan);
+        final TSStatus persistStatus = env.persistRegionGroup(persistPlan);
+        if (persistStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          setFailure(new ProcedureException(new IoTDBException(persistStatus)));
+          return Flow.NO_MORE_STATE;
+        }
         try {
           env.getConfigManager().getConsensusManager().write(offerPlan);
         } catch (final ConsensusException e) {
-          LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+          LOGGER.warn(
+              ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+        }
+        setNextState(CreateRegionGroupsState.REBALANCE_DATA_PARTITION_POLICY);
+        break;
+      case REBALANCE_DATA_PARTITION_POLICY:
+        if (TConsensusGroupType.DataRegion.equals(consensusGroupType)) {
+          // Re-balance all corresponding DataPartitionPolicyTable before the newly created
+          // RegionGroups become available for serving partitions.
+          persistPlan
+              .getRegionGroupMap()
+              .keySet()
+              .forEach(
+                  database ->
+                      env.getConfigManager()
+                          .getLoadManager()
+                          .reBalanceDataPartitionPolicy(database));
         }
         setNextState(CreateRegionGroupsState.ACTIVATE_REGION_GROUPS);
         break;
@@ -225,20 +254,15 @@ public class CreateRegionGroupsProcedure
                           }
                         }));
         env.activateRegionGroup(activateRegionGroupMap);
+        setNextState(CreateRegionGroupsState.CREATE_INITIAL_CONSENSUS_PIPES);
+        break;
+      case CREATE_INITIAL_CONSENSUS_PIPES:
+        if (TConsensusGroupType.DataRegion.equals(consensusGroupType)) {
+          env.getRegionMaintainHandler().createInitialConsensusPipes(persistPlan);
+        }
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:
-        if (TConsensusGroupType.DataRegion.equals(consensusGroupType)) {
-          // Re-balance all corresponding DataPartitionPolicyTable
-          persistPlan
-              .getRegionGroupMap()
-              .keySet()
-              .forEach(
-                  database ->
-                      env.getConfigManager()
-                          .getLoadManager()
-                          .reBalanceDataPartitionPolicy(database));
-        }
         return Flow.NO_MORE_STATE;
     }
 
@@ -302,7 +326,7 @@ public class CreateRegionGroupsProcedure
         persistPlan.deserializeForProcedure(byteBuffer);
       }
     } catch (final Exception e) {
-      LOGGER.error("Deserialize meets error in CreateRegionGroupsProcedure", e);
+      LOGGER.error(ProcedureMessages.DESERIALIZE_MEETS_ERROR_IN_CREATEREGIONGROUPSPROCEDURE, e);
       throw new RuntimeException(e);
     }
   }

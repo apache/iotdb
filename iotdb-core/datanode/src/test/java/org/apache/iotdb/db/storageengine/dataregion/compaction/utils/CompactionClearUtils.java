@@ -29,8 +29,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;

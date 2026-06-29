@@ -79,7 +79,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.ln.**")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -102,7 +102,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.ln1.**")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -134,7 +134,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.ln3.**")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -169,12 +169,12 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.sg1.d1(time,s1) values(1,1);");
       statement.execute("flush");
-      statement.execute("select count(*) from root.**;");
+      statement.execute("select count(*) from root.sg1.**;");
       statement.execute("delete database root.sg1");
       statement.execute("insert into root.sg1.sdhkajhd(time,s1) values(1,1);");
       statement.execute("flush");
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.sg1.**")) {
         while (resultSet.next()) {
           count++;
           assertEquals(1, resultSet.getLong("count(root.sg1.sdhkajhd.s1)"));

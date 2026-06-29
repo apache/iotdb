@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTab
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
@@ -79,34 +80,42 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     try {
       switch (state) {
         case CHECK_AND_INVALIDATE_TABLE:
-          LOGGER.info("Check and invalidate table {}.{} when dropping table", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.CHECK_AND_INVALIDATE_TABLE_WHEN_DROPPING_TABLE,
+              database,
+              tableName);
           checkAndPreDeleteTable(env);
           break;
         case INVALIDATE_CACHE:
           LOGGER.info(
-              "Invalidating cache for table {}.{} when dropping table", database, tableName);
+              ProcedureMessages.INVALIDATING_CACHE_FOR_TABLE_WHEN_DROPPING_TABLE,
+              database,
+              tableName);
           invalidateCache(env);
           break;
         case DELETE_DATA:
-          LOGGER.info("Deleting data for table {}.{}", database, tableName);
+          LOGGER.info(ProcedureMessages.DELETING_DATA_FOR_TABLE, database, tableName);
           deleteData(env);
           break;
         case DELETE_DEVICES:
-          LOGGER.info("Deleting devices for table {}.{} when dropping table", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.DELETING_DEVICES_FOR_TABLE_WHEN_DROPPING_TABLE,
+              database,
+              tableName);
           deleteSchema(env);
           break;
         case DROP_TABLE:
-          LOGGER.info("Dropping table {}.{} on configNode", database, tableName);
+          LOGGER.info(ProcedureMessages.DROPPING_TABLE_ON_CONFIGNODE, database, tableName);
           dropTable(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized DropTableState " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_DROPTABLESTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DropTable-{}.{}-{} costs {}ms",
+          ProcedureMessages.DROPTABLE_COSTS_MS,
           database,
           tableName,
           state,
@@ -125,7 +134,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(DropTableState.INVALIDATE_CACHE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -142,9 +151,13 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     for (final TSStatus status : statusMap.values()) {
       // All dataNodes must clear the related schemaEngine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaEngine cache of table {}.{}", database, tableName);
+        LOGGER.error(
+            ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE,
+            database,
+            tableName);
         setFailure(
-            new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
+            new ProcedureException(
+                new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
         return;
       }
     }
@@ -201,7 +214,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
                     : new CommitDeleteTablePlan(database, tableName),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

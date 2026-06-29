@@ -29,4 +29,12 @@ public class ScalarArgumentChecker {
         }
         return "should be a positive value";
       };
+
+  public static Function<Object, String> NON_NEGATIVE_DOUBLE_CHECKER =
+      (value) -> {
+        if (value instanceof Double && (Double) value >= 0) {
+          return null;
+        }
+        return "should be a non-negative value";
+      };
 }

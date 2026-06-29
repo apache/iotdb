@@ -33,9 +33,9 @@ public class CompactionTableSchema extends TableSchema {
     super(tableName);
   }
 
-  public void merge(TableSchema tableSchema) {
+  public boolean merge(TableSchema tableSchema) {
     if (tableSchema == null) {
-      return;
+      return true;
     }
     if (!tableSchema.getTableName().equals(this.tableName)) {
       throw new CompactionTableSchemaNotMatchException(
@@ -60,11 +60,7 @@ public class CompactionTableSchema extends TableSchema {
       IMeasurementSchema idColumnToMerge = idColumnSchemasToMerge.get(i);
       IMeasurementSchema currentIdColumn = measurementSchemas.get(i);
       if (!idColumnToMerge.getMeasurementName().equals(currentIdColumn.getMeasurementName())) {
-        throw new CompactionTableSchemaNotMatchException(
-            "current id column name is "
-                + currentIdColumn.getMeasurementName()
-                + ", other id column name in same position is "
-                + idColumnToMerge.getMeasurementName());
+        return false;
       }
     }
 
@@ -75,6 +71,7 @@ public class CompactionTableSchema extends TableSchema {
       columnCategories.add(ColumnCategory.TAG);
       measurementSchemas.add(newIdColumn);
     }
+    return true;
   }
 
   public CompactionTableSchema copy() {

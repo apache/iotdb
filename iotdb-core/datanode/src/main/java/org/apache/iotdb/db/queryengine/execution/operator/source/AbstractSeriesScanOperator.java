@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public abstract class AbstractSeriesScanOperator extends AbstractDataSourceOperator {
@@ -70,10 +73,19 @@ public abstract class AbstractSeriesScanOperator extends AbstractDataSourceOpera
          * 2. consume chunk data secondly
          * 3. consume next file finally
          */
-        if (!readPageData() && !readChunkData() && !readFileData()) {
-          noMoreData = true;
-          break;
+        if (readPageData()) {
+          continue;
         }
+        Optional<Boolean> b = readChunkData();
+        if (!b.isPresent() || b.get()) {
+          continue;
+        }
+        b = readFileData();
+        if (!b.isPresent() || b.get()) {
+          continue;
+        }
+        noMoreData = true;
+        break;
 
       } while (System.nanoTime() - start < maxRuntime
           && !resultTsBlockBuilder.isFull()
@@ -83,26 +95,32 @@ public abstract class AbstractSeriesScanOperator extends AbstractDataSourceOpera
 
       return !finished;
     } catch (IOException e) {
-      throw new RuntimeException("Error happened while scanning the file", e);
+      throw new RuntimeException(DataNodeQueryMessages.ERROR_HAPPENED_WHILE_SCANNING_THE_FILE, e);
     }
   }
 
-  protected boolean readFileData() throws IOException {
-    while (seriesScanUtil.hasNextFile()) {
-      if (readChunkData()) {
-        return true;
-      }
+  protected Optional<Boolean> readFileData() throws IOException {
+    Optional<Boolean> b = seriesScanUtil.hasNextFile();
+    if (!b.isPresent() || !b.get()) {
+      return b;
     }
-    return false;
+    b = readChunkData();
+    if (!b.isPresent() || b.get()) {
+      return b;
+    }
+    return Optional.empty();
   }
 
-  protected boolean readChunkData() throws IOException {
-    while (seriesScanUtil.hasNextChunk()) {
-      if (readPageData()) {
-        return true;
-      }
+  protected Optional<Boolean> readChunkData() throws IOException {
+    Optional<Boolean> b = seriesScanUtil.hasNextChunk();
+    if (!b.isPresent() || !b.get()) {
+      return b;
     }
-    return false;
+
+    if (readPageData()) {
+      return Optional.of(true);
+    }
+    return Optional.empty();
   }
 
   protected boolean readPageData() throws IOException {

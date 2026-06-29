@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -46,6 +47,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+
+import static org.apache.iotdb.db.storageengine.load.LoadTsFileManager.MEASUREMENT_ID_CACHE;
 
 public class NonAlignedChunkData implements ChunkData {
 
@@ -112,10 +115,25 @@ public class NonAlignedChunkData implements ChunkData {
 
   @Override
   public void writeToFileWriter(final TsFileIOWriter writer) throws IOException {
+    ensureDataReadyForWriting();
     if (chunk != null) {
       writer.writeChunk(chunk);
     } else {
       chunkWriter.writeToFileWriter(writer);
+    }
+  }
+
+  private void ensureDataReadyForWriting() throws IOException {
+    if (chunk != null || chunkWriter != null) {
+      return;
+    }
+
+    try {
+      deserializeTsFileData(
+          new LoadTsFilePieceNode.ByteBufferInputStream(
+              ByteBuffer.wrap(byteStream.getBuf(), 0, byteStream.size())));
+    } catch (final PageException e) {
+      throw new IOException(e);
     }
   }
 
@@ -292,6 +310,8 @@ public class NonAlignedChunkData implements ChunkData {
     final boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     final byte chunkType = ReadWriteIOUtils.readByte(stream);
     final ChunkHeader chunkHeader = ChunkHeader.deserializeFrom(stream, chunkType);
+    String measurementID = chunkHeader.getMeasurementID();
+    chunkHeader.setMeasurementID(MEASUREMENT_ID_CACHE.get(measurementID, m -> m));
     int pageNumber = 0;
     if (needDecodeChunk) {
       pageNumber = ReadWriteIOUtils.readInt(stream);

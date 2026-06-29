@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.generator;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -29,6 +31,8 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,6 +47,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 public class TsFileNameGenerator {
 
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileNameGenerator.class);
 
   public static String generateNewTsFilePath(
       String tsFileDir,
@@ -65,7 +70,7 @@ public class TsFileNameGenerator {
       long version,
       int innerSpaceCompactionCount,
       int crossSpaceCompactionCount)
-      throws DiskSpaceInsufficientException {
+      throws DiskSpaceInsufficientException, IOException {
     return generateNewTsFilePathWithMkdir(
         sequence,
         logicalStorageGroup,
@@ -90,33 +95,44 @@ public class TsFileNameGenerator {
       int crossSpaceCompactionCount,
       int tierLevel,
       String customSuffix)
-      throws DiskSpaceInsufficientException {
-    String tsFileDir =
-        generateTsFileDir(
-            sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId, tierLevel);
-    fsFactory.getFile(tsFileDir).mkdirs();
-    return tsFileDir
-        + File.separator
-        + generateNewTsFileName(
-            time, version, innerSpaceCompactionCount, crossSpaceCompactionCount, customSuffix);
-  }
-
-  public static String generateTsFileDir(
-      boolean sequence,
-      String logicalStorageGroup,
-      String virtualStorageGroup,
-      long timePartitionId,
-      int tierLevel)
-      throws DiskSpaceInsufficientException {
-    TierManager tierManager = TierManager.getInstance();
-    String baseDir = tierManager.getNextFolderForTsFile(tierLevel, sequence);
-    return baseDir
-        + File.separator
-        + logicalStorageGroup
-        + File.separator
-        + virtualStorageGroup
-        + File.separator
-        + timePartitionId;
+      throws DiskSpaceInsufficientException, IOException {
+    FolderManager folderManager = TierManager.getInstance().getFolderManager(tierLevel, sequence);
+    try {
+      return folderManager.getNextWithRetry(
+          baseDir -> {
+            String tsFileDir =
+                baseDir
+                    + File.separator
+                    + logicalStorageGroup
+                    + File.separator
+                    + virtualStorageGroup
+                    + File.separator
+                    + timePartitionId;
+            File targetDir = fsFactory.getFile(tsFileDir);
+            if (!targetDir.exists()) {
+              if (!targetDir.mkdirs() && !targetDir.exists()) {
+                throw new IOException(
+                    "Directory creation failed: "
+                        + tsFileDir
+                        + " (Permission denied or parent not writable)");
+              }
+            }
+            return tsFileDir
+                + File.separator
+                + generateNewTsFileName(
+                    time,
+                    version,
+                    innerSpaceCompactionCount,
+                    crossSpaceCompactionCount,
+                    customSuffix);
+          });
+    } catch (DiskSpaceInsufficientException e) {
+      LOGGER.error(StorageEngineMessages.ALL_DISKS_FULL_CANNOT_CREATE_TSFILE_DIR, e);
+      throw new IOException(StorageEngineMessages.DISK_SPACE_INSUFFICIENT, e);
+    } catch (Exception e) {
+      LOGGER.warn(StorageEngineMessages.FAILED_TO_CREATE_TSFILE_DIR_AFTER_RETRIES, e);
+      throw new IOException(StorageEngineMessages.FAILED_TO_CREATE_DIR_AFTER_RETRIES, e);
+    }
   }
 
   public static String generateNewTsFileName(
@@ -153,10 +169,10 @@ public class TsFileNameGenerator {
                 Integer.parseInt(matcher.group(4)));
         return tsFileName;
       } catch (NumberFormatException e) {
-        throw new IOException("tsfile file name format is incorrect:" + fileName);
+        throw new IOException(StorageEngineMessages.TSFILE_NAME_FORMAT_INCORRECT + fileName);
       }
     } else {
-      throw new IOException("tsfile file name format is incorrect:" + fileName);
+      throw new IOException(StorageEngineMessages.TSFILE_NAME_FORMAT_INCORRECT + fileName);
     }
   }
 

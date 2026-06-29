@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemp
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.GetBuiltInExternalServiceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
@@ -46,8 +47,13 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.TransferLeaderRPCHa
 import org.apache.iotdb.confignode.client.async.handlers.rpc.TreeDeviceViewFieldDetectionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.PullCommitProgressRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
@@ -77,8 +83,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiTopicMetaReq;
@@ -86,7 +94,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSubscriptionRuntimeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicOwnerLeaseReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
@@ -96,9 +106,11 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateClusterTopologyReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,6 +126,10 @@ public class CnToDnInternalServiceAsyncRequestManager
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CnToDnInternalServiceAsyncRequestManager.class);
+
+  private CnToDnInternalServiceAsyncRequestManager() {
+    super(ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager());
+  }
 
   @SuppressWarnings("unchecked")
   @Override
@@ -220,6 +236,21 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.pushSingleConsumerGroupMeta(
                 (TPushSingleConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.PULL_COMMIT_PROGRESS,
+        (req, client, handler) ->
+            client.pullCommitProgress(
+                (TPullCommitProgressReq) req, (PullCommitProgressRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.SUBSCRIPTION_PUSH_RUNTIME,
+        (req, client, handler) ->
+            client.pushSubscriptionRuntime(
+                (TPushSubscriptionRuntimeReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.SUBSCRIPTION_PUSH_OWNER_LEASE,
+        (req, client, handler) ->
+            client.pushTopicOwnerLease(
+                (TPushTopicOwnerLeaseReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.PIPE_HEARTBEAT,
         (req, client, handler) ->
             client.pipeHeartbeat((TPipeHeartbeatReq) req, (PipeHeartbeatRPCHandler) handler));
@@ -308,6 +339,16 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.deleteTimeSeries((TDeleteTimeSeriesReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.ALTER_ENCODING_COMPRESSOR,
+        (req, client, handler) ->
+            client.alterEncodingCompressor(
+                (TAlterEncodingCompressorReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.ALTER_TIMESERIES_DATATYPE,
+        (req, client, handler) ->
+            client.alterTimeSeriesDataType(
+                (TAlterTimeSeriesReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
         (req, client, handler) ->
             client.constructSchemaBlackListWithTemplate(
@@ -363,7 +404,8 @@ public class CnToDnInternalServiceAsyncRequestManager
     actionMapBuilder.put(
         CnToDnAsyncRequestType.KILL_QUERY_INSTANCE,
         (req, client, handler) ->
-            client.killQueryInstance((String) req, (DataNodeTSStatusRPCHandler) handler));
+            client.killQueryInstance(
+                (TKillQueryInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.SET_SPACE_QUOTA,
         (req, client, handler) ->
@@ -391,6 +433,15 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.PUSH_TOPOLOGY,
+        (req, client, handler) ->
+            client.updateClusterTopology(
+                (TUpdateClusterTopologyReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.INSERT_RECORD,
+        (req, client, handler) ->
+            client.insertRecord((TSInsertRecordReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.UPDATE_TABLE,
         (req, client, handler) ->
@@ -463,6 +514,14 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.STOP_AND_CLEAR_DATA_NODE,
         (req, client, handler) ->
             client.stopAndClearDataNode((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.ENABLE_SEPARATION_OF_ADMIN_POWERS,
+        (req, client, handler) ->
+            client.enableSeparationOfAdminPower((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.GET_BUILTIN_SERVICE,
+        (req, client, handler) ->
+            client.getBuiltInService((GetBuiltInExternalServiceRPCHandler) handler));
   }
 
   @Override
@@ -473,7 +532,8 @@ public class CnToDnInternalServiceAsyncRequestManager
             .collect(Collectors.toList());
     if (!lackList.isEmpty()) {
       throw new UncheckedStartupException(
-          String.format("These request types should be added to actionMap: %s", lackList));
+          String.format(
+              ConfigNodeMessages.THESE_REQUEST_TYPES_SHOULD_BE_ADDED_TO_ACTIONMAP, lackList));
     }
   }
 

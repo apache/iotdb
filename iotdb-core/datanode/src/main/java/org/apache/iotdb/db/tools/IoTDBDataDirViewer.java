@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -33,6 +34,7 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -50,7 +52,7 @@ public class IoTDBDataDirViewer {
       data_dir = args[0].split(",");
       outFile = args[1];
     } else {
-      throw new IOException("Invalid parameters. Please check the user guide.");
+      throw new IOException(DataNodeMiscMessages.INVALID_PARAMETERS_CHECK_USER_GUIDE);
     }
     System.out.println("output save path:" + outFile);
     System.out.println("data dir num:" + data_dir.length);
@@ -166,15 +168,31 @@ public class IoTDBDataDirViewer {
     for (IDeviceID device : keys) {
       // iterating the index, must present
       //noinspection OptionalGetWithoutIsPresent
+      Optional<Long> startTime = resource.getStartTime(device);
+      long start;
+      if (!startTime.isPresent()) {
+        printlnBoth(pw, String.format("|  |  |  |  |  |--device %s, start time is null", device));
+        return;
+      } else {
+        start = startTime.get();
+      }
+      long end;
+      Optional<Long> endTime = resource.getStartTime(device);
+      if (!endTime.isPresent()) {
+        printlnBoth(pw, String.format("|  |  |  |  |  |--device %s, end time is null", device));
+        return;
+      } else {
+        end = endTime.get();
+      }
       printlnBoth(
           pw,
           String.format(
               "|  |  |  |  |  |--device %s, start time %d (%s), end time %d (%s)",
               device,
-              resource.getStartTime(device),
-              DateTimeUtils.convertLongToDate(resource.getStartTime(device).get()),
-              resource.getEndTime(device),
-              DateTimeUtils.convertLongToDate(resource.getEndTime(device).get())));
+              start,
+              DateTimeUtils.convertLongToDate(start),
+              end,
+              DateTimeUtils.convertLongToDate(end)));
     }
   }
 

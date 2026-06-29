@@ -23,9 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
+import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.twostage.combiner.PipeCombineHandlerManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -75,23 +76,24 @@ public class TwoStageAggregateSender implements AutoCloseable {
     final boolean endPointsChanged = tryFetchEndPointsIfNecessary();
     tryConstructClients(endPointsChanged);
 
-    final TEndPoint endPoint = endPoints[(int) watermark % endPoints.length];
+    final TEndPoint endPoint = endPoints[(int) Math.floorMod(watermark, endPoints.length)];
     IoTDBSyncClient client = endPointIoTDBSyncClientMap.get(endPoint);
     if (client == null) {
       client = reconstructIoTDBSyncClient(endPoint);
     }
 
-    LOGGER.info("Sending request {} (watermark = {}) to {}", req, watermark, endPoint);
+    LOGGER.info(DataNodePipeMessages.SENDING_REQUEST_WATERMARK_TO, req, watermark, endPoint);
 
     try {
       return client.pipeTransfer(req);
     } catch (Exception e) {
-      LOGGER.warn("Failed to send request {} (watermark = {}) to {}", req, watermark, endPoint, e);
+      LOGGER.warn(
+          DataNodePipeMessages.FAILED_TO_SEND_REQUEST_WATERMARK_TO, req, watermark, endPoint, e);
       try {
         reconstructIoTDBSyncClient(endPoint);
       } catch (Exception ex) {
         LOGGER.warn(
-            "Failed to reconstruct IoTDBSyncClient {} after failure to send request {} (watermark = {})",
+            DataNodePipeMessages.FAILED_TO_RECONSTRUCT_IOTDBSYNCCLIENT_AFTER_FAILURE_TO,
             endPoint,
             req,
             watermark,
@@ -122,7 +124,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TShowDataNodesResp showDataNodesResp = configNodeClient.showDataNodes();
         if (showDataNodesResp == null || showDataNodesResp.getDataNodesInfoList() == null) {
-          throw new PipeException("Failed to fetch data nodes");
+          throw new PipeException(DataNodePipeMessages.FAILED_TO_FETCH_DATA_NODES);
         }
         for (final TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
           dataNodeId2EndPointMap.put(
@@ -130,18 +132,20 @@ public class TwoStageAggregateSender implements AutoCloseable {
               new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort()));
         }
       } catch (ClientManagerException | TException e) {
-        throw new PipeException("Failed to fetch data nodes", e);
+        throw new PipeException(DataNodePipeMessages.FAILED_TO_FETCH_DATA_NODES, e);
       }
 
       if (dataNodeId2EndPointMap.isEmpty()) {
-        throw new PipeException("No data nodes' endpoints fetched");
+        throw new PipeException(DataNodePipeMessages.NO_DATA_NODES_ENDPOINTS_FETCHED);
       }
 
       DATANODE_ID_2_END_POINTS.set(dataNodeId2EndPointMap);
       DATANODE_ID_2_END_POINTS_LAST_UPDATE_TIME.set(currentTime);
     }
 
-    LOGGER.info("Data nodes' endpoints for two-stage aggregation: {}", DATANODE_ID_2_END_POINTS);
+    LOGGER.info(
+        DataNodePipeMessages.DATA_NODES_ENDPOINTS_FOR_TWO_STAGE_AGGREGATION,
+        DATANODE_ID_2_END_POINTS);
     return true;
   }
 
@@ -153,7 +157,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
     final Set<Integer> expectedDataNodeIdSet =
         PipeCombineHandlerManager.getInstance().getExpectedDataNodeIdSet(pipeName, creationTime);
     if (expectedDataNodeIdSet.isEmpty()) {
-      throw new PipeException("No expected region id set fetched");
+      throw new PipeException(DataNodePipeMessages.NO_EXPECTED_REGION_ID_SET_FETCHED);
     }
 
     endPoints =
@@ -162,7 +166,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
             .map(Map.Entry::getValue)
             .toArray(TEndPoint[]::new);
     LOGGER.info(
-        "End points for two-stage aggregation pipe (pipeName={}, creationTime={}) were updated to {}",
+        DataNodePipeMessages.END_POINTS_FOR_TWO_STAGE_AGGREGATION_PIPE,
         pipeName,
         creationTime,
         endPoints);
@@ -175,7 +179,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
       try {
         endPointIoTDBSyncClientMap.put(endPoint, constructIoTDBSyncClient(endPoint));
       } catch (TTransportException e) {
-        LOGGER.warn("Failed to construct IoTDBSyncClient", e);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CONSTRUCT_IOTDBSYNCCLIENT, e);
       }
     }
 
@@ -184,7 +188,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
         try {
           endPointIoTDBSyncClientMap.remove(endPoint).close();
         } catch (Exception e) {
-          LOGGER.warn("Failed to close IoTDBSyncClient", e);
+          LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_IOTDBSYNCCLIENT, e);
         }
       }
     }
@@ -197,7 +201,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
       try {
         oldClient.close();
       } catch (Exception e) {
-        LOGGER.warn("Failed to close old IoTDBSyncClient", e);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_OLD_IOTDBSYNCCLIENT, e);
       }
     }
     final IoTDBSyncClient newClient = constructIoTDBSyncClient(endPoint);
@@ -208,9 +212,8 @@ public class TwoStageAggregateSender implements AutoCloseable {
   private IoTDBSyncClient constructIoTDBSyncClient(TEndPoint endPoint) throws TTransportException {
     return new IoTDBSyncClient(
         new ThriftClientProperty.Builder()
-            .setConnectionTimeoutMs(PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
-            .setRpcThriftCompressionEnabled(
-                PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
+            .setConnectionTimeoutMs(PIPE_CONFIG.getPipeSinkHandshakeTimeoutMs())
+            .setRpcThriftCompressionEnabled(PIPE_CONFIG.isPipeSinkRPCThriftCompressionEnabled())
             .build(),
         endPoint.getIp(),
         endPoint.getPort(),
@@ -225,7 +228,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
       try {
         client.close();
       } catch (Exception e) {
-        LOGGER.warn("Failed to close IoTDBSyncClient", e);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_IOTDBSYNCCLIENT, e);
       }
     }
 

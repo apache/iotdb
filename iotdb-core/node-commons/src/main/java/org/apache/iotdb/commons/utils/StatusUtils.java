@@ -66,7 +66,6 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
     NEED_RETRY.add(TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
-    NEED_RETRY.add(TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode());
     NEED_RETRY.add(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 
@@ -247,5 +246,23 @@ public class StatusUtils {
 
   public static boolean isUnknownError(int statusCode) {
     return UNKNOWN_ERRORS.contains(statusCode);
+  }
+
+  public static int retrieveExitStatusCode(Throwable e) {
+    while (e.getCause() != null) {
+      e = e.getCause();
+    }
+    if (e.getMessage() != null) {
+      if (e.getMessage().contains("because Could not create ServerSocket")
+          || e.getMessage().contains("Failed to bind to address")
+          || e.getMessage().contains("Address already in use: bind")) {
+        return TSStatusCode.PORT_OCCUPIED.getStatusCode();
+      }
+
+      if (e instanceof ClassNotFoundException || e instanceof IllegalArgumentException) {
+        return TSStatusCode.ILLEGAL_PARAMETER.getStatusCode();
+      }
+    }
+    return -1;
   }
 }

@@ -29,7 +29,7 @@ popd
 if NOT DEFINED JAVA_HOME goto :err
 
 set JAVA_OPTS=-ea^
- -DIOTDB_HOME="%IOTDB_HOME%"
+ -DIOTDB_HOME="%IOTDB_HOME%" -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
 
 SET IOTDB_CONF=%IOTDB_HOME%\conf
 IF EXIST "%IOTDB_CONF%\windows\datanode-env.bat" (

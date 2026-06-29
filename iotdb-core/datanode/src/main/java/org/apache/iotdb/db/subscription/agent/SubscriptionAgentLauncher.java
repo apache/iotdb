@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -95,7 +96,7 @@ class SubscriptionAgentLauncher {
             MAX_RETRY_TIMES,
             e);
         try {
-          Thread.sleep(
+          SubscriptionAgentLauncher.class.wait(
               retry * SubscriptionConfig.getInstance().getSubscriptionLaunchRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
@@ -106,7 +107,7 @@ class SubscriptionAgentLauncher {
       }
     }
 
-    throw new StartupException("Failed to get topic meta from config node.");
+    throw new StartupException(DataNodeMiscMessages.FAILED_TO_GET_TOPIC_META);
   }
 
   public static synchronized void launchSubscriptionConsumerAgent() throws StartupException {
@@ -154,7 +155,7 @@ class SubscriptionAgentLauncher {
             MAX_RETRY_TIMES,
             e);
         try {
-          Thread.sleep(
+          SubscriptionAgentLauncher.class.wait(
               retry * SubscriptionConfig.getInstance().getSubscriptionLaunchRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
@@ -165,6 +166,6 @@ class SubscriptionAgentLauncher {
       }
     }
 
-    throw new StartupException("Failed to get consumer group meta from config node.");
+    throw new StartupException(DataNodeMiscMessages.FAILED_TO_GET_CONSUMER_GROUP_META);
   }
 }

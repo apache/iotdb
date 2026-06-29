@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.ArithmeticOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.BinaryComputation;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.ComparisonOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.Computation;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.ReferenceComputation;
+import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.ArithmeticOperator;
+import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.BinaryComputation;
+import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.ComparisonOperator;
+import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.Computation;
+import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.ReferenceComputation;
 
 import org.junit.Test;
 
@@ -49,5 +49,14 @@ public class PatternExpressionTest {
 
     values = Arrays.asList(6, 5, 10); // 6 + 5 < 10 -> false
     assertEquals(false, fullExpression.evaluate(values));
+  }
+
+  @Test
+  public void testStringExpression() {
+    Computation expr =
+        new BinaryComputation(
+            new ReferenceComputation(0), new ReferenceComputation(1), ComparisonOperator.EQUAL);
+    List<Object> values = Arrays.asList("hello", "hello");
+    assertEquals(true, expr.evaluate(values));
   }
 }

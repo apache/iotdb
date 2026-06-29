@@ -104,8 +104,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
-    setProperty("encrypt_key_path", encryptKeyPath);
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
+    setProperty("enable_grant_option", String.valueOf(enableGrantOption));
     return this;
   }
 
@@ -198,8 +198,14 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
-    setProperty("iot_consensus_v2_mode", ioTConsensusV2Mode);
+  public CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode) {
+    setProperty("iot_consensus_v2_mode", iotConsensusV2Mode);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy) {
+    setProperty("region_group_allocate_policy", regionGroupAllocatePolicy);
     return this;
   }
 
@@ -346,15 +352,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    setProperty(
-        "enable_auto_leader_balance_for_iot_consensus",
-        String.valueOf(enableAutoLeaderBalanceForIoTConsensus));
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     if (queryThreadCount <= 0) {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
@@ -382,8 +379,35 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "config_node_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "schema_region_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "data_region_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    setProperty("data_partition_allocation_strategy", dataPartitionAllocationStrategy);
     return this;
   }
 
@@ -442,14 +466,41 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode) {
     setProperty("data_region_per_data_node", String.valueOf(dataRegionPerDataNode));
     return this;
   }
 
   @Override
-  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  public CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     setProperty("schema_region_per_data_node", String.valueOf(schemaRegionPerDataNode));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    setProperty("pipe_memory_management_enabled", String.valueOf(pipeMemoryManagementEnabled));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    setProperty("pipe_enable_memory_checked", String.valueOf(isPipeEnableMemoryCheck));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
+      long subscriptionOwnerLeaseDurationMsMin) {
+    setProperty(
+        "subscription_owner_lease_duration_ms_min",
+        String.valueOf(subscriptionOwnerLeaseDurationMsMin));
     return this;
   }
 
@@ -475,6 +526,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
     setProperty("tag_attribute_total_size", String.valueOf(tagAttributeTotalSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    setProperty(
+        "single_measurement_check_cache_size", String.valueOf(singleMeasurementCheckCacheSize));
     return this;
   }
 
@@ -514,9 +572,15 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes) {
     setProperty(
-        "pipe_connector_request_slice_threshold_bytes",
+        "pipe_sink_request_slice_threshold_bytes",
         String.valueOf(pipeConnectorRequestSliceThresholdBytes));
 
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled) {
+    setProperty("pipe_auto_split_full_enabled", String.valueOf(pipeAutoSplitFullEnabled));
     return this;
   }
 
@@ -527,8 +591,134 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
-    setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
+  public CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    setProperty("datanode_memory_proportion", dataNodeMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
+      int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
+    setProperty(
+        "subscription_prefetch_ts_file_batch_max_delay_in_ms",
+        String.valueOf(subscriptionPrefetchTsFileBatchMaxDelayInMs));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
+      int subscriptionPrefetchTsFileBatchMaxSizeInBytes) {
+    setProperty(
+        "subscription_prefetch_ts_file_batch_max_size_in_bytes",
+        String.valueOf(subscriptionPrefetchTsFileBatchMaxSizeInBytes));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
+    setProperty("default_database_level", String.valueOf(defaultDatabaseLevel));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
+    setProperty("enforce_strong_password", String.valueOf(enforceStrongPassword));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    setProperty("enable_thrift_ssl", String.valueOf(enableThriftClientSSL));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
+    setProperty("enable_internal_ssl", String.valueOf(enableInternalSSL));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePath(String keyStorePath) {
+    setProperty("key_store_path", keyStorePath);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePwd(String keyStorePwd) {
+    setProperty("key_store_pwd", keyStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePath(String trustStorePath) {
+    setProperty("trust_store_path", trustStorePath);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePwd(String trustStorePwd) {
+    setProperty("trust_store_pwd", trustStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    setProperty("ssl_protocol", sslProtocol);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
+    setProperty("datanode_memory_proportion", datanodeMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableAuditLog(boolean enableAuditLog) {
+    setProperty("enable_audit_log", String.valueOf(enableAuditLog));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationType(String auditableOperationType) {
+    setProperty("auditable_operation_type", auditableOperationType);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationLevel(String auditableOperationLevel) {
+    setProperty("auditable_operation_level", auditableOperationLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
+    setProperty("auditable_operation_result", auditableOperationResult);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    setProperty("restrict_object_limit", String.valueOf(restrictObjectLimit));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    setProperty("cte_buffer_size_in_bytes", String.valueOf(cteBufferSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    setProperty("max_rows_in_cte_buffer", String.valueOf(maxRows));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
+    setProperty("enable_topology_probing", String.valueOf(enableTopologyProbing));
     return this;
   }
 

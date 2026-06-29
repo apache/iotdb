@@ -72,9 +72,26 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
           dataRegion.executeCompaction();
         }
       } catch (InterruptedException ignored) {
+        boolean isStoppedByUser =
+            CompactionScheduleTaskManager.getInstance().isStoppingAllScheduleTask();
         logger.info(
-            "[CompactionScheduleTaskWorker-{}] compaction schedule is interrupted", workerId);
-        return null;
+            "[CompactionScheduleTaskWorker-{}] compaction schedule is interrupted, isStopByUser: {}",
+            workerId,
+            isStoppedByUser);
+        if (isStoppedByUser) {
+          return null;
+        }
+      } catch (Exception e) {
+        logger.error(
+            "[CompactionScheduleTaskWorker-{}] Failed to execute compaction schedule task",
+            workerId,
+            e);
+      } catch (Throwable t) {
+        logger.error(
+            "[CompactionScheduleTaskWorker-{}] Failed to execute compaction schedule task and cannot recover",
+            workerId,
+            t);
+        throw t;
       }
     }
   }

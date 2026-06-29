@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -47,22 +47,25 @@ import java.util.stream.Collectors;
 public class ShowPipeTask implements IConfigTask {
 
   private final ShowPipesStatement showPipesStatement;
+  private final String userName;
 
-  public ShowPipeTask(final ShowPipesStatement showPipesStatement) {
+  public ShowPipeTask(final ShowPipesStatement showPipesStatement, final String userName) {
     this.showPipesStatement = showPipesStatement;
+    this.userName = userName;
   }
 
-  public ShowPipeTask(final ShowPipes node) {
+  public ShowPipeTask(final ShowPipes node, final String userName) {
     showPipesStatement = new ShowPipesStatement();
     showPipesStatement.setPipeName(node.getPipeName());
     showPipesStatement.setWhereClause(node.hasWhereClause());
     showPipesStatement.setTableModel(true);
+    this.userName = userName;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showPipes(showPipesStatement);
+    return configTaskExecutor.showPipes(showPipesStatement, userName);
   }
 
   public static void buildTSBlock(
@@ -105,7 +108,7 @@ public class ShowPipeTask implements IConfigTask {
 
       if (remainingEventCount == -1 && remainingTime == -1) {
         final Pair<Long, Double> remainingEventAndTime =
-            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            PipeDataNodeSinglePipeMetrics.getInstance()
                 .getRemainingEventAndTime(tPipeInfo.getId(), tPipeInfo.getCreationTime());
         remainingEventCount = remainingEventAndTime.getLeft();
         remainingTime = remainingEventAndTime.getRight();

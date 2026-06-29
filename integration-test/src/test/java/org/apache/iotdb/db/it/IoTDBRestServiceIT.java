@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -26,8 +27,10 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.http.HttpEntity;
@@ -38,9 +41,9 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,10 +51,18 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.COLUMN_TTL;
 import static org.junit.Assert.assertEquals;
@@ -62,23 +73,50 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class IoTDBRestServiceIT {
 
-  private int port = 18080;
+  private static int port = 18080;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+    baseEnv.getConfig().getCommonConfig().setEnforceStrongPassword(false);
     baseEnv.initClusterEnvironment();
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     port = portConflictDataNodeWrapper.getRestServicePort();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private String getAuthorization(String username, String password) {
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // ignore
+    }
+  }
+
+  private static void cleanupAllData() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      executeQuietly(statement, "DELETE DATABASE root.**");
+    } catch (SQLException ignored) {
+      // ignore
+    }
+  }
+
+  private static void dropUserQuietly(String username) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      executeQuietly(statement, "DROP USER " + username);
+    } catch (SQLException ignored) {
+      // ignore
+    }
+  }
+
+  public static String getAuthorization(String username, String password) {
     return Base64.getEncoder()
         .encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
   }
@@ -128,7 +166,7 @@ public class IoTDBRestServiceIT {
     }
   }
 
-  private HttpPost getHttpPost(String url) {
+  public static HttpPost getHttpPost(String url) {
     HttpPost httpPost = new HttpPost(url);
     httpPost.addHeader("Content-type", "application/json; charset=utf-8");
     httpPost.setHeader("Accept", "application/json");
@@ -141,7 +179,7 @@ public class IoTDBRestServiceIT {
     HttpPost httpPost = new HttpPost(url);
     httpPost.addHeader("Content-type", "application/json; charset=utf-8");
     httpPost.setHeader("Accept", "application/json");
-    String authorization = getAuthorization("root1", "root1");
+    String authorization = getAuthorization("root1", "rooT@11234567");
     httpPost.setHeader("Authorization", authorization);
     return httpPost;
   }
@@ -239,6 +277,73 @@ public class IoTDBRestServiceIT {
         e.printStackTrace();
         fail(e.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void errorInsertRecords() throws SQLException {
+    CloseableHttpResponse response = null;
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    try {
+      for (int i = 0; i < EnvFactory.getEnv().getDataNodeWrapperList().size(); i++) {
+        DataNodeWrapper wrapper = EnvFactory.getEnv().getDataNodeWrapperList().get(i);
+        try {
+          HttpPost httpPost =
+              getHttpPost(
+                  "http://"
+                      + wrapper.getIp()
+                      + ":"
+                      + wrapper.getRestServicePort()
+                      + "/rest/v2/insertRecords");
+          String json =
+              "{\"timestamps\":["
+                  + i
+                  + "],\"measurements_list\":[[\"s33\",\"s44\"]],\"data_types_list\":[[\"INT32\",\"INT64\"]],\"values_list\":[[1,false]],\"is_aligned\":false,\"devices\":[\"root.s1\"]}";
+          httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
+          for (int j = 0; j < 30; j++) {
+            try {
+              response = httpClient.execute(httpPost);
+              break;
+            } catch (Exception e) {
+              if (i == 29) {
+                throw e;
+              }
+              try {
+                TimeUnit.SECONDS.sleep(1);
+              } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+              }
+            }
+          }
+          HttpEntity responseEntity = response.getEntity();
+          String message = EntityUtils.toString(responseEntity, "utf-8");
+          JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+          assertEquals(507, Integer.parseInt(result.get("code").toString()));
+        } catch (IOException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        } finally {
+          try {
+            if (response != null) {
+              response.close();
+            }
+          } catch (IOException e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+          }
+        }
+      }
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+
+        ResultSet resultSet = statement.executeQuery("select count(s33) from root.s1");
+        resultSet.next();
+        assertEquals(
+            EnvFactory.getEnv().getDataNodeWrapperList().size(),
+            resultSet.getInt("count(root.s1.s33)"));
+      }
+    } finally {
+      cleanupAllData();
     }
   }
 
@@ -378,351 +483,370 @@ public class IoTDBRestServiceIT {
     HttpPost httpPost2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
     HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
 
-    nonQuery(httpClient, "{\"sql\":\"CREATE USER `root1` 'root1'\"}", httpPost2);
+    nonQuery(httpClient, "{\"sql\":\"CREATE USER `root1` 'rooT@11234567'\"}", httpPost2);
     nonQuery(httpClient, "{\"sql\":\"GRANT WRITE ON  root.** to user root1\"}", httpPostV2);
   }
 
   @Test
   public void insertAndQuery() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    //
-    rightInsertTablet(httpClient);
-    query(httpClient);
-    queryGroupByLevel(httpClient);
-    queryRowLimit(httpClient);
-    queryShowChildPaths(httpClient);
-    queryShowNodes(httpClient);
-    showAllTTL(httpClient);
-    showStorageGroup(httpClient);
-    showFunctions(httpClient);
-    showTimeseries(httpClient);
-
-    showLastTimeseries(httpClient);
-    countTimeseries(httpClient);
-    countNodes(httpClient);
-    showDevices(httpClient);
-
-    showDevicesWithStroage(httpClient);
-    listUser(httpClient);
-    selectCount(httpClient);
-    selectLast(httpClient);
-
-    queryV2(httpClient);
-    queryGroupByLevelV2(httpClient);
-    queryRowLimitV2(httpClient);
-    queryShowChildPathsV2(httpClient);
-    queryShowNodesV2(httpClient);
-    showAllTTLV2(httpClient);
-    showStorageGroupV2(httpClient);
-    showFunctionsV2(httpClient);
-    showTimeseriesV2(httpClient);
-
-    showLastTimeseriesV2(httpClient);
-    countTimeseriesV2(httpClient);
-    countNodesV2(httpClient);
-    showDevicesV2(httpClient);
-
-    showDevicesWithStroageV2(httpClient);
-    listUserV2(httpClient);
-    selectCountV2(httpClient);
-    selectLastV2(httpClient);
-    perData(httpClient);
-    List<String> insertTablet_right_json_list = new ArrayList<>();
-    List<String> insertTablet_error_json_list = new ArrayList<>();
-
-    List<String> insertRecords_right_json_list = new ArrayList<>();
-    List<String> insertRecords_error_json_list = new ArrayList<>();
-
-    List<String> nonQuery_right_json_list = new ArrayList<>();
-    List<String> nonQuery_error_json_list = new ArrayList<>();
-
-    List<String> insertTablet_right_json_list_v2 = new ArrayList<>();
-    List<String> insertTablet_error_json_list_v2 = new ArrayList<>();
-
-    List<String> insertRecords_right_json_list_v2 = new ArrayList<>();
-    List<String> insertRecords_error_json_list_v2 = new ArrayList<>();
-
-    List<String> nonQuery_right_json_list_v2 = new ArrayList<>();
-    List<String> nonQuery_error_json_list_v2 = new ArrayList<>();
-    for (int i = 0; i <= 1; i++) {
-      boolean isAligned = false;
-      if (i == 0) {
-        isAligned = true;
-      }
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.sg21"
-              + i
-              + "\"}");
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.sg22"
-              + i
-              + "\"}");
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.`sg23"
-              + i
-              + "`\"}");
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.`sg24"
-              + i
-              + "`\"}");
-      insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
-              + isAligned
-              + ",\"deviceId\":\"root.sg25"
-              + i
-              + "\"}");
-      insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
-              + isAligned
-              + ",\"deviceId\":\"root.sg36"
-              + i
-              + "\"}");
-      insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"a123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
-              + isAligned
-              + ",\"deviceId\":\"root.`sg46"
-              + i
-              + "`\"}");
-      insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
-              + isAligned
-              + ",\"deviceId\":\"root.`3333a"
-              + i
-              + "`\"}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.`s11`\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"isAligned\":"
-              + isAligned
-              + "}");
-
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"root\",\"442\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`root`\",\"1111\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"isAligned\":"
-              + isAligned
-              + "}");
-
-      nonQuery_right_json_list.add("{\"sql\":\"insert into root.aa(time,`bb`) values(111,1)\"}");
-      nonQuery_right_json_list.add("{\"sql\":\"insert into root.`aa`(time,bb) values(111,1)\"}");
-      nonQuery_right_json_list.add("{\"sql\":\"insert into root.`aa`(time,`bb`) values(111,1)\"}");
-      nonQuery_right_json_list.add("{\"sql\":\"insert into root.aa(time,bb) values(111,1)\"}");
-
-      nonQuery_error_json_list.add("{\"sql\":\"insert into root.time(time,1`bb`) values(111,1)\"}");
-      nonQuery_error_json_list.add(
-          "{\"sql\":\"insert into root.time.`aa`(time,bb) values(111,1)\"}");
-      nonQuery_error_json_list.add(
-          "{\"sql\":\"insert into root.time.`aa`(time,`bb`) values(111,1)\"}");
-      nonQuery_error_json_list.add("{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
-
-      insertTablet_right_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":\""
-              + isAligned
-              + "\",\"device\":\"root.sg21"
-              + i
-              + "\"}");
-      insertTablet_right_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.sg22"
-              + i
-              + "\"}");
-      insertTablet_right_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.`sg23"
-              + i
-              + "`\"}");
-      insertTablet_right_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.`sg24"
-              + i
-              + "`\"}");
-      insertTablet_error_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.sg25"
-              + i
-              + "\"}");
-      insertTablet_error_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.sg26"
-              + i
-              + "\"}");
-      insertTablet_error_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"cc123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.`sg26"
-              + i
-              + "`\"}");
-      insertTablet_error_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231cc`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.`3333a"
-              + i
-              + "`\"}");
-      insertRecords_right_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.`s11`\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-
-      insertRecords_error_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"root\",\"442\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"time\",\"123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"time\",\"12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`root`\",\"1111\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-
-      nonQuery_right_json_list_v2.add("{\"sql\":\"insert into root.aa(time,`bb`) values(111,1)\"}");
-      nonQuery_right_json_list_v2.add("{\"sql\":\"insert into root.`aa`(time,bb) values(111,1)\"}");
-      nonQuery_right_json_list_v2.add(
-          "{\"sql\":\"insert into root.`aa`(time,`bb`) values(111,1)\"}");
-      nonQuery_right_json_list_v2.add("{\"sql\":\"insert into root.aa(time,bb) values(111,1)\"}");
-
-      nonQuery_error_json_list_v2.add(
-          "{\"sql\":\"insert into root.time(time,1`bb`) values(111,1)\"}");
-      nonQuery_error_json_list_v2.add(
-          "{\"sql\":\"insert into root.time.`aa`(time,bb) values(111,1)\"}");
-      nonQuery_error_json_list_v2.add(
-          "{\"sql\":\"insert into root.time.`aa`(time,`bb`) values(111,1)\"}");
-      nonQuery_error_json_list_v2.add("{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
-    }
-    HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
-    HttpPost httpPost1 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
-
-    List<HttpPost> httpPosts = new ArrayList<>();
-    httpPosts.add(httpPost);
-    httpPosts.add(httpPost1);
-    for (HttpPost hp : httpPosts) {
-      for (String json : insertTablet_right_json_list) {
-        rightInsertTablet(httpClient, json, hp);
-      }
-      for (String json : insertTablet_error_json_list) {
-        errorInsertTablet(json, hp);
-      }
-    }
-
-    HttpPost httpPost3 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
-    HttpPost httpPost4 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
-    List<HttpPost> httpPosts1 = new ArrayList<>();
-    httpPosts1.add(httpPost3);
-    httpPosts1.add(httpPost4);
-
-    for (HttpPost hp : httpPosts1) {
-      for (String json : nonQuery_right_json_list) {
-        nonQuery(httpClient, json, hp);
-      }
-      for (String json : nonQuery_error_json_list) {
-        errorNonQuery(httpClient, json, hp);
-      }
-    }
-
-    HttpPost httpPost5 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertRecords");
-    HttpPost httpPost6 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertRecords");
-    List<HttpPost> httpPosts2 = new ArrayList<>();
-    httpPosts2.add(httpPost5);
-    httpPosts2.add(httpPost6);
-
-    HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
-    HttpPost httpPost1V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
-
-    List<HttpPost> httpPostsV2 = new ArrayList<>();
-    httpPostsV2.add(httpPostV2);
-    httpPostsV2.add(httpPost1V2);
-    for (HttpPost hp : httpPostsV2) {
-      for (String json : insertTablet_right_json_list_v2) {
-        rightInsertTablet(httpClient, json, hp);
-      }
-      for (String json : insertTablet_error_json_list_v2) {
-        errorInsertTablet(json, hp);
-      }
-    }
-
-    HttpPost httpPost3V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
-    HttpPost httpPost4V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
-    List<HttpPost> httpPosts1V2 = new ArrayList<>();
-    httpPosts1V2.add(httpPost3V2);
-    httpPosts1V2.add(httpPost4V2);
-    for (HttpPost hp : httpPosts1V2) {
-      for (String json : nonQuery_right_json_list_v2) {
-        nonQuery(httpClient, json, hp);
-      }
-      for (String json : nonQuery_error_json_list_v2) {
-        errorNonQuery(httpClient, json, hp);
-      }
-    }
-
-    HttpPost httpPost5V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertRecords");
-    HttpPost httpPost6V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertRecords");
-    List<HttpPost> httpPosts2V2 = new ArrayList<>();
-    httpPosts2V2.add(httpPost5V2);
-    httpPosts2V2.add(httpPost6V2);
-    for (HttpPost hp : httpPosts2V2) {
-      for (String json : insertRecords_right_json_list_v2) {
-        rightInsertRecords(httpClient, json, hp);
-      }
-      for (String json : insertRecords_error_json_list_v2) {
-        errorInsertRecords(httpClient, json, hp);
-      }
-    }
-
     try {
-      httpClient.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      rightInsertTablet(httpClient);
+      query(httpClient);
+      queryGroupByLevel(httpClient);
+      queryRowLimit(httpClient);
+      queryShowChildPaths(httpClient);
+      queryShowNodes(httpClient);
+      showAllTTL(httpClient);
+      showDatabase(httpClient);
+      showFunctions(httpClient);
+      showTimeseries(httpClient);
+
+      showLastTimeseries(httpClient);
+      countTimeseries(httpClient);
+      countNodes(httpClient);
+      showDevices(httpClient);
+
+      showDevicesWithStroage(httpClient);
+      listUser(httpClient);
+      selectCount(httpClient);
+      selectLast(httpClient);
+      queryWithValidTimeZoneHeader(httpClient);
+      nonQueryWithValidTimeZoneHeader(httpClient);
+      queryWithInvalidTimeZoneHeader(httpClient);
+      nonQueryWithValidTimeZoneHeaderTableV1(httpClient);
+      queryWithValidTimeZoneHeaderTableV1(httpClient);
+      queryWithInvalidTimeZoneHeaderTableV1(httpClient);
+
+      queryV2(httpClient);
+      selectFastLast(httpClient);
+      queryGroupByLevelV2(httpClient);
+      queryRowLimitV2(httpClient);
+      queryShowChildPathsV2(httpClient);
+      queryShowNodesV2(httpClient);
+      showAllTTLV2(httpClient);
+      showDatabaseV2(httpClient);
+      showFunctionsV2(httpClient);
+      showTimeseriesV2(httpClient);
+
+      showLastTimeseriesV2(httpClient);
+      countTimeseriesV2(httpClient);
+      countNodesV2(httpClient);
+      showDevicesV2(httpClient);
+
+      showDevicesWithStroageV2(httpClient);
+      listUserV2(httpClient);
+      selectCountV2(httpClient);
+      selectLastV2(httpClient);
+      queryWithValidTimeZoneHeaderV2(httpClient);
+      nonQueryWithValidTimeZoneHeaderV2(httpClient);
+      queryWithInvalidTimeZoneHeaderV2(httpClient);
+      perData(httpClient);
+      List<String> insertTablet_right_json_list = new ArrayList<>();
+      List<String> insertTablet_error_json_list = new ArrayList<>();
+
+      List<String> insertRecords_right_json_list = new ArrayList<>();
+      List<String> insertRecords_error_json_list = new ArrayList<>();
+
+      List<String> nonQuery_right_json_list = new ArrayList<>();
+      List<String> nonQuery_error_json_list = new ArrayList<>();
+
+      List<String> insertTablet_right_json_list_v2 = new ArrayList<>();
+      List<String> insertTablet_error_json_list_v2 = new ArrayList<>();
+
+      List<String> insertRecords_right_json_list_v2 = new ArrayList<>();
+      List<String> insertRecords_error_json_list_v2 = new ArrayList<>();
+
+      List<String> nonQuery_right_json_list_v2 = new ArrayList<>();
+      List<String> nonQuery_error_json_list_v2 = new ArrayList<>();
+      for (int i = 0; i <= 1; i++) {
+        boolean isAligned = false;
+        if (i == 0) {
+          isAligned = true;
+        }
+        insertTablet_right_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
+                + isAligned
+                + "\",\"deviceId\":\"root.sg21"
+                + i
+                + "\"}");
+        insertTablet_right_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
+                + isAligned
+                + "\",\"deviceId\":\"root.sg22"
+                + i
+                + "\"}");
+        insertTablet_right_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
+                + isAligned
+                + "\",\"deviceId\":\"root.`sg23"
+                + i
+                + "`\"}");
+        insertTablet_right_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
+                + isAligned
+                + "\",\"deviceId\":\"root.`sg24"
+                + i
+                + "`\"}");
+        insertTablet_error_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+                + isAligned
+                + ",\"deviceId\":\"root.sg25"
+                + i
+                + "\"}");
+        insertTablet_error_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+                + isAligned
+                + ",\"deviceId\":\"root.sg36"
+                + i
+                + "\"}");
+        insertTablet_error_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"a123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+                + isAligned
+                + ",\"deviceId\":\"root.`sg46"
+                + i
+                + "`\"}");
+        insertTablet_error_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+                + isAligned
+                + ",\"deviceId\":\"root.`3333a"
+                + i
+                + "`\"}");
+        insertRecords_right_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.`s11`\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"isAligned\":"
+                + isAligned
+                + "}");
+
+        insertRecords_error_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"root\",\"442\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`root`\",\"1111\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"isAligned\":"
+                + isAligned
+                + "}");
+
+        nonQuery_right_json_list.add("{\"sql\":\"insert into root.aa(time,`bb`) values(111,1)\"}");
+        nonQuery_right_json_list.add("{\"sql\":\"insert into root.`aa`(time,bb) values(111,1)\"}");
+        nonQuery_right_json_list.add(
+            "{\"sql\":\"insert into root.`aa`(time,`bb`) values(111,1)\"}");
+        nonQuery_right_json_list.add("{\"sql\":\"insert into root.aa(time,bb) values(111,1)\"}");
+
+        nonQuery_error_json_list.add(
+            "{\"sql\":\"insert into root.time(time,1`bb`) values(111,1)\"}");
+        nonQuery_error_json_list.add(
+            "{\"sql\":\"insert into root.time.`aa`(time,bb) values(111,1)\"}");
+        nonQuery_error_json_list.add(
+            "{\"sql\":\"insert into root.time.`aa`(time,`bb`) values(111,1)\"}");
+        nonQuery_error_json_list.add("{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
+
+        insertTablet_right_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":\""
+                + isAligned
+                + "\",\"device\":\"root.sg21"
+                + i
+                + "\"}");
+        insertTablet_right_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.sg22"
+                + i
+                + "\"}");
+        insertTablet_right_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.`sg23"
+                + i
+                + "`\"}");
+        insertTablet_right_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.`sg24"
+                + i
+                + "`\"}");
+        insertTablet_error_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.sg25"
+                + i
+                + "\"}");
+        insertTablet_error_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.sg26"
+                + i
+                + "\"}");
+        insertTablet_error_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"cc123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.`sg26"
+                + i
+                + "`\"}");
+        insertTablet_error_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231cc`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.`3333a"
+                + i
+                + "`\"}");
+        insertRecords_right_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.`s11`\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+
+        insertRecords_error_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"root\",\"442\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"time\",\"123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"time\",\"12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`root`\",\"1111\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+
+        nonQuery_right_json_list_v2.add(
+            "{\"sql\":\"insert into root.aa(time,`bb`) values(111,1)\"}");
+        nonQuery_right_json_list_v2.add(
+            "{\"sql\":\"insert into root.`aa`(time,bb) values(111,1)\"}");
+        nonQuery_right_json_list_v2.add(
+            "{\"sql\":\"insert into root.`aa`(time,`bb`) values(111,1)\"}");
+        nonQuery_right_json_list_v2.add("{\"sql\":\"insert into root.aa(time,bb) values(111,1)\"}");
+
+        nonQuery_error_json_list_v2.add(
+            "{\"sql\":\"insert into root.time(time,1`bb`) values(111,1)\"}");
+        nonQuery_error_json_list_v2.add(
+            "{\"sql\":\"insert into root.time.`aa`(time,bb) values(111,1)\"}");
+        nonQuery_error_json_list_v2.add(
+            "{\"sql\":\"insert into root.time.`aa`(time,`bb`) values(111,1)\"}");
+        nonQuery_error_json_list_v2.add(
+            "{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
+      }
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
+      HttpPost httpPost1 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
+
+      List<HttpPost> httpPosts = new ArrayList<>();
+      httpPosts.add(httpPost);
+      httpPosts.add(httpPost1);
+      for (HttpPost hp : httpPosts) {
+        for (String json : insertTablet_right_json_list) {
+          rightInsertTablet(httpClient, json, hp);
+        }
+        for (String json : insertTablet_error_json_list) {
+          errorInsertTablet(json, hp);
+        }
+      }
+
+      HttpPost httpPost3 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      HttpPost httpPost4 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      List<HttpPost> httpPosts1 = new ArrayList<>();
+      httpPosts1.add(httpPost3);
+      httpPosts1.add(httpPost4);
+
+      for (HttpPost hp : httpPosts1) {
+        for (String json : nonQuery_right_json_list) {
+          nonQuery(httpClient, json, hp);
+        }
+        for (String json : nonQuery_error_json_list) {
+          errorNonQuery(httpClient, json, hp);
+        }
+      }
+
+      HttpPost httpPost5 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertRecords");
+      HttpPost httpPost6 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertRecords");
+      List<HttpPost> httpPosts2 = new ArrayList<>();
+      httpPosts2.add(httpPost5);
+      httpPosts2.add(httpPost6);
+
+      HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
+      HttpPost httpPost1V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
+
+      List<HttpPost> httpPostsV2 = new ArrayList<>();
+      httpPostsV2.add(httpPostV2);
+      httpPostsV2.add(httpPost1V2);
+      for (HttpPost hp : httpPostsV2) {
+        for (String json : insertTablet_right_json_list_v2) {
+          rightInsertTablet(httpClient, json, hp);
+        }
+        for (String json : insertTablet_error_json_list_v2) {
+          errorInsertTablet(json, hp);
+        }
+      }
+
+      HttpPost httpPost3V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      HttpPost httpPost4V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      List<HttpPost> httpPosts1V2 = new ArrayList<>();
+      httpPosts1V2.add(httpPost3V2);
+      httpPosts1V2.add(httpPost4V2);
+      for (HttpPost hp : httpPosts1V2) {
+        for (String json : nonQuery_right_json_list_v2) {
+          nonQuery(httpClient, json, hp);
+        }
+        for (String json : nonQuery_error_json_list_v2) {
+          errorNonQuery(httpClient, json, hp);
+        }
+      }
+
+      HttpPost httpPost5V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertRecords");
+      HttpPost httpPost6V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertRecords");
+      List<HttpPost> httpPosts2V2 = new ArrayList<>();
+      httpPosts2V2.add(httpPost5V2);
+      httpPosts2V2.add(httpPost6V2);
+      for (HttpPost hp : httpPosts2V2) {
+        for (String json : insertRecords_right_json_list_v2) {
+          rightInsertRecords(httpClient, json, hp);
+        }
+        for (String json : insertRecords_error_json_list_v2) {
+          errorInsertRecords(httpClient, json, hp);
+        }
+      }
+      insertDate();
+      try {
+        httpClient.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    } finally {
+      dropUserQuietly("root1");
+      cleanupAllData();
     }
   }
 
@@ -815,6 +939,72 @@ public class IoTDBRestServiceIT {
         e.printStackTrace();
         fail(e.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void queryFastLastWithWrongAuthorization() {
+    CloseableHttpResponse response = null;
+
+    TestUtils.executeNonQuery("create user abcd 'strongPassword@1234'");
+    try {
+      final CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+      final HttpPost httpPost = new HttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");
+      httpPost.addHeader("Content-type", "application/json; charset=utf-8");
+      httpPost.setHeader("Accept", "application/json");
+      final String authorization = getAuthorization("abcd", "strongPassword@1234");
+      httpPost.setHeader("Authorization", authorization);
+      final String sql = "{\"prefix_paths\":[\"root\",\"sg25\"]}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
+      Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("Timeseries");
+              add("Value");
+              add("DataType");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(Collections.emptyList(), timestampsResult);
+      Assert.assertEquals(Collections.emptyList(), valuesResult);
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+      dropUserQuietly("abcd");
     }
   }
 
@@ -1008,7 +1198,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowChildPaths(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child paths root\"}";
+    String sql = "{\"sql\":\"show child paths root.sg25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1023,7 +1213,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.sg25.s3");
+            add("root.sg25.s4");
+            add("root.sg25.s5");
+            add("root.sg25.s6");
+            add("root.sg25.s7");
+            add("root.sg25.s8");
           }
         };
 
@@ -1032,7 +1227,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowNodes(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child nodes root\"}";
+    String sql = "{\"sql\":\"show child nodes root.sg25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1046,7 +1241,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("sg25");
+            add("s3");
+            add("s4");
+            add("s5");
+            add("s6");
+            add("s7");
+            add("s8");
           }
         };
 
@@ -1084,8 +1284,8 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values2, valuesResult.get(1));
   }
 
-  public void showStorageGroup(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"SHOW DATABASES root.*\"}";
+  public void showDatabase(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"SHOW DATABASES root.sg25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1120,7 +1320,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showTimeseries(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show timeseries\"}";
+    String sql = "{\"sql\":\"show timeseries root.sg25.**\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1182,7 +1382,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showLastTimeseries(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES\"}";
+    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES root.sg25.**\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1244,7 +1444,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void countTimeseries(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"COUNT TIMESERIES root.** GROUP BY LEVEL=1\"}";
+    String sql = "{\"sql\":\"COUNT TIMESERIES root.sg25.** GROUP BY LEVEL=1\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1275,7 +1475,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void countNodes(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"count nodes root.** level=2\"}";
+    String sql = "{\"sql\":\"count nodes root.sg25.** level=2\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1297,7 +1497,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showDevices(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show devices\"}";
+    String sql = "{\"sql\":\"show devices root.sg25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1374,10 +1574,10 @@ public class IoTDBRestServiceIT {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    Assert.assertEquals(values2, valuesResult.get(1));
-    Assert.assertEquals(values3, valuesResult.get(2));
-    Assert.assertEquals(values4, valuesResult.get(3));
+    Assert.assertTrue(valuesResult.get(0).containsAll(values1));
+    Assert.assertTrue(valuesResult.get(1).containsAll(values2));
+    Assert.assertTrue(valuesResult.get(2).containsAll(values3));
+    Assert.assertTrue(valuesResult.get(3).containsAll(values4));
   }
 
   public void listUser(CloseableHttpClient httpClient) {
@@ -1389,6 +1589,7 @@ public class IoTDBRestServiceIT {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
+            add(ColumnHeaderConstant.USER_ID);
             add(ColumnHeaderConstant.USER);
           }
         };
@@ -1399,11 +1600,11 @@ public class IoTDBRestServiceIT {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values1, valuesResult.get(1));
   }
 
   public void selectCount(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"select count(s3) from root.** group by level = 1\"}";
+    String sql = "{\"sql\":\"select count(s3) from root.sg25 group by level = 1\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("expressions");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1572,6 +1773,98 @@ public class IoTDBRestServiceIT {
     }
   }
 
+  public void selectFastLast(CloseableHttpClient httpClient) {
+    // Only used in 1D scenarios
+    if (EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+      return;
+    }
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");
+      String sql = "{\"prefix_paths\":[\"root\",\"sg25\"]}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("Timeseries");
+              add("Value");
+              add("DataType");
+            }
+          };
+      List<Object> timestamps =
+          new ArrayList<Object>() {
+            {
+              add(1635232153960l);
+              add(1635232153960l);
+              add(1635232153960l);
+              add(1635232143960l);
+              add(1635232153960l);
+              add(1635232153960l);
+            }
+          };
+      List<Object> values1 =
+          new ArrayList<Object>() {
+            {
+              add("root.sg25.s3");
+              add("root.sg25.s4");
+              add("root.sg25.s5");
+              add("root.sg25.s6");
+              add("root.sg25.s7");
+              add("root.sg25.s8");
+            }
+          };
+      List<Object> values2 =
+          new ArrayList<Object>() {
+            {
+              add("");
+              add("2");
+              add("1635000012345556");
+              add("1.41");
+              add("false");
+              add("3.5555");
+            }
+          };
+      List<Object> values3 =
+          new ArrayList<Object>() {
+            {
+              add("TEXT");
+              add("INT32");
+              add("INT64");
+              add("FLOAT");
+              add("BOOLEAN");
+              add("DOUBLE");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+      Assert.assertEquals(values3, valuesResult.get(2));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
   public void queryGroupByLevelV2(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
@@ -1660,7 +1953,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowChildPathsV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child paths root\"}";
+    String sql = "{\"sql\":\"show child paths root.sg25\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1675,7 +1968,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.sg25.s3");
+            add("root.sg25.s4");
+            add("root.sg25.s5");
+            add("root.sg25.s6");
+            add("root.sg25.s7");
+            add("root.sg25.s8");
           }
         };
 
@@ -1684,7 +1982,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowNodesV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child nodes root\"}";
+    String sql = "{\"sql\":\"show child nodes root.sg25\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1698,7 +1996,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("sg25");
+            add("s3");
+            add("s4");
+            add("s5");
+            add("s6");
+            add("s7");
+            add("s8");
           }
         };
 
@@ -1736,8 +2039,8 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values2, valuesResult.get(1));
   }
 
-  public void showStorageGroupV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"SHOW DATABASES root.*\"}";
+  public void showDatabaseV2(CloseableHttpClient httpClient) {
+    String sql = "{\"sql\":\"SHOW DATABASES root.sg25\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1834,7 +2137,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showLastTimeseriesV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES\"}";
+    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES root.sg25.**\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1896,7 +2199,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void countTimeseriesV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"COUNT TIMESERIES root.** GROUP BY LEVEL=1\"}";
+    String sql = "{\"sql\":\"COUNT TIMESERIES root.sg25.** GROUP BY LEVEL=1\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1927,7 +2230,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void countNodesV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"count nodes root.** level=2\"}";
+    String sql = "{\"sql\":\"count nodes root.sg25.** level=2\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1949,7 +2252,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showDevicesV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show devices\"}";
+    String sql = "{\"sql\":\"show devices root.sg25\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -2027,10 +2330,10 @@ public class IoTDBRestServiceIT {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    Assert.assertEquals(values2, valuesResult.get(1));
-    Assert.assertEquals(values3, valuesResult.get(2));
-    Assert.assertEquals(values4, valuesResult.get(3));
+    assertTrue(valuesResult.get(0).containsAll(values1));
+    assertTrue(valuesResult.get(1).containsAll(values2));
+    assertTrue(valuesResult.get(2).containsAll(values3));
+    assertTrue(valuesResult.get(3).containsAll(values4));
   }
 
   public void listUserV2(CloseableHttpClient httpClient) {
@@ -2042,6 +2345,7 @@ public class IoTDBRestServiceIT {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
+            add(ColumnHeaderConstant.USER_ID);
             add(ColumnHeaderConstant.USER);
           }
         };
@@ -2052,11 +2356,11 @@ public class IoTDBRestServiceIT {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values1, valuesResult.get(1));
   }
 
   public void selectCountV2(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"select count(s3) from root.** group by level = 1\"}";
+    String sql = "{\"sql\":\"select count(s3) from root.sg25 group by level = 1\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("expressions");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -2121,5 +2425,457 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2.get(0), valuesResult.get(1).get(0));
     Assert.assertEquals(values3, valuesResult.get(2));
+  }
+
+  public void insertDate() {
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    HttpPost httpPost2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+    HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+    nonQuery(
+        httpClient,
+        "{\"sql\":\"CREATE TIMESERIES root.sg1.d1.s4 WITH DATATYPE=DATE, ENCODING=PLAIN, COMPRESSOR=SNAPPY\"}",
+        httpPost2);
+    nonQuery(
+        httpClient,
+        "{\"sql\":\"CREATE TIMESERIES root.sg1.d1.s5 WITH DATATYPE=Blob, ENCODING=PLAIN, COMPRESSOR=SNAPPY\"}",
+        httpPost2);
+
+    String sql =
+        "{\"sql\":\"insert into root.sg1.d1(time,s4,s5) values(1,'2025-07-14',\\\"X'cafebabe'\\\")\"}";
+    nonQuery(httpClient, sql, httpPost2);
+    queryDateAndBlob(httpClient);
+    queryDateAndBlobV2(httpClient);
+  }
+
+  public void queryDateAndBlob(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      String sql = "{\"sql\":\"select s4,s5 from root.sg1.d1\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("root.sg1.d1.s4");
+              add("root.sg1.d1.s5");
+            }
+          };
+      List<Object> timestamps =
+          new ArrayList<Object>() {
+            {
+              add(1);
+            }
+          };
+      List<Object> values1 =
+          new ArrayList<Object>() {
+            {
+              add("2025-07-14");
+            }
+          };
+      List<Object> values2 =
+          new ArrayList<Object>() {
+            {
+              add("0xcafebabe");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryDateAndBlobV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      String sql = "{\"sql\":\"select s4,s5 from root.sg1.d1\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("root.sg1.d1.s4");
+              add("root.sg1.d1.s5");
+            }
+          };
+      List<Object> timestamps =
+          new ArrayList<Object>() {
+            {
+              add(1);
+            }
+          };
+      List<Object> values1 =
+          new ArrayList<Object>() {
+            {
+              add("2025-07-14");
+            }
+          };
+      List<Object> values2 =
+          new ArrayList<Object>() {
+            {
+              add("0xcafebabe");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryWithValidTimeZoneHeader(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      long expectedTimestamp =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      String insertSql =
+          String.format(
+              "{\"sql\":\"INSERT INTO root.sg_tz.d2(timestamp, s3) VALUES(%d, 10.5)\"}",
+              expectedTimestamp);
+      insertPost.setEntity(new StringEntity(insertSql, Charset.defaultCharset()));
+      try (CloseableHttpResponse insertResponse = httpClient.execute(insertPost)) {
+        assertEquals(200, insertResponse.getStatusLine().getStatusCode());
+      }
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      httpPost.setHeader("Time-Zone", "+05:00");
+      String sql =
+          "{\"sql\":\"SELECT count(s3) FROM root.sg_tz.d2 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertTrue(result.has("timestamps"));
+      assertTrue(result.getAsJsonArray("timestamps").size() > 0);
+      assertEquals(expectedTimestamp, result.getAsJsonArray("timestamps").get(0).getAsLong());
+      JsonArray values = result.getAsJsonArray("values");
+      int countResult = values.get(0).getAsJsonArray().get(0).getAsInt();
+      assertEquals(1, countResult);
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void nonQueryWithValidTimeZoneHeader(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost createPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      nonQuery(
+          httpClient,
+          "{\"sql\":\"CREATE TIMESERIES root.sg_tz.d1.s1 WITH DATATYPE=INT32\"}",
+          createPost);
+
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      insertPost.setHeader("Time-Zone", "+05:00");
+      nonQuery(
+          httpClient,
+          "{\"sql\":\"INSERT INTO root.sg_tz.d1(time, s1) VALUES (2026-03-28T00:00:00, 123)\"}",
+          insertPost);
+
+      HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      queryPost.setEntity(
+          new StringEntity("{\"sql\":\"SELECT s1 FROM root.sg_tz.d1\"}", StandardCharsets.UTF_8));
+      response = httpClient.execute(queryPost);
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      long expected =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      assertEquals(expected, result.getAsJsonArray("timestamps").get(0).getAsLong());
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryWithValidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      long expectedTimestamp =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      String insertSql =
+          String.format(
+              "{\"sql\":\"INSERT INTO root.sg_tz.d3(timestamp, s3) VALUES(%d, 10.5)\"}",
+              expectedTimestamp);
+      insertPost.setEntity(new StringEntity(insertSql, Charset.defaultCharset()));
+      try (CloseableHttpResponse insertResponse = httpClient.execute(insertPost)) {
+        assertEquals(200, insertResponse.getStatusLine().getStatusCode());
+      }
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      httpPost.setHeader("Time-Zone", "+05:00");
+      String sql =
+          "{\"sql\":\"SELECT count(s3) FROM root.sg_tz.d3 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertTrue(result.has("timestamps"));
+      assertTrue(result.getAsJsonArray("timestamps").size() > 0);
+      assertEquals(expectedTimestamp, result.getAsJsonArray("timestamps").get(0).getAsLong());
+      JsonArray values = result.getAsJsonArray("values");
+      int countResult = values.get(0).getAsJsonArray().get(0).getAsInt();
+      assertEquals(1, countResult);
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void nonQueryWithValidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost createPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      nonQuery(
+          httpClient,
+          "{\"sql\":\"CREATE TIMESERIES root.sg_tz.d2.s1 WITH DATATYPE=INT32\"}",
+          createPost);
+
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      insertPost.setHeader("Time-Zone", "+05:00");
+      nonQuery(
+          httpClient,
+          "{\"sql\":\"INSERT INTO root.sg_tz.d2(time, s1) VALUES (2026-03-28T00:00:00, 123)\"}",
+          insertPost);
+
+      HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      queryPost.setEntity(
+          new StringEntity("{\"sql\":\"SELECT s1 FROM root.sg_tz.d2\"}", StandardCharsets.UTF_8));
+      response = httpClient.execute(queryPost);
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      long expected =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      assertEquals(expected, result.getAsJsonArray("timestamps").get(0).getAsLong());
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryWithInvalidTimeZoneHeader(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      httpPost.setHeader("Time-Zone", "Invalid/Zone");
+      String sql = "{\"sql\":\"SELECT s3 FROM root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      assertEquals(400, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), result.get("code").getAsInt());
+      assertTrue(result.get("message").getAsString().contains("Invalid time zone"));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryWithInvalidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      httpPost.setHeader("Time-Zone", "Invalid/Zone");
+      String sql = "{\"sql\":\"SELECT s3 FROM root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      assertEquals(400, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), result.get("code").getAsInt());
+      assertTrue(result.get("message").getAsString().contains("Invalid time zone"));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  private void nonQueryWithValidTimeZoneHeaderTableV1(CloseableHttpClient httpClient) {
+    nonQuery(
+        httpClient,
+        "{\"database\":\"\", \"sql\":\"CREATE DATABASE table_tz\"}",
+        getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery"));
+    nonQuery(
+        httpClient,
+        "{\"database\":\"table_tz\", \"sql\":\"CREATE TABLE d1 (s1 INT32)\"}",
+        getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery"));
+
+    HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery");
+    insertPost.setHeader("Time-Zone", "+05:00");
+    nonQuery(
+        httpClient,
+        "{\"database\":\"table_tz\", \"sql\":\"INSERT INTO d1(time, s1) VALUES ('2026-03-28T00:00:00', 123)\"}",
+        insertPost);
+
+    HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/query");
+    queryPost.setEntity(
+        new StringEntity(
+            "{\"database\":\"table_tz\", \"sql\":\"SELECT time, s1 FROM d1\"}",
+            StandardCharsets.UTF_8));
+    try (CloseableHttpResponse response = httpClient.execute(queryPost)) {
+      assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      long actualTimestamp =
+          result.getAsJsonArray("values").get(0).getAsJsonArray().get(0).getAsLong();
+      long expectedTimestamp =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      assertEquals(expectedTimestamp, actualTimestamp);
+    } catch (IOException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private void queryWithValidTimeZoneHeaderTableV1(CloseableHttpClient httpClient) {
+    HttpPost preparePost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery");
+    nonQuery(httpClient, "{\"database\":\"\", \"sql\":\"CREATE DATABASE table_tz2\"}", preparePost);
+    nonQuery(
+        httpClient,
+        "{\"database\":\"table_tz2\", \"sql\":\"CREATE TABLE d2 (s1 INT32)\"}",
+        preparePost);
+
+    long absoluteTimestamp =
+        ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+    String insertSql =
+        String.format(
+            "{\"database\":\"table_tz2\", \"sql\":\"INSERT INTO d2(time, s1) VALUES (%d, 456)\"}",
+            absoluteTimestamp);
+    nonQuery(httpClient, insertSql, preparePost);
+
+    HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/query");
+    queryPost.setHeader("Time-Zone", "+05:00");
+    String sql =
+        "{\"database\":\"table_tz2\", \"sql\":\"SELECT COUNT(s1) FROM d2 WHERE time = 2026-03-28T00:00:00\"}";
+    queryPost.setEntity(new StringEntity(sql, StandardCharsets.UTF_8));
+    try (CloseableHttpResponse response = httpClient.execute(queryPost)) {
+      assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      long actualCount = result.getAsJsonArray("values").get(0).getAsJsonArray().get(0).getAsLong();
+      assertEquals(1, actualCount);
+    } catch (IOException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private void queryWithInvalidTimeZoneHeaderTableV1(CloseableHttpClient httpClient) {
+    HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/query");
+    queryPost.setHeader("Time-Zone", "Invalid/Zone");
+    String sql = "{\"database\":\"table_tz\", \"sql\":\"SELECT 1\"}";
+    queryPost.setEntity(new StringEntity(sql, StandardCharsets.UTF_8));
+    try (CloseableHttpResponse response = httpClient.execute(queryPost)) {
+      assertEquals(400, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), result.get("code").getAsInt());
+      assertTrue(result.get("message").getAsString().contains("Invalid time zone"));
+    } catch (IOException e) {
+      fail(e.getMessage());
+    }
   }
 }

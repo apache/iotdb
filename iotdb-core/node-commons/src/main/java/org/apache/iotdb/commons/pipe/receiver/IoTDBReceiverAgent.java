@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.receiver;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +60,7 @@ public abstract class IoTDBReceiverAgent {
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_VERSION_ERROR,
-              String.format("Unsupported pipe version %d", reqVersion)));
+              String.format(PipeMessages.UNSUPPORTED_PIPE_VERSION, reqVersion)));
     }
   }
 
@@ -71,11 +72,7 @@ public abstract class IoTDBReceiverAgent {
     final byte receiverThreadLocalVersion =
         getReceiverWithSpecifiedClient(key).getVersion().getVersion();
     if (receiverThreadLocalVersion != reqVersion) {
-      LOGGER.warn(
-          "The receiver version {} is different from the sender version {},"
-              + " the receiver will be reset to the sender version.",
-          receiverThreadLocalVersion,
-          reqVersion);
+      LOGGER.warn(PipeMessages.RECEIVER_VERSION_MISMATCH, receiverThreadLocalVersion, reqVersion);
       getReceiverWithSpecifiedClient(key).handleExit();
       removeReceiverWithSpecifiedClient(key);
       return setAndGetReceiver(key, reqVersion);
@@ -89,7 +86,7 @@ public abstract class IoTDBReceiverAgent {
       setReceiverWithSpecifiedClient(key, RECEIVER_CONSTRUCTORS.get(reqVersion).get());
     } else {
       throw new UnsupportedOperationException(
-          String.format("Unsupported pipe version %d", reqVersion));
+          String.format(PipeMessages.UNSUPPORTED_PIPE_VERSION, reqVersion));
     }
     return getReceiverWithSpecifiedClient(key);
   }
@@ -120,16 +117,16 @@ public abstract class IoTDBReceiverAgent {
             FileUtils.deleteDirectory(receiverFileDir);
             return null;
           });
-      LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
+      LOGGER.info(PipeMessages.CLEAN_RECEIVER_DIR_SUCCESS, receiverFileDir);
     } catch (final Exception e) {
-      LOGGER.warn("Clean pipe receiver dir {} failed.", receiverFileDir, e);
+      LOGGER.warn(PipeMessages.CLEAN_RECEIVER_DIR_FAILED, receiverFileDir, e);
     }
 
     try {
       FileUtils.forceMkdir(receiverFileDir);
-      LOGGER.info("Create pipe receiver dir {} successfully.", receiverFileDir);
+      LOGGER.info(PipeMessages.CREATE_RECEIVER_DIR_SUCCESS, receiverFileDir);
     } catch (final IOException e) {
-      LOGGER.warn("Create pipe receiver dir {} failed.", receiverFileDir, e);
+      LOGGER.warn(PipeMessages.CREATE_RECEIVER_DIR_FAILED, receiverFileDir, e);
     }
   }
 }

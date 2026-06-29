@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.execution.aggregation.LastValueDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.MaxTimeDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -36,6 +36,8 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGt;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,6 +65,38 @@ public class LastQueryUtil {
 
   public static Binary getTimeSeries(TsBlock tsBlock, int index) {
     return tsBlock.getColumn(0).getBinary(index);
+  }
+
+  public static void appendLastValueRespectBlob(
+      TsBlockBuilder builder,
+      long lastTime,
+      String fullPath,
+      TsPrimitiveType lastValue,
+      String dataType) {
+    appendLastValue(
+        builder,
+        lastTime,
+        fullPath,
+        dataType.equals(TSDataType.BLOB.name())
+            ? BytesUtils.parseBlobByteArrayToString(lastValue.getBinary().getValues())
+            : lastValue.getStringValue(),
+        dataType);
+  }
+
+  public static void appendLastValueRespectBlob(
+      TsBlockBuilder builder,
+      long lastTime,
+      Binary fullPath,
+      TsPrimitiveType lastValue,
+      String dataType) {
+    appendLastValue(
+        builder,
+        lastTime,
+        fullPath,
+        dataType.equals(TSDataType.BLOB.name())
+            ? BytesUtils.parseBlobByteArrayToString(lastValue.getBinary().getValues())
+            : lastValue.getStringValue(),
+        dataType);
   }
 
   public static void appendLastValue(

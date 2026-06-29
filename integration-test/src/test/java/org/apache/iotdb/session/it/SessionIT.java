@@ -21,10 +21,14 @@ package org.apache.iotdb.session.it;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.Session.Builder;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -45,9 +49,11 @@ import org.junit.runner.RunWith;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -107,10 +113,10 @@ public class SessionIT {
       int i = 0;
       while (dataSet.hasNext()) {
         RowRecord record = dataSet.next();
-        Assert.assertEquals(i, record.getFields().get(0).getLongV());
+        assertEquals(i, record.getFields().get(0).getLongV());
         Assert.assertNull(record.getFields().get(1).getDataType());
         Assert.assertNull(record.getFields().get(2).getDataType());
-        Assert.assertEquals(i, record.getFields().get(3).getDoubleV(), 0.00001);
+        assertEquals(i, record.getFields().get(3).getDoubleV(), 0.00001);
         i++;
       }
 
@@ -147,7 +153,7 @@ public class SessionIT {
       }
       try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.db.d1")) {
         HashSet<String> columnNames = new HashSet<>(dataSet.getColumnNames());
-        Assert.assertEquals(5, columnNames.size());
+        assertEquals(5, columnNames.size());
         for (int i = 0; i < 4; i++) {
           Assert.assertTrue(columnNames.contains(deviceId + "." + measurements.get(i)));
         }
@@ -155,22 +161,22 @@ public class SessionIT {
         int row = 10;
         while (dataSet.hasNext()) {
           RowRecord record = dataSet.next();
-          Assert.assertEquals(row, record.getTimestamp());
+          assertEquals(row, record.getTimestamp());
           List<Field> fields = record.getFields();
-          Assert.assertEquals(4, fields.size());
+          assertEquals(4, fields.size());
           for (int i = 0; i < 4; i++) {
             switch (fields.get(i).getDataType()) {
               case DATE:
-                Assert.assertEquals(LocalDate.of(2024, 1, row), fields.get(i).getDateV());
+                assertEquals(LocalDate.of(2024, 1, row), fields.get(i).getDateV());
                 break;
               case TIMESTAMP:
-                Assert.assertEquals(row, fields.get(i).getLongV());
+                assertEquals(row, fields.get(i).getLongV());
                 break;
               case BLOB:
                 Assert.assertArrayEquals(bytes, fields.get(i).getBinaryV().getValues());
                 break;
               case STRING:
-                Assert.assertEquals("" + row, fields.get(i).getBinaryV().toString());
+                assertEquals("" + row, fields.get(i).getBinaryV().toString());
                 break;
               default:
                 fail("Unsupported data type");
@@ -179,7 +185,7 @@ public class SessionIT {
           }
           row++;
         }
-        Assert.assertEquals(20, row);
+        assertEquals(20, row);
       }
 
     } catch (Exception e) {
@@ -215,7 +221,7 @@ public class SessionIT {
       }
       try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.db.d1")) {
         HashSet<String> columnNames = new HashSet<>(dataSet.getColumnNames());
-        Assert.assertEquals(5, columnNames.size());
+        assertEquals(5, columnNames.size());
         for (int i = 0; i < 4; i++) {
           Assert.assertTrue(columnNames.contains(deviceId + "." + measurements.get(i)));
         }
@@ -224,22 +230,22 @@ public class SessionIT {
         while (dataSet.hasNext()) {
           RowRecord record = dataSet.next();
           System.out.println(record);
-          Assert.assertEquals(row, record.getTimestamp());
+          assertEquals(row, record.getTimestamp());
           List<Field> fields = record.getFields();
-          Assert.assertEquals(4, fields.size());
+          assertEquals(4, fields.size());
           for (int i = 0; i < 4; i++) {
             switch (fields.get(i).getDataType()) {
               case DATE:
-                Assert.assertEquals(LocalDate.of(2024, 1, row), fields.get(i).getDateV());
+                assertEquals(LocalDate.of(2024, 1, row), fields.get(i).getDateV());
                 break;
               case TIMESTAMP:
-                Assert.assertEquals(row, fields.get(i).getLongV());
+                assertEquals(row, fields.get(i).getLongV());
                 break;
               case BLOB:
                 Assert.assertArrayEquals(bytes, fields.get(i).getBinaryV().getValues());
                 break;
               case STRING:
-                Assert.assertEquals("" + row, fields.get(i).getBinaryV().toString());
+                assertEquals("" + row, fields.get(i).getBinaryV().toString());
                 break;
               default:
                 fail("Unsupported data type");
@@ -248,7 +254,7 @@ public class SessionIT {
           }
           row++;
         }
-        Assert.assertEquals(20, row);
+        assertEquals(20, row);
       }
 
     } catch (Exception e) {
@@ -295,7 +301,7 @@ public class SessionIT {
       tablet.reset();
       try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.db.d1")) {
         HashSet<String> columnNames = new HashSet<>(dataSet.getColumnNames());
-        Assert.assertEquals(5, columnNames.size());
+        assertEquals(5, columnNames.size());
         for (int i = 0; i < 4; i++) {
           Assert.assertTrue(
               columnNames.contains(deviceId + "." + schemaList.get(i).getMeasurementName()));
@@ -304,22 +310,22 @@ public class SessionIT {
         int row = 10;
         while (dataSet.hasNext()) {
           RowRecord record = dataSet.next();
-          Assert.assertEquals(row, record.getTimestamp());
+          assertEquals(row, record.getTimestamp());
           List<Field> fields = record.getFields();
-          Assert.assertEquals(4, fields.size());
+          assertEquals(4, fields.size());
           for (int i = 0; i < 4; i++) {
             switch (fields.get(i).getDataType()) {
               case DATE:
-                Assert.assertEquals(LocalDate.of(2024, 1, row), fields.get(i).getDateV());
+                assertEquals(LocalDate.of(2024, 1, row), fields.get(i).getDateV());
                 break;
               case TIMESTAMP:
-                Assert.assertEquals(row, fields.get(i).getLongV());
+                assertEquals(row, fields.get(i).getLongV());
                 break;
               case BLOB:
                 Assert.assertArrayEquals(bytes, fields.get(i).getBinaryV().getValues());
                 break;
               case STRING:
-                Assert.assertEquals("" + row, fields.get(i).getBinaryV().toString());
+                assertEquals("" + row, fields.get(i).getBinaryV().toString());
                 break;
               default:
                 fail("Unsupported data type");
@@ -328,11 +334,92 @@ public class SessionIT {
           }
           row++;
         }
-        Assert.assertEquals(20, row);
+        assertEquals(20, row);
       }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testSessionMisuse() throws StatementExecutionException, IoTDBConnectionException {
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapperList().get(0);
+    final Session session = new Builder().host(dataNode.getIp()).port(dataNode.getPort()).build();
+    // operate before open
+    try {
+      session.executeNonQueryStatement("INSERT INTO root.db1.d1 (time, s1) VALUES (1,1)");
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    try (SessionDataSet ignored = session.executeQueryStatement("SELECT * FROM root.**")) {
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    try {
+      session.deleteData("root.ab", 100);
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    try {
+      session.insertTablet(new Tablet("root.db1.d1", Collections.emptyList()));
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    try {
+      session.deleteDatabase("root.db");
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    // close before open
+    try {
+      session.close();
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    // operate after close
+    session.open();
+    session.close();
+
+    try {
+      session.executeNonQueryStatement("INSERT INTO root.db1.d1 (time, s1) VALUES (1,1)");
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    try (SessionDataSet ignored = session.executeQueryStatement("SELECT * FROM root.**")) {
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    try {
+      session.deleteData("root.ab", 100);
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    try {
+      session.insertTablet(
+          new Tablet(
+              "root.db1.d1",
+              Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64))));
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    try {
+      session.deleteDatabase("root.db");
+    } catch (IoTDBConnectionException e) {
+      assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
+    }
+
+    // double close is okay
+    session.close();
   }
 }

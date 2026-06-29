@@ -24,7 +24,6 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +34,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -72,8 +72,11 @@ public class ConsumerGroupMeta {
     final ConsumerGroupMeta copied = new ConsumerGroupMeta();
     copied.consumerGroupId = consumerGroupId;
     copied.creationTime = creationTime;
-    copied.topicNameToSubscribedConsumerIdSet =
-        new ConcurrentHashMap<>(topicNameToSubscribedConsumerIdSet);
+    copied.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
+    topicNameToSubscribedConsumerIdSet.forEach(
+        (topicName, subscribedConsumerIds) ->
+            copied.topicNameToSubscribedConsumerIdSet.put(
+                topicName, new HashSet<>(subscribedConsumerIds)));
     copied.consumerIdToConsumerMeta = new ConcurrentHashMap<>(consumerIdToConsumerMeta);
     copied.topicNameToSubscriptionCreationTime =
         new ConcurrentHashMap<>(topicNameToSubscriptionCreationTime);
@@ -116,6 +119,26 @@ public class ConsumerGroupMeta {
     return unsubscribedTopicNames;
   }
 
+  public static Set<String> getTopicsNewlySubByGroup(
+      final ConsumerGroupMeta currentMeta, final ConsumerGroupMeta updatedMeta) {
+    if (!Objects.equals(currentMeta.consumerGroupId, updatedMeta.consumerGroupId)
+        || !Objects.equals(currentMeta.creationTime, updatedMeta.creationTime)) {
+      return Collections.emptySet();
+    }
+
+    final Set<String> newlySubscribedTopicNames = new HashSet<>();
+    updatedMeta
+        .topicNameToSubscribedConsumerIdSet
+        .keySet()
+        .forEach(
+            topicName -> {
+              if (!currentMeta.topicNameToSubscribedConsumerIdSet.containsKey(topicName)) {
+                newlySubscribedTopicNames.add(topicName);
+              }
+            });
+    return newlySubscribedTopicNames;
+  }
+
   /////////////////////////////// consumer ///////////////////////////////
 
   public void checkAuthorityBeforeJoinConsumerGroup(final ConsumerMeta consumerMeta)
@@ -147,11 +170,13 @@ public class ConsumerGroupMeta {
 
   public void removeConsumer(final String consumerId) {
     consumerIdToConsumerMeta.remove(consumerId);
-    for (final Map.Entry<String, Set<String>> entry :
-        topicNameToSubscribedConsumerIdSet.entrySet()) {
+    final Iterator<Map.Entry<String, Set<String>>> iterator =
+        topicNameToSubscribedConsumerIdSet.entrySet().iterator();
+    while (iterator.hasNext()) {
+      final Map.Entry<String, Set<String>> entry = iterator.next();
       entry.getValue().remove(consumerId);
       if (entry.getValue().isEmpty()) {
-        topicNameToSubscribedConsumerIdSet.remove(entry.getKey());
+        iterator.remove();
       }
     }
   }
@@ -171,6 +196,11 @@ public class ConsumerGroupMeta {
   }
 
   ////////////////////////// subscription //////////////////////////
+
+  /** Get all topic names subscribed by this consumer group. */
+  public Set<String> getSubscribedTopicNames() {
+    return Collections.unmodifiableSet(topicNameToSubscribedConsumerIdSet.keySet());
+  }
 
   /**
    * Get the consumers subscribing the given topic in this group.
@@ -263,7 +293,7 @@ public class ConsumerGroupMeta {
   }
 
   private Set<String> removeSubscriptionInternal(
-      @NonNull final String consumerId, final Set<String> topics) {
+      final String consumerId, final Set<String> topics) {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(

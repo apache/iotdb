@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -52,13 +55,27 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   private boolean isEmptyTargetFile = true;
   private IDeviceID currentDeviceId;
 
+  private EncryptParameter firstEncryptParameter;
+
+  @TestOnly
   public CompactionTsFileWriter(File file, long maxMetadataSize, CompactionType type)
       throws IOException {
-    super(file, maxMetadataSize);
+    this(file, maxMetadataSize, type, EncryptDBUtils.getDefaultFirstEncryptParam());
+  }
+
+  public CompactionTsFileWriter(
+      File file, long maxMetadataSize, CompactionType type, EncryptParameter encryptParameter)
+      throws IOException {
+    super(file, maxMetadataSize, encryptParameter);
+    this.firstEncryptParameter = encryptParameter;
     this.type = type;
     super.out =
         new CompactionTsFileOutput(
             super.out, CompactionTaskManager.getInstance().getMergeWriteRateLimiter());
+  }
+
+  public EncryptParameter getEncryptParameter() {
+    return firstEncryptParameter;
   }
 
   public void markStartingWritingAligned() {

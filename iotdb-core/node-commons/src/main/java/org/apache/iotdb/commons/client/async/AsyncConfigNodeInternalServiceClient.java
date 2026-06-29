@@ -24,13 +24,16 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
-import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
+import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +44,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
 
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncConfigNodeInternalServiceClient.class);
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private long originalTimeout = -1;
 
@@ -57,8 +61,17 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
     super(
         property.getProtocolFactory(),
         tClientManager,
-        TNonblockingSocketWrapper.wrap(
-            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+        commonConfig.isEnableInternalSSL()
+            ? TNonblockingTransportWrapper.wrap(
+                endpoint.getIp(),
+                endpoint.getPort(),
+                property.getConnectionTimeoutMs(),
+                commonConfig.getKeyStorePath(),
+                commonConfig.getKeyStorePwd(),
+                commonConfig.getTrustStorePath(),
+                commonConfig.getTrustStorePwd())
+            : TNonblockingTransportWrapper.wrap(
+                endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
@@ -81,7 +94,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
   @Override
   public void invalidate() {
     if (!hasError()) {
-      super.onError(new Exception("This client has been invalidated"));
+      super.onError(new Exception(ClientMessages.CLIENT_INVALIDATED));
     }
   }
 
@@ -123,7 +136,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
 
   private synchronized void recoverTimeout() {
     if (originalTimeout == -1) {
-      logger.warn("This client's timeout has not been modified, cannot reset");
+      logger.warn(ClientMessages.TIMEOUT_NOT_MODIFIED);
     }
     setTimeout(originalTimeout);
     originalTimeout = -1;
@@ -141,7 +154,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
     } catch (Exception e) {
       if (printLogWhenEncounterException) {
         logger.error(
-            "Unexpected exception occurs in {}, error msg is {}",
+            ClientMessages.UNEXPECTED_EXCEPTION_IN_CLIENT_WITH_MSG,
             this,
             ExceptionUtils.getRootCause(e).toString());
       }
@@ -177,7 +190,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
           new AsyncConfigNodeInternalServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

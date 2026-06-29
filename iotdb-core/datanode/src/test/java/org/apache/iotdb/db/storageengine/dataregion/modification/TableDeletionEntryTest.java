@@ -30,21 +30,28 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class TableDeletionEntryTest {
   @Test
   public void testSerialization() throws IOException {
     TableDeletionEntry entry =
-        new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "表格一", new SegmentExactMatch("区域一", 1), Arrays.asList("温度值", "状态值")),
+            new TimeRange(1, 5));
     ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
     entry.serialize(buffer);
+    assertEquals(entry.serializedSize(), buffer.position());
     buffer.flip();
     ModEntry deserialized1 = ModEntry.createFrom(buffer);
     assertEquals(entry, deserialized1);
@@ -52,9 +59,17 @@ public class TableDeletionEntryTest {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     entry.serialize(bos);
     byte[] byteArray = bos.toByteArray();
+    assertEquals(entry.serializedSize(), byteArray.length);
     ByteArrayInputStream bis = new ByteArrayInputStream(byteArray);
     ModEntry deserialized2 = ModEntry.createFrom(bis);
     assertEquals(entry, deserialized2);
+  }
+
+  @Test
+  public void testDeserializePredicateTypeFromEmptyStream() {
+    assertThrows(
+        EOFException.class,
+        () -> IDPredicate.IDPredicateType.deserialize(new ByteArrayInputStream(new byte[0])));
   }
 
   @Test

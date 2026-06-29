@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,7 +68,7 @@ public class MessageDigestEncryptTest {
   public void testMessageDigestEncrypt() throws AuthException, IllegalPathException {
     User[] users = new User[5];
     for (int i = 0; i < users.length; i++) {
-      users[i] = new User("user" + i, "password" + i);
+      users[i] = new User("user" + i, "password123456" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivilegeIntSet().add(j);

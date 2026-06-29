@@ -22,7 +22,8 @@ package org.apache.iotdb.confignode.manager.pipe.metric.overview;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -77,7 +78,8 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     ImmutableSet.copyOf(remainingTimeOperatorMap.keySet()).forEach(this::deregister);
     if (!remainingTimeOperatorMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe remaining time metrics, RemainingTimeOperator map not empty");
+          ManagerMessages
+              .FAILED_TO_UNBIND_FROM_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_MAP);
     }
   }
 
@@ -99,7 +101,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final IoTDBConfigRegionExtractor extractor) {
+  public void register(final IoTDBConfigRegionSource extractor) {
     // The metric is global thus the regionId is omitted
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingTimeOperatorMap
@@ -133,7 +135,8 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
   public void deregister(final String pipeID) {
     if (!remainingTimeOperatorMap.containsKey(pipeID)) {
       LOGGER.warn(
-          "Failed to deregister pipe remaining time metrics, RemainingTimeOperator({}) does not exist",
+          ManagerMessages
+              .FAILED_TO_DEREGISTER_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_DOES_NOT,
           pipeID);
       return;
     }
@@ -149,7 +152,8 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
       LOGGER.info(
-          "Failed to mark pipe region commit, RemainingTimeOperator({}) does not exist", pipeID);
+          ManagerMessages.FAILED_TO_MARK_PIPE_REGION_COMMIT_REMAININGTIMEOPERATOR_DOES_NOT_EXIST,
+          pipeID);
       return;
     }
 

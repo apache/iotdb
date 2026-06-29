@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -95,10 +96,10 @@ public class IoTDBPartitionCreationIT {
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
-    setStorageGroup();
+    setDatabase();
   }
 
-  private void setStorageGroup() throws Exception {
+  private void setDatabase() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSStatus status = client.setDatabase(new TDatabaseSchema(sg));
@@ -401,6 +402,12 @@ public class IoTDBPartitionCreationIT {
         readOnlyCnt = 0;
         removingCnt = 0;
         showRegionResp = client.showRegion(new TShowRegionReq());
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
         for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
@@ -463,6 +470,12 @@ public class IoTDBPartitionCreationIT {
         readOnlyCnt = 0;
         removingCnt = 0;
         showRegionResp = client.showRegion(new TShowRegionReq());
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
         for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {

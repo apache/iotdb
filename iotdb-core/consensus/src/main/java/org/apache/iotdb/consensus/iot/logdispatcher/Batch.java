@@ -63,8 +63,16 @@ public class Batch {
   }
 
   public boolean canAccumulate() {
+    // When reading entries from the WAL, the memory size is calculated based on the serialized
+    // size, which can be significantly smaller than the actual size.
+    // Thus, we add a multiplier to sender's memory size to estimate the receiver's memory cost.
+    // The multiplier is calculated based on the receiver's feedback.
+    long receiverMemSize = LogDispatcher.getReceiverMemSizeSum().get();
+    long senderMemSize = LogDispatcher.getSenderMemSizeSum().get();
+    double multiplier = senderMemSize > 0 ? (double) receiverMemSize / senderMemSize : 1.0;
+    multiplier = Math.max(multiplier, 1.0);
     return logEntries.size() < config.getReplication().getMaxLogEntriesNumPerBatch()
-        && memorySize < config.getReplication().getMaxSizePerBatch();
+        && ((long) (memorySize * multiplier)) < config.getReplication().getMaxSizePerBatch();
   }
 
   public long getStartIndex() {

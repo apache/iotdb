@@ -41,6 +41,8 @@ else
     JAVA=java
 fi
 
+JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+
 CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
@@ -48,5 +50,5 @@ done
 
 MAIN_CLASS=org.apache.iotdb.db.tools.IoTDBDataDirViewer
 
-"$JAVA" -cp "$CLASSPATH" "-Dlogback.configurationFile=${IOTDB_HOME}/conf/logback-tool.xml" "$MAIN_CLASS" "$@"
+"$JAVA" $JVM_OPTS -cp "$CLASSPATH" "-Dlogback.configurationFile=${IOTDB_HOME}/conf/logback-tool.xml" "$MAIN_CLASS" "$@"
 exit $?

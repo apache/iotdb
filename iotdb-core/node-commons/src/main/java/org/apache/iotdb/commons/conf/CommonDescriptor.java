@@ -22,7 +22,9 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,9 +78,6 @@ public class CommonDescriptor {
   public void loadCommonProps(TrimProperties properties) throws IOException {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
-    // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-    config.setOpenIdProviderUrl(
-        properties.getProperty("openID_url", config.getOpenIdProviderUrl()).trim());
     config.setEncryptDecryptProvider(
         properties
             .getProperty(
@@ -89,6 +88,12 @@ public class CommonDescriptor {
         properties.getProperty(
             "iotdb_server_encrypt_decrypt_provider_parameter",
             config.getEncryptDecryptProviderParameter()));
+
+    config.setUserEncryptTokenHint(System.getenv("user_encrypt_token_hint"));
+
+    config.setEnableGrantOption(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_grant_option", String.valueOf("true"))));
 
     String[] tierTTLStr = new String[config.getTierTTLInMs().length];
     for (int i = 0; i < tierTTLStr.length; ++i) {
@@ -135,13 +140,16 @@ public class CommonDescriptor {
                     "cn_connection_timeout_ms", String.valueOf(config.getCnConnectionTimeoutInMS()))
                 .trim()));
 
-    config.setSelectorNumOfClientManager(
+    int cnSelectorNumOfClientManager =
         Integer.parseInt(
             properties
                 .getProperty(
                     "cn_selector_thread_nums_of_client_manager",
                     String.valueOf(config.getSelectorNumOfClientManager()))
-                .trim()));
+                .trim());
+    if (cnSelectorNumOfClientManager > 0) {
+      config.setSelectorNumOfClientManager(cnSelectorNumOfClientManager);
+    }
 
     config.setMaxClientNumForEachNode(
         Integer.parseInt(
@@ -150,6 +158,17 @@ public class CommonDescriptor {
                     "cn_max_client_count_for_each_node_in_client_manager",
                     String.valueOf(config.getMaxClientNumForEachNode()))
                 .trim()));
+
+    int cnMaxIdleClientNumForEachNode =
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_max_idle_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getMaxIdleClientNumForEachNode()))
+                .trim());
+    if (cnMaxIdleClientNumForEachNode >= 0) {
+      config.setMaxIdleClientNumForEachNode(cnMaxIdleClientNumForEachNode);
+    }
 
     config.setDnConnectionTimeoutInMS(
         Integer.parseInt(
@@ -166,13 +185,16 @@ public class CommonDescriptor {
                     String.valueOf(config.isRpcThriftCompressionEnabled()))
                 .trim()));
 
-    config.setSelectorNumOfClientManager(
+    int dnSelectorNumOfClientManager =
         Integer.parseInt(
             properties
                 .getProperty(
                     "dn_selector_thread_nums_of_client_manager",
                     String.valueOf(config.getSelectorNumOfClientManager()))
-                .trim()));
+                .trim());
+    if (dnSelectorNumOfClientManager > 0) {
+      config.setSelectorNumOfClientManager(dnSelectorNumOfClientManager);
+    }
 
     config.setMaxClientNumForEachNode(
         Integer.parseInt(
@@ -181,6 +203,17 @@ public class CommonDescriptor {
                     "dn_max_client_count_for_each_node_in_client_manager",
                     String.valueOf(config.getMaxClientNumForEachNode()))
                 .trim()));
+
+    int dnMaxIdleClientNumForEachNode =
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "dn_max_idle_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getMaxIdleClientNumForEachNode()))
+                .trim());
+    if (dnMaxIdleClientNumForEachNode >= 0) {
+      config.setMaxIdleClientNumForEachNode(dnMaxIdleClientNumForEachNode);
+    }
 
     config.setHandleSystemErrorStrategy(
         HandleSystemErrorStrategy.valueOf(
@@ -197,6 +230,31 @@ public class CommonDescriptor {
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
 
+    long minFolderOccupiedSpaceCacheRefreshIntervalMs =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "min_folder_occupied_space_cache_refresh_interval_ms",
+                    String.valueOf(config.getMinFolderOccupiedSpaceCacheRefreshIntervalMs()))
+                .trim());
+    if (minFolderOccupiedSpaceCacheRefreshIntervalMs > 0) {
+      config.setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
+          minFolderOccupiedSpaceCacheRefreshIntervalMs);
+    }
+
+    int minFolderOccupiedSpaceCacheRefreshSelectionThreshold =
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "min_folder_occupied_space_cache_refresh_selection_threshold",
+                    String.valueOf(
+                        config.getMinFolderOccupiedSpaceCacheRefreshSelectionThreshold()))
+                .trim());
+    if (minFolderOccupiedSpaceCacheRefreshSelectionThreshold > 0) {
+      config.setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
+          minFolderOccupiedSpaceCacheRefreshSelectionThreshold);
+    }
+
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 
@@ -205,10 +263,28 @@ public class CommonDescriptor {
             properties.getProperty(
                 "timestamp_precision_check_enabled",
                 String.valueOf(config.isTimestampPrecisionCheckEnabled()))));
-
     config.setDatanodeTokenTimeoutMS(
         Integer.parseInt(
             properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
+
+    config.setEnableAuditLog(
+        Boolean.parseBoolean(
+            properties
+                .getProperty("enable_audit_log", String.valueOf(config.isEnableAuditLog()))
+                .trim()));
+    config.setAuditableOperationType(
+        properties.getProperty("auditable_operation_type", "DDL,DML,QUERY,CONTROL").trim());
+    config.setAuditableOperationLevel(
+        properties
+            .getProperty(
+                "auditable_operation_level", config.getAuditableOperationLevel().toString())
+            .trim()
+            .toUpperCase());
+    config.setAuditableOperationResult(
+        properties
+            .getProperty("auditable_operation_result", config.getAuditableOperationResult())
+            .trim()
+            .toUpperCase());
 
     PipeDescriptor.loadPipeProps(config, properties, false);
     loadSubscriptionProps(properties);
@@ -225,6 +301,15 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "tag_attribute_total_size", String.valueOf(config.getTagAttributeTotalSize()))));
+
+    int singleMeasurementCheckCacheSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "single_measurement_check_cache_size",
+                String.valueOf(config.getSingleMeasurementCheckCacheSize())));
+    if (singleMeasurementCheckCacheSize >= 0) {
+      config.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
+    }
 
     config.setTimePartitionOrigin(
         Long.parseLong(
@@ -250,12 +335,20 @@ public class CommonDescriptor {
             properties.getProperty(
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
+    config.setPathLogMaxSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "path_log_max_size", String.valueOf(config.getPathLogMaxSize()))));
 
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);
   }
 
   private void loadSubscriptionProps(TrimProperties properties) {
+    config.setSubscriptionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_enabled", String.valueOf(config.getSubscriptionEnabled()))));
     config.setSubscriptionCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
@@ -266,6 +359,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_subtask_executor_max_thread_num",
                 Integer.toString(config.getSubscriptionSubtaskExecutorMaxThreadNum()))));
+    config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_prefetch_executor_max_thread_num",
+                Integer.toString(config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum()))));
 
     config.setSubscriptionPrefetchTabletBatchMaxDelayInMs(
         Integer.parseInt(
@@ -368,7 +466,7 @@ public class CommonDescriptor {
         Float.parseFloat(
             properties.getProperty(
                 "subscription_prefetch_missing_rate_threshold",
-                String.valueOf(config.getSubscriptionPrefetchMemoryThreshold()))));
+                String.valueOf(config.getSubscriptionPrefetchMissingRateThreshold()))));
     config.setSubscriptionPrefetchEventLocalCountThreshold(
         Integer.parseInt(
             properties.getProperty(
@@ -390,6 +488,83 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_meta_syncer_sync_interval_minutes",
                 String.valueOf(config.getSubscriptionMetaSyncerSyncIntervalMinutes()))));
+
+    config.setSubscriptionOwnerLeaseDurationMsMin(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_owner_lease_duration_ms_min",
+                String.valueOf(config.getSubscriptionOwnerLeaseDurationMsMin()))));
+
+    config.setSubscriptionConsensusBatchMaxDelayInMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxDelayInMs()))));
+    config.setSubscriptionConsensusBatchMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxSizeInBytes()))));
+    config.setSubscriptionConsensusBatchMaxTabletCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_tablet_count",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxTabletCount()))));
+    config.setSubscriptionConsensusWalRetentionSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_wal_retention_size_in_bytes",
+                String.valueOf(config.getSubscriptionConsensusWalRetentionSizeInBytes()))));
+    config.setSubscriptionConsensusWalRetentionTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_wal_retention_time_ms",
+                String.valueOf(config.getSubscriptionConsensusWalRetentionTimeMs()))));
+    config.setSubscriptionConsensusBatchMaxWalEntries(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_wal_entries",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxWalEntries()))));
+    config.setSubscriptionConsensusCommitPersistInterval(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_commit_persist_interval",
+                String.valueOf(config.getSubscriptionConsensusCommitPersistInterval()))));
+    config.setSubscriptionConsensusCommitFsyncEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_commit_fsync_enabled",
+                String.valueOf(config.isSubscriptionConsensusCommitFsyncEnabled()))));
+    config.setSubscriptionConsensusConsumerEvictionTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_consumer_eviction_timeout_ms",
+                String.valueOf(config.getSubscriptionConsensusConsumerEvictionTimeoutMs()))));
+    config.setSubscriptionConsensusLagBasedPriority(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_lag_based_priority",
+                String.valueOf(config.isSubscriptionConsensusLagBasedPriority()))));
+    config.setSubscriptionConsensusPrefetchingQueueCapacity(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_prefetching_queue_capacity",
+                String.valueOf(config.getSubscriptionConsensusPrefetchingQueueCapacity()))));
+    config.setSubscriptionConsensusWatermarkEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_watermark_enabled",
+                String.valueOf(config.isSubscriptionConsensusWatermarkEnabled()))));
+    config.setSubscriptionConsensusWatermarkIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_watermark_interval_ms",
+                String.valueOf(config.getSubscriptionConsensusWatermarkIntervalMs()))));
+    config.setSubscriptionConsensusIdleSafeTimeBarrierIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_idle_safe_time_barrier_interval_ms",
+                String.valueOf(config.getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs()))));
   }
 
   public void loadRetryProperties(TrimProperties properties) throws IOException {
@@ -406,6 +581,48 @@ public class CommonDescriptor {
                 "enable_retry_for_unknown_error",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "enable_retry_for_unknown_error"))));
+  }
+
+  /**
+   * Reload only the subscription consensus properties that are intended to take effect on hot
+   * configuration reload.
+   *
+   * <p>Batching related properties are read dynamically by running consensus subscription queues
+   * and therefore take effect immediately after this method updates {@link CommonConfig}. Retention
+   * defaults are only used when new consensus subscription queues are created, so hot reload
+   * affects future topics / bindings and does not retroactively mutate existing queue policies.
+   */
+  public void loadHotModifiedSubscriptionConsensusProps(final TrimProperties properties) {
+    config.setSubscriptionConsensusBatchMaxDelayInMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxDelayInMs()))));
+    config.setSubscriptionConsensusBatchMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxSizeInBytes()))));
+    config.setSubscriptionConsensusBatchMaxTabletCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_tablet_count",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxTabletCount()))));
+    config.setSubscriptionConsensusBatchMaxWalEntries(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_wal_entries",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxWalEntries()))));
+    config.setSubscriptionConsensusWalRetentionSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_wal_retention_size_in_bytes",
+                String.valueOf(config.getSubscriptionConsensusWalRetentionSizeInBytes()))));
+    config.setSubscriptionConsensusWalRetentionTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_wal_retention_time_ms",
+                String.valueOf(config.getSubscriptionConsensusWalRetentionTimeMs()))));
   }
 
   public void loadBinaryAllocatorProps(TrimProperties properties) {
@@ -443,5 +660,36 @@ public class CommonDescriptor {
     config.setSchemaEngineMode(globalConfig.schemaEngineMode);
     config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
+    config.setEnableGrantOption(globalConfig.isEnableGrantOption());
+    config.setRestrictObjectLimit(globalConfig.isRestrictObjectLimit());
+  }
+
+  public void loadAuditConfig(TAuditConfig auditConfig) {
+    config.setEnableAuditLog(auditConfig.isEnableAuditLog());
+    if (auditConfig.isEnableAuditLog()) {
+      config.setAuditableOperationType(auditConfig.getAuditableOperationType());
+      config.setAuditableOperationLevel(auditConfig.getAuditableOperationLevel());
+      config.setAuditableOperationResult(auditConfig.getAuditableOperationResult());
+    }
+  }
+
+  public void initThriftSSL(TrimProperties properties) {
+    config.setEnableThriftClientSSL(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_thrift_ssl", Boolean.toString(config.isEnableThriftClientSSL()))));
+    config.setKeyStorePath(properties.getProperty("key_store_path", config.getKeyStorePath()));
+    config.setKeyStorePwd(properties.getProperty("key_store_pwd", config.getKeyStorePwd()));
+    config.setTrustStorePath(
+        properties.getProperty("trust_store_path", config.getTrustStorePath()));
+    config.setTrustStorePwd(properties.getProperty("trust_store_pwd", config.getTrustStorePwd()));
+    config.setSslProtocol(
+        RpcSslUtils.normalizeProtocol(
+            properties.getProperty("ssl_protocol", config.getSslProtocol())));
+    configureRpcSsl();
+  }
+
+  public void configureRpcSsl() {
+    RpcSslUtils.configure(config.getSslProtocol());
   }
 }

@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.AbstractConsumeAllOperator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -153,19 +154,24 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
 
   private void calculateNextAggregationResult() {
     // Consume current input tsBlocks
-    for (TreeAggregator aggregator : aggregators) {
-      aggregator.processTsBlocks(inputTsBlocks);
-    }
-
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      inputTsBlocks[i] = inputTsBlocks[i].skipFirst();
-      if (inputTsBlocks[i].isEmpty()) {
-        inputTsBlocks[i] = null;
+    long startTime = System.nanoTime();
+    try {
+      for (TreeAggregator aggregator : aggregators) {
+        aggregator.processTsBlocks(inputTsBlocks);
       }
-    }
 
-    // Update result using aggregators
-    updateResultTsBlock();
+      for (int i = 0; i < inputOperatorsCount; i++) {
+        inputTsBlocks[i] = inputTsBlocks[i].skipFirst();
+        if (inputTsBlocks[i].isEmpty()) {
+          inputTsBlocks[i] = null;
+        }
+      }
+
+      // Update result using aggregators
+      updateResultTsBlock();
+    } finally {
+      operatorContext.recordAggregationOperatorFromRawDataCost(System.nanoTime() - startTime);
+    }
   }
 
   private void updateResultTsBlock() {

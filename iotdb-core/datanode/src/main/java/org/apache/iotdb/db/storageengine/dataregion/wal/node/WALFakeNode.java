@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
@@ -44,9 +46,9 @@ public class WALFakeNode implements IWALNode {
 
   public WALFakeNode(Status status, Exception cause) {
     this.status = status;
-    this.successListener = new WALFlushListener(false, null);
+    this.successListener = new WALFlushListener(false);
     this.successListener.succeed();
-    this.failListener = new WALFlushListener(false, null);
+    this.failListener = new WALFlushListener(false);
     this.failListener.fail(cause);
   }
 
@@ -79,6 +81,11 @@ public class WALFakeNode implements IWALNode {
   @Override
   public WALFlushListener log(
       long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode) {
+    return getResult();
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, ObjectNode objectNode) {
     return getResult();
   }
 
@@ -137,9 +144,39 @@ public class WALFakeNode implements IWALNode {
     return 0;
   }
 
+  @Override
+  public long getRegionDiskUsage() {
+    return 0;
+  }
+
+  @Override
+  public long getSearchIndexToFreeAtLeast(long bytesToFree) {
+    return bytesToFree > 0 ? Long.MAX_VALUE : DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  }
+
+  @Override
+  public void setSubscriptionRetainedMinVersionId(long minVersionId) {
+    // do nothing
+  }
+
+  @Override
+  public long getVersionIdToFreeAtLeast(long bytesToFree) {
+    return bytesToFree > 0 ? Long.MAX_VALUE : 0;
+  }
+
+  @Override
+  public long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return Long.MIN_VALUE + 1;
+  }
+
+  @Override
+  public long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return 0;
+  }
+
   public static WALFakeNode getFailureInstance(Exception e) {
     return new WALFakeNode(
-        Status.FAILURE, new WALException("Cannot write wal into a fake node. ", e));
+        Status.FAILURE, new WALException(StorageEngineMessages.CANNOT_WRITE_WAL_INTO_FAKE_NODE, e));
   }
 
   public static WALFakeNode getSuccessInstance() {

@@ -26,9 +26,10 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -108,6 +109,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         null,
         null,
         null,
+        null,
+        null,
         true);
   }
 
@@ -121,7 +124,9 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges) {
     super(
         pipeName,
@@ -129,7 +134,9 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         PipeDataNodeResourceManager.snapshot());
     this.mTreeSnapshotPath = mTreeSnapshotPath;
@@ -204,7 +211,9 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -218,7 +227,9 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges);
   }
 
@@ -345,7 +356,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Decrease reference count for mTree snapshot {} or tLog {} or attribute snapshot {} error.",
+            DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_MTREE_SNAPSHOT_OR,
             mTreeSnapshotPath,
             tagLogSnapshotPath,
             attributeSnapshotPath,

@@ -98,7 +98,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
       for (int i = 0; i < testSgNum; i++) {
         String curSg = sg + i;
 
-        /* Set StorageGroup */
+        /* Set Database */
         TSStatus status = client.setDatabase(new TDatabaseSchema(curSg));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.datastructure.options;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -36,12 +37,12 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_INCLUSION_KEY;
 
 public class PipeInclusionOptions {
 
@@ -112,7 +113,7 @@ public class PipeInclusionOptions {
       TABLE_OPTIONS.add(new PartialPath("schema.table.drop"));
 
     } catch (final IllegalPathException e) {
-      LOGGER.error("Illegal path encountered when initializing LEGAL_OPTIONS.", e);
+      LOGGER.error(PipeMessages.ILLEGAL_PATH_INITIALIZING_OPTIONS, e);
     }
 
     ALIAS_OPTIONS_MAP.put(
@@ -124,7 +125,7 @@ public class PipeInclusionOptions {
                 Arrays.asList(
                     "data.delete",
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.delete",
+                    "schema.timeseries.ordinary.drop",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
                     "schema.timeseries.template.unset",
@@ -139,7 +140,7 @@ public class PipeInclusionOptions {
             new HashSet<>(
                 Arrays.asList(
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.delete",
+                    "schema.timeseries.ordinary.drop",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
                     "schema.timeseries.template.unset",
@@ -178,8 +179,7 @@ public class PipeInclusionOptions {
       return !options.isEmpty();
     } catch (final IllegalPathException e) {
       LOGGER.warn(
-          "Illegal options (inclusion: {}, exclusion: {}) parsed "
-              + "when checking if at least one option is present: {}",
+          PipeMessages.ILLEGAL_OPTIONS_CHECKING_PRESENCE,
           inclusionString,
           exclusionString,
           e.getMessage(),
@@ -197,11 +197,7 @@ public class PipeInclusionOptions {
                   getOptions(isTreeModelListened, isTableModelListened).stream()
                       .anyMatch(path -> path.overlapWithFullPathPrefix(prefix)));
     } catch (final IllegalPathException e) {
-      LOGGER.warn(
-          "Illegal options {} parsed when checking if all options are legal: {}",
-          options,
-          e.getMessage(),
-          e);
+      LOGGER.warn(PipeMessages.ILLEGAL_OPTIONS_CHECKING_LEGAL, options, e.getMessage(), e);
       return false;
     }
   }

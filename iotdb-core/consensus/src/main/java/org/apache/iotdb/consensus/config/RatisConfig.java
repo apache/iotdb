@@ -196,8 +196,9 @@ public class RatisConfig {
       return this;
     }
 
-    public void setUtils(Utils utils) {
+    public Builder setUtils(Utils utils) {
       this.utils = utils;
+      return this;
     }
   }
 
@@ -704,18 +705,33 @@ public class RatisConfig {
     private final boolean asyncRequestThreadPoolCached;
     private final int asyncRequestThreadPoolSize;
     private final int leaderOutstandingAppendsMax;
+    private final boolean isEnableSSL;
+    private final String sslTrustStorePath;
+    private final String sslTrustStorePassword;
+    private final String sslKeyStorePath;
+    private final String sslKeyStorePassword;
 
     private Grpc(
         SizeInBytes messageSizeMax,
         SizeInBytes flowControlWindow,
         boolean asyncRequestThreadPoolCached,
         int asyncRequestThreadPoolSize,
-        int leaderOutstandingAppendsMax) {
+        int leaderOutstandingAppendsMax,
+        boolean isEnableSSL,
+        String sslTrustStorePath,
+        String sslTrustStorePassword,
+        String sslKeyStorePath,
+        String sslKeyStorePassword) {
       this.messageSizeMax = messageSizeMax;
       this.flowControlWindow = flowControlWindow;
       this.asyncRequestThreadPoolCached = asyncRequestThreadPoolCached;
       this.asyncRequestThreadPoolSize = asyncRequestThreadPoolSize;
       this.leaderOutstandingAppendsMax = leaderOutstandingAppendsMax;
+      this.isEnableSSL = isEnableSSL;
+      this.sslTrustStorePath = sslTrustStorePath;
+      this.sslTrustStorePassword = sslTrustStorePassword;
+      this.sslKeyStorePath = sslKeyStorePath;
+      this.sslKeyStorePassword = sslKeyStorePassword;
     }
 
     public SizeInBytes getMessageSizeMax() {
@@ -738,6 +754,26 @@ public class RatisConfig {
       return leaderOutstandingAppendsMax;
     }
 
+    public boolean isEnableSSL() {
+      return isEnableSSL;
+    }
+
+    public String getSslTrustStorePath() {
+      return sslTrustStorePath;
+    }
+
+    public String getSslTrustStorePassword() {
+      return sslTrustStorePassword;
+    }
+
+    public String getSslKeyStorePath() {
+      return sslKeyStorePath;
+    }
+
+    public String getSslKeyStorePassword() {
+      return sslKeyStorePassword;
+    }
+
     public static Grpc.Builder newBuilder() {
       return new Grpc.Builder();
     }
@@ -750,6 +786,11 @@ public class RatisConfig {
           Server.ASYNC_REQUEST_THREAD_POOL_CACHED_DEFAULT;
       private int asyncRequestThreadPoolSize = Server.ASYNC_REQUEST_THREAD_POOL_SIZE_DEFAULT;
       private int leaderOutstandingAppendsMax = Server.LEADER_OUTSTANDING_APPENDS_MAX_DEFAULT;
+      private boolean isEnableSSL = false;
+      private String sslTrustStorePath = "";
+      private String sslTrustStorePassword = "";
+      private String sslKeyStorePath = "";
+      private String sslKeyStorePassword = "";
 
       public Grpc build() {
         return new Grpc(
@@ -757,7 +798,12 @@ public class RatisConfig {
             flowControlWindow,
             asyncRequestThreadPoolCached,
             asyncRequestThreadPoolSize,
-            leaderOutstandingAppendsMax);
+            leaderOutstandingAppendsMax,
+            isEnableSSL,
+            sslTrustStorePath,
+            sslTrustStorePassword,
+            sslKeyStorePath,
+            sslKeyStorePassword);
       }
 
       public Grpc.Builder setMessageSizeMax(SizeInBytes messageSizeMax) {
@@ -784,6 +830,31 @@ public class RatisConfig {
         this.leaderOutstandingAppendsMax = leaderOutstandingAppendsMax;
         return this;
       }
+
+      public Grpc.Builder setEnableSSL(boolean isEnableSSL) {
+        this.isEnableSSL = isEnableSSL;
+        return this;
+      }
+
+      public Grpc.Builder setSslTrustStorePath(String sslTrustStorePath) {
+        this.sslTrustStorePath = sslTrustStorePath;
+        return this;
+      }
+
+      public Grpc.Builder setSslTrustStorePassword(String sslTrustStorePassword) {
+        this.sslTrustStorePassword = sslTrustStorePassword;
+        return this;
+      }
+
+      public Grpc.Builder setSslKeyStorePath(String sslKeyStorePath) {
+        this.sslKeyStorePath = sslKeyStorePath;
+        return this;
+      }
+
+      public Grpc.Builder setSslKeyStorePassword(String sslKeyStorePassword) {
+        this.sslKeyStorePassword = sslKeyStorePassword;
+        return this;
+      }
     }
   }
 
@@ -794,18 +865,21 @@ public class RatisConfig {
     private final long clientRetryInitialSleepTimeMs;
     private final long clientRetryMaxSleepTimeMs;
     private final int maxClientNumForEachNode;
+    private final int reconfigurationMaxRetryAttempts;
 
     public Client(
         long clientRequestTimeoutMillis,
         int clientMaxRetryAttempt,
         long clientRetryInitialSleepTimeMs,
         long clientRetryMaxSleepTimeMs,
-        int maxClientNumForEachNode) {
+        int maxClientNumForEachNode,
+        int reconfigurationMaxRetryAttempts) {
       this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
       this.clientMaxRetryAttempt = clientMaxRetryAttempt;
       this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
       this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
       this.maxClientNumForEachNode = maxClientNumForEachNode;
+      this.reconfigurationMaxRetryAttempts = reconfigurationMaxRetryAttempts;
     }
 
     public long getClientRequestTimeoutMillis() {
@@ -828,6 +902,10 @@ public class RatisConfig {
       return maxClientNumForEachNode;
     }
 
+    public int getReconfigurationMaxRetryAttempts() {
+      return reconfigurationMaxRetryAttempts;
+    }
+
     public static Client.Builder newBuilder() {
       return new Builder();
     }
@@ -839,6 +917,11 @@ public class RatisConfig {
       private long clientRetryInitialSleepTimeMs = 100;
       private long clientRetryMaxSleepTimeMs = 10000;
       private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+      // A Ratis configuration change (add/remove peer) retries the "in progress / not ready"
+      // failures with a fixed 2s interval. Bounding the number of attempts (instead of retrying
+      // forever) prevents a killed ADDING peer that can never catch up from blocking the
+      // reconfiguration -- and hence the region migration -- indefinitely. 15 attempts ~= 30s.
+      private int reconfigurationMaxRetryAttempts = 15;
 
       public Client build() {
         return new Client(
@@ -846,7 +929,8 @@ public class RatisConfig {
             clientMaxRetryAttempt,
             clientRetryInitialSleepTimeMs,
             clientRetryMaxSleepTimeMs,
-            maxClientNumForEachNode);
+            maxClientNumForEachNode,
+            reconfigurationMaxRetryAttempts);
       }
 
       public Builder setClientRequestTimeoutMillis(long clientRequestTimeoutMillis) {
@@ -871,6 +955,11 @@ public class RatisConfig {
 
       public Builder setMaxClientNumForEachNode(int maxClientNumForEachNode) {
         this.maxClientNumForEachNode = maxClientNumForEachNode;
+        return this;
+      }
+
+      public Builder setReconfigurationMaxRetryAttempts(int reconfigurationMaxRetryAttempts) {
+        this.reconfigurationMaxRetryAttempts = reconfigurationMaxRetryAttempts;
         return this;
       }
     }
@@ -1096,10 +1185,13 @@ public class RatisConfig {
 
     private final int sleepDeviationThresholdMs;
     private final int closeThresholdMs;
+    private final int transferLeaderTimeoutMs;
 
-    private Utils(int sleepDeviationThresholdMs, int closeThresholdMs) {
+    private Utils(
+        int sleepDeviationThresholdMs, int closeThresholdMs, int transferLeaderTimeoutMs) {
       this.sleepDeviationThresholdMs = sleepDeviationThresholdMs;
       this.closeThresholdMs = closeThresholdMs;
+      this.transferLeaderTimeoutMs = transferLeaderTimeoutMs;
     }
 
     public int getSleepDeviationThresholdMs() {
@@ -1108,6 +1200,10 @@ public class RatisConfig {
 
     public int getCloseThresholdMs() {
       return closeThresholdMs;
+    }
+
+    public int getTransferLeaderTimeoutMs() {
+      return transferLeaderTimeoutMs;
     }
 
     public static Utils.Builder newBuilder() {
@@ -1119,16 +1215,25 @@ public class RatisConfig {
       private int sleepDeviationThresholdMs = 4 * 1000;
       private int closeThresholdMs = Integer.MAX_VALUE;
 
+      private int transferLeaderTimeoutMs = 30 * 1000;
+
       public Utils build() {
-        return new Utils(sleepDeviationThresholdMs, closeThresholdMs);
+        return new Utils(sleepDeviationThresholdMs, closeThresholdMs, transferLeaderTimeoutMs);
       }
 
-      public void setSleepDeviationThresholdMs(int sleepDeviationThresholdMs) {
+      public Utils.Builder setSleepDeviationThresholdMs(int sleepDeviationThresholdMs) {
         this.sleepDeviationThresholdMs = sleepDeviationThresholdMs;
+        return this;
       }
 
-      public void setCloseThresholdMs(int closeThresholdMs) {
+      public Utils.Builder setCloseThresholdMs(int closeThresholdMs) {
         this.closeThresholdMs = closeThresholdMs;
+        return this;
+      }
+
+      public Utils.Builder setTransferLeaderTimeoutMs(int transferLeaderTimeoutMs) {
+        this.transferLeaderTimeoutMs = transferLeaderTimeoutMs;
+        return this;
       }
     }
   }

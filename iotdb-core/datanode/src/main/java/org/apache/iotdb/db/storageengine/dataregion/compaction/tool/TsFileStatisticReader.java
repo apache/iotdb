@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.db.utils.EncryptDBUtils;
+
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileDeviceIterator;
@@ -37,7 +39,9 @@ public class TsFileStatisticReader implements Closeable {
   private final TsFileSequenceReader reader;
 
   public TsFileStatisticReader(String filePath) throws IOException {
-    reader = new TsFileSequenceReader(filePath);
+    reader =
+        new TsFileSequenceReader(
+            filePath, EncryptDBUtils.getFirstEncryptParamFromTSFilePath(filePath));
   }
 
   public List<ChunkGroupStatistics> getChunkGroupStatisticsList() throws IOException {

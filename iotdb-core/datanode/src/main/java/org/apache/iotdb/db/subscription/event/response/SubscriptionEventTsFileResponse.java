@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
@@ -36,7 +37,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.apache.thrift.annotation.Nullable;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -143,7 +143,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     final short responseType = previousResponse.getResponseType();
     final SubscriptionPollPayload payload = previousResponse.getPayload();
     if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-      LOGGER.warn("unexpected response type: {}", responseType);
+      LOGGER.warn(DataNodeMiscMessages.UNEXPECTED_RESPONSE_TYPE, responseType);
       return Optional.empty();
     }
 
@@ -158,13 +158,13 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
         // not need to prefetch
         break;
       default:
-        LOGGER.warn("unexpected message type: {}", responseType);
+        LOGGER.warn(DataNodeMiscMessages.UNEXPECTED_MESSAGE_TYPE, responseType);
     }
 
     return Optional.empty();
   }
 
-  private @NonNull CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
+  private CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
       final long writingOffset)
       throws IOException, InterruptedException, PipeRuntimeOutOfMemoryCriticalException {
     final long tsFileLength = tsFile.length();
@@ -194,20 +194,13 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
           PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(bufferSize);
       final byte[] readBuffer = new byte[(int) bufferSize];
 
-      final int readLength = reader.read(readBuffer);
-      if (readLength != bufferSize) {
-        memoryBlock.close();
-        throw new SubscriptionException(
-            String.format(
-                "inconsistent read length (broken invariant), expected: %s, actual: %s",
-                bufferSize, readLength));
-      }
+      reader.readFully(readBuffer);
 
       // generate subscription poll response with piece payload
       final CachedSubscriptionPollResponse response =
           new CachedSubscriptionPollResponse(
               SubscriptionPollResponseType.FILE_PIECE.getType(),
-              new FilePiecePayload(tsFile.getName(), writingOffset + readLength, readBuffer),
+              new FilePiecePayload(tsFile.getName(), writingOffset + bufferSize, readBuffer),
               commitContext);
 
       // set fixed memory block for response

@@ -29,6 +29,7 @@ import java.util.List;
 
 public class ShowTTLStatement extends ShowStatement implements IConfigStatement {
   private final List<PartialPath> pathPatterns = new ArrayList<>();
+  private boolean showAllTTL = false;
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
@@ -47,5 +48,13 @@ public class ShowTTLStatement extends ShowStatement implements IConfigStatement 
 
   public void addPathPatterns(PartialPath pathPattern) {
     pathPatterns.add(pathPattern);
+  }
+
+  public void setShowAllTTL(boolean showAllTTL) {
+    this.showAllTTL = showAllTTL;
+  }
+
+  public boolean isShowAllTTL() {
+    return showAllTTL;
   }
 }

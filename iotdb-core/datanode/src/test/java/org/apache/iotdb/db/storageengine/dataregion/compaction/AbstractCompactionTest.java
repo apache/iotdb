@@ -30,14 +30,23 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFakeSchemaFetcherImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -46,17 +55,18 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -80,6 +90,7 @@ import org.junit.Assert;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -185,6 +196,8 @@ public class AbstractCompactionTest {
   protected TsFileManager tsFileManager =
       new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
 
+  protected CompactionFakeSchemaFetcherImpl schemaFetcher;
+
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     fileCount = 0;
@@ -204,6 +217,9 @@ public class AbstractCompactionTest {
     tsFileManager.getOrCreateSequenceListByTimePartition(0);
     tsFileManager.getOrCreateUnsequenceListByTimePartition(0);
     registeredTimePartitionDirs.put(0L, new Pair<>(SEQ_DIRS, UNSEQ_DIRS));
+    schemaFetcher = new CompactionFakeSchemaFetcherImpl();
+    schemaFetcher.getSchemaTree().setDatabases(Collections.singleton(COMPACTION_TEST_SG));
+    CompactionUtils.setSchemaFetcher(schemaFetcher);
   }
 
   protected void createTimePartitionDirIfNotExist(long timePartition) {
@@ -508,6 +524,10 @@ public class AbstractCompactionTest {
     }
     registeredTimePartitionDirs.clear();
     tsFileManager.clear();
+    TsFileResourceManager.getInstance().clear();
+
+    CompactionUtils.setSchemaFetcher(null);
+    TreeDeviceSchemaCacheManager.getInstance().cleanUp();
   }
 
   private void removeFiles() throws IOException {
@@ -868,5 +888,15 @@ public class AbstractCompactionTest {
       }
     }
     return new ArrayList<>(paths);
+  }
+
+  protected ICompactionPerformer getPerformer(String performerType) {
+    if (performerType.equalsIgnoreCase(InnerSeqCompactionPerformer.READ_CHUNK.toString())) {
+      return new ReadChunkCompactionPerformer();
+    } else if (performerType.equalsIgnoreCase(InnerUnseqCompactionPerformer.FAST.toString())) {
+      return new FastCompactionPerformer(false);
+    } else {
+      return new ReadPointCompactionPerformer();
+    }
   }
 }

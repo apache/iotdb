@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
@@ -59,6 +60,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
   private static final Map<CNSnapshotFileType, Set<Short>>
       SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP = new EnumMap<>(CNSnapshotFileType.class);
   private CNSnapshotFileType fileType;
+
+  private String authUserName = "";
 
   static {
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
@@ -108,7 +111,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
 
   public PipeConfigRegionSnapshotEvent(
       final String snapshotPath, final String templateFilePath, final CNSnapshotFileType type) {
-    this(snapshotPath, templateFilePath, type, null, 0, null, null, null, null, true);
+    this(snapshotPath, templateFilePath, type, null, 0, null, null, null, null, null, null, true);
   }
 
   public PipeConfigRegionSnapshotEvent(
@@ -120,7 +123,9 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges) {
     super(
         pipeName,
@@ -128,12 +133,22 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         PipeConfigNodeResourceManager.snapshot());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
     this.fileType = type;
+  }
+
+  public String getAuthUserName() {
+    return authUserName;
+  }
+
+  public void setAuthUserName(String authUserName) {
+    this.authUserName = authUserName;
   }
 
   public File getSnapshotFile() {
@@ -191,21 +206,28 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
-    return new PipeConfigRegionSnapshotEvent(
-        snapshotPath,
-        templateFilePath,
-        fileType,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        treePattern,
-        tablePattern,
-        userName,
-        skipIfNoPrivileges);
+    PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent =
+        new PipeConfigRegionSnapshotEvent(
+            snapshotPath,
+            templateFilePath,
+            fileType,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userId,
+            userName,
+            cliHostname,
+            skipIfNoPrivileges);
+    pipeConfigRegionSnapshotEvent.setAuthUserName(authUserName);
+    return pipeConfigRegionSnapshotEvent;
   }
 
   @Override
@@ -328,7 +350,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
           resourceManager.decreaseSnapshotReference(templateFilePath);
         }
       } catch (final Exception e) {
-        LOGGER.warn("Decrease reference count for snapshot {} error.", snapshotPath, e);
+        LOGGER.warn(ManagerMessages.DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR, snapshotPath, e);
       }
     }
   }

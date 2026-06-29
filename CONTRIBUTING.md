@@ -27,7 +27,7 @@ IoTDB official website：https://iotdb.apache.org/
 
 Code library：https://github.com/apache/iotdb/tree/master
 
-Get started quickly：https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html
+Get started quickly：https://iotdb.apache.org/UserGuide/latest/QuickStart/QuickStart.html
 
 ## Subscribe to mailing list
 
@@ -55,7 +55,7 @@ You can choose issue types: bug, improvement, new feature, etc.  New issues will
 
 ## Email discussion content (English)
 
-* Joining the mailing list for the first time can introduce youself briefly.  (Hi, I'm xxx ...)
+* Joining the mailing list for the first time can introduce yourself briefly.  (Hi, I'm xxx ...)
 
 * Before developing a new feature, you can send an e-mail to declare the task you want to do.（Hi，I'm working on issue IOTDB-XXX，My plan is ...）
 
@@ -107,6 +107,28 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
    import static all other imports
 ```
 
+### C++ formatting
+
+- Formatter: `clang-format` only
+- Version: pinned as `clang.format.version` in the root `pom.xml` (currently `17.0.6`, aligned with Apache TsFile); CI installs LLVM/clang-format so the default `clang-format` on the runner matches that version
+- Entrypoint: Maven Spotless; the `clangFormat` configuration is attached under the `spotless-cpp` profile in the C++ modules and activates on the repository baseline, **JDK 17+**, so run `spotless:check` / `spotless:apply` for C++ with JDK 17 or newer (CI does).
+
+Check only:
+
+`./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:check`
+
+
+Auto-fix:
+
+`./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:apply`
+
+
+
+Temporarily skip Spotless (not recommended except emergency CI triage):
+
+`-Dspotless.skip=true`
+
+Risk: skipping formatting checks can introduce style drift between contributors and CI, and often causes follow-up format-only commits.
 
 ## Contributing code
 
@@ -159,4 +181,3 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
  * Put the file to thrift/target/tools/
 
  * Re-run maven command like `mvn compile`
-

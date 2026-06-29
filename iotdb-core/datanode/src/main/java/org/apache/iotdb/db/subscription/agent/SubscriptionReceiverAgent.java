@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
@@ -36,26 +38,55 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class SubscriptionReceiverAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionReceiverAgent.class);
 
-  private final ThreadLocal<SubscriptionReceiver> receiverThreadLocal = new ThreadLocal<>();
-
   private static final Map<Byte, Supplier<SubscriptionReceiver>> RECEIVER_CONSTRUCTORS =
       new HashMap<>();
+
+  private static final TPipeSubscribeResp SUBSCRIPTION_NOT_ENABLED_ERROR_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR,
+              "Subscription not enabled, please set config `subscription_enabled` to true."),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
+  private final ThreadLocal<SubscriptionReceiver> receiverThreadLocal = new ThreadLocal<>();
+  private final Set<SubscriptionReceiver> activeReceivers = ConcurrentHashMap.newKeySet();
+  private final ScheduledExecutorService receiverTimeoutChecker =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          SubscriptionReceiverAgent.class.getSimpleName() + "-Timeout-Checker");
 
   SubscriptionReceiverAgent() {
     RECEIVER_CONSTRUCTORS.put(
         PipeSubscribeRequestVersion.VERSION_1.getVersion(), SubscriptionReceiverV1::new);
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        receiverTimeoutChecker,
+        this::checkReceiverTimeouts,
+        Math.max(1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
+        Math.max(1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
+        TimeUnit.MILLISECONDS);
   }
 
   public TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return SUBSCRIPTION_NOT_ENABLED_ERROR_RESP;
+    }
+
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
-      return getReceiver(reqVersion).handle(req);
+      final SubscriptionReceiver receiver = getReceiver(reqVersion);
+      activeReceivers.add(receiver);
+      receiver.handleTimeout();
+      return receiver.handle(req);
     } else {
       final TSStatus status =
           RpcUtils.getStatus(
@@ -114,8 +145,13 @@ public class SubscriptionReceiverAgent {
   public final void handleClientExit() {
     final SubscriptionReceiver receiver = receiverThreadLocal.get();
     if (receiver != null) {
+      activeReceivers.remove(receiver);
       receiver.handleExit();
       receiverThreadLocal.remove();
     }
+  }
+
+  private void checkReceiverTimeouts() {
+    activeReceivers.forEach(SubscriptionReceiver::handleTimeout);
   }
 }

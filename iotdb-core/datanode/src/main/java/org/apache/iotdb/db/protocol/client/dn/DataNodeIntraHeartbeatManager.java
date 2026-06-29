@@ -23,9 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.commons.client.request.DataNodeIntraHeartbeatRequestManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 public class DataNodeIntraHeartbeatManager
     extends DataNodeIntraHeartbeatRequestManager<DnToDnRequestType> {
+
+  public DataNodeIntraHeartbeatManager() {
+    super(IoTDBDescriptor.getInstance().getConfig().getSelectorNumOfClientManager());
+  }
 
   @Override
   protected void initActionMapBuilder() {

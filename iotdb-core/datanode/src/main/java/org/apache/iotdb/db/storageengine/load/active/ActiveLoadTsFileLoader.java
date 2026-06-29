@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -40,9 +41,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +58,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -84,12 +87,12 @@ public class ActiveLoadTsFileLoader {
   }
 
   public void tryTriggerTsFileLoad(
-      String absolutePath, boolean isTabletMode, boolean isGeneratedByPipe) {
+      String absolutePath, String pendingDir, boolean isTabletMode, boolean isGeneratedByPipe) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       return;
     }
 
-    if (pendingQueue.enqueue(absolutePath, isGeneratedByPipe, isTabletMode)) {
+    if (pendingQueue.enqueue(absolutePath, pendingDir, isGeneratedByPipe, isTabletMode)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
     }
@@ -153,6 +156,27 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
+  public void stop() {
+    final WrappedThreadPoolExecutor executor = activeLoadExecutor.getAndSet(null);
+    if (executor == null) {
+      return;
+    }
+
+    executor.shutdownNow();
+    try {
+      if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+        LOGGER.warn(
+            StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S,
+            ThreadName.ACTIVE_LOAD_TSFILE_LOADER.getName());
+      }
+    } catch (final InterruptedException e) {
+      LOGGER.warn(
+          StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S,
+          ThreadName.ACTIVE_LOAD_TSFILE_LOADER.getName());
+      Thread.currentThread().interrupt();
+    }
+  }
+
   private void tryLoadPendingTsFiles() {
     final IClientSession session =
         new InternalClientSession(
@@ -199,41 +223,51 @@ public class ActiveLoadTsFileLoader {
         Math.max(1, IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds() << 1);
     long currentRetryTimes = 0;
 
-    while (true) {
+    while (!Thread.currentThread().isInterrupted()) {
       final ActiveLoadPendingQueue.ActiveLoadEntry entry = pendingQueue.dequeueFromPending();
       if (Objects.nonNull(entry)) {
         return Optional.of(entry);
       }
 
       LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
+      if (Thread.currentThread().isInterrupted()) {
+        return Optional.empty();
+      }
 
       if (currentRetryTimes++ >= maxRetryTimes) {
         return Optional.empty();
       }
     }
+    return Optional.empty();
   }
 
   private TSStatus loadTsFile(
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final IClientSession session)
       throws FileNotFoundException {
-    final LoadTsFileStatement statement = new LoadTsFileStatement(entry.getFile());
+    final File tsFile = new File(entry.getFile());
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
     final List<File> files = statement.getTsFiles();
 
-    // It should be noted here that the instructions in this code block do not need to use the
-    // DataBase, so the DataBase is assigned a value of null. If the DataBase is used later, an
-    // exception will be thrown.
-    final File parentFile;
-    statement.setDatabase(
-        files.isEmpty()
-                || !entry.isTableModel()
-                || (parentFile = files.get(0).getParentFile()) == null
-            ? null
-            : parentFile.getName());
     statement.setDeleteAfterLoad(true);
-    statement.setConvertOnTypeMismatch(true);
-    statement.setVerifySchema(isVerify);
     statement.setAutoCreateDatabase(
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
+
+    final File pendingDir =
+        entry.getPendingDir() == null
+            ? ActiveLoadPathHelper.findPendingDirectory(tsFile)
+            : new File(entry.getPendingDir());
+    final Map<String, String> attributes = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+    ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
+
+    final File parentFile;
+    if (statement.getDatabase() == null && entry.isTableModel()) {
+      statement.setDatabase(
+          files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null
+              ? null
+              : parentFile.getName());
+    }
+
     return executeStatement(
         entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement, session);
   }
@@ -250,7 +284,8 @@ public class ActiveLoadTsFileLoader {
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
               IOTDB_CONFIG.getQueryTimeoutThreshold(),
-              false)
+              false,
+              statement.isDebug())
           .status;
     } finally {
       SESSION_MANAGER.removeCurrSession();
@@ -259,7 +294,7 @@ public class ActiveLoadTsFileLoader {
 
   private void handleLoadFailure(
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final TSStatus status) {
-    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, status.getMessage())) {
+    if (!ActiveLoadFailedMessageHandler.isStatusShouldRetry(entry, status)) {
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
           entry.getFile(),
@@ -291,8 +326,9 @@ public class ActiveLoadTsFileLoader {
 
   private void removeFileAndResourceAndModsToFailDir(final String filePath) {
     removeToFailDir(filePath);
-    removeToFailDir(filePath + ".resource");
-    removeToFailDir(filePath + ".mods");
+    removeToFailDir(LoadUtil.getTsFileResourcePath(filePath));
+    removeToFailDir(LoadUtil.getTsFileModsV1Path(filePath));
+    removeToFailDir(LoadUtil.getTsFileModsV2Path(filePath));
   }
 
   private void removeToFailDir(final String filePath) {
@@ -310,7 +346,7 @@ public class ActiveLoadTsFileLoader {
             return null;
           });
     } catch (final IOException e) {
-      LOGGER.warn("Error occurred during moving file {} to fail directory.", filePath, e);
+      LOGGER.warn(StorageEngineMessages.ERROR_MOVING_FILE_TO_FAIL_DIR, filePath, e);
     }
   }
 
@@ -334,7 +370,7 @@ public class ActiveLoadTsFileLoader {
               try {
                 fileSize[0] += file.toFile().length();
               } catch (Exception e) {
-                LOGGER.debug("Failed to count failed files in fail directory.", e);
+                LOGGER.debug(StorageEngineMessages.FAILED_COUNT_FILES_IN_FAIL_DIR, e);
               }
               return FileVisitResult.CONTINUE;
             }
@@ -343,7 +379,7 @@ public class ActiveLoadTsFileLoader {
       ActiveLoadingFilesNumberMetricsSet.getInstance().updateTotalFailedFileCounter(fileCount[0]);
       ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalFailedFileCounter(fileSize[0]);
     } catch (final IOException e) {
-      LOGGER.debug("Failed to count failed files in fail directory.", e);
+      LOGGER.debug(StorageEngineMessages.FAILED_COUNT_FILES_IN_FAIL_DIR, e);
     }
 
     return fileCount[0];

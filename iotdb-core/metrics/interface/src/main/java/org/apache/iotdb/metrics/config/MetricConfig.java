@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.NodeType;
@@ -79,12 +80,18 @@ public class MetricConfig {
   private long upTimeInNs = 0;
   private String internalDatabase = "root.__system";
 
+  private boolean enableSSL = false;
+  private String keyStorePath = "";
+  private String keyStorePassword = "";
+  private String trustStorePath = "";
+  private String trustStorePassword = "";
+
   public MetricConfig() {
     // try to get pid of iotdb instance
     try {
       pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
     } catch (Exception e) {
-      LOGGER.warn("Failed to get pid, because ", e);
+      LOGGER.warn(MetricsMessages.GET_PID_FAILED, e);
     }
   }
 
@@ -95,7 +102,7 @@ public class MetricConfig {
   public void setMetricReporterList(String metricReporterList) {
     this.metricReporterList = new ArrayList<>();
     for (String type : metricReporterList.split(",")) {
-      if (type.trim().length() != 0) {
+      if (!type.trim().isEmpty()) {
         this.metricReporterList.add(ReporterType.valueOf(type));
       }
     }
@@ -163,6 +170,46 @@ public class MetricConfig {
     this.prometheusReporterPassword = prometheusReporterPassword;
   }
 
+  public boolean isEnableSSL() {
+    return enableSSL;
+  }
+
+  public void setEnableSSL(boolean enableSSL) {
+    this.enableSSL = enableSSL;
+  }
+
+  public String getKeyStorePath() {
+    return keyStorePath;
+  }
+
+  public void setKeyStorePath(String keyStorePath) {
+    this.keyStorePath = keyStorePath;
+  }
+
+  public String getKeyStorePassword() {
+    return keyStorePassword;
+  }
+
+  public void setKeyStorePassword(String keyStorePassword) {
+    this.keyStorePassword = keyStorePassword;
+  }
+
+  public String getTrustStorePath() {
+    return trustStorePath;
+  }
+
+  public void setTrustStorePath(String trustStorePath) {
+    this.trustStorePath = trustStorePath;
+  }
+
+  public String getTrustStorePassword() {
+    return trustStorePassword;
+  }
+
+  public void setTrustStorePassword(String trustStorePassword) {
+    this.trustStorePassword = trustStorePassword;
+  }
+
   public IoTDBReporterConfig getIoTDBReporterConfig() {
     return iotdbReporterConfig;
   }
@@ -220,6 +267,12 @@ public class MetricConfig {
     prometheusReporterUsername = newMetricConfig.getPrometheusReporterUsername();
     prometheusReporterPassword = newMetricConfig.getPrometheusReporterPassword();
     internalReporterType = newMetricConfig.getInternalReportType();
+
+    enableSSL = newMetricConfig.isEnableSSL();
+    keyStorePath = newMetricConfig.getKeyStorePath();
+    keyStorePassword = newMetricConfig.getKeyStorePassword();
+    trustStorePath = newMetricConfig.getTrustStorePath();
+    trustStorePassword = newMetricConfig.getTrustStorePassword();
 
     iotdbReporterConfig.copy(newMetricConfig.getIoTDBReporterConfig());
   }

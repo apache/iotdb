@@ -19,20 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.window.TableWindowOperator;
+import org.apache.iotdb.calc.execution.operator.process.window.function.WindowFunction;
+import org.apache.iotdb.calc.execution.operator.process.window.function.rank.RankFunction;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.FrameInfo;
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.rank.RankFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -50,7 +52,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -192,6 +193,57 @@ public class TableWindowOperatorTest {
     }
   }
 
+  @Test
+  public void testMixedPartition2() {
+    long[][] timeArray =
+        new long[][] {
+          {1, 2, 3},
+          {4, 5},
+          {6},
+        };
+    String[][] deviceIdArray =
+        new String[][] {
+          {"d1", "d1", "d2"},
+          {"d2", "d3"},
+          {"d3"},
+        };
+    int[][] valueArray =
+        new int[][] {
+          {1, 2, 3},
+          {4, 5},
+          {6},
+        };
+
+    long[] expectColumn1 = new long[] {1, 2, 3, 4, 5, 6};
+    String[] expectColumn2 = new String[] {"d1", "d1", "d2", "d2", "d3", "d3"};
+    int[] expectColumn4 = new int[] {1, 2, 3, 4, 5, 6};
+    long[] expectColumn5 = new long[] {1, 2, 1, 2, 1, 2};
+
+    int count = 0;
+    try (TableWindowOperator windowOperator =
+        genWindowOperator(timeArray, deviceIdArray, valueArray)) {
+      ListenableFuture<?> listenableFuture = windowOperator.isBlocked();
+      listenableFuture.get();
+      while (!windowOperator.isFinished() && windowOperator.hasNext()) {
+        TsBlock tsBlock = windowOperator.next();
+        if (tsBlock != null && !tsBlock.isEmpty()) {
+          for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
+            assertEquals(expectColumn1[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(
+                expectColumn2[count],
+                tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+            assertEquals(expectColumn4[count], tsBlock.getColumn(2).getInt(i));
+            assertEquals(expectColumn5[count], tsBlock.getColumn(3).getLong(i));
+          }
+        }
+      }
+      assertEquals(6, count);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   static class ChildOperator implements Operator {
     private int index;
 
@@ -238,7 +290,8 @@ public class TableWindowOperatorTest {
       builder.declarePositions(timeArray[index].length);
       index++;
       return builder.build(
-          new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
+          new RunLengthEncodedColumn(
+              CommonOperatorUtils.TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
     }
 
     @Override

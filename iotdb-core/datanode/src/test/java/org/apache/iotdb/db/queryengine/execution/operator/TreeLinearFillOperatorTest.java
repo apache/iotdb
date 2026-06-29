@@ -18,7 +18,13 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.identity.IdentityLinearFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.linear.FloatLinearFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -26,11 +32,6 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.IdentityLinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.FloatLinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
@@ -41,8 +42,8 @@ import org.junit.Test;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNullOrEmpty;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class TreeLinearFillOperatorTest {
@@ -1308,8 +1309,7 @@ public class TreeLinearFillOperatorTest {
           };
 
       while (fillOperator.hasNext()) {
-        TsBlock block = fillOperator.next();
-        assertNotNull(block);
+        TsBlock block = nextNonNullOrEmpty(fillOperator);
         for (int i = 0; i < block.getPositionCount(); i++) {
           long expectedTime = i + count;
           assertEquals(expectedTime, block.getTimeByIndex(i));

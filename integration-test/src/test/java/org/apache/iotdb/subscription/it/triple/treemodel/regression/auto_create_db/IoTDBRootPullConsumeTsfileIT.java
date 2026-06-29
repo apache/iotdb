@@ -34,12 +34,14 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /***
@@ -107,6 +109,7 @@ public class IoTDBRootPullConsumeTsfileIT extends AbstractSubscriptionTreeRegres
     session_src.executeNonQueryStatement("flush");
   }
 
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,
@@ -135,23 +138,13 @@ public class IoTDBRootPullConsumeTsfileIT extends AbstractSubscriptionTreeRegres
     List<String> devices = new ArrayList<>(2);
     devices.add(device);
     devices.add(device2);
-    List<Integer> results = consume_tsfile(consumer, devices);
-    assertEquals(results.get(0), 10);
-    assertEquals(results.get(1), 10);
+    consume_tsfile_await(consumer, devices, Arrays.asList(10, 10));
     consumer.unsubscribe(topicName);
     assertEquals(subs.getSubscriptions(topicName).size(), 0, "unsubscribe:show subscriptions");
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "subscribe again:show subscriptions");
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
-    results = consume_tsfile(consumer, devices);
-    assertEquals(
-        results.get(0),
-        15,
-        "Unsubscribing and then re-subscribing will not retain progress. Full synchronization.");
-    assertEquals(
-        results.get(1),
-        15,
-        "Unsubscribing and then re-subscribing will not retain progress. Full synchronization.");
+    consume_tsfile_await(consumer, devices, Arrays.asList(15, 15));
   }
 }

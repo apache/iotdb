@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -37,60 +37,60 @@ public class CreatePipeTask implements IConfigTask {
 
   private final CreatePipeStatement createPipeStatement;
 
-  public CreatePipeTask(CreatePipeStatement createPipeStatement) {
+  public CreatePipeTask(final CreatePipeStatement createPipeStatement) {
     // support now() function
-    applyNowFunctionToExtractorAttributes(createPipeStatement.getExtractorAttributes());
+    applyNowFunction2SourceAttributes(createPipeStatement.getSourceAttributes());
     this.createPipeStatement = createPipeStatement;
   }
 
-  public CreatePipeTask(CreatePipe createPipe) {
+  public CreatePipeTask(final CreatePipe createPipe) {
     createPipeStatement = new CreatePipeStatement(StatementType.CREATE_PIPE);
     createPipeStatement.setPipeName(createPipe.getPipeName());
     createPipeStatement.setIfNotExists(createPipe.hasIfNotExistsCondition());
 
     // support now() function
-    applyNowFunctionToExtractorAttributes(createPipe.getExtractorAttributes());
+    applyNowFunction2SourceAttributes(createPipe.getSourceAttributes());
 
-    createPipeStatement.setExtractorAttributes(createPipe.getExtractorAttributes());
+    createPipeStatement.setSourceAttributes(createPipe.getSourceAttributes());
     createPipeStatement.setProcessorAttributes(createPipe.getProcessorAttributes());
-    createPipeStatement.setConnectorAttributes(createPipe.getConnectorAttributes());
+    createPipeStatement.setSinkAttributes(createPipe.getSinkAttributes());
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.createPipe(createPipeStatement);
   }
 
-  private void applyNowFunctionToExtractorAttributes(final Map<String, String> attributes) {
+  private void applyNowFunction2SourceAttributes(final Map<String, String> attributes) {
     final long currentTime =
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             System.currentTimeMillis(),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
     // support now() function
-    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+    PipeFunctionSupport.applyNowFunction2SourceAttributes(
         attributes,
-        PipeExtractorConstant.SOURCE_START_TIME_KEY,
-        PipeExtractorConstant.EXTRACTOR_START_TIME_KEY,
+        PipeSourceConstant.SOURCE_START_TIME_KEY,
+        PipeSourceConstant.EXTRACTOR_START_TIME_KEY,
         currentTime);
 
-    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+    PipeFunctionSupport.applyNowFunction2SourceAttributes(
         attributes,
-        PipeExtractorConstant.SOURCE_END_TIME_KEY,
-        PipeExtractorConstant.EXTRACTOR_END_TIME_KEY,
+        PipeSourceConstant.SOURCE_END_TIME_KEY,
+        PipeSourceConstant.EXTRACTOR_END_TIME_KEY,
         currentTime);
 
-    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+    PipeFunctionSupport.applyNowFunction2SourceAttributes(
         attributes,
-        PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY,
-        PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY,
+        PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY,
+        PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY,
         currentTime);
 
-    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+    PipeFunctionSupport.applyNowFunction2SourceAttributes(
         attributes,
-        PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY,
-        PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY,
+        PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY,
+        PipeSourceConstant.EXTRACTOR_HISTORY_END_TIME_KEY,
         currentTime);
   }
 }

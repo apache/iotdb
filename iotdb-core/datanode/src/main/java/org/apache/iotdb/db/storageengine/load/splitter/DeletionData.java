@@ -57,6 +57,10 @@ public class DeletionData implements TsFileData {
     deletion.serialize(stream);
   }
 
+  public ModEntry getModEntry() {
+    return this.deletion;
+  }
+
   public static DeletionData deserialize(InputStream stream)
       throws IllegalPathException, IOException {
     return new DeletionData(ModEntry.createFrom(new DataInputStream(stream)));

@@ -49,9 +49,11 @@ if [ -z $JAVA ] ; then
     exit 1;
 fi
 
+JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+
 CLASSPATH=${IOTDB_HOME}/lib/*
 
 MAIN_CLASS=org.apache.iotdb.tool.schema.ImportSchema
 
-"$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+"$JAVA" $JVM_OPTS -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

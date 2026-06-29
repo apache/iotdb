@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
 
 import java.util.function.Function;
 import java.util.stream.Stream;

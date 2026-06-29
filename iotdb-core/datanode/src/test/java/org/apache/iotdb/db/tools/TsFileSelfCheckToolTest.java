@@ -20,9 +20,9 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.db.exception.TsFileTimeseriesMetadataException;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.TsFileStatisticsMistakesException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.LongStatistics;

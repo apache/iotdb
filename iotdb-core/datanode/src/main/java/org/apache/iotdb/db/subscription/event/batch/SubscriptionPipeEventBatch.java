@@ -25,7 +25,6 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,14 +71,7 @@ public abstract class SubscriptionPipeEventBatch {
   protected synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer)
       throws Exception {
     if (shouldEmit() && !enrichedEvents.isEmpty()) {
-      if (Objects.isNull(events)) {
-        events = generateSubscriptionEvents();
-      }
-      if (Objects.nonNull(events)) {
-        events.forEach(consumer);
-        return true;
-      }
-      return false;
+      return emit(consumer);
     }
     return false;
   }
@@ -88,8 +80,7 @@ public abstract class SubscriptionPipeEventBatch {
    * @return {@code true} if there are subscription events consumed.
    */
   protected synchronized boolean onEvent(
-      final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
-      throws Exception {
+      final EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) throws Exception {
     if (event instanceof TabletInsertionEvent) {
       onTabletInsertionEvent((TabletInsertionEvent) event);
       enrichedEvents.add(event);
@@ -101,6 +92,20 @@ public abstract class SubscriptionPipeEventBatch {
           "SubscriptionPipeEventBatch {} ignore EnrichedEvent {} when batching.", this, event);
     }
     return onEvent(consumer);
+  }
+
+  protected synchronized boolean emit(final Consumer<SubscriptionEvent> consumer) throws Exception {
+    if (enrichedEvents.isEmpty()) {
+      return false;
+    }
+    if (Objects.isNull(events)) {
+      events = generateSubscriptionEvents();
+    }
+    if (Objects.nonNull(events)) {
+      events.forEach(consumer);
+      return true;
+    }
+    return false;
   }
 
   /////////////////////////////// utility ///////////////////////////////

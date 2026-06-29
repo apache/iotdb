@@ -20,6 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -29,6 +35,9 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class CreateView extends CreateTable {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CreateView.class);
+
   private final PartialPath prefixPath;
   private final boolean replace;
   private final boolean restrict;
@@ -62,8 +71,8 @@ public class CreateView extends CreateTable {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitCreateView(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitCreateView(this, context);
   }
 
   @Override
@@ -91,5 +100,13 @@ public class CreateView extends CreateTable {
         .add("replace", replace)
         .add("restrict", restrict)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += ramBytesUsedExcludingInstanceSize();
+    size += MemoryEstimationHelper.getEstimatedSizeOfPartialPath(prefixPath);
+    return size;
   }
 }

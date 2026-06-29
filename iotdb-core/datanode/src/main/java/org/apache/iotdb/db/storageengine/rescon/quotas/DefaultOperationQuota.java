@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.rescon.quotas;
 
 import org.apache.iotdb.commons.exception.RpcThrottlingException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -116,9 +117,7 @@ public class DefaultOperationQuota implements OperationQuota {
         case BATCH_INSERT:
           // InsertTabletStatement
           InsertTabletStatement insertTabletStatement = (InsertTabletStatement) s;
-          for (BitMap bitMap : insertTabletStatement.getBitMaps()) {
-            avgSize += bitMap.getSize();
-          }
+          avgSize += calculationWrite(insertTabletStatement.getBitMaps());
           break;
         case BATCH_INSERT_ONE_DEVICE:
           // InsertRowsOfOneDeviceStatement
@@ -151,15 +150,17 @@ public class DefaultOperationQuota implements OperationQuota {
             for (int i = 0;
                 i < insertMultiTabletsStatement.getInsertTabletStatementList().size();
                 i++) {
-              for (BitMap bitMap :
-                  insertMultiTabletsStatement.getInsertTabletStatementList().get(i).getBitMaps()) {
-                avgSize += bitMap.getSize();
-              }
+              avgSize +=
+                  calculationWrite(
+                      insertMultiTabletsStatement
+                          .getInsertTabletStatementList()
+                          .get(i)
+                          .getBitMaps());
             }
           }
           break;
         default:
-          throw new RuntimeException("Invalid statement type: " + s.getType());
+          throw new RuntimeException(StorageEngineMessages.INVALID_STATEMENT_TYPE + s.getType());
       }
       writeConsumed = estimateConsume(numWrites, avgSize);
     }
@@ -174,6 +175,20 @@ public class DefaultOperationQuota implements OperationQuota {
       TSDataType dataType = TypeInferenceUtils.getPredictedDataType(values[i], true);
       assert dataType != null;
       size += dataType.getDataTypeSize();
+    }
+    return size;
+  }
+
+  private long calculationWrite(BitMap[] bitMaps) {
+    if (bitMaps == null) {
+      return 0;
+    }
+
+    long size = 0;
+    for (BitMap bitMap : bitMaps) {
+      if (bitMap != null) {
+        size += bitMap.getSize();
+      }
     }
     return size;
   }

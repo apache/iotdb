@@ -26,12 +26,14 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -185,11 +187,13 @@ public class WritingMetrics implements IMetricSet {
   public static final String READ_WAL_BUFFER_COST_NS = "read_wal_buffer_cost";
   public static final String WRITE_WAL_BUFFER_COST_NS = "write_wal_buffer_cost";
   public static final String ENTRIES_COUNT = "entries_count";
+  public static final String WAL_ENTRY_NUM_FOR_ONE_TSFILE = "wal_entry_num_for_one_tsfile";
   public static final String WAL_QUEUE_CURRENT_MEM_COST = "wal_queue_current_mem_cost";
   public static final String WAL_QUEUE_MAX_MEM_COST = "wal_queue_max_mem_cost";
 
   private Histogram usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram walEntryNumForOneTsFileHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram serializedWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram wroteWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram walCompressCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -216,6 +220,12 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             ENTRIES_COUNT);
+    walEntryNumForOneTsFileHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WAL_ENTRY_NUM_FOR_ONE_TSFILE);
 
     serializedWALBufferSizeHistogram =
         metricService.getOrCreateHistogram(
@@ -280,6 +290,7 @@ public class WritingMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.WAL_NODE_NUM.toString(), Tag.NAME.toString(), WAL_NODES_NUM);
     usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    walEntryNumForOneTsFileHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     Arrays.asList(
             USED_RATIO,
             ENTRIES_COUNT,
@@ -437,6 +448,7 @@ public class WritingMetrics implements IMetricSet {
   public static final String WAL_FLUSH_MEMTABLE_COUNT = "wal_flush_memtable_count";
   public static final String MANUAL_FLUSH_MEMTABLE_COUNT = "manual_flush_memtable_count";
   public static final String MEM_CONTROL_FLUSH_MEMTABLE_COUNT = "mem_control_flush_memtable_count";
+  public static final String BLOCKED_OPERATION_NUM = "blocked_operation_num";
 
   private Gauge flushThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge rejectThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
@@ -449,6 +461,9 @@ public class WritingMetrics implements IMetricSet {
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   private Histogram avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private AutoGauge tableDiskUsageCacheBlockedRequestNumGauge =
+      DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
 
   public void bindDataRegionMetrics() {
     List<DataRegion> allDataRegions = StorageEngine.getInstance().getAllDataRegions();
@@ -480,6 +495,16 @@ public class WritingMetrics implements IMetricSet {
     memtableLiveTimer =
         MetricService.getInstance()
             .getOrCreateTimer(Metric.MEMTABLE_LIVE_DURATION.toString(), MetricLevel.IMPORTANT);
+
+    tableDiskUsageCacheBlockedRequestNumGauge =
+        MetricService.getInstance()
+            .createAutoGauge(
+                Metric.TABLE_DISK_USAGE_CACHE.toString(),
+                MetricLevel.IMPORTANT,
+                TableDiskUsageIndex.getInstance(),
+                TableDiskUsageIndex::getQueueSize,
+                Tag.NAME.toString(),
+                BLOCKED_OPERATION_NUM);
   }
 
   public void unbindDataRegionMetrics() {
@@ -508,10 +533,17 @@ public class WritingMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             REJECT_THRESHOLD);
     MetricService.getInstance().remove(MetricType.TIMER, Metric.MEMTABLE_LIVE_DURATION.toString());
+    MetricService.getInstance()
+        .remove(
+            MetricType.AUTO_GAUGE,
+            Metric.TABLE_DISK_USAGE_CACHE.toString(),
+            Tag.NAME.toString(),
+            BLOCKED_OPERATION_NUM);
   }
 
   public void createDataRegionMemoryCostMetrics(DataRegion dataRegion) {
-    DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(dataRegion.getDataRegionId()));
+    DataRegionId dataRegionId =
+        new DataRegionId(Integer.parseInt(dataRegion.getDataRegionIdString()));
     MetricService.getInstance()
         .createAutoGauge(
             Metric.DATA_REGION_MEM_COST.toString(),
@@ -916,6 +948,10 @@ public class WritingMetrics implements IMetricSet {
 
   public void recordWALBufferEntriesCount(long count) {
     entriesCountHistogram.update(count);
+  }
+
+  public void recordWALEntryNumForOneTsFile(long count) {
+    walEntryNumForOneTsFileHistogram.update(count);
   }
 
   public void recordWALQueueMaxMemorySize(long size) {

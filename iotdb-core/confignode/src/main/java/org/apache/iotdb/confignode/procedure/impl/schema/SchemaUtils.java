@@ -29,20 +29,22 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -127,8 +129,12 @@ public class SchemaUtils {
                 exception[0] =
                     new MetadataException(
                         String.format(
-                            "Failed to execute in all replicaset of schemaRegion %s when checking the template %s on %s. Failure nodes: %s",
-                            consensusGroupId.id, template, patternTree, dataNodeLocationSet));
+                            ProcedureMessages
+                                .FAILED_TO_EXECUTE_IN_ALL_REPLICASET_OF_SCHEMAREGION_WHEN_CHECKING_2,
+                            consensusGroupId.id,
+                            template,
+                            patternTree,
+                            dataNodeLocationSet));
                 interruptTask();
               }
             };
@@ -182,6 +188,7 @@ public class SchemaUtils {
                 respList.add(response);
                 List<TConsensusGroupId> failedRegionList = new ArrayList<>();
                 if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  failureMap.remove(dataNodeLocation);
                   return failedRegionList;
                 }
 
@@ -195,6 +202,12 @@ public class SchemaUtils {
                 } else {
                   failedRegionList.addAll(consensusGroupIdList);
                 }
+                if (!failedRegionList.isEmpty()) {
+                  failureMap.put(
+                      dataNodeLocation, RpcUtils.extractFailureStatues(response.getStatus()));
+                } else {
+                  failureMap.remove(dataNodeLocation);
+                }
                 return failedRegionList;
               }
 
@@ -204,8 +217,11 @@ public class SchemaUtils {
                 exception[0] =
                     new MetadataException(
                         String.format(
-                            "Failed to execute in all replicaset of schemaRegion %s when checking templates on path %s. Failure nodes: %s",
-                            consensusGroupId.id, deleteDatabasePatternPaths, dataNodeLocationSet));
+                            ProcedureMessages
+                                .FAILED_TO_EXECUTE_IN_ALL_REPLICASET_OF_SCHEMAREGION_WHEN_CHECKING,
+                            consensusGroupId.id,
+                            deleteDatabasePatternPaths,
+                            printFailureMap()));
                 interruptTask();
               }
             };

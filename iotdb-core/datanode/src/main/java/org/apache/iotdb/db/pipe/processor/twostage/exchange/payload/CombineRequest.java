@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.exchange.payload;
 
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
 import org.apache.iotdb.db.pipe.processor.twostage.state.State;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
@@ -83,7 +85,7 @@ public class CombineRequest extends TPipeTransferReq {
     this.state = state;
     this.combineId = combineId;
 
-    this.version = IoTDBConnectorRequestVersion.VERSION_2.getVersion();
+    this.version = IoTDBSinkRequestVersion.VERSION_2.getVersion();
     this.type = RequestType.COMBINE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -109,14 +111,21 @@ public class CombineRequest extends TPipeTransferReq {
     combineId = ReadWriteIOUtils.readString(transferReq.body);
 
     final String stateClassName = ReadWriteIOUtils.readString(transferReq.body);
-    state = (State) Class.forName(stateClassName).newInstance();
+    state = instantiateState(stateClassName);
     state.deserialize(transferReq.body);
 
     version = transferReq.version;
     type = transferReq.type;
-    body = transferReq.body;
 
     return this;
+  }
+
+  private State instantiateState(final String stateClassName) throws Exception {
+    if (CountState.class.getName().equals(stateClassName)) {
+      return new CountState();
+    }
+    throw new IllegalArgumentException(
+        DataNodePipeMessages.UNEXPECTED_STATE_CLASS + stateClassName);
   }
 
   @Override

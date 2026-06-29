@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.commons.pipe.receiver;
 
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 public interface IoTDBReceiver {
 
-  IoTDBConnectorRequestVersion getVersion();
+  IoTDBSinkRequestVersion getVersion();
 
   TPipeTransferResp receive(final TPipeTransferReq req);
 

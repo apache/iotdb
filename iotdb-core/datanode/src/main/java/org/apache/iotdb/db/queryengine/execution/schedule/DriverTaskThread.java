@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -40,7 +40,7 @@ import java.util.stream.IntStream;
 public class DriverTaskThread extends AbstractDriverThread {
 
   private static final double DRIVER_TASK_EXECUTION_TIME_SLICE_IN_MS =
-      IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs();
+      CommonDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs();
 
   /**
    * In multi-level feedback queue, levels with lower priority have longer time slices. Currently,

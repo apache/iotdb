@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.ChunkCacheMetrics;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -83,7 +84,8 @@ public class ChunkCache {
 
   private ChunkCache() {
     if (CACHE_ENABLE) {
-      LOGGER.info("ChunkCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+      LOGGER.info(
+          StorageEngineMessages.CHUNK_CACHE_SIZE, CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
@@ -119,7 +121,8 @@ public class ChunkCache {
         false,
         emptyConsumer,
         emptyConsumer,
-        emptyConsumer);
+        emptyConsumer,
+        false);
   }
 
   public Chunk get(
@@ -141,7 +144,8 @@ public class ChunkCache {
         queryContext.isDebug(),
         ioSizeRecorder,
         cacheHitAdder,
-        cacheMissAdder);
+        cacheMissAdder,
+        queryContext.isExternalTsFileScan());
   }
 
   private Chunk get(
@@ -151,12 +155,13 @@ public class ChunkCache {
       boolean debug,
       LongConsumer ioSizeRecorder,
       LongConsumer cacheHitAdder,
-      LongConsumer cacheMissAdder)
+      LongConsumer cacheMissAdder,
+      boolean externalTsFile)
       throws IOException {
     long startTime = System.nanoTime();
-    ChunkLoader chunkLoader = new ChunkLoader(ioSizeRecorder);
+    ChunkLoader chunkLoader = new ChunkLoader(ioSizeRecorder, externalTsFile);
     try {
-      if (!CACHE_ENABLE) {
+      if (!CACHE_ENABLE || externalTsFile) {
         Chunk chunk = chunkLoader.apply(chunkCacheKey);
         return constructChunk(chunk, timeRangeList, chunkStatistic);
       }
@@ -164,7 +169,7 @@ public class ChunkCache {
       Chunk chunk = lruCache.get(chunkCacheKey, chunkLoader);
 
       if (debug) {
-        DEBUG_LOGGER.info("get chunk from cache whose key is: {}", chunkCacheKey);
+        DEBUG_LOGGER.info(StorageEngineMessages.GET_CHUNK_FROM_CACHE, chunkCacheKey);
       }
 
       return constructChunk(chunk, timeRangeList, chunkStatistic);
@@ -295,9 +300,11 @@ public class ChunkCache {
 
     private boolean cacheMiss = false;
     private final LongConsumer ioSizeRecorder;
+    private final boolean externalTsFile;
 
-    private ChunkLoader(LongConsumer ioSizeRecorder) {
+    private ChunkLoader(LongConsumer ioSizeRecorder, boolean externalTsFile) {
       this.ioSizeRecorder = ioSizeRecorder;
+      this.externalTsFile = externalTsFile;
     }
 
     @Override
@@ -307,7 +314,8 @@ public class ChunkCache {
       try {
         cacheMiss = true;
         TsFileSequenceReader reader =
-            FileReaderManager.getInstance().get(key.getFilePath(), key.closed, ioSizeRecorder);
+            FileReaderManager.getInstance()
+                .get(key.getFilePath(), key.tsFileID, key.closed, ioSizeRecorder, externalTsFile);
         Chunk chunk = reader.readMemChunk(key.offsetOfChunkHeader, ioSizeRecorder);
         // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
         chunk.getHeader().setMeasurementID(null);

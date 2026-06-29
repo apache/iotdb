@@ -19,57 +19,72 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AssignUniqueId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ExceptNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.IntersectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowNumberNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.NodeAndMappings;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Sets;
 
 import java.util.AbstractMap.SimpleEntry;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -80,7 +95,7 @@ import java.util.stream.Collectors;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SymbolMapper.symbolMapper;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SymbolMapper.symbolReallocator;
 
@@ -131,7 +146,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     return new NodeAndMappings(result.getRoot(), symbolMapper(result.getMappings()).map(fields));
   }
 
-  private static class Visitor extends PlanVisitor<PlanAndMappings, UnaliasContext> {
+  private static class Visitor implements PlanVisitor<PlanAndMappings, UnaliasContext> {
     private final Metadata metadata;
     private final Function<Map<Symbol, Symbol>, SymbolMapper> mapperProvider;
 
@@ -259,6 +274,49 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     }
 
     @Override
+    public PlanAndMappings visitExternalTsFileScan(
+        ExternalTsFileScanNode node, UnaliasContext context) {
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> newOutputs = mapper.map(node.getOutputSymbols());
+
+      Map<Symbol, ColumnSchema> newAssignments = new HashMap<>();
+      node.getAssignments()
+          .forEach(
+              (symbol, handle) -> {
+                Symbol newSymbol = mapper.map(symbol);
+                newAssignments.put(newSymbol, handle);
+              });
+
+      ExternalTsFileScanNode rewrittenNode =
+          new ExternalTsFileScanNode(
+              node.getPlanNodeId(),
+              node.getQualifiedObjectName(),
+              newOutputs,
+              newAssignments,
+              node.getPushDownPredicate() == null ? null : mapper.map(node.getPushDownPredicate()),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              node.getTimePredicate().map(mapper::map).orElse(null),
+              node.getScanOrder(),
+              node.isPushLimitToEachDevice(),
+              node.getTagAndAttributeIndexMap(),
+              node.getExternalTsFileQueryResource(),
+              node.getDeviceEntryIndexes(),
+              node.getDeviceTaskPartitionIndex(),
+              node.getSchemaFilter());
+      rewrittenNode.setRegionReplicaSet(node.getRegionReplicaSet());
+      return new PlanAndMappings(rewrittenNode, mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitCteScan(CteScanNode node, UnaliasContext context) {
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      return new PlanAndMappings(node, mapping);
+    }
+
+    @Override
     public PlanAndMappings visitGapFill(GapFillNode node, UnaliasContext context) {
       PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
       Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
@@ -300,6 +358,37 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
         }
         return new PlanAndMappings(
             new PreviousFillNode(
+                node.getPlanNodeId(),
+                rewrittenSource.getRoot(),
+                node.getTimeBound().orElse(null),
+                helperColumn,
+                groupingKeys),
+            mapping);
+      } else {
+        return new PlanAndMappings(
+            node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
+            rewrittenSource.getMappings());
+      }
+    }
+
+    @Override
+    public PlanAndMappings visitNextFill(NextFillNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+
+      if (node.getHelperColumn().isPresent() || node.getGroupingKeys().isPresent()) {
+        Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+        SymbolMapper mapper = symbolMapper(mapping);
+
+        Symbol helperColumn = null;
+        if (node.getHelperColumn().isPresent()) {
+          helperColumn = mapper.map(node.getHelperColumn().get());
+        }
+        List<Symbol> groupingKeys = null;
+        if (node.getGroupingKeys().isPresent()) {
+          groupingKeys = mapper.mapAndDistinct(node.getGroupingKeys().get());
+        }
+        return new PlanAndMappings(
+            new NextFillNode(
                 node.getPlanNodeId(),
                 rewrittenSource.getRoot(),
                 node.getTimeBound().orElse(null),
@@ -367,7 +456,27 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getQueryId(),
               node.getTimeout(),
               node.getOutputSymbols().get(0),
-              newChildPermittedOutputs),
+              newChildPermittedOutputs,
+              node.getOutputFormat()),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitCopyTo(CopyToNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+      List<Symbol> newChildPermittedOutputs = mapper.map(node.getChildPermittedOutputs());
+      List<Symbol> newInnerQueryOutputSymbols = mapper.map(node.getInnerQueryOutputSymbols());
+      return new PlanAndMappings(
+          new CopyToNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              node.getTargetFilePath(),
+              node.getCopyToOptions(),
+              newChildPermittedOutputs,
+              node.getInnerQueryDatasetHeader(),
+              newInnerQueryOutputSymbols),
           mapping);
     }
 
@@ -400,6 +509,24 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       LimitNode rewrittenLimit = mapper.map(node, rewrittenSource.getRoot());
 
       return new PlanAndMappings(rewrittenLimit, mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitInto(IntoNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      return new PlanAndMappings(
+          new IntoNode(
+              node.getPlanNodeId(),
+              rewrittenSource.root,
+              node.getDatabase(),
+              node.getTable(),
+              node.getColumns(),
+              mapper.map(node.getNeededInputColumnNames()),
+              node.getRowCountSymbol()),
+          rewrittenSource.getMappings());
     }
 
     @Override
@@ -453,6 +580,19 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newOrderingScheme,
               node.getPartitionKeyCount()),
           mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitValuesNode(ValuesNode node, UnaliasContext context) {
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> newOutputs = mapper.map(node.getOutputSymbols());
+      Optional<List<Expression>> newRows =
+          node.getRows().map(rows -> rows.stream().map(mapper::map).collect(toImmutableList()));
+
+      return new PlanAndMappings(
+          new ValuesNode(node.getPlanNodeId(), newOutputs, node.getRowCount(), newRows), mapping);
     }
 
     @Override
@@ -591,6 +731,28 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       WindowNode rewrittenWindow = mapper.map(node, rewrittenSource.getRoot());
 
       return new PlanAndMappings(rewrittenWindow, mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitRowNumber(RowNumberNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      RowNumberNode rewrittenRowNumber = mapper.map(node, rewrittenSource.getRoot());
+
+      return new PlanAndMappings(rewrittenRowNumber, mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitTopKRanking(TopKRankingNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      TopKRankingNode rewrittenTopKRanking = mapper.map(node, rewrittenSource.getRoot());
+
+      return new PlanAndMappings(rewrittenTopKRanking, mapping);
     }
 
     @Override
@@ -961,6 +1123,115 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
           mapper.map(node, rewrittenSource.getRoot());
 
       return new PlanAndMappings(rewrittenPatternRecognition, mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitUnion(UnionNode node, UnaliasContext context) {
+      List<PlanAndMappings> rewrittenSources =
+          node.getChildren().stream()
+              .map(source -> source.accept(this, context))
+              .collect(toImmutableList());
+
+      List<SymbolMapper> inputMappers =
+          rewrittenSources.stream()
+              .map(source -> symbolMapper(new HashMap<>(source.getMappings())))
+              .collect(toImmutableList());
+
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper outputMapper = symbolMapper(mapping);
+
+      ListMultimap<Symbol, Symbol> newOutputToInputs =
+          rewriteOutputToInputsMap(node.getSymbolMapping(), outputMapper, inputMappers);
+      List<Symbol> newOutputs = outputMapper.mapAndDistinct(node.getOutputSymbols());
+
+      return new PlanAndMappings(
+          new UnionNode(
+              node.getPlanNodeId(),
+              rewrittenSources.stream().map(PlanAndMappings::getRoot).collect(toImmutableList()),
+              newOutputToInputs,
+              newOutputs),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitIntersect(IntersectNode node, UnaliasContext context) {
+
+      List<PlanAndMappings> rewrittenSources =
+          node.getChildren().stream()
+              .map(source -> source.accept(this, context))
+              .collect(toImmutableList());
+
+      List<SymbolMapper> inputMappers =
+          rewrittenSources.stream()
+              .map(source -> symbolMapper(new HashMap<>(source.getMappings())))
+              .collect(toImmutableList());
+
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper outputMapper = symbolMapper(mapping);
+
+      ListMultimap<Symbol, Symbol> newOutputToInputs =
+          rewriteOutputToInputsMap(node.getSymbolMapping(), outputMapper, inputMappers);
+      List<Symbol> newOutputs = outputMapper.mapAndDistinct(node.getOutputSymbols());
+
+      return new PlanAndMappings(
+          new IntersectNode(
+              node.getPlanNodeId(),
+              rewrittenSources.stream().map(PlanAndMappings::getRoot).collect(toImmutableList()),
+              newOutputToInputs,
+              newOutputs,
+              node.isDistinct()),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitExcept(ExceptNode node, UnaliasContext context) {
+
+      List<PlanAndMappings> rewrittenSources =
+          node.getChildren().stream()
+              .map(source -> source.accept(this, context))
+              .collect(toImmutableList());
+
+      List<SymbolMapper> inputMappers =
+          rewrittenSources.stream()
+              .map(source -> symbolMapper(new HashMap<>(source.getMappings())))
+              .collect(toImmutableList());
+
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper outputMapper = symbolMapper(mapping);
+
+      ListMultimap<Symbol, Symbol> newOutputToInputs =
+          rewriteOutputToInputsMap(node.getSymbolMapping(), outputMapper, inputMappers);
+      List<Symbol> newOutputs = outputMapper.mapAndDistinct(node.getOutputSymbols());
+
+      return new PlanAndMappings(
+          new ExceptNode(
+              node.getPlanNodeId(),
+              rewrittenSources.stream().map(PlanAndMappings::getRoot).collect(toImmutableList()),
+              newOutputToInputs,
+              newOutputs,
+              node.isDistinct()),
+          mapping);
+    }
+
+    private ListMultimap<Symbol, Symbol> rewriteOutputToInputsMap(
+        ListMultimap<Symbol, Symbol> oldMapping,
+        SymbolMapper outputMapper,
+        List<SymbolMapper> inputMappers) {
+      ImmutableListMultimap.Builder<Symbol, Symbol> newMappingBuilder =
+          ImmutableListMultimap.builder();
+      Set<Symbol> addedSymbols = new HashSet<>();
+      for (Map.Entry<Symbol, Collection<Symbol>> entry : oldMapping.asMap().entrySet()) {
+        Symbol rewrittenOutput = outputMapper.map(entry.getKey());
+        if (addedSymbols.add(rewrittenOutput)) {
+          List<Symbol> inputs = ImmutableList.copyOf(entry.getValue());
+          ImmutableList.Builder<Symbol> rewrittenInputs = ImmutableList.builder();
+          for (int i = 0; i < inputs.size(); i++) {
+            rewrittenInputs.add(inputMappers.get(i).map(inputs.get(i)));
+          }
+          newMappingBuilder.putAll(rewrittenOutput, rewrittenInputs.build());
+        }
+      }
+      return newMappingBuilder.build();
     }
   }
 

@@ -112,13 +112,18 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   }
 
   @Override
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB) {
+    return getSchemaPartition(patternTree);
+  }
+
+  @Override
   public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree, String userName) {
     return null;
   }
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+      PathPatternTree patternTree, PathPatternTree scope, Integer level, boolean canSeeAuditDB) {
     return null;
   }
 

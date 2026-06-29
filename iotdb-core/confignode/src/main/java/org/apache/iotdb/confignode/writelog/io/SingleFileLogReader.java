@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.writelog.io;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,10 +76,7 @@ public class SingleFileLogReader implements ILogReader {
       }
       buffer = new byte[logSize];
 
-      int readLen = logStream.read(buffer, 0, logSize);
-      if (readLen < logSize) {
-        throw new IOException("Reach eof");
-      }
+      logStream.readFully(buffer, 0, logSize);
 
       final long checkSum = logStream.readLong();
       checkSummer.reset();
@@ -86,10 +84,12 @@ public class SingleFileLogReader implements ILogReader {
       if (checkSummer.getValue() != checkSum) {
         throw new IOException(
             String.format(
-                "The check sum of the No.%d log batch is incorrect! In "
+                ConfigNodeMessages.THE_CHECK_SUM_OF_THE_NO_LOG_BATCH_IS_INCORRECT
                     + "file: "
                     + "%d Calculated: %d.",
-                idx, checkSum, checkSummer.getValue()));
+                idx,
+                checkSum,
+                checkSummer.getValue()));
       }
 
       batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
@@ -128,7 +128,7 @@ public class SingleFileLogReader implements ILogReader {
       try {
         logStream.close();
       } catch (IOException e) {
-        logger.error("Cannot close log file {}", filepath, e);
+        logger.error(ConfigNodeMessages.CANNOT_CLOSE_LOG_FILE, filepath, e);
       }
     }
   }
@@ -136,7 +136,7 @@ public class SingleFileLogReader implements ILogReader {
   public void open(File logFile) throws FileNotFoundException {
     close();
     logStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
-    logger.info("open WAL file: {} size is {}", logFile.getName(), logFile.length());
+    logger.info(ConfigNodeMessages.OPEN_WAL_FILE_SIZE_IS, logFile.getName(), logFile.length());
     this.filepath = logFile.getPath();
     idx = 0;
   }
@@ -150,7 +150,7 @@ public class SingleFileLogReader implements ILogReader {
         FileChannel channel = outputStream.getChannel()) {
       channel.truncate(unbrokenLogsSize);
     } catch (IOException e) {
-      logger.error("Fail to truncate log file to size {}", unbrokenLogsSize, e);
+      logger.error(ConfigNodeMessages.FAIL_TO_TRUNCATE_LOG_FILE_TO_SIZE, unbrokenLogsSize, e);
     }
   }
 }

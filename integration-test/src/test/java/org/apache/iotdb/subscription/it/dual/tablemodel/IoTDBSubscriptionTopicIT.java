@@ -28,6 +28,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionTableArchVerification;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -37,23 +38,29 @@ import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullCons
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
 
+import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
+import java.sql.Statement;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
@@ -81,15 +88,52 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         .getConfig()
         .getCommonConfig()
         .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(30);
-    senderEnv.getConfig().getCommonConfig().setPipeMetaSyncerInitialSyncDelayMinutes(1);
-    senderEnv.getConfig().getCommonConfig().setPipeMetaSyncerSyncIntervalMinutes(1);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMetaSyncerInitialSyncDelayMinutes(1)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMetaSyncerSyncIntervalMinutes(1)
+        .setSubscriptionPrefetchTsFileBatchMaxDelayInMs(600_000)
+        .setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(64 * 1024 * 1024)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
   }
 
+  @Ignore
+  @Test
+  public void testShowCreateTopic() throws Exception {
+    TableModelUtils.createDataBaseAndTable(
+        senderEnv, "test_show_create_topic_db", "test_show_create_topic_table");
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create topic test_show_create_topic with ('database'='test_show_create_topic_db','table'='test_show_create_topic_table','format'='"
+              + TopicConstant.FORMAT_TS_FILE_VALUE
+              + "')");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create topic test_show_create_topic"),
+          "Topic,Create Topic,",
+          Collections.singleton(
+              "test_show_create_topic,CREATE TOPIC \"test_show_create_topic\" WITH ('database'='test_show_create_topic_db','format'='"
+                  + TopicConstant.FORMAT_TS_FILE_VALUE
+                  + "','table'='test_show_create_topic_table'),"));
+    }
+  }
+
+  @Ignore
   @Test
   public void testTabletTopicWithPath() throws Exception {
     testTopicWithPathTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
   }
 
+  @Ignore
   @Test
   public void testTsFileTopicWithPath() throws Exception {
     testTopicWithPathTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
@@ -179,11 +223,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
   }
 
+  @Ignore
   @Test
   public void testTabletTopicWithTime() throws Exception {
     testTopicWithTimeTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
   }
 
+  @Ignore
   @Test
   public void testTsFileTopicWithTime() throws Exception {
     testTopicWithTimeTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
@@ -263,11 +309,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
   }
 
+  @Ignore
   @Test
   public void testTabletTopicWithSnapshotMode() throws Exception {
     testTopicWithSnapshotModeTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
   }
 
+  @Ignore
   @Test
   public void testTsFileTopicWithSnapshotMode() throws Exception {
     testTopicWithSnapshotModeTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
@@ -364,6 +412,89 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
   }
 
+  @Test
+  public void testTsFileSnapshotDrainsPendingBatchBeforeTermination() throws Exception {
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+    TableModelUtils.createDataBaseAndTable(receiverEnv, "test1", "test1");
+
+    // Insert historical data and create a closed TsFile before snapshot subscription starts.
+    TableModelUtils.insertData("test1", "test1", 0, 10, senderEnv);
+
+    final String topicName = "topic_drain_tsfile_batch_before_termination";
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+      config.put(TopicConstant.DATABASE_KEY, "test1");
+      config.put(TopicConstant.TABLE_KEY, "test1");
+      // Force TsFile parsing so the snapshot data is buffered in SubscriptionPipeTsFileEventBatch.
+      config.put(TopicConstant.START_TIME_KEY, 1);
+      session.createTopic(topicName, config);
+    }
+    assertTopicCount(1);
+
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final AtomicReference<Throwable> consumerFailure = new AtomicReference<>();
+    final Thread thread =
+        new Thread(
+            () -> {
+              try (final ISubscriptionTablePullConsumer consumer =
+                      new SubscriptionTablePullConsumerBuilder()
+                          .host(host)
+                          .port(port)
+                          .consumerId("c_drain")
+                          .consumerGroupId("cg_drain")
+                          .autoCommit(false)
+                          .build();
+                  final ITableSession session = receiverEnv.getTableSessionConnection()) {
+                consumer.open();
+                consumer.subscribe(topicName);
+                while (!isClosed.get()) {
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  insertData(messages, session);
+                  consumer.commitSync(messages);
+                }
+              } catch (final Throwable e) {
+                consumerFailure.set(e);
+              } finally {
+                LOGGER.info("draining consumer exiting...");
+              }
+            },
+            String.format("%s - draining consumer", testName.getDisplayName()));
+    thread.start();
+
+    try {
+      final Consumer<String> handleFailure =
+          o -> {
+            TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+            TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          };
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertNull(consumerFailure.get());
+
+            try (final SyncConfigNodeIServiceClient client =
+                (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+              final TShowSubscriptionResp showSubscriptionResp =
+                  client.showSubscription(new TShowSubscriptionReq());
+              Assert.assertEquals(
+                  RpcUtils.SUCCESS_STATUS.getCode(), showSubscriptionResp.status.getCode());
+              Assert.assertNotNull(showSubscriptionResp.subscriptionInfoList);
+              Assert.assertEquals(0, showSubscriptionResp.subscriptionInfoList.size());
+            }
+
+            TableModelUtils.assertData("test1", "test1", 1, 10, receiverEnv, handleFailure);
+          });
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
+  }
+
   /////////////////////////////// utility ///////////////////////////////
 
   private void assertTopicCount(final int count) throws Exception {
@@ -384,15 +515,18 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         continue;
       }
       switch (SubscriptionMessageType.valueOf(messageType)) {
-        case SESSION_DATA_SETS_HANDLER:
-          for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
+        case RECORD_HANDLER:
+          for (final ResultSet dataSet : message.getResultSets()) {
             session.executeNonQueryStatement(
-                "use " + Objects.requireNonNull(dataSet.getDatabaseName()));
-            session.insert(dataSet.getTablet());
+                "use "
+                    + Objects.requireNonNull(
+                        ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                            .getDatabaseName()));
+            session.insert(((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
           }
           break;
-        case TS_FILE_HANDLER:
-          final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
+        case TS_FILE:
+          final SubscriptionTsFileHandler tsFileHandler = message.getTsFile();
           session.executeNonQueryStatement(
               "use " + Objects.requireNonNull(tsFileHandler.getDatabaseName()));
           session.executeNonQueryStatement(

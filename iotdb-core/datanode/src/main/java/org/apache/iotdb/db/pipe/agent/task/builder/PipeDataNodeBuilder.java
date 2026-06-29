@@ -29,8 +29,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -63,18 +63,18 @@ public class PipeDataNodeBuilder {
       final PipeTaskMeta pipeTaskMeta = consensusGroupIdToPipeTaskMeta.getValue();
 
       if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
-        final PipeParameters extractorParameters = pipeStaticMeta.getExtractorParameters();
+        final PipeParameters sourceParameters = pipeStaticMeta.getSourceParameters();
         final DataRegionId dataRegionId = new DataRegionId(consensusGroupId);
         final boolean needConstructDataRegionTask =
             dataRegionIds.contains(dataRegionId)
                 && DataRegionListeningFilter.shouldDataRegionBeListened(
-                    extractorParameters, dataRegionId);
+                    sourceParameters, dataRegionId);
         final boolean needConstructSchemaRegionTask =
             schemaRegionIds.contains(new SchemaRegionId(consensusGroupId))
                 && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
-                    consensusGroupId, extractorParameters);
+                    consensusGroupId, sourceParameters);
 
-        // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
+        // Advance the source parameters parsing logic to avoid creating un-relevant pipeTasks
         if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
           consensusGroupIdToPipeTaskMap.put(
               consensusGroupId,

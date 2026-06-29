@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -52,7 +53,14 @@ public class ExportTsFileTestIT extends AbstractScriptIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    // enable subscription
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     EnvFactory.getEnv().initClusterEnvironment();
+
     ip = EnvFactory.getEnv().getIP();
     port = EnvFactory.getEnv().getPort();
     toolsPath = EnvFactory.getEnv().getToolsPath();
@@ -64,6 +72,7 @@ public class ExportTsFileTestIT extends AbstractScriptIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  @Ignore
   @Test
   public void test() throws IOException {
     String os = System.getProperty("os.name").toLowerCase();

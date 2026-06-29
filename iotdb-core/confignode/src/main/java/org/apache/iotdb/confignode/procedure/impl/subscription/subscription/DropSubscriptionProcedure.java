@@ -22,10 +22,13 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
@@ -83,7 +86,10 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   @Override
   protected boolean executeFromValidate(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("DropSubscriptionProcedure: executeFromValidate");
+    LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_EXECUTEFROMVALIDATE);
+
+    alterConsumerGroupProcedure = null;
+    dropPipeProcedures = new ArrayList<>();
 
     subscriptionInfo.get().validateBeforeUnsubscribe(unsubscribeReq);
 
@@ -100,6 +106,19 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
     for (final String topic : unsubscribeReq.getTopicNames()) {
       if (topicsUnsubByGroup.contains(topic)) {
+        final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topic);
+        final String topicMode = topicMeta.getConfig().getMode();
+        final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
+
+        if (isConsensusBasedTopic) {
+          LOGGER.info(
+              "DropSubscriptionProcedure: topic [{}] uses consensus subscription mode "
+                  + "(mode={}), skipping pipe removal",
+              topic,
+              topicMode);
+          continue;
+        }
+
         // Topic will be subscribed by no consumers in this group
         dropPipeProcedures.add(
             new DropPipeProcedureV2(
@@ -123,7 +142,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   @Override
   protected void executeFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("DropSubscriptionProcedure: executeFromOperateOnConfigNodes");
+    LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES);
 
     // Execute DropPipeProcedureV2s
     final List<ConfigPhysicalPlan> dropPipePlans =
@@ -137,16 +156,16 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
               .getConsensusManager()
               .write(new OperateMultiplePipesPlanV2(dropPipePlans));
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
-    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && response.getSubStatusSize() > 0) {
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to drop subscription with request %s on config nodes, because %s",
-              unsubscribeReq, response));
+              ProcedureMessages.FAILED_TO_DROP_SUBSCRIPTION_WITH_REQUEST_ON_CONFIG_NODES_BECAUSE,
+              unsubscribeReq,
+              response));
     }
 
     // Execute AlterConsumerGroupProcedure
@@ -156,7 +175,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   @Override
   protected void executeFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("DropSubscriptionProcedure: executeFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
     // Push pipe meta to data nodes
     final List<String> pipeNames =
@@ -170,8 +189,11 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to drop pipes %s when dropping subscription with request %s, because %s",
-              pipeNames, unsubscribeReq, exceptionMessage));
+              ProcedureMessages
+                  .FAILED_TO_DROP_PIPES_WHEN_DROPPING_SUBSCRIPTION_WITH_REQUEST_BECAUSE,
+              pipeNames,
+              unsubscribeReq,
+              exceptionMessage));
     }
 
     // Push consumer group meta to data nodes
@@ -180,13 +202,13 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
   @Override
   protected void rollbackFromValidate(final ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropSubscriptionProcedure: rollbackFromLock");
+    LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_ROLLBACKFROMLOCK);
   }
 
   @Override
   protected void rollbackFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
+    LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES);
 
     // Rollback AlterConsumerGroupProcedure
     alterConsumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
@@ -197,7 +219,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   @Override
   protected void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
     // Rollback AlterConsumerGroupProcedure
     alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);

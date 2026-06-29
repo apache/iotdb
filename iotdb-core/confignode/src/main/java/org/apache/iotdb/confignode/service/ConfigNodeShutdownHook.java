@@ -24,12 +24,12 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -47,14 +47,14 @@ public class ConfigNodeShutdownHook extends Thread {
 
   @Override
   public void run() {
-    LOGGER.info("ConfigNode exiting...");
+    LOGGER.info(ConfigNodeMessages.CONFIGNODE_EXITING);
 
     boolean isLeader = getConfigNodeInstance().getConfigManager().getConsensusManager().isLeader();
 
     try {
       ConfigNode.getInstance().deactivate();
     } catch (IOException e) {
-      LOGGER.error("Meet error when deactivate ConfigNode", e);
+      LOGGER.error(ConfigNodeMessages.MEET_ERROR_WHEN_DEACTIVATE_CONFIGNODE, e);
     }
 
     if (!isLeader) {
@@ -85,11 +85,10 @@ public class ConfigNodeShutdownHook extends Thread {
       }
       if (!isReportSuccess) {
         LOGGER.error(
-            "Reporting ConfigNode shutdown failed. The cluster will still take the current ConfigNode as Running for a few seconds.");
+            ConfigNodeMessages
+                .REPORTING_CONFIGNODE_SHUTDOWN_FAILED_THE_CLUSTER_WILL_STILL_TAKE_THE);
       }
     }
-    // Shutdown pipe progressIndex background service
-    PipePeriodicalJobExecutor.shutdownBackgroundService();
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(

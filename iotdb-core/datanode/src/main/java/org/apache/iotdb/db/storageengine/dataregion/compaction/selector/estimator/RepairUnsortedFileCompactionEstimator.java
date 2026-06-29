@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -87,6 +88,11 @@ public class RepairUnsortedFileCompactionEstimator extends AbstractInnerSpaceEst
   @Override
   public long roughEstimateInnerCompactionMemory(
       CompactionScheduleContext context, List<TsFileResource> resources) throws IOException {
-    throw new RuntimeException("unimplemented");
+    throw new RuntimeException(StorageEngineMessages.UNIMPLEMENTED);
+  }
+
+  @Override
+  public boolean supportsRoughEstimation() {
+    return false;
   }
 }

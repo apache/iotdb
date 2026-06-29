@@ -24,13 +24,15 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
@@ -84,6 +86,13 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
     return deviceToTimeseriesSchemaInfo;
   }
 
+  public boolean hasActiveLogicalViewContext() {
+    return deviceToTimeseriesSchemaInfo.values().stream()
+        .flatMap(timeseriesContextMap -> timeseriesContextMap.values().stream())
+        .flatMap(List::stream)
+        .anyMatch(context -> !context.getActiveLogicalViewContextMap().isEmpty());
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of();
@@ -91,7 +100,8 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
 
   @Override
   public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("TimeseriesRegionScanNode does not support addChild");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESERIESREGIONSCANNODE_DOES_NOT_SUPPORT_ADDCHILD);
   }
 
   @Override
@@ -112,8 +122,8 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTimeSeriesRegionScan(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitTimeSeriesRegionScan(this, context);
   }
 
   @Override

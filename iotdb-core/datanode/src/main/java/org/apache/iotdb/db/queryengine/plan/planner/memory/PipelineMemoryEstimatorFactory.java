@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 
 public class PipelineMemoryEstimatorFactory {
 
@@ -43,6 +43,7 @@ public class PipelineMemoryEstimatorFactory {
       case IDENTITY_SINK:
       case SCHEMA_FETCH_MERGE:
       case LAST_QUERY_COLLECT:
+      case TREE_COLLECT:
         return true;
       default:
         return false;

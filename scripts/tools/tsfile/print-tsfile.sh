@@ -24,9 +24,11 @@ echo ---------------------
 
 source "$(dirname "$0")/../../conf/iotdb-common.sh"
 #get_iotdb_include and checkAllVariables is in iotdb-common.sh
+if [ -z "${IOTDB_HOME}" ]; then
+  export IOTDB_HOME="$(cd "`dirname "$0"`"/../..; pwd)"
+fi
 VARS=$(get_iotdb_include "$*")
 checkAllVariables
-export IOTDB_HOME="${IOTDB_HOME}/.."
 eval set -- "$VARS"
 
 
@@ -41,6 +43,8 @@ else
     JAVA=java
 fi
 
+JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+
 CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
@@ -48,5 +52,5 @@ done
 
 MAIN_CLASS=org.apache.iotdb.db.tools.TsFileSketchTool
 
-"$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+"$JAVA" $JVM_OPTS -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

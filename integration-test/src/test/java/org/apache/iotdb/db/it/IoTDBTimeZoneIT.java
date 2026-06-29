@@ -24,9 +24,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -68,14 +68,14 @@ public class IoTDBTimeZoneIT {
         "1514789200000,6",
       };
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     createTimeseries();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -126,7 +126,7 @@ public class IoTDBTimeZoneIT {
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T13:00:09+08:00", "12"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:10+07:00", "13"));
 
-      ResultSet resultSet = statement.executeQuery("select * from root.**");
+      ResultSet resultSet = statement.executeQuery("select * from root.timezone");
       int cnt = 0;
       try {
         while (resultSet.next()) {
@@ -141,7 +141,7 @@ public class IoTDBTimeZoneIT {
     }
   }
 
-  private void createTimeseries() {
+  private static void createTimeseries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

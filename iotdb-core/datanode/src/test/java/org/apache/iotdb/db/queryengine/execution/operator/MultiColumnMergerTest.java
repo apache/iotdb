@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MultiColumnMerger;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;

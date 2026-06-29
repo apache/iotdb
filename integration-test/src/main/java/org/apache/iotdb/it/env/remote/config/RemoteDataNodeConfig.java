@@ -55,6 +55,23 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+      long loadTsFileTabletConversionBatchMemorySizeInBytes) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadActiveListeningCheckIntervalSeconds(
+      long loadActiveListeningCheckIntervalSeconds) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval) {
     return this;
   }
@@ -86,6 +103,26 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
 
   @Override
   public DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDnDataDirs(String dnDataDirs) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy) {
     return this;
   }
 }

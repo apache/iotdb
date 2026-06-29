@@ -27,6 +27,8 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -34,6 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 public class TableHttpsExample {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableHttpsExample.class);
 
   private static final String UTF8 = "utf-8";
 
@@ -50,6 +53,7 @@ public class TableHttpsExample {
     httpExample.nonQuery();
     httpExample.insertTablet();
     httpExample.query();
+    httpExample.queryWithTimeZone();
   }
 
   public void ping() {
@@ -93,7 +97,7 @@ public class TableHttpsExample {
     try {
       HttpPost httpPost = getHttpPost("https://127.0.0.1:18080/rest/table/v1/insertTablet");
       String json =
-          "{\"database\":\"test\",\"column_catogories\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"id1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11333],[\"a11\",\"false\",22333],[\"a13\",\"false1\",23333],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
+          "{\"database\":\"test\",\"column_categories\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"id1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11333],[\"a11\",\"false\",22333],[\"a13\",\"false1\",23333],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -217,6 +221,32 @@ public class TableHttpsExample {
       } catch (IOException e) {
         e.printStackTrace();
         System.out.println("Response close error");
+      }
+    }
+  }
+
+  public void queryWithTimeZone() {
+    CloseableHttpClient httpClient = SSLClient.getInstance().getHttpClient();
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("https://127.0.0.1:18080/rest/table/v1/query");
+      httpPost.addHeader("Time-Zone", "+05:00");
+      String sql =
+          "{\"database\":\"test\",\"sql\":\"select * from sg211 where time <= 2026-03-28T00:00:00\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, UTF8);
+      LOGGER.info("message with time zone = {}", JsonParser.parseString(message).getAsJsonObject());
+    } catch (IOException e) {
+      LOGGER.error("The query with time zone rest api failed", e);
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        LOGGER.error("Response close error", e);
       }
     }
   }

@@ -121,10 +121,10 @@ set /a MAX_CACHED_BUFFER_SIZE=%off_heap_memory_size_in_mb%/%IO_THREADS_NUMBER%*1
 set CONFIGNODE_HEAP_OPTS=-Xmx%ON_HEAP_MEMORY% -Xms%ON_HEAP_MEMORY%
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:MaxDirectMemorySize=%OFF_HEAP_MEMORY%
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_BUFFER_SIZE%
-set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+CrashOnOutOfMemoryError
+set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:+CrashOnOutOfMemoryError
 
 @REM if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
-@REM IOTDB_JMX_OPTS=%IOTDB_HEAP_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=\tmp\confignode_heapdump.hprof
+@REM CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=\tmp\confignode_heapdump.hprof
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
@@ -150,6 +150,15 @@ IF "%JAVA_VERSION%" == "8" (
      --add-opens=java.base/java.nio=ALL-UNNAMED^
      --add-opens=java.base/java.io=ALL-UNNAMED^
      --add-opens=java.base/java.net=ALL-UNNAMED
+)
+
+@REM Apply tsfile locale option populated by Maven at package time
+@REM (see conf\windows\iotdb-common.bat; empty in default build, -Dtsfile.locale=zh under with-zh-locale).
+IF EXIST "%CONFIGNODE_CONF%\windows\iotdb-common.bat" (
+    CALL "%CONFIGNODE_CONF%\windows\iotdb-common.bat"
+    IF NOT "%TSFILE_LOCALE_JVM_OPT%"=="" (
+        set CONFIGNODE_JMX_OPTS=%CONFIGNODE_JMX_OPTS% %TSFILE_LOCALE_JVM_OPT%
+    )
 )
 
 echo ConfigNode on heap memory size = %ON_HEAP_MEMORY%B, off heap memory size = %OFF_HEAP_MEMORY%B

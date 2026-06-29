@@ -22,14 +22,17 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -37,22 +40,22 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -73,8 +76,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
-import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
@@ -89,7 +90,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
   private final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
-  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
 
   final MPPQueryContext context;
 
@@ -223,6 +223,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       executeTabletConversionOnException(analysis, e);
       return analysis;
     } catch (Exception e) {
+      if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
+        return analysis;
+      }
       final String exceptionMessage =
           String.format(
               "Auto create or verify schema error when executing statement %s. Detail: %s.",
@@ -234,7 +237,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return analysis;
     }
 
-    LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+    LOGGER.info(DataNodeQueryMessages.LOAD_ANALYSIS_STAGE_ALL_TSFILES_HAVE_BEEN_ANALYZED);
 
     setTsFileModelInfoToStatement();
     if (reconstructStatementIfMiniFileConverted()) {
@@ -274,81 +277,36 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private boolean doAsyncLoad(final IAnalysis analysis) {
     final long startTime = System.nanoTime();
     try {
-      final String[] loadActiveListeningDirs =
-          IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
-      String targetFilePath = null;
-      for (int i = 0, size = loadActiveListeningDirs == null ? 0 : loadActiveListeningDirs.length;
-          i < size;
-          i++) {
-        if (loadActiveListeningDirs[i] != null) {
-          targetFilePath = loadActiveListeningDirs[i];
-          break;
-        }
+      final String databaseName;
+      if (Objects.nonNull(databaseForTableData)
+          || (Objects.nonNull(context) && context.getDatabaseName().isPresent())) {
+        databaseName =
+            Objects.nonNull(databaseForTableData)
+                ? databaseForTableData
+                : context.getDatabaseName().get();
+      } else {
+        databaseName = null;
       }
-      if (targetFilePath == null) {
-        LOGGER.warn("Load active listening dir is not set. Will try sync load instead.");
-        return false;
-      }
+      final Map<String, String> activeLoadAttributes =
+          ActiveLoadPathHelper.buildAttributes(
+              databaseName,
+              databaseLevel,
+              isConvertOnTypeMismatch,
+              isVerifySchema,
+              tabletConversionThresholdBytes,
+              isGeneratedByPipe);
 
-      try {
-        if (Objects.nonNull(databaseForTableData)
-            || (Objects.nonNull(context) && context.getDatabaseName().isPresent())) {
-          loadTsFilesAsyncToTargetDir(
-              new File(
-                  targetFilePath,
-                  databaseForTableData =
-                      Objects.nonNull(databaseForTableData)
-                          ? databaseForTableData
-                          : context.getDatabaseName().get()),
-              tsFiles);
-        } else {
-          loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
-        }
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to async load tsfiles {} to target dir {}. Will try sync load instead.",
-            tsFiles,
-            targetFilePath,
-            e);
-        return false;
+      if (LoadUtil.loadTsFileAsyncToActiveDir(tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        setRealStatement(analysis);
+        return true;
       }
-
-      analysis.setFinishQueryAfterAnalyze(true);
-      setRealStatement(analysis);
-      return true;
+      LOGGER.info(DataNodeQueryMessages.ASYNC_LOAD_HAS_FAILED_AND_IS_NOW_TRYING);
+      return false;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
           .recordPhaseTimeCost(ANALYSIS_ASYNC_MOVE, System.nanoTime() - startTime);
     }
-  }
-
-  private void loadTsFilesAsyncToTargetDir(final File targetDir, final List<File> files)
-      throws IOException {
-    for (final File file : files) {
-      if (file == null) {
-        continue;
-      }
-
-      loadTsFileAsyncToTargetDir(targetDir, file);
-      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".resource"));
-      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".mods"));
-    }
-  }
-
-  private void loadTsFileAsyncToTargetDir(final File targetDir, final File file)
-      throws IOException {
-    if (!file.exists()) {
-      return;
-    }
-    RetryUtils.retryOnException(
-        () -> {
-          if (isDeleteAfterLoad) {
-            moveFileWithMD5Check(file, targetDir);
-          } else {
-            copyFileWithMD5Check(file, targetDir);
-          }
-          return null;
-        });
   }
 
   private boolean doAnalyzeFileByFile(IAnalysis analysis) {
@@ -358,7 +316,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (tsFile.length() == 0) {
         if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
+          LOGGER.warn(DataNodeQueryMessages.TSFILE_IS_EMPTY, tsFile.getPath());
         }
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
@@ -392,6 +350,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 "The file %s is not a valid tsfile. Please check the input file.",
                 tsFile.getPath()));
       } catch (Exception e) {
+        if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
+          return false;
+        }
         final String exceptionMessage =
             String.format(
                 "Loading file %s failed. Detail: %s",
@@ -410,6 +371,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private void analyzeSingleTsFile(final File tsFile, int i) throws Exception {
+    final SessionInfo sessionInfo = context.getSession();
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // check whether the tsfile is tree-model or not
       final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
@@ -435,7 +397,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final EncryptParameter param = reader.getEncryptParam();
       if (!Objects.equals(param.getType(), EncryptUtils.getEncryptParameter().getType())
           || !Arrays.equals(param.getKey(), EncryptUtils.getEncryptParameter().getKey())) {
-        throw new SemanticException("The encryption way of the TsFile is not supported.");
+        throw new SemanticException(DataNodeQueryMessages.THE_ENCRYPTION_WAY_OF_THE_TSFILE_IS_NOT);
       }
 
       this.isTableModelTsFile.set(i, isTableModelFile);
@@ -448,15 +410,36 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
 
       if (isTableModelFile) {
+        final SessionInfo newSessionInfo =
+            new SessionInfo(
+                sessionInfo.getSessionId(),
+                sessionInfo.getUserEntity(),
+                sessionInfo.getZoneId(),
+                sessionInfo.getDatabaseName().orElse(null),
+                SqlDialect.TABLE);
+        context.setSession(newSessionInfo);
         doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
       } else {
+        final SessionInfo newSessionInfo =
+            new SessionInfo(
+                sessionInfo.getSessionId(),
+                sessionInfo.getUserEntity(),
+                sessionInfo.getZoneId(),
+                sessionInfo.getDatabaseName().orElse(null),
+                SqlDialect.TREE);
+        context.setSession(newSessionInfo);
         doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }
     } catch (final LoadEmptyFileException loadEmptyFileException) {
-      LOGGER.warn("Empty file detected, will skip loading this file: {}", tsFile.getAbsolutePath());
+      LOGGER.warn(
+          DataNodeQueryMessages.EMPTY_FILE_DETECTED_WILL_SKIP_LOADING_THIS_FILE,
+          tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
         FileUtils.deleteQuietly(tsFile);
       }
+    } finally {
+      // reset the session info to the original one
+      context.setSession(sessionInfo);
     }
   }
 
@@ -464,20 +447,21 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     final long startTime = System.nanoTime();
     try {
       final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-          new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+          new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
       final TSStatus status =
           isTableModelTsFile.get(i)
               ? loadTsFileDataTypeConverter
                   .convertForTableModel(
-                      new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                      LoadTsFile.createUnchecked(
+                              null, tsFiles.get(i).getPath(), Collections.emptyMap())
                           .setDatabase(databaseForTableData)
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null)
               : loadTsFileDataTypeConverter
                   .convertForTreeModel(
-                      new LoadTsFileStatement(tsFiles.get(i).getPath())
+                      LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null);
@@ -600,7 +584,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     getOrCreateTableSchemaCache().flush();
-    getOrCreateTableSchemaCache().clearIdColumnMapper();
+    if (getOrCreateTableSchemaCache().isNeedDecode4DifferentTimeColumn()) {
+      if (isTableModelStatement) {
+        loadTsFileTableStatement.enableNeedDecode4TimeColumn();
+      } else {
+        loadTsFileTreeStatement.enableNeedDecode4TimeColumn();
+      }
+    }
+    getOrCreateTableSchemaCache().clearTagColumnMapper();
 
     TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
@@ -635,7 +626,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private LoadTsFileTableSchemaCache getOrCreateTableSchemaCache() {
     if (tableSchemaCache == null) {
-      tableSchemaCache = new LoadTsFileTableSchemaCache(metadata, context, isAutoCreateDatabase);
+      tableSchemaCache =
+          new LoadTsFileTableSchemaCache(metadata, context, isAutoCreateDatabase, isVerifySchema);
     }
     return tableSchemaCache;
   }
@@ -652,6 +644,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
     return device2TimeseriesMetadata.values().stream()
         .flatMap(List::stream)
+        .filter(timeseriesMetadata -> !timeseriesMetadata.getMeasurementId().isEmpty())
         .mapToLong(t -> t.getStatistics().getCount())
         .sum();
   }
@@ -695,8 +688,26 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
   }
 
+  private void setFailAnalysisForTemporaryUnavailablePipeSchema(
+      final IAnalysis analysis, final Throwable throwable) {
+    final String exceptionMessage =
+        String.format(
+            DataNodeQueryMessages.PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA,
+            throwable.getMessage() == null
+                ? throwable.getClass().getName()
+                : throwable.getMessage());
+    analysis.setFinishQueryAfterAnalyze(true);
+    analysis.setFailStatus(
+        RpcUtils.getStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION, exceptionMessage));
+    setRealStatement(analysis);
+  }
+
   private void executeTabletConversionOnException(
       final IAnalysis analysis, final LoadAnalyzeException e) {
+    if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
+      return;
+    }
+
     if (shouldSkipConversion(e)) {
       analysis.setFailStatus(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
@@ -722,7 +733,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+        new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
     for (int i = 0; i < tsFiles.size(); i++) {
       final long startTime = System.nanoTime();
@@ -731,14 +742,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             isTableModelTsFile.get(i)
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                        LoadTsFile.createUnchecked(
+                                null, tsFiles.get(i).getPath(), Collections.emptyMap())
                             .setDatabase(databaseForTableData)
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
-                        new LoadTsFileStatement(tsFiles.get(i).getPath())
+                        LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null);
@@ -775,6 +787,38 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     analysis.setFinishQueryAfterAnalyze(true);
     setRealStatement(analysis);
+  }
+
+  private boolean setTemporaryUnavailableStatusIfNecessary(
+      final IAnalysis analysis, final Throwable throwable) {
+    if (isTemporaryUnavailableDueToPipeSchemaNotReady(throwable)) {
+      setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, throwable);
+      return true;
+    }
+    if (isGeneratedByPipe && LoadTsFileDataTypeConverter.isMemoryPressureException(throwable)) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(LoadTsFileDataTypeConverter.getMemoryPressureStatus(throwable));
+      setRealStatement(analysis);
+      return true;
+    }
+    return false;
+  }
+
+  boolean isTemporaryUnavailableDueToPipeSchemaNotReady(final Throwable throwable) {
+    if (!isGeneratedByPipe
+        || !isVerifySchema
+        || IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+      return false;
+    }
+
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof LoadAnalyzeMissingSchemaException) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {

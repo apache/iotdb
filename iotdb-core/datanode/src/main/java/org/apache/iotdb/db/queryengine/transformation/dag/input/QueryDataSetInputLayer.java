@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.input;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.transformation.datastructure.iterator.RowListForwardIterator;
+import org.apache.iotdb.calc.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine.SafetyPile;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.RowListForwardIterator;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -99,9 +99,13 @@ public class QueryDataSetInputLayer {
       YieldableState yieldableState = queryDataSet.yield();
       if (YieldableState.YIELDABLE.equals(yieldableState)) {
         Column[] columns = queryDataSet.currentBlock();
-        rowList.put(columns);
-        iterator.next();
-        cachedColumns = iterator.currentBlock();
+        if (columns[0].getPositionCount() == 0) {
+          cachedColumns = columns;
+        } else {
+          rowList.put(columns);
+          iterator.next();
+          cachedColumns = iterator.currentBlock();
+        }
         // No need to call `.consume()` like method in queryDataSet
       }
       return yieldableState;
@@ -129,6 +133,9 @@ public class QueryDataSetInputLayer {
 
     @Override
     public TSDataType[] getDataTypes() {
+      if (columnIndex == dataTypes.length) {
+        return new TSDataType[] {TSDataType.INT64};
+      }
       return new TSDataType[] {dataTypes[columnIndex]};
     }
 

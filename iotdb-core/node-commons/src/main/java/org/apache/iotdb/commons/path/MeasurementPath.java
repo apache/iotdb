@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.PathMessages;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -33,12 +34,9 @@ import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.rmi.UnexpectedException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,7 +49,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 public class MeasurementPath extends PartialPath {
 
   private static final String NODES_LENGTH_ERROR =
-      "nodes.length for MeasurementPath should always be greater than 1, current is: %s";
+      PathMessages.NODES_LENGTH_SHOULD_BE_GREATER_THAN_ONE;
 
   private static final Logger logger = LoggerFactory.getLogger(MeasurementPath.class);
 
@@ -253,7 +251,7 @@ public class MeasurementPath extends PartialPath {
         newMeasurementPath.setTagMap(new HashMap<>(tagMap));
       }
     } catch (IllegalPathException e) {
-      logger.warn("path is illegal: {}", this.getFullPath(), e);
+      logger.warn(PathMessages.PATH_IS_ILLEGAL, this.getFullPath(), e);
     }
     return newMeasurementPath;
   }
@@ -319,7 +317,40 @@ public class MeasurementPath extends PartialPath {
         measurementPath.measurementSchema = LogicalViewSchema.deserializeFrom(byteBuffer);
       } else {
         throw new RuntimeException(
-            new UnexpectedException("Type (" + type + ") of measurementSchema is unknown."));
+            new UnexpectedException(
+                String.format(PathMessages.UNKNOWN_MEASUREMENT_SCHEMA_TYPE, type)));
+      }
+    }
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    if (isNull == 1) {
+      measurementPath.tagMap = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+    measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBoolObject(byteBuffer);
+    measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
+    measurementPath.nodes = partialPath.getNodes();
+    measurementPath.device = measurementPath.getIDeviceID();
+    measurementPath.fullPath = measurementPath.getFullPath();
+    return measurementPath;
+  }
+
+  public static MeasurementPath deserializeDirectly(ByteBuffer byteBuffer) {
+    PartialPath partialPath = PartialPath.deserialize(byteBuffer);
+    MeasurementPath measurementPath = new MeasurementPath();
+    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    if (isNull == 1) {
+      byte type = ReadWriteIOUtils.readByte(byteBuffer);
+      if (type == MeasurementSchemaType.MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        measurementPath.measurementSchema = MeasurementSchema.deserializeFrom(byteBuffer);
+      } else if (type
+          == MeasurementSchemaType.VECTOR_MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        measurementPath.measurementSchema = VectorMeasurementSchema.deserializeFrom(byteBuffer);
+      } else if (type
+          == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        measurementPath.measurementSchema = LogicalViewSchema.deserializeFrom(byteBuffer);
+      } else {
+        throw new RuntimeException(
+            new UnexpectedException(
+                String.format(PathMessages.UNKNOWN_MEASUREMENT_SCHEMA_TYPE, type)));
       }
     }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);
@@ -339,34 +370,11 @@ public class MeasurementPath extends PartialPath {
     return getDevicePath().concatNode(getTailNode());
   }
 
-  /**
-   * In specific scenarios, like internal create timeseries, the message can only be passed as
-   * String format.
-   */
-  public static String transformDataToString(MeasurementPath measurementPath) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      measurementPath.serialize(dataOutputStream);
-    } catch (IOException ignored) {
-      // this exception won't happen.
-    }
-    byte[] bytes = byteArrayOutputStream.toByteArray();
-    // must use single-byte char sets
-    return new String(bytes, StandardCharsets.ISO_8859_1);
-  }
-
   @Override
   protected IDeviceID toDeviceID(String[] nodes) {
     // remove measurement
     nodes = Arrays.copyOfRange(nodes, 0, nodes.length - 1);
     return super.toDeviceID(nodes);
-  }
-
-  public static MeasurementPath parseDataFromString(String measurementPathData) {
-    return (MeasurementPath)
-        PathDeserializeUtil.deserialize(
-            ByteBuffer.wrap(measurementPathData.getBytes(StandardCharsets.ISO_8859_1)));
   }
 
   @Override

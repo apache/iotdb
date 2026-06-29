@@ -159,7 +159,7 @@ public class ConfigExecutionTest {
 
   private MPPQueryContext genMPPQueryContext() {
     MPPQueryContext context = new MPPQueryContext(new QueryId("query1"));
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     return context;
   }
 

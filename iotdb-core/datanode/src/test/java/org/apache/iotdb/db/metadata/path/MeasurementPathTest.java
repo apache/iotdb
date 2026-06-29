@@ -43,8 +43,8 @@ public class MeasurementPathTest {
         new MeasurementPath(
             new PartialPath("root.sg.d.s"), new MeasurementSchema("s", TSDataType.INT32), true);
     rawPath.setMeasurementAlias("alias");
-    String string = MeasurementPath.transformDataToString(rawPath);
-    MeasurementPath newPath = MeasurementPath.parseDataFromString(string);
+    String string = PartialPath.transformDataToString(rawPath);
+    MeasurementPath newPath = (MeasurementPath) PartialPath.parseDataFromString(string);
     Assert.assertEquals(rawPath.getFullPath(), newPath.getFullPath());
     Assert.assertEquals(rawPath.getMeasurementAlias(), newPath.getMeasurementAlias());
     Assert.assertEquals(rawPath.getMeasurementSchema(), newPath.getMeasurementSchema());

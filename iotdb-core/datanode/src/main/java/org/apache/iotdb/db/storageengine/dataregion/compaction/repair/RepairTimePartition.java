@@ -41,7 +41,7 @@ public class RepairTimePartition {
 
   public RepairTimePartition(DataRegion dataRegion, long timePartitionId, long maxFileTimestamp) {
     this.databaseName = dataRegion.getDatabaseName();
-    this.dataRegionId = dataRegion.getDataRegionId();
+    this.dataRegionId = dataRegion.getDataRegionIdString();
     this.tsFileManager = dataRegion.getTsFileManager();
     this.timePartitionId = timePartitionId;
     this.maxFileTimestamp = maxFileTimestamp;

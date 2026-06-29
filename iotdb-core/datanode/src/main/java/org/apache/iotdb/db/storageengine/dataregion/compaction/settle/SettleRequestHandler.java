@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -272,8 +273,16 @@ public class SettleRequestHandler {
     private TSStatus submitCompactionTask(List<TsFileResource> tsFileResources) {
       ICompactionPerformer performer =
           hasSeqFiles
-              ? config.getInnerSeqCompactionPerformer().createInstance()
-              : config.getInnerUnseqCompactionPerformer().createInstance();
+              ? config
+                  .getInnerSeqCompactionPerformer()
+                  .createInstance(
+                      EncryptDBUtils.getFirstEncryptParamFromDatabase(
+                          tsFileManager.getStorageGroupName()))
+              : config
+                  .getInnerUnseqCompactionPerformer()
+                  .createInstance(
+                      EncryptDBUtils.getFirstEncryptParamFromDatabase(
+                          tsFileManager.getStorageGroupName()));
       AbstractCompactionTask task =
           new InnerSpaceCompactionTask(
               targetConsistentSettleInfo.timePartitionId,

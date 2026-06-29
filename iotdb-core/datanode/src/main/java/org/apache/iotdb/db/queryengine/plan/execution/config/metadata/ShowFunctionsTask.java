@@ -20,13 +20,15 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinScalarFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -34,8 +36,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
-import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.udf.TreeUDFUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -156,6 +157,11 @@ public class ShowFunctionsTask implements IConfigTask {
     appendFunctions(
         builder,
         TableBuiltinTableFunction.getBuiltInTableFunctionName(),
+        BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC),
+        BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
+    appendFunctions(
+        builder,
+        DataNodeTableBuiltinTableFunction.getBuiltInTableFunctionName(),
         BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC),
         BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowFunctionsHeader();

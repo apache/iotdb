@@ -80,7 +80,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      ResultSet resultSet = statement.executeQuery("show timeseries");
+      ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -128,7 +128,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
       }
 
       statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'tagNew1'");
-      resultSet = statement.executeQuery("show timeseries");
+      resultSet = statement.executeQuery("show timeseries root.turbine.**");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -178,7 +178,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      ResultSet resultSet = statement.executeQuery("show timeseries");
+      ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -216,7 +216,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
       }
 
       statement.execute("ALTER timeseries root.turbine.d1.s1 SET 'tag1'='newV1', 'attr2'='newV2'");
-      resultSet = statement.executeQuery("show timeseries");
+      resultSet = statement.executeQuery("show timeseries root.turbine.**");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -265,7 +265,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      ResultSet resultSet = statement.executeQuery("show timeseries");
+      ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -294,7 +294,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
       assertEquals(ret.length, count);
 
       statement.execute("ALTER timeseries root.turbine.d1.s1 DROP attr1,'tag1'");
-      resultSet = statement.executeQuery("show timeseries");
+      resultSet = statement.executeQuery("show timeseries root.turbine.**");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -348,7 +348,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      ResultSet resultSet = statement.executeQuery("show timeseries");
+      ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -427,7 +427,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      ResultSet resultSet = statement.executeQuery("show timeseries");
+      ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -457,7 +457,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
 
       statement.execute(
           "ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3'='v3', 'attr4'='v4'");
-      resultSet = statement.executeQuery("show timeseries");
+      resultSet = statement.executeQuery("show timeseries root.turbine.**");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -511,7 +511,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      ResultSet resultSet = statement.executeQuery("show timeseries");
+      ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**");
       int count = 0;
       try {
         while (resultSet.next()) {

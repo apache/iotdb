@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 
 import org.apache.thrift.TException;
@@ -68,7 +69,7 @@ import java.util.Map;
 public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedStatement {
 
   private String sql;
-  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
   private static final Logger logger = LoggerFactory.getLogger(IoTDBPreparedStatement.class);
 
   /** save the SQL parameters as (paramLoc,paramValue) pairs. */
@@ -456,8 +457,6 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
               } else if ("false".equalsIgnoreCase((String) parameterObj)
                   || "N".equalsIgnoreCase((String) parameterObj)) {
                 setBoolean(parameterIndex, false);
-              } else if (((String) parameterObj).matches("-?\\d+\\.?\\d*")) {
-                setBoolean(parameterIndex, !((String) parameterObj).matches("-?[0]+[.]*[0]*"));
               } else {
                 throw new SQLException(
                     "No conversion from " + parameterObj + " to Types.BOOLEAN possible.");
@@ -546,7 +545,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
                 break;
               default:
-                logger.error("No type was matched");
+                logger.error(JdbcMessages.NO_TYPE_MATCHED);
                 break;
             }
 
@@ -911,17 +910,16 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setString(int parameterIndex, String x) {
-    // if the sql is an insert statement and the value is not a string literal, add single quotes
-    // The table model only supports single quotes, the tree model sql both single and double quotes
-    if ("table".equalsIgnoreCase(getSqlDialect())
-        || ((sql.trim().toUpperCase().startsWith("INSERT")
-            && !((x.startsWith("'") && x.endsWith("'"))
-                || ((x.startsWith("\"") && x.endsWith("\""))
-                    && "tree".equals(getSqlDialect())))))) {
-      this.parameters.put(parameterIndex, "'" + x + "'");
+    if (x == null) {
+      this.parameters.put(parameterIndex, null);
     } else {
-      this.parameters.put(parameterIndex, x);
+      this.parameters.put(parameterIndex, "'" + escapeSingleQuotes(x) + "'");
     }
+  }
+
+  private String escapeSingleQuotes(String value) {
+    // Escape single quotes with double single quotes
+    return value.replace("'", "''");
   }
 
   @Override
@@ -1020,11 +1018,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
       if (logger.isDebugEnabled()) {
-        logger.debug("SQL {}", sql);
-        logger.debug("parameters {}", parameters.size());
+        logger.debug(JdbcMessages.SQL_DEBUG, sql);
+        logger.debug(JdbcMessages.PARAMETERS_DEBUG, parameters.size());
       }
       if (!parameters.containsKey(i)) {
-        throw new SQLException("Parameter #" + i + " is unset");
+        throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i));
       }
       newSql.append(parameters.get(i));
       newSql.append(parts.get(i));

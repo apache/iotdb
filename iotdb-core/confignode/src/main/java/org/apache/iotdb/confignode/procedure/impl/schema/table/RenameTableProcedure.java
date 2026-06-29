@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewProcedure;
@@ -66,30 +67,35 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
     try {
       switch (state) {
         case COLUMN_CHECK:
-          LOGGER.info("Column check for table {}.{} when renaming table", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.COLUMN_CHECK_FOR_TABLE_WHEN_RENAMING_TABLE, database, tableName);
           tableCheck(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Pre release info of table {}.{} when renaming table", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.PRE_RELEASE_INFO_OF_TABLE_WHEN_RENAMING_TABLE, database, tableName);
           preRelease(env);
           break;
         case RENAME_TABLE:
-          LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
+          LOGGER.info(ProcedureMessages.RENAME_COLUMN_TO_TABLE_ON_CONFIG_NODE, database, tableName);
           renameTable(env);
           break;
         case COMMIT_RELEASE:
           LOGGER.info(
-              "Commit release info of table {}.{} when renaming table", database, tableName);
+              ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_RENAMING_TABLE,
+              database,
+              tableName);
           commitRelease(env, tableName);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized RenameTableState " + state));
+          setFailure(
+              new ProcedureException(ProcedureMessages.UNRECOGNIZED_RENAMETABLESTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "RenameTable-{}.{}-{} costs {}ms",
+          ProcedureMessages.RENAMETABLE_COSTS_MS,
           database,
           tableName,
           state,
@@ -106,8 +112,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
                   database, tableName, newName, this instanceof RenameViewProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        setFailure(new ProcedureException(new IoTDBException(status)));
         return;
       }
       table = result.getRight();
@@ -133,7 +138,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
                     : new RenameTablePlan(database, tableName, newName),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
       setNextState(RenameTableState.COMMIT_RELEASE);
     }
@@ -147,18 +152,24 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
       switch (state) {
         case RENAME_TABLE:
           LOGGER.info(
-              "Start rollback Renaming table {}.{} on configNode", database, table.getTableName());
+              ProcedureMessages.START_ROLLBACK_RENAMING_TABLE_ON_CONFIGNODE,
+              database,
+              table.getTableName());
           rollbackRenameTable(env);
           break;
         case PRE_RELEASE:
           LOGGER.info(
-              "Start rollback pre release info of table {}.{}", database, table.getTableName());
+              ProcedureMessages.START_ROLLBACK_PRE_RELEASE_INFO_OF_TABLE,
+              database,
+              table.getTableName());
           rollbackPreRelease(env, tableName);
           break;
       }
     } finally {
       LOGGER.info(
-          "Rollback RenameTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.ROLLBACK_RENAMETABLE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -175,8 +186,12 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
                     : new RenameTablePlan(database, newName, tableName),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
+  }
+
+  public String getNewName() {
+    return newName;
   }
 
   @Override

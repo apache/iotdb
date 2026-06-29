@@ -20,22 +20,25 @@
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -49,6 +52,7 @@ public class PipeHeartbeatScheduler {
       PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled();
   private static final long HEARTBEAT_INTERVAL_SECONDS =
       PipeConfig.getInstance().getPipeHeartbeatIntervalSecondsForCollectingPipeMeta();
+  private static final int PIPE_HEARTBEAT_RETRY_NUM = 1;
 
   private static final ScheduledExecutorService HEARTBEAT_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -73,7 +77,7 @@ public class PipeHeartbeatScheduler {
               HEARTBEAT_INTERVAL_SECONDS,
               HEARTBEAT_INTERVAL_SECONDS,
               TimeUnit.SECONDS);
-      LOGGER.info("PipeHeartbeat is started successfully.");
+      LOGGER.info(ManagerMessages.PIPEHEARTBEAT_IS_STARTED_SUCCESSFULLY);
     }
   }
 
@@ -83,8 +87,9 @@ public class PipeHeartbeatScheduler {
     }
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
-      LOGGER.warn(
-          "PipeTaskCoordinatorLock is held by another thread, skip this round of heartbeat to avoid procedure and rpc accumulation as much as possible");
+      PipeLogger.log(
+          LOGGER::warn,
+          ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF);
       return;
     }
 
@@ -92,18 +97,14 @@ public class PipeHeartbeatScheduler {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPipeHeartbeatReq request = new TPipeHeartbeatReq(System.currentTimeMillis());
-    LOGGER.info("Collecting pipe heartbeat {} from data nodes", request.heartbeatId);
+    LOGGER.debug(ManagerMessages.COLLECTING_PIPE_HEARTBEAT_FROM_DATA_NODES, request.heartbeatId);
 
     final DataNodeAsyncRequestContext<TPipeHeartbeatReq, TPipeHeartbeatResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.PIPE_HEARTBEAT, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
-            clientHandler,
-            PipeConfig.getInstance().getPipeHeartbeatIntervalSecondsForCollectingPipeMeta()
-                * 1000L
-                * 2
-                / 3);
+        .sendAsyncRequest(
+            clientHandler, PIPE_HEARTBEAT_RETRY_NUM, getPipeHeartbeatRequestTimeoutInMs(), true);
     clientHandler
         .getResponseMap()
         .forEach(
@@ -118,7 +119,7 @@ public class PipeHeartbeatScheduler {
 
     // config node heartbeat
     try {
-      final TPipeHeartbeatResp configNodeResp = new TPipeHeartbeatResp();
+      final TPipeHeartbeatResp configNodeResp = new TPipeHeartbeatResp(new ArrayList<>());
       PipeConfigNodeAgent.task().collectPipeMetaList(request, configNodeResp);
       pipeHeartbeatParser.parseHeartbeat(
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
@@ -128,15 +129,20 @@ public class PipeHeartbeatScheduler {
               configNodeResp.getPipeRemainingEventCountList(),
               configNodeResp.getPipeRemainingTimeList()));
     } catch (final Exception e) {
-      LOGGER.warn("Failed to collect pipe meta list from config node task agent", e);
+      PipeLogger.log(
+          LOGGER::warn, e, ManagerMessages.FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK);
     }
+  }
+
+  private static long getPipeHeartbeatRequestTimeoutInMs() {
+    return TimeUnit.SECONDS.toMillis(HEARTBEAT_INTERVAL_SECONDS) * 2 / 3;
   }
 
   public synchronized void stop() {
     if (IS_SEPERATED_PIPE_HEARTBEAT_ENABLED && heartbeatFuture != null) {
       heartbeatFuture.cancel(false);
       heartbeatFuture = null;
-      LOGGER.info("PipeHeartbeat is stopped successfully.");
+      LOGGER.info(ManagerMessages.PIPEHEARTBEAT_IS_STOPPED_SUCCESSFULLY);
     }
   }
 

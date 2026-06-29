@@ -20,6 +20,6 @@
 package org.apache.iotdb.confignode.procedure.state;
 
 public enum RemoveAINodeState {
-  MODEL_DELETE,
+  NODE_STOP,
   NODE_REMOVE
 }

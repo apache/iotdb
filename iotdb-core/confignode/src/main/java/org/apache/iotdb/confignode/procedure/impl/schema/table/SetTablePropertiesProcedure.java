@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
@@ -81,35 +82,42 @@ public class SetTablePropertiesProcedure
         case VALIDATE_TABLE:
           validateTable(env);
           LOGGER.info(
-              "Validate table for table {}.{} when setting properties", database, tableName);
+              ProcedureMessages.VALIDATE_TABLE_FOR_TABLE_WHEN_SETTING_PROPERTIES,
+              database,
+              tableName);
           if (!isFailed() && Objects.isNull(table)) {
             LOGGER.info(
-                "The updated table has the same properties with the original one. Skip the procedure.");
+                ProcedureMessages.THE_UPDATED_TABLE_HAS_THE_SAME_PROPERTIES_WITH_THE_ORIGINAL);
             return Flow.NO_MORE_STATE;
           }
           break;
         case PRE_RELEASE:
           preRelease(env);
           LOGGER.info(
-              "Pre release info for table {}.{} when setting properties", database, tableName);
+              ProcedureMessages.PRE_RELEASE_INFO_FOR_TABLE_WHEN_SETTING_PROPERTIES,
+              database,
+              tableName);
           break;
         case SET_PROPERTIES:
           setProperties(env);
-          LOGGER.info("Set properties to table {}.{}", database, tableName);
+          LOGGER.info(ProcedureMessages.SET_PROPERTIES_TO_TABLE, database, tableName);
           break;
         case COMMIT_RELEASE:
           commitRelease(env);
           LOGGER.info(
-              "Commit release info of table {}.{} when setting properties", database, tableName);
+              ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_SETTING_PROPERTIES,
+              database,
+              tableName);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
+          setFailure(
+              new ProcedureException(ProcedureMessages.UNRECOGNIZED_ADDTABLECOLUMNSTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "SetTableProperties-{}.{}-{} costs {}ms",
+          ProcedureMessages.SETTABLEPROPERTIES_COSTS_MS,
           database,
           tableName,
           state,
@@ -130,8 +138,7 @@ public class SetTablePropertiesProcedure
                   this instanceof SetViewPropertiesProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        setFailure(new ProcedureException(new IoTDBException(status)));
         return;
       }
       table = result.getRight();
@@ -157,7 +164,7 @@ public class SetTablePropertiesProcedure
                     : new SetTablePropertiesPlan(database, tableName, updatedProperties),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
       setNextState(COMMIT_RELEASE);
     }
@@ -177,20 +184,22 @@ public class SetTablePropertiesProcedure
       switch (state) {
         case PRE_RELEASE:
           LOGGER.info(
-              "Start rollback pre release info for table {}.{} when setting properties",
+              ProcedureMessages.START_ROLLBACK_PRE_RELEASE_INFO_FOR_TABLE_WHEN_SETTING_PROPERTIES,
               database,
               table.getTableName());
           rollbackPreRelease(env);
           break;
         case SET_PROPERTIES:
           LOGGER.info(
-              "Start rollback set properties to table {}.{}", database, table.getTableName());
+              ProcedureMessages.START_ROLLBACK_SET_PROPERTIES_TO_TABLE,
+              database,
+              table.getTableName());
           rollbackSetProperties(env);
           break;
       }
     } finally {
       LOGGER.info(
-          "Rollback SetTableProperties-{} costs {}ms.",
+          ProcedureMessages.ROLLBACK_SETTABLEPROPERTIES_COSTS_MS,
           state,
           (System.currentTimeMillis() - startTime));
     }
@@ -204,10 +213,12 @@ public class SetTablePropertiesProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .executePlan(
-                new SetTablePropertiesPlan(database, tableName, originalProperties),
+                this instanceof SetViewPropertiesProcedure
+                    ? new SetViewPropertiesPlan(database, tableName, originalProperties)
+                    : new SetTablePropertiesPlan(database, tableName, originalProperties),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

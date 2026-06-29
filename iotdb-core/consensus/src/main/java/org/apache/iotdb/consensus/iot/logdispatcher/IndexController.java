@@ -20,9 +20,10 @@
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,11 +70,7 @@ public class IndexController {
   public synchronized void update(long index, boolean forcePersist) {
     long newCurrentIndex = Math.max(currentIndex, index);
     logger.debug(
-        "update index from currentIndex {} to {} for file prefix {} in {}",
-        currentIndex,
-        newCurrentIndex,
-        prefix,
-        storageDir);
+        IoTConsensusMessages.UPDATE_INDEX, currentIndex, newCurrentIndex, prefix, storageDir);
     currentIndex = newCurrentIndex;
     checkPersist(forcePersist);
   }
@@ -103,7 +100,7 @@ public class IndexController {
       if (oldFile.exists()) {
         FileUtils.moveFile(oldFile, newFile);
         logger.debug(
-            "version file updated, previous: {}, current: {}",
+            IoTConsensusMessages.VERSION_FILE_UPDATED,
             oldFile.getAbsolutePath(),
             newFile.getAbsolutePath());
       } else {
@@ -112,16 +109,14 @@ public class IndexController {
         // before all the async operations returns. We needn't add some sync operation here
         // because it won't infect the correctness
         logger.info(
-            "failed to flush sync index because previous version file {} does not exists. "
-                + "It may be caused by the target Peer is removed from current group. "
-                + "target file is {}",
+            IoTConsensusMessages.FAILED_FLUSH_SYNC_INDEX,
             oldFile.getAbsolutePath(),
             newFile.getAbsolutePath());
       }
 
       lastFlushedIndex = flushIndex;
     } catch (IOException e) {
-      logger.error("Error occurred when flushing next version", e);
+      logger.error(IoTConsensusMessages.ERROR_FLUSHING_NEXT_VERSION, e);
     }
   }
 
@@ -139,12 +134,12 @@ public class IndexController {
                           File newFile = new File(storageDir, prefix + fileVersion);
                           try {
                             logger.info(
-                                "version file upgrade, previous: {}, current: {}",
+                                IoTConsensusMessages.VERSION_FILE_UPGRADE,
                                 oldFile.getAbsolutePath(),
                                 newFile.getAbsolutePath());
                             FileUtils.moveFile(oldFile, newFile);
                           } catch (IOException e) {
-                            logger.error("Error occurred when upgrading version file", e);
+                            logger.error(IoTConsensusMessages.ERROR_UPGRADING_VERSION_FILE, e);
                           }
                         }));
   }
@@ -179,7 +174,9 @@ public class IndexController {
           Files.delete(versionFiles[i].toPath());
         } catch (IOException e) {
           logger.error(
-              "Delete outdated version file {} failed", versionFiles[i].getAbsolutePath(), e);
+              IoTConsensusMessages.DELETE_OUTDATED_VERSION_FILE_FAILED,
+              versionFiles[i].getAbsolutePath(),
+              e);
         }
       }
     }
@@ -203,7 +200,8 @@ public class IndexController {
       } catch (IOException e) {
         // TODO: (xingtanzjr) we need to handle the situation that file creation failed.
         //  Or the dispatcher won't run correctly
-        logger.error("Error occurred when creating new file {}", versionFile.getAbsolutePath(), e);
+        logger.error(
+            IoTConsensusMessages.ERROR_CREATING_NEW_FILE, versionFile.getAbsolutePath(), e);
       }
     }
   }

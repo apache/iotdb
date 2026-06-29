@@ -606,7 +606,7 @@ public class IoTDBSimpleQueryTableIT {
   }
 
   @Test
-  public void testStorageGroupWithHyphenInName() {
+  public void testDatabaseWithHyphenInName() {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -657,12 +657,14 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE table1(device STRING TAG, s4 DATE FIELD, s5 TIMESTAMP FIELD, s6 BLOB FIELD, s7 STRING FIELD)");
+          "CREATE TABLE table1(device STRING TAG, "
+              + "s4 DATE FIELD, s5 TIMESTAMP FIELD, s6 BLOB FIELD, s7 STRING FIELD)");
 
       for (int i = 1; i <= 10; i++) {
         statement.execute(
             String.format(
-                "insert into table1(time, device, s4, s5, s6, s7) values(%d, 'd1', '%s', %d, %s, '%s')",
+                "insert into table1(time, device, s4, s5, s6, s7) "
+                    + "values(%d, 'd1', '%s', %d, %s, '%s')",
                 i, LocalDate.of(2024, 5, i % 31 + 1), i, "X'cafebabe'", i));
       }
 

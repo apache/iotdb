@@ -1431,7 +1431,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
   private void closeTsFileSequenceReader() throws IOException {
     for (TsFileResource tsFileResource : seqResources) {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFileID());
     }
   }
 }

@@ -33,17 +33,17 @@ public class NodeConnection {
   private final String endpoint;
   private final NodeRole nodeRole;
   private final ConnectionRole connectionRole;
-  private final Connection underlyingConnecton;
+  private final Connection underlyingConnection;
 
   public NodeConnection(
       String endpoint,
       NodeRole nodeRole,
       ConnectionRole connectionRole,
-      Connection underlyingConnecton) {
+      Connection underlyingConnection) {
     this.endpoint = endpoint;
     this.nodeRole = nodeRole;
     this.connectionRole = connectionRole;
-    this.underlyingConnecton = underlyingConnecton;
+    this.underlyingConnection = underlyingConnection;
   }
 
   public String getEndpoint() {
@@ -58,13 +58,13 @@ public class NodeConnection {
     return connectionRole;
   }
 
-  public Connection getUnderlyingConnecton() {
-    return underlyingConnecton;
+  public Connection getUnderlyingConnection() {
+    return underlyingConnection;
   }
 
   public void close() {
     try {
-      underlyingConnecton.close();
+      underlyingConnection.close();
     } catch (SQLException e) {
       logger.error("Close connection {} error", this, e);
     }

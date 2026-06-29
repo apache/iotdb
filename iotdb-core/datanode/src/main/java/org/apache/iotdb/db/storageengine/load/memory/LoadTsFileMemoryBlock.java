@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.memory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileMemMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
@@ -50,8 +51,9 @@ public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
 
   @Override
   public synchronized void addMemoryUsage(long memoryInBytes) {
+    // May temporarily exceed the max size
     if (memoryUsageInBytes.addAndGet(memoryInBytes) > totalMemorySizeInBytes) {
-      LOGGER.warn("{} has exceed total memory size", this);
+      LOGGER.debug(StorageEngineMessages.EXCEED_TOTAL_MEMORY_SIZE, this);
     }
 
     MetricService.getInstance()
@@ -66,7 +68,7 @@ public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
   @Override
   public synchronized void reduceMemoryUsage(long memoryInBytes) {
     if (memoryUsageInBytes.addAndGet(-memoryInBytes) < 0) {
-      LOGGER.warn("{} has reduce memory usage to negative", this);
+      LOGGER.warn(StorageEngineMessages.REDUCE_MEMORY_USAGE_TO_NEGATIVE, this);
     }
 
     MetricService.getInstance()

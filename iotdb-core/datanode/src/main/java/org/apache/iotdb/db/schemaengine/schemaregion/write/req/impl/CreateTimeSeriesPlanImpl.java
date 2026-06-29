@@ -28,6 +28,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
 
@@ -41,6 +42,7 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
   private Map<String, String> attributes = null;
   private long tagOffset = -1;
   private transient boolean withMerge;
+  private final transient AtomicBoolean aligned = new AtomicBoolean(false);
 
   public CreateTimeSeriesPlanImpl() {}
 
@@ -169,5 +171,13 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
 
   public void setWithMerge(final boolean withMerge) {
     this.withMerge = withMerge;
+  }
+
+  public void setAligned(final boolean aligned) {
+    this.aligned.set(aligned);
+  }
+
+  public AtomicBoolean getAligned() {
+    return aligned;
   }
 }

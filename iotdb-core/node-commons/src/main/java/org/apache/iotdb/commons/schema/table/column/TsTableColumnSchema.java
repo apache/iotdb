@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.schema.table.column;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -32,7 +34,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 
 public abstract class TsTableColumnSchema {
 
-  protected String columnName;
+  protected volatile String columnName;
 
   protected TSDataType dataType;
 
@@ -48,6 +50,12 @@ public abstract class TsTableColumnSchema {
     this.columnName = columnName;
     this.dataType = dataType;
     this.props = props;
+  }
+
+  // Only used for column renaming
+  public TsTableColumnSchema setColumnName(String columnName) {
+    this.columnName = columnName;
+    return this;
   }
 
   public String getColumnName() {
@@ -67,6 +75,10 @@ public abstract class TsTableColumnSchema {
 
   public abstract TsTableColumnCategory getColumnCategory();
 
+  public IMeasurementSchema getMeasurementSchema() {
+    return new MeasurementSchema(columnName, dataType);
+  }
+
   void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(columnName, outputStream);
     ReadWriteIOUtils.write(dataType, outputStream);
@@ -82,6 +94,12 @@ public abstract class TsTableColumnSchema {
   public int hashCode() {
     return Objects.hash(columnName);
   }
+
+  public void setDataType(final TSDataType dataType) {
+    this.dataType = dataType;
+  }
+
+  public abstract TsTableColumnSchema copy();
 
   @Override
   public String toString() {

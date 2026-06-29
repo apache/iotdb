@@ -23,7 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -56,11 +57,12 @@ public class PipeExternalSourceLoadBalancer {
 
   public PipeExternalSourceLoadBalancer(final String balanceStrategy) {
     switch (balanceStrategy) {
-      case PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY:
+      case PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY:
         this.strategy = new ProportionalBalanceStrategy();
         break;
       default:
-        throw new IllegalArgumentException("Unknown load balance strategy: " + balanceStrategy);
+        throw new IllegalArgumentException(
+            ProcedureMessages.UNKNOWN_LOAD_BALANCE_STRATEGY + balanceStrategy);
     }
   }
 
@@ -96,18 +98,18 @@ public class PipeExternalSourceLoadBalancer {
       // evenly distributed across running DataNodes.
       // 2. If no DataNodes are available, a PipeException is thrown.
       if (pipeStaticMeta
-          .getExtractorParameters()
+          .getSourceParameters()
           .getBooleanOrDefault(
               Arrays.asList(
-                  PipeExtractorConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_KEY,
-                  PipeExtractorConstant.EXTERNAL_SOURCE_SINGLE_INSTANCE_PER_NODE_KEY),
-              PipeExtractorConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE)) {
+                  PipeSourceConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_KEY,
+                  PipeSourceConstant.EXTERNAL_SOURCE_SINGLE_INSTANCE_PER_NODE_KEY),
+              PipeSourceConstant.EXTERNAL_EXTRACTOR_SINGLE_INSTANCE_PER_NODE_DEFAULT_VALUE)) {
         final List<Integer> runningDataNodes =
             configManager.getLoadManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
                 .sorted()
                 .collect(Collectors.toList());
         if (runningDataNodes.isEmpty()) {
-          throw new PipeException("No available datanode to assign tasks");
+          throw new PipeException(ProcedureMessages.NO_AVAILABLE_DATANODE_TO_ASSIGN_TASKS);
         }
         final int numNodes = runningDataNodes.size();
         for (int i = 1; i <= Math.min(numNodes, parallelCount); i++) {
@@ -141,7 +143,7 @@ public class PipeExternalSourceLoadBalancer {
                 .sorted()
                 .collect(Collectors.toList());
         if (runningDataNodes.isEmpty()) {
-          throw new PipeException("No available datanode to assign tasks");
+          throw new PipeException(ProcedureMessages.NO_AVAILABLE_DATANODE_TO_ASSIGN_TASKS);
         }
         final int numNodes = runningDataNodes.size();
         final int quotient = parallelCount / numNodes;

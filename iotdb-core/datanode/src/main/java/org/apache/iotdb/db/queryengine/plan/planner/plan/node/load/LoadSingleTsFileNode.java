@@ -23,15 +23,16 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -66,12 +67,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private TRegionReplicaSet localRegionReplicaSet;
 
   public LoadSingleTsFileNode(
-      PlanNodeId id,
-      TsFileResource resource,
-      boolean isTableModel,
-      String database,
-      boolean deleteAfterLoad,
-      long writePointCount) {
+      final PlanNodeId id,
+      final TsFileResource resource,
+      final boolean isTableModel,
+      final String database,
+      final boolean deleteAfterLoad,
+      final long writePointCount,
+      final boolean needDecodeTsFile) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -79,6 +81,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
+    this.needDecodeTsFile = needDecodeTsFile;
   }
 
   public boolean isTsFileEmpty() {
@@ -89,27 +92,35 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   public boolean needDecodeTsFile(
       Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
           partitionFetcher) {
-    List<Pair<IDeviceID, TTimePartitionSlot>> slotList = new ArrayList<>();
-    resource
-        .getDevices()
-        .forEach(
-            o -> {
-              // iterating the index, must present
-              slotList.add(
-                  new Pair<>(
-                      o, TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(o).get())));
-              slotList.add(
-                  new Pair<>(
-                      o, TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(o).get())));
-            });
+    if (needDecodeTsFile) {
+      return true;
+    }
+
+    List<Pair<IDeviceID, TTimePartitionSlot>> slotList =
+        new ArrayList<>(resource.getDevices().size() << 1);
+    for (final IDeviceID device : resource.getDevices()) {
+      // iterating the index, must present
+      final TTimePartitionSlot startSlot =
+          TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(device).get());
+      final TTimePartitionSlot endSlot =
+          TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(device).get());
+      slotList.add(new Pair<>(device, startSlot));
+      if (!startSlot.equals(endSlot)) {
+        slotList.add(new Pair<>(device, endSlot));
+      }
+    }
 
     if (slotList.isEmpty()) {
       throw new IllegalStateException(
           String.format("Devices in TsFile %s is empty, this should not happen here.", tsFile));
-    } else if (slotList.stream()
-        .anyMatch(slotPair -> !slotPair.getRight().equals(slotList.get(0).right))) {
-      needDecodeTsFile = true;
     } else {
+      final TTimePartitionSlot firstSlot = slotList.get(0).right;
+      for (int i = 1, size = slotList.size(); i < size; i++) {
+        if (!slotList.get(i).right.equals(firstSlot)) {
+          needDecodeTsFile = true;
+          return true;
+        }
+      }
       needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
     }
 
@@ -186,7 +197,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of load single TsFile is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CLONE_OF_LOAD_SINGLE_TSFILE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -211,7 +223,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
-    throw new NotImplementedException("split load single TsFile is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.SPLIT_LOAD_SINGLE_TSFILE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -229,13 +242,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       if (deleteAfterLoad) {
         Files.deleteIfExists(tsFile.toPath());
         Files.deleteIfExists(
-            new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+            new File(LoadUtil.getTsFileResourcePath(tsFile.getAbsolutePath())).toPath());
         Files.deleteIfExists(ModificationFile.getExclusiveMods(tsFile).toPath());
         Files.deleteIfExists(
-            new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
+            new File(LoadUtil.getTsFileModsV1Path(tsFile.getAbsolutePath())).toPath());
       }
     } catch (final IOException e) {
-      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
+      LOGGER.warn(DataNodeQueryMessages.DELETE_AFTER_LOADING_ERROR, tsFile, e);
     }
   }
 

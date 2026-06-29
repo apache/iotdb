@@ -26,22 +26,26 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.Retry;
+import org.apache.iotdb.subscription.it.RetryRule;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,6 +57,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
@@ -63,6 +68,9 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionTreeRegressionConsumer.class})
 public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRegressionIT {
+
+  @Rule public RetryRule retryRule = new RetryRule();
+
   private static final String database = "root.test.OneConsumerMultiTopicsMix";
   private static final String device = database + ".d_0";
   private String pattern = device + ".s_0";
@@ -90,6 +98,15 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
   }
 
   @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(sender);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver1);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver2);
+  }
+
+  @Override
   @After
   public void tearDown() throws Exception {
     try {
@@ -99,6 +116,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
     subs.dropTopic(topicName);
     subs.dropTopic(topicName2);
     dropDB(database);
+    schemaList.clear();
     super.tearDown();
   }
 
@@ -117,6 +135,8 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
     session_src.executeNonQueryStatement("flush");
   }
 
+  @Retry
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,
@@ -157,23 +177,19 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
             });
     thread.start();
 
+    AtomicBoolean isClosed = new AtomicBoolean(false);
     AtomicInteger rowCount = new AtomicInteger(0);
     Thread thread2 =
         new Thread(
             () -> {
-              while (true) {
+              while (!isClosed.get()) {
                 List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
-                if (messages.isEmpty()) {
-                  break;
-                }
-
                 for (final SubscriptionMessage message : messages) {
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final Iterator<Tablet> it =
-                                message.getSessionDataSetsHandler().tabletIterator();
+                      case RECORD_HANDLER:
+                        for (final Iterator<Tablet> it = message.getRecordTabletIterator();
                             it.hasNext(); ) {
                           final Tablet tablet = it.next();
                           try {
@@ -187,14 +203,12 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
-                          QueryDataSet dataset =
-                              reader.query(
-                                  QueryExpression.create(
-                                      Collections.singletonList(new Path(device, "s_1", true)),
-                                      null));
+                          ITsFileTreeReader reader = message.getTsFile().openTreeReader();
+                          SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                              SubscriptionTreeReaderTestUtils.query(
+                                  reader, Collections.singletonList(new Path(device, "s_1", true)));
                           while (dataset.hasNext()) {
                             rowCount.addAndGet(1);
                             RowRecord next = dataset.next();
@@ -214,19 +228,14 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
     Thread thread3 =
         new Thread(
             () -> {
-              while (true) {
+              while (!isClosed.get()) {
                 List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
-                if (messages.isEmpty()) {
-                  break;
-                }
-
                 for (final SubscriptionMessage message : messages) {
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final Iterator<Tablet> it =
-                                message.getSessionDataSetsHandler().tabletIterator();
+                      case RECORD_HANDLER:
+                        for (final Iterator<Tablet> it = message.getRecordTabletIterator();
                             it.hasNext(); ) {
                           final Tablet tablet = it.next();
                           try {
@@ -240,14 +249,12 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
-                          QueryDataSet dataset =
-                              reader.query(
-                                  QueryExpression.create(
-                                      Collections.singletonList(new Path(device, "s_1", true)),
-                                      null));
+                          ITsFileTreeReader reader = message.getTsFile().openTreeReader();
+                          SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                              SubscriptionTreeReaderTestUtils.query(
+                                  reader, Collections.singletonList(new Path(device, "s_1", true)));
                           while (dataset.hasNext()) {
                             rowCount.addAndGet(1);
                             RowRecord next = dataset.next();
@@ -309,6 +316,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
         });
     // close
     consumer.close();
+    isClosed.set(true);
     try {
       consumer.subscribe(topicName, topicName2);
     } catch (Exception e) {

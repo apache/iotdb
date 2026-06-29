@@ -47,7 +47,10 @@ public class IoTDBNullValueTableViewIT {
         "insert into root.test.table1.d1(time,s1) values(0, null), (1, 1)",
         "flush",
         "insert into root.test.table1.d1(time,s1) values(0, 0)",
-        "flush"
+        "flush",
+        "create aligned timeseries root.test.table2.d1(s1 string)",
+        "insert into root.test.table2.d1(time,s1) aligned values(0, 0)",
+        "insert into root.test.table2.d1(time,s1) aligned values(1, 1)",
       };
 
   private static final String[] createTableViewSqls =
@@ -55,6 +58,7 @@ public class IoTDBNullValueTableViewIT {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
         "create view table1(id1 tag, s1 string) as root.test.table1.**",
+        "create view table2(id1 tag, s1 float) as root.test.table2.**",
       };
 
   @BeforeClass
@@ -80,5 +84,13 @@ public class IoTDBNullValueTableViewIT {
           "1970-01-01T00:00:00.000Z,d1,0,", "1970-01-01T00:00:00.001Z,d1,1,",
         };
     tableResultSetEqualTest("select * from table1", expectedHeader, retArray, DATABASE_NAME);
+    // case 2: For aligned series, when the data types of all series in the view are inconsistent
+    // with the data types of the actual series, the corresponding time can be queried, and other
+    // columns are null values.
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,null,", "1970-01-01T00:00:00.001Z,d1,null,",
+        };
+    tableResultSetEqualTest("select * from table2", expectedHeader, retArray, DATABASE_NAME);
   }
 }

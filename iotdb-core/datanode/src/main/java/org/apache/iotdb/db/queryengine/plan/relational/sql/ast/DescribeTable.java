@@ -19,7 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 
@@ -30,6 +38,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class DescribeTable extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DescribeTable.class);
   private final QualifiedName table;
   private final boolean isDetails;
 
@@ -62,8 +72,8 @@ public class DescribeTable extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitDescribeTable(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitDescribeTable(this, context);
   }
 
   @Override
@@ -97,5 +107,13 @@ public class DescribeTable extends Statement {
         .add("isDetails", isDetails)
         .add("isShowCreateView", isShowCreateView)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += table == null ? 0L : table.ramBytesUsed();
+    return size;
   }
 }

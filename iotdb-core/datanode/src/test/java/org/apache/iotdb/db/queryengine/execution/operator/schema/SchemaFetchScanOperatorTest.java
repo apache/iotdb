@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -36,18 +36,41 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@RunWith(Parameterized.class)
 public class SchemaFetchScanOperatorTest {
+
+  @Parameterized.Parameters(name = "{0}")
+  public static Collection<Object[]> data() {
+    return Arrays.asList(
+        new Object[][] {
+          {1024}, {128 * 1024}, {16},
+        });
+  }
+
+  public SchemaFetchScanOperatorTest(int maxTsBlockSizeInBytes) {
+    SchemaFetchScanOperator.setDefaultMaxTsBlockSizeInBytes(maxTsBlockSizeInBytes);
+  }
+
+  @After
+  public void tearDown() {
+    SchemaFetchScanOperator.setDefaultMaxTsBlockSizeInBytes(
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes());
+  }
 
   @Test
   public void testSchemaFetchResult() throws Exception {
@@ -70,16 +93,25 @@ public class SchemaFetchScanOperatorTest {
             true,
             false);
 
-    Assert.assertTrue(schemaFetchScanOperator.hasNext());
-
-    TsBlock tsBlock = schemaFetchScanOperator.next();
-
+    ClusterSchemaTree.SchemaNodeBatchDeserializer deserializer =
+        new ClusterSchemaTree.SchemaNodeBatchDeserializer();
+    byte type = 0;
+    while (schemaFetchScanOperator.hasNext()) {
+      TsBlock tsBlock = schemaFetchScanOperator.next();
+      Binary binary = tsBlock.getColumn(0).getBinary(0);
+      InputStream inputStream = new ByteArrayInputStream(binary.getValues());
+      if (!deserializer.isFirstBatch()) {
+        Assert.assertEquals(2, type);
+      }
+      type = ReadWriteIOUtils.readByte(inputStream);
+      if (deserializer.isFirstBatch()) {
+        ReadWriteIOUtils.readLong(inputStream);
+      }
+      deserializer.deserializeFromBatch(inputStream);
+    }
+    Assert.assertEquals(3, type);
     Assert.assertFalse(schemaFetchScanOperator.hasNext());
-
-    Binary binary = tsBlock.getColumn(0).getBinary(0);
-    InputStream inputStream = new ByteArrayInputStream(binary.getValues());
-    Assert.assertEquals(1, ReadWriteIOUtils.readByte(inputStream));
-    ISchemaTree schemaTree = ClusterSchemaTree.deserialize(inputStream);
+    ClusterSchemaTree schemaTree = deserializer.finish();
 
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(

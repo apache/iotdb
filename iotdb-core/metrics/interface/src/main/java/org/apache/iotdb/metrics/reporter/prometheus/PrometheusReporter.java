@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.reporter.prometheus;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
@@ -39,6 +40,9 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,10 +52,15 @@ import reactor.netty.http.server.HttpServer;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
+
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.HashMap;
@@ -77,11 +86,11 @@ public class PrometheusReporter implements Reporter {
   @SuppressWarnings("java:S1181")
   public boolean start() {
     if (httpServer != null) {
-      LOGGER.warn("PrometheusReporter already start!");
+      LOGGER.warn(MetricsMessages.PROMETHEUS_REPORTER_ALREADY_START);
       return false;
     }
     try {
-      httpServer =
+      HttpServer serverTransport =
           HttpServer.create()
               .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
               .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
@@ -97,13 +106,27 @@ public class PrometheusReporter implements Reporter {
                             }
                             return res.header(HttpHeaderNames.CONTENT_TYPE, "text/plain")
                                 .sendString(Mono.just(scrape()));
-                          }))
-              .bindNow();
+                          }));
+      if (METRIC_CONFIG.isEnableSSL()) {
+        SslContext sslContext;
+        try {
+          sslContext =
+              createSslContext(
+                  METRIC_CONFIG.getKeyStorePath(),
+                  METRIC_CONFIG.getKeyStorePassword(),
+                  METRIC_CONFIG.getTrustStorePath(),
+                  METRIC_CONFIG.getTrustStorePassword());
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+        serverTransport = serverTransport.secure(spec -> spec.sslContext(sslContext));
+      }
+      httpServer = serverTransport.bindNow();
     } catch (Throwable e) {
       // catch Throwable rather than Exception here because the code above might cause a
       // NoClassDefFoundError
       httpServer = null;
-      LOGGER.warn("PrometheusReporter failed to start, because ", e);
+      LOGGER.warn(MetricsMessages.PROMETHEUS_REPORTER_START_FAILED, e);
       return false;
     }
     LOGGER.info(
@@ -129,7 +152,7 @@ public class PrometheusReporter implements Reporter {
         new String(Base64.getDecoder().decode(base64String), StandardCharsets.UTF_8);
     int dividerIndex = decodedString.indexOf(DIVIDER_BETWEEN_USERNAME_AND_DIVIDER);
     if (dividerIndex < 0) {
-      LOGGER.warn("Unexpected auth string: {}", decodedString);
+      LOGGER.warn(MetricsMessages.PROMETHEUS_UNEXPECTED_AUTH, decodedString);
       return authenticateFailed(res);
     }
 
@@ -257,6 +280,41 @@ public class PrometheusReporter implements Reporter {
     return result;
   }
 
+  private SslContext createSslContext(
+      String keystorePath,
+      String keystorePassword,
+      String truststorePath,
+      String truststorePassword)
+      throws Exception {
+    SslContextBuilder sslContextBuilder = null;
+    if (keystorePath != null && keystorePassword != null) {
+      KeyStore keyStore = KeyStore.getInstance("JKS");
+      try (FileInputStream fis = new FileInputStream(keystorePath)) {
+        keyStore.load(fis, keystorePassword.toCharArray());
+      }
+      KeyManagerFactory kmf =
+          KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+      kmf.init(keyStore, keystorePassword.toCharArray());
+      sslContextBuilder = SslContextBuilder.forServer(kmf);
+    }
+
+    if (sslContextBuilder != null && truststorePath != null && truststorePassword != null) {
+      KeyStore trustStore = KeyStore.getInstance("JKS");
+      try (FileInputStream fis = new FileInputStream(truststorePath)) {
+        trustStore.load(fis, truststorePassword.toCharArray());
+      }
+      TrustManagerFactory tmf =
+          TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+      tmf.init(trustStore);
+      sslContextBuilder.trustManager(tmf);
+    }
+    if (sslContextBuilder == null) {
+      throw new Exception(MetricsMessages.KEYSTORE_OR_TRUSTSTORE_NULL);
+    }
+    sslContextBuilder.clientAuth(ClientAuth.REQUIRE);
+    return sslContextBuilder.build();
+  }
+
   @Override
   public boolean stop() {
     if (httpServer != null) {
@@ -264,11 +322,11 @@ public class PrometheusReporter implements Reporter {
         httpServer.disposeNow(Duration.ofSeconds(10));
         httpServer = null;
       } catch (Exception e) {
-        LOGGER.error("Prometheus Reporter failed to stop, because ", e);
+        LOGGER.error(MetricsMessages.PROMETHEUS_REPORTER_STOP_FAILED, e);
         return false;
       }
     }
-    LOGGER.info("PrometheusReporter stop!");
+    LOGGER.info(MetricsMessages.PROMETHEUS_REPORTER_STOP);
     return true;
   }
 

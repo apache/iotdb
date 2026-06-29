@@ -23,14 +23,17 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -53,7 +56,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class InsertNode extends SearchNode {
-
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
@@ -69,7 +71,7 @@ public abstract class InsertNode extends SearchNode {
   protected TSDataType[] dataTypes;
 
   protected TsTableColumnCategory[] columnCategories;
-  protected List<Integer> idColumnIndices;
+  protected List<Integer> tagColumnIndices;
   protected int measurementColumnCnt = -1;
 
   protected int failedMeasurementNumber = 0;
@@ -98,7 +100,7 @@ public abstract class InsertNode extends SearchNode {
   @Override
   public final SearchNode merge(List<SearchNode> searchNodes) {
     if (searchNodes.isEmpty()) {
-      throw new IllegalArgumentException("insertNodes should never be empty");
+      throw new IllegalArgumentException(DataNodeQueryMessages.INSERTNODES_SHOULD_NEVER_BE_EMPTY);
     }
     if (searchNodes.size() == 1) {
       return searchNodes.get(0);
@@ -109,6 +111,9 @@ public abstract class InsertNode extends SearchNode {
             .collect(Collectors.toList());
     InsertNode result = mergeInsertNode(insertNodes);
     result.setSearchIndex(insertNodes.get(0).getSearchIndex());
+    result.setPhysicalTime(insertNodes.get(0).getPhysicalTime());
+    result.setNodeId(insertNodes.get(0).getNodeId());
+    result.setSyncIndex(insertNodes.get(0).getSyncIndex());
     result.setTargetPath(insertNodes.get(0).getTargetPath());
     return result;
   }
@@ -169,6 +174,7 @@ public abstract class InsertNode extends SearchNode {
 
   public void setMeasurementSchemas(MeasurementSchema[] measurementSchemas) {
     this.measurementSchemas = measurementSchemas;
+    measurementColumnCnt = -1;
   }
 
   public String[] getMeasurements() {
@@ -184,13 +190,23 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public boolean isValidMeasurement(int i) {
-    return measurementSchemas != null
+    return isValidMeasurement(i, true);
+  }
+
+  public boolean isValidMeasurement(int i, boolean countFieldOnly) {
+    return measurements != null
+        && i >= 0
+        && i < measurements.length
+        && measurements[i] != null
+        && measurementSchemas != null
+        && i < measurementSchemas.length
         && measurementSchemas[i] != null
-        && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD);
+        && (!countFieldOnly || isFieldMeasurement(i));
   }
 
   public void setMeasurements(String[] measurements) {
     this.measurements = measurements;
+    measurementColumnCnt = -1;
   }
 
   public TSDataType[] getDataTypes() {
@@ -212,7 +228,7 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public TSDataType getDataType(int index) {
-    return dataTypes[index];
+    return dataTypes == null || index < 0 || index >= dataTypes.length ? null : dataTypes[index];
   }
 
   public void setDataTypes(TSDataType[] dataTypes) {
@@ -253,12 +269,14 @@ public abstract class InsertNode extends SearchNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.SERIALIZEATTRIBUTES_OF_INSERTNODE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.SERIALIZEATTRIBUTES_OF_INSERTNODE_IS_NOT_IMPLEMENTED);
   }
 
   // region Serialization methods for WAL
@@ -320,8 +338,14 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public boolean hasValidMeasurements() {
-    for (Object o : measurements) {
-      if (o != null) {
+    if (measurements == null) {
+      return false;
+    }
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null
+          && (columnCategories == null
+              || i < columnCategories.length
+                  && columnCategories[i] == TsTableColumnCategory.FIELD)) {
         return true;
       }
     }
@@ -336,12 +360,45 @@ public abstract class InsertNode extends SearchNode {
     return failedMeasurementNumber;
   }
 
-  public boolean allMeasurementFailed() {
-    if (measurements != null) {
-      return failedMeasurementNumber
-          >= measurements.length - (idColumnIndices == null ? 0 : idColumnIndices.size());
+  protected int getValidMeasurementNumber() {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        validMeasurementNumber++;
+      }
     }
-    return true;
+    return validMeasurementNumber;
+  }
+
+  public int getValidMeasurementNumber(boolean countFieldOnly) {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (isValidMeasurement(i, countFieldOnly)) {
+        validMeasurementNumber++;
+      }
+    }
+    return validMeasurementNumber;
+  }
+
+  public boolean isMeasurementFailed(int index) {
+    return measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null;
+  }
+
+  protected boolean isWritableFieldMeasurement(int index) {
+    return !isMeasurementFailed(index) && isFieldMeasurement(index);
+  }
+
+  public boolean isFieldMeasurement(int index) {
+    return columnCategories == null
+        || index < columnCategories.length
+            && columnCategories[index] == TsTableColumnCategory.FIELD;
+  }
+
+  public boolean allMeasurementFailed() {
+    return measurements == null || !hasValidMeasurements();
   }
 
   // endregion
@@ -397,11 +454,13 @@ public abstract class InsertNode extends SearchNode {
 
   public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
     this.columnCategories = columnCategories;
+    measurementColumnCnt = -1;
+    tagColumnIndices = null;
     if (columnCategories != null) {
-      idColumnIndices = new ArrayList<>();
+      tagColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
-          idColumnIndices.add(i);
+        if (columnCategories[i] == TsTableColumnCategory.TAG) {
+          tagColumnIndices.add(i);
         }
       }
     }
@@ -421,7 +480,9 @@ public abstract class InsertNode extends SearchNode {
     MeasurementSchema[] measurementSchemas = getMeasurementSchemas();
     String[] rawMeasurements = new String[measurements.length];
     for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
+      if (measurementSchemas != null
+          && i < measurementSchemas.length
+          && measurementSchemas[i] != null) {
         // get raw measurement rather than alias
         rawMeasurements[i] = measurementSchemas[i].getMeasurementName();
       } else {
@@ -449,4 +510,7 @@ public abstract class InsertNode extends SearchNode {
     }
     return memorySize;
   }
+
+  public abstract void checkDataType(AbstractMemTable memTable)
+      throws DataTypeInconsistentException;
 }

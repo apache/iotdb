@@ -29,6 +29,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeCo
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -60,7 +61,9 @@ public class PipeParameters {
   }
 
   public boolean hasAttribute(final String key) {
-    return attributes.containsKey(key) || attributes.containsKey(KeyReducer.reduce(key));
+    return attributes.containsKey(key)
+        || attributes.containsKey(KeyReducer.shallowReduce(key))
+        || attributes.containsKey(KeyReducer.reduce(key));
   }
 
   public boolean hasAnyAttributes(final String... keys) {
@@ -92,7 +95,11 @@ public class PipeParameters {
   }
 
   public String getString(final String key) {
-    final String value = attributes.get(key);
+    String value = attributes.get(key);
+    if (Objects.nonNull(value)) {
+      return value;
+    }
+    value = attributes.get(KeyReducer.shallowReduce(key));
     return value != null ? value : attributes.get(KeyReducer.reduce(key));
   }
 
@@ -365,26 +372,50 @@ public class PipeParameters {
     return new PipeParameters(thisMap);
   }
 
-  private static class KeyReducer {
+  public static class KeyReducer {
 
-    private static final Set<String> PREFIXES = new HashSet<>();
+    private static final Set<String> FIRST_PREFIXES = new HashSet<>();
+    private static final Set<String> SECOND_PREFIXES = new HashSet<>();
 
     static {
-      PREFIXES.add("extractor.");
-      PREFIXES.add("source.");
-      PREFIXES.add("processor.");
-      PREFIXES.add("connector.");
-      PREFIXES.add("sink.");
+      FIRST_PREFIXES.add("extractor.");
+      FIRST_PREFIXES.add("source.");
+      FIRST_PREFIXES.add("processor.");
+      FIRST_PREFIXES.add("connector.");
+      FIRST_PREFIXES.add("sink.");
+
+      SECOND_PREFIXES.add("opcua.");
     }
 
-    static String reduce(final String key) {
+    static String shallowReduce(String key) {
       if (key == null) {
         return null;
       }
       final String lowerCaseKey = key.toLowerCase();
-      for (final String prefix : PREFIXES) {
+      for (final String prefix : FIRST_PREFIXES) {
         if (lowerCaseKey.startsWith(prefix)) {
           return key.substring(prefix.length());
+        }
+      }
+      return key;
+    }
+
+    public static String reduce(String key) {
+      if (key == null) {
+        return null;
+      }
+      String lowerCaseKey = key.toLowerCase();
+      for (final String prefix : FIRST_PREFIXES) {
+        if (lowerCaseKey.startsWith(prefix)) {
+          key = key.substring(prefix.length());
+          lowerCaseKey = lowerCaseKey.substring(prefix.length());
+          break;
+        }
+      }
+      for (final String prefix : SECOND_PREFIXES) {
+        if (lowerCaseKey.startsWith(prefix)) {
+          key = key.substring(prefix.length());
+          break;
         }
       }
       return key;
@@ -399,17 +430,19 @@ public class PipeParameters {
 
     static {
       KEYS.add("ssl.trust-store-pwd");
+      KEYS.add("scp.password");
       KEYS.add("password");
     }
 
     static String hide(final String key, final String value) {
-      if (Objects.isNull(key)) {
-        return value;
-      }
-      if (KEYS.contains(KeyReducer.reduce(key))) {
+      if (isHiddenKey(key)) {
         return PLACEHOLDER;
       }
       return value;
+    }
+
+    public static boolean isHiddenKey(final String key) {
+      return Objects.nonNull(key) && KEYS.contains(KeyReducer.reduce(key).toLowerCase(Locale.ROOT));
     }
   }
 }

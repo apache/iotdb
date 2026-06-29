@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -98,11 +101,58 @@ public class TsFileManager {
     }
   }
 
+  /**
+   * don't need to acquire lock again, caller should guarantee the lock has been acquired
+   *
+   * @return left is seq resource list, right is unSeq resource list
+   */
+  public Pair<List<TsFileResource>, List<TsFileResource>> getAllTsFileListForQuery(
+      List<Long> timePartitions, Filter timeFilter) {
+    List<TsFileResource> seq = new ArrayList<>();
+    List<TsFileResource> unSeq = new ArrayList<>();
+    if (timePartitions == null) {
+      for (Map.Entry<Long, TsFileResourceList> entry : sequenceFiles.entrySet()) {
+        if (TimePartitionUtils.satisfyTimePartition(timeFilter, entry.getKey())) {
+          seq.addAll(entry.getValue().getArrayList());
+        }
+      }
+      for (Map.Entry<Long, TsFileResourceList> entry : unsequenceFiles.entrySet()) {
+        if (TimePartitionUtils.satisfyTimePartition(timeFilter, entry.getKey())) {
+          unSeq.addAll(entry.getValue().getArrayList());
+        }
+      }
+    } else {
+      for (Long timePartitionId : timePartitions) {
+        TsFileResourceList tsFileResources = sequenceFiles.get(timePartitionId);
+        if (tsFileResources != null) {
+          seq.addAll(tsFileResources.getArrayList());
+        }
+        tsFileResources = unsequenceFiles.get(timePartitionId);
+        if (tsFileResources != null) {
+          unSeq.addAll(tsFileResources.getArrayList());
+        }
+      }
+    }
+    return new Pair<>(seq, unSeq);
+  }
+
   public List<TsFileResource> getTsFileListSnapshot(long timePartition, boolean sequence) {
     readLock();
     try {
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
       return new ArrayList<>(chosenMap.getOrDefault(timePartition, new TsFileResourceList()));
+    } finally {
+      readUnlock();
+    }
+  }
+
+  public Pair<List<TsFileResource>, List<TsFileResource>> getTsFileListSnapshot(
+      long timePartition) {
+    readLock();
+    try {
+      return new Pair<>(
+          new ArrayList<>(sequenceFiles.getOrDefault(timePartition, new TsFileResourceList())),
+          new ArrayList<>(unsequenceFiles.getOrDefault(timePartition, new TsFileResourceList())));
     } finally {
       readUnlock();
     }
@@ -156,14 +206,7 @@ public class TsFileManager {
   public void remove(TsFileResource tsFileResource, boolean sequence) {
     writeLock("remove");
     try {
-      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
-      for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
-        if (entry.getValue().contains(tsFileResource)) {
-          entry.getValue().remove(tsFileResource);
-          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
-          break;
-        }
-      }
+      removeFromPartitionFileList(tsFileResource, sequence);
     } finally {
       writeUnlock();
     }
@@ -173,10 +216,18 @@ public class TsFileManager {
     writeLock("removeAll");
     try {
       for (TsFileResource resource : tsFileResourceList) {
-        remove(resource, sequence);
+        removeFromPartitionFileList(resource, sequence);
       }
     } finally {
-      writeLock("removeAll");
+      writeUnlock();
+    }
+  }
+
+  private void removeFromPartitionFileList(TsFileResource tsFileResource, boolean sequence) {
+    Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+    TsFileResourceList tsFileResources = selectedMap.get(tsFileResource.getTimePartition());
+    if (tsFileResources != null && tsFileResources.remove(tsFileResource)) {
+      TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
     }
   }
 
@@ -299,6 +350,18 @@ public class TsFileManager {
     } finally {
       writeUnlock();
     }
+
+    // Currently disable
+    if (false) {
+      PipeDataNodeResourceManager.compaction()
+          .emitResult(
+              storageGroupName,
+              dataRegionId,
+              timePartition,
+              seqFileResources,
+              unseqFileResources,
+              targetFileResources);
+    }
   }
 
   public boolean contains(TsFileResource tsFileResource, boolean sequence) {
@@ -351,10 +414,12 @@ public class TsFileManager {
     }
   }
 
-  public void getModFileManagement() {}
-
   public void readLock() {
     resourceListLock.readLock().lock();
+  }
+
+  public boolean tryReadLock(long waitMillis) throws InterruptedException {
+    return resourceListLock.readLock().tryLock(waitMillis, TimeUnit.MILLISECONDS);
   }
 
   public void readUnlock() {

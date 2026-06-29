@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -153,7 +153,8 @@ public class LastQuerySortOperator implements ProcessOperator {
 
     while (keepGoing(start, maxRuntime, endIndex)) {
 
-      if (prepareData()) {
+      prepareData();
+      if (previousTsBlock == null) {
         return null;
       }
 
@@ -179,21 +180,18 @@ public class LastQuerySortOperator implements ProcessOperator {
         && !tsBlockBuilder.isFull();
   }
 
-  private boolean prepareData() throws Exception {
+  private void prepareData() throws Exception {
     if (previousTsBlock == null || previousTsBlock.getPositionCount() <= previousTsBlockIndex) {
       if (children.get(currentIndex).hasNextWithTimer()) {
         previousTsBlock = children.get(currentIndex).nextWithTimer();
         previousTsBlockIndex = 0;
-        if (previousTsBlock == null) {
-          return true;
-        }
+        return;
       } else {
         children.get(currentIndex).close();
         children.set(currentIndex, null);
       }
       currentIndex++;
     }
-    return false;
   }
 
   @Override

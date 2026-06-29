@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.RepairUnsortedFileCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -72,7 +74,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(),
+        new RepairUnsortedFileCompactionPerformer(
+            EncryptDBUtils.getFirstEncryptParamFromDatabase(tsFileManager.getStorageGroupName())),
         serialId);
     this.sourceFile = sourceFile;
     if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
@@ -93,7 +96,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(),
+        new RepairUnsortedFileCompactionPerformer(
+            EncryptDBUtils.getFirstEncryptParamFromDatabase(tsFileManager.getStorageGroupName())),
         serialId);
     this.sourceFile = sourceFile;
     if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
@@ -189,7 +193,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     }
     boolean isSuccess = super.doCompaction();
     if (!isSuccess) {
-      LOGGER.info("Failed to repair file {}", sourceFile.getTsFile().getAbsolutePath());
+      LOGGER.info(
+          StorageEngineMessages.FAILED_TO_REPAIR_FILE, sourceFile.getTsFile().getAbsolutePath());
       sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
     }
     return isSuccess;

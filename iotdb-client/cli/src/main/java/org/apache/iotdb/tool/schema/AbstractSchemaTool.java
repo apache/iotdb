@@ -19,16 +19,22 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.type.ExitType;
+import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.IoTPrinter;
+import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
+import org.jline.reader.LineReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +52,10 @@ public abstract class AbstractSchemaTool {
   protected static String database;
   protected static String username;
   protected static String password;
+  protected static Boolean useSsl;
+  protected static String trustStore;
+  protected static String trustStorePwd;
+  protected static String sslProtocol;
   protected static Session session;
   protected static String queryPath;
   protected static int threadNum = 8;
@@ -66,6 +76,30 @@ public abstract class AbstractSchemaTool {
 
   protected AbstractSchemaTool() {}
 
+  protected static Session.Builder configureSsl(Session.Builder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
+  protected static SessionPool.Builder configureSsl(SessionPool.Builder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
+  protected static TableSessionPoolBuilder configureSsl(TableSessionPoolBuilder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
   protected static String checkRequiredArg(
       String arg, String name, CommandLine commandLine, String defaultValue)
       throws ArgsErrorException {
@@ -80,7 +114,8 @@ public abstract class AbstractSchemaTool {
     return str;
   }
 
-  protected static void parseBasicParams(CommandLine commandLine) throws ArgsErrorException {
+  protected static void parseBasicParams(CommandLine commandLine)
+      throws ArgsErrorException, IOException {
     host =
         checkRequiredArg(
             Constants.HOST_ARGS, Constants.HOST_NAME, commandLine, Constants.HOST_DEFAULT_VALUE);
@@ -93,9 +128,37 @@ public abstract class AbstractSchemaTool {
             Constants.USERNAME_NAME,
             commandLine,
             Constants.USERNAME_DEFAULT_VALUE);
-    password =
-        checkRequiredArg(
-            Constants.PW_ARGS, Constants.PW_NAME, commandLine, Constants.PW_DEFAULT_VALUE);
+    CliContext cliCtx = new CliContext(System.in, System.out, System.err, ExitType.SYSTEM_EXIT);
+    LineReader lineReader = JlineUtils.getLineReader(cliCtx, username, host, port);
+    cliCtx.setLineReader(lineReader);
+    String useSslStr = commandLine.getOptionValue(Constants.USE_SSL_ARGS);
+    useSsl = Boolean.parseBoolean(useSslStr);
+    if (useSsl) {
+      sslProtocol = commandLine.getOptionValue(Constants.SSL_PROTOCOL_ARGS);
+      String givenTS = commandLine.getOptionValue(Constants.TRUST_STORE_ARGS);
+      if (givenTS != null) {
+        trustStore = givenTS;
+      } else {
+        trustStore = cliCtx.getLineReader().readLine("please input your trust_store:", '\0');
+      }
+      String givenTPW = commandLine.getOptionValue(Constants.TRUST_STORE_PWD_ARGS);
+      if (givenTPW != null) {
+        trustStorePwd = givenTPW;
+      } else {
+        trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+      }
+    }
+    boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);
+    if (hasPw) {
+      String inputPassword = commandLine.getOptionValue(Constants.PW_ARGS);
+      if (inputPassword != null) {
+        password = inputPassword;
+      } else {
+        password = cliCtx.getLineReader().readLine("please input your password:", '\0');
+      }
+    } else {
+      password = Constants.PW_DEFAULT_VALUE;
+    }
   }
 
   /**

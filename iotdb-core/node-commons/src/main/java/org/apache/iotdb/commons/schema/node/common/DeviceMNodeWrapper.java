@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.node.common;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.MNodeType;
@@ -159,7 +160,7 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
 
   @Override
   public IMeasurementMNode<N> getAsMeasurementMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(SchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override

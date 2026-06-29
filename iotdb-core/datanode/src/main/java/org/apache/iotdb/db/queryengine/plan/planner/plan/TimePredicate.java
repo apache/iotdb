@@ -27,12 +27,14 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
+import java.util.concurrent.TimeUnit;
 
 public interface TimePredicate {
 
   void serialize(DataOutputStream stream) throws IOException;
 
-  Filter convertPredicateToTimeFilter();
+  Filter convertPredicateToTimeFilter(ZoneId zoneId, TimeUnit currPrecision);
 
   static TimePredicate deserialize(ByteBuffer byteBuffer) {
     // 0 for tree model, 1 for table model
@@ -41,7 +43,7 @@ public interface TimePredicate {
       return new TreeModelTimePredicate(Expression.deserialize(byteBuffer));
     } else {
       return new TableModelTimePredicate(
-          org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression.deserialize(
+          org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression.deserialize(
               byteBuffer));
     }
   }

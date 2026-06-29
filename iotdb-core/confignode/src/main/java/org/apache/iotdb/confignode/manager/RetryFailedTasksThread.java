@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -52,8 +52,6 @@ public class RetryFailedTasksThread {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RetryFailedTasksThread.class);
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
   private final IManager configManager;
   private final NodeManager nodeManager;
   private final LoadManager loadManager;
@@ -81,9 +79,9 @@ public class RetryFailedTasksThread {
                 retryFailTasksExecutor,
                 this::retryFailedTasks,
                 0,
-                HEARTBEAT_INTERVAL,
+                ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
                 TimeUnit.MILLISECONDS);
-        LOGGER.info("RetryFailMissions service is started successfully.");
+        LOGGER.info(ManagerMessages.RETRYFAILMISSIONS_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
     }
   }
@@ -94,8 +92,26 @@ public class RetryFailedTasksThread {
       if (currentFailedTasksRetryThreadFuture != null) {
         currentFailedTasksRetryThreadFuture.cancel(false);
         currentFailedTasksRetryThreadFuture = null;
-        LOGGER.info("RetryFailMissions service is stopped successfully.");
+        LOGGER.info(ManagerMessages.RETRYFAILMISSIONS_SERVICE_IS_STOPPED_SUCCESSFULLY);
       }
+    }
+  }
+
+  /** Reload the retry interval without rebuilding the service instance. */
+  public void reloadHeartbeatInterval() {
+    synchronized (scheduleMonitor) {
+      if (currentFailedTasksRetryThreadFuture == null) {
+        return;
+      }
+      currentFailedTasksRetryThreadFuture.cancel(false);
+      currentFailedTasksRetryThreadFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              retryFailTasksExecutor,
+              this::retryFailedTasks,
+              0,
+              ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
+              TimeUnit.MILLISECONDS);
+      LOGGER.info(ManagerMessages.RETRYFAILMISSIONS_SERVICE_IS_STARTED_SUCCESSFULLY);
     }
   }
 

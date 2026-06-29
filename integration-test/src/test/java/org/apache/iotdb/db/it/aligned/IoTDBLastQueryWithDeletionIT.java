@@ -125,7 +125,8 @@ public class IoTDBLastQueryWithDeletionIT {
                 "40,root.sg1.d2.s2,40,INT32",
                 "30,root.sg1.d2.s3,30,INT64",
                 "30,root.sg1.d2.s4,false,BOOLEAN",
-                "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
+                "40,root.sg1.d2.s5,non_aligned_test40,TEXT",
+                "-40,root.sg1.d2.s6,40.0,DOUBLE"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();

@@ -19,15 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -91,7 +94,7 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
     this.measurementColumnNameMap = measurementColumnNameMap;
   }
 
-  private AggregationTreeDeviceViewScanNode() {}
+  protected AggregationTreeDeviceViewScanNode() {}
 
   public String getTreeDBName() {
     return treeDBName;
@@ -102,8 +105,8 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitAggregationTreeDeviceViewScan(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitAggregationTreeDeviceViewScan(this, context);
   }
 
   @Override
@@ -158,9 +161,14 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
         measurementColumnNameMap);
   }
 
+  protected PlanNodeType getPlanNodeType() {
+    // This node is not supported to serde
+    throw new UnsupportedOperationException(DataNodeQueryMessages.NOT_SUPPORTED_YET);
+  }
+
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE.serialize(byteBuffer);
+    getPlanNodeType().serialize(byteBuffer);
 
     AggregationTableScanNode.serializeMemberVariables(this, byteBuffer);
 
@@ -174,7 +182,7 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE.serialize(stream);
+    getPlanNodeType().serialize(stream);
 
     AggregationTableScanNode.serializeMemberVariables(this, stream);
 
@@ -186,8 +194,8 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
     }
   }
 
-  public static AggregationTreeDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
-    AggregationTreeDeviceViewScanNode node = new AggregationTreeDeviceViewScanNode();
+  protected static AggregationTreeDeviceViewScanNode deserialize(
+      ByteBuffer byteBuffer, AggregationTreeDeviceViewScanNode node) {
     AggregationTableScanNode.deserializeMemberVariables(byteBuffer, node);
 
     node.treeDBName = ReadWriteIOUtils.readString(byteBuffer);

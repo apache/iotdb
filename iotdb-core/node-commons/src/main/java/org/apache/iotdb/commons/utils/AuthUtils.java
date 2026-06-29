@@ -21,8 +21,11 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.AuthMessages;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -41,6 +44,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -51,8 +56,10 @@ import java.util.Set;
 public class AuthUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthUtils.class);
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
-  private static final int MIN_LENGTH = 4;
-  private static final int MAX_LENGTH = 32;
+  private static final int NAME_MIN_LENGTH = 4;
+  private static final int NAME_MAX_LENGTH = 32;
+  private static final int PASSWORD_MIN_LENGTH = 4;
+  private static final int PASSWORD_MAX_LENGTH = 32;
 
   // match number, character, and !@#$%^*()_+-=
   // pattern: ^[-\w!@#\$%\^\(\)\+=]*$
@@ -69,7 +76,44 @@ public class AuthUtils {
    * @throws AuthException contains message why password is invalid
    */
   public static void validatePassword(String password) throws AuthException {
-    validateNameOrPassword(password);
+    validateAllPassword(password);
+    if (CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
+      boolean hasLowerCase = false;
+      boolean hasUpperCase = false;
+      boolean hasDigit = false;
+      boolean hasSpecialChar = false;
+      for (int i = 0; i < password.length(); i++) {
+        char c = password.charAt(i);
+        if (Character.isLowerCase(c)) {
+          hasLowerCase = true;
+        } else if (Character.isUpperCase(c)) {
+          hasUpperCase = true;
+        } else if (Character.isDigit(c)) {
+          hasDigit = true;
+        } else {
+          hasSpecialChar = true;
+        }
+      }
+
+      if (!hasLowerCase || !hasUpperCase || !hasDigit || !hasSpecialChar) {
+        StringBuilder builder = new StringBuilder("Invalid password, must contain at least");
+        if (!hasLowerCase) {
+          builder.append(" one lowercase letter,");
+        }
+        if (!hasUpperCase) {
+          builder.append(" one uppercase letter,");
+        }
+        if (!hasDigit) {
+          builder.append(" one digit,");
+        }
+        if (!hasSpecialChar) {
+          builder.append(" one special character,");
+        }
+        builder.deleteCharAt(builder.length() - 1);
+        builder.append(".");
+        throw new AuthException(TSStatusCode.ILLEGAL_PASSWORD, builder.toString());
+      }
+    }
   }
 
   /**
@@ -103,13 +147,63 @@ public class AuthUtils {
   }
 
   /**
-   * Validate username
+   * Validate username string (length, allowed characters) only, without {@code __} rules.
    *
    * @param username username
    * @throws AuthException contains message why username is invalid
    */
   public static void validateUsername(String username) throws AuthException {
-    validateNameOrPassword(username);
+    validateName(username);
+  }
+
+  /**
+   * Usernames for built-in users created with a fixed id via {@code tryToCreateBuiltinUser}: the
+   * default superuser (id {@link IoTDBConstant#SUPER_USER_ID}) and the three separation-of-duties
+   * admins (ids {@link User#INTERNAL_SYSTEM_ADMIN}, {@link User#INTERNAL_SECURITY_ADMIN}, {@link
+   * User#INTERNAL_AUDIT_ADMIN}) may use any valid name; all other internal ids must use a name with
+   * prefix {@link User#BUILTIN_USERNAME_PREFIX}.
+   */
+  public static void validateInternalBuiltinUsername(String username, long userId)
+      throws AuthException {
+    validateName(username);
+    if (userId == IoTDBConstant.SUPER_USER_ID) {
+      return;
+    }
+    if (userId == User.INTERNAL_SYSTEM_ADMIN
+        || userId == User.INTERNAL_SECURITY_ADMIN
+        || userId == User.INTERNAL_AUDIT_ADMIN) {
+      return;
+    }
+    if (!User.isSystemReservedUsername(username)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "Internal user names (except the default superuser and separation-of-duties admins) must "
+              + "start with \""
+              + User.BUILTIN_USERNAME_PREFIX
+              + "\"");
+    }
+  }
+
+  /**
+   * Validate a login name that is being <b>newly assigned</b>: {@code CREATE USER}, or the target
+   * name of {@code RENAME USER}. Same as {@link #validateName(String)} plus disallows the {@link
+   * User#BUILTIN_USERNAME_PREFIX} prefix. Existing accounts that already use a {@code __} name are
+   * unchanged; they may keep using it, but cannot {@code RENAME} to another {@code __}-prefixed
+   * name.
+   *
+   * @param username username
+   * @throws AuthException contains message why username is invalid
+   */
+  public static void validateNewUserUsername(String username) throws AuthException {
+    validateName(username);
+    if (User.isSystemReservedUsername(username)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "User names starting with \""
+              + User.BUILTIN_USERNAME_PREFIX
+              + "\" are reserved for system use and cannot be used for new users or as a rename "
+              + "target");
+    }
   }
 
   /**
@@ -119,26 +213,46 @@ public class AuthUtils {
    * @throws AuthException contains message why roleName is invalid
    */
   public static void validateRolename(String roleName) throws AuthException {
-    validateNameOrPassword(roleName);
+    validateName(roleName);
   }
 
-  public static void validateNameOrPassword(String str) throws AuthException {
+  public static void validateName(String str) throws AuthException {
     int length = str.length();
-    if (length < MIN_LENGTH) {
+    if (length < NAME_MIN_LENGTH) {
       throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
-          "The length of name or password must be greater than or equal to " + MIN_LENGTH);
-    } else if (length > MAX_LENGTH) {
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "The length of name must be greater than or equal to " + NAME_MIN_LENGTH);
+    } else if (length > NAME_MAX_LENGTH) {
       throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
-          "The length of name or password must be less than or equal to " + MAX_LENGTH);
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "The length of name must be less than or equal to " + NAME_MAX_LENGTH);
     } else if (str.contains(" ")) {
       throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER, "The name or password cannot contain spaces");
+          TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.NAME_CANNOT_CONTAIN_SPACES);
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
-          "The name or password can only contain letters, numbers or !@#$%^*()_+-=");
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "The name can only contain letters, numbers or !@#$%^*()_+-=");
+    }
+  }
+
+  public static void validateAllPassword(String str) throws AuthException {
+    int length = str.length();
+    if (length < PASSWORD_MIN_LENGTH) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "The length of password must be greater than or equal to " + PASSWORD_MIN_LENGTH);
+    } else if (length > PASSWORD_MAX_LENGTH) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "The length of password must be less than or equal to " + PASSWORD_MAX_LENGTH);
+    } else if (str.contains(" ")) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_CANNOT_CONTAIN_SPACES);
+    } else if (!str.matches(REX_PATTERN)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "The password can only contain letters, numbers or !@#$%^*()_+-=");
     }
   }
 
@@ -358,7 +472,8 @@ public class AuthUtils {
                 new HashSet<>()),
             "",
             new HashSet<>(),
-            false));
+            false,
+            -1));
     Map<String, TRoleResp> roleInfo = new HashMap<>();
     roleInfo.put(
         "",
@@ -414,7 +529,7 @@ public class AuthUtils {
         path.serialize(dataOutputStream);
       }
     } catch (IOException e) {
-      LOGGER.error("Failed to serialize PartialPath list", e);
+      LOGGER.error(UtilMessages.FAILED_TO_SERIALIZE_PARTIAL_PATH_LIST, e);
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
@@ -451,10 +566,16 @@ public class AuthUtils {
         return PrivilegeType.MAINTAIN;
       case 9:
         return PrivilegeType.USE_MODEL;
+      case 10:
+        return PrivilegeType.SYSTEM;
+      case 11:
+        return PrivilegeType.SECURITY;
+      case 12:
+        return PrivilegeType.AUDIT;
       default:
         // Not reach here.
-        LOGGER.warn("Not support position");
-        throw new RuntimeException("Not support position");
+        LOGGER.warn(UtilMessages.UNSUPPORTED_POSITION);
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_POSITION);
     }
   }
 
@@ -480,8 +601,33 @@ public class AuthUtils {
         return 8;
       case USE_MODEL:
         return 9;
+      case SYSTEM:
+        return 10;
+      case SECURITY:
+        return 11;
+      case AUDIT:
+        return 12;
       default:
         return -1;
+    }
+  }
+
+  public static List<PrivilegeType> getAllPrivilegesContainingCurrentPrivilege(PrivilegeType priv) {
+    switch (priv) {
+      case MANAGE_USER:
+      case MANAGE_ROLE:
+        return Arrays.asList(priv, PrivilegeType.SECURITY);
+      case MAINTAIN:
+      case USE_UDF:
+      case USE_MODEL:
+      case USE_TRIGGER:
+      case USE_CQ:
+      case USE_PIPE:
+      case MANAGE_DATABASE:
+      case EXTEND_TEMPLATE:
+        return Arrays.asList(priv, PrivilegeType.SYSTEM);
+      default:
+        return Collections.singletonList(priv);
     }
   }
 
@@ -511,7 +657,7 @@ public class AuthUtils {
       case WRITE_SCHEMA:
         return 3;
       default:
-        throw new RuntimeException("Not support PrivilegeType " + pri);
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_PRIVILEGE_TYPE + pri);
     }
   }
 
@@ -530,7 +676,7 @@ public class AuthUtils {
       case 5:
         return PrivilegeType.DELETE;
       default:
-        throw new RuntimeException("Not support position");
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_POSITION);
     }
   }
 
@@ -549,7 +695,7 @@ public class AuthUtils {
       case DELETE:
         return 5;
       default:
-        throw new RuntimeException("Not support position");
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_POSITION);
     }
   }
 }

@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -46,18 +44,13 @@ public class RemoveDataNodeStatement extends Statement implements IConfigStateme
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkSuperUserOrMaintain(userName);
-  }
-
-  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitRemoveDataNode(this, context);
   }
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

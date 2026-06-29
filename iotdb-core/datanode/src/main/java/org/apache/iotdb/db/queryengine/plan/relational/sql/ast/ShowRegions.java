@@ -20,8 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +34,9 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class ShowRegions extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowRegions.class);
 
   private final TConsensusGroupType regionType;
   private final String database;
@@ -55,8 +63,8 @@ public class ShowRegions extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitShowRegions(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitShowRegions(this, context);
   }
 
   @Override
@@ -90,5 +98,14 @@ public class ShowRegions extends Statement {
         .add("database", database)
         .add("nodeIds", nodeIds)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(database);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfIntegerList(nodeIds);
+    return size;
   }
 }

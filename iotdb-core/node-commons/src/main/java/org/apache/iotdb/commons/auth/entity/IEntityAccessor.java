@@ -36,6 +36,21 @@ public interface IEntityAccessor extends SnapshotProcessor {
   Role loadEntity(String entityName) throws IOException;
 
   /**
+   * Deserialize userid from lower storage.
+   *
+   * @return The max userid.
+   * @throws IOException if an exception is raised when interacting with the lower storage.
+   */
+  long loadUserId() throws IOException;
+
+  /**
+   * save maxUserId to lower storage when snapshot.
+   *
+   * @throws IOException if an exception is raised when interacting with the lower storage.
+   */
+  void saveUserId(long nextUserId) throws IOException;
+
+  /**
    * Serialize the entity object to lower storage.
    *
    * @param entity The user/role object that is to be saved.

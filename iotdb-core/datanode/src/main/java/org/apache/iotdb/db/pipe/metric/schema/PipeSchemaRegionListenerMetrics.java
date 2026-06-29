@@ -21,14 +21,14 @@ package org.apache.iotdb.db.pipe.metric.schema;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,8 +73,7 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
   public void unbindFrom(final AbstractMetricService metricService) {
     ImmutableSet.copyOf(listeningQueueMap.keySet()).forEach(this::deregister);
     if (!listeningQueueMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe schema region listener metrics, listening queue map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_2);
     }
   }
 
@@ -93,8 +92,7 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
   public void register(
-      @NonNull final SchemaRegionListeningQueue schemaRegionListeningQueue,
-      final Integer schemaRegionId) {
+      final SchemaRegionListeningQueue schemaRegionListeningQueue, final Integer schemaRegionId) {
     listeningQueueMap.putIfAbsent(schemaRegionId, schemaRegionListeningQueue);
     if (Objects.nonNull(metricService)) {
       createMetrics(schemaRegionId);
@@ -104,8 +102,7 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
   public void deregister(final Integer schemaRegionId) {
     if (!listeningQueueMap.containsKey(schemaRegionId)) {
       LOGGER.warn(
-          "Failed to deregister schema region listener metrics, SchemaRegionListeningQueue({}) does not exist",
-          schemaRegionId);
+          DataNodePipeMessages.FAILED_TO_DEREGISTER_SCHEMA_REGION_LISTENER_METRICS, schemaRegionId);
       return;
     }
     if (Objects.nonNull(metricService)) {

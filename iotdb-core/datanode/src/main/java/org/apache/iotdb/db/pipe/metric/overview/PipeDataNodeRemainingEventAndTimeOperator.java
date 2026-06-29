@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.metric.overview;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
@@ -40,10 +40,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
+public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   // Calculate from schema region extractors directly for it requires less computation
-  private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
+  private final Set<IoTDBSchemaRegionSource> schemaRegionSources =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   private final AtomicInteger insertNodeEventCount = new AtomicInteger(0);
@@ -58,8 +58,6 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   private Timer insertNodeTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer tsfileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-
-  private final InsertNodeEMA insertNodeEventCountEMA = new InsertNodeEMA();
 
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
@@ -102,19 +100,13 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     heartbeatEventCount.decrementAndGet();
   }
 
-  double getRemainingInsertEventSmoothingCount() {
-    insertNodeEventCountEMA.update(insertNodeEventCount.get());
-    return insertNodeEventCountEMA.insertNodeEMAValue;
-  }
-
-  long getRemainingEvents() {
+  public long getRemainingNonHeartbeatEvents() {
     final long remainingEvents =
         tsfileEventCount.get()
             + rawTabletEventCount.get()
             + insertNodeEventCount.get()
-            + heartbeatEventCount.get()
-            + schemaRegionExtractors.stream()
-                .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+            + schemaRegionSources.stream()
+                .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
                 .reduce(Long::sum)
                 .orElse(0L);
 
@@ -124,6 +116,10 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     return remainingEvents >= 0 ? remainingEvents : 0;
   }
 
+  public int getInsertNodeEventCount() {
+    return insertNodeEventCount.get();
+  }
+
   /**
    * This will calculate the estimated remaining time of pipe.
    *
@@ -131,7 +127,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
    *
    * @return The estimated remaining time
    */
-  double getRemainingTime() {
+  public double getRemainingTime() {
     final PipeRateAverage pipeRemainingTimeCommitRateAverageTime =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
@@ -142,14 +138,11 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
             + rawTabletEventCount.get()
             + insertNodeEventCount.get();
 
-    dataRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            lastDataRegionCommitSmoothingValue =
-                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
-          }
-          return meter;
-        });
+    final Meter dataRegionMeter = dataRegionCommitMeter.get();
+    if (Objects.nonNull(dataRegionMeter)) {
+      lastDataRegionCommitSmoothingValue =
+          pipeRemainingTimeCommitRateAverageTime.getMeterRate(dataRegionMeter);
+    }
     final double dataRegionRemainingTime;
     if (totalDataRegionWriteEventCount <= 0) {
       dataRegionRemainingTime = 0;
@@ -161,19 +154,16 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     }
 
     final long totalSchemaRegionWriteEventCount =
-        schemaRegionExtractors.stream()
-            .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+        schemaRegionSources.stream()
+            .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
 
-    schemaRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            lastSchemaRegionCommitSmoothingValue =
-                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
-          }
-          return meter;
-        });
+    final Meter schemaRegionMeter = schemaRegionCommitMeter.get();
+    if (Objects.nonNull(schemaRegionMeter)) {
+      lastSchemaRegionCommitSmoothingValue =
+          pipeRemainingTimeCommitRateAverageTime.getMeterRate(schemaRegionMeter);
+    }
     final double schemaRegionRemainingTime;
     if (totalSchemaRegionWriteEventCount <= 0) {
       schemaRegionRemainingTime = 0;
@@ -196,30 +186,24 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
-  void register(final IoTDBSchemaRegionExtractor extractor) {
-    schemaRegionExtractors.add(extractor);
+  void register(final IoTDBSchemaRegionSource source) {
+    schemaRegionSources.add(source);
   }
 
   //////////////////////////// Rate ////////////////////////////
 
   void markDataRegionCommit() {
-    dataRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
+    final Meter meter = dataRegionCommitMeter.get();
+    if (Objects.nonNull(meter)) {
+      meter.mark();
+    }
   }
 
   void markSchemaRegionCommit() {
-    schemaRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
+    final Meter meter = schemaRegionCommitMeter.get();
+    if (Objects.nonNull(meter)) {
+      meter.mark();
+    }
   }
 
   void markTsFileCollectInvocationCount(final long collectInvocationCount) {
@@ -265,18 +249,5 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
     super.freezeRate(isStopPipe);
     dataRegionCommitMeter.set(null);
     schemaRegionCommitMeter.set(null);
-  }
-
-  private static class InsertNodeEMA {
-    private double insertNodeEMAValue;
-
-    public void update(final double newValue) {
-      final double alpha = PipeConfig.getInstance().getPipeRemainingInsertNodeCountEMAAlpha();
-      if (insertNodeEMAValue == 0) {
-        insertNodeEMAValue = newValue;
-      } else {
-        insertNodeEMAValue = alpha * newValue + (1 - alpha) * insertNodeEMAValue;
-      }
-    }
   }
 }

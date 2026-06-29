@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -50,7 +50,7 @@ public class TsFileResourcePrinter {
       File[] files =
           FSFactoryProducer.getFSFactory()
               .listFilesBySuffix(folderFile.getAbsolutePath(), ".tsfile.resource");
-      Arrays.sort(files, Comparator.comparingLong(x -> Long.valueOf(x.getName().split("-")[0])));
+      Arrays.sort(files, Comparator.comparingLong(x -> Long.parseLong(x.getName().split("-")[0])));
 
       for (File file : files) {
         printResource(file.getAbsolutePath());
@@ -66,7 +66,8 @@ public class TsFileResourcePrinter {
   @SuppressWarnings("squid:S106")
   public static void printResource(String filename) throws IOException {
     filename = filename.substring(0, filename.length() - 9);
-    TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
+    TsFileResource resource = new TsFileResource();
+    resource.setFile(SystemFileFactory.INSTANCE.getFile(filename));
     System.out.printf("Analyzing %s ...%n", filename);
     System.out.println();
     resource.deserialize();

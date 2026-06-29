@@ -37,6 +37,8 @@ else
     JAVA=java
 fi
 
+JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+
 CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
@@ -44,5 +46,5 @@ done
 
 MAIN_CLASS=org.apache.iotdb.db.tools.settle.TsFileSettleByCompactionTool
 
-"$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+"$JAVA" $JVM_OPTS -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

@@ -26,9 +26,9 @@ import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMet
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeTaskInfoMetrics;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeTemporaryMetaInCoordinatorMetrics;
 import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
-import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionConnectorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionSinkMetrics;
 import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigNodeListenerMetrics;
-import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigRegionExtractorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigRegionSourceMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
@@ -47,8 +47,8 @@ public class PipeConfigNodeMetrics implements IMetricSet {
     PipeProcedureMetrics.getInstance().bindTo(metricService);
     pipeTaskInfoMetrics.bindTo(metricService);
     PipeConfigNodeListenerMetrics.getInstance().bindTo(metricService);
-    PipeConfigRegionExtractorMetrics.getInstance().bindTo(metricService);
-    PipeConfigRegionConnectorMetrics.getInstance().bindTo(metricService);
+    PipeConfigRegionSourceMetrics.getInstance().bindTo(metricService);
+    PipeConfigRegionSinkMetrics.getInstance().bindTo(metricService);
     PipeConfigNodeRemainingTimeMetrics.getInstance().bindTo(metricService);
     PipeTemporaryMetaInCoordinatorMetrics.getInstance().bindTo(metricService);
     PipeConfigNodeReceiverMetrics.getInstance().bindTo(metricService);
@@ -60,8 +60,8 @@ public class PipeConfigNodeMetrics implements IMetricSet {
     PipeProcedureMetrics.getInstance().unbindFrom(metricService);
     pipeTaskInfoMetrics.unbindFrom(metricService);
     PipeConfigNodeListenerMetrics.getInstance().unbindFrom(metricService);
-    PipeConfigRegionExtractorMetrics.getInstance().unbindFrom(metricService);
-    PipeConfigRegionConnectorMetrics.getInstance().unbindFrom(metricService);
+    PipeConfigRegionSourceMetrics.getInstance().unbindFrom(metricService);
+    PipeConfigRegionSinkMetrics.getInstance().unbindFrom(metricService);
     PipeConfigNodeRemainingTimeMetrics.getInstance().unbindFrom(metricService);
     PipeTemporaryMetaInCoordinatorMetrics.getInstance().unbindFrom(metricService);
     PipeConfigNodeReceiverMetrics.getInstance().unbindFrom(metricService);

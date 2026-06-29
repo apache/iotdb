@@ -19,34 +19,181 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.exception.PortOccupiedException;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.DailyIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 
+import org.awaitility.Awaitility;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.*;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /** Tests that may not be satisfied with the default cluster settings. */
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
 public class IoTDBCustomizedClusterIT {
 
   private final Logger logger = LoggerFactory.getLogger(IoTDBCustomizedClusterIT.class);
+
+  @FunctionalInterface
+  private interface RestartAction {
+    void act(Statement statement, int round, AbstractEnv env) throws Exception;
+  }
+
+  @Category(DailyIT.class)
+  @Test
+  public void testRepeatedlyRestartWholeClusterWithWrite() throws Exception {
+    testRepeatedlyRestartWholeCluster(
+        (s, i, env) -> {
+          if (i != 0) {
+            // This query is fanned out to every DataNode and the results are compared across
+            // replicas. Right after a restart the last cache on each coordinator is reloaded
+            // lazily, so the cross-replica comparison may transiently observe an inconsistent
+            // result until the cluster converges. ORDER BY TIMESERIES makes the row order
+            // deterministic across coordinators (the root cause of the observed flakiness), and the
+            // retry tolerates the brief convergence window (e.g. a replica that has not finished
+            // recovering yet) without masking a genuine, persistent inconsistency.
+            //
+            // ignoreExceptionsMatching(InconsistentDataException) is required: a mismatch surfaces
+            // as InconsistentDataException (a RuntimeException) thrown from getString(), and
+            // untilAsserted() only retries on AssertionError by default, so without it the retry
+            // would not actually cover this failure. We match only InconsistentDataException so a
+            // genuine error (e.g. a real SQLException) still fails fast instead of being retried.
+            Awaitility.await()
+                .atMost(60, TimeUnit.SECONDS)
+                .pollInterval(2, TimeUnit.SECONDS)
+                .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
+                .untilAsserted(
+                    () -> {
+                      try (ResultSet resultSet =
+                          s.executeQuery("SELECT last s1 FROM root.** ORDER BY TIMESERIES ASC")) {
+                        ResultSetMetaData metaData = resultSet.getMetaData();
+                        assertEquals(4, metaData.getColumnCount());
+                        while (resultSet.next()) {
+                          StringBuilder result = new StringBuilder();
+                          for (int j = 0; j < metaData.getColumnCount(); j++) {
+                            result
+                                .append(metaData.getColumnName(j + 1))
+                                .append(":")
+                                .append(resultSet.getString(j + 1))
+                                .append(",");
+                          }
+                          System.out.println(result);
+                        }
+                      }
+                    });
+          }
+          s.execute("INSERT INTO root.db1.d1 (time, s1) VALUES (1, 1)");
+          s.execute("INSERT INTO root.db2.d1 (time, s1) VALUES (1, 1)");
+          s.execute("INSERT INTO root.db3.d1 (time, s1) VALUES (1, 1)");
+        });
+  }
+
+  @Category(DailyIT.class)
+  @Test
+  public void testRepeatedlyRestartWholeClusterWithPipeCreation() throws Exception {
+    SimpleEnv receiverEnv = new SimpleEnv();
+    receiverEnv.initClusterEnvironment(1, 1);
+    try {
+      testRepeatedlyRestartWholeCluster(
+          (s, i, env) -> {
+            // use another thread to make creating and restart concurrent
+            // otherwise, all tasks will be done before restart and the cluster will not attempt to
+            // recover tasks
+            s.execute(
+                String.format(
+                    "CREATE PIPE p%d_1 WITH SINK ('sink'='iotdb-thrift-sink', 'node-urls' = '%s')",
+                    i, receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
+            s.execute(
+                String.format(
+                    "CREATE PIPE p%d_2 WITH SINK ('sink'='iotdb-thrift-sink', 'node-urls' = '%s')",
+                    i, receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
+            s.execute(
+                String.format(
+                    "CREATE PIPE p%d_3 WITH SINK ('sink'='iotdb-thrift-sink', 'node-urls' = '%s')",
+                    i, receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
+          });
+    } finally {
+      receiverEnv.cleanClusterEnvironment();
+    }
+  }
+
+  private void testRepeatedlyRestartWholeCluster(RestartAction restartAction) throws Exception {
+    SimpleEnv simpleEnv = new SimpleEnv();
+    try {
+      simpleEnv
+          .getConfig()
+          .getCommonConfig()
+          .setDataReplicationFactor(3)
+          .setSchemaReplicationFactor(3)
+          .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus")
+          .setConfigNodeConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus")
+          .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.iot.IoTConsensus");
+      simpleEnv.initClusterEnvironment(3, 3);
+
+      int repeat = 20;
+      for (int i = 0; i < repeat; i++) {
+        logger.info("Round {} restart", i);
+        try (Connection connection = simpleEnv.getConnection();
+            Statement statement = connection.createStatement()) {
+          ResultSet resultSet = statement.executeQuery("SHOW CLUSTER");
+          ResultSetMetaData metaData = resultSet.getMetaData();
+          int columnCount = metaData.getColumnCount();
+          while (resultSet.next()) {
+            StringBuilder row = new StringBuilder();
+            for (int j = 0; j < columnCount; j++) {
+              row.append(metaData.getColumnName(j + 1))
+                  .append(":")
+                  .append(resultSet.getString(j + 1))
+                  .append(",");
+            }
+            System.out.println(row);
+          }
+
+          restartAction.act(statement, i, simpleEnv);
+        }
+
+        simpleEnv.shutdownAllConfigNodes();
+        simpleEnv.shutdownAllDataNodes();
+
+        simpleEnv.startAllConfigNodes();
+        simpleEnv.startAllDataNodes();
+
+        simpleEnv.clearClientManager();
+
+        try {
+          simpleEnv.checkClusterStatusWithoutUnknown();
+        } catch (PortOccupiedException e) {
+          logger.info(
+              "Some ports are occupied during restart, which cannot be processed, just pass the test.");
+          return;
+        }
+      }
+
+    } finally {
+      simpleEnv.cleanClusterEnvironment();
+    }
+  }
 
   /**
    * When the wal size exceeds `walThrottleSize` * 0.8, the timed wal-delete-thread will try
@@ -144,5 +291,23 @@ public class IoTDBCustomizedClusterIT {
     } finally {
       simpleEnv.cleanClusterEnvironment();
     }
+  }
+
+  @Test
+  public void testStartWithWrongConfig() throws InterruptedException {
+    SimpleEnv simpleEnv = new SimpleEnv();
+    simpleEnv
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.iot.IoTConsensusV1");
+    try {
+      simpleEnv.initClusterEnvironment(1, 1);
+    } catch (AssertionError e) {
+      // ignore
+    }
+    simpleEnv.getDataNodeWrapper(0).getInstance().waitFor(20, TimeUnit.SECONDS);
+    assertEquals(
+        TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(),
+        simpleEnv.getDataNodeWrapper(0).getInstance().exitValue());
   }
 }

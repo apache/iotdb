@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -217,10 +218,9 @@ public class IoTDBRpcDataSet {
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
       } catch (StatementExecutionException e) {
-        throw new StatementExecutionException(
-            "Error occurs for close operation in server side because ", e);
+        throw new StatementExecutionException(RpcMessages.CLOSE_OPERATION_SERVER_ERROR, e);
       } catch (TException e) {
-        throw new TException("Error occurs when connecting to server for close operation ", e);
+        throw new TException(RpcMessages.CLOSE_OPERATION_CONNECTION_ERROR, e);
       }
     }
     client = null;
@@ -248,15 +248,14 @@ public class IoTDBRpcDataSet {
         close();
         return false;
       } catch (TException e) {
-        throw new IoTDBConnectionException(
-            "Cannot close dataset, because of network connection: {} ", e);
+        throw new IoTDBConnectionException(RpcMessages.CANNOT_CLOSE_DATASET, e);
       }
     }
   }
 
   public boolean fetchResults() throws StatementExecutionException, IoTDBConnectionException {
     if (isClosed) {
-      throw new IoTDBConnectionException("This DataSet is already closed");
+      throw new IoTDBConnectionException(RpcMessages.DATASET_ALREADY_CLOSED);
     }
     TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
     req.setStatementId(statementId);
@@ -494,6 +493,9 @@ public class IoTDBRpcDataSet {
             .getColumn(tsBlockColumnIndex)
             .getBinary(tsBlockIndex)
             .getStringValue(TSFileConfig.STRING_CHARSET);
+      case OBJECT:
+        return BytesUtils.parseObjectByteArrayToString(
+            curTsBlock.getColumn(tsBlockColumnIndex).getBinary(tsBlockIndex).getValues());
       case BLOB:
         return BytesUtils.parseBlobByteArrayToString(
             curTsBlock.getColumn(tsBlockColumnIndex).getBinary(tsBlockIndex).getValues());
@@ -554,6 +556,9 @@ public class IoTDBRpcDataSet {
             .getColumn(index)
             .getBinary(tsBlockIndex)
             .getStringValue(TSFileConfig.STRING_CHARSET);
+      case OBJECT:
+        return BytesUtils.parseObjectByteArrayToString(
+            curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
       case BLOB:
         return BytesUtils.parseBlobByteArrayToString(
             curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
@@ -612,11 +617,11 @@ public class IoTDBRpcDataSet {
 
   public String findColumnNameByIndex(int columnIndex) throws StatementExecutionException {
     if (columnIndex <= 0) {
-      throw new StatementExecutionException("column index should start from 1");
+      throw new StatementExecutionException(RpcMessages.COLUMN_INDEX_SHOULD_START_FROM_1);
     }
     if (columnIndex > columnNameList.size()) {
       throw new StatementExecutionException(
-          String.format("column index %d out of range %d", columnIndex, columnNameList.size()));
+          String.format(RpcMessages.COLUMN_INDEX_OUT_OF_RANGE, columnIndex, columnNameList.size()));
     }
     return columnNameList.get(columnIndex - 1);
   }
@@ -625,7 +630,7 @@ public class IoTDBRpcDataSet {
   private int getTsBlockColumnIndexForColumnName(String columnName) {
     Integer index = columnName2TsBlockColumnIndexMap.get(columnName);
     if (index == null) {
-      throw new IllegalArgumentException("Unknown column name: " + columnName);
+      throw new IllegalArgumentException(RpcMessages.UNKNOWN_COLUMN_NAME + columnName);
     }
     return index;
   }
@@ -639,7 +644,7 @@ public class IoTDBRpcDataSet {
         || tsBlockIndex >= tsBlockSize
         || queryResult == null
         || curTsBlock == null) {
-      throw new StatementExecutionException("No record remains");
+      throw new StatementExecutionException(RpcMessages.NO_RECORD_REMAINS);
     }
   }
 

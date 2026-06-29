@@ -31,26 +31,30 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IFragInstanceDispatcher;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +65,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -102,7 +107,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   @Override
-  public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
+  public Future<FragInstanceDispatchResult> dispatch(
+      SubPlan root, List<FragmentInstance> instances) {
     return executor.submit(
         () -> {
           for (FragmentInstance instance : instances) {
@@ -113,7 +119,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
             } catch (FragmentInstanceDispatchException e) {
               return new FragInstanceDispatchResult(e.getFailureStatus());
             } catch (Exception t) {
-              LOGGER.warn("cannot dispatch FI for load operation", t);
+              LOGGER.warn(DataNodeQueryMessages.CANNOT_DISPATCH_FI_FOR_LOAD_OPERATION, t);
               return new FragInstanceDispatchResult(
                   RpcUtils.getStatus(
                       TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
@@ -146,7 +152,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
-    LOGGER.info("Receive load node from uuid {}.", uuid);
+    LOGGER.info(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
@@ -154,12 +160,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     PlanNode planNode = instance.getFragment().getPlanNodeTree();
 
     if (planNode instanceof LoadTsFilePieceNode) { // split
-      LoadTsFilePieceNode pieceNode =
-          (LoadTsFilePieceNode) PlanNodeType.deserialize(planNode.serializeToByteBuffer());
-      if (pieceNode == null) {
-        throw new FragmentInstanceDispatchException(
-            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
-      }
+      LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) planNode;
       TSStatus resultStatus =
           StorageEngine.getInstance().writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
 
@@ -168,26 +169,35 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       }
     } else if (planNode instanceof LoadSingleTsFileNode) { // do not need to split
       final TsFileResource tsFileResource = ((LoadSingleTsFileNode) planNode).getTsFileResource();
+      final String filePath = tsFileResource.getTsFile().getAbsolutePath();
       try {
         PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
+        tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         tsFileResource.serialize();
+        TsFileResource cloneTsFileResource = null;
+        try {
+          cloneTsFileResource = tsFileResource.shallowCloneForNative();
+        } catch (CloneNotSupportedException e) {
+          cloneTsFileResource = tsFileResource.shallowClone();
+        }
 
-        StorageEngine.getInstance()
-            .getDataRegion((DataRegionId) groupId)
-            .loadNewTsFile(
-                tsFileResource,
-                ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
-                isGeneratedByPipe,
-                false);
+        DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) groupId);
+        dataRegion.loadNewTsFile(
+            cloneTsFileResource,
+            ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
+            isGeneratedByPipe,
+            false,
+            dataRegion.isTableModel()
+                ? TableDiskUsageStatisticUtil.calculateTableSizeMap(cloneTsFileResource)
+                : Optional.empty());
       } catch (LoadFileException e) {
-        LOGGER.warn("Load TsFile Node {} error.", planNode, e);
+        LOGGER.warn(DataNodeQueryMessages.LOAD_TSFILE_NODE_ERROR, planNode, e);
         TSStatus resultStatus = new TSStatus();
         resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
         resultStatus.setMessage(e.getMessage());
         throw new FragmentInstanceDispatchException(resultStatus);
       } catch (IOException e) {
-        LOGGER.warn(
-            "Serialize TsFileResource {} error.", tsFileResource.getTsFile().getAbsolutePath(), e);
+        LOGGER.warn(DataNodeQueryMessages.SERIALIZE_TSFILERESOURCE_ERROR, filePath, e);
         TSStatus resultStatus = new TSStatus();
         resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
         resultStatus.setMessage(e.getMessage());
@@ -274,7 +284,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } else {
       final TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-      status.setMessage("Load command requires time partition to progress index map");
+      status.setMessage(
+          DataNodeMiscMessages.LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP);
       throw new FragmentInstanceDispatchException(status);
     }
 

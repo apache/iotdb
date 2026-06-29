@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
@@ -30,10 +32,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -125,7 +126,7 @@ public class TypeInferenceUtils {
   public static TSDataType getBuiltinAggregationDataType(
       String aggregationFunctionName, TSDataType dataType) {
     if (aggregationFunctionName == null) {
-      throw new IllegalArgumentException("AggregateFunction Name must not be null");
+      throw new IllegalArgumentException(DataNodeMiscMessages.AGGREGATE_FUNCTION_NAME_NULL);
     }
     verifyIsAggregationDataTypeMatched(aggregationFunctionName, dataType);
 
@@ -154,10 +155,17 @@ public class TypeInferenceUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException(
-            "Invalid Aggregation function: " + aggregationFunctionName);
+            DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION + aggregationFunctionName);
     }
   }
 
@@ -190,7 +198,25 @@ public class TypeInferenceUtils {
           return;
         }
         throw new SemanticException(
-            "Aggregate functions [AVG, SUM, EXTREME, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+            "Aggregate functions [AVG, SUM, EXTREME, STDDEV, STDDEV_POP, STDDEV_SAMP, "
+                + "VARIANCE, VAR_POP, VAR_SAMP] only support "
+                + "numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
+        if (dataType.isNumeric() || TSDataType.TIMESTAMP.equals(dataType)) {
+          return;
+        }
+        throw new SemanticException(
+            "Aggregate functions [SKEWNESS, KURTOSIS] only support "
+                + "numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]");
+      // For the two-argument aggregation functions CORR, COVAR_POP, COVAR_SAMP,
+      // REGR_SLOPE, and REGR_INTERCEPT, type validation is performed in
+      // verifyIsAggregationDataTypeMatchedForBothInputs.
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
       case SqlConstant.COUNT:
       case SqlConstant.COUNT_TIME:
       case SqlConstant.MIN_TIME:
@@ -211,7 +237,32 @@ public class TypeInferenceUtils {
         }
         return;
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+        throw new IllegalArgumentException(
+            DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION + aggrFuncName);
+    }
+  }
+
+  public static void verifyIsAggregationDataTypeMatchedForBothInputs(
+      String aggrFuncName, TSDataType firstDataType, TSDataType secondDataType) {
+    switch (aggrFuncName.toLowerCase()) {
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+        if ((firstDataType != null
+                && !firstDataType.isNumeric()
+                && !TSDataType.TIMESTAMP.equals(firstDataType))
+            || (secondDataType != null
+                && !secondDataType.isNumeric()
+                && !TSDataType.TIMESTAMP.equals(secondDataType))) {
+          throw new SemanticException(
+              "Aggregate functions [CORR, COVAR_POP, COVAR_SAMP, REGR_SLOPE, REGR_INTERCEPT] only support "
+                  + "numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]");
+        }
+        return;
+      default:
+        break;
     }
   }
 
@@ -245,6 +296,13 @@ public class TypeInferenceUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
         return;
@@ -282,7 +340,8 @@ public class TypeInferenceUtils {
                   functionName));
         }
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + functionName);
+        throw new IllegalArgumentException(
+            DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION + functionName);
     }
   }
 
@@ -290,7 +349,7 @@ public class TypeInferenceUtils {
       FunctionExpression functionExpression, TSDataType dataType) {
     String functionName = functionExpression.getFunctionName();
     if (functionName == null) {
-      throw new IllegalArgumentException("ScalarFunction Name must not be null.");
+      throw new IllegalArgumentException(DataNodeMiscMessages.SCALAR_FUNCTION_NAME_NULL);
     }
     BuiltInScalarFunctionHelper helper =
         BuiltInScalarFunctionHelperFactory.createHelper(functionName);
@@ -325,10 +384,11 @@ public class TypeInferenceUtils {
       case DATE:
       case TIMESTAMP:
       case BLOB:
+      case OBJECT:
       case STRING:
         return false;
       default:
-        throw new IllegalArgumentException("Unknown data type: " + fromType);
+        throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_DATA_TYPE + fromType);
     }
   }
 }

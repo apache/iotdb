@@ -21,11 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -88,12 +90,14 @@ public class TsFileResourceUtils {
         timeIndex = (ArrayDeviceTimeIndex) resource.getTimeIndex();
       }
       if (timeIndex == null) {
-        logger.error("{} {} time index is null", resource.getTsFilePath(), VALIDATE_FAILED);
+        logger.error(
+            StorageEngineMessages.TIME_INDEX_IS_NULL, resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
       }
       Set<IDeviceID> devices = timeIndex.getDevices();
       if (devices.isEmpty()) {
-        logger.error("{} {} empty resource", resource.getTsFilePath(), VALIDATE_FAILED);
+        logger.error(
+            StorageEngineMessages.EMPTY_RESOURCE, resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
       }
       for (IDeviceID device : devices) {
@@ -110,7 +114,7 @@ public class TsFileResourceUtils {
         }
       }
     } catch (IOException e) {
-      logger.error("meet error when validate .resource file:{},e", resource.getTsFilePath());
+      logger.error(StorageEngineMessages.ERROR_VALIDATE_RESOURCE_FILE, resource.getTsFilePath());
       return false;
     }
     return true;
@@ -130,9 +134,13 @@ public class TsFileResourceUtils {
   }
 
   public static boolean validateTsFileDataCorrectness(TsFileResource resource) {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(
+            resource.getTsFilePath(),
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(resource.getTsFilePath()))) {
       if (!reader.isComplete()) {
-        logger.error("{} {} illegal tsfile", resource.getTsFilePath(), VALIDATE_FAILED);
+        logger.error(
+            StorageEngineMessages.ILLEGAL_TSFILE, resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
       }
 
@@ -299,7 +307,7 @@ public class TsFileResourceUtils {
         | NegativeArraySizeException
         | IllegalArgumentException
         | ArrayIndexOutOfBoundsException e) {
-      logger.error("Meets error when validating TsFile {}, ", resource.getTsFilePath(), e);
+      logger.error(StorageEngineMessages.ERROR_VALIDATING_TSFILE, resource.getTsFilePath(), e);
       return false;
     }
     return true;

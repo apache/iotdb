@@ -145,6 +145,34 @@ public class TestConstant {
     return String.format("var_samp(%s)", path);
   }
 
+  public static String corr(String path) {
+    return String.format("corr(%s)", path);
+  }
+
+  public static String covarPop(String path) {
+    return String.format("covar_pop(%s)", path);
+  }
+
+  public static String covarSamp(String path) {
+    return String.format("covar_samp(%s)", path);
+  }
+
+  public static String regrSlope(String path) {
+    return String.format("regr_slope(%s)", path);
+  }
+
+  public static String regrIntercept(String path) {
+    return String.format("regr_intercept(%s)", path);
+  }
+
+  public static String kurtosis(String path) {
+    return String.format("kurtosis(%s)", path);
+  }
+
+  public static String skewness(String path) {
+    return String.format("skewness(%s)", path);
+  }
+
   public static String countUDAF(String path) {
     return String.format("count_udaf(%s)", path);
   }
@@ -168,13 +196,12 @@ public class TestConstant {
   }
 
   public static String getTestTsFilePath(
-      String logicalStorageGroupName,
-      long VirtualStorageGroupId,
+      String logicalDatabaseName,
+      long VirtualDatabaseId,
       long TimePartitionId,
       long tsFileVersion) {
     String filePath =
-        String.format(
-            TEST_TSFILE_PATH, logicalStorageGroupName, VirtualStorageGroupId, TimePartitionId);
+        String.format(TEST_TSFILE_PATH, logicalDatabaseName, VirtualDatabaseId, TimePartitionId);
     String fileName =
         System.currentTimeMillis()
             + FilePathUtils.FILE_NAME_SEPARATOR
@@ -184,11 +211,8 @@ public class TestConstant {
   }
 
   public static String getTestTsFileDir(
-      String logicalStorageGroupName, long VirtualStorageGroupId, long TimePartitionId) {
+      String logicalDatabaseName, long VirtualDatabaseId, long TimePartitionId) {
     return String.format(
-        TestConstant.TEST_TSFILE_PATH,
-        logicalStorageGroupName,
-        VirtualStorageGroupId,
-        TimePartitionId);
+        TestConstant.TEST_TSFILE_PATH, logicalDatabaseName, VirtualDatabaseId, TimePartitionId);
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.service;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -32,6 +33,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
@@ -41,6 +43,8 @@ import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateClusterTopologyReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.AwaitForSignal;
 import org.apache.tsfile.utils.Pair;
@@ -49,6 +53,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -57,7 +63,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -67,9 +72,8 @@ import java.util.stream.Collectors;
 
 public class TopologyService implements Runnable, IClusterStatusSubscriber {
   private static final Logger LOGGER = LoggerFactory.getLogger(TopologyService.class);
-  private static final long PROBING_INTERVAL_MS = 5_000L;
-  private static final long PROBING_TIMEOUT_MS = PROBING_INTERVAL_MS;
   private static final int SAMPLING_WINDOW_SIZE = 100;
+  private static final int TOPOLOGY_PROBING_RETRY_NUM = 1;
 
   private final ExecutorService topologyThread =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -85,10 +89,17 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
   /* (fromDataNodeId, toDataNodeId) -> heartbeat history */
   private final Map<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> heartbeats;
-  private final List<Integer> startingDataNodes = new CopyOnWriteArrayList<>();
 
   private final IFailureDetector failureDetector;
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
+  private int proberRotationIndex = 0;
+
+  /** Last topology pushed to each DataNode, updated only on successful push. */
+  private final Map<Integer, Set<Integer>> lastPushedTopology = new ConcurrentHashMap<>();
+
+  /** Latest computed topology, updated each probing round. */
+  private final Map<Integer, Set<Integer>> latestTopology = new ConcurrentHashMap<>();
 
   public TopologyService(
       IManager configManager, Consumer<Map<Integer, Set<Integer>>> topologyChangeListener) {
@@ -98,14 +109,13 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     this.shouldRun = new AtomicBoolean(false);
     this.awaitForSignal = new AwaitForSignal(this.getClass().getSimpleName());
 
-    // here we use the same failure
     switch (CONF.getFailureDetector()) {
       case IFailureDetector.PHI_ACCRUAL_DETECTOR:
         this.failureDetector =
             new PhiAccrualDetector(
                 CONF.getFailureDetectorPhiThreshold(),
                 CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
-                CONF.getHeartbeatIntervalInMs() * 200_000L,
+                CONF.getFailureDetectorHeartbeatIntervalInMs() * 200_000L,
                 IFailureDetector.PHI_COLD_START_THRESHOLD,
                 new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
         break;
@@ -121,27 +131,25 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       future = this.topologyThread.submit(this);
     }
     shouldRun.set(true);
-    LOGGER.info("Topology Probing has started successfully");
+    LOGGER.info(ManagerMessages.TOPOLOGY_PROBING_HAS_STARTED_SUCCESSFULLY);
   }
 
   public synchronized void stopTopologyService() {
     shouldRun.set(false);
-    future.cancel(true);
-    future = null;
+    if (future != null) {
+      future.cancel(true);
+      future = null;
+    }
     heartbeats.clear();
-    LOGGER.info("Topology Probing has stopped successfully");
+    latestTopology.clear();
+    LOGGER.info(ManagerMessages.TOPOLOGY_PROBING_HAS_STOPPED_SUCCESSFULLY);
   }
 
-  /**
-   * Schedule the {@link #topologyProbing} task either: 1. every PROBING_INTERVAL_MS interval. 2.
-   * Manually triggered by outside events (node restart / register, etc.).
-   */
   private boolean mayWait() {
     try {
-      this.awaitForSignal.await(PROBING_INTERVAL_MS, TimeUnit.MILLISECONDS);
+      this.awaitForSignal.await(CONF.getTopologyProbingBaseIntervalInMs(), TimeUnit.MILLISECONDS);
       return true;
     } catch (InterruptedException e) {
-      // we don't reset the interrupt flag here since we may reuse this thread again.
       return false;
     }
   }
@@ -153,36 +161,70 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
   }
 
+  /**
+   * Select sqrt(N) DataNodes as probers, rotating through all DataNodes across cycles so that every
+   * DataNode gets to be a prober over sqrt(N) cycles.
+   */
+  private List<TDataNodeLocation> selectProbers(List<TDataNodeLocation> allDataNodes) {
+    int n = allDataNodes.size();
+    if (n <= 1) {
+      return allDataNodes;
+    }
+    int sqrtN = (int) Math.ceil(Math.sqrt(n));
+    List<TDataNodeLocation> sorted = new ArrayList<>(allDataNodes);
+    sorted.sort(Comparator.comparingInt(TDataNodeLocation::getDataNodeId));
+    int startIndex = (proberRotationIndex * sqrtN) % n;
+    proberRotationIndex++;
+    List<TDataNodeLocation> probers = new ArrayList<>(sqrtN);
+    for (int i = 0; i < sqrtN && i < n; i++) {
+      probers.add(sorted.get((startIndex + i) % n));
+    }
+    return probers;
+  }
+
   private synchronized void topologyProbing() {
-    // 1. get the latest datanode list
+    // 1. get Running DataNodes only
     final List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
     final Set<Integer> dataNodeIds = new HashSet<>();
     for (final TDataNodeConfiguration dataNodeConf :
         configManager.getNodeManager().getRegisteredDataNodes()) {
       final TDataNodeLocation location = dataNodeConf.getLocation();
-      if (startingDataNodes.contains(location.getDataNodeId())) {
-        continue; // we shall wait for internal endpoint to be ready
+      if (configManager.getLoadManager().getNodeStatus(location.getDataNodeId())
+          != NodeStatus.Running) {
+        continue;
       }
       dataNodeLocations.add(location);
       dataNodeIds.add(location.getDataNodeId());
     }
 
-    // 2. send the verify connection RPC to all datanodes
+    // 2. compute probing timeout
+    final long timeout =
+        (long) (CONF.getTopologyProbingBaseIntervalInMs() * CONF.getTopologyProbingTimeoutRatio());
+
+    // 3. select sqrt(N) probers via rotating selection
+    final List<TDataNodeLocation> probers = selectProbers(dataNodeLocations);
+    final Set<Integer> proberIds =
+        probers.stream().map(TDataNodeLocation::getDataNodeId).collect(Collectors.toSet());
+
+    // 4. build TNodeLocations with ALL DataNode locations (so probers test all targets)
     final TNodeLocations nodeLocations = new TNodeLocations();
     nodeLocations.setDataNodeLocations(dataNodeLocations);
     nodeLocations.setConfigNodeLocations(Collections.emptyList());
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodes().stream()
-            .map(TDataNodeConfiguration::getLocation)
+
+    // 5. build proberLocationMap containing only the selected probers
+    final Map<Integer, TDataNodeLocation> proberLocationMap =
+        probers.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
+
+    // 6. send async requests ONLY to probers with computed timeout
     final DataNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp>
         dataNodeAsyncRequestContext =
             new DataNodeAsyncRequestContext<>(
                 CnToDnAsyncRequestType.SUBMIT_TEST_DN_INTERNAL_CONNECTION_TASK,
                 nodeLocations,
-                dataNodeLocationMap);
+                proberLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(dataNodeAsyncRequestContext, PROBING_TIMEOUT_MS);
+        .sendAsyncRequest(dataNodeAsyncRequestContext, TOPOLOGY_PROBING_RETRY_NUM, timeout, true);
     final List<TTestConnectionResult> results = new ArrayList<>();
     dataNodeAsyncRequestContext
         .getResponseMap()
@@ -193,7 +235,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
               }
             });
 
-    // 3. collect results and update the heartbeat timestamps
+    // 7. collect results and update the heartbeat timestamps
     for (final TTestConnectionResult result : results) {
       final int fromDataNodeId =
           Optional.ofNullable(result.getSender().getDataNodeLocation())
@@ -203,8 +245,6 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       if (result.isSuccess()
           && dataNodeIds.contains(fromDataNodeId)
           && dataNodeIds.contains(toDataNodeId)) {
-        // testAllDataNodeConnectionWithTimeout ensures the heartbeats are Dn-Dn internally. Here we
-        // just double-check.
         final List<AbstractHeartbeatSample> heartbeatHistory =
             heartbeats.computeIfAbsent(
                 new Pair<>(fromDataNodeId, toDataNodeId), p -> new LinkedList<>());
@@ -215,40 +255,131 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       }
     }
 
-    // 4. use failure detector to identify potential network partitions
-    final Map<Integer, Set<Integer>> latestTopology =
-        dataNodeLocations.stream()
-            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, k -> new HashSet<>()));
+    // 8. build topology: for non-probers carry forward previous results (default all-connected),
+    //    for probers run failure detector
+    final Map<Integer, Set<Integer>> computedTopology = new HashMap<>();
+    for (int nodeId : dataNodeIds) {
+      if (proberIds.contains(nodeId)) {
+        computedTopology.put(nodeId, new HashSet<>());
+      } else {
+        Set<Integer> prev = latestTopology.get(nodeId);
+        if (prev != null) {
+          Set<Integer> carried = new HashSet<>(prev);
+          carried.retainAll(dataNodeIds);
+          computedTopology.put(nodeId, carried);
+        } else {
+          computedTopology.put(nodeId, new HashSet<>(dataNodeIds));
+        }
+      }
+    }
+
     for (final Map.Entry<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> entry :
         heartbeats.entrySet()) {
       final int fromId = entry.getKey().getLeft();
       final int toId = entry.getKey().getRight();
 
+      if (!proberIds.contains(fromId)
+          || !dataNodeIds.contains(fromId)
+          || !dataNodeIds.contains(toId)) {
+        continue;
+      }
+
       if (!entry.getValue().isEmpty()
           && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
-        LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
+        LOGGER.debug(ManagerMessages.CONNECTION_FROM_DATANODE_TO_DATANODE_IS_BROKEN, fromId, toId);
       } else {
-        Optional.ofNullable(latestTopology.get(fromId)).ifPresent(s -> s.add(toId));
+        computedTopology.get(fromId).add(toId);
       }
     }
 
-    logAsymmetricPartition(latestTopology);
-
-    // 5. notify the listeners on topology change
-    if (shouldRun.get()) {
-      topologyChangeListener.accept(latestTopology);
+    // For prober nodes: pairs with no heartbeat history default to connected
+    for (int fromId : proberIds) {
+      if (!dataNodeIds.contains(fromId)) {
+        continue;
+      }
+      Set<Integer> reachableSet = computedTopology.get(fromId);
+      for (int toId : dataNodeIds) {
+        if (!heartbeats.containsKey(new Pair<>(fromId, toId))) {
+          reachableSet.add(toId);
+        }
+      }
     }
+
+    // Save computed topology for next round
+    latestTopology.clear();
+    for (Map.Entry<Integer, Set<Integer>> entry : computedTopology.entrySet()) {
+      latestTopology.put(entry.getKey(), new HashSet<>(entry.getValue()));
+    }
+
+    logAsymmetricPartition(computedTopology);
+
+    // 9. notify the listeners on topology change
+    if (shouldRun.get()) {
+      topologyChangeListener.accept(computedTopology);
+    }
+
+    // 10. push topology changes to DataNodes
+    pushTopologyToDataNodes(computedTopology, dataNodeLocations);
   }
 
   /**
-   * We only consider warning (one vs remaining) network partition. If we need to cover more
-   * complicated scenarios like (many vs many) network partition, we shall use graph algorithms
-   * then.
+   * Push topology changes to DataNodes via PUSH_TOPOLOGY request. Each DataNode receives only its
+   * own reachable set. lastPushedTopology is updated only on successful push.
    */
+  private void pushTopologyToDataNodes(
+      Map<Integer, Set<Integer>> computedTopology, List<TDataNodeLocation> dataNodeLocations) {
+    final Map<Integer, TDataNodeLocation> dataNodesMap =
+        dataNodeLocations.stream()
+            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, loc -> loc));
+
+    final Map<Integer, TDataNodeLocation> targetMap = new HashMap<>();
+    for (final TDataNodeLocation location : dataNodeLocations) {
+      final int nodeId = location.getDataNodeId();
+      final Set<Integer> reachableSet =
+          computedTopology.getOrDefault(nodeId, Collections.emptySet());
+      final Set<Integer> lastPushed = lastPushedTopology.get(nodeId);
+      if (lastPushed != null && lastPushed.equals(reachableSet)) {
+        continue;
+      }
+      targetMap.put(nodeId, location);
+    }
+
+    if (targetMap.isEmpty()) {
+      return;
+    }
+
+    final DataNodeAsyncRequestContext<TUpdateClusterTopologyReq, TSStatus> context =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.PUSH_TOPOLOGY, targetMap);
+    for (final Map.Entry<Integer, TDataNodeLocation> entry : targetMap.entrySet()) {
+      final int nodeId = entry.getKey();
+      final Set<Integer> reachableSet =
+          computedTopology.getOrDefault(nodeId, Collections.emptySet());
+      final Map<Integer, Set<Integer>> perNodeTopology = new HashMap<>();
+      perNodeTopology.put(nodeId, new HashSet<>(reachableSet));
+      final TUpdateClusterTopologyReq req =
+          new TUpdateClusterTopologyReq(dataNodesMap, perNodeTopology);
+      context.putRequest(nodeId, req);
+    }
+
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            context, TOPOLOGY_PROBING_RETRY_NUM, CONF.getTopologyProbingBaseIntervalInMs(), true);
+
+    context
+        .getResponseMap()
+        .forEach(
+            (nodeId, resp) -> {
+              if (resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                Set<Integer> reachableSet =
+                    computedTopology.getOrDefault(nodeId, Collections.emptySet());
+                lastPushedTopology.put(nodeId, new HashSet<>(reachableSet));
+              }
+            });
+  }
+
   private void logAsymmetricPartition(final Map<Integer, Set<Integer>> topology) {
     final Set<Integer> nodes = topology.keySet();
     if (nodes.size() == 1) {
-      // 1 DataNode
       return;
     }
 
@@ -258,61 +389,34 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
           continue;
         }
 
-        // whether we have asymmetric partition [from -> to]
         final Set<Integer> reachableFrom = topology.get(from);
         final Set<Integer> reachableTo = topology.get(to);
         if (reachableFrom.size() <= 1 || reachableTo.size() <= 1) {
-          // symmetric partition for (from) or (to)
           continue;
         }
         if (!reachableTo.contains(from) && !reachableFrom.contains(to)) {
-          LOGGER.warn("[Topology] Asymmetric network partition from {} to {}", from, to);
+          LOGGER.debug(ManagerMessages.TOPOLOGY_ASYMMETRIC_NETWORK_PARTITION_FROM_TO, from, to);
         }
       }
     }
   }
 
-  /** We only listen to datanode remove / restart / register events */
+  /** Clean up heartbeat and push state when a node is removed or entering Removing status. */
   @Override
   public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
-    final Set<Integer> datanodeIds =
-        configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
-    final Map<Integer, Pair<NodeStatistics, NodeStatistics>> changes =
-        event.getDifferentNodeStatisticsMap();
     for (final Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> entry :
-        changes.entrySet()) {
+        event.getDifferentNodeStatisticsMap().entrySet()) {
       final Integer nodeId = entry.getKey();
-      final Pair<NodeStatistics, NodeStatistics> changeEvent = entry.getValue();
-      if (!datanodeIds.contains(nodeId)) {
-        continue;
-      }
-      if (changeEvent.getLeft() == null) {
-        // if a new datanode registered, DO NOT trigger probing immediately
-        startingDataNodes.add(nodeId);
-        continue;
-      } else {
-        startingDataNodes.remove(nodeId);
-      }
-
-      final Set<Pair<Integer, Integer>> affectedPairs =
-          heartbeats.keySet().stream()
-              .filter(
-                  pair ->
-                      Objects.equals(pair.getLeft(), nodeId)
-                          || Objects.equals(pair.getRight(), nodeId))
-              .collect(Collectors.toSet());
-
-      if (changeEvent.getRight() == null) {
-        // datanode removed from cluster, clean up probing history
-        affectedPairs.forEach(heartbeats::remove);
-      } else {
-        // we only trigger probing immediately if node comes around from UNKNOWN to RUNNING
-        if (NodeStatus.Unknown.equals(changeEvent.getLeft().getStatus())
-            && NodeStatus.Running.equals(changeEvent.getRight().getStatus())) {
-          // let's clear the history when a new node comes around
-          affectedPairs.forEach(pair -> heartbeats.put(pair, new ArrayList<>()));
-          awaitForSignal.signal();
-        }
+      final Pair<NodeStatistics, NodeStatistics> change = entry.getValue();
+      if (change.getRight() == null || NodeStatus.Removing.equals(change.getRight().getStatus())) {
+        heartbeats
+            .keySet()
+            .removeIf(
+                pair ->
+                    Objects.equals(pair.getLeft(), nodeId)
+                        || Objects.equals(pair.getRight(), nodeId));
+        lastPushedTopology.remove(nodeId);
+        latestTopology.remove(nodeId);
       }
     }
   }

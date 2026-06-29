@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ReplicateProgressManager;
-import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
+import org.apache.iotdb.consensus.pipe.metric.IoTConsensusV2SyncLagManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -44,7 +44,8 @@ import java.util.stream.Collectors;
 
 public class ReplicateProgressDataNodeManager implements ReplicateProgressManager {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-  private static final Map<String, AtomicLong> groupId2ReplicateIndex = new ConcurrentHashMap<>();
+  private static final Map<String, AtomicLong> consensusPipe2ReplicateIndex =
+      new ConcurrentHashMap<>();
   private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
   private final Map<ConsensusPipeName, Long> consensusPipe2pinnedCommitIndexForMigration;
 
@@ -55,10 +56,18 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
     recoverMaxProgressIndexFromDataRegion();
   }
 
-  public static long assignReplicateIndexForIoTV2(String groupId) {
-    return groupId2ReplicateIndex
-        .compute(groupId, (k, v) -> v == null ? new AtomicLong(0) : v)
+  public static long assignReplicateIndexForIoTV2(String consensusPipeName) {
+    return consensusPipe2ReplicateIndex
+        .compute(consensusPipeName, (k, v) -> v == null ? new AtomicLong(0) : v)
         .incrementAndGet();
+  }
+
+  public static void resetReplicateIndexForIoTV2(String consensusPipeName) {
+    consensusPipe2ReplicateIndex.put(consensusPipeName, new AtomicLong(0));
+  }
+
+  public static long getReplicateIndexForIoTV2(String consensusPipeName) {
+    return consensusPipe2ReplicateIndex.getOrDefault(consensusPipeName, new AtomicLong(0)).get();
   }
 
   public static ProgressIndex extractLocalSimpleProgressIndex(ProgressIndex progressIndex) {
@@ -133,7 +142,7 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
         (key, value) ->
             ((value == null ? MinimumProgressIndex.INSTANCE : value)
                 .updateToMinimumEqualOrIsAfterProgressIndex(
-                    PipeDataNodeAgent.runtime().assignProgressIndexForPipeConsensus())));
+                    PipeDataNodeAgent.runtime().assignProgressIndexForIoTConsensusV2())));
   }
 
   @Override
@@ -144,18 +153,18 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
   @Override
   public long getSyncLagForSpecificConsensusPipe(
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
-    return PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
+    return IoTConsensusV2SyncLagManager.getInstance(consensusGroupId.toString())
         .getSyncLagForRegionMigration(
             consensusPipeName,
             this.consensusPipe2pinnedCommitIndexForMigration.getOrDefault(consensusPipeName, 0L));
   }
 
   @Override
-  public void pinCommitIndexForMigration(
+  public void pinReplicateIndexForRegionMigration(
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
     this.consensusPipe2pinnedCommitIndexForMigration.put(
         consensusPipeName,
-        PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
-            .getCurrentCommitIndex(consensusPipeName));
+        IoTConsensusV2SyncLagManager.getInstance(consensusGroupId.toString())
+            .getCurrentLeaderReplicateIndex(consensusPipeName));
   }
 }

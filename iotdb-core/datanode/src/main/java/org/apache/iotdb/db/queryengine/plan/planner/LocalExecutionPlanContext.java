@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.plan.planner.ITableOperatorGeneratorContext;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -26,14 +32,11 @@ import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimatorFactory;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -64,7 +67,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 // Attention: We should use thread-safe data structure for members that are shared by all pipelines
-public class LocalExecutionPlanContext {
+public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
   // Save operators in this pipeline, a new one will be created when creating another pipeline
@@ -83,8 +86,8 @@ public class LocalExecutionPlanContext {
   private List<TSDataType> cachedDataTypes;
 
   // left is cached last value in last query
-  // right is full path for each cached last value
-  private List<Pair<TimeValuePair, Binary>> cachedLastValueAndPathList;
+  // right is full path and DataType for each cached last value
+  private List<Pair<TimeValuePair, Pair<Binary, TSDataType>>> cachedLastValueAndPathList;
 
   // whether we need to update last cache
   private boolean needUpdateLastCache;
@@ -195,6 +198,10 @@ public class LocalExecutionPlanContext {
     return driverContext.getFragmentInstanceContext().getId();
   }
 
+  public long getOuterQueryDeadlineMs() {
+    return driverContext.getFragmentInstanceContext().getOuterQueryDeadlineMs();
+  }
+
   public List<PipelineDriverFactory> getPipelineDriverFactories() {
     return pipelineDriverFactories;
   }
@@ -274,15 +281,18 @@ public class LocalExecutionPlanContext {
     this.needUpdateLastCache = needUpdateLastCache;
   }
 
-  public void addCachedLastValue(TimeValuePair timeValuePair, String fullPath) {
+  public void addCachedLastValue(
+      TimeValuePair timeValuePair, String fullPath, TSDataType dataType) {
     if (cachedLastValueAndPathList == null) {
       cachedLastValueAndPathList = new ArrayList<>();
     }
     cachedLastValueAndPathList.add(
-        new Pair<>(timeValuePair, new Binary(fullPath, TSFileConfig.STRING_CHARSET)));
+        new Pair<>(
+            timeValuePair,
+            new Pair<>(new Binary(fullPath, TSFileConfig.STRING_CHARSET), dataType)));
   }
 
-  public List<Pair<TimeValuePair, Binary>> getCachedLastValueAndPathList() {
+  public List<Pair<TimeValuePair, Pair<Binary, TSDataType>>> getCachedLastValueAndPathList() {
     return cachedLastValueAndPathList;
   }
 
@@ -302,6 +312,16 @@ public class LocalExecutionPlanContext {
 
   public TypeProvider getTypeProvider() {
     return typeProvider;
+  }
+
+  @Override
+  public ITableTypeProvider getTableTypeProvider() {
+    return typeProvider;
+  }
+
+  @Override
+  public MemoryReservationManager getMemoryReservationManager() {
+    return driverContext.getFragmentInstanceContext().getMemoryReservationContext();
   }
 
   public FragmentInstanceContext getInstanceContext() {

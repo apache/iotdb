@@ -29,8 +29,8 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfi
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;

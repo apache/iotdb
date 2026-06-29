@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -38,7 +40,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.Pair;
@@ -116,6 +118,8 @@ public class SourceHandle implements ISourceHandle {
    */
   private boolean canGetTsBlockFromRemote = false;
 
+  private final boolean isHighestPriority;
+
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
@@ -124,6 +128,34 @@ public class SourceHandle implements ISourceHandle {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SourceHandle.class)
           + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2;
+
+  @TestOnly
+  @SuppressWarnings("squid:S107")
+  public SourceHandle(
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService,
+      TsBlockSerde serde,
+      SourceHandleListener sourceHandleListener,
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager) {
+    this(
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        localFragmentInstanceId,
+        localPlanNodeId,
+        indexOfUpstreamSinkHandle,
+        localMemoryManager,
+        executorService,
+        serde,
+        sourceHandleListener,
+        false,
+        mppDataExchangeServiceClientManager);
+  }
 
   @SuppressWarnings("squid:S107")
   public SourceHandle(
@@ -136,6 +168,7 @@ public class SourceHandle implements ISourceHandle {
       ExecutorService executorService,
       TsBlockSerde serde,
       SourceHandleListener sourceHandleListener,
+      boolean isHighestPriority,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint, "remoteEndpoint can not be null.");
@@ -153,6 +186,7 @@ public class SourceHandle implements ISourceHandle {
     this.serde = Validate.notNull(serde, "serde can not be null.");
     this.sourceHandleListener =
         Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
+    this.isHighestPriority = isHighestPriority;
     this.bufferRetainedSizeInBytes = 0L;
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
@@ -186,30 +220,35 @@ public class SourceHandle implements ISourceHandle {
       checkState();
 
       if (!blocked.isDone()) {
-        throw new IllegalStateException("Source handle is blocked.");
+        throw new IllegalStateException(DataNodeQueryMessages.SOURCE_HANDLE_IS_BLOCKED);
       }
 
       ByteBuffer tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
       if (tsBlock == null) {
         return null;
       }
-      long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
+      Long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
+      if (retainedSize == null) {
+        throw new IllegalStateException(DataNodeQueryMessages.RESERVED_DATA_BLOCK_SIZE_IS_NULL);
+      }
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
+        LOGGER.debug(DataNodeQueryMessages.GET_TSBLOCK_FROM_BUFFER, currSequenceId, retainedSize);
       }
       currSequenceId += 1;
-      bufferRetainedSizeInBytes -= retainedSize;
-      localMemoryManager
-          .getQueryPool()
-          .free(
-              localFragmentInstanceId.getQueryId(),
-              fullFragmentInstanceId,
-              localPlanNodeId,
-              retainedSize);
+      if (retainedSize > 0) {
+        bufferRetainedSizeInBytes -= retainedSize;
+        localMemoryManager
+            .getQueryPool()
+            .free(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                retainedSize);
+      }
 
       if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[WaitForMoreTsBlock]");
+          LOGGER.debug(DataNodeQueryMessages.WAIT_FOR_MORE_TSBLOCK);
         }
         blocked = SettableFuture.create();
       }
@@ -240,20 +279,26 @@ public class SourceHandle implements ISourceHandle {
     while (sequenceIdToDataBlockSize.containsKey(endSequenceId)) {
       Long bytesToReserve = sequenceIdToDataBlockSize.get(endSequenceId);
       if (bytesToReserve == null) {
-        throw new IllegalStateException("Data block size is null.");
+        throw new IllegalStateException(DataNodeQueryMessages.DATA_BLOCK_SIZE_IS_NULL);
       }
-      pair =
+      MemoryReservationResult reserveResult =
           localMemoryManager
               .getQueryPool()
-              .reserve(
+              .reserveWithPriority(
                   localFragmentInstanceId.getQueryId(),
                   fullFragmentInstanceId,
                   localPlanNodeId,
                   bytesToReserve,
-                  maxBytesCanReserve);
-      bufferRetainedSizeInBytes += bytesToReserve;
+                  maxBytesCanReserve,
+                  isHighestPriority);
+      pair = new Pair<>(reserveResult.getFuture(), reserveResult.isReserveSuccess());
+      // actually reserve size is not equals raw size, update the actually reserve size to the map
+      if (reserveResult.getReservedBytes() != bytesToReserve) {
+        sequenceIdToDataBlockSize.put(endSequenceId, reserveResult.getReservedBytes());
+      }
+      bufferRetainedSizeInBytes += reserveResult.getReservedBytes();
       endSequenceId += 1;
-      reservedBytes += bytesToReserve;
+      reservedBytes += reserveResult.getReservedBytes();
       if (!Boolean.TRUE.equals(pair.right)) {
         blockedSize = bytesToReserve;
         break;
@@ -308,7 +353,7 @@ public class SourceHandle implements ISourceHandle {
 
   public synchronized void setNoMoreTsBlocks(int lastSequenceId) {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[ReceiveNoMoreTsBlockEvent]");
+      LOGGER.debug(DataNodeQueryMessages.RECEIVE_NO_MORE_TSBLOCK_EVENT);
     }
     this.lastSequenceId = lastSequenceId;
     if (!blocked.isDone() && remoteTsBlockedConsumedUp()) {
@@ -478,9 +523,9 @@ public class SourceHandle implements ISourceHandle {
           throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
         }
       }
-      throw new IllegalStateException("Source handle is aborted.");
+      throw new IllegalStateException(DataNodeQueryMessages.SOURCE_HANDLE_IS_ABORTED);
     } else if (closed) {
-      throw new IllegalStateException("SourceHandle is closed.");
+      throw new IllegalStateException(DataNodeQueryMessages.SOURCEHANDLE_IS_CLOSED);
     }
   }
 
@@ -561,7 +606,7 @@ public class SourceHandle implements ISourceHandle {
               if (!closed) {
                 // failed to pull TsBlocks
                 LOGGER.warn(
-                    "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},",
+                    DataNodeQueryMessages.FAILED_TO_PULL_TSBLOCKS,
                     localFragmentInstanceId,
                     startSequenceId,
                     endSequenceId,
@@ -574,7 +619,7 @@ public class SourceHandle implements ISourceHandle {
             tsBlocks.addAll(resp.getTsBlocks());
 
             if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug("[EndPullTsBlocksFromRemote] Count:{}", tsBlockNum);
+              LOGGER.debug(DataNodeQueryMessages.END_PULL_TSBLOCKS_FROM_REMOTE, tsBlockNum);
             }
             DATA_EXCHANGE_COUNT_METRIC_SET.recordDataBlockNum(
                 GET_DATA_BLOCK_NUM_CALLER, tsBlockNum);
@@ -588,7 +633,7 @@ public class SourceHandle implements ISourceHandle {
                 sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
               }
               if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("[PutTsBlocksIntoBuffer]");
+                LOGGER.debug(DataNodeQueryMessages.PUT_TSBLOCKS_INTO_BUFFER);
               }
               if (!blocked.isDone()) {
                 blocked.set(null);
@@ -598,7 +643,7 @@ public class SourceHandle implements ISourceHandle {
           } catch (Throwable e) {
 
             LOGGER.warn(
-                "failed to get data block [{}, {}), attempt times: {}",
+                DataNodeQueryMessages.FAILED_TO_GET_DATA_BLOCK,
                 startSequenceId,
                 endSequenceId,
                 attempt,
@@ -631,14 +676,16 @@ public class SourceHandle implements ISourceHandle {
         if (aborted || closed) {
           return;
         }
-        bufferRetainedSizeInBytes -= reservedBytes;
-        localMemoryManager
-            .getQueryPool()
-            .free(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                reservedBytes);
+        if (reservedBytes > 0) {
+          bufferRetainedSizeInBytes -= reservedBytes;
+          localMemoryManager
+              .getQueryPool()
+              .free(
+                  localFragmentInstanceId.getQueryId(),
+                  fullFragmentInstanceId,
+                  localPlanNodeId,
+                  reservedBytes);
+        }
         sourceHandleListener.onFailure(SourceHandle.this, t);
       }
     }
@@ -658,7 +705,7 @@ public class SourceHandle implements ISourceHandle {
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[SendACKTsBlock] [{}, {}).", startSequenceId, endSequenceId);
+          LOGGER.debug(DataNodeQueryMessages.SEND_ACK_TSBLOCK, startSequenceId, endSequenceId);
         }
         int attempt = 0;
         TAcknowledgeDataBlockEvent acknowledgeDataBlockEvent =
@@ -676,7 +723,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             LOGGER.warn(
-                "failed to send ack data block event [{}, {}), attempt times: {}",
+                DataNodeQueryMessages.FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT,
                 startSequenceId,
                 endSequenceId,
                 attempt,
@@ -727,7 +774,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             LOGGER.warn(
-                "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}] failed.).",
+                DataNodeQueryMessages.SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED,
                 remoteFragmentInstanceId,
                 indexOfUpstreamSinkHandle);
             if (attempt == MAX_ATTEMPT_TIMES) {

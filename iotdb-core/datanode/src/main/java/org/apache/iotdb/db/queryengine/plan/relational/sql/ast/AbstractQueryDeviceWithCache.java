@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -31,6 +35,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDev
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,6 +46,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevice {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AbstractQueryDeviceWithCache.class);
 
   // For query devices fully in cache
   protected List<ShowDevicesResult> results = new ArrayList<>();
@@ -61,16 +69,20 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     if (Objects.isNull(where)) {
       return true;
     }
-    final Map<String, List<DeviceEntry>> entries = new HashMap<>();
-    entries.put(database, new ArrayList<>());
+    final Map<String, List<DeviceEntry>> hitCacheEntries = new HashMap<>();
+    hitCacheEntries.put(database, new ArrayList<>());
 
     final boolean needFetch =
-        super.parseRawExpression(entries, tableInstance, attributeColumns, context);
+        super.parseWhere(hitCacheEntries, tableInstance, attributeColumns, context);
     if (!needFetch) {
       context.reserveMemoryForFrontEnd(
-          entries.get(database).stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
+          hitCacheEntries.values().stream()
+              .flatMap(List::stream)
+              .map(DeviceEntry::ramBytesUsed)
+              .reduce(0L, Long::sum));
       results =
-          entries.get(database).stream()
+          hitCacheEntries.values().stream()
+              .flatMap(List::stream)
               .map(
                   deviceEntry ->
                       ShowDevicesResult.convertDeviceEntry2ShowDeviceResult(
@@ -112,4 +124,21 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
   public abstract DatasetHeader getDataSetHeader();
 
   public abstract TsBlock getTsBlock(final Analysis analysis);
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + ramBytesUsedForCommonFields();
+  }
+
+  @Override
+  protected long ramBytesUsedForCommonFields() {
+    long size = super.ramBytesUsedForCommonFields();
+    if (results != null) {
+      size += RamUsageEstimator.shallowSizeOf(results);
+      for (ShowDevicesResult result : results) {
+        size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(result);
+      }
+    }
+    return size;
+  }
 }
