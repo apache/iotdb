@@ -49,7 +49,8 @@
         <cmake.install.prefix>${project.build.directory}/install</cmake.install.prefix>
         <iotdb.deps.dir>${project.basedir}/third-party</iotdb.deps.dir>
         <iotdb.offline>OFF</iotdb.offline>
-        <with.ssl>OFF</with.ssl>
+        <with.ssl>ON</with.ssl>
+        <iotdb.openssl.from.source>OFF</iotdb.openssl.from.source>
         <iotdb.cxx11.abi/>
         <!-- Switched to OFF by the .skipTests profile below. -->
         <build.tests>ON</build.tests>
@@ -112,6 +113,7 @@
                                 <option>-DCMAKE_INSTALL_PREFIX=${cmake.install.prefix}</option>
                                 <option>-DBUILD_TESTING=${build.tests}</option>
                                 <option>-DWITH_SSL=${with.ssl}</option>
+                                <option>-DIOTDB_OPENSSL_FROM_SOURCE=${iotdb.openssl.from.source}</option>
                                 <option>-DIOTDB_OFFLINE=${iotdb.offline}</option>
                                 <option>-DIOTDB_DEPS_DIR=${iotdb.deps.dir}</option>
                                 <option>-DIOTDB_USE_CXX11_ABI=${iotdb.cxx11.abi}</option>

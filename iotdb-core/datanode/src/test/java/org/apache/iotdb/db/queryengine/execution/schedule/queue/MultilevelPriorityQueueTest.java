@@ -38,6 +38,9 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
 
 public class MultilevelPriorityQueueTest {
   @Test
@@ -58,12 +61,14 @@ public class MultilevelPriorityQueueTest {
                 }
               });
       t1.start();
-      Thread.sleep(100);
-      Assert.assertEquals(Thread.State.WAITING, t1.getState());
+      await()
+          .atMost(1, TimeUnit.MINUTES)
+          .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, t1.getState()));
       DriverTask e2 = mockDriverTask(mockDriverTaskId(), false);
       queue.push(e2);
-      Thread.sleep(100);
-      Assert.assertEquals(Thread.State.TERMINATED, t1.getState());
+      await()
+          .atMost(1, TimeUnit.MINUTES)
+          .untilAsserted(() -> Assert.assertEquals(Thread.State.TERMINATED, t1.getState()));
       Assert.assertEquals(1, res.size());
       Assert.assertEquals(e2.getDriverTaskId().toString(), res.get(0).getDriverTaskId().toString());
     } catch (Exception e) {

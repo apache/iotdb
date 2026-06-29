@@ -49,6 +49,7 @@ statement
     // Database Statement
     | useDatabaseStatement
     | showDatabasesStatement
+    | showCreateDatabaseStatement
     | countDatabasesStatement
     | createDbStatement
     | alterDbStatement
@@ -103,6 +104,7 @@ statement
     | stopPipeStatement
     | showPipesStatement
     | showReceiversStatement
+    | showCreatePipeStatement
     | createPipePluginStatement
     | dropPipePluginStatement
     | showPipePluginsStatement
@@ -112,6 +114,7 @@ statement
     | alterTopicStatement
     | dropTopicStatement
     | showTopicsStatement
+    | showCreateTopicStatement
     | showSubscriptionsStatement
     | dropSubscriptionStatement
 
@@ -204,6 +207,10 @@ useDatabaseStatement
 
 showDatabasesStatement
     : SHOW DATABASES (DETAILS)?
+    ;
+
+showCreateDatabaseStatement
+    : SHOW CREATE DATABASE database=identifier
     ;
 
 countDatabasesStatement
@@ -525,6 +532,10 @@ showReceiversStatement
     : SHOW RECEIVERS
     ;
 
+showCreatePipeStatement
+    : SHOW CREATE PIPE pipeName=identifier
+    ;
+
 createPipePluginStatement
     : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=string uriClause
     ;
@@ -561,6 +572,10 @@ dropTopicStatement
 
 showTopicsStatement
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
+    ;
+
+showCreateTopicStatement
+    : SHOW CREATE TOPIC topicName=identifier
     ;
 
 showSubscriptionsStatement
