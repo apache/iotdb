@@ -158,7 +158,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     if (objectFile.isPresent()) {
       try (RandomAccessFile raf = new RandomAccessFile(objectFile.get(), "r")) {
         raf.seek(offset);
-        raf.read(contents);
+        raf.readFully(contents);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -308,7 +308,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   private void readContentFromFile(File file, byte[] contents) throws IOException {
     try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
       raf.seek(offset);
-      raf.read(contents);
+      raf.readFully(contents);
     }
   }
 

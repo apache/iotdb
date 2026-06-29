@@ -97,6 +97,10 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
+  public boolean isExternalTsFileScan() {
+    return false;
+  }
+
   // Only used for query with table data(Tree view is not included)
   public boolean collectTable(String table) {
     // In the current version (2025.08.14), there is only one table under one FI
@@ -127,18 +131,24 @@ public class QueryContext {
       TsFileResource resource) {
     PatternTreeMap<ModEntry, ModsSerializer> modifications =
         PatternTreeMapFactory.getModsPatternTreeMap();
-    TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator();
-    while (modEntryIterator.hasNext()) {
-      ModEntry modification = modEntryIterator.next();
-      if (tables != null && modification instanceof TableDeletionEntry) {
-        String tableName = ((TableDeletionEntry) modification).getTableName();
-        if (!tables.contains(tableName)) {
+    try (TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator()) {
+      while (modEntryIterator.hasNext()) {
+        ModEntry modification = modEntryIterator.next();
+        if (shouldSkipModification(modification)) {
           continue;
         }
+        modifications.append(modification.keyOfPatternTree(), modification);
       }
-      modifications.append(modification.keyOfPatternTree(), modification);
     }
     return modifications;
+  }
+
+  protected boolean shouldSkipModification(ModEntry modification) {
+    if (tables != null && modification instanceof TableDeletionEntry) {
+      String tableName = ((TableDeletionEntry) modification).getTableName();
+      return !tables.contains(tableName);
+    }
+    return false;
   }
 
   public List<ModEntry> getPathModifications(

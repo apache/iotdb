@@ -37,13 +37,20 @@ import java.util.concurrent.TimeoutException;
  */
 public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
   private final int taskTimeoutSeconds;
-  private final AbstractEnv env;
+  private final Runnable dumpTestJVMSnapshot;
 
   public ParallelRequestDelegate(
       final List<String> endpoints, final int taskTimeoutSeconds, final AbstractEnv env) {
+    this(endpoints, taskTimeoutSeconds, env != null ? env::dumpTestJVMSnapshot : () -> {});
+  }
+
+  public ParallelRequestDelegate(
+      final List<String> endpoints,
+      final int taskTimeoutSeconds,
+      final Runnable dumpTestJVMSnapshot) {
     super(endpoints);
     this.taskTimeoutSeconds = taskTimeoutSeconds;
-    this.env = env;
+    this.dumpTestJVMSnapshot = dumpTestJVMSnapshot;
   }
 
   public List<T> requestAll() throws SQLException {
@@ -60,7 +67,7 @@ public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
       } catch (ExecutionException e) {
         exceptions[i] = e;
       } catch (InterruptedException | TimeoutException e) {
-        env.dumpTestJVMSnapshot();
+        dumpTestJVMSnapshot.run();
         for (int j = i; j < getEndpoints().size(); j++) {
           resultFutures.get(j).cancel(true);
         }

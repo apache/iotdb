@@ -214,6 +214,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -2997,12 +2998,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } else if (attributeKey.TIME_PARTITION_INTERVAL() != null) {
         final long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
-      } else if (attributeKey.SCHEMA_REGION_GROUP_NUM() != null) {
-        final int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
-      } else if (attributeKey.DATA_REGION_GROUP_NUM() != null) {
-        final int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
+      } else if (attributeKey.MAX_SCHEMA_REGION_GROUP_NUM() != null) {
+        final int maxSchemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        databaseSchemaStatement.setMaxSchemaRegionGroupNum(maxSchemaRegionGroupNum);
+      } else if (attributeKey.MAX_DATA_REGION_GROUP_NUM() != null) {
+        final int maxDataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        databaseSchemaStatement.setMaxDataRegionGroupNum(maxDataRegionGroupNum);
       }
     }
   }
@@ -3473,6 +3474,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),
@@ -3481,6 +3484,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.COUNT_IF:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),
@@ -4427,6 +4435,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     return createTopicStatement;
+  }
+
+  @Override
+  public Statement visitAlterTopic(IoTDBSqlParser.AlterTopicContext ctx) {
+    final AlterTopicStatement alterTopicStatement = new AlterTopicStatement();
+
+    if (ctx.topicName != null) {
+      alterTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(DataNodeQueryMessages.NOT_SUPPORT_FOR_THIS_SQL_IN_ALTER_TOPIC);
+    }
+
+    alterTopicStatement.setTopicAttributes(
+        parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause()));
+
+    return alterTopicStatement;
   }
 
   private Map<String, String> parseTopicAttributesClause(

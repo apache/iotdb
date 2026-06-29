@@ -36,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -57,8 +58,8 @@ import java.util.stream.Collectors;
 public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
   private static final Logger LOGGER = LoggerFactory.getLogger(RelationalDeleteDataNode.class);
 
-  /** byte: type */
-  private static final int FIXED_SERIALIZED_SIZE = Short.BYTES;
+  /** short: type, long: searchIndex */
+  private static final int FIXED_SERIALIZED_SIZE = Short.BYTES + Long.BYTES;
 
   private final List<TableDeletionEntry> modEntries;
 
@@ -220,7 +221,16 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     for (TableDeletionEntry modEntry : modEntries) {
       size += modEntry.serializedSize();
     }
+    size += sizeToWriteVarString(databaseName);
     return size;
+  }
+
+  private static int sizeToWriteVarString(final String value) {
+    if (value == null) {
+      return ReadWriteForEncodingUtils.varIntSize(-1);
+    }
+    final int byteLength = value.getBytes(TSFileConfig.STRING_CHARSET).length;
+    return ReadWriteForEncodingUtils.varIntSize(byteLength) + byteLength;
   }
 
   @Override
@@ -236,6 +246,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
       for (TableDeletionEntry modEntry : modEntries) {
         modEntry.serialize(buffer);
       }
+      ReadWriteIOUtils.writeVar(databaseName, buffer);
     } catch (IOException e) {
       LOGGER.error(DataNodeQueryMessages.FAILED_TO_SERIALIZE_MODENTRY_TO_WAL, e);
     }
@@ -283,12 +294,14 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     }
     final RelationalDeleteDataNode that = (RelationalDeleteDataNode) obj;
     return this.getPlanNodeId().equals(that.getPlanNodeId())
-        && Objects.equals(this.modEntries, that.modEntries);
+        && Objects.equals(this.modEntries, that.modEntries)
+        && Objects.equals(this.databaseName, that.databaseName)
+        && Objects.equals(this.progressIndex, that.progressIndex);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getPlanNodeId(), modEntries, progressIndex);
+    return Objects.hash(getPlanNodeId(), modEntries, databaseName, progressIndex);
   }
 
   public String toString() {
@@ -336,6 +349,9 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
     return new RelationalDeleteDataNode(this.getPlanNodeId(), allTableDeletionEntries, databaseName)
-        .setSearchIndex(getSearchIndex());
+        .setSearchIndex(getSearchIndex())
+        .setPhysicalTime(getPhysicalTime())
+        .setNodeId(getNodeId())
+        .setSyncIndex(getSyncIndex());
   }
 }

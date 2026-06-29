@@ -114,6 +114,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
@@ -489,6 +490,7 @@ public class ConfigPlanExecutor {
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
       case RenameUser:
+      case AccountUnlock:
       case RCreateRole:
       case RCreateUser:
       case RDropUser:
@@ -648,6 +650,9 @@ public class ConfigPlanExecutor {
       case ConsumerGroupHandleMetaChange:
         return subscriptionInfo.handleConsumerGroupMetaChanges(
             (ConsumerGroupHandleMetaChangePlan) physicalPlan);
+      case CommitProgressHandleMetaChange:
+        return subscriptionInfo.handleCommitProgressChanges(
+            (CommitProgressHandleMetaChangePlan) physicalPlan);
       case AlterConsumerGroup:
         return subscriptionInfo.alterConsumerGroup((AlterConsumerGroupPlan) physicalPlan);
       case TopicHandleMetaChange:
@@ -796,10 +801,13 @@ public class ConfigPlanExecutor {
               }
             });
     if (result.get()) {
+      pipeInfo.getPipeTaskInfo().enrichPipeMetasWithRootUserForCompatibility();
       LOGGER.info(
           ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_SUCCESS_LATESTSNAPSHOTROOTDIR,
           latestSnapshotRootDir);
     }
+    // Propagate any snapshot-load failure so callers (e.g. the AddPeer flow) do not treat a
+    // partially or wholly failed load as success.
     return result.get();
   }
 

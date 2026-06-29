@@ -75,7 +75,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
     registeredTaskCount++;
     LOGGER.info(
         DataNodePipeMessages.REGISTER_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
-        subtask,
+        subtask.getDisplayTaskID(),
         runningTaskCount,
         registeredTaskCount);
   }
@@ -112,7 +112,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
       registeredTaskCount--;
       LOGGER.info(
           DataNodePipeMessages.DEREGISTER_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
-          subtask,
+          subtask.getDisplayTaskID(),
           runningTaskCount,
           registeredTaskCount);
     }
@@ -135,7 +135,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
     runningTaskCount++;
     LOGGER.info(
         DataNodePipeMessages.START_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
-        subtask,
+        subtask.getDisplayTaskID(),
         runningTaskCount,
         registeredTaskCount);
   }
@@ -152,7 +152,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
     runningTaskCount--;
     LOGGER.info(
         DataNodePipeMessages.STOP_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
-        subtask,
+        subtask.getDisplayTaskID(),
         runningTaskCount,
         registeredTaskCount);
   }

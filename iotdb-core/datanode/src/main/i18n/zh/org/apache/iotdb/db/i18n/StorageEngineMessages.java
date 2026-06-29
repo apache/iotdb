@@ -359,10 +359,26 @@ public final class StorageEngineMessages {
   // ======================== Snapshot ========================
 
   public static final String EXCEPTION_LOAD_SNAPSHOT = "从 {} 加载快照时发生异常";
+  public static final String LOADING_SNAPSHOT_FOR = "正在为 {}-{} 加载快照，源目录为 {}";
+  public static final String EXCEPTION_LOADING_SNAPSHOT_FOR = "为 {}-{} 加载快照时发生异常";
   public static final String READING_SNAPSHOT_LOG_FILE = "正在读取快照日志文件 {}";
   public static final String REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR = "移除原始数据目录中的所有数据文件";
   public static final String FAILED_TO_REMOVE_ORIGIN_DATA_FILES = "移除原始数据文件失败";
   public static final String MOVING_SNAPSHOT_FILE_TO_DATA_DIRS = "正在将快照文件移动到数据目录";
+  public static final String CANNOT_FIND_SNAPSHOT_DIRECTORY = "找不到快照目录 %s";
+  public static final String NO_SEQ_OR_UNSEQ_FILES_IN_SNAPSHOT =
+      "快照 {} 中没有顺序或乱序文件，跳过创建文件链接";
+  public static final String EXCEPTION_DELETING_TIME_PARTITION_DIR =
+      "删除 {}-{} 的时间分区目录时发生异常";
+  public static final String CANNOT_CREATE_LINK_FALLBACK_COPY =
+      "无法创建从 {} 到 {} 的链接，回退为复制";
+  public static final String FAILED_TO_PROCESS_SNAPSHOT_FILE =
+      "处理文件 {} 失败，所在目录为 {}: {}";
+  public static final String FAILED_TO_PROCESS_SNAPSHOT_FILE_AFTER_RETRIES =
+      "重试后仍无法处理文件。源文件: %s，目标后缀: %s";
+  public static final String SNAPSHOT_FILE_NUM_MISMATCH =
+      "日志中的文件数为 %d，但磁盘中的文件数为 %d";
+  public static final String SNAPSHOT_FILE_NOT_IN_LOG = "文件 %s 不在日志文件列表中";
   public static final String NO_COMPRESSION_RATIO_FILE_IN_DIR = "目录 {} 中没有压缩率文件";
   public static final String CANNOT_LOAD_COMPRESSION_RATIO = "无法从 {} 加载压缩率";
   public static final String LOADED_COMPRESSION_RATIO = "已从 {} 加载压缩率";
@@ -473,6 +489,8 @@ public final class StorageEngineMessages {
   public static final String RELEASE_DATA_CACHE_MEMORY_BLOCK = "释放数据缓存内存块 {}";
   public static final String START_DATA_TYPE_CONVERSION_DOT = "开始对 LoadTsFileStatement: {} 进行数据类型转换。";
   public static final String START_DATA_TYPE_CONVERSION = "开始对 LoadTsFileStatement: {} 进行数据类型转换";
+  public static final String INTERRUPTED_WAITING_TABLET_CONVERSION_SLOT =
+      "等待 tablet 转换槽位时被中断: ";
   public static final String FAIL_TO_LOAD_TSFILE_TO_ACTIVE_DIR = "加载 TsFile 到 Active 目录失败";
   public static final String FAIL_TO_LOAD_DISK_SPACE = "获取文件 {} 的磁盘空间失败";
   public static final String LOAD_ACTIVE_LISTENING_DIR_NOT_SET = "未设置加载 Active 监听目录。";
@@ -505,6 +523,8 @@ public final class StorageEngineMessages {
   public static final String ERROR_EXECUTING_ACTIVE_LOAD_JOB = "执行 Active 加载定期任务时发生错误。";
   public static final String ACTIVE_LOAD_EXECUTOR_STARTED = "Active 加载定期任务执行器已成功启动。";
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active 加载定期任务执行器已成功停止。";
+  public static final String ACTIVE_LOAD_TEMPORARILY_UNAVAILABLE =
+      "拒绝自动加载 TsFile {} (isGeneratedByPipe = {})，原因是系统暂时不可用，将稍后重试。状态: {}";
   public static final String ERROR_MOVING_FILE_TO_FAIL_DIR = "将文件 {} 移动到失败目录时发生错误。";
   public static final String FAILED_COUNT_FILES_IN_FAIL_DIR = "统计失败目录中的失败文件数量失败。";
 

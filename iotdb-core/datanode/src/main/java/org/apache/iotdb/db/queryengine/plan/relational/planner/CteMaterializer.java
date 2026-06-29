@@ -142,6 +142,7 @@ public class CteMaterializer {
               LocalExecutionPlanner.getInstance().metadata,
               context.getCteQueries(),
               context.getExplainType(),
+              context.getExplainOutputFormat(),
               context.getTimeOut(),
               false,
               context.isDebug(),

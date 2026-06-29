@@ -208,27 +208,7 @@ public class SeriesScanUtil implements Accountable {
     dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending());
     this.dataSource = dataSource;
 
-    // updated filter concerning TTL
-    // IgnoreAllNullRows is false indicating that the current query is a table model query.
-    // In most cases, We can use this condition to determine from which model to obtain the ttl
-    // of the current device. However, it should be noted that for tree model data queried using
-    // table view, ttl also needs to be obtained from the tree model.
-    if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
-      if (deviceID != EMPTY_DEVICE_ID) {
-        long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
-        scanOptions.setTTLForTreeDevice(ttl);
-      }
-    } else {
-      if (scanOptions.timeFilterNeedUpdatedByTtl()) {
-        String databaseName = dataSource.getDatabaseName();
-        long ttl =
-            databaseName == null
-                ? Long.MAX_VALUE
-                : DataNodeTTLCache.getInstance()
-                    .getTTLForTable(databaseName, deviceID.getTableName());
-        scanOptions.setTTLForTableDevice(ttl);
-      }
-    }
+    updateFilterUsingTTL(dataSource);
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
@@ -251,6 +231,30 @@ public class SeriesScanUtil implements Accountable {
         endTime = Math.max(endTime, timeRange.getMax());
       }
       satisfiedTimeRange = new TimeRange(startTime, endTime);
+    }
+  }
+
+  protected void updateFilterUsingTTL(QueryDataSource dataSource) {
+    // updated filter concerning TTL
+    // IgnoreAllNullRows is false indicating that the current query is a table model query.
+    // In most cases, We can use this condition to determine from which model to obtain the ttl
+    // of the current device. However, it should be noted that for tree model data queried using
+    // table view, ttl also needs to be obtained from the tree model.
+    if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
+      if (deviceID != EMPTY_DEVICE_ID) {
+        long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+        scanOptions.setTTLForTreeDevice(ttl);
+      }
+    } else {
+      if (scanOptions.timeFilterNeedUpdatedByTtl()) {
+        String databaseName = dataSource.getDatabaseName();
+        long ttl =
+            databaseName == null
+                ? Long.MAX_VALUE
+                : DataNodeTTLCache.getInstance()
+                    .getTTLForTable(databaseName, deviceID.getTableName());
+        scanOptions.setTTLForTableDevice(ttl);
+      }
     }
   }
 

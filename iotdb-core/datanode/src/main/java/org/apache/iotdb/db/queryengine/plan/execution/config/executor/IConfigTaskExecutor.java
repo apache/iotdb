@@ -76,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -235,6 +236,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showPipes(
       ShowPipesStatement showPipesStatement, String userName);
 
+  SettableFuture<ConfigTaskResult> showCreatePipe(String pipeName, String userName);
+
   SettableFuture<ConfigTaskResult> showSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement);
 
@@ -243,9 +246,13 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement);
 
+  SettableFuture<ConfigTaskResult> alterTopic(AlterTopicStatement alterTopicStatement);
+
   SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement);
 
   SettableFuture<ConfigTaskResult> showTopics(ShowTopicsStatement showTopicsStatement);
+
+  SettableFuture<ConfigTaskResult> showCreateTopic(String topicName);
 
   SettableFuture<ConfigTaskResult> alterEncodingCompressor(
       String queryId, AlterEncodingCompressorStatement alterEncodingCompressorStatement);
@@ -336,6 +343,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> countDatabases(
       final CountDB countDB, final Predicate<String> canSeeDB);
+
+  SettableFuture<ConfigTaskResult> showCreateDatabase(final String database);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 

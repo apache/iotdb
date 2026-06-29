@@ -87,6 +87,7 @@ public final class UtilMessages {
       "Renamed file {} to {} because it already exists in the target directory: {}";
   public static final String COPIED_FILE_ALREADY_EXISTS =
       "Copy file {} to {} because it already exists in the target directory: {}";
+  public static final String ILLEGAL_EMPTY_PATH = "The path cannot be empty. ";
   public static final String ILLEGAL_PATH_DOTS_OR_SEPARATORS =
       "The path cannot be '.', '..', './' or '.\\'. ";
 
@@ -106,6 +107,20 @@ public final class UtilMessages {
       "{} is above the warning threshold, free space {}, total space {}";
   public static final String UNEXPECTED_ERROR_CHECKING_DISK_SPACE =
       "Unexpected error checking disk space for {}";
+
+  // ======================== FolderManager ========================
+
+  public static final String ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY =
+      "All folders are full, change system mode to read-only.";
+  public static final String FAILED_TO_PROCESS_FOLDER = "Failed to process folder {}";
+  public static final String FAILED_TO_READ_FILE_STORE_PATH =
+      "Failed to read file store path '{}'";
+  public static final String DISK_SPACE_INSUFFICIENT_READ_ONLY =
+      "Disk space is insufficient, change system mode to read-only.";
+  public static final String CANNOT_CALCULATE_OCCUPIED_SPACE =
+      "Cannot calculate occupied space of folder {}";
+  public static final String UNRECOGNIZED_MULTI_DIR_STRATEGY =
+      "Unrecognized multi-dir strategy '{}', falling back to {}.";
 
   // ======================== NodeUrlUtils ========================
 

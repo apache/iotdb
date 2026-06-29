@@ -29,6 +29,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.rpc.AutoScalingBufferWriteTransport;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.apache.ratis.client.RaftClientConfigKeys;
 import org.apache.ratis.conf.Parameters;
@@ -53,19 +54,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.InputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.AccessDeniedException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.KeyStore;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -190,10 +186,23 @@ public class Utils {
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
     AutoScalingBufferWriteTransport byteBuffer =
-        new AutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
-    TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
-    status.write(protocol);
-    return ByteBuffer.wrap(byteBuffer.getBuffer());
+        createAutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
+    try {
+      TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
+      status.write(protocol);
+      return ByteBuffer.wrap(Arrays.copyOf(byteBuffer.getBuffer(), byteBuffer.getPos()));
+    } finally {
+      byteBuffer.close();
+    }
+  }
+
+  private static AutoScalingBufferWriteTransport createAutoScalingBufferWriteTransport(
+      int initialCapacity) throws TException {
+    try {
+      return new AutoScalingBufferWriteTransport(initialCapacity);
+    } catch (IOException e) {
+      throw new TException(e);
+    }
   }
 
   public static TSStatus deserializeFrom(ByteBuffer buffer) throws TException {
@@ -371,31 +380,10 @@ public class Utils {
       String keyStorePassword = config.getGrpc().getSslKeyStorePassword();
       String trustStorePath = config.getGrpc().getSslTrustStorePath();
       String trustStorePassword = config.getGrpc().getSslTrustStorePassword();
-      try (InputStream keyStoreStream = Files.newInputStream(Paths.get(keyStorePath));
-          InputStream trustStoreStream = Files.newInputStream(Paths.get(trustStorePath))) {
-        // === 1) create KeyManager ===
-        KeyStore keyStore = KeyStore.getInstance("JKS");
-        keyStore.load(keyStoreStream, keyStorePassword.toCharArray());
-
-        KeyManagerFactory kmf =
-            KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(keyStore, keyStorePassword.toCharArray());
-        KeyManager keyManager = kmf.getKeyManagers()[0];
-
-        // === 2) create TrustManager ===
-        KeyStore trustStore = KeyStore.getInstance("JKS");
-        trustStore.load(trustStoreStream, trustStorePassword.toCharArray());
-
-        TrustManagerFactory tmf =
-            TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        tmf.init(trustStore);
-        TrustManager originalTrustManager = tmf.getTrustManagers()[0];
-
-        // The self-signed certification may not set Subject Alternative Name (SAN)
-        // Thrift with ssl didn't check it, but Grpc did.
-        // Wrap to disable the verification
+      try {
+        KeyManager keyManager = RpcSslUtils.createKeyManagers(keyStorePath, keyStorePassword)[0];
         TrustManager trustManager =
-            new NoHostnameVerificationTrustManager((X509TrustManager) originalTrustManager);
+            RpcSslUtils.createTrustManagers(trustStorePath, trustStorePassword)[0];
         GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
       } catch (AccessDeniedException e) {
         LOGGER.error(ConsensusMessages.FAILED_TO_LOAD_KEYSTORE);
