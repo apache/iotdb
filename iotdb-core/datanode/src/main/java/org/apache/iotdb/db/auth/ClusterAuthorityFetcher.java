@@ -119,9 +119,19 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       if (remoteCheck) {
         return checkPrivilegeFromConfigNode(req).getStatus();
       }
-      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+      return confirmCachedDenyFromConfigNode(req);
     }
     return checkPrivilegeFromConfigNode(req).getStatus();
+  }
+
+  // Cached denials can be stale when login repopulates a user during grant invalidation.
+  private TSStatus confirmCachedDenyFromConfigNode(TCheckUserPrivilegesReq req) {
+    TSStatus remoteStatus = checkPrivilegeFromConfigNode(req).getStatus();
+    if (remoteStatus.getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+        && CONNECTERROR.equals(remoteStatus.getMessage())) {
+      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+    }
+    return remoteStatus;
   }
 
   @Override
