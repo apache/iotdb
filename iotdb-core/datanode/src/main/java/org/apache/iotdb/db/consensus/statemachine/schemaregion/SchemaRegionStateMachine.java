@@ -125,14 +125,21 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean takeSnapshot(final File snapshotDir) {
-    if (schemaRegion.createSnapshot(snapshotDir)
-        && PipeDataNodeAgent.runtime()
-            .schemaListener(schemaRegion.getSchemaRegionId())
-            .createSnapshot(snapshotDir)) {
-      listen2Snapshot4PipeListener(true);
+    if (!schemaRegion.createSnapshot(snapshotDir)) {
+      return false;
+    }
+
+    final SchemaRegionListeningQueue listener =
+        PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+    if (listener == null) {
       return true;
     }
-    return false;
+
+    if (!listener.createSnapshot(snapshotDir)) {
+      return false;
+    }
+    listen2Snapshot4PipeListener(true);
+    return true;
   }
 
   @Override
@@ -142,12 +149,14 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       // callers (e.g. the AddPeer flow and the Ratis snapshot-install path) can detect a real
       // failure instead of treating a fallback-to-empty load as success.
       final boolean loadSucceeded = schemaRegion.loadSnapshot(latestSnapshotRootDir);
-      PipeDataNodeAgent.runtime()
-          .schemaListener(schemaRegion.getSchemaRegionId())
-          .loadSnapshot(latestSnapshotRootDir);
-      // We recompute the snapshot for pipe listener when loading snapshot
-      // to recover the newest snapshot in cache
-      listen2Snapshot4PipeListener(false);
+      final SchemaRegionListeningQueue listener =
+          PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+      if (listener != null) {
+        listener.loadSnapshot(latestSnapshotRootDir);
+        // We recompute the snapshot for pipe listener when loading snapshot
+        // to recover the newest snapshot in cache
+        listen2Snapshot4PipeListener(false);
+      }
       return loadSucceeded;
     } catch (Exception e) {
       logger.error("Failed to load snapshot from {}", latestSnapshotRootDir, e);
@@ -163,7 +172,10 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
                 .toString(),
             isTmp);
     final SchemaRegionListeningQueue listener =
-        PipeDataNodeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
+        PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+    if (listener == null) {
+      return;
+    }
     if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.get(0))) {
       if (listener.isOpened()) {
         logger.warn(
@@ -190,9 +202,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       final TSStatus result =
           ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        PipeDataNodeAgent.runtime()
-            .schemaListener(schemaRegion.getSchemaRegionId())
-            .tryListenToNode((PlanNode) request);
+        final SchemaRegionListeningQueue listener =
+            PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+        if (listener != null) {
+          listener.tryListenToNode((PlanNode) request);
+        }
       }
       return result;
     } catch (final IllegalArgumentException e) {

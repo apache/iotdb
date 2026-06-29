@@ -844,13 +844,20 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   public TSStatus visitPipeOperateSchemaQueueNode(
       final PipeOperateSchemaQueueNode node, final ISchemaRegion schemaRegion) {
     final SchemaRegionId id = schemaRegion.getSchemaRegionId();
-    final SchemaRegionListeningQueue queue = PipeDataNodeAgent.runtime().schemaListener(id);
-    if (node.isOpen() && !queue.isOpened()) {
-      logger.info(DataNodeMiscMessages.OPENED_PIPE_LISTENING_QUEUE, id);
-      queue.open();
-    } else if (!node.isOpen() && queue.isOpened()) {
-      logger.info(DataNodeMiscMessages.CLOSED_PIPE_LISTENING_QUEUE, id);
-      queue.close();
+    if (node.isOpen()) {
+      final SchemaRegionListeningQueue queue = PipeDataNodeAgent.runtime().schemaListener(id);
+      if (!queue.isOpened()) {
+        logger.info(DataNodeMiscMessages.OPENED_PIPE_LISTENING_QUEUE, id);
+        queue.open();
+      }
+    } else {
+      final SchemaRegionListeningQueue queue =
+          PipeDataNodeAgent.runtime().schemaListenerIfPresent(id);
+      if (queue != null && queue.isOpened()) {
+        logger.info(DataNodeMiscMessages.CLOSED_PIPE_LISTENING_QUEUE, id);
+        queue.close();
+        PipeDataNodeAgent.runtime().cleanupSchemaListenerIfUnused(id);
+      }
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }

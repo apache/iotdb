@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionListenerMetrics;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 
@@ -34,6 +33,7 @@ public class PipeSchemaRegionListenerManager {
 
   private final Map<SchemaRegionId, PipeSchemaRegionListener> id2ListenerMap =
       new ConcurrentHashMap<>();
+  private final Map<SchemaRegionId, AtomicBoolean> id2LeaderReadyMap = new ConcurrentHashMap<>();
 
   public synchronized Set<SchemaRegionId> regionIds() {
     return id2ListenerMap.keySet();
@@ -44,6 +44,12 @@ public class PipeSchemaRegionListenerManager {
         .listeningQueue;
   }
 
+  public synchronized SchemaRegionListeningQueue listenerIfPresent(
+      final SchemaRegionId schemaRegionId) {
+    final PipeSchemaRegionListener listener = id2ListenerMap.get(schemaRegionId);
+    return listener == null ? null : listener.listeningQueue;
+  }
+
   public synchronized int increaseAndGetReferenceCount(final SchemaRegionId schemaRegionId) {
     return id2ListenerMap
         .computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
@@ -52,28 +58,55 @@ public class PipeSchemaRegionListenerManager {
   }
 
   public synchronized int decreaseAndGetReferenceCount(final SchemaRegionId schemaRegionId) {
-    return id2ListenerMap
-        .computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
-        .listeningQueueReferenceCount
-        .updateAndGet(v -> v > 0 ? v - 1 : 0);
+    final PipeSchemaRegionListener listener = id2ListenerMap.get(schemaRegionId);
+    if (listener == null) {
+      return 0;
+    }
+
+    final int referenceCount =
+        listener.listeningQueueReferenceCount.updateAndGet(v -> v > 0 ? v - 1 : 0);
+    if (referenceCount == 0 && !listener.listeningQueue.isOpened()) {
+      cleanupListenerIfUnused(schemaRegionId, listener);
+    }
+    return referenceCount;
   }
 
   public synchronized void notifyLeaderReady(final SchemaRegionId schemaRegionId) {
-    id2ListenerMap
-        .computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
-        .notifyLeaderReady();
+    id2LeaderReadyMap.computeIfAbsent(schemaRegionId, id -> new AtomicBoolean()).set(true);
   }
 
   public synchronized void notifyLeaderUnavailable(final SchemaRegionId schemaRegionId) {
-    id2ListenerMap
-        .computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
-        .notifyLeaderUnavailable();
+    id2LeaderReadyMap.computeIfAbsent(schemaRegionId, id -> new AtomicBoolean()).set(false);
   }
 
   public synchronized boolean isLeaderReady(final SchemaRegionId schemaRegionId) {
-    return id2ListenerMap
-        .computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
-        .isLeaderReady();
+    final AtomicBoolean isLeaderReady = id2LeaderReadyMap.get(schemaRegionId);
+    return isLeaderReady != null && isLeaderReady.get();
+  }
+
+  public synchronized void cleanupListenerIfUnused(final SchemaRegionId schemaRegionId) {
+    final PipeSchemaRegionListener listener = id2ListenerMap.get(schemaRegionId);
+    if (listener != null) {
+      cleanupListenerIfUnused(schemaRegionId, listener);
+    }
+  }
+
+  public synchronized void clearSchemaRegionState(final SchemaRegionId schemaRegionId) {
+    final PipeSchemaRegionListener listener = id2ListenerMap.remove(schemaRegionId);
+    if (listener != null) {
+      PipeSchemaRegionListenerMetrics.getInstance().deregister(schemaRegionId.getId());
+    }
+    id2LeaderReadyMap.remove(schemaRegionId);
+  }
+
+  private void cleanupListenerIfUnused(
+      final SchemaRegionId schemaRegionId, final PipeSchemaRegionListener listener) {
+    if (listener.listeningQueueReferenceCount.get() > 0 || listener.listeningQueue.isOpened()) {
+      return;
+    }
+    if (id2ListenerMap.remove(schemaRegionId, listener)) {
+      PipeSchemaRegionListenerMetrics.getInstance().deregister(schemaRegionId.getId());
+    }
   }
 
   private static class PipeSchemaRegionListener {
@@ -81,33 +114,9 @@ public class PipeSchemaRegionListenerManager {
     private final SchemaRegionListeningQueue listeningQueue = new SchemaRegionListeningQueue();
     private final AtomicInteger listeningQueueReferenceCount = new AtomicInteger(0);
 
-    private final AtomicBoolean isLeaderReady = new AtomicBoolean(false);
-
     protected PipeSchemaRegionListener(final SchemaRegionId schemaRegionId) {
       PipeSchemaRegionListenerMetrics.getInstance()
           .register(listeningQueue, schemaRegionId.getId());
-    }
-
-    /**
-     * Get leader ready state, DO NOT use consensus layer's leader ready flag because
-     * SimpleConsensus' ready flag is always {@code true}. Note that this flag has nothing to do
-     * with listening and a {@link PipeTask} starts only iff the current node is a leader and ready.
-     *
-     * @return {@code true} iff the current node is a leader and ready
-     */
-    private boolean isLeaderReady() {
-      return isLeaderReady.get();
-    }
-
-    // Leader ready flag has the following effect
-    // 1. The linked list starts serving only after leader gets ready
-    // 2. Config pipe task is only created after leader gets ready
-    private void notifyLeaderReady() {
-      isLeaderReady.set(true);
-    }
-
-    private void notifyLeaderUnavailable() {
-      isLeaderReady.set(false);
     }
   }
 }

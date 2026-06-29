@@ -645,7 +645,7 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
    */
   public synchronized void discardEventsOfPipe(
       final String pipeName, final long creationTime, final int regionId) {
-    // Do nothing by default
+    PIPE_END_POINT_RATE_LIMITER_MAP.remove(new Pair<>(pipeName, creationTime));
   }
 
   public PipeReceiverStatusHandler statusHandler() {

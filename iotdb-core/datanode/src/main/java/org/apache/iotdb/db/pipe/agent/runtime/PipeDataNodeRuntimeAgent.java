@@ -149,12 +149,24 @@ public class PipeDataNodeRuntimeAgent implements IService {
     return regionListenerManager.listener(schemaRegionId);
   }
 
+  public SchemaRegionListeningQueue schemaListenerIfPresent(SchemaRegionId schemaRegionId) {
+    return regionListenerManager.listenerIfPresent(schemaRegionId);
+  }
+
   public int increaseAndGetSchemaListenerReferenceCount(SchemaRegionId schemaRegionId) {
     return regionListenerManager.increaseAndGetReferenceCount(schemaRegionId);
   }
 
   public int decreaseAndGetSchemaListenerReferenceCount(SchemaRegionId schemaRegionId) {
     return regionListenerManager.decreaseAndGetReferenceCount(schemaRegionId);
+  }
+
+  public void cleanupSchemaListenerIfUnused(SchemaRegionId schemaRegionId) {
+    regionListenerManager.cleanupListenerIfUnused(schemaRegionId);
+  }
+
+  public void clearSchemaRegionState(SchemaRegionId schemaRegionId) {
+    regionListenerManager.clearSchemaRegionState(schemaRegionId);
   }
 
   public void notifySchemaLeaderReady(SchemaRegionId schemaRegionId) {
