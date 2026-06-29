@@ -219,9 +219,19 @@ public class ExpressionFactory {
   public static GroupByTimeExpression groupByTime(GroupByTimeParameter parameter) {
     long startTime =
         parameter.isLeftCRightO() ? parameter.getStartTime() : parameter.getStartTime() + 1;
-    long endTime = parameter.isLeftCRightO() ? parameter.getEndTime() : parameter.getEndTime() + 1;
+    long endTime =
+        parameter.isRightClosed()
+            ? (parameter.getEndTime() == Long.MAX_VALUE
+                ? Long.MAX_VALUE
+                : parameter.getEndTime() + 1)
+            : (parameter.isLeftCRightO() ? parameter.getEndTime() : parameter.getEndTime() + 1);
     return new GroupByTimeExpression(
-        startTime, endTime, parameter.getInterval(), parameter.getSlidingStep());
+        startTime,
+        endTime,
+        parameter.getInterval(),
+        parameter.getSlidingStep(),
+        parameter.isLeftCRightO(),
+        parameter.isRightClosed());
   }
 
   public static GroupByTimeExpression groupByTime(

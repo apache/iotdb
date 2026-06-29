@@ -43,6 +43,9 @@ public class GroupByTimeComponent extends StatementNode {
   // if it is left close and right open interval
   private boolean leftCRightO = true;
 
+  // if the right boundary is closed (inclusive)
+  private boolean rightClosed = false;
+
   public GroupByTimeComponent() {
     // do nothing
   }
@@ -53,6 +56,14 @@ public class GroupByTimeComponent extends StatementNode {
 
   public void setLeftCRightO(boolean leftCRightO) {
     this.leftCRightO = leftCRightO;
+  }
+
+  public boolean isRightClosed() {
+    return rightClosed;
+  }
+
+  public void setRightClosed(boolean rightClosed) {
+    this.rightClosed = rightClosed;
   }
 
   public TimeDuration getInterval() {
@@ -104,23 +115,11 @@ public class GroupByTimeComponent extends StatementNode {
     sqlBuilder.append("GROUP BY TIME").append(' ');
     sqlBuilder.append('(');
     if (startTime != 0 || endTime != 0) {
-      if (isLeftCRightO()) {
-        sqlBuilder
-            .append('[')
-            .append(startTime)
-            .append(',')
-            .append(' ')
-            .append(endTime)
-            .append(')');
-      } else {
-        sqlBuilder
-            .append('(')
-            .append(startTime)
-            .append(',')
-            .append(' ')
-            .append(endTime)
-            .append(']');
-      }
+      // Determine left bracket
+      sqlBuilder.append(isLeftCRightO() ? '[' : '(');
+      sqlBuilder.append(startTime).append(',').append(' ').append(endTime);
+      // Determine right bracket
+      sqlBuilder.append(isRightClosed() ? ']' : ')');
       sqlBuilder.append(',').append(' ');
     }
     sqlBuilder.append(originalInterval);
