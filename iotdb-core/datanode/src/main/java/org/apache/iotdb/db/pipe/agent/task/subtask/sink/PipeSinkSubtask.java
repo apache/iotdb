@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeSinkWithSchedulingDelay;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -113,6 +114,10 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       return false;
     }
 
+    if (waitForSchedulingDelayIfNecessary() && isClosed.get()) {
+      return false;
+    }
+
     final Event event =
         lastEvent != null
             ? lastEvent
@@ -159,6 +164,33 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       handleException(event, e);
     }
 
+    return true;
+  }
+
+  private boolean waitForSchedulingDelayIfNecessary() {
+    if (!(outputPipeSink instanceof PipeSinkWithSchedulingDelay)) {
+      return false;
+    }
+
+    final long remainingSchedulingDelayMs =
+        ((PipeSinkWithSchedulingDelay) outputPipeSink).consumeSchedulingDelayMs();
+    if (remainingSchedulingDelayMs <= 0) {
+      return false;
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          DataNodePipeMessages.PIPE_SINK_SUBTASK_DELAYED_TO_AVOID_FREQUENT_HANDSHAKES,
+          getDisplayTaskID(),
+          remainingSchedulingDelayMs);
+    }
+
+    try {
+      Thread.sleep(remainingSchedulingDelayMs);
+    } catch (final InterruptedException ignore) {
+      // Do not restore the interrupted status here because this sink worker thread is reused by the
+      // thread pool.
+    }
     return true;
   }
 
