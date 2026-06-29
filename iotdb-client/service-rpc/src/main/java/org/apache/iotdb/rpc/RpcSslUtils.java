@@ -47,6 +47,8 @@ public final class RpcSslUtils {
   private static final String DEFAULT_PROTOCOL = "TLS";
   private static final String PKCS12_STORE_TYPE = "PKCS12";
   private static final String JKS_STORE_TYPE = "JKS";
+  private static final String TLCP_KEY_MANAGER_TYPE = "NewSunX509";
+  private static final String TLCP_TRUST_MANAGER_TYPE = "PKIX";
 
   private static volatile String protocol = DEFAULT_PROTOCOL;
 
@@ -68,11 +70,21 @@ public final class RpcSslUtils {
   public static void setKeyStore(
       TSSLTransportFactory.TSSLTransportParameters params, String keyStorePath, String keyStorePwd)
       throws TTransportException {
+    setKeyStore(params, keyStorePath, keyStorePwd, protocol);
+  }
+
+  public static void setKeyStore(
+      TSSLTransportFactory.TSSLTransportParameters params,
+      String keyStorePath,
+      String keyStorePwd,
+      String sslProtocol)
+      throws TTransportException {
     try {
+      String protocol = normalizeProtocol(sslProtocol);
       params.setKeyStore(
           keyStorePath,
           keyStorePwd,
-          KeyManagerFactory.getDefaultAlgorithm(),
+          keyManagerType(protocol),
           detectStoreType(keyStorePath, keyStorePwd));
     } catch (GeneralSecurityException | IOException e) {
       throw new TTransportException(e);
@@ -84,11 +96,21 @@ public final class RpcSslUtils {
       String trustStorePath,
       String trustStorePwd)
       throws TTransportException {
+    setTrustStore(params, trustStorePath, trustStorePwd, protocol);
+  }
+
+  public static void setTrustStore(
+      TSSLTransportFactory.TSSLTransportParameters params,
+      String trustStorePath,
+      String trustStorePwd,
+      String sslProtocol)
+      throws TTransportException {
     try {
+      String protocol = normalizeProtocol(sslProtocol);
       params.setTrustStore(
           trustStorePath,
           trustStorePwd,
-          TrustManagerFactory.getDefaultAlgorithm(),
+          trustManagerType(protocol),
           detectStoreType(trustStorePath, trustStorePwd));
     } catch (GeneralSecurityException | IOException e) {
       throw new TTransportException(e);
@@ -112,11 +134,14 @@ public final class RpcSslUtils {
       String trustStorePassword,
       String sslProtocol)
       throws GeneralSecurityException, IOException {
-    SSLContext context = SSLContext.getInstance(normalizeProtocol(sslProtocol));
+    String protocol = normalizeProtocol(sslProtocol);
+    SSLContext context = SSLContext.getInstance(protocol);
     KeyManager[] keyManagers =
-        hasText(keyStorePath) ? loadKeyManagers(keyStorePath, keyStorePassword) : null;
+        hasText(keyStorePath) ? loadKeyManagers(keyStorePath, keyStorePassword, protocol) : null;
     TrustManager[] trustManagers =
-        hasText(trustStorePath) ? loadTrustManagers(trustStorePath, trustStorePassword) : null;
+        hasText(trustStorePath)
+            ? loadTrustManagers(trustStorePath, trustStorePassword, protocol)
+            : null;
     context.init(keyManagers, trustManagers, null);
     return context;
   }
@@ -147,17 +172,28 @@ public final class RpcSslUtils {
 
   private static KeyManager[] loadKeyManagers(String keyStorePath, String keyStorePassword)
       throws GeneralSecurityException, IOException {
+    return loadKeyManagers(keyStorePath, keyStorePassword, protocol);
+  }
+
+  private static KeyManager[] loadKeyManagers(
+      String keyStorePath, String keyStorePassword, String sslProtocol)
+      throws GeneralSecurityException, IOException {
     KeyStore keyStore = loadStore(keyStorePath, keyStorePassword);
-    KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+    KeyManagerFactory kmf = KeyManagerFactory.getInstance(keyManagerType(sslProtocol));
     kmf.init(keyStore, toPassword(keyStorePassword));
     return kmf.getKeyManagers();
   }
 
   private static TrustManager[] loadTrustManagers(String trustStorePath, String trustStorePassword)
       throws GeneralSecurityException, IOException {
+    return loadTrustManagers(trustStorePath, trustStorePassword, protocol);
+  }
+
+  private static TrustManager[] loadTrustManagers(
+      String trustStorePath, String trustStorePassword, String sslProtocol)
+      throws GeneralSecurityException, IOException {
     KeyStore trustStore = loadStore(trustStorePath, trustStorePassword);
-    TrustManagerFactory tmf =
-        TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+    TrustManagerFactory tmf = TrustManagerFactory.getInstance(trustManagerType(sslProtocol));
     tmf.init(trustStore);
     return tmf.getTrustManagers();
   }
@@ -241,5 +277,21 @@ public final class RpcSslUtils {
         .filter(s -> !s.isEmpty())
         .distinct()
         .toArray(String[]::new);
+  }
+
+  private static String keyManagerType(String sslProtocol) {
+    return isTlcpProtocol(sslProtocol)
+        ? TLCP_KEY_MANAGER_TYPE
+        : KeyManagerFactory.getDefaultAlgorithm();
+  }
+
+  private static String trustManagerType(String sslProtocol) {
+    return isTlcpProtocol(sslProtocol)
+        ? TLCP_TRUST_MANAGER_TYPE
+        : TrustManagerFactory.getDefaultAlgorithm();
+  }
+
+  private static boolean isTlcpProtocol(String protocol) {
+    return protocol != null && protocol.trim().toUpperCase(Locale.ROOT).startsWith("TLCP");
   }
 }
