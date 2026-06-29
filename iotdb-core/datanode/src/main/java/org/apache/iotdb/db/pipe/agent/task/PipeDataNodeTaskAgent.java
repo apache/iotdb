@@ -815,8 +815,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       throws IllegalPathException {
     if (!PipeConfig.getInstance().isPipeEnableMemoryCheck()
         || !isInnerSource(staticMeta.getSourceParameters())
-        || !PipeType.USER.equals(staticMeta.getPipeType())
-        || pipeTasksToBeCreated.isEmpty()) {
+        || !PipeType.USER.equals(staticMeta.getPipeType())) {
+      return;
+    }
+
+    if (pipeTasksToBeCreated.isEmpty()) {
+      calculateInsertNodeQueueMemory(staticMeta.getSourceParameters(), 1);
       return;
     }
 
@@ -1074,7 +1078,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return PipeConfig.getInstance().getTsFileParserMemory();
   }
 
-  private long calculateSinkBatchMemory(final PipeParameters sinkParameters) {
+  private static long calculateSinkBatchMemory(final PipeParameters sinkParameters) {
     final String format =
         sinkParameters.getStringOrDefault(
             Arrays.asList(PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
@@ -1106,7 +1110,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return batchSizeInBytes * calculateBatchShardCount(sinkParameters, usingTsFileBatch);
   }
 
-  private long calculateBatchShardCount(
+  private static long calculateBatchShardCount(
       final PipeParameters sinkParameters, final boolean usingTsFileBatch) {
     if (usingTsFileBatch
         || !sinkParameters.getBooleanOrDefault(
@@ -1122,7 +1126,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return 1L + calculateTargetEndPointCount(sinkParameters);
   }
 
-  private int calculateTargetEndPointCount(final PipeParameters sinkParameters) {
+  private static int calculateTargetEndPointCount(final PipeParameters sinkParameters) {
     final Set<TEndPoint> targetEndPoints = new HashSet<>();
     try {
       addTargetEndPoint(
@@ -1161,7 +1165,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return Math.max(1, targetEndPoints.size());
   }
 
-  private void addTargetEndPoint(
+  private static void addTargetEndPoint(
       final Set<TEndPoint> targetEndPoints,
       final PipeParameters sinkParameters,
       final String ipKey,
@@ -1179,7 +1183,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
   }
 
-  private long calculateSendTsFileReadBufferMemory(
+  private static long calculateSendTsFileReadBufferMemory(
       final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
     // If the source is history enable, we need to transfer tsfile
     boolean needTransferTsFile =
