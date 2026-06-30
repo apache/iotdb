@@ -711,7 +711,7 @@ loadBalanceStatement
     ;
 
 migrateRegionStatement
-    : MIGRATE REGION regionId=INTEGER_VALUE FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
+    : MIGRATE REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
     ;
 
 reconstructRegionStatement
@@ -727,7 +727,7 @@ removeRegionStatement
     ;
 
 removeDataNodeStatement
-    : REMOVE DATANODE dataNodeId=INTEGER_VALUE
+    : REMOVE DATANODE dataNodeIds+=INTEGER_VALUE (',' dataNodeIds+=INTEGER_VALUE)*
     ;
 // ------------------------------------------- Activation ---------------------------------------------------------
 showSystemInfo

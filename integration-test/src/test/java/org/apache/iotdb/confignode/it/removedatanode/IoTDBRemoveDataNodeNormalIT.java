@@ -155,6 +155,13 @@ public class IoTDBRemoveDataNodeNormalIT {
     successTest(2, 3, 1, 4, 1, 2, true, SQLModel.TABLE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
   }
 
+  @Test
+  public void success1C5DRemoveTwoDataNodesUseSQL() throws Exception {
+    // Setup 1C5D, and remove 2D in a single "remove datanode a, b" statement; 3 DataNodes remain
+    // which is enough to keep both the data (factor 2) and schema (factor 3) replicas.
+    successTest(2, 3, 1, 5, 2, 2, true, SQLModel.TREE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
+  }
+
   //  @Test
   public void success1C4DIoTV2TestUseTableSQL() throws Exception {
     // Setup 1C4D, and remove 1D, this test should success
