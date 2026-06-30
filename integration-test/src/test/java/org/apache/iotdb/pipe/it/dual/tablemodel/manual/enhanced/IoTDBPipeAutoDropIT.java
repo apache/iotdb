@@ -70,6 +70,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
@@ -79,6 +80,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
@@ -176,6 +178,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("mode.snapshot", "true");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("start-time", "0");
       sourceAttributes.put("end-time", "49");
       sourceAttributes.put("user", "root");

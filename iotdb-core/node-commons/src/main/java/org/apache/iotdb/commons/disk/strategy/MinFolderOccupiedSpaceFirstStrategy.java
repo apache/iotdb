@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 
 /**
  * Selects the folder with the least occupied space.
@@ -118,7 +119,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
       }
       try {
         cachedOccupiedSpace[i] = JVMCommonUtils.getOccupiedSpace(folder);
-      } catch (IOException e) {
+      } catch (IOException | UncheckedIOException e) {
         LOGGER.error(UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE, folder, e);
         cachedOccupiedSpace[i] = Long.MAX_VALUE;
       }

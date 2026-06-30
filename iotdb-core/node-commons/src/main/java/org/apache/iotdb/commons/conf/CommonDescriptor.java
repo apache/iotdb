@@ -335,7 +335,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
-
     config.setPathLogMaxSize(
         Integer.parseInt(
             properties.getProperty(

@@ -217,6 +217,10 @@ public final class DataNodePipeMessages {
       "Pipe 跳过不应传输的临时 TsFile：{}";
   public static final String PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING =
       "已从 config node 拉取 pipe 元数据：{}，正在恢复 ...";
+  public static final String FAILED_TO_SHOW_CREATE_PIPE_NOT_EXIST =
+      "show create pipe %s 失败，该 pipe 不存在。";
+  public static final String FAILED_TO_SHOW_CREATE_TOPIC_NOT_EXIST =
+      "show create topic %s 失败，该 topic 不存在。";
   public static final String RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_NODE =
       "收到来自 config node 的 pipe 心跳请求 {}。";
   public static final String REGION_NO_TSFILEINSERTIONEVENTS_TO_REPLACE_FOR_SOURCE =

@@ -1590,7 +1590,8 @@ public class ProcedureManager {
 
   public TSStatus startConsensusPipe(String pipeName) {
     try {
-      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName);
+      StartPipeProcedureV2 procedure =
+          new StartPipeProcedureV2(pipeName, resolveIsTableModel(pipeName));
       executor.submitProcedure(procedure);
       return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
@@ -1599,8 +1600,12 @@ public class ProcedureManager {
   }
 
   public TSStatus startPipe(String pipeName) {
+    return startPipe(pipeName, false);
+  }
+
+  public TSStatus startPipe(String pipeName, boolean isTableModel) {
     try {
-      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName);
+      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName, isTableModel);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1616,7 +1621,8 @@ public class ProcedureManager {
 
   public TSStatus stopConsensusPipe(String pipeName) {
     try {
-      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName);
+      StopPipeProcedureV2 procedure =
+          new StopPipeProcedureV2(pipeName, resolveIsTableModel(pipeName));
       executor.submitProcedure(procedure);
       return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
@@ -1625,8 +1631,12 @@ public class ProcedureManager {
   }
 
   public TSStatus stopPipe(String pipeName) {
+    return stopPipe(pipeName, false);
+  }
+
+  public TSStatus stopPipe(String pipeName, boolean isTableModel) {
     try {
-      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName);
+      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName, isTableModel);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1642,7 +1652,8 @@ public class ProcedureManager {
 
   public TSStatus dropConsensusPipe(String pipeName) {
     try {
-      DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      DropPipeProcedureV2 procedure =
+          new DropPipeProcedureV2(pipeName, resolveIsTableModel(pipeName));
       executor.submitProcedure(procedure);
       return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
@@ -1656,7 +1667,8 @@ public class ProcedureManager {
    */
   public void dropConsensusPipeAsync(String pipeName) {
     try {
-      DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      DropPipeProcedureV2 procedure =
+          new DropPipeProcedureV2(pipeName, resolveIsTableModel(pipeName));
       executor.submitProcedure(procedure);
       LOGGER.info(ManagerMessages.SUBMITTED_ASYNC_CONSENSUS_PIPE_DROP, pipeName);
     } catch (Exception e) {
@@ -1666,8 +1678,12 @@ public class ProcedureManager {
   }
 
   public TSStatus dropPipe(String pipeName) {
+    return dropPipe(pipeName, false);
+  }
+
+  public TSStatus dropPipe(String pipeName, boolean isTableModel) {
     try {
-      final DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      final DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName, isTableModel);
       executor.submitProcedure(procedure);
       final TSStatus status = waitingProcedureFinished(procedure, PROCEDURE_WAIT_TIME_OUT << 1);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1679,6 +1695,10 @@ public class ProcedureManager {
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
+  }
+
+  private boolean resolveIsTableModel(String pipeName) {
+    return configManager.getPipeManager().getPipeTaskCoordinator().resolveIsTableModel(pipeName);
   }
 
   private TSStatus handleConsensusPipeProcedure(Procedure<?> procedure) {

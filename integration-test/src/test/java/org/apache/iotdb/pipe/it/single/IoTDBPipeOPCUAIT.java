@@ -74,6 +74,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
     env.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setPipeMemoryManagementEnabled(false)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1)
@@ -311,6 +312,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "opc-ua-sink");

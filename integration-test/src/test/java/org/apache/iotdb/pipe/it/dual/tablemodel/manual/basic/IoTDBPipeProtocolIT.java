@@ -71,6 +71,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
@@ -83,6 +84,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(configNodeConsensus)
         .setSchemaRegionConsensusProtocolClass(schemaRegionConsensus)
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
@@ -167,6 +169,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -179,6 +182,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -211,6 +215,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
@@ -254,6 +259,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("database-name", "test.*");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
@@ -303,6 +309,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("database-name", "test.*");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
@@ -361,6 +368,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setPipeAirGapReceiverEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -377,6 +385,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setPipeAirGapReceiverEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -427,6 +436,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("database-name", "test.*");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");

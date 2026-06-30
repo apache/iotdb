@@ -369,7 +369,8 @@ public class IoTDBDescriptor {
     try {
       conf.checkMultiDirStrategyClassName();
     } catch (Exception e) {
-      conf.setMultiDirStrategyClassName(oldMultiDirStrategyClassName.trim());
+      conf.setMultiDirStrategyClassName(
+          oldMultiDirStrategyClassName == null ? null : oldMultiDirStrategyClassName.trim());
       throw e;
     }
 
@@ -1285,6 +1286,12 @@ public class IoTDBDescriptor {
                 "region_migration_speed_limit_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "region_migration_speed_limit_bytes_per_second"))));
+    conf.setDataRegionIotSnapshotTransmissionProgressLogIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_iot_snapshot_transmission_progress_log_interval_ms",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "data_region_iot_snapshot_transmission_progress_log_interval_ms"))));
     conf.setKeepSameDiskWhenLoadingSnapshot(
         Boolean.parseBoolean(
             properties.getProperty(

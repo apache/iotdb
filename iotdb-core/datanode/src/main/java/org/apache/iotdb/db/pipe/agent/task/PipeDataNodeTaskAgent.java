@@ -109,6 +109,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_INCLUSION_KEY;
@@ -121,6 +122,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY;
@@ -198,7 +200,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getPipeMeta(pipeStaticMeta)
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
@@ -546,13 +548,19 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Terminate Logic /////////////////////////
 
   public void markCompleted(final String pipeName, final int regionId) {
+    markCompleted(pipeName, 0, regionId);
+  }
+
+  public void markCompleted(final String pipeName, final long creationTime, final int regionId) {
     acquireWriteLock();
     try {
-      if (pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      final PipeMeta pipeMeta =
+          creationTime == 0
+              ? pipeMetaKeeper.getPipeMeta(pipeName)
+              : pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+      if (pipeMeta != null) {
         final PipeDataNodeTask pipeDataNodeTask =
-            ((PipeDataNodeTask)
-                pipeTaskManager.getPipeTask(
-                    pipeMetaKeeper.getPipeMeta(pipeName).getStaticMeta(), regionId));
+            ((PipeDataNodeTask) pipeTaskManager.getPipeTask(pipeMeta.getStaticMeta(), regionId));
         if (Objects.nonNull(pipeDataNodeTask)) {
           pipeDataNodeTask.markCompleted();
         }
@@ -565,8 +573,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Utils /////////////////////////
 
   public Set<Integer> getPipeTaskRegionIdSet(final String pipeName, final long creationTime) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    return pipeMeta == null || pipeMeta.getStaticMeta().getCreationTime() != creationTime
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+    return pipeMeta == null
         ? Collections.emptySet()
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
   }
@@ -913,6 +921,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             || sourceParameters.hasAnyAttributes(
                 EXTRACTOR_PATH_KEY,
                 SOURCE_PATH_KEY,
+                EXTRACTOR_PATH_INCLUSION_KEY,
+                SOURCE_PATH_INCLUSION_KEY,
                 EXTRACTOR_PATTERN_INCLUSION_KEY,
                 SOURCE_PATTERN_INCLUSION_KEY,
                 EXTRACTOR_PATH_EXCLUSION_KEY,

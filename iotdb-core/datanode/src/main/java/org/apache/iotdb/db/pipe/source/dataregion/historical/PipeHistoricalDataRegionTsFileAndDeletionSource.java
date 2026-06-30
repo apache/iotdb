@@ -52,6 +52,7 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -127,6 +128,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   private String pipeName;
   private long creationTime;
+  private String pipeNameWithCreationTime;
   private String tsFileDedupScopeID;
 
   private PipeTaskMeta pipeTaskMeta;
@@ -314,6 +316,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
+    pipeNameWithCreationTime =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     if (environment instanceof PipeTaskSourceRuntimeEnvironment) {
       pipeTaskMeta = ((PipeTaskSourceRuntimeEnvironment) environment).getPipeTaskMeta();
       if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
@@ -615,7 +619,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                 // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
                 try {
                   PipeDataNodeResourceManager.tsfile()
-                      .pinTsFileResource(resource, shouldTransferModFile, pipeName);
+                      .pinTsFileResource(resource, shouldTransferModFile, pipeNameWithCreationTime);
                   return false;
                 } catch (final IOException e) {
                   ++statistics.pinFailedCount;
@@ -949,7 +953,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     } finally {
       try {
         PipeDataNodeResourceManager.tsfile()
-            .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
+            .unpinTsFileResource(resource, shouldTransferModFile, pipeNameWithCreationTime);
       } catch (final IOException e) {
         LOGGER.warn(
             DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_SKIPPED_HISTORICAL_TSFILERESOURCE,
@@ -1044,7 +1048,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       if (shouldUnpinResource) {
         try {
           PipeDataNodeResourceManager.tsfile()
-              .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
+              .unpinTsFileResource(resource, shouldTransferModFile, pipeNameWithCreationTime);
         } catch (final IOException e) {
           LOGGER.warn(
               DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_CREATING,
@@ -1155,7 +1159,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               try {
                 PipeDataNodeResourceManager.tsfile()
                     .unpinTsFileResource(
-                        (TsFileResource) resource, shouldTransferModFile, pipeName);
+                        (TsFileResource) resource, shouldTransferModFile, pipeNameWithCreationTime);
               } catch (final IOException e) {
                 LOGGER.warn(
                     DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING,
