@@ -252,6 +252,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     if (values != null && index < values.length) {
       values[index] = null;
     }
+    refreshContainsObjectData();
     measurementColumnCnt = -1;
   }
 
@@ -630,6 +631,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
       }
     }
+    refreshContainsObjectData();
   }
 
   @Override
@@ -878,6 +880,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
       }
     }
+    refreshContainsObjectData();
   }
 
   /**
@@ -969,6 +972,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
       }
     }
+    refreshContainsObjectData();
   }
 
   // endregion

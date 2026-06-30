@@ -106,7 +106,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   private long extractTime = 0;
 
-  // Object type: single flag — whether this structure contains Object type data (null = not yet
+  // Object type: single flag for whether this structure contains Object type data (null = not yet
   // determined)
   private Boolean hasObjectData = null;
 
@@ -244,6 +244,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     return () -> new InsertNodeObjectPathIterator(insertNode, hasObjectData, context);
   }
 
+  private boolean mayContainObjectData() {
+    return Objects.nonNull(insertNode) && insertNode.mayContainObjectData();
+  }
+
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
@@ -251,12 +255,17 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     extractTime = System.nanoTime();
     try {
       if (Objects.nonNull(pipeName)) {
-        final Iterator<String> pathIterator = objectPaths().iterator();
-        final int linked =
-            PipeDataNodeResourceManager.object()
-                .linkObjectFiles(
-                    tsFileResource, pathIterator, pipeName, this::shouldSkipFurtherProcessing);
-        hasObjectData = linked > 0;
+        if (mayContainObjectData()) {
+          hasObjectData = Boolean.TRUE;
+          final Iterator<String> pathIterator = objectPaths().iterator();
+          final int linked =
+              PipeDataNodeResourceManager.object()
+                  .linkObjectFiles(
+                      tsFileResource, pathIterator, pipeName, this::shouldSkipFurtherProcessing);
+          hasObjectData = linked > 0;
+        } else {
+          hasObjectData = Boolean.FALSE;
+        }
         PipeDataNodeSinglePipeMetrics.getInstance()
             .increaseInsertNodeEventCount(pipeName, creationTime);
         PipeDataNodeAgent.task()

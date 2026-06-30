@@ -53,6 +53,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public abstract class InsertNode extends SearchNode {
@@ -69,6 +70,7 @@ public abstract class InsertNode extends SearchNode {
   protected MeasurementSchema[] measurementSchemas;
   protected String[] measurements;
   protected TSDataType[] dataTypes;
+  protected boolean containsObjectData = true;
 
   protected TsTableColumnCategory[] columnCategories;
   protected List<Integer> tagColumnIndices;
@@ -141,6 +143,7 @@ public abstract class InsertNode extends SearchNode {
     this.isAligned = isAligned;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
+    refreshContainsObjectData();
     setColumnCategories(columnCategories);
   }
 
@@ -213,6 +216,54 @@ public abstract class InsertNode extends SearchNode {
     return dataTypes;
   }
 
+  public boolean mayContainObjectData() {
+    return containsObjectData;
+  }
+
+  protected final void refreshContainsObjectData() {
+    containsObjectData = containsObjectData(dataTypes);
+  }
+
+  protected final void setContainsObjectData(final boolean containsObjectData) {
+    this.containsObjectData = containsObjectData;
+  }
+
+  protected static boolean containsObjectData(final TSDataType[] dataTypes) {
+    if (Objects.isNull(dataTypes)) {
+      return true;
+    }
+    for (final TSDataType dataType : dataTypes) {
+      if (dataType == TSDataType.OBJECT) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  protected final <T> void refreshContainsObjectDataFromChildren(
+      final List<T> children, final Predicate<T> mayContainObjectData) {
+    if (Objects.isNull(children)) {
+      refreshContainsObjectData();
+      return;
+    }
+    for (final T child : children) {
+      if (Objects.nonNull(child) && mayContainObjectData.test(child)) {
+        setContainsObjectData(true);
+        return;
+      }
+    }
+    setContainsObjectData(false);
+  }
+
+  protected final <T> void updateContainsObjectDataWhenAppendingChild(
+      final T child, final boolean wasEmpty, final Predicate<T> mayContainObjectData) {
+    if (wasEmpty) {
+      setContainsObjectData(Objects.nonNull(child) && mayContainObjectData.test(child));
+    } else if (Objects.nonNull(child) && mayContainObjectData.test(child)) {
+      setContainsObjectData(true);
+    }
+  }
+
   public int getMeasurementColumnCnt() {
     if (measurementColumnCnt == -1) {
       measurementColumnCnt = 0;
@@ -233,6 +284,7 @@ public abstract class InsertNode extends SearchNode {
 
   public void setDataTypes(TSDataType[] dataTypes) {
     this.dataTypes = dataTypes;
+    refreshContainsObjectData();
   }
 
   public IDeviceID getDeviceID() {
@@ -315,6 +367,7 @@ public abstract class InsertNode extends SearchNode {
       measurements[i] = measurementSchemas[i].getMeasurementName();
       dataTypes[i] = measurementSchemas[i].getType();
     }
+    refreshContainsObjectData();
   }
 
   protected void deserializeMeasurementSchemas(ByteBuffer buffer) {

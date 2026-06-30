@@ -527,6 +527,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (columns != null && index < columns.length) {
       columns[index] = null;
     }
+    refreshContainsObjectData();
     measurementColumnCnt = -1;
   }
 
@@ -845,6 +846,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < measurementSize; i++) {
       dataTypes[i] = TSDataType.deserialize(buffer.get());
     }
+    refreshContainsObjectData();
 
     rowCount = buffer.getInt();
     times = new long[rowCount];
@@ -1265,6 +1267,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < measurementSize; i++) {
       dataTypes[i] = measurementSchemas[i].getType();
     }
+    refreshContainsObjectData();
 
     rowCount = buffer.getInt();
     times = new long[rowCount];

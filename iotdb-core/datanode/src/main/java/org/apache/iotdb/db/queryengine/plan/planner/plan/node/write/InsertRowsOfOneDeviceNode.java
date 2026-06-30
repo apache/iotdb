@@ -79,6 +79,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     super(id);
     insertRowNodeIndexList = new ArrayList<>();
     insertRowNodeList = new ArrayList<>();
+    refreshContainsObjectDataFromInsertRowNodeList();
   }
 
   @Override
@@ -91,7 +92,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
       PlanNodeId id, List<Integer> insertRowNodeIndexList, List<InsertRowNode> insertRowNodeList) {
     super(id);
     this.insertRowNodeIndexList = insertRowNodeIndexList;
-    this.insertRowNodeList = insertRowNodeList;
+    setInsertRowNodeList(insertRowNodeList);
   }
 
   public Map<Integer, TSStatus> getResults() {
@@ -148,6 +149,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
   public void setInsertRowNodeList(List<InsertRowNode> insertRowNodeList) {
     this.insertRowNodeList = insertRowNodeList;
+    refreshContainsObjectDataFromInsertRowNodeList();
 
     if (insertRowNodeList == null || insertRowNodeList.isEmpty()) {
       return;
@@ -156,6 +158,33 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     targetPath = insertRowNodeList.get(0).getTargetPath();
     isAligned = insertRowNodeList.get(0).isAligned;
     storeMeasurementsAndDataType();
+  }
+
+  public void addOneInsertRowNode(InsertRowNode node, int index) {
+    final boolean wasEmpty = insertRowNodeList.isEmpty();
+    insertRowNodeList.add(node);
+    insertRowNodeIndexList.add(index);
+    updateContainsObjectDataWhenAppendingChild(node, wasEmpty, InsertRowNode::mayContainObjectData);
+    if (wasEmpty && Objects.nonNull(node)) {
+      targetPath = node.getTargetPath();
+      isAligned = node.isAligned;
+    }
+    storeMeasurementsAndDataType();
+  }
+
+  @Override
+  public void setDataTypes(TSDataType[] dataTypes) {
+    super.setDataTypes(dataTypes);
+    refreshContainsObjectDataFromInsertRowNodeList();
+  }
+
+  @Override
+  public boolean mayContainObjectData() {
+    return super.mayContainObjectData();
+  }
+
+  private void refreshContainsObjectDataFromInsertRowNodeList() {
+    refreshContainsObjectDataFromChildren(insertRowNodeList, InsertRowNode::mayContainObjectData);
   }
 
   @Override
@@ -238,6 +267,9 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     List<TSDataType> dataTypeList = new ArrayList<>();
     List<String> measurementList = new ArrayList<>();
     for (InsertRowNode insertRowNode : insertRowNodeList) {
+      if (Objects.isNull(insertRowNode)) {
+        continue;
+      }
       String[] measurements = insertRowNode.getMeasurements();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
       for (int i = 0; measurements != null && i < measurements.length; i++) {
@@ -252,7 +284,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
       }
     }
     measurements = measurementList.toArray(new String[0]);
-    dataTypes = dataTypeList.toArray(new TSDataType[0]);
+    setDataTypes(dataTypeList.toArray(new TSDataType[0]));
   }
 
   public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {

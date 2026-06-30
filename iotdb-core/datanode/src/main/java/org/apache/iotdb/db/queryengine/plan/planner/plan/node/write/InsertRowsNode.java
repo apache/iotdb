@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -75,6 +76,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     super(id);
     insertRowNodeList = new ArrayList<>();
     insertRowNodeIndexList = new ArrayList<>();
+    refreshContainsObjectDataFromInsertRowNodeList();
   }
 
   @Override
@@ -96,7 +98,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
       PlanNodeId id, List<Integer> insertRowNodeIndexList, List<InsertRowNode> insertRowNodeList) {
     super(id);
     this.insertRowNodeIndexList = insertRowNodeIndexList;
-    this.insertRowNodeList = insertRowNodeList;
+    setInsertRowNodeList(insertRowNodeList);
   }
 
   /** Record the result of insert rows */
@@ -116,11 +118,34 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   public void setInsertRowNodeList(List<InsertRowNode> insertRowNodeList) {
     this.insertRowNodeList = insertRowNodeList;
+    refreshContainsObjectDataFromInsertRowNodeList();
+  }
+
+  @Override
+  public void setDataTypes(TSDataType[] dataTypes) {
+    super.setDataTypes(dataTypes);
+    refreshContainsObjectDataFromInsertRowNodeList();
   }
 
   public void addOneInsertRowNode(InsertRowNode node, int index) {
+    final boolean wasEmpty = insertRowNodeList.isEmpty();
     insertRowNodeList.add(node);
     insertRowNodeIndexList.add(index);
+    updateContainsObjectDataWhenAppending(node, wasEmpty);
+  }
+
+  @Override
+  public boolean mayContainObjectData() {
+    return super.mayContainObjectData();
+  }
+
+  private void refreshContainsObjectDataFromInsertRowNodeList() {
+    refreshContainsObjectDataFromChildren(insertRowNodeList, InsertRowNode::mayContainObjectData);
+  }
+
+  private void updateContainsObjectDataWhenAppending(
+      final InsertRowNode node, final boolean wasEmpty) {
+    updateContainsObjectDataWhenAppendingChild(node, wasEmpty, InsertRowNode::mayContainObjectData);
   }
 
   public boolean isMixingAlignment() {

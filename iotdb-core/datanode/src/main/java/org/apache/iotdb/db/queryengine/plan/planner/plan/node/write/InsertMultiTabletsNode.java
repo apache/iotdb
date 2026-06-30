@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -100,6 +101,7 @@ public class InsertMultiTabletsNode extends InsertNode {
     super(id);
     parentInsertTabletNodeIndexList = new ArrayList<>();
     insertTabletNodeList = new ArrayList<>();
+    refreshContainsObjectDataFromInsertTabletNodeList();
   }
 
   @Override
@@ -114,7 +116,7 @@ public class InsertMultiTabletsNode extends InsertNode {
       List<InsertTabletNode> insertTabletNodeList) {
     super(id);
     this.parentInsertTabletNodeIndexList = parentInsertTabletNodeIndexList;
-    this.insertTabletNodeList = insertTabletNodeList;
+    setInsertTabletNodeList(insertTabletNodeList);
   }
 
   public List<Integer> getParentInsertTabletNodeIndexList() {
@@ -131,11 +133,36 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   private void setInsertTabletNodeList(List<InsertTabletNode> insertTabletNodeList) {
     this.insertTabletNodeList = insertTabletNodeList;
+    refreshContainsObjectDataFromInsertTabletNodeList();
+  }
+
+  @Override
+  public void setDataTypes(TSDataType[] dataTypes) {
+    super.setDataTypes(dataTypes);
+    refreshContainsObjectDataFromInsertTabletNodeList();
   }
 
   public void addInsertTabletNode(InsertTabletNode node, Integer parentIndex) {
+    final boolean wasEmpty = insertTabletNodeList.isEmpty();
     insertTabletNodeList.add(node);
     parentInsertTabletNodeIndexList.add(parentIndex);
+    updateContainsObjectDataWhenAppending(node, wasEmpty);
+  }
+
+  @Override
+  public boolean mayContainObjectData() {
+    return super.mayContainObjectData();
+  }
+
+  private void refreshContainsObjectDataFromInsertTabletNodeList() {
+    refreshContainsObjectDataFromChildren(
+        insertTabletNodeList, InsertTabletNode::mayContainObjectData);
+  }
+
+  private void updateContainsObjectDataWhenAppending(
+      final InsertTabletNode node, final boolean wasEmpty) {
+    updateContainsObjectDataWhenAppendingChild(
+        node, wasEmpty, InsertTabletNode::mayContainObjectData);
   }
 
   @Override
