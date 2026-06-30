@@ -88,6 +88,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("realtime-mode", realtime);
       extractorAttributes.put("user", "root");
       if (withParsing) {
