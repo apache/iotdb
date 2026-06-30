@@ -281,13 +281,13 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   public void updateLastCache(String databaseName) {
-    String[] rawMeasurements = getRawMeasurements();
-    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
-    for (int i = 0; i < rawMeasurements.length; i++) {
+    TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
       timeValuePairs[i] = composeTimeValuePair(i);
     }
     TableDeviceSchemaCache.getInstance()
-        .updateLastCacheIfExists(databaseName, getDeviceID(), rawMeasurements, timeValuePairs);
+        .updateLastCacheIfExists(
+            databaseName, getDeviceID(), measurements, measurementSchemas, timeValuePairs);
   }
 
   @Override

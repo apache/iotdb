@@ -273,11 +273,33 @@ public class TableDeviceSchemaCache {
       final String[] measurements,
       final TimeValuePair[] timeValuePairs,
       boolean invalidateNull) {
+    updateLastCacheIfExists(database, deviceId, measurements, null, timeValuePairs, invalidateNull);
+  }
+
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs) {
+    updateLastCacheIfExists(
+        database, deviceId, measurements, measurementSchemas, timeValuePairs, false);
+  }
+
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs,
+      boolean invalidateNull) {
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
         null,
-        entry -> entry.tryUpdateLastCache(measurements, timeValuePairs, invalidateNull),
+        entry ->
+            entry.tryUpdateLastCache(
+                measurements, measurementSchemas, timeValuePairs, invalidateNull),
         false);
   }
 
@@ -447,7 +469,7 @@ public class TableDeviceSchemaCache {
             : entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.tryUpdateLastCache(measurements, timeValuePairs),
+                    + entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs),
         Objects.isNull(timeValuePairs));
   }
 
