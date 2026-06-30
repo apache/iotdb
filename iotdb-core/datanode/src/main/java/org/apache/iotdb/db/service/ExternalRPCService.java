@@ -116,7 +116,9 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
                 ZeroCopyRpcTransportFactory.INSTANCE);
       }
     } catch (RPCServiceException e) {
-      throw new IllegalAccessException(e.getMessage());
+      IllegalAccessException exception = new IllegalAccessException(e.getMessage());
+      exception.initCause(e);
+      throw exception;
     }
     thriftServiceThread.setName(ThreadName.CLIENT_RPC_SERVICE.getName());
     MetricService.getInstance().addMetricSet(new RPCServiceMetrics(thriftServiceThread));

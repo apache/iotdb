@@ -186,6 +186,8 @@ public class Utils {
         case Config.USE_SSL:
         case Config.TRUST_STORE:
         case Config.TRUST_STORE_PWD:
+        case Config.KEY_STORE:
+        case Config.KEY_STORE_PWD:
         case Config.SSL_PROTOCOL:
         case Config.VERSION:
         case Config.NETWORK_TIMEOUT:
