@@ -35,7 +35,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpre
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
@@ -45,6 +47,10 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -58,6 +64,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredica
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.And;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.DeviceIn;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.SegmentExactMatch;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -81,6 +88,8 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 
 public class AnalyzeUtils {
+
+  private static final int ATTRIBUTE_FILTER_DELETE_DEVICE_IN_LIMIT = 1000;
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -372,14 +381,20 @@ public class AnalyzeUtils {
     // Maybe set by pipe transfer
     if (Objects.isNull(node.getTableDeletionEntries())) {
       node.setTableDeletionEntries(
-          parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+          parseExpressions2ModEntries(
+              node.getWhere().orElse(null), table, databaseName, queryContext));
     }
   }
 
   public static List<TableDeletionEntry> parseExpressions2ModEntries(
-      final Expression expression, final TsTable table) {
+      final Expression expression,
+      final TsTable table,
+      final String databaseName,
+      final MPPQueryContext queryContext) {
     return toDisjunctiveNormalForms(expression).stream()
-        .map(disjunctiveNormalForm -> parsePredicate(disjunctiveNormalForm, table))
+        .map(
+            disjunctiveNormalForm ->
+                parsePredicate(disjunctiveNormalForm, table, databaseName, queryContext))
         .collect(Collectors.toList());
   }
 
@@ -447,7 +462,11 @@ public class AnalyzeUtils {
     return results;
   }
 
-  private static TableDeletionEntry parsePredicate(Expression expression, TsTable table) {
+  private static TableDeletionEntry parsePredicate(
+      Expression expression,
+      TsTable table,
+      final String databaseName,
+      final MPPQueryContext queryContext) {
     if (expression == null) {
       return new TableDeletionEntry(
           new DeletionPredicate(table.getTableName()),
@@ -458,20 +477,75 @@ public class AnalyzeUtils {
     expressionQueue.add(expression);
     DeletionPredicate predicate = new DeletionPredicate(table.getTableName());
     TagPredicate tagPredicate = null;
+    List<Expression> deviceFilterExpressions = null;
+    List<String> attributeColumns = null;
     TimeRange timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true);
     while (!expressionQueue.isEmpty()) {
       Expression currExp = expressionQueue.remove();
       if (currExp instanceof LogicalExpression) {
         parseAndPredicate(((LogicalExpression) currExp), expressionQueue);
       } else if (currExp instanceof ComparisonExpression) {
-        tagPredicate =
+        final PredicateParseResult parseResult =
             parseComparison(((ComparisonExpression) currExp), timeRange, tagPredicate, table);
+        tagPredicate = parseResult.tagPredicate;
+        if (parseResult.shouldQueryDevice()) {
+          if (Objects.isNull(deviceFilterExpressions)) {
+            deviceFilterExpressions = new ArrayList<>();
+            attributeColumns = new ArrayList<>();
+          }
+          deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
+          collectAttributeColumn(attributeColumns, parseResult.attributeColumn);
+        } else if (parseResult.shouldFilterDevice()) {
+          if (Objects.isNull(deviceFilterExpressions)) {
+            deviceFilterExpressions = new ArrayList<>();
+          }
+          deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
+        }
       } else if (currExp instanceof IsNullPredicate) {
-        tagPredicate = parseIsNull((IsNullPredicate) currExp, tagPredicate, table);
+        final PredicateParseResult parseResult =
+            parseIsNull((IsNullPredicate) currExp, tagPredicate, table);
+        tagPredicate = parseResult.tagPredicate;
+        if (parseResult.shouldQueryDevice()) {
+          if (Objects.isNull(deviceFilterExpressions)) {
+            deviceFilterExpressions = new ArrayList<>();
+            attributeColumns = new ArrayList<>();
+          }
+          deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
+          collectAttributeColumn(attributeColumns, parseResult.attributeColumn);
+        } else if (parseResult.shouldFilterDevice()) {
+          if (Objects.isNull(deviceFilterExpressions)) {
+            deviceFilterExpressions = new ArrayList<>();
+          }
+          deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
+        }
       } else {
         throw new SemanticException(
             DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + currExp + " in " + expression);
       }
+    }
+    if (Objects.nonNull(attributeColumns)) {
+      final Set<IDeviceID> deviceIDs =
+          TableDeviceSchemaFetcher.getInstance()
+              .fetchDeviceSchemaForDataQuery(
+                  databaseName,
+                  table.getTableName(),
+                  deviceFilterExpressions,
+                  attributeColumns,
+                  queryContext)
+              .values()
+              .stream()
+              .flatMap(List::stream)
+              .map(DeviceEntry::getDeviceID)
+              .collect(Collectors.toSet());
+      if (deviceIDs.size() > ATTRIBUTE_FILTER_DELETE_DEVICE_IN_LIMIT) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.TOO_MANY_DEVICES_MATCHED_BY_ATTRIBUTE_FILTERS_IN_DELETION,
+                deviceIDs.size(),
+                ATTRIBUTE_FILTER_DELETE_DEVICE_IN_LIMIT,
+                attributeColumns));
+      }
+      tagPredicate = new DeviceIn(deviceIDs);
     }
     if (tagPredicate != null) {
       predicate.setTagPredicate(tagPredicate);
@@ -494,7 +568,14 @@ public class AnalyzeUtils {
     expressionQueue.addAll(expression.getTerms());
   }
 
-  private static TagPredicate parseIsNull(
+  private static void collectAttributeColumn(
+      final List<String> attributeColumns, final String attributeColumn) {
+    if (Objects.nonNull(attributeColumn) && !attributeColumns.contains(attributeColumn)) {
+      attributeColumns.add(attributeColumn);
+    }
+  }
+
+  private static PredicateParseResult parseIsNull(
       IsNullPredicate isNullPredicate, TagPredicate oldPredicate, TsTable table) {
     Expression leftHandExp = isNullPredicate.getValue();
     if (!(leftHandExp instanceof Identifier)) {
@@ -502,6 +583,11 @@ public class AnalyzeUtils {
           DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
     String columnName = ((Identifier) leftHandExp).getValue();
+    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    if (Objects.nonNull(columnSchema)
+        && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+      return PredicateParseResult.attribute(columnName, oldPredicate);
+    }
     int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
     if (tagColumnOrdinal == -1) {
       throw new SemanticException(
@@ -510,7 +596,7 @@ public class AnalyzeUtils {
 
     // the first segment is the table name, so + 1
     TagPredicate newPredicate = new SegmentExactMatch(null, tagColumnOrdinal + 1);
-    return combinePredicates(oldPredicate, newPredicate);
+    return PredicateParseResult.tag(combinePredicates(oldPredicate, newPredicate));
   }
 
   private static TagPredicate combinePredicates(
@@ -525,7 +611,7 @@ public class AnalyzeUtils {
     return new TagPredicate.And(oldPredicate, newPredicate);
   }
 
-  private static TagPredicate parseComparison(
+  private static PredicateParseResult parseComparison(
       ComparisonExpression comparisonExpression,
       TimeRange timeRange,
       TagPredicate oldPredicate,
@@ -571,10 +657,15 @@ public class AnalyzeUtils {
               "The operator of time predicate must be <, <=, >, or >=: " + right);
       }
 
-      return oldPredicate;
+      return PredicateParseResult.time(oldPredicate);
     }
     // tag predicate
     String columnName = identifier.getValue();
+    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    if (Objects.nonNull(columnSchema)
+        && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+      return PredicateParseResult.attribute(columnName, oldPredicate);
+    }
     int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
     if (tagColumnOrdinal == -1) {
       throw new SemanticException(
@@ -582,7 +673,7 @@ public class AnalyzeUtils {
     }
 
     TagPredicate newPredicate = getTagPredicate(comparisonExpression, right, tagColumnOrdinal);
-    return combinePredicates(oldPredicate, newPredicate);
+    return PredicateParseResult.tag(combinePredicates(oldPredicate, newPredicate));
   }
 
   private static String getTimeColumnName(final TsTable table) {
@@ -615,6 +706,54 @@ public class AnalyzeUtils {
     }
     // the first segment is the table name, so + 1
     return new SegmentExactMatch(rightHandValue, tagColumnOrdinal + 1);
+  }
+
+  private static Expression toSymbolReferenceExpression(final Expression expression) {
+    return ExpressionTreeRewriter.rewriteWith(
+        new ExpressionRewriter<>() {
+          @Override
+          public Expression rewriteIdentifier(
+              final Identifier node,
+              final Void context,
+              final ExpressionTreeRewriter<Void> treeRewriter) {
+            return new SymbolReference(node.getValue());
+          }
+        },
+        expression);
+  }
+
+  private static class PredicateParseResult {
+    private final TagPredicate tagPredicate;
+    private final String attributeColumn;
+    private final boolean filterDevice;
+
+    private PredicateParseResult(
+        final TagPredicate tagPredicate, final String attributeColumn, final boolean filterDevice) {
+      this.tagPredicate = tagPredicate;
+      this.attributeColumn = attributeColumn;
+      this.filterDevice = filterDevice;
+    }
+
+    private static PredicateParseResult time(final TagPredicate tagPredicate) {
+      return new PredicateParseResult(tagPredicate, null, false);
+    }
+
+    private static PredicateParseResult tag(final TagPredicate tagPredicate) {
+      return new PredicateParseResult(tagPredicate, null, true);
+    }
+
+    private static PredicateParseResult attribute(
+        final String attributeColumn, final TagPredicate tagPredicate) {
+      return new PredicateParseResult(tagPredicate, attributeColumn, true);
+    }
+
+    private boolean shouldQueryDevice() {
+      return Objects.nonNull(attributeColumn);
+    }
+
+    private boolean shouldFilterDevice() {
+      return filterDevice;
+    }
   }
 
   public interface DataPartitionQueryFunc {

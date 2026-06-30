@@ -269,6 +269,8 @@ public final class DataNodeQueryMessages {
       "表 '%s' 不包含时间列";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "标签谓词的运算符必须为 '='，目标：";
+  public static final String TOO_MANY_DEVICES_MATCHED_BY_ATTRIBUTE_FILTERS_IN_DELETION =
+      "删除语句中的属性过滤条件匹配了过多设备（%d），限制为 %d。请移除所有属性过滤条件（%s），或进一步增加属性过滤条件。";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =
       "LAST 查询中仅支持时间过滤器";
   public static final String VIEWS_CANNOT_BE_USED_IN_GROUP_BY_TAGS =
