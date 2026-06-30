@@ -196,6 +196,7 @@ public class ColumnHeaderConstant {
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
+  public static final String IS_DEGRADED = "IsDegraded";
 
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
@@ -272,6 +273,7 @@ public class ColumnHeaderConstant {
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
+  public static final String IS_DEGRADED_TABLE_MODEL = "is_degraded";
 
   public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
   public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";
@@ -608,7 +610,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
-          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT));
+          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT),
+          new ColumnHeader(IS_DEGRADED, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> showTopicColumnHeaders =
       ImmutableList.of(

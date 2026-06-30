@@ -130,6 +130,11 @@ public class ShowPipeTask implements IConfigTask {
                       ? String.format("%.2f", remainingTime)
                       : "Unknown",
                   TSFileConfig.STRING_CHARSET));
+      if (tPipeInfo.isSetIsDegraded()) {
+        builder.getColumnBuilder(9).writeBoolean(tPipeInfo.isIsDegraded());
+      } else {
+        builder.getColumnBuilder(9).appendNull();
+      }
       builder.declarePosition();
     }
     final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();

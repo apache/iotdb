@@ -316,6 +316,7 @@ struct TDataNodeHeartbeatResp {
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
   17: optional map<i32, i64> dataRegionRawDataSize
+  18: optional list<i32> pipeDegradedStatusList
 }
 
 struct TPipeHeartbeatReq {
