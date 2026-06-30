@@ -1202,7 +1202,7 @@ public class ProcedureManager {
     }
 
     // select coordinator for adding peer
-    // TODO: choose the DataNode which has lowest load
+    // (future improvement: choose the DataNode which has the lowest load)
     final TDataNodeLocation coordinatorForAddPeer =
         handler
             .filterDataNodeWithOtherRegionReplica(

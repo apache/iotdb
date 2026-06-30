@@ -127,15 +127,26 @@ public class IoTDBMigrateMultiRegionForIoTV1IT extends IoTDBRegionOperationRelia
 
       Predicate<TShowRegionResp> migratePredicate =
           tShowRegionResp -> {
-            Map<Integer, Set<Integer>> newRegionMap =
+            // The source replica is set to RegionStatus.Removing at the start of
+            // RemoveRegionPeerProcedure and is only actually deleted at its final
+            // REMOVE_REGION_LOCATION_CACHE state. getRunningRegionMap() filters out the Removing
+            // replica, so checking "source absent" against the Running-only view would pass while
+            // the source replica is still listed (in Removing status) in the partition table,
+            // before the immediately-following getAllRegionMap() assertion can observe it gone.
+            // Mirror the single-region migrate predicate (see generalTestWithAllOptions): require
+            // the destination to be Running and check source absence against the all-status view.
+            Map<Integer, Set<Integer>> runningRegionMap =
                 getRunningRegionMap(tShowRegionResp.getRegionInfoList());
+            Map<Integer, Set<Integer>> allRegionMap =
+                getRegionMap(tShowRegionResp.getRegionInfoList());
             return selectedRegions.stream()
                 .allMatch(
                     regionId -> {
-                      Set<Integer> dataNodes = newRegionMap.get(regionId);
-                      return dataNodes != null
-                          && dataNodes.contains(destDataNode)
-                          && !dataNodes.contains(sourceDataNode);
+                      Set<Integer> runningDataNodes = runningRegionMap.get(regionId);
+                      Set<Integer> allDataNodes = allRegionMap.get(regionId);
+                      return runningDataNodes != null
+                          && runningDataNodes.contains(destDataNode)
+                          && (allDataNodes == null || !allDataNodes.contains(sourceDataNode));
                     });
           };
 
