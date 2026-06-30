@@ -176,6 +176,7 @@ keyWords
     | PRIVILEGES
     | PRIVILEGE_VALUE
     | PROCESSLIST
+    | PROGRESS
     | PROCESSOR
     | PROPERTY
     | PRUNE
