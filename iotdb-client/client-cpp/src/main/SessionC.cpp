@@ -18,7 +18,6 @@
  */
 
 #include "SessionC.h"
-#include "Date.h"
 #include "Session.h"
 #include "TableSession.h"
 #include "TableSessionBuilder.h"
@@ -187,7 +186,8 @@ static std::vector<char*> toCharPtrVec(const TSDataType_C* types, const void* co
     }
     case TS_TYPE_DATE: {
       const TSDate_C* src = static_cast<const TSDate_C*>(values[i]);
-      IoTDBDate* p = new IoTDBDate(src->year, src->month, src->day);
+      boost::gregorian::date* p =
+          new boost::gregorian::date(src->year, src->month, src->day);
       result[i] = reinterpret_cast<char*>(p);
       break;
     }
@@ -227,7 +227,7 @@ static void freeCharPtrVec(std::vector<char*>& vec, const TSDataType_C* types, i
       delete reinterpret_cast<double*>(vec[i]);
       break;
     case TS_TYPE_DATE:
-      delete reinterpret_cast<IoTDBDate*>(vec[i]);
+      delete reinterpret_cast<boost::gregorian::date*>(vec[i]);
       break;
     default:
       delete[] vec[i];
