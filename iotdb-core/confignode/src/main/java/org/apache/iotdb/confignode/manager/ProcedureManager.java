@@ -1906,6 +1906,8 @@ public class ProcedureManager {
     }
     topicAttributes.putIfAbsent(
         PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, Boolean.TRUE.toString());
+    topicAttributes.putIfAbsent(
+        PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.FALSE.toString());
     if (!containsKeyIgnoreCase(topicAttributes, PipeSourceConstant.SOURCE_PATTERN_KEY)
         && !containsKeyIgnoreCase(topicAttributes, PipeSourceConstant.SOURCE_PATH_KEY)
         && !containsKeyIgnoreCase(

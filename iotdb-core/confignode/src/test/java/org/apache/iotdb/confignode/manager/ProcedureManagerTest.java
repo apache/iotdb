@@ -210,6 +210,8 @@ public class ProcedureManagerTest {
     Assert.assertEquals(
         Boolean.TRUE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY));
     Assert.assertEquals(
+        Boolean.FALSE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY));
+    Assert.assertEquals(
         "root.sg.**", topicAttributes.get(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY));
   }
 
@@ -224,6 +226,8 @@ public class ProcedureManagerTest {
 
     Assert.assertEquals(
         Boolean.TRUE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY));
+    Assert.assertEquals(
+        Boolean.FALSE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY));
     Assert.assertEquals(
         "root.custom.**", topicAttributes.get(PipeSourceConstant.SOURCE_PATTERN_KEY));
     Assert.assertFalse(

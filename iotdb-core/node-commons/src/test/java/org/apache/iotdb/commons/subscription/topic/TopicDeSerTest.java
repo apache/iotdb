@@ -238,6 +238,7 @@ public class TopicDeSerTest {
     topicAttributes.put(TopicConstant.DATABASE_KEY, "db");
     topicAttributes.put(TopicConstant.TABLE_KEY, "view_table");
     topicAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, Boolean.TRUE.toString());
+    topicAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.FALSE.toString());
     topicAttributes.put(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY, "root.db.**");
 
     final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
@@ -247,6 +248,9 @@ public class TopicDeSerTest {
     Assert.assertEquals(
         Boolean.TRUE.toString(),
         extractorAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY));
+    Assert.assertEquals(
+        Boolean.FALSE.toString(),
+        extractorAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY));
     Assert.assertEquals(
         "root.db.**", extractorAttributes.get(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY));
     Assert.assertEquals("db", extractorAttributes.get(TopicConstant.DATABASE_KEY));
