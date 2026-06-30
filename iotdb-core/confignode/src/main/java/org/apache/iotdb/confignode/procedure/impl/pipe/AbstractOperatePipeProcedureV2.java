@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMetrics;
@@ -567,9 +568,61 @@ public abstract class AbstractOperatePipeProcedureV2
             .serialize());
   }
 
+  protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(
+      String pipeName, boolean isTableModel, ConfigNodeProcedureEnv env) throws IOException {
+    return env.pushSinglePipeMetaToDataNodes(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(
+                pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel))
+            .serialize());
+  }
+
+  protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(
+      PipeStaticMeta pipeStaticMeta, ConfigNodeProcedureEnv env) throws IOException {
+    return env.pushSinglePipeMetaToDataNodes(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(
+                pipeTaskInfo.get().getPipeMetaByPipeStaticMeta(pipeStaticMeta))
+            .serialize());
+  }
+
   protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes4Realtime(
       String pipeName, ConfigNodeProcedureEnv env) throws IOException {
     final PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    // Note that although the altered pipe has progress in it,
+    // if we alter it to realtime we should ignore the previous data
+    if (!pipeMeta.getStaticMeta().isSourceExternal()) {
+      pipeMeta
+          .getStaticMeta()
+          .getSourceParameters()
+          .addOrReplaceEquivalentAttributes(
+              new PipeParameters(
+                  Collections.singletonMap(
+                      SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.FALSE.toString())));
+    }
+    return env.pushSinglePipeMetaToDataNodes(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
+  }
+
+  protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes4Realtime(
+      String pipeName, boolean isTableModel, ConfigNodeProcedureEnv env) throws IOException {
+    final PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel);
+    // Note that although the altered pipe has progress in it,
+    // if we alter it to realtime we should ignore the previous data
+    if (!pipeMeta.getStaticMeta().isSourceExternal()) {
+      pipeMeta
+          .getStaticMeta()
+          .getSourceParameters()
+          .addOrReplaceEquivalentAttributes(
+              new PipeParameters(
+                  Collections.singletonMap(
+                      SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.FALSE.toString())));
+    }
+    return env.pushSinglePipeMetaToDataNodes(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
+  }
+
+  protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes4Realtime(
+      PipeStaticMeta pipeStaticMeta, ConfigNodeProcedureEnv env) throws IOException {
+    final PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeStaticMeta(pipeStaticMeta);
     // Note that although the altered pipe has progress in it,
     // if we alter it to realtime we should ignore the previous data
     if (!pipeMeta.getStaticMeta().isSourceExternal()) {

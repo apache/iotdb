@@ -231,6 +231,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
       sourceAttributes.put("source.inclusion.exclusion", "");
       sourceAttributes.put("source.forwarding-pipe-requests", "false");
       sourceAttributes.put("source.capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("source.capture.tree", "false");
       sourceAttributes.put("user", "root");
 
