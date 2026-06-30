@@ -336,7 +336,9 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
       }
 
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(
           3,
