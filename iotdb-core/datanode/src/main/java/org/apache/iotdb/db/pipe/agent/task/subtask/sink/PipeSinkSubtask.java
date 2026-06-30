@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeSinkWithSchedulingDelay;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -160,6 +161,37 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
 
     return true;
+  }
+
+  @Override
+  protected long peekSchedulingDelayInMs() {
+    if (!(outputPipeSink instanceof PipeSinkWithSchedulingDelay)) {
+      return 0;
+    }
+
+    return ((PipeSinkWithSchedulingDelay) outputPipeSink).peekSchedulingDelayMs();
+  }
+
+  @Override
+  protected long consumeSchedulingDelayInMs() {
+    if (!(outputPipeSink instanceof PipeSinkWithSchedulingDelay)) {
+      return 0;
+    }
+
+    final long remainingSchedulingDelayMs =
+        ((PipeSinkWithSchedulingDelay) outputPipeSink).consumeSchedulingDelayMs();
+    if (remainingSchedulingDelayMs <= 0) {
+      return 0;
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          DataNodePipeMessages.PIPE_SINK_SUBTASK_DELAYED_TO_AVOID_FREQUENT_HANDSHAKES,
+          getDisplayTaskID(),
+          remainingSchedulingDelayMs);
+    }
+
+    return remainingSchedulingDelayMs;
   }
 
   private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
