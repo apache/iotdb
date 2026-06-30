@@ -369,7 +369,8 @@ public class IoTDBDescriptor {
     try {
       conf.checkMultiDirStrategyClassName();
     } catch (Exception e) {
-      conf.setMultiDirStrategyClassName(oldMultiDirStrategyClassName.trim());
+      conf.setMultiDirStrategyClassName(
+          oldMultiDirStrategyClassName == null ? null : oldMultiDirStrategyClassName.trim());
       throw e;
     }
 
@@ -1285,6 +1286,12 @@ public class IoTDBDescriptor {
                 "region_migration_speed_limit_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "region_migration_speed_limit_bytes_per_second"))));
+    conf.setDataRegionIotSnapshotTransmissionProgressLogIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_iot_snapshot_transmission_progress_log_interval_ms",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "data_region_iot_snapshot_transmission_progress_log_interval_ms"))));
     conf.setKeepSameDiskWhenLoadingSnapshot(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -2106,7 +2113,6 @@ public class IoTDBDescriptor {
 
   public synchronized void loadHotModifiedProps(TrimProperties properties)
       throws QueryProcessException, IOException {
-    ConfigurationFileUtils.updateAppliedProperties(properties, true);
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
@@ -2195,6 +2201,12 @@ public class IoTDBDescriptor {
 
       // update load config
       loadLoadTsFileHotModifiedProp(properties);
+
+      // update CQ semantic-check config pushed from ConfigNode
+      loadCqMinEveryIntervalInMs(properties);
+
+      // update query routing consistency config pushed from ConfigNode
+      loadReadConsistencyLevel(properties);
 
       // update pipe config
       loadPipeHotModifiedProp(properties);
@@ -2320,6 +2332,7 @@ public class IoTDBDescriptor {
         conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
       }
 
+      ConfigurationFileUtils.updateAppliedProperties(properties, true);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2818,6 +2831,34 @@ public class IoTDBDescriptor {
             properties.getProperty("continuous_query_minimum_every_interval", "1s").trim(),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
             false));
+  }
+
+  private void loadCqMinEveryIntervalInMs(TrimProperties properties) throws IOException {
+    long cqMinEveryIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "continuous_query_min_every_interval_in_ms",
+                String.valueOf(conf.getCqMinEveryIntervalInMs())));
+    if (cqMinEveryIntervalInMs <= 0) {
+      throw new IOException(
+          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is "
+              + cqMinEveryIntervalInMs
+              + ".");
+    }
+    conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
+  }
+
+  private void loadReadConsistencyLevel(TrimProperties properties) throws IOException {
+    String readConsistencyLevel =
+        properties.getProperty(
+            "read_consistency_level", conf.getReadConsistencyLevel().name().toLowerCase());
+    if (!"strong".equals(readConsistencyLevel) && !"weak".equals(readConsistencyLevel)) {
+      throw new IOException(
+          String.format(
+              "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+              readConsistencyLevel));
+    }
+    conf.setReadConsistencyLevel(readConsistencyLevel);
   }
 
   public void loadClusterProps(TrimProperties properties) throws IOException {

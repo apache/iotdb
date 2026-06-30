@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.tag;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
@@ -116,7 +117,7 @@ public class TagLogFile implements AutoCloseable {
       throws IOException {
     // Read the first block
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
-    fileChannel.read(byteBuffer, position);
+    IOUtils.readFully(fileChannel, byteBuffer, position);
     byteBuffer.flip();
     if (byteBuffer.limit() > 0) { // This indicates that there is data at this position
       int firstInt = ReadWriteIOUtils.readInt(byteBuffer); // first int
@@ -131,7 +132,7 @@ public class TagLogFile implements AutoCloseable {
           // read one offset, then use filechannel's read to read it
           byteBuffers.position(MAX_LENGTH * i);
           byteBuffers.limit(MAX_LENGTH * (i + 1));
-          fileChannel.read(byteBuffers, nextPosition);
+          IOUtils.readFully(fileChannel, byteBuffers, nextPosition);
           byteBuffers.position(4 + i * Long.BYTES);
         }
         byteBuffers.limit(byteBuffers.capacity());
@@ -146,7 +147,10 @@ public class TagLogFile implements AutoCloseable {
     blockOffset.add(position);
     // Read the first block
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
-    fileChannel.read(byteBuffer, position);
+    if (position == fileChannel.size()) {
+      return blockOffset;
+    }
+    IOUtils.readFully(fileChannel, byteBuffer, position);
     byteBuffer.flip();
     if (byteBuffer.limit() > 0) { // This indicates that there is data at this position
       int firstInt = ReadWriteIOUtils.readInt(byteBuffer); // first int
@@ -169,7 +173,7 @@ public class TagLogFile implements AutoCloseable {
             // read
             blockBuffer.position(MAX_LENGTH * i);
             blockBuffer.limit(MAX_LENGTH * (i + 1));
-            fileChannel.read(blockBuffer, blockOffset.get(i));
+            IOUtils.readFully(fileChannel, blockBuffer, blockOffset.get(i));
             blockBuffer.position(4 + i * Long.BYTES);
           }
         }

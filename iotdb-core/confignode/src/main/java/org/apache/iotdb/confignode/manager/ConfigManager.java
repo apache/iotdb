@@ -376,7 +376,8 @@ public class ConfigManager implements IManager {
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
     ExternalServiceInfo externalServiceInfo = new ExternalServiceInfo();
-    PipeInfo pipeInfo = new PipeInfo();
+    this.permissionManager = createPermissionManager(authorInfo);
+    PipeInfo pipeInfo = new PipeInfo(userName -> this.permissionManager.login4Pipe(userName, null));
     QuotaInfo quotaInfo = new QuotaInfo();
     TTLInfo ttlInfo = new TTLInfo();
     SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
@@ -410,7 +411,6 @@ public class ConfigManager implements IManager {
             new ClusterSchemaQuotaStatistics(
                 COMMON_CONF.getSeriesLimitThreshold(), COMMON_CONF.getDeviceLimitThreshold()));
     this.partitionManager = new PartitionManager(this, partitionInfo);
-    this.permissionManager = createPermissionManager(authorInfo);
     this.procedureManager = createProcedureManager(procedureInfo);
     this.externalServiceManager = new ExternalServiceManager(this);
     this.udfManager = new UDFManager(this, udfInfo);
@@ -1762,18 +1762,28 @@ public class ConfigManager implements IManager {
   public TSStatus setConfiguration(TSetConfigurationReq req) {
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     int currentNodeId = CONF.getConfigNodeId();
-    if (currentNodeId != req.getNodeId()) {
+    TSStatus consistentClusterConfigStatus =
+        checkConsistentClusterConfigSetConfigurationTarget(req);
+    if (consistentClusterConfigStatus != null) {
+      return consistentClusterConfigStatus;
+    }
+    if (currentNodeId != req.getNodeId() && req.getNodeId() != NodeManager.APPLY_CONFIG_LOCALLY) {
       tsStatus = confirmLeader();
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return tsStatus;
       }
     }
-    if (currentNodeId == req.getNodeId() || req.getNodeId() < 0) {
+    if (currentNodeId == req.getNodeId()
+        || req.getNodeId() < 0
+        || req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
       URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
       boolean configurationFileFound = (url != null && new File(url.getFile()).exists());
       TrimProperties properties = new TrimProperties();
       properties.putAll(req.getConfigs());
 
+      long previousHeartbeatIntervalInMs = CONF.getHeartbeatIntervalInMs();
+      int previousSchemaRegionPerDataNode = CONF.getSchemaRegionPerDataNode();
+      int previousDataRegionPerDataNode = CONF.getDataRegionPerDataNode();
       boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
       if (configurationFileFound) {
         File file = new File(url.getFile());
@@ -1798,8 +1808,14 @@ public class ConfigManager implements IManager {
         }
         LOGGER.warn(msg);
       }
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return tsStatus;
+      }
+      handleHeartbeatIntervalHotReload(previousHeartbeatIntervalInMs);
+      handleRegionPerDataNodeHotReload(
+          previousSchemaRegionPerDataNode, previousDataRegionPerDataNode);
       handleTopologyProbingHotReload(wasTopologyProbingEnabled);
-      if (currentNodeId == req.getNodeId()) {
+      if (currentNodeId == req.getNodeId() || req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
         return tsStatus;
       }
     }
@@ -1808,6 +1824,50 @@ public class ConfigManager implements IManager {
     statusList.add(tsStatus);
     statusList.addAll(statusListOfOtherNodes);
     return RpcUtils.squashResponseStatusList(statusList);
+  }
+
+  private TSStatus checkConsistentClusterConfigSetConfigurationTarget(TSetConfigurationReq req) {
+    if (req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
+      if (getConsensusManager() != null && !getConsensusManager().isLeader()) {
+        return null;
+      }
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "The internal configuration application target is invalid.");
+    }
+    if (req.getNodeId() < 0) {
+      return null;
+    }
+    for (String configKey : req.getConfigs().keySet()) {
+      if (ConfigurationFileUtils.parameterNeedKeepConsistentInCluster(configKey)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR,
+            "The parameter '"
+                + configKey
+                + "' must be consistent across the entire cluster and cannot be set on a specific node.");
+      }
+    }
+    return null;
+  }
+
+  private void handleHeartbeatIntervalHotReload(long previousHeartbeatIntervalInMs) {
+    if (previousHeartbeatIntervalInMs == CONF.getHeartbeatIntervalInMs()) {
+      return;
+    }
+    getLoadManager().reloadHeartbeatInterval();
+    getRetryFailedTasksThread().reloadHeartbeatInterval();
+  }
+
+  private void handleRegionPerDataNodeHotReload(
+      int previousSchemaRegionPerDataNode, int previousDataRegionPerDataNode) {
+    if (previousSchemaRegionPerDataNode == CONF.getSchemaRegionPerDataNode()
+        && previousDataRegionPerDataNode == CONF.getDataRegionPerDataNode()) {
+      return;
+    }
+    if (!getConsensusManager().isLeader()) {
+      return;
+    }
+    getClusterSchemaManager().adjustMaxRegionGroupNum();
   }
 
   private void handleTopologyProbingHotReload(boolean wasEnabled) {

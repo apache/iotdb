@@ -34,7 +34,7 @@ import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN
 
 public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTableScanOperator {
 
-  private static final long INSTANCE_SIZE =
+  protected static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AbstractDefaultAggTableScanOperator.class);
 
   protected AbstractDefaultAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {

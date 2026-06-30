@@ -1205,14 +1205,24 @@ public class TestUtils {
         }
         return true;
       } catch (SQLException e) {
+        if (statement != null) {
+          try {
+            statement.close();
+          } catch (Exception ex) {
+            // ignore
+          } finally {
+            statement = null;
+          }
+        }
         // the default connection should be closed by the upper level
         // while the local connection should be closed here
         if (connectionToUse == localConnection && localConnection != null) {
           try {
             localConnection.close();
-            localConnection = null;
           } catch (SQLException ex) {
             // ignore
+          } finally {
+            localConnection = null;
           }
         }
         connectionToUse = null;

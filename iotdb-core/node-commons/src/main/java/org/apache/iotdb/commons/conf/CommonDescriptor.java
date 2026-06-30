@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -229,6 +230,31 @@ public class CommonDescriptor {
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
 
+    long minFolderOccupiedSpaceCacheRefreshIntervalMs =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "min_folder_occupied_space_cache_refresh_interval_ms",
+                    String.valueOf(config.getMinFolderOccupiedSpaceCacheRefreshIntervalMs()))
+                .trim());
+    if (minFolderOccupiedSpaceCacheRefreshIntervalMs > 0) {
+      config.setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
+          minFolderOccupiedSpaceCacheRefreshIntervalMs);
+    }
+
+    int minFolderOccupiedSpaceCacheRefreshSelectionThreshold =
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "min_folder_occupied_space_cache_refresh_selection_threshold",
+                    String.valueOf(
+                        config.getMinFolderOccupiedSpaceCacheRefreshSelectionThreshold()))
+                .trim());
+    if (minFolderOccupiedSpaceCacheRefreshSelectionThreshold > 0) {
+      config.setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
+          minFolderOccupiedSpaceCacheRefreshSelectionThreshold);
+    }
+
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 
@@ -309,7 +335,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
-
     config.setPathLogMaxSize(
         Integer.parseInt(
             properties.getProperty(
@@ -658,5 +683,13 @@ public class CommonDescriptor {
     config.setTrustStorePath(
         properties.getProperty("trust_store_path", config.getTrustStorePath()));
     config.setTrustStorePwd(properties.getProperty("trust_store_pwd", config.getTrustStorePwd()));
+    config.setSslProtocol(
+        RpcSslUtils.normalizeProtocol(
+            properties.getProperty("ssl_protocol", config.getSslProtocol())));
+    configureRpcSsl();
+  }
+
+  public void configureRpcSsl() {
+    RpcSslUtils.configure(config.getSslProtocol());
   }
 }
