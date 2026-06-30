@@ -656,11 +656,19 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     // do nothing by default
   }
 
+  public void setSchemaBatchSizeHistogram(Histogram schemaBatchSizeHistogram) {
+    // do nothing by default
+  }
+
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
     // do nothing by default
   }
 
   public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
+    // do nothing by default
+  }
+
+  public void setSchemaBatchTimeIntervalHistogram(Histogram schemaBatchTimeIntervalHistogram) {
     // do nothing by default
   }
 

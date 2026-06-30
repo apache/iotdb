@@ -502,6 +502,14 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_DROP_PIPE_BECAUSE = "删除 pipe 失败，原因：";
   public static final String FAILED_TO_ALTER_PIPE_BECAUSE = "修改 pipe 失败，原因：";
   public static final String FAILED_TO_CREATE_MULTIPLE_PIPES_BECAUSE = "批量创建 pipe 失败，原因：";
+  public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
+      "启动 pipe %s 失败，pipe 不存在";
+  public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
+      "启动 pipe %s 失败，pipe 已被删除";
+  public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
+      "停止 pipe %s 失败，pipe 不存在";
+  public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
+      "停止 pipe %s 失败，pipe 已被删除";
   public static final String FAILED_TO_HANDLE_LEADER_CHANGE_BECAUSE = "处理 leader 变更失败，原因：";
   public static final String FAILED_TO_HANDLE_META_CHANGES_BECAUSE = "处理元数据变更失败，原因：";
   public static final String GET_PIPEPLUGIN_JAR_FAILED_BECAUSE = "获取 PipePlugin Jar 失败，原因：";

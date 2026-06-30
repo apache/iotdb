@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
@@ -112,7 +113,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.capture.tree", "true");
+      extractorAttributes.put("mode.double-living", "true");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "test");
       extractorAttributes.put("extractor.pattern", "root.db1");
@@ -162,9 +165,17 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
 
       Thread.sleep(10000);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.dropPipeExtended(new TDropPipeReq("p1").setIsTableModel(false)).getCode());
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p2").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.dropPipeExtended(new TDropPipeReq("p1").setIsTableModel(true)).getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.dropPipeExtended(new TDropPipeReq("p2").setIsTableModel(false)).getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.dropPipeExtended(new TDropPipeReq("p2").setIsTableModel(true)).getCode());
 
       TestUtils.executeNonQueries(
           senderEnv,
@@ -248,7 +259,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.capture.tree", "true");
+      extractorAttributes.put("mode.double-living", "true");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "test2");
       extractorAttributes.put("extractor.inclusion", "data.insert");
@@ -367,7 +380,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.capture.tree", "true");
+      extractorAttributes.put("mode.double-living", "true");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "test1");
       extractorAttributes.put("extractor.pattern", "root.db.d1");
@@ -463,7 +478,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.capture.tree", "true");
+      extractorAttributes.put("mode.double-living", "true");
       extractorAttributes.put("source.inclusion", "data.insert");
       extractorAttributes.put("source.start-time", "2");
       extractorAttributes.put("source.end-time", "4");
@@ -567,7 +584,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("source.capture.tree", "true");
+      extractorAttributes.put("mode.double-living", "true");
       extractorAttributes.put("source.pattern", "root.db.d1");
       extractorAttributes.put("source.table-name", "test1");
       extractorAttributes.put("source.inclusion", "data.insert");
@@ -671,7 +690,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("source.capture.tree", "true");
+      extractorAttributes.put("mode.double-living", "true");
       extractorAttributes.put("source.table-name", "test1");
       extractorAttributes.put("source.path", "root.db.d1.at1");
       extractorAttributes.put("source.inclusion", "data.insert");
@@ -724,7 +745,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("source.capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("source.capture.tree", "true");
+    extractorAttributes.put("mode.double-living", "true");
     extractorAttributes.put("source.table-name", "test1");
     extractorAttributes.put("source.path", "root.db.d1.at1");
     extractorAttributes.put("source.inclusion", "data.insert");

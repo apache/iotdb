@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -165,5 +166,81 @@ public class PipeTableRespTest {
     Assert.assertTrue(showPipeResult.get(1).isSetIsDegraded());
     Assert.assertFalse(showPipeResult.get(1).isIsDegraded());
     Assert.assertFalse(showPipeResult.get(2).isSetIsDegraded());
+  }
+
+  @Test
+  public void testFilterByModelBeforeWhereClause() {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<PipeMeta> pipeMetaList = new ArrayList<>();
+
+    pipeMetaList.add(constructPipeMeta("sameNamePipe", 121, new HashMap<>(), "127.0.0.1"));
+
+    Map<String, String> tableExtractorAttributes = new HashMap<>();
+    tableExtractorAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    pipeMetaList.add(
+        constructPipeMeta("sameNamePipe", 122, tableExtractorAttributes, "172.30.30.30"));
+    pipeMetaList.add(
+        constructPipeMeta("tablePeerPipe", 123, tableExtractorAttributes, "172.30.30.30"));
+
+    PipeTableResp pipeTableResp = new PipeTableResp(status, pipeMetaList);
+
+    PipeTableResp filteredTablePipeTableResp =
+        pipeTableResp.filter(true, "sameNamePipe", true, null);
+    Assert.assertEquals(2, filteredTablePipeTableResp.getAllPipeMeta().size());
+    Assert.assertTrue(
+        filteredTablePipeTableResp.getAllPipeMeta().stream()
+            .allMatch(pipeMeta -> pipeMeta.getStaticMeta().visibleUnderTableModel()));
+
+    PipeTableResp filteredTreePipeTableResp =
+        pipeTableResp.filter(true, "sameNamePipe", false, null);
+    Assert.assertEquals(1, filteredTreePipeTableResp.getAllPipeMeta().size());
+    Assert.assertFalse(
+        filteredTreePipeTableResp.getAllPipeMeta().get(0).getStaticMeta().visibleUnderTableModel());
+  }
+
+  @Test
+  public void testFilterWithoutModelKeepsLegacyVisibility() {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<PipeMeta> pipeMetaList = new ArrayList<>();
+
+    pipeMetaList.add(constructPipeMeta("sameNamePipe", 121, new HashMap<>(), "127.0.0.1"));
+
+    Map<String, String> tableExtractorAttributes = new HashMap<>();
+    tableExtractorAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    pipeMetaList.add(
+        constructPipeMeta("sameNamePipe", 122, tableExtractorAttributes, "172.30.30.30"));
+    pipeMetaList.add(
+        constructPipeMeta("tablePeerPipe", 123, tableExtractorAttributes, "172.30.30.30"));
+
+    PipeTableResp pipeTableResp = new PipeTableResp(status, pipeMetaList);
+
+    Assert.assertEquals(
+        2, pipeTableResp.filter(false, "sameNamePipe", null).getAllPipeMeta().size());
+    Assert.assertEquals(3, pipeTableResp.filter(null, null, null).getAllPipeMeta().size());
+  }
+
+  private PipeMeta constructPipeMeta(
+      final String pipeName,
+      final long creationTime,
+      final Map<String, String> extractorAttributes,
+      final String host) {
+    Map<String, String> processorAttributes = new HashMap<>();
+    Map<String, String> connectorAttributes = new HashMap<>();
+
+    processorAttributes.put("processor", "do-nothing-processor");
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("host", host);
+    connectorAttributes.put("port", "6667");
+
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
+    PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            pipeName, creationTime, extractorAttributes, processorAttributes, connectorAttributes);
+    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    return new PipeMeta(pipeStaticMeta, pipeRuntimeMeta);
   }
 }
