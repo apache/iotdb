@@ -59,7 +59,8 @@ public class ShowRepairDataPartitionTableProgressTask implements IConfigTask {
     builder.getColumnBuilder(1).writeDouble(resp.getProgress());
     builder
         .getColumnBuilder(2)
-        .writeBinary(new Binary(resp.getMessage(), TSFileConfig.STRING_CHARSET));
+        .writeBinary(
+            new Binary(resp.isSetMessage() ? resp.getMessage() : "", TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
 
     future.set(

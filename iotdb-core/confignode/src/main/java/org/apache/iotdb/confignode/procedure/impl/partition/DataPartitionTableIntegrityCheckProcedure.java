@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
+import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
@@ -1120,13 +1121,21 @@ public class DataPartitionTableIntegrityCheckProcedure
 
   public TShowRepairDataPartitionTableProgressResp getProgress(final ConfigNodeProcedureEnv env) {
     final DataPartitionTableIntegrityCheckProcedureState currentState = getCurrentState();
-    final String state = currentState == null ? "UNKNOWN" : currentState.name();
+    final RepairDataPartitionTableProgressState state = getProgressState(currentState);
     final double progress =
         currentState == null ? 0.0 : calculateProgressByState(env, currentState) * 100;
 
     return new TShowRepairDataPartitionTableProgressResp(
-            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), state, progress)
+            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), state.name(), progress)
         .setMessage(String.format("DataPartitionTable integrity check progress: %.1f%%", progress));
+  }
+
+  private RepairDataPartitionTableProgressState getProgressState(
+      final DataPartitionTableIntegrityCheckProcedureState currentState) {
+    if (currentState == null) {
+      return RepairDataPartitionTableProgressState.UNKNOWN;
+    }
+    return RepairDataPartitionTableProgressState.valueOf(currentState.name());
   }
 
   private double calculateProgressByState(

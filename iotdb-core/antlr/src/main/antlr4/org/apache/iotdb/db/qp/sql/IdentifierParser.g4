@@ -190,6 +190,7 @@ keyWords
     | PRIVILEGE_VALUE
     | PROCESSLIST
     | PROCESSOR
+    | PROGRESS
     | PROPERTY
     | PRUNE
     | QUERIES
