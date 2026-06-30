@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
@@ -64,6 +65,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private final long autoCommitIntervalMs;
 
   private SortedMap<Long, Set<SubscriptionCommitContext>> uncommittedCommitContexts;
+
+  private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -115,6 +118,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     // set isClosed to false before submitting workers
     isClosed.set(false);
+    emptyPollLogThrottler.reset();
 
     // submit auto poll worker if enabling auto commit
     if (autoCommit) {
@@ -181,13 +185,21 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
     if (messages.isEmpty()) {
-      LOGGER.info(
-          "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
-          this,
-          CollectionUtils.getLimitedString(parsedTopicNames, 32),
-          timeoutMs);
+      final OptionalLong consecutiveEmptyPollCount =
+          emptyPollLogThrottler.markEmptyPollAndMaybeGetCount();
+      if (consecutiveEmptyPollCount.isPresent()) {
+        LOGGER.info(
+            "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s), "
+                + "consecutive empty polls: {}",
+            this,
+            CollectionUtils.getLimitedString(parsedTopicNames, 32),
+            timeoutMs,
+            consecutiveEmptyPollCount.getAsLong());
+      }
       return messages;
     }
+
+    emptyPollLogThrottler.reset();
 
     // add to uncommitted messages
     if (autoCommit) {
