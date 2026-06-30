@@ -49,7 +49,7 @@ public class MemoryReader implements CteDataReader {
               queryId.getId(),
               MemoryReader.class.getName(),
               isHighestPriority);
-      dataStore.setOperatorsMemoryReservedBytes(actualReserved);
+      dataStore.setActualReservedBytes(actualReserved);
     }
   }
 
@@ -69,11 +69,11 @@ public class MemoryReader implements CteDataReader {
   @Override
   public void close() throws IoTDBException {
     if (dataStore.decrementAndGetCount() == 0) {
-      long reservedBytes = dataStore.getOperatorsMemoryReservedBytes();
+      long reservedBytes = dataStore.getActualReservedBytes();
       if (reservedBytes > 0) {
         LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytes);
       }
-      dataStore.setOperatorsMemoryReservedBytes(0L);
+      dataStore.setActualReservedBytes(0L);
     }
   }
 
