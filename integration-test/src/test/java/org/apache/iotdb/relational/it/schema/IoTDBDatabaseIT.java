@@ -321,6 +321,37 @@ public class IoTDBDatabaseIT {
   }
 
   @Test
+  public void testNeedLastCacheDatabaseProperty() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database need_cache_false with (need_last_cache=false)");
+      statement.execute("create database need_cache_default");
+
+      assertDatabaseNeedLastCache(statement, "need_cache_false", false);
+      assertDatabaseNeedLastCache(statement, "need_cache_default", true);
+
+      statement.execute("alter database need_cache_false set properties need_last_cache=true");
+      assertDatabaseNeedLastCache(statement, "need_cache_false", true);
+
+      statement.execute("alter database need_cache_false set properties need_last_cache=false");
+      assertDatabaseNeedLastCache(statement, "need_cache_false", false);
+
+      statement.execute("alter database need_cache_false set properties need_last_cache=default");
+      assertDatabaseNeedLastCache(statement, "need_cache_false", true);
+
+      try {
+        statement.execute("create database need_cache_invalid with (need_last_cache=1)");
+        fail("non-boolean need_last_cache should be rejected");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: need_last_cache value must be a BooleanLiteral, but now is LongLiteral, value: 1",
+            e.getMessage());
+      }
+    }
+  }
+
+  @Test
   public void testShowCreatePipe() throws SQLException {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -343,6 +374,30 @@ public class IoTDBDatabaseIT {
       assertShowCreateSystemDatabaseFails(statement, "information_schema");
       assertShowCreateSystemDatabaseFails(statement, "__audit");
     }
+  }
+
+  private static void assertDatabaseNeedLastCache(
+      final Statement statement, final String database, final boolean expected)
+      throws SQLException {
+    try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
+      boolean found = false;
+      while (resultSet.next()) {
+        if (!database.equals(resultSet.getString("Database"))) {
+          continue;
+        }
+        found = true;
+        assertEquals(expected, resultSet.getBoolean("NeedLastCache"));
+      }
+      assertTrue(found);
+    }
+
+    TestUtils.assertResultSetEqual(
+        statement.executeQuery(
+            "select database, need_last_cache from information_schema.databases where database = '"
+                + database
+                + "'"),
+        "database,need_last_cache,",
+        Collections.singleton(database + "," + expected + ","));
   }
 
   private static void assertShowCreateSystemDatabaseFails(
@@ -876,12 +931,26 @@ public class IoTDBDatabaseIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create database root.test");
+      statement.execute("create database root.test with NEED_LAST_CACHE=false");
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS root.test")) {
+        assertTrue(resultSet.next());
+        assertEquals("root.test", resultSet.getString("Database"));
+        assertFalse(resultSet.getBoolean("NeedLastCache"));
+        assertFalse(resultSet.next());
+      }
       Assert.assertThrows(
           IoTDBSQLException.class,
           () ->
               statement.execute(
                   "alter database root.test WITH MAX_SCHEMA_REGION_GROUP_NUM=2, MAX_DATA_REGION_GROUP_NUM=3"));
+      try {
+        statement.execute("alter database root.test WITH NEED_LAST_CACHE=true");
+        fail("tree database need_last_cache alter should be rejected");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The tree model database does not support alter need last cache now.",
+            e.getMessage());
+      }
       statement.execute("insert into root.test.d1 (s1) values(1)");
       statement.execute("drop database root.test");
     }

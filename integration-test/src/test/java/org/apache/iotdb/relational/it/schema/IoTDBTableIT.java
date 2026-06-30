@@ -640,6 +640,114 @@ public class IoTDBTableIT {
   }
 
   @Test
+  public void testNeedLastCacheTableAndViewProperty() throws Exception {
+    try (final Connection treeConnection = EnvFactory.getEnv().getConnection();
+        final Statement treeStatement = treeConnection.createStatement()) {
+      treeStatement.execute("create database root.need_cache_view_source");
+      treeStatement.execute("create timeseries root.need_cache_view_source.d1.s1 int32");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database need_cache_db with (need_last_cache=false)");
+      statement.execute("create database need_cache_default_db");
+      statement.execute("use need_cache_db");
+
+      statement.execute(
+          "create table inherited_table(time timestamp time, device_id string tag, temperature float field)");
+      statement.execute(
+          "create table override_table(time timestamp time, device_id string tag, temperature float field) with (need_last_cache=true)");
+      statement.execute(
+          "create table explicit_false_table(time timestamp time, device_id string tag, temperature float field) with (need_last_cache=false)");
+
+      assertTableNeedLastCache(statement, "need_cache_db", "inherited_table", false);
+      assertTableNeedLastCache(statement, "need_cache_db", "override_table", true);
+      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_table", false);
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table explicit_false_table"),
+          "Table,Create Table,",
+          Collections.singleton(
+              "explicit_false_table,CREATE TABLE \"explicit_false_table\" (\"time\" TIMESTAMP TIME,\"device_id\" STRING TAG,\"temperature\" FLOAT FIELD) WITH (ttl='INF', need_last_cache=false),"));
+
+      statement.execute("alter table inherited_table set properties need_last_cache=true");
+      assertTableNeedLastCache(statement, "need_cache_db", "inherited_table", true);
+
+      statement.execute("alter table inherited_table set properties need_last_cache=default");
+      assertTableNeedLastCache(statement, "need_cache_db", "inherited_table", false);
+
+      statement.execute("alter table override_table set properties need_last_cache=false");
+      assertTableNeedLastCache(statement, "need_cache_db", "override_table", false);
+
+      statement.execute("alter table override_table set properties need_last_cache=true");
+      assertTableNeedLastCache(statement, "need_cache_db", "override_table", true);
+
+      statement.execute("use need_cache_default_db");
+      statement.execute(
+          "create table default_reset_table(time timestamp time, device_id string tag, temperature float field) with (need_last_cache=false)");
+      statement.execute("alter table default_reset_table set properties need_last_cache=default");
+      assertTableNeedLastCache(statement, "need_cache_default_db", "default_reset_table", true);
+
+      statement.execute("use need_cache_db");
+      statement.execute(
+          "create view explicit_false_view (tag1 string tag, s1 int32 field) restrict with (ttl=100, need_last_cache=false) as root.need_cache_view_source.**");
+      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_view", false);
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create view explicit_false_view"),
+          "View,Create View,",
+          Collections.singleton(
+              "explicit_false_view,CREATE VIEW \"explicit_false_view\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"s1\" INT32 FIELD) RESTRICT WITH (ttl=100, need_last_cache=false) AS root.\"need_cache_view_source\".**,"));
+
+      statement.execute("alter view explicit_false_view set properties need_last_cache=true");
+      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_view", true);
+
+      statement.execute("alter view explicit_false_view set properties need_last_cache=false");
+      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_view", false);
+
+      statement.execute("alter view explicit_false_view set properties need_last_cache=default");
+      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_view", false);
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create view explicit_false_view"),
+          "View,Create View,",
+          Collections.singleton(
+              "explicit_false_view,CREATE VIEW \"explicit_false_view\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"s1\" INT32 FIELD) RESTRICT WITH (ttl=100, need_last_cache=false) AS root.\"need_cache_view_source\".**,"));
+    }
+  }
+
+  private static void assertTableNeedLastCache(
+      final Statement statement,
+      final String database,
+      final String table,
+      final boolean expectedNeedLastCache)
+      throws SQLException {
+    try (final ResultSet resultSet =
+        statement.executeQuery("show tables details from " + database)) {
+      boolean found = false;
+      while (resultSet.next()) {
+        if (!table.equals(resultSet.getString("TableName"))) {
+          continue;
+        }
+        found = true;
+        assertEquals(expectedNeedLastCache, resultSet.getBoolean("NeedLastCache"));
+      }
+      assertTrue(found);
+    }
+
+    TestUtils.assertResultSetEqual(
+        statement.executeQuery(
+            "select database, table_name, need_last_cache from information_schema.tables where database = '"
+                + database
+                + "' and table_name = '"
+                + table
+                + "'"),
+        "database,table_name,need_last_cache,",
+        Collections.singleton(database + "," + table + "," + expectedNeedLastCache + ","));
+  }
+
+  @Test
   public void testTableAuth() throws SQLException {
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {

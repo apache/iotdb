@@ -265,6 +265,7 @@ public class PartitionCacheTest {
     assertTrue(partitionCache.isNeedLastCache("root.unset"));
     assertTrue(partitionCache.isNeedLastCache("root.enabled"));
     assertFalse(partitionCache.isNeedLastCache("root.disabled"));
+    assertTrue(partitionCache.isNeedLastCache("root.missing"));
   }
 
   @Test
