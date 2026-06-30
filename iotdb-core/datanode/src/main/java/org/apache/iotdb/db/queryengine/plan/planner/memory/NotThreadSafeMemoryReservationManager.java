@@ -117,6 +117,9 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
 
   @Override
   public void releaseMemoryCumulatively(final long size) {
+    if (size <= 0) {
+      return;
+    }
     bytesToBeReleased += size;
     if (bytesToBeReleased >= MEMORY_BATCH_THRESHOLD) {
       releaseBytesImmediately(bytesToBeReleased);
@@ -148,8 +151,9 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     remaining -= fallbackBytesInTotal;
     fallbackBytesInTotal = 0;
 
-    reservedBytesInTotal -= remaining;
-    return remaining;
+    long poolBytes = Math.min(remaining, reservedBytesInTotal);
+    reservedBytesInTotal -= poolBytes;
+    return poolBytes;
   }
 
   @Override
@@ -158,10 +162,10 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
       releaseBytesImmediately(bytesToBeReleased);
       bytesToBeReleased = 0;
     }
-    if (reservedBytesInTotal != 0) {
+    if (reservedBytesInTotal > 0) {
       LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytesInTotal);
-      reservedBytesInTotal = 0;
     }
+    reservedBytesInTotal = 0;
     fallbackBytesInTotal = 0;
     bytesToBeReserved = 0;
   }
