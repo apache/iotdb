@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.opcua;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -158,9 +159,11 @@ public class OpcUaSink implements PipeConnector {
 
   // Inner server
   private @Nullable OpcUaNameSpace nameSpace;
+  private boolean serverRegistered;
 
   // Outer server
   private @Nullable IoTDBOpcUaClient client;
+  private boolean clientRegistered;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -181,16 +184,27 @@ public class OpcUaSink implements PipeConnector {
             false);
 
     final PipeParameters parameters = validator.getParameters();
-    if (validator
-            .getParameters()
-            .hasAnyAttributes(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY)
+    final boolean initialFetchEnabled = isInitialFetchEnabled(parameters);
+    final boolean pointsToOuterServer =
+        parameters.hasAnyAttributes(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY);
+    if (initialFetchEnabled) {
+      validator.validate(
+          arg -> !((boolean) arg),
+          String.format(
+              "OPC UA initial fetch only supports the internal OPC UA server. Do not set %s or %s.",
+              CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY),
+          pointsToOuterServer);
+    }
+
+    if (pointsToOuterServer
+        || initialFetchEnabled
         || parameters.getBooleanOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_WITH_QUALITY_KEY, SINK_OPC_UA_WITH_QUALITY_KEY),
             CONNECTOR_OPC_UA_WITH_QUALITY_DEFAULT_VALUE)) {
       validator.validate(
           CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE::equals,
           String.format(
-              "When the OPC UA sink points to an outer server or sets 'with-quality' to true, the %s or %s must be %s.",
+              "When the OPC UA sink points to an outer server, sets 'with-quality' to true, or enables initial fetch, the %s or %s must be %s.",
               CONNECTOR_OPC_UA_MODEL_KEY,
               SINK_OPC_UA_MODEL_KEY,
               CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),
@@ -198,6 +212,14 @@ public class OpcUaSink implements PipeConnector {
               Arrays.asList(CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
               CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE));
     }
+  }
+
+  private static boolean isInitialFetchEnabled(final PipeParameters parameters) {
+    return parameters.getBooleanOrDefault(
+        Arrays.asList(
+            PipeSinkConstant.CONNECTOR_OPC_UA_INITIAL_FETCH_ENABLE_KEY,
+            PipeSinkConstant.SINK_OPC_UA_INITIAL_FETCH_ENABLE_KEY),
+        PipeSinkConstant.CONNECTOR_OPC_UA_INITIAL_FETCH_ENABLE_DEFAULT_VALUE);
   }
 
   @Override
@@ -361,6 +383,13 @@ public class OpcUaSink implements PipeConnector {
                   })
               .getRight();
       SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey).getLeft().incrementAndGet();
+      serverRegistered = true;
+    }
+
+    if (isInitialFetchEnabled(parameters)) {
+      new OpcUaInitialValueFetcher(
+              parameters, valueName, qualityName, defaultQuality, placeHolder4NullTag)
+          .fetchInBackground(nameSpace);
     }
   }
 
@@ -426,6 +455,7 @@ public class OpcUaSink implements PipeConnector {
                   })
               .getRight();
       CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.get(nodeUrl).getLeft().incrementAndGet();
+      clientRegistered = true;
     }
   }
 
@@ -557,11 +587,12 @@ public class OpcUaSink implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    if (serverKey != null) {
+    if (serverKey != null && serverRegistered) {
       synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
         final Pair<AtomicInteger, OpcUaNameSpace> pair =
             SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey);
         if (pair == null) {
+          serverRegistered = false;
           return;
         }
 
@@ -572,14 +603,16 @@ public class OpcUaSink implements PipeConnector {
             SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.remove(serverKey);
           }
         }
+        serverRegistered = false;
       }
     }
 
-    if (nodeUrl != null) {
+    if (nodeUrl != null && clientRegistered) {
       synchronized (CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP) {
         final Pair<AtomicInteger, IoTDBOpcUaClient> pair =
             CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.get(nodeUrl);
         if (pair == null) {
+          clientRegistered = false;
           return;
         }
 
@@ -590,6 +623,7 @@ public class OpcUaSink implements PipeConnector {
             CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.remove(nodeUrl);
           }
         }
+        clientRegistered = false;
       }
     }
   }

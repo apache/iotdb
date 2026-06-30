@@ -33,6 +33,8 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.PathParseException;
+import org.apache.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -68,8 +70,11 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -83,6 +88,55 @@ import java.util.stream.Collectors;
 public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaNameSpace.class);
   public static final String NAMESPACE_URI = "urn:apache:iotdb:opc-server";
+
+  public static final class InitialValueEntry {
+    private final String logicalPath;
+    private final String[] logicalPathSegments;
+    private final TSDataType dataType;
+    private final Object value;
+    private final long sourceUtcTime;
+    private final StatusCode quality;
+
+    public InitialValueEntry(
+        final String logicalPath,
+        final TSDataType dataType,
+        final Object value,
+        final long sourceUtcTime,
+        final StatusCode quality) {
+      this.logicalPath = logicalPath;
+      this.logicalPathSegments = null;
+      this.dataType = dataType;
+      this.value = value;
+      this.sourceUtcTime = sourceUtcTime;
+      this.quality = quality;
+    }
+
+    public InitialValueEntry(
+        final String[] logicalPathSegments,
+        final TSDataType dataType,
+        final Object value,
+        final long sourceUtcTime,
+        final StatusCode quality) {
+      this.logicalPathSegments = logicalPathSegments;
+      this.logicalPath =
+          Objects.isNull(logicalPathSegments) ? null : toNodeIdIdentifier(logicalPathSegments);
+      this.dataType = dataType;
+      this.value = value;
+      this.sourceUtcTime = sourceUtcTime;
+      this.quality = quality;
+    }
+  }
+
+  public static final class InitialQualityEntry {
+    private final String logicalPath;
+    private final StatusCode quality;
+
+    public InitialQualityEntry(final String logicalPath, final StatusCode quality) {
+      this.logicalPath = logicalPath;
+      this.quality = quality;
+    }
+  }
+
   private final OpcUaServerBuilder builder;
 
   // Do not use subscription model because the original subscription model has some bugs
@@ -118,6 +172,55 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 }
               }
             });
+  }
+
+  public synchronized void loadInitialValues(
+      final Collection<InitialValueEntry> initialValueEntries) {
+    if (Objects.isNull(initialValueEntries) || initialValueEntries.isEmpty()) {
+      return;
+    }
+    final Map<String, UaNode> folderNodeCache = new HashMap<>();
+    for (final InitialValueEntry initialValueEntry : initialValueEntries) {
+      if (Objects.isNull(initialValueEntry)) {
+        continue;
+      }
+      try {
+        upsertInitialValue(initialValueEntry, folderNodeCache);
+      } catch (final RuntimeException e) {
+        LOGGER.warn("Failed to load initial value for path {}.", initialValueEntry.logicalPath, e);
+      }
+    }
+  }
+
+  public synchronized void loadInitialQualities(
+      final Collection<InitialQualityEntry> initialQualityEntries) {
+    if (Objects.isNull(initialQualityEntries) || initialQualityEntries.isEmpty()) {
+      return;
+    }
+    for (final InitialQualityEntry initialQualityEntry : initialQualityEntries) {
+      if (Objects.isNull(initialQualityEntry)) {
+        continue;
+      }
+      try {
+        updateInitialQuality(initialQualityEntry);
+      } catch (final RuntimeException e) {
+        LOGGER.warn(
+            "Failed to load initial quality for path {}.", initialQualityEntry.logicalPath, e);
+      }
+    }
+  }
+
+  public synchronized boolean hasInitialValueNode(final String logicalPath) {
+    if (Objects.isNull(logicalPath) || logicalPath.isEmpty()) {
+      return false;
+    }
+    try {
+      final NodeId nodeId = newNodeId(toNodeIdIdentifier(logicalPath));
+      return getNodeManager().getNode(nodeId).orElse(null) instanceof UaVariableNode;
+    } catch (final PathParseException e) {
+      LOGGER.warn("Skip initial quality for malformed path {}.", logicalPath, e);
+      return false;
+    }
   }
 
   public void transfer(final Tablet tablet, final boolean isTableModel, final OpcUaSink sink)
@@ -379,6 +482,172 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                               String.format("The Node %s does not exist.", nodeId)));
     }
     return measurementNode;
+  }
+
+  private void upsertInitialValue(
+      final InitialValueEntry initialValueEntry, final Map<String, UaNode> folderNodeCache) {
+    final String[] segments = getPathSegments(initialValueEntry);
+    if (segments.length == 0) {
+      return;
+    }
+
+    UaNode folderNode = null;
+    final StringBuilder currentFolder = new StringBuilder();
+    for (int i = 0; i < segments.length - 1; ++i) {
+      final String segment = segments[i];
+      final String currentFolderKey = currentFolder.append(segment).toString();
+      UaNode nextFolderNode = folderNodeCache.get(currentFolderKey);
+      if (Objects.isNull(nextFolderNode)) {
+        final NodeId folderNodeId = newNodeId(currentFolderKey);
+        if (!getNodeManager().containsNode(folderNodeId)) {
+          nextFolderNode =
+              new UaFolderNode(
+                  getNodeContext(),
+                  folderNodeId,
+                  newQualifiedName(segment),
+                  LocalizedText.english(segment));
+          getNodeManager().addNode(nextFolderNode);
+          if (Objects.nonNull(folderNode)) {
+            folderNode.addReference(
+                new Reference(
+                    folderNode.getNodeId(),
+                    Identifiers.Organizes,
+                    nextFolderNode.getNodeId().expanded(),
+                    true));
+          } else {
+            nextFolderNode.addReference(
+                new Reference(
+                    folderNodeId,
+                    Identifiers.Organizes,
+                    Identifiers.ObjectsFolder.expanded(),
+                    false));
+          }
+        } else {
+          nextFolderNode =
+              getNodeManager()
+                  .getNode(folderNodeId)
+                  .orElseThrow(
+                      () ->
+                          new PipeRuntimeCriticalException(
+                              String.format("The folder node %s does not exist.", folderNodeId)));
+        }
+        folderNodeCache.put(currentFolderKey, nextFolderNode);
+      }
+      folderNode = nextFolderNode;
+      currentFolder.append("/");
+    }
+
+    final String nodeName = segments[segments.length - 1];
+    final NodeId nodeId = newNodeId(currentFolder + nodeName);
+    final UaNode existingNode = getNodeManager().getNode(nodeId).orElse(null);
+    final DataValue currentValue =
+        existingNode instanceof UaVariableNode ? ((UaVariableNode) existingNode).getValue() : null;
+    final DataValue dataValue =
+        new DataValue(
+            new Variant(initialValueEntry.value),
+            Objects.nonNull(initialValueEntry.quality)
+                ? initialValueEntry.quality
+                : StatusCode.GOOD,
+            new DateTime(initialValueEntry.sourceUtcTime),
+            new DateTime());
+    final UaVariableNode variableNode =
+        addNode(
+            nodeName, currentFolder.toString(), folderNode, dataValue, initialValueEntry.dataType);
+    if (!(existingNode instanceof UaVariableNode) || shouldUpdateValue(currentValue, dataValue)) {
+      notifyNodeValueChange(variableNode.getNodeId(), dataValue, variableNode);
+    }
+  }
+
+  private void updateInitialQuality(final InitialQualityEntry initialQualityEntry) {
+    if (Objects.isNull(initialQualityEntry.logicalPath)
+        || initialQualityEntry.logicalPath.isEmpty()
+        || Objects.isNull(initialQualityEntry.quality)) {
+      return;
+    }
+
+    final NodeId nodeId;
+    try {
+      nodeId = newNodeId(toNodeIdIdentifier(initialQualityEntry.logicalPath));
+    } catch (final PathParseException e) {
+      LOGGER.warn(
+          "Skip initial quality for malformed path {}.", initialQualityEntry.logicalPath, e);
+      return;
+    }
+    final UaNode existingNode = getNodeManager().getNode(nodeId).orElse(null);
+    if (!(existingNode instanceof UaVariableNode)) {
+      return;
+    }
+
+    final UaVariableNode variableNode = (UaVariableNode) existingNode;
+    final DataValue currentValue = variableNode.getValue();
+    if (Objects.isNull(currentValue)
+        || Objects.equals(currentValue.getStatusCode(), initialQualityEntry.quality)) {
+      return;
+    }
+    final DataValue dataValue =
+        new DataValue(
+            currentValue.getValue(),
+            initialQualityEntry.quality,
+            currentValue.getSourceTime(),
+            new DateTime());
+    notifyNodeValueChange(nodeId, dataValue, variableNode);
+  }
+
+  private boolean shouldUpdateValue(final DataValue currentValue, final DataValue candidateValue) {
+    if (Objects.isNull(candidateValue)) {
+      return false;
+    }
+    if (Objects.isNull(currentValue) || Objects.isNull(currentValue.getSourceTime())) {
+      return true;
+    }
+    if (Objects.isNull(candidateValue.getSourceTime())) {
+      return true;
+    }
+    final long currentUtcTime = currentValue.getSourceTime().getUtcTime();
+    final long candidateUtcTime = candidateValue.getSourceTime().getUtcTime();
+    if (candidateUtcTime != currentUtcTime) {
+      return candidateUtcTime > currentUtcTime;
+    }
+    return !Objects.equals(candidateValue.getStatusCode(), currentValue.getStatusCode())
+        || !Objects.equals(candidateValue.getValue(), currentValue.getValue());
+  }
+
+  private String[] getPathSegments(final InitialValueEntry initialValueEntry) {
+    if (Objects.nonNull(initialValueEntry.logicalPathSegments)) {
+      return initialValueEntry.logicalPathSegments;
+    }
+    if (Objects.isNull(initialValueEntry.logicalPath) || initialValueEntry.logicalPath.isEmpty()) {
+      return new String[0];
+    }
+    try {
+      return PathNodesGenerator.splitPathToNodes(initialValueEntry.logicalPath);
+    } catch (final PathParseException e) {
+      LOGGER.warn("Skip initial value for malformed path {}.", initialValueEntry.logicalPath, e);
+      return new String[0];
+    }
+  }
+
+  private static String toNodeIdIdentifier(final String path) throws PathParseException {
+    return toNodeIdIdentifier(PathNodesGenerator.splitPathToNodes(path));
+  }
+
+  private static String toNodeIdIdentifier(final String[] nodes) {
+    return joinNodes(nodes, 0, nodes.length, '/');
+  }
+
+  private static String joinNodes(
+      final String[] nodes,
+      final int startInclusive,
+      final int endExclusive,
+      final char separator) {
+    if (startInclusive >= endExclusive) {
+      return "";
+    }
+    final StringBuilder builder = new StringBuilder(nodes[startInclusive]);
+    for (int i = startInclusive + 1; i < endExclusive; ++i) {
+      builder.append(separator).append(nodes[i]);
+    }
+    return builder.toString();
   }
 
   private static Object getTabletObjectValue4Opc(

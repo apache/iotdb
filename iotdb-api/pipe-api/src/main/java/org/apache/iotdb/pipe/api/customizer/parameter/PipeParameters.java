@@ -432,6 +432,7 @@ public class PipeParameters {
       KEYS.add("ssl.trust-store-pwd");
       KEYS.add("scp.password");
       KEYS.add("password");
+      KEYS.add("__system.opcua.initial-fetch.source.password");
     }
 
     static String hide(final String key, final String value) {

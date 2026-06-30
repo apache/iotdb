@@ -4200,6 +4200,11 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder useEncryptedPassword(boolean useEncryptedPassword) {
+      this.useEncryptedPassword = useEncryptedPassword;
+      return this;
+    }
+
     public Builder zoneId(ZoneId zoneId) {
       this.zoneId = zoneId;
       return this;

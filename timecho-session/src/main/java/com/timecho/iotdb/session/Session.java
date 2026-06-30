@@ -350,6 +350,12 @@ public class Session extends org.apache.iotdb.session.Session implements ISessio
     }
 
     @Override
+    public Builder useEncryptedPassword(boolean useEncryptedPassword) {
+      super.useEncryptedPassword(useEncryptedPassword);
+      return this;
+    }
+
+    @Override
     public Builder fetchSize(int fetchSize) {
       super.fetchSize(fetchSize);
       return this;

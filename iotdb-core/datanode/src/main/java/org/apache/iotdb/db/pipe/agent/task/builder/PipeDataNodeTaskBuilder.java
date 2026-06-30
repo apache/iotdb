@@ -59,7 +59,55 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 public class PipeDataNodeTaskBuilder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskBuilder.class);
-
+  private static final String[][] OPC_UA_INITIAL_FETCH_SOURCE_PARAMETER_KEY_GROUPS =
+      new String[][] {
+        {PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY},
+        {
+          PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+          PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY
+        },
+        {PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, PipeSourceConstant.SOURCE_INCLUSION_KEY},
+        {PipeSourceConstant.EXTRACTOR_EXCLUSION_KEY, PipeSourceConstant.SOURCE_EXCLUSION_KEY},
+        {PipeSourceConstant.EXTRACTOR_PATTERN_KEY, PipeSourceConstant.SOURCE_PATTERN_KEY},
+        {PipeSourceConstant.EXTRACTOR_PATH_KEY, PipeSourceConstant.SOURCE_PATH_KEY},
+        {
+          PipeSourceConstant.EXTRACTOR_PATTERN_INCLUSION_KEY,
+          PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY
+        },
+        {
+          PipeSourceConstant.EXTRACTOR_PATH_INCLUSION_KEY,
+          PipeSourceConstant.SOURCE_PATH_INCLUSION_KEY
+        },
+        {
+          PipeSourceConstant.EXTRACTOR_PATTERN_EXCLUSION_KEY,
+          PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY
+        },
+        {
+          PipeSourceConstant.EXTRACTOR_PATH_EXCLUSION_KEY,
+          PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY
+        },
+        {
+          PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_KEY,
+          PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY
+        },
+        {
+          PipeSourceConstant.EXTRACTOR_DATABASE_NAME_KEY,
+          PipeSourceConstant.SOURCE_DATABASE_NAME_KEY,
+          PipeSourceConstant.EXTRACTOR_DATABASE_KEY,
+          PipeSourceConstant.SOURCE_DATABASE_KEY
+        },
+        {
+          PipeSourceConstant.EXTRACTOR_TABLE_NAME_KEY,
+          PipeSourceConstant.SOURCE_TABLE_NAME_KEY,
+          PipeSourceConstant.EXTRACTOR_TABLE_KEY,
+          PipeSourceConstant.SOURCE_TABLE_KEY
+        },
+        {
+          PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+          PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY
+        },
+        {SystemConstant.SQL_DIALECT_KEY}
+      };
   private final PipeStaticMeta pipeStaticMeta;
   private final int regionId;
   private final PipeTaskMeta pipeTaskMeta;
@@ -252,5 +300,52 @@ public class PipeDataNodeTaskBuilder {
       sinkParameters.addAttribute(
           PipeSinkConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY, Boolean.TRUE.toString());
     }
+
+    if (isOpcUaSink(sinkPluginName)
+        && sinkParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeSinkConstant.CONNECTOR_OPC_UA_INITIAL_FETCH_ENABLE_KEY,
+                PipeSinkConstant.SINK_OPC_UA_INITIAL_FETCH_ENABLE_KEY),
+            PipeSinkConstant.CONNECTOR_OPC_UA_INITIAL_FETCH_ENABLE_DEFAULT_VALUE)) {
+      injectOpcUaInitialFetchParameters(sourceParameters, sinkParameters);
+    }
+  }
+
+  private boolean isOpcUaSink(final String sinkPluginName) {
+    return BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName().equals(sinkPluginName)
+        || BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName().equals(sinkPluginName);
+  }
+
+  private void injectOpcUaInitialFetchParameters(
+      final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
+    for (final String[] keys : OPC_UA_INITIAL_FETCH_SOURCE_PARAMETER_KEY_GROUPS) {
+      final String value = sourceParameters.getStringByKeys(keys);
+      if (value != null) {
+        sinkParameters.addAttribute(keys[0], value);
+      }
+    }
+
+    final String sourceUser =
+        sourceParameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+            PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+    if (sourceUser != null) {
+      sinkParameters.addAttribute(
+          PipeSinkConstant.OPC_UA_INITIAL_FETCH_SOURCE_USER_KEY, sourceUser);
+    }
+
+    final String sourcePassword =
+        sourceParameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
+    if (sourcePassword != null) {
+      sinkParameters.addAttribute(
+          PipeSinkConstant.OPC_UA_INITIAL_FETCH_SOURCE_PASSWORD_KEY, sourcePassword);
+    }
+
+    sinkParameters.addAttribute(
+        PipeSinkConstant.OPC_UA_INITIAL_FETCH_REGION_ID_KEY, Integer.toString(regionId));
   }
 }
