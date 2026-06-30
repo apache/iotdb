@@ -200,7 +200,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getPipeMeta(pipeStaticMeta)
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
@@ -548,13 +548,19 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Terminate Logic /////////////////////////
 
   public void markCompleted(final String pipeName, final int regionId) {
+    markCompleted(pipeName, 0, regionId);
+  }
+
+  public void markCompleted(final String pipeName, final long creationTime, final int regionId) {
     acquireWriteLock();
     try {
-      if (pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      final PipeMeta pipeMeta =
+          creationTime == 0
+              ? pipeMetaKeeper.getPipeMeta(pipeName)
+              : pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+      if (pipeMeta != null) {
         final PipeDataNodeTask pipeDataNodeTask =
-            ((PipeDataNodeTask)
-                pipeTaskManager.getPipeTask(
-                    pipeMetaKeeper.getPipeMeta(pipeName).getStaticMeta(), regionId));
+            ((PipeDataNodeTask) pipeTaskManager.getPipeTask(pipeMeta.getStaticMeta(), regionId));
         if (Objects.nonNull(pipeDataNodeTask)) {
           pipeDataNodeTask.markCompleted();
         }
@@ -567,8 +573,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Utils /////////////////////////
 
   public Set<Integer> getPipeTaskRegionIdSet(final String pipeName, final long creationTime) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    return pipeMeta == null || pipeMeta.getStaticMeta().getCreationTime() != creationTime
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+    return pipeMeta == null
         ? Collections.emptySet()
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
   }

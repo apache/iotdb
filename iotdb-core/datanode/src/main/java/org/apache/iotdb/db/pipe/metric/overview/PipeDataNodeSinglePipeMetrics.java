@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -67,6 +68,9 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   private void createAutoGauge(final String pipeID) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.get(pipeID);
+    final String pipeTsFileResourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(
+            operator.getPipeName(), operator.getCreationTime());
     metricService.createAutoGauge(
         Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
@@ -91,7 +95,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         Metric.PIPE_FLOATING_MEMORY_USAGE.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeAgent.task(),
-        a -> a.getFloatingMemoryUsageInByte(operator.getPipeName()),
+        a -> a.getFloatingMemoryUsageInByte(operator.getPipeName(), operator.getCreationTime()),
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -100,7 +104,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.tsfile(),
-        a -> a.getLinkedTsFileCount(operator.getPipeName()),
+        a -> a.getLinkedTsFileCount(pipeTsFileResourcePipeName),
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -109,7 +113,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         Metric.PIPE_LINKED_TSFILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.tsfile(),
-        a -> a.getTotalLinkedTsFileSize(operator.getPipeName()),
+        a -> a.getTotalLinkedTsFileSize(pipeTsFileResourcePipeName),
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),

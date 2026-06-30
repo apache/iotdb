@@ -108,7 +108,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     }
 
     pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getPipeMeta(pipeStaticMeta)
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
@@ -122,10 +122,13 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
           ? super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator.deepCopy4TaskAgent())
           : null;
     } catch (final Exception e) {
-      return new TPushPipeMetaRespExceptionMessage(
-          pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
-          e.getMessage(),
-          System.currentTimeMillis());
+      final TPushPipeMetaRespExceptionMessage exceptionMessage =
+          new TPushPipeMetaRespExceptionMessage(
+              pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
+              e.getMessage(),
+              System.currentTimeMillis());
+      exceptionMessage.setCreationTime(pipeMetaFromCoordinator.getStaticMeta().getCreationTime());
+      return exceptionMessage;
     }
   }
 

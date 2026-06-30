@@ -292,6 +292,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       sourceAttributes.put("source.inclusion", "all");
       sourceAttributes.put("source.capture.tree", "false");
       sourceAttributes.put("source.capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");

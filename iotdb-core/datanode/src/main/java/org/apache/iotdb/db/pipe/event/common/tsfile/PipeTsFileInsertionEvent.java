@@ -426,9 +426,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     extractTime = System.nanoTime();
     final List<ModEntry> linkedObjectColumnModEntries = new ArrayList<>();
     final File firstName = tsFile;
+    final String pipeTsFileResourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     try {
       if (isGeneratedByHistoricalExtractor) {
-        tsFile = PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(tsFile, pipeName);
+        tsFile =
+            PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                tsFile, pipeTsFileResourcePipeName);
       }
       if (Objects.nonNull(pipeName)) {
         final boolean shouldLinkObjectFiles = !Objects.equals(hasObjectData, Boolean.FALSE);
@@ -446,17 +450,20 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
 
       tsFile =
-          PipeDataNodeResourceManager.tsfile().increaseFileReference(firstName, true, pipeName);
+          PipeDataNodeResourceManager.tsfile()
+              .increaseFileReference(firstName, true, pipeTsFileResourcePipeName);
       if (isWithMod) {
         if (modFile != null) {
           modFile =
-              PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
+              PipeDataNodeResourceManager.tsfile()
+                  .increaseFileReference(modFile, false, pipeTsFileResourcePipeName);
         }
       } else {
         if (pipeName != null && !linkedObjectColumnModEntries.isEmpty()) {
           modFile =
               PipeDataNodeResourceManager.tsfile()
-                  .writeModEntriesForPipeTsFile(linkedObjectColumnModEntries, firstName, pipeName);
+                  .writeModEntriesForPipeTsFile(
+                      linkedObjectColumnModEntries, firstName, pipeTsFileResourcePipeName);
           isWithMod = true;
         }
       }
@@ -478,13 +485,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
+    final String pipeTsFileResourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     try {
       if (pipeName != null && Boolean.TRUE.equals(hasObjectData)) {
         PipeDataNodeResourceManager.object().decreaseReference(resource, pipeName);
       }
-      PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
+      PipeDataNodeResourceManager.tsfile()
+          .decreaseFileReference(tsFile, pipeTsFileResourcePipeName);
       if (isWithMod && modFile != null) {
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
+        PipeDataNodeResourceManager.tsfile()
+            .decreaseFileReference(modFile, pipeTsFileResourcePipeName);
       }
       close();
       return true;
@@ -750,7 +761,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         PipeDataNodeResourceManager.tsfile()
             .getDeviceIsAlignedMapFromCache(
                 PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
-                    resource.getTsFile(), pipeName),
+                    resource.getTsFile(),
+                    PipeTsFileResourceManager.getPipeTsFileResourcePipeName(
+                        pipeName, creationTime)),
                 false);
     if (Objects.nonNull(deviceIsAlignedMap)) {
       return deviceIsAlignedMap.keySet();
@@ -1070,6 +1083,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         this.isReleased,
         this.referenceCount,
         this.pipeName,
+        this.creationTime,
         this.resource,
         this.hasObjectData,
         this.tsFile,
@@ -1087,6 +1101,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final File sharedModFile; // unused now
     private final AtomicReference<TsFileInsertionEventParser> eventParser;
     private final String pipeName;
+    private final long creationTime;
     private final TsFileResource resource;
     private final Boolean hasObjectData;
 
@@ -1094,6 +1109,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final String pipeName,
+        final long creationTime,
         final TsFileResource resource,
         final Boolean hasObjectData,
         final File tsFile,
@@ -1103,6 +1119,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final AtomicReference<TsFileInsertionEventParser> eventParser) {
       super(isReleased, referenceCount);
       this.pipeName = pipeName;
+      this.creationTime = creationTime;
       this.resource = resource;
       this.hasObjectData = hasObjectData;
       this.tsFile = tsFile;
@@ -1118,9 +1135,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         if (hasObjectData != null && hasObjectData && resource != null && pipeName != null) {
           PipeDataNodeResourceManager.object().decreaseReference(resource, pipeName);
         }
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
+        final String pipeTsFileResourcePipeName =
+            PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
+        PipeDataNodeResourceManager.tsfile()
+            .decreaseFileReference(tsFile, pipeTsFileResourcePipeName);
         if (isWithMod && modFile != null) {
-          PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
+          PipeDataNodeResourceManager.tsfile()
+              .decreaseFileReference(modFile, pipeTsFileResourcePipeName);
         }
 
         PipeTsFileInsertionEvent.this.close();

@@ -36,6 +36,26 @@ public class StartPipeProcedureV2Test {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
+    StartPipeProcedureV2 proc = new StartPipeProcedureV2("testPipe", true);
+
+    try {
+      proc.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      StartPipeProcedureV2 proc2 =
+          (StartPipeProcedureV2) ProcedureFactory.getInstance().create(buffer);
+
+      assertEquals(proc, proc2);
+    } catch (Exception e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void serializeDeserializeLegacyFormatTest() {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
     StartPipeProcedureV2 proc = new StartPipeProcedureV2("testPipe");
 
     try {

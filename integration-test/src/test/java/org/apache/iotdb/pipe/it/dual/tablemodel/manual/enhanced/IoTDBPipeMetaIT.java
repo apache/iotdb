@@ -77,6 +77,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "t.*[0-9]");
       extractorAttributes.put("user", "root");
@@ -754,6 +755,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
@@ -872,6 +874,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "t.*[0-9]");
       extractorAttributes.put("user", "root");

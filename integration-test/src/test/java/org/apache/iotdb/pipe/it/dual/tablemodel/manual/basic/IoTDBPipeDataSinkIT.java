@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -89,7 +90,9 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("source.realtime.mode", "log");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("capture.tree", "true");
+      sourceAttributes.put("mode.double-living", "true");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -174,7 +177,9 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("capture.tree", "true");
+      sourceAttributes.put("mode.double-living", "true");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -214,7 +219,11 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           handleFailure);
 
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("testPipe").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.dropPipeExtended(new TDropPipeReq("testPipe").setIsTableModel(false)).getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.dropPipeExtended(new TDropPipeReq("testPipe").setIsTableModel(true)).getCode());
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
@@ -261,7 +270,9 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("capture.tree", "true");
+      sourceAttributes.put("mode.double-living", "true");
       sourceAttributes.put("forwarding-pipe-requests", "false");
       sourceAttributes.put("source.database-name", "test.*");
       sourceAttributes.put("source.table-name", "test.*");
@@ -418,7 +429,9 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("capture.tree", "true");
+      sourceAttributes.put("mode.double-living", "true");
       sourceAttributes.put("source.database-name", "test.*");
       sourceAttributes.put("source.table-name", "test.*");
       sourceAttributes.put("user", "root");
@@ -775,7 +788,9 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("capture.tree", "true");
+      sourceAttributes.put("mode.double-living", "true");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");

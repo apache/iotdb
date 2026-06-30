@@ -181,7 +181,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   // tablets.
   private boolean canNotUseTabletAnymore(final PipeRealtimeEvent event) {
     final long floatingMemoryUsageInByte =
-        PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
+        PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName, creationTime);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
     long totalFloatingMemorySizeInBytes =
         PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
