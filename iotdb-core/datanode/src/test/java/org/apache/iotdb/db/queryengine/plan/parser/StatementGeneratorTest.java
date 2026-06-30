@@ -1055,6 +1055,27 @@ public class StatementGeneratorTest {
     assertEquals(null, stmt.getQueryStatement());
   }
 
+  @Test
+  public void testShowRepairDataPartitionTableProgress() {
+    Statement statement =
+        StatementGenerator.createStatement(
+            "SHOW REPAIR DATA PARTITION TABLE PROGRESS;", ZonedDateTime.now().getOffset());
+    assertEquals(StatementType.SHOW_REPAIR_DATA_PARTITION_TABLE_PROGRESS, statement.getType());
+
+    QueryStatement queryStatement =
+        (QueryStatement)
+            StatementGenerator.createStatement(
+                "SELECT progress FROM root.sg.d1;", ZonedDateTime.now().getOffset());
+    assertEquals(
+        "progress",
+        queryStatement
+            .getSelectComponent()
+            .getResultColumns()
+            .get(0)
+            .getExpression()
+            .getExpressionString());
+  }
+
   // TODO: add more tests
 
   private void checkQueryStatement(

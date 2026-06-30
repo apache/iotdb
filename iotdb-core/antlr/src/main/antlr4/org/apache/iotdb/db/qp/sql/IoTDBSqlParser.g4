@@ -96,7 +96,7 @@ utilityStatement
     | showQueries | showDiskUsage | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
-    | repairDataPartitionTable
+    | repairDataPartitionTable | showRepairDataPartitionTableProgress
     ;
 
 /**
@@ -1281,6 +1281,11 @@ stopRepairData
 // Repair Data Partition Table
 repairDataPartitionTable
     : REPAIR DATA PARTITION TABLE
+    ;
+
+// Show Repair Data Partition Table Progress
+showRepairDataPartitionTableProgress
+    : SHOW REPAIR DATA PARTITION TABLE PROGRESS
     ;
 
 // Explain

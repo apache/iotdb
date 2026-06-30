@@ -280,6 +280,13 @@ struct TDataPartitionTableResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
+struct TShowRepairDataPartitionTableProgressResp {
+  1: required common.TSStatus status
+  2: required string state
+  3: required double progress
+  4: optional string message
+}
+
 struct TGetRegionIdReq {
     1: required common.TConsensusGroupType type
     2: optional string database
@@ -1516,6 +1523,8 @@ service IConfigNodeRPCService {
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
   common.TSStatus dataPartitionTableIntegrityCheck()
+
+  TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress()
 
   // ======================================================
   // Authorize

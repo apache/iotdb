@@ -751,6 +751,14 @@ struct TGenerateDataPartitionTableHeartbeatResp {
   2: required i32 errorCode
   3: optional string message
   4: optional list<binary> databaseScopedDataPartitionTables
+  5: optional double progress
+}
+
+struct TGetDataPartitionTableGeneratorProgressResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: required double progress
+  4: optional string message
 }
 
 /**
@@ -1406,6 +1414,11 @@ service IDataNodeRPCService {
    * Check the status of DataPartitionTable generation task
    */
   TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat(TGenerateDataPartitionTableReq req)
+
+  /**
+   * Get the progress of DataPartitionTable generation task without consuming the generated table.
+   */
+  TGetDataPartitionTableGeneratorProgressResp getDataPartitionTableGeneratorProgress()
 
   /**
   * END: Data Partition Table Integrity Check
