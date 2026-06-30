@@ -321,6 +321,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF,
           Boolean.toString(skipIfNoPrivileges));
+      appendPipeInfoToHandshakeParams(params);
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
@@ -418,6 +419,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   public ExecutorService getExecutor() {
     return executor;
+  }
+
+  public void discardReceiverRuntimeSessions() {
+    for (final TEndPoint endPoint : new HashSet<>(endPointSet)) {
+      endPoint2Client.clear(endPoint);
+    }
   }
 
   public void close() {

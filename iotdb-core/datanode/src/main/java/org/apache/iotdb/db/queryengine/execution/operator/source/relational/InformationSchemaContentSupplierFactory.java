@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapshot;
 import org.apache.iotdb.commons.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
@@ -82,6 +83,7 @@ import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.source.PipeReceiverRuntimeSnapshotFilter;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
@@ -186,6 +188,8 @@ public class InformationSchemaContentSupplierFactory {
           return new RegionSupplier(dataTypes, userEntity);
         case InformationSchema.PIPES:
           return new PipeSupplier(dataTypes, userEntity.getUsername());
+        case InformationSchema.RECEIVERS:
+          return new ReceiversSupplier(dataTypes, userEntity);
         case InformationSchema.PIPE_PLUGINS:
           return new PipePluginSupplier(dataTypes, userEntity);
         case InformationSchema.TOPICS:
@@ -706,6 +710,56 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[8].writeDouble(tPipeInfo.isSetEstimatedRemainingTime() ? remainingTime : -1);
 
       resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+  }
+
+  private static class ReceiversSupplier extends TsBlockSupplier {
+    private final Iterator<PipeReceiverRuntimeSnapshot> iterator;
+
+    private ReceiversSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      iterator = PipeReceiverRuntimeSnapshotFilter.visibleSnapshots(userEntity).iterator();
+    }
+
+    @Override
+    protected void constructLine() {
+      final PipeReceiverRuntimeSnapshot snapshot = iterator.next();
+      columnBuilders[0].writeBinary(BytesUtils.valueOf(snapshot.getReceiverNodeType()));
+      writeReceiverNodeId(columnBuilders[1], snapshot);
+      columnBuilders[2].writeBinary(BytesUtils.valueOf(snapshot.getProtocol()));
+      columnBuilders[3].writeBinary(BytesUtils.valueOf(snapshot.getSenderClusterId()));
+      columnBuilders[4].writeBinary(BytesUtils.valueOf(snapshot.getSenderAddress()));
+      columnBuilders[5].writeBinary(BytesUtils.valueOf(snapshot.getUserName()));
+      columnBuilders[6].writeBinary(BytesUtils.valueOf(snapshot.getSenderPorts()));
+      columnBuilders[7].writeInt(snapshot.getConnectionCount());
+      columnBuilders[8].writeInt(snapshot.getPipeCount());
+      columnBuilders[9].writeBinary(BytesUtils.valueOf(snapshot.getPipeIds()));
+      writeTimestamp(columnBuilders[10], snapshot.getLastHandshakeTime());
+      writeTimestamp(columnBuilders[11], snapshot.getLastTransferTime());
+      resultBuilder.declarePosition();
+    }
+
+    private static void writeReceiverNodeId(
+        ColumnBuilder columnBuilder, PipeReceiverRuntimeSnapshot snapshot) {
+      if (snapshot.isReceiverNodeIdKnown()) {
+        columnBuilder.writeInt(snapshot.getReceiverNodeId());
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+
+    private static void writeTimestamp(ColumnBuilder columnBuilder, long timestampInMillis) {
+      if (timestampInMillis <= 0) {
+        columnBuilder.appendNull();
+        return;
+      }
+      columnBuilder.writeLong(
+          TimestampPrecisionUtils.convertToCurrPrecision(timestampInMillis, TimeUnit.MILLISECONDS));
     }
 
     @Override

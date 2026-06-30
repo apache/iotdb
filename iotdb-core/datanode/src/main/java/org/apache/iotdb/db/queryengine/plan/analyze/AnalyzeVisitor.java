@@ -145,6 +145,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatemen
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -3818,6 +3819,34 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     analysis.setMergeOrderParameter(new OrderByParameter(showQueriesStatement.getSortItemList()));
+
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitShowReceivers(
+      ShowReceiversStatement showReceiversStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setRealStatement(showReceiversStatement);
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowReceiversHeader());
+    analysis.setVirtualSource(true);
+
+    List<TDataNodeLocation> allReadableDataNodeLocations = getReadableDataNodeLocations();
+    if (allReadableDataNodeLocations.isEmpty()) {
+      throw new StatementAnalyzeException(DataNodeQueryMessages.NO_RUNNING_DATANODES);
+    }
+    analysis.setReadableDataNodeLocations(allReadableDataNodeLocations);
+
+    Set<Expression> sourceExpressions = new HashSet<>();
+    for (ColumnHeader columnHeader : analysis.getRespDatasetHeader().getColumnHeaders()) {
+      sourceExpressions.add(
+          TimeSeriesOperand.constructColumnHeaderExpression(
+              columnHeader.getColumnName(), columnHeader.getColumnType()));
+    }
+    analysis.setSourceExpressions(sourceExpressions);
+    sourceExpressions.forEach(expression -> analyzeExpressionType(analysis, expression));
+
+    analysis.setMergeOrderParameter(new OrderByParameter(showReceiversStatement.getSortItemList()));
 
     return analysis;
   }

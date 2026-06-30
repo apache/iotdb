@@ -25,11 +25,14 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
@@ -82,6 +85,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME;
@@ -106,15 +110,17 @@ import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DAT
 
 @TreeModel
 @TableModel
-public class WriteBackSink implements PipeConnector {
+public class WriteBackSink implements PipeConnector, PipeConnectorWithEventDiscard {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteBackSink.class);
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   // Simulate the behavior of the client-to-server communication
   // for correctly handling data insertion in IoTDBReceiverAgent#receive method
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   public static final AtomicLong id = new AtomicLong();
+  private final AtomicReference<String> receiverRuntimeSessionKey = new AtomicReference<>();
   private InternalClientSession session;
 
   private boolean skipIfNoPrivileges;
@@ -139,15 +145,16 @@ public class WriteBackSink implements PipeConnector {
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
-    session =
-        new InternalClientSession(
-            String.format(
-                "%s_%s_%s_%s_%s",
-                WriteBackSink.class.getSimpleName(),
-                environment.getPipeName(),
-                environment.getCreationTime(),
-                environment.getRegionId(),
-                id.getAndIncrement()));
+    final long writeBackSinkId = id.getAndIncrement();
+    final String sessionId =
+        String.format(
+            "%s_%s_%s_%s_%s",
+            WriteBackSink.class.getSimpleName(),
+            environment.getPipeName(),
+            environment.getCreationTime(),
+            environment.getRegionId(),
+            writeBackSinkId);
+    session = new InternalClientSession(sessionId);
 
     String userIdString =
         parameters.getStringOrDefault(
@@ -213,6 +220,9 @@ public class WriteBackSink implements PipeConnector {
       throw new PipePasswordCheckException(
           String.format("Failed to check password for pipe %s.", environment.getPipeName()));
     }
+
+    recordReceiverRuntimeHandshake(
+        sessionId, usernameString, environment.getPipeName(), environment.getCreationTime());
   }
 
   @Override
@@ -291,6 +301,10 @@ public class WriteBackSink implements PipeConnector {
               "Write back PipeInsertNodeTabletInsertionEvent %s error, result status %s",
               pipeInsertNodeTabletInsertionEvent, status));
     }
+    recordReceiverRuntimeTransferIfSuccess(
+        status,
+        pipeInsertNodeTabletInsertionEvent.getPipeName(),
+        pipeInsertNodeTabletInsertionEvent.getCreationTime());
   }
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
@@ -336,6 +350,10 @@ public class WriteBackSink implements PipeConnector {
               "Write back PipeRawTabletInsertionEvent %s error, result status %s",
               pipeRawTabletInsertionEvent, status));
     }
+    recordReceiverRuntimeTransferIfSuccess(
+        status,
+        pipeRawTabletInsertionEvent.getPipeName(),
+        pipeRawTabletInsertionEvent.getCreationTime());
   }
 
   @Override
@@ -382,6 +400,10 @@ public class WriteBackSink implements PipeConnector {
               "Write back PipeStatementInsertionEvent %s error, result status %s",
               pipeStatementInsertionEvent, status));
     }
+    recordReceiverRuntimeTransferIfSuccess(
+        status,
+        pipeStatementInsertionEvent.getPipeName(),
+        pipeStatementInsertionEvent.getCreationTime());
   }
 
   private static void throwWriteBackExceptionIfNecessary(
@@ -395,9 +417,59 @@ public class WriteBackSink implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    if (session != null) {
-      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution, false);
+    try {
+      if (session != null) {
+        SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution, false);
+      }
+    } finally {
+      PipeReceiverRuntimeRegistry.getInstance()
+          .deregister(receiverRuntimeSessionKey.getAndSet(null));
     }
+  }
+
+  private void recordReceiverRuntimeHandshake(
+      final String sessionId,
+      final String userName,
+      final String pipeName,
+      final long creationTime) {
+    final String oldSessionKey = receiverRuntimeSessionKey.getAndSet(sessionId);
+    if (!Objects.equals(oldSessionKey, sessionId)) {
+      PipeReceiverRuntimeRegistry.getInstance().deregister(oldSessionKey);
+    }
+
+    PipeReceiverRuntimeRegistry.getInstance()
+        .registerOrUpdateSession(
+            sessionId,
+            PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+            IOTDB_CONFIG.getDataNodeId(),
+            PipeReceiverRuntimeRegistry.PROTOCOL_WRITEBACK,
+            IOTDB_CONFIG.getRpcAddress(),
+            IOTDB_CONFIG.getRpcPort(),
+            userName,
+            IOTDB_CONFIG.getClusterId(),
+            pipeName,
+            creationTime,
+            System.currentTimeMillis());
+  }
+
+  private void recordReceiverRuntimeTransferIfSuccess(
+      final TSStatus status, final String pipeName, final long pipeCreationTime) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      PipeReceiverRuntimeRegistry.getInstance()
+          .markTransfer(
+              receiverRuntimeSessionKey.get(),
+              pipeName,
+              pipeCreationTime,
+              System.currentTimeMillis());
+    }
+  }
+
+  @Override
+  public void discardEventsOfPipe(
+      final String pipeName, final long creationTime, final int regionId) {
+    PipeReceiverRuntimeRegistry.getInstance()
+        .removePipe(receiverRuntimeSessionKey.get(), pipeName, creationTime);
   }
 
   private TSStatus executeStatementForTableModel(

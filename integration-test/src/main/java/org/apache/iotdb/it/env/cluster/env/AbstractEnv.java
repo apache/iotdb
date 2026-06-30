@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.PortOccupiedException;
@@ -40,7 +39,6 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
-import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.MppClusterConfig;
 import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
@@ -1580,7 +1578,7 @@ public abstract class AbstractEnv implements BaseEnv {
     Throwable lastException = null;
     for (int i = 0; i < retryCount; i++) {
       try (final SyncConfigNodeIServiceClient client =
-          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+          (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
         final List<String> errorMessages = new ArrayList<>(nodes.size());
         final Map<String, Integer> nodeIds = new HashMap<>(nodes.size());
         final TShowClusterResp showClusterResp = client.showCluster();
@@ -1641,7 +1639,7 @@ public abstract class AbstractEnv implements BaseEnv {
         } else {
           lastException = new IllegalStateException(String.join(". ", errorMessages));
         }
-      } catch (final TException | ClientManagerException | IOException | InterruptedException e) {
+      } catch (final TException | IOException | InterruptedException e) {
         lastException = e;
       }
       try {

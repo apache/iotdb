@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogica
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -88,6 +89,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
 
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -194,6 +196,32 @@ public class StatementGeneratorTest {
         () ->
             StatementGenerator.createStatement(
                 "show queries order by a", ZonedDateTime.now().getOffset()));
+  }
+
+  @Test
+  public void testShowReceivers() {
+    final Statement showReceivers =
+        StatementGenerator.createStatement("show receivers", ZonedDateTime.now().getOffset());
+    Assert.assertTrue(showReceivers instanceof ShowReceiversStatement);
+    Assert.assertEquals(
+        Arrays.asList(
+            new SortItem("ReceiverNodeType", Ordering.ASC),
+            new SortItem("ReceiverNodeId", Ordering.ASC),
+            new SortItem("Protocol", Ordering.ASC),
+            new SortItem("SenderClusterId", Ordering.ASC),
+            new SortItem("SenderAddress", Ordering.ASC),
+            new SortItem("UserName", Ordering.ASC)),
+        ((ShowReceiversStatement) showReceivers).getSortItemList());
+    Assert.assertThrows(
+        ParseCancellationException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show receivers where protocol = 'thrift'", ZonedDateTime.now().getOffset()));
+    Assert.assertThrows(
+        ParseCancellationException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show receivers order by ReceiverNodeId", ZonedDateTime.now().getOffset()));
   }
 
   @Test

@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -488,6 +489,7 @@ public class Analysis implements IAnalysis {
     return (dataPartition != null && !dataPartition.isEmpty())
         || (schemaPartition != null && !schemaPartition.isEmpty())
         || statement instanceof ShowQueriesStatement
+        || statement instanceof ShowReceiversStatement
         || statement instanceof ShowDiskUsageStatement
         || (statement instanceof QueryStatement
             && ((QueryStatement) statement).isAggregationQuery());

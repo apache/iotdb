@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferPipeReceiverRuntimeInfoCleanupReq;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -249,6 +250,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF,
           Boolean.toString(skipIfNoPrivileges));
+      appendPipeInfoToHandshakeParams(params);
 
       // Try to handshake by PipeTransferHandshakeV2Req.
       TPipeTransferResp resp = client.pipeTransfer(buildHandshakeV2Req(params));
@@ -323,6 +325,75 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             e);
       } finally {
         clientAndStatus.setRight(false);
+      }
+    }
+  }
+
+  public void discardReceiverRuntimeSessions() {
+    try {
+      sendPipeReceiverRuntimeInfoCleanupReq();
+    } finally {
+      close();
+    }
+  }
+
+  private void sendPipeReceiverRuntimeInfoCleanupReq() {
+    if (pipeName == null) {
+      return;
+    }
+
+    final PipeTransferPipeReceiverRuntimeInfoCleanupReq req;
+    try {
+      req =
+          PipeTransferPipeReceiverRuntimeInfoCleanupReq.toTPipeTransferReq(
+              pipeName, pipeCreationTime);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Failed to build pipe receiver runtime info cleanup request for pipe {}@{}.",
+          pipeName,
+          pipeCreationTime,
+          e);
+      return;
+    }
+
+    for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
+        endPoint2ClientAndStatus.entrySet()) {
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus = entry.getValue();
+      if (clientAndStatus == null
+          || !Boolean.TRUE.equals(clientAndStatus.getRight())
+          || clientAndStatus.getLeft() == null) {
+        continue;
+      }
+
+      try {
+        clientAndStatus.getLeft().setTimeout(PIPE_CONFIG.getPipeSinkHandshakeTimeoutMs());
+        final TPipeTransferResp resp = clientAndStatus.getLeft().pipeTransfer(req);
+        if (resp == null || resp.getStatus() == null) {
+          LOGGER.warn(
+              "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response is null.",
+              pipeName,
+              pipeCreationTime,
+              entry.getKey().getIp(),
+              entry.getKey().getPort());
+        } else if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && resp.getStatus().getCode() != TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
+          LOGGER.warn(
+              "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response status: {}.",
+              pipeName,
+              pipeCreationTime,
+              entry.getKey().getIp(),
+              entry.getKey().getPort(),
+              resp.getStatus());
+        }
+      } catch (final Exception e) {
+        clientAndStatus.setRight(false);
+        LOGGER.warn(
+            "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}.",
+            pipeName,
+            pipeCreationTime,
+            entry.getKey().getIp(),
+            entry.getKey().getPort(),
+            e);
       }
     }
   }

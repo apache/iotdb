@@ -143,6 +143,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
             skipIfNoPrivileges);
+    clientManager.setPipeInfo(pipeName, creationTime);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -267,5 +268,12 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
     }
 
     super.close();
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions() {
+    if (clientManager != null) {
+      clientManager.discardReceiverRuntimeSessions();
+    }
   }
 }

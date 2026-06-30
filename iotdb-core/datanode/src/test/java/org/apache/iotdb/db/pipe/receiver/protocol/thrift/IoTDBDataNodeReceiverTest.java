@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapshot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -28,16 +30,33 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class IoTDBDataNodeReceiverTest {
+
+  private final PipeReceiverRuntimeRegistry registry = PipeReceiverRuntimeRegistry.getInstance();
+
+  @Before
+  public void setUp() {
+    registry.clear();
+  }
+
+  @After
+  public void tearDown() {
+    registry.clear();
+  }
 
   @Test
   public void testLoadTsFileSyncStatementUsesTreeDatabaseLevelFromDatabaseName() throws Exception {
@@ -158,6 +177,53 @@ public class IoTDBDataNodeReceiverTest {
   }
 
   @Test
+  public void testDataNodeReceiverRuntimeIsClearedOnHandleExitAndCanReconnect() {
+    final TestingDataNodeReceiver receiver = new TestingDataNodeReceiver();
+
+    receiver.recordDataNodeReceiverRuntime(3, "10.0.0.1", "9001", "root", "cluster-a", "pipe-a", 1);
+
+    List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+    Assert.assertEquals(1, snapshots.size());
+    Assert.assertTrue(snapshots.get(0).getPipeIds().contains("pipe-a@"));
+
+    receiver.handleExit();
+    Assert.assertTrue(registry.snapshot().isEmpty());
+
+    receiver.recordDataNodeReceiverRuntime(3, "10.0.0.1", "9002", "root", "cluster-a", "pipe-b", 2);
+
+    snapshots = registry.snapshot();
+    Assert.assertEquals(1, snapshots.size());
+    Assert.assertEquals("9002", snapshots.get(0).getSenderPorts());
+    Assert.assertTrue(snapshots.get(0).getPipeIds().contains("pipe-b@"));
+  }
+
+  @Test
+  public void testConfigNodeReceiverRuntimeIsClearedOnHandleExit() throws Exception {
+    final TestingDataNodeReceiver receiver = new TestingDataNodeReceiver();
+    final String configNodeSessionKey = "ConfigNode-7-thrift-test-config-receiver";
+
+    registry.registerOrUpdateSession(
+        configNodeSessionKey,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        7,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.2",
+        9003,
+        "root",
+        "cluster-a",
+        "pipe-config",
+        11,
+        100);
+    setConfigPipeReceiverRuntimeSessionKey(receiver, configNodeSessionKey);
+
+    Assert.assertEquals(1, registry.snapshot().size());
+
+    receiver.handleExit();
+
+    Assert.assertTrue(registry.snapshot().isEmpty());
+  }
+
+  @Test
   public void testClearTreeDatabaseNameForLoadTsFileStatement() throws Exception {
     final Path tsFile = Files.createTempFile("pipe-load-clear-tree-database", ".tsfile");
     try {
@@ -204,5 +270,55 @@ public class IoTDBDataNodeReceiverTest {
 
     Assert.assertFalse(insertMultiTabletsStatement.getDatabaseName().isPresent());
     Assert.assertFalse(tabletStatement.getDatabaseName().isPresent());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void setConfigPipeReceiverRuntimeSessionKey(
+      final IoTDBDataNodeReceiver receiver, final String sessionKey) throws Exception {
+    final Field field =
+        IoTDBDataNodeReceiver.class.getDeclaredField("configPipeReceiverRuntimeSessionKey");
+    field.setAccessible(true);
+    ((AtomicReference<String>) field.get(receiver)).set(sessionKey);
+  }
+
+  private static class TestingDataNodeReceiver extends IoTDBDataNodeReceiver {
+
+    private String senderHost;
+    private String senderPort;
+
+    private void recordDataNodeReceiverRuntime(
+        final int receiverNodeId,
+        final String senderHost,
+        final String senderPort,
+        final String userName,
+        final String senderClusterId,
+        final String pipeName,
+        final long pipeCreationTime) {
+      this.senderHost = senderHost;
+      this.senderPort = senderPort;
+      this.username = userName;
+      this.senderClusterId = senderClusterId;
+      this.receiverPipeName = pipeName;
+      this.receiverPipeCreationTime = pipeCreationTime;
+      recordPipeReceiverHandshake(
+          PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+          receiverNodeId,
+          PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT);
+    }
+
+    @Override
+    protected String getSenderHost() {
+      return senderHost;
+    }
+
+    @Override
+    protected String getSenderPort() {
+      return senderPort;
+    }
+
+    @Override
+    protected void closeSession() {
+      // Avoid touching SessionManager in this unit test.
+    }
   }
 }

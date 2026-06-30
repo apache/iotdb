@@ -109,6 +109,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowReceiversNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -415,6 +416,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return ShowDiskUsageNode.deserialize(buffer);
       case 108:
         return CollectNode.deserialize(buffer);
+      case 110:
+        return ShowReceiversNode.deserialize(buffer);
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:

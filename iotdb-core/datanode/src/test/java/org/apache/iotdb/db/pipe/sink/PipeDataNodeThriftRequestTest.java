@@ -148,11 +148,13 @@ public class PipeDataNodeThriftRequestTest {
   public void testPipeTransferDataNodeHandshakeReq() throws IOException {
     final PipeTransferDataNodeHandshakeV1Req req =
         PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(TIME_PRECISION);
+    final int originalBodyPosition = req.body.position();
     final PipeTransferDataNodeHandshakeV1Req deserializeReq =
         PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(originalBodyPosition, req.body.position());
 
     Assert.assertEquals(req.getTimestampPrecision(), deserializeReq.getTimestampPrecision());
   }
@@ -175,20 +177,24 @@ public class PipeDataNodeThriftRequestTest {
   public void testPipeTransferDataNodeHandshakeV2Req() throws IOException {
     final Map<String, String> params = new HashMap<>();
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, TIME_PRECISION);
-    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, "cluster");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, "cluster-a");
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, "root");
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, "root");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_NAME, "pipe-a");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_CREATION_TIME, "1");
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, "async");
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE, Boolean.TRUE.toString());
 
     final PipeTransferDataNodeHandshakeV2Req req =
         PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params);
+    final int originalBodyPosition = req.body.position();
     final PipeTransferDataNodeHandshakeV2Req deserializeReq =
         PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(originalBodyPosition, req.body.position());
     Assert.assertEquals(params, deserializeReq.getParams());
   }
 

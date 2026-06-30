@@ -1755,6 +1755,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitShowReceiversStatement(RelationalSqlParser.ShowReceiversStatementContext ctx) {
+    return new ShowStatement(
+        getLocation(ctx),
+        InformationSchema.RECEIVERS,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  @Override
   public Node visitKillQueryStatement(RelationalSqlParser.KillQueryStatementContext ctx) {
     if (ctx.queryId == null) {
       return new KillQuery(null, getLocation(ctx));

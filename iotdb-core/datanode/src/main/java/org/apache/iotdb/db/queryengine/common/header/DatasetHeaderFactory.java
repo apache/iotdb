@@ -207,6 +207,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showQueriesColumnHeaders, false);
   }
 
+  public static DatasetHeader getShowReceiversHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showReceiversColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowDiskUsageHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showDiskUsageColumnHeaders, true);
   }

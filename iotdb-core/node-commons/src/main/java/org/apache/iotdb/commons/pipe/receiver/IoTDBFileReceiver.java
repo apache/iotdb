@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
@@ -100,12 +101,21 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected final AtomicBoolean shouldMarkAsPipeRequest = new AtomicBoolean(true);
   protected final AtomicBoolean skipIfNoPrivileges = new AtomicBoolean(false);
 
+  protected String senderClusterId = PipeReceiverRuntimeRegistry.UNKNOWN;
+  protected String receiverPipeName;
+  protected long receiverPipeCreationTime = Long.MIN_VALUE;
+  private final AtomicReference<String> pipeReceiverRuntimeSessionKey = new AtomicReference<>();
+
   @Override
   public IoTDBSinkRequestVersion getVersion() {
     return IoTDBSinkRequestVersion.VERSION_1;
   }
 
   protected TPipeTransferResp handleTransferHandshakeV1(final PipeTransferHandshakeV1Req req) {
+    senderClusterId = PipeReceiverRuntimeRegistry.UNKNOWN;
+    receiverPipeName = null;
+    receiverPipeCreationTime = Long.MIN_VALUE;
+
     if (!CommonDescriptor.getInstance()
         .getConfig()
         .getTimestampPrecision()
@@ -340,16 +350,28 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             req.getParams()
                 .getOrDefault(PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF, "false")));
 
+    final String pipeNameString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_NAME);
+    final String pipeCreationTimeString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_CREATION_TIME);
+
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
     // it may not require the actual type of the v1 request.
-    return handleTransferHandshakeV1(
-        new PipeTransferHandshakeV1Req() {
-          @Override
-          protected PipeRequestType getPlanType() {
-            return PipeRequestType.HANDSHAKE_DATANODE_V1;
-          }
-        }.convertToTPipeTransferReq(timestampPrecision));
+    final TPipeTransferResp resp =
+        handleTransferHandshakeV1(
+            new PipeTransferHandshakeV1Req() {
+              @Override
+              protected PipeRequestType getPlanType() {
+                return PipeRequestType.HANDSHAKE_DATANODE_V1;
+              }
+            }.convertToTPipeTransferReq(timestampPrecision));
+    if (isSuccess(resp)) {
+      senderClusterId = clusterIdFromHandshakeRequest;
+      receiverPipeName = pipeNameString;
+      receiverPipeCreationTime = parsePipeCreationTime(pipeCreationTimeString);
+    }
+    return resp;
   }
 
   protected abstract String getClusterId();
@@ -873,8 +895,68 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
       throws IOException, IllegalPathException;
 
+  protected void recordPipeReceiverHandshake(
+      final String receiverNodeType, final int receiverNodeId, final String protocol) {
+    final String sessionKey =
+        String.format("%s-%s-%s-%s", receiverNodeType, receiverNodeId, protocol, receiverId.get());
+    final String oldSessionKey = pipeReceiverRuntimeSessionKey.getAndSet(sessionKey);
+    if (!Objects.equals(oldSessionKey, sessionKey)) {
+      PipeReceiverRuntimeRegistry.getInstance().deregister(oldSessionKey);
+    }
+    PipeReceiverRuntimeRegistry.getInstance()
+        .registerOrUpdateSession(
+            sessionKey,
+            receiverNodeType,
+            receiverNodeId,
+            protocol,
+            getSenderHost(),
+            parseSenderPort(getSenderPort()),
+            username,
+            senderClusterId,
+            receiverPipeName,
+            receiverPipeCreationTime,
+            System.currentTimeMillis());
+  }
+
+  protected void recordPipeReceiverTransfer() {
+    PipeReceiverRuntimeRegistry.getInstance()
+        .markTransfer(pipeReceiverRuntimeSessionKey.get(), System.currentTimeMillis());
+  }
+
+  protected void clearPipeReceiverRuntime() {
+    PipeReceiverRuntimeRegistry.getInstance()
+        .deregister(pipeReceiverRuntimeSessionKey.getAndSet(null));
+  }
+
+  protected static boolean isSuccess(final TPipeTransferResp resp) {
+    return resp != null
+        && resp.getStatus() != null
+        && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  private static int parseSenderPort(final String senderPort) {
+    try {
+      return Integer.parseInt(senderPort);
+    } catch (final Exception e) {
+      return -1;
+    }
+  }
+
+  private static long parsePipeCreationTime(final String pipeCreationTime) {
+    if (pipeCreationTime == null) {
+      return Long.MIN_VALUE;
+    }
+    try {
+      return Long.parseLong(pipeCreationTime);
+    } catch (final NumberFormatException e) {
+      return Long.MIN_VALUE;
+    }
+  }
+
   @Override
   public synchronized void handleExit() {
+    clearPipeReceiverRuntime();
+
     if (writingFileWriter != null) {
       try {
         writingFileWriter.close();

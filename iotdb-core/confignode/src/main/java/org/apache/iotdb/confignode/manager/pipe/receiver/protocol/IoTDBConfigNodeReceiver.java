@@ -35,11 +35,13 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferPipeReceiverRuntimeInfoCleanupReq;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -194,20 +196,22 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
-            return resp;
+            return recordConfigNodeHandshakeIfSuccess(resp, req);
           case HANDSHAKE_CONFIGNODE_V2:
             resp =
                 handleTransferHandshakeV2(
                     PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
-            userEntity.setAuditLogOperation(AuditLogOperation.DDL);
+            if (Objects.nonNull(userEntity)) {
+              userEntity.setAuditLogOperation(AuditLogOperation.DDL);
+            }
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
-            return resp;
+            return recordConfigNodeHandshakeIfSuccess(resp, req);
           case TRANSFER_CONFIG_PLAN:
             resp = handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
-            return resp;
+            return recordConfigNodeTransferIfSuccess(resp);
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
             resp =
                 handleTransferFilePiece(
@@ -216,16 +220,23 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     false);
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
-            return resp;
+            return recordConfigNodeTransferIfSuccess(resp);
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
             resp =
                 handleTransferFileSealV2(
                     PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
-            return resp;
+            return recordConfigNodeTransferIfSuccess(resp);
           case TRANSFER_COMPRESSED:
             return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+          case TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP:
+            final PipeTransferPipeReceiverRuntimeInfoCleanupReq cleanupReq =
+                PipeTransferPipeReceiverRuntimeInfoCleanupReq.fromTPipeTransferReq(req);
+            PipeReceiverRuntimeRegistry.getInstance()
+                .removePipeFromAllSessions(
+                    cleanupReq.getPipeName(), cleanupReq.getPipeCreationTime());
+            return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
           default:
             break;
         }
@@ -259,7 +270,32 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private boolean needHandshake(final PipeRequestType type) {
     return Objects.isNull(receiverFileDirWithIdSuffix.get())
         && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V1
-        && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V2;
+        && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V2
+        && type != PipeRequestType.TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP;
+  }
+
+  private TPipeTransferResp recordConfigNodeHandshakeIfSuccess(
+      final TPipeTransferResp resp, final TPipeTransferReq req) {
+    if (isSuccess(resp)) {
+      recordPipeReceiverHandshake(
+          PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+          ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+          getProtocol(req));
+    }
+    return resp;
+  }
+
+  private TPipeTransferResp recordConfigNodeTransferIfSuccess(final TPipeTransferResp resp) {
+    if (isSuccess(resp)) {
+      recordPipeReceiverTransfer();
+    }
+    return resp;
+  }
+
+  private static String getProtocol(final TPipeTransferReq req) {
+    return req instanceof AirGapPseudoTPipeTransferRequest
+        ? PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP
+        : PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT;
   }
 
   private TPipeTransferResp handleTransferConfigPlan(final PipeTransferConfigPlanReq req)

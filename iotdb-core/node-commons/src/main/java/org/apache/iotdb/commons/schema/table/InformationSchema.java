@@ -47,6 +47,7 @@ public class InformationSchema {
   public static final String COLUMNS = "columns";
   public static final String REGIONS = "regions";
   public static final String PIPES = "pipes";
+  public static final String RECEIVERS = "receivers";
   public static final String PIPE_PLUGINS = "pipe_plugins";
   public static final String TOPICS = "topics";
   public static final String SUBSCRIPTIONS = "subscriptions";
@@ -226,6 +227,39 @@ public class InformationSchema {
         new AttributeColumnSchema(
             ColumnHeaderConstant.ESTIMATED_REMAINING_SECONDS_TABLE_MODEL, TSDataType.DOUBLE));
     schemaTables.put(PIPES, pipeTable);
+
+    final TsTable receiversTable = new TsTable(RECEIVERS);
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.RECEIVER_NODE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.RECEIVER_NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.PROTOCOL_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.SENDER_CLUSTER_ID_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.SENDER_ADDRESS_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.RECEIVER_USER_NAME_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.SENDER_PORTS_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.CONNECTION_COUNT_TABLE_MODEL, TSDataType.INT32));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_COUNT_TABLE_MODEL, TSDataType.INT32));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_IDS_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_HANDSHAKE_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_TRANSFER_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    schemaTables.put(RECEIVERS, receiversTable);
 
     final TsTable pipePluginTable = new TsTable(PIPE_PLUGINS);
     pipePluginTable.addColumnSchema(
