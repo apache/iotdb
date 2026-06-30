@@ -1365,6 +1365,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setHighestPriority(boolean highestPriority) {
     this.highestPriority = highestPriority;
+    if (memoryReservationManager != null) {
+      memoryReservationManager.setHighestPriority(highestPriority);
+    }
   }
 
   public boolean isSingleSourcePath() {

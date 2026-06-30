@@ -80,4 +80,10 @@ public interface MemoryReservationManager {
    * @param bytesAlreadyReserved the amount of memory that has already been reserved
    */
   void reserveMemoryVirtually(final long bytesToBeReserved, final long bytesAlreadyReserved);
+
+  /**
+   * Mark this manager as highest-priority (e.g. SHOW QUERIES). When operators memory is
+   * insufficient, allocation will fall back to zero bytes instead of failing.
+   */
+  void setHighestPriority(boolean isHighestPriority);
 }

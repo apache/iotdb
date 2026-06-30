@@ -177,7 +177,7 @@ public class CteScanOperatorTest {
         new CteScanOperator(operatorContext, planNodeId, cteDataStore, queryId);
     assertEquals(2, cteDataStore.getCount());
 
-    assertEquals(896, cteDataStore.ramBytesUsed());
+    assertEquals(904, cteDataStore.ramBytesUsed());
 
     // Both operators should be able to read data
     assertTrue(operator1.hasNext());

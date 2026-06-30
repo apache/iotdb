@@ -48,6 +48,12 @@ public class CteDataStore implements Accountable {
   // reference count by CteScanReader
   private final AtomicInteger count;
 
+  /**
+   * Bytes actually reserved from the operators free-memory pool for this CTE data store. May be
+   * {@code 0} if reservation fell back (e.g. highest-priority query with insufficient pool).
+   */
+  private long actualReservedBytes;
+
   public CteDataStore(TableSchema tableSchema, List<Integer> columnIndex2TsBlockColumnIndexList) {
     this.tableSchema = tableSchema;
     this.columnIndex2TsBlockColumnIndexList = columnIndex2TsBlockColumnIndexList;
@@ -105,5 +111,13 @@ public class CteDataStore implements Accountable {
   @TestOnly
   public int getCount() {
     return count.get();
+  }
+
+  public long getActualReservedBytes() {
+    return actualReservedBytes;
+  }
+
+  public void setActualReservedBytes(long actualReservedBytes) {
+    this.actualReservedBytes = actualReservedBytes;
   }
 }
