@@ -56,7 +56,6 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
-import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
 import org.apache.iotdb.confignode.procedure.Procedure;
@@ -318,9 +317,6 @@ public class ProcedureManager {
     }
     List<TSStatus> results = new ArrayList<>(procedures.size());
     procedures.forEach(procedure -> results.add(waitingProcedureFinished(procedure)));
-    // Clear the previously deleted regions
-    final PartitionManager partitionManager = getConfigManager().getPartitionManager();
-    partitionManager.getRegionMaintainer().submit(partitionManager::maintainRegionReplicas);
     if (results.stream()
         .allMatch(result -> result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
       return StatusUtils.OK;
