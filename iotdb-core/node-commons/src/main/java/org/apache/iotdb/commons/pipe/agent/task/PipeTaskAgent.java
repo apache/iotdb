@@ -1176,6 +1176,28 @@ public abstract class PipeTaskAgent {
     }
   }
 
+  public void setPipeTsFileEpochDegraded(
+      final String pipeName,
+      final long creationTime,
+      final int regionId,
+      final boolean isDegraded) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    // To avoid stale pipe before alter
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+          .setTsFileEpochDegraded(regionId, isDegraded);
+    }
+  }
+
+  public void clearPipeTsFileEpochDegraded(
+      final String pipeName, final long creationTime, final int regionId) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    // To avoid stale pipe before alter
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).clearTsFileEpochDegraded(regionId);
+    }
+  }
+
   public int getPipeCount() {
     return pipeMetaKeeper.getPipeMetaCount();
   }
