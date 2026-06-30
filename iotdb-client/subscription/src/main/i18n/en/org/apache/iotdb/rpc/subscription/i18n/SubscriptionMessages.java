@@ -44,6 +44,9 @@ public final class SubscriptionMessages {
       "SubscriptionPushConsumer {} cancel auto poll worker";
   public static final String PUSH_CONSUMER_SUBMIT_AUTO_POLL =
       "SubscriptionPushConsumer {} submit auto poll worker";
+  public static final String PUSH_CONSUMER_POLL_EMPTY_MESSAGE =
+      "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s), "
+          + "consecutive empty polls: {}";
   public static final String CONSUMER_LISTENER_FAILURE =
       "Consumer listener result failure when consuming message: {}";
   public static final String AUTO_POLL_UNEXPECTED = "something unexpected happened when auto poll messages...";
@@ -75,6 +78,9 @@ public final class SubscriptionMessages {
       "SubscriptionPullConsumer {} cancel auto commit worker";
   public static final String PULL_CONSUMER_SUBMIT_AUTO_COMMIT =
       "SubscriptionPullConsumer {} submit auto commit worker";
+  public static final String PULL_CONSUMER_POLL_EMPTY_MESSAGE =
+      "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s), "
+          + "consecutive empty polls: {}";
   public static final String AUTO_COMMIT_UNEXPECTED =
       "something unexpected happened when auto commit messages...";
   public static final String COMMIT_DURING_CLOSE_UNEXPECTED =

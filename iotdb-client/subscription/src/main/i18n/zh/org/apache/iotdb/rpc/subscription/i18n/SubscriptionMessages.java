@@ -44,6 +44,8 @@ public final class SubscriptionMessages {
       "SubscriptionPushConsumer {} 取消自动拉取工作线程";
   public static final String PUSH_CONSUMER_SUBMIT_AUTO_POLL =
       "SubscriptionPushConsumer {} 提交自动拉取工作线程";
+  public static final String PUSH_CONSUMER_POLL_EMPTY_MESSAGE =
+      "SubscriptionPushConsumer {} 从主题 {} 拉取到空消息，耗时 {} 毫秒，连续空拉取次数：{}";
   public static final String CONSUMER_LISTENER_FAILURE =
       "消费消息时消费者监听器结果失败：{}";
   public static final String AUTO_POLL_UNEXPECTED = "自动拉取消息时发生意外情况...";
@@ -75,6 +77,8 @@ public final class SubscriptionMessages {
       "SubscriptionPullConsumer {} 取消自动提交工作线程";
   public static final String PULL_CONSUMER_SUBMIT_AUTO_COMMIT =
       "SubscriptionPullConsumer {} 提交自动提交工作线程";
+  public static final String PULL_CONSUMER_POLL_EMPTY_MESSAGE =
+      "SubscriptionPullConsumer {} 从主题 {} 拉取到空消息，耗时 {} 毫秒，连续空拉取次数：{}";
   public static final String AUTO_COMMIT_UNEXPECTED =
       "自动提交消息时发生意外情况...";
   public static final String COMMIT_DURING_CLOSE_UNEXPECTED =
