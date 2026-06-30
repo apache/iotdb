@@ -28,6 +28,8 @@ import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import static com.google.common.base.Preconditions.checkState;
+
 @NotThreadSafe
 public class NotThreadSafeMemoryReservationManager implements MemoryReservationManager {
   // To avoid reserving memory too frequently, we choose to do it in batches. This is the lower
@@ -151,23 +153,20 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     remaining -= fallbackBytesInTotal;
     fallbackBytesInTotal = 0;
 
-    long poolBytes = Math.min(remaining, reservedBytesInTotal);
-    reservedBytesInTotal -= poolBytes;
-    return poolBytes;
+    reservedBytesInTotal -= remaining;
+    checkState(reservedBytesInTotal >= 0, "Released bytes has been larger than reserved!");
+    return remaining;
   }
 
   @Override
   public void releaseAllReservedMemory() {
-    if (bytesToBeReleased != 0) {
-      releaseBytesImmediately(bytesToBeReleased);
-      bytesToBeReleased = 0;
-    }
-    if (reservedBytesInTotal > 0) {
+    if (reservedBytesInTotal != 0) {
       LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytesInTotal);
+      reservedBytesInTotal = 0;
     }
-    reservedBytesInTotal = 0;
     fallbackBytesInTotal = 0;
     bytesToBeReserved = 0;
+    bytesToBeReleased = 0;
   }
 
   @Override
