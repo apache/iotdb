@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeSinkWithSchedulingDelay;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -102,7 +103,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 
 @TreeModel
 @TableModel
-public class IoTDBDataRegionAsyncSink extends IoTDBSink {
+public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithSchedulingDelay {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionAsyncSink.class);
 
@@ -130,6 +131,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
   // use these variables to prevent reference count leaks under some corner cases when closing
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private int consecutiveHandshakeFailureCount = 0;
+  private final AtomicLong schedulingDelayMs = new AtomicLong(0);
   private final Map<PipeTransferTrackableHandler, PipeTransferTrackableHandler> pendingHandlers =
       new ConcurrentHashMap<>();
 
@@ -352,8 +355,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient(endPoint);
+      markHandshakeSucceeded();
       pipeTransferTabletBatchEventHandler.transfer(client);
     } catch (final Exception ex) {
+      markSchedulingDelayIfHandshakeFailed(client);
       logOnClientException(client, ex);
       pipeTransferTabletBatchEventHandler.onError(ex);
     }
@@ -365,8 +370,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient(deviceId);
+      markHandshakeSucceeded();
       pipeTransferInsertNodeReqHandler.transfer(client);
     } catch (final Exception ex) {
+      markSchedulingDelayIfHandshakeFailed(client);
       logOnClientException(client, ex);
       pipeTransferInsertNodeReqHandler.onError(ex);
     }
@@ -377,8 +384,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient(deviceId);
+      markHandshakeSucceeded();
       pipeTransferTabletReqHandler.transfer(client);
     } catch (final Exception ex) {
+      markSchedulingDelayIfHandshakeFailed(client);
       logOnClientException(client, ex);
       pipeTransferTabletReqHandler.onError(ex);
     }
@@ -454,8 +463,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
               AsyncPipeDataTransferServiceClient client = null;
               try {
                 client = transferTsFileClientManager.borrowClient();
+                markHandshakeSucceeded();
                 pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
               } catch (final Exception ex) {
+                markSchedulingDelayIfHandshakeFailed(client);
                 logOnClientException(client, ex);
                 pipeTransferTsFileHandler.onError(ex);
               } finally {
@@ -553,6 +564,38 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
           e,
           String.format(THRIFT_ERROR_FORMATTER_WITH_ENDPOINT, client.getIp(), client.getPort()));
     }
+  }
+
+  private void markHandshakeSucceeded() {
+    consecutiveHandshakeFailureCount = 0;
+  }
+
+  private void markSchedulingDelayIfHandshakeFailed(
+      final AsyncPipeDataTransferServiceClient client) {
+    if (client != null) {
+      return;
+    }
+
+    if (++consecutiveHandshakeFailureCount < getSchedulingDelayFailureThreshold()) {
+      return;
+    }
+
+    schedulingDelayMs.accumulateAndGet(
+        PipeConfig.getInstance().getPipeSinkRetryIntervalMs(), Math::max);
+  }
+
+  private int getSchedulingDelayFailureThreshold() {
+    return Math.max(1, nodeUrls.size() << 1);
+  }
+
+  @Override
+  public long peekSchedulingDelayMs() {
+    return schedulingDelayMs.get();
+  }
+
+  @Override
+  public long consumeSchedulingDelayMs() {
+    return schedulingDelayMs.getAndSet(0);
   }
 
   /**

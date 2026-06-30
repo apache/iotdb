@@ -38,12 +38,18 @@ public class MemoryReader implements CteDataReader {
   private final CteDataStore dataStore;
   private int tsBlockIndex;
 
-  public MemoryReader(CteDataStore dataStore, QueryId queryId) {
+  public MemoryReader(CteDataStore dataStore, QueryId queryId, boolean isHighestPriority) {
     this.dataStore = dataStore;
     this.tsBlockIndex = 0;
     if (dataStore.incrementAndGetCount() == 1) {
-      LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
-          dataStore.ramBytesUsed(), 0L, queryId.getId(), MemoryReader.class.getName());
+      long actualReserved =
+          LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
+              dataStore.ramBytesUsed(),
+              0L,
+              queryId.getId(),
+              MemoryReader.class.getName(),
+              isHighestPriority);
+      dataStore.setActualReservedBytes(actualReserved);
     }
   }
 
@@ -63,7 +69,11 @@ public class MemoryReader implements CteDataReader {
   @Override
   public void close() throws IoTDBException {
     if (dataStore.decrementAndGetCount() == 0) {
-      LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(dataStore.ramBytesUsed());
+      long reservedBytes = dataStore.getActualReservedBytes();
+      if (reservedBytes > 0) {
+        LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytes);
+      }
+      dataStore.setActualReservedBytes(0L);
     }
   }
 

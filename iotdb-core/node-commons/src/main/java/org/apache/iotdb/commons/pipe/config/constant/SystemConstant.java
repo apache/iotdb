@@ -42,6 +42,8 @@ public class SystemConstant {
   public static final String SQL_DIALECT_KEY = "__system.sql-dialect";
   public static final String SQL_DIALECT_TREE_VALUE = "tree";
   public static final String SQL_DIALECT_TABLE_VALUE = "table";
+  public static final String PIPE_VISIBILITY_KEY = "__system.pipe-visibility";
+  public static final String PIPE_VISIBILITY_STRICT_VALUE = "strict";
   public static final String SOURCE_AUTHENTICATION_INJECTED_KEY =
       "__system.source-authentication-injected";
   public static final String SINK_AUTHENTICATION_INJECTED_KEY =
@@ -54,6 +56,7 @@ public class SystemConstant {
   static {
     SYSTEM_KEYS.add(RESTART_OR_NEWLY_ADDED_KEY);
     SYSTEM_KEYS.add(SQL_DIALECT_KEY);
+    SYSTEM_KEYS.add(PIPE_VISIBILITY_KEY);
     SYSTEM_KEYS.add(SOURCE_AUTHENTICATION_INJECTED_KEY);
     SYSTEM_KEYS.add(SINK_AUTHENTICATION_INJECTED_KEY);
   }
@@ -61,6 +64,13 @@ public class SystemConstant {
   public static PipeParameters addSystemKeysIfNecessary(final PipeParameters givenPipeParameters) {
     final Map<String, String> attributes = new HashMap<>(givenPipeParameters.getAttribute());
     attributes.putIfAbsent(SQL_DIALECT_KEY, SQL_DIALECT_TREE_VALUE);
+    return new PipeParameters(attributes);
+  }
+
+  public static PipeParameters addStrictPipeVisibilityIfNecessary(
+      final PipeParameters givenPipeParameters) {
+    final Map<String, String> attributes = new HashMap<>(givenPipeParameters.getAttribute());
+    attributes.put(PIPE_VISIBILITY_KEY, PIPE_VISIBILITY_STRICT_VALUE);
     return new PipeParameters(attributes);
   }
 

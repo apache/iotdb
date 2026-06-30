@@ -492,6 +492,10 @@ public class TopicMeta {
     return VisibilityUtils.isCompatible(visibility, isTableModel);
   }
 
+  public boolean visibleUnderTableModel() {
+    return visibleUnder(true);
+  }
+
   ////////////////////////////////////// Object ////////////////////////////////
 
   @Override

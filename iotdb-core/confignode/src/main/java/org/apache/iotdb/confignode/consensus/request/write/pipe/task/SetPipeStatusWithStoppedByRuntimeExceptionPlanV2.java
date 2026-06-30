@@ -35,6 +35,8 @@ public class SetPipeStatusWithStoppedByRuntimeExceptionPlanV2 extends ConfigPhys
   private String pipeName;
   private PipeStatus status;
   private boolean stoppedByRuntimeException;
+  private boolean isTableModel;
+  private boolean isTableModelSet;
 
   public SetPipeStatusWithStoppedByRuntimeExceptionPlanV2() {
     super(ConfigPhysicalPlanType.SetPipeStatusWithStoppedByRuntimeExceptionV2);
@@ -46,6 +48,19 @@ public class SetPipeStatusWithStoppedByRuntimeExceptionPlanV2 extends ConfigPhys
     this.pipeName = pipeName;
     this.status = status;
     this.stoppedByRuntimeException = stoppedByRuntimeException;
+  }
+
+  public SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+      final String pipeName,
+      final PipeStatus status,
+      final boolean stoppedByRuntimeException,
+      final boolean isTableModel) {
+    super(ConfigPhysicalPlanType.SetPipeStatusWithStoppedByRuntimeExceptionV2);
+    this.pipeName = pipeName;
+    this.status = status;
+    this.stoppedByRuntimeException = stoppedByRuntimeException;
+    this.isTableModel = isTableModel;
+    this.isTableModelSet = true;
   }
 
   public String getPipeName() {
@@ -60,12 +75,23 @@ public class SetPipeStatusWithStoppedByRuntimeExceptionPlanV2 extends ConfigPhys
     return stoppedByRuntimeException;
   }
 
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public boolean isTableModelSet() {
+    return isTableModelSet;
+  }
+
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(pipeName, stream);
     ReadWriteIOUtils.write(status.getType(), stream);
     ReadWriteIOUtils.write(stoppedByRuntimeException, stream);
+    if (isTableModelSet) {
+      ReadWriteIOUtils.write(isTableModel, stream);
+    }
   }
 
   @Override
@@ -73,6 +99,10 @@ public class SetPipeStatusWithStoppedByRuntimeExceptionPlanV2 extends ConfigPhys
     pipeName = ReadWriteIOUtils.readString(buffer);
     status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(buffer));
     stoppedByRuntimeException = ReadWriteIOUtils.readBool(buffer);
+    isTableModelSet = buffer.hasRemaining();
+    if (isTableModelSet) {
+      isTableModel = ReadWriteIOUtils.readBool(buffer);
+    }
   }
 
   @Override
@@ -86,13 +116,15 @@ public class SetPipeStatusWithStoppedByRuntimeExceptionPlanV2 extends ConfigPhys
     final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2 that =
         (SetPipeStatusWithStoppedByRuntimeExceptionPlanV2) obj;
     return stoppedByRuntimeException == that.stoppedByRuntimeException
+        && isTableModel == that.isTableModel
+        && isTableModelSet == that.isTableModelSet
         && pipeName.equals(that.pipeName)
         && status.equals(that.status);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName, status, stoppedByRuntimeException);
+    return Objects.hash(pipeName, status, stoppedByRuntimeException, isTableModel, isTableModelSet);
   }
 
   @Override
@@ -104,6 +136,8 @@ public class SetPipeStatusWithStoppedByRuntimeExceptionPlanV2 extends ConfigPhys
         + status
         + "', stoppedByRuntimeException='"
         + stoppedByRuntimeException
+        + "', isTableModel='"
+        + isTableModel
         + "'}";
   }
 }
