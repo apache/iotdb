@@ -1,4 +1,4 @@
-# Shared client CI: run only affected language jobs via paths-filter.
+# Shared client CI: run only affected language jobs via changed path detection.
 name: Multi-Language Client
 on:
   push:
@@ -50,36 +50,55 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
     steps:
       - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v3
-        id: filter
         with:
-          filters: |
-            cpp:
-              - 'iotdb-client/pom.xml'
-              - 'iotdb-client/client-cpp/**'
-              - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
-              - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
-              - '.github/workflows/multi-language-client.yml'
-              - '.github/workflows/client-cpp-package.yml'
-              - '.github/scripts/package-client-cpp-*.sh'
-            python:
-              - 'pom.xml'
-              - 'iotdb-client/pom.xml'
-              - 'iotdb-client/client-py/**'
-              - 'docker/src/main/Dockerfile-1c1d'
-              - '.github/workflows/multi-language-client.yml'
-            go:
-              - 'pom.xml'
-              - 'iotdb-core/**'
-              - 'iotdb-api/**'
-              - 'iotdb-protocol/**'
-              - 'distribution/**'
-              - 'integration-test/**'
-              - 'iotdb-client/session/**'
-              - 'iotdb-client/jdbc/**'
-              - 'iotdb-client/cli/**'
-              - 'iotdb-client/service-rpc/**'
-              - '.github/workflows/multi-language-client.yml'
+          fetch-depth: 0
+      - name: Detect changed client paths
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.sha }}"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          else
+            echo "cpp=true" >> "$GITHUB_OUTPUT"
+            echo "python=true" >> "$GITHUB_OUTPUT"
+            echo "go=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$BASE" =~ ^0+$ ]]; then
+            BASE="$(git hash-object -t tree /dev/null)"
+          fi
+
+          cpp=false
+          python=false
+          go=false
+          while IFS= read -r file; do
+            case "$file" in
+              iotdb-client/pom.xml|iotdb-client/client-cpp/*|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/multi-language-client.yml|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
+                cpp=true
+                ;;
+            esac
+            case "$file" in
+              pom.xml|iotdb-client/pom.xml|iotdb-client/client-py/*|docker/src/main/Dockerfile-1c1d|.github/workflows/multi-language-client.yml)
+                python=true
+                ;;
+            esac
+            case "$file" in
+              pom.xml|iotdb-core/*|iotdb-api/*|iotdb-protocol/*|distribution/*|integration-test/*|iotdb-client/session/*|iotdb-client/jdbc/*|iotdb-client/cli/*|iotdb-client/service-rpc/*|.github/workflows/multi-language-client.yml)
+                go=true
+                ;;
+            esac
+          done < <(git diff --name-only "$BASE" "$HEAD")
+
+          echo "cpp=${cpp}" >> "$GITHUB_OUTPUT"
+          echo "python=${python}" >> "$GITHUB_OUTPUT"
+          echo "go=${go}" >> "$GITHUB_OUTPUT"
 
   cpp:
     needs: changes
@@ -94,6 +113,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
       - name: Install CPP Dependencies (Ubuntu)
         if: runner.os == 'Linux'
         shell: bash
@@ -120,10 +144,13 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          brew install boost openssl llvm@17 bison
+          # Pin openssl@3 (Apache-2.0); the default formula will move to OpenSSL 4.0.
+          brew install boost openssl@3 llvm@17 bison
           ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
+          # Homebrew OpenSSL is keg-only, so point find_package(OpenSSL) at it.
+          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
           clang-format --version
           bison --version
           sudo rm -rf /Applications/Xcode_14.3.1.app
@@ -139,8 +166,14 @@ jobs:
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
           
-          choco install openssl -y
-          $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
+          # Pinned OpenSSL 3.x (Apache-2.0): 'choco install openssl' now installs
+          # OpenSSL 4.0, which removed the legacy TLS-method APIs Thrift uses.
+          $sslZip = "$env:RUNNER_TEMP\openssl-3.5.3.zip"
+          $sslDir = "$env:RUNNER_TEMP\openssl-3"
+          curl.exe -L --fail --retry 3 -o $sslZip 'https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.3.zip'
+          Expand-Archive -Path $sslZip -DestinationPath $sslDir -Force
+          $sslPath = (Get-ChildItem $sslDir -Recurse -Directory -Filter 'x64' | Select-Object -First 1).FullName
+          if (-not $sslPath) { throw "OpenSSL x64 dir not found under $sslDir" }
           echo "$sslPath\bin" >> $env:GITHUB_PATH
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
           choco install llvm --version=17.0.6 --force -y
@@ -187,6 +220,11 @@ jobs:
         with:
           token: ${{secrets.GITHUB_TOKEN}}
           submodules: recursive
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
@@ -218,6 +256,11 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
