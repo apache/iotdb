@@ -1750,10 +1750,6 @@ public class ConsensusPrefetchingQueue {
       maxObservedTimestamp = maxTs;
     }
     final List<Tablet> tablets = converter.convert(insertNode);
-    if (tablets.isEmpty()) {
-      return null;
-    }
-
     return new PreparedEntry(tablets, physicalTime, writerNodeId, localSeq, searchIndex);
   }
 
@@ -1773,10 +1769,6 @@ public class ConsensusPrefetchingQueue {
       final long endSearchIndex,
       final long commitLocalSeq,
       final long expectedSeekGeneration) {
-    if (tablets.isEmpty()) {
-      return true;
-    }
-
     if (seekGeneration.get() != expectedSeekGeneration) {
       LOGGER.debug(
           "ConsensusPrefetchingQueue {}: skip stale event with searchIndex range [{}, {}], "
@@ -1794,6 +1786,10 @@ public class ConsensusPrefetchingQueue {
     final WriterProgress writerProgress = commitContext.getWriterProgress();
     commitManager.recordMapping(
         consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+    if (tablets.isEmpty()) {
+      return commitManager.commit(
+          consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+    }
 
     // nextOffset <= 0 means all tablets delivered in single batch
     // -tablets.size() indicates total count
@@ -3290,7 +3286,7 @@ public class ConsensusPrefetchingQueue {
     }
 
     private boolean isEmpty() {
-      return tablets.isEmpty();
+      return entryCount == 0;
     }
 
     private void append(
