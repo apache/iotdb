@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -531,6 +532,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     final List<Map<String, Long>> pipeRecentFailureList = new ArrayList<>();
+    final List<Integer> pipeDegradedStatusList = new ArrayList<>();
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
@@ -566,6 +568,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         pipeRemainingTimeList.add(remainingEventAndTime.getRight());
         pipeRecentFailureList.add(
             ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getRecentFailures());
+        pipeDegradedStatusList.add(
+            PipeTemporaryMeta.encodeTsFileEpochDegradedStatus(
+                ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+                    .getGlobalTsFileEpochDegraded()));
 
         logger.ifPresent(
             l ->
@@ -586,6 +592,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
     resp.setPipeRecentFailureList(pipeRecentFailureList);
+    resp.setPipeDegradedStatusList(pipeDegradedStatusList);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 
@@ -616,6 +623,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     final List<Map<String, Long>> pipeRecentFailureList = new ArrayList<>();
+    final List<Integer> pipeDegradedStatusList = new ArrayList<>();
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
@@ -651,6 +659,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         pipeRemainingTimeList.add(remainingEventAndTime.getRight());
         pipeRecentFailureList.add(
             ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getRecentFailures());
+        pipeDegradedStatusList.add(
+            PipeTemporaryMeta.encodeTsFileEpochDegradedStatus(
+                ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+                    .getGlobalTsFileEpochDegraded()));
 
         logger.ifPresent(
             l ->
@@ -671,6 +683,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
     resp.setPipeRecentFailureList(pipeRecentFailureList);
+    resp.setPipeDegradedStatusList(pipeDegradedStatusList);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 

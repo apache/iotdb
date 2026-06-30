@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -225,6 +226,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
     final List<Map<String, Long>> pipeRecentFailureList = new ArrayList<>();
+    final List<Integer> pipeDegradedStatusList = new ArrayList<>();
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
@@ -241,6 +243,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
         pipeRemainingTimeList.add(estimatedRemainingTime);
         pipeRecentFailureList.add(
             ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getRecentFailures());
+        pipeDegradedStatusList.add(PipeTemporaryMeta.TS_FILE_EPOCH_DEGRADED_STATUS_UNKNOWN);
 
         logger.ifPresent(
             l ->
@@ -258,6 +261,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
     resp.setPipeRecentFailureList(pipeRecentFailureList);
+    resp.setPipeDegradedStatusList(pipeDegradedStatusList);
   }
 
   @Override

@@ -148,7 +148,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
           heartbeatResp.getPipeCompletedList(),
           heartbeatResp.getPipeRemainingEventCountList(),
           heartbeatResp.getPipeRemainingTimeList(),
-          heartbeatResp.getPipeRecentFailureList());
+          heartbeatResp.getPipeRecentFailureList(),
+          heartbeatResp.getPipeDegradedStatusList());
     }
     if (heartbeatResp.isSetConfirmedConfigNodeEndPoints()) {
       loadManager

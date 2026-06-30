@@ -34,6 +34,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class ShowPipeTaskTest {
 
@@ -46,7 +48,9 @@ public class ShowPipeTaskTest {
     recentFailures.put("network_timeout", 10L);
     recentFailures.put("memory_timeout", 15L);
     failedPipe.setRecentFailures(recentFailures);
+    failedPipe.setIsDegraded(true);
     final TShowPipeInfo normalPipe = createPipeInfo("normal_pipe");
+    normalPipe.setIsDegraded(false);
 
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowPipeTask.buildTSBlock(Arrays.asList(failedPipe, normalPipe), future);
@@ -57,6 +61,8 @@ public class ShowPipeTaskTest {
     assertEquals(TSStatusCode.SUCCESS_STATUS, result.getStatusCode());
     assertEquals(
         ColumnHeaderConstant.RECENT_FAILURES, result.getResultSetHeader().getRespColumns().get(9));
+    assertEquals(
+        ColumnHeaderConstant.IS_DEGRADED, result.getResultSetHeader().getRespColumns().get(10));
     assertEquals(2, resultSet.getPositionCount());
     assertEquals(PipeStatus.STOPPED.name(), resultSet.getColumn(2).getBinary(0).toString());
     assertEquals(
@@ -65,6 +71,31 @@ public class ShowPipeTaskTest {
     assertEquals(
         "{memory_timeout=15, network_timeout=10}", resultSet.getColumn(9).getBinary(0).toString());
     assertEquals("{}", resultSet.getColumn(9).getBinary(1).toString());
+    assertTrue(resultSet.getColumn(10).getBoolean(0));
+    assertFalse(resultSet.getColumn(10).getBoolean(1));
+  }
+
+  @Test
+  public void testBuildTSBlockWritesDegradedColumn() throws Exception {
+    final TShowPipeInfo degradedPipe = createPipeInfo("degraded_pipe");
+    degradedPipe.setIsDegraded(true);
+    final TShowPipeInfo normalPipe = createPipeInfo("normal_pipe");
+    normalPipe.setIsDegraded(false);
+    final TShowPipeInfo unknownPipe = createPipeInfo("unknown_pipe");
+
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ShowPipeTask.buildTSBlock(Arrays.asList(degradedPipe, normalPipe, unknownPipe), future);
+
+    final ConfigTaskResult result = future.get();
+    final TsBlock resultSet = result.getResultSet();
+
+    assertEquals(TSStatusCode.SUCCESS_STATUS, result.getStatusCode());
+    assertEquals(
+        ColumnHeaderConstant.IS_DEGRADED, result.getResultSetHeader().getRespColumns().get(10));
+    assertEquals(3, resultSet.getPositionCount());
+    assertTrue(resultSet.getColumn(10).getBoolean(0));
+    assertFalse(resultSet.getColumn(10).getBoolean(1));
+    assertTrue(resultSet.getColumn(10).isNull(2));
   }
 
   private TShowPipeInfo createPipeInfo(final String pipeName) {
