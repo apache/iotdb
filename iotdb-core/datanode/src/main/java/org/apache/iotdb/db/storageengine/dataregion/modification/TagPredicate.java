@@ -35,9 +35,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public abstract class TagPredicate implements StreamSerializable, BufferSerializable, Accountable {
 
@@ -51,7 +54,8 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     NOP,
     FULL_EXACT_MATCH,
     SEGMENT_EXACT_MATCH,
-    AND;
+    AND,
+    DEVICE_IN;
 
     public long serialize(OutputStream stream) throws IOException {
       stream.write((byte) ordinal());
@@ -105,6 +109,8 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
       predicate = new SegmentExactMatch();
     } else if (Objects.requireNonNull(type) == TagPredicateType.AND) {
       predicate = new And();
+    } else if (Objects.requireNonNull(type) == TagPredicateType.DEVICE_IN) {
+      predicate = new DeviceIn();
     } else {
       throw new IllegalArgumentException(StorageEngineMessages.UNRECOGNIZED_PREDICATE_TYPE + type);
     }
@@ -123,6 +129,8 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
       predicate = new SegmentExactMatch();
     } else if (Objects.requireNonNull(type) == TagPredicateType.AND) {
       predicate = new And();
+    } else if (Objects.requireNonNull(type) == TagPredicateType.DEVICE_IN) {
+      predicate = new DeviceIn();
     } else {
       throw new IllegalArgumentException(StorageEngineMessages.UNRECOGNIZED_PREDICATE_TYPE + type);
     }
@@ -338,6 +346,99 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     @Override
     public long ramBytesUsed() {
       return SHALLOW_SIZE + RamUsageEstimator.sizeOf(pattern);
+    }
+  }
+
+  public static class DeviceIn extends TagPredicate {
+
+    public static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(DeviceIn.class);
+    private final Set<IDeviceID> deviceIDs = new HashSet<>();
+
+    public DeviceIn(Collection<IDeviceID> deviceIDs) {
+      super(TagPredicateType.DEVICE_IN);
+      this.deviceIDs.addAll(deviceIDs);
+    }
+
+    public DeviceIn() {
+      super(TagPredicateType.DEVICE_IN);
+    }
+
+    @Override
+    public int serializedSize() {
+      int serializedSize = super.serializedSize();
+      serializedSize += ReadWriteForEncodingUtils.varIntSize(deviceIDs.size());
+      for (IDeviceID deviceID : deviceIDs) {
+        serializedSize += deviceID.serializedSize();
+      }
+      return serializedSize;
+    }
+
+    @Override
+    public long serialize(OutputStream stream) throws IOException {
+      long size = super.serialize(stream);
+      size += ReadWriteForEncodingUtils.writeVarInt(deviceIDs.size(), stream);
+      for (IDeviceID deviceID : deviceIDs) {
+        size += deviceID.serialize(stream);
+      }
+      return size;
+    }
+
+    @Override
+    public long serialize(ByteBuffer buffer) {
+      long size = super.serialize(buffer);
+      size += ReadWriteForEncodingUtils.writeVarInt(deviceIDs.size(), buffer);
+      for (IDeviceID deviceID : deviceIDs) {
+        size += deviceID.serialize(buffer);
+      }
+      return size;
+    }
+
+    @Override
+    public void deserialize(InputStream stream) throws IOException {
+      int size = ReadWriteForEncodingUtils.readVarInt(stream);
+      for (int i = 0; i < size; i++) {
+        deviceIDs.add(Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(stream));
+      }
+    }
+
+    @Override
+    public void deserialize(ByteBuffer buffer) {
+      int size = ReadWriteForEncodingUtils.readVarInt(buffer);
+      for (int i = 0; i < size; i++) {
+        deviceIDs.add(Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(buffer));
+      }
+    }
+
+    @Override
+    public boolean matches(IDeviceID deviceID) {
+      return deviceIDs.contains(deviceID);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      DeviceIn deviceIn = (DeviceIn) o;
+      return Objects.equals(deviceIDs, deviceIn.deviceIDs);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hashCode(deviceIDs);
+    }
+
+    @Override
+    public String toString() {
+      return "DeviceIn{" + "deviceIDs=" + deviceIDs + '}';
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE + RamUsageEstimator.sizeOfHashSet(deviceIDs);
     }
   }
 
