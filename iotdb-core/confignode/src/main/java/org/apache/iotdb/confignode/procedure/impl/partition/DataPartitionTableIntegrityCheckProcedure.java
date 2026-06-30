@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
+import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
@@ -42,11 +43,13 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.DataPartitionTableIntegrityCheckProcedureState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -128,6 +131,9 @@ public class DataPartitionTableIntegrityCheckProcedure
 
   // ============Need serialize END=============/
 
+  private final Map<Integer, Double> dataNodeGeneratorProgress = new ConcurrentHashMap<>();
+  private volatile Set<Integer> dataNodeGeneratorTargetDataNodeIds = Collections.emptySet();
+
   public DataPartitionTableIntegrityCheckProcedure() {
     super();
   }
@@ -149,7 +155,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       // Ensure to get the real-time DataNodes in the current cluster at every step
       dataNodeManager = env.getConfigManager().getNodeManager();
       loadManager = env.getConfigManager().getLoadManager();
-      allDataNodes = dataNodeManager.getRegisteredDataNodes();
+      allDataNodes = new ArrayList<>(dataNodeManager.getRegisteredDataNodes());
 
       switch (state) {
         case COLLECT_EARLIEST_TIMESLOTS:
@@ -253,8 +259,9 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     // Collect earliest timeslots from all DataNodes
-    allDataNodes.removeAll(skipDataNodes);
-    for (TDataNodeConfiguration dataNode : allDataNodes) {
+    final List<TDataNodeConfiguration> targetDataNodes = new ArrayList<>(allDataNodes);
+    targetDataNodes.removeAll(skipDataNodes);
+    for (TDataNodeConfiguration dataNode : targetDataNodes) {
       // Check if DataNode is alive before sending request
       NodeStatus nodeStatus = loadManager.getNodeStatus(dataNode.getLocation().getDataNodeId());
       if (!NodeStatus.Running.equals(nodeStatus)) {
@@ -315,12 +322,12 @@ public class DataPartitionTableIntegrityCheckProcedure
     if (LOG.isDebugEnabled()) {
       LOG.debug(
           "Collected earliest timeslots from {} DataNodes: {}, the number of successful DataNodes is {}",
-          allDataNodes.size(),
+          targetDataNodes.size(),
           earliestTimeslots,
-          allDataNodes.size() - failedDataNodes.size());
+          targetDataNodes.size() - failedDataNodes.size());
     }
 
-    if (failedDataNodes.size() == allDataNodes.size()) {
+    if (countFailedTargetDataNodes(targetDataNodes) == targetDataNodes.size()) {
       delayRollbackNextState(
           DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
     } else {
@@ -454,18 +461,22 @@ public class DataPartitionTableIntegrityCheckProcedure
       return Flow.HAS_MORE_STATE;
     }
 
-    allDataNodes.removeAll(skipDataNodes);
-    allDataNodes.removeAll(failedDataNodes);
-    for (TDataNodeConfiguration dataNode : allDataNodes) {
+    final List<TDataNodeConfiguration> targetDataNodes = new ArrayList<>(allDataNodes);
+    targetDataNodes.removeAll(skipDataNodes);
+    targetDataNodes.removeAll(failedDataNodes);
+    refreshDataNodeGeneratorTarget(targetDataNodes);
+    for (TDataNodeConfiguration dataNode : targetDataNodes) {
       int dataNodeId = dataNode.getLocation().getDataNodeId();
       // Check if DataNode is alive before sending request
       NodeStatus nodeStatus = loadManager.getNodeStatus(dataNodeId);
       if (!NodeStatus.Running.equals(nodeStatus)) {
         failedDataNodes.add(dataNode);
+        dataNodeGeneratorProgress.put(dataNodeId, 1.0);
         continue;
       }
 
       if (!dataPartitionTables.containsKey(dataNodeId)) {
+        dataNodeGeneratorProgress.put(dataNodeId, 0.0);
         try {
           TGenerateDataPartitionTableReq req = new TGenerateDataPartitionTableReq();
           req.setDatabases(databasesWithLostDataPartition);
@@ -479,6 +490,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
           if (response instanceof TSStatus) {
             failedDataNodes.add(dataNode);
+            dataNodeGeneratorProgress.put(dataNodeId, 1.0);
             LOG.error(
                 "[DataPartitionIntegrity] Failed to request DataPartitionTable generation from the DataNode[id={}], already out of max retry time",
                 dataNode.getLocation().getDataNodeId());
@@ -488,6 +500,7 @@ public class DataPartitionTableIntegrityCheckProcedure
           TGenerateDataPartitionTableResp resp = (TGenerateDataPartitionTableResp) response;
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             failedDataNodes.add(dataNode);
+            dataNodeGeneratorProgress.put(dataNodeId, 1.0);
             LOG.error(
                 "[DataPartitionIntegrity] Failed to request DataPartitionTable generation from the DataNode[id={}], response status is {}",
                 dataNode.getLocation().getDataNodeId(),
@@ -495,6 +508,7 @@ public class DataPartitionTableIntegrityCheckProcedure
           }
         } catch (Exception e) {
           failedDataNodes.add(dataNode);
+          dataNodeGeneratorProgress.put(dataNodeId, 1.0);
           LOG.error(
               "[DataPartitionIntegrity] Failed to request DataPartitionTable generation from DataNode[id={}]: {}",
               dataNodeId,
@@ -504,7 +518,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       }
     }
 
-    if (failedDataNodes.size() == allDataNodes.size()) {
+    if (countFailedTargetDataNodes(targetDataNodes) == targetDataNodes.size()) {
       delayRollbackNextState(
           DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
@@ -520,13 +534,19 @@ public class DataPartitionTableIntegrityCheckProcedure
       LOG.debug(ProcedureMessages.CHECKING_DATAPARTITIONTABLE_GENERATION_COMPLETION_STATUS);
     }
 
+    final List<TDataNodeConfiguration> targetDataNodes = new ArrayList<>(allDataNodes);
+    targetDataNodes.removeAll(skipDataNodes);
+    targetDataNodes.removeAll(failedDataNodes);
+    refreshDataNodeGeneratorTarget(targetDataNodes);
+
     int completeCount = 0;
-    for (TDataNodeConfiguration dataNode : allDataNodes) {
+    for (TDataNodeConfiguration dataNode : targetDataNodes) {
       int dataNodeId = dataNode.getLocation().getDataNodeId();
       // Check if DataNode is alive before sending request
       NodeStatus nodeStatus = loadManager.getNodeStatus(dataNodeId);
       if (!NodeStatus.Running.equals(nodeStatus)) {
         failedDataNodes.add(dataNode);
+        dataNodeGeneratorProgress.put(dataNodeId, 1.0);
         continue;
       }
 
@@ -544,6 +564,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
           if (response instanceof TSStatus) {
             failedDataNodes.add(dataNode);
+            dataNodeGeneratorProgress.put(dataNodeId, 1.0);
             LOG.error(
                 "[DataPartitionIntegrity] Failed to request DataPartitionTable generation heart beat from the DataNode[id={}], already out of max retry time",
                 dataNode.getLocation().getDataNodeId());
@@ -570,18 +591,21 @@ public class DataPartitionTableIntegrityCheckProcedure
               List<DatabaseScopedDataPartitionTable> databaseScopedDataPartitionTableList =
                   deserializeDatabaseScopedTableList(byteBufferList);
               dataPartitionTables.put(dataNodeId, databaseScopedDataPartitionTableList);
+              dataNodeGeneratorProgress.put(dataNodeId, 1.0);
               LOG.info(
                   "[DataPartitionIntegrity] DataNode {} completed DataPartitionTable generation, terminating heart beat",
                   dataNodeId);
               completeCount++;
               break;
             case IN_PROGRESS:
+              dataNodeGeneratorProgress.put(dataNodeId, clampProgress(resp.getProgress()));
               LOG.info(
                   "[DataPartitionIntegrity] DataNode {} still generating DataPartitionTable",
                   dataNodeId);
               break;
             default:
               failedDataNodes.add(dataNode);
+              dataNodeGeneratorProgress.put(dataNodeId, 1.0);
               LOG.error(
                   "[DataPartitionIntegrity] DataNode {} returned unknown error code: {}",
                   dataNodeId,
@@ -594,21 +618,23 @@ public class DataPartitionTableIntegrityCheckProcedure
               dataNodeId,
               e.getMessage(),
               e);
+          dataNodeGeneratorProgress.put(dataNodeId, 1.0);
           completeCount++;
         }
       } else {
+        dataNodeGeneratorProgress.put(dataNodeId, 1.0);
         completeCount++;
       }
     }
 
-    if (completeCount >= allDataNodes.size()) {
+    if (completeCount >= targetDataNodes.size()) {
       setNextState(DataPartitionTableIntegrityCheckProcedureState.MERGE_PARTITION_TABLES);
       return Flow.HAS_MORE_STATE;
     }
 
     // Don't find any one data partition table generation task on all registered DataNodes, go back
     // to the REQUEST_PARTITION_TABLES step and re-execute
-    if (failedDataNodes.size() == allDataNodes.size()) {
+    if (countFailedTargetDataNodes(targetDataNodes) == targetDataNodes.size()) {
       delayRollbackNextState(
           DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES);
       return Flow.HAS_MORE_STATE;
@@ -1113,5 +1139,94 @@ public class DataPartitionTableIntegrityCheckProcedure
 
   public void setFailedDataNodes(Set<TDataNodeConfiguration> failedDataNodes) {
     this.failedDataNodes = failedDataNodes;
+  }
+
+  public TShowRepairDataPartitionTableProgressResp getProgress() {
+    try {
+      final DataPartitionTableIntegrityCheckProcedureState currentState = getCurrentState();
+      final String state = getProgressStateName(currentState);
+      final double progress =
+          currentState == null ? 0.0 : calculateProgressByState(currentState) * 100;
+
+      return new TShowRepairDataPartitionTableProgressResp(
+              RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), state, progress)
+          .setMessage(
+              String.format("DataPartitionTable integrity check progress: %.1f%%", progress));
+    } catch (Exception e) {
+      LOG.warn("Failed to show DataPartitionTable integrity check progress", e);
+      return new TShowRepairDataPartitionTableProgressResp(
+              RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
+              RepairDataPartitionTableProgressState.UNKNOWN.name(),
+              0.0)
+          .setMessage("Failed to show DataPartitionTable integrity check progress");
+    }
+  }
+
+  private double calculateProgressByState(
+      final DataPartitionTableIntegrityCheckProcedureState currentState) {
+    switch (currentState) {
+      case COLLECT_EARLIEST_TIMESLOTS:
+        return 0.0;
+      case ANALYZE_MISSING_PARTITIONS:
+        return 0.05;
+      case REQUEST_PARTITION_TABLES:
+        return 0.1;
+      case REQUEST_PARTITION_TABLES_HEART_BEAT:
+        return 0.1 + 0.8 * calculateDataNodeGeneratorProgress();
+      case MERGE_PARTITION_TABLES:
+        return 0.95;
+      case WRITE_PARTITION_TABLE_TO_CONSENSUS:
+        return 0.99;
+      default:
+        LOG.warn(
+            "Encountered unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress",
+            currentState);
+        return 0.0;
+    }
+  }
+
+  private String getProgressStateName(
+      final DataPartitionTableIntegrityCheckProcedureState currentState) {
+    if (currentState == null) {
+      return RepairDataPartitionTableProgressState.UNKNOWN.name();
+    }
+    try {
+      return RepairDataPartitionTableProgressState.valueOf(currentState.name()).name();
+    } catch (IllegalArgumentException e) {
+      LOG.warn(
+          "Unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress",
+          currentState);
+      return RepairDataPartitionTableProgressState.UNKNOWN.name();
+    }
+  }
+
+  private double calculateDataNodeGeneratorProgress() {
+    final Set<Integer> currentTargetDataNodeIds = dataNodeGeneratorTargetDataNodeIds;
+    if (currentTargetDataNodeIds.isEmpty()) {
+      return dataPartitionTables.isEmpty() ? 0.0 : 1.0;
+    }
+
+    double progressSum = 0.0;
+    for (int dataNodeId : currentTargetDataNodeIds) {
+      progressSum += clampProgress(dataNodeGeneratorProgress.getOrDefault(dataNodeId, 0.0));
+    }
+    return clampProgress(progressSum / currentTargetDataNodeIds.size());
+  }
+
+  private void refreshDataNodeGeneratorTarget(final List<TDataNodeConfiguration> targetDataNodes) {
+    final Set<Integer> targetDataNodeIds = new HashSet<>();
+    for (TDataNodeConfiguration dataNode : targetDataNodes) {
+      targetDataNodeIds.add(dataNode.getLocation().getDataNodeId());
+    }
+    dataNodeGeneratorProgress.keySet().retainAll(targetDataNodeIds);
+    dataNodeGeneratorTargetDataNodeIds = Collections.unmodifiableSet(targetDataNodeIds);
+  }
+
+  private long countFailedTargetDataNodes(final List<TDataNodeConfiguration> targetDataNodes) {
+    return targetDataNodes.stream().filter(failedDataNodes::contains).count();
+  }
+
+  private double clampProgress(final double progress) {
+    return Math.max(0.0, Math.min(1.0, progress));
   }
 }

@@ -154,6 +154,9 @@ public class SyncDataNodeClientPool {
     actionMapBuilder.put(
         CnToDnSyncRequestType.GET_REGION_MIGRATION_PROGRESS,
         (req, client) -> client.getRegionMigrationProgress((TConsensusGroupId) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.GET_DATA_PARTITION_TABLE_GENERATOR_PROGRESS,
+        (req, client) -> client.getDataPartitionTableGeneratorProgress());
     actionMap = actionMapBuilder.build();
   }
 

@@ -157,6 +157,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
@@ -483,6 +484,8 @@ public interface IManager {
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
 
   TSStatus dataPartitionTableIntegrityCheck();
+
+  TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress();
 
   /**
    * Get AuditLogger.
