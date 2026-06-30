@@ -206,7 +206,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
               emptyPollLogThrottler.markEmptyPollAndMaybeGetCount();
           if (consecutiveEmptyPollCount.isPresent()) {
             LOGGER.info(
-                "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s), consecutive empty polls: {}",
+                SubscriptionMessages.PUSH_CONSUMER_POLL_EMPTY_MESSAGE,
                 AbstractSubscriptionPushConsumer.this,
                 CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
                 autoPollTimeoutMs,
