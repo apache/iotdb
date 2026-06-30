@@ -191,7 +191,6 @@ keyWords
     | PROCESSLIST
     | PROGRESS
     | PROCESSOR
-    | PROGRESS
     | PROPERTY
     | PRUNE
     | QUERIES
