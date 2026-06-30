@@ -41,6 +41,7 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -104,6 +105,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1880,6 +1882,67 @@ public class DataRegionTest {
         throws DataRegionException {
       super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
+  }
+
+  @Test
+  public void testInsertAndRemoveObjectOnExceptionKeepsObjectFileWhenInsertSucceeds()
+      throws Exception {
+    final DataRegion spiedDataRegion = Mockito.spy(dataRegion);
+    final RelationalInsertRowNode node = Mockito.mock(RelationalInsertRowNode.class);
+    final File objectFile = createObjectFileForTest("object-insert-success.bin");
+    Mockito.doNothing().when(spiedDataRegion).insert(node);
+
+    Assert.assertTrue(invokeInsertAndRemoveObjectOnException(spiedDataRegion, node, objectFile));
+
+    Assert.assertTrue(objectFile.exists());
+  }
+
+  @Test
+  public void testInsertAndRemoveObjectOnExceptionRemovesObjectFileWhenWriteFails()
+      throws Exception {
+    final DataRegion spiedDataRegion = Mockito.spy(dataRegion);
+    final RelationalInsertRowNode node = Mockito.mock(RelationalInsertRowNode.class);
+    final File objectFile = createObjectFileForTest("object-insert-write-failure.bin");
+    Mockito.doThrow(new WriteProcessException("mock object insert failure"))
+        .when(spiedDataRegion)
+        .insert(node);
+
+    Assert.assertFalse(invokeInsertAndRemoveObjectOnException(spiedDataRegion, node, objectFile));
+
+    Assert.assertFalse(objectFile.exists());
+  }
+
+  @Test
+  public void testInsertAndRemoveObjectOnExceptionRemovesObjectFileWhenOutOfTTL() throws Exception {
+    final DataRegion spiedDataRegion = Mockito.spy(dataRegion);
+    final RelationalInsertRowNode node = Mockito.mock(RelationalInsertRowNode.class);
+    final File objectFile = createObjectFileForTest("object-insert-out-of-ttl.bin");
+    Mockito.doThrow(new OutOfTTLException(1, 2)).when(spiedDataRegion).insert(node);
+
+    Assert.assertFalse(invokeInsertAndRemoveObjectOnException(spiedDataRegion, node, objectFile));
+
+    Assert.assertFalse(objectFile.exists());
+  }
+
+  private static boolean invokeInsertAndRemoveObjectOnException(
+      DataRegion dataRegion, RelationalInsertRowNode node, File objectFile) throws Exception {
+    final Method method =
+        DataRegion.class.getDeclaredMethod(
+            "insertAndRemoveObjectOnException", RelationalInsertRowNode.class, File.class);
+    method.setAccessible(true);
+    return (boolean) method.invoke(dataRegion, node, objectFile);
+  }
+
+  private static File createObjectFileForTest(String fileName) throws IOException {
+    final File file = new File(TestConstant.OUTPUT_DATA_DIR, fileName);
+    if (!file.getParentFile().exists()) {
+      assertTrue(file.getParentFile().mkdirs());
+    }
+    if (file.exists()) {
+      assertTrue(file.delete());
+    }
+    assertTrue(file.createNewFile());
+    return file;
   }
 
   private interface TsFileProcessorSupplier {

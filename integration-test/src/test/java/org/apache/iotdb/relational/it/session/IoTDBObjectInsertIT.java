@@ -608,6 +608,102 @@ public class IoTDBObjectInsertIT {
     Assert.assertTrue(success);
   }
 
+  @Test
+  public void insertExpiredObjectShouldNotLeaveObjectFileTest()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    final String tableName = "object_ttl_table";
+    final String testObject =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + "test-classes"
+            + File.separator
+            + "object-example.pt";
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "CREATE TABLE "
+              + tableName
+              + " (region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, "
+              + "temperature FLOAT FIELD, file OBJECT FIELD) WITH (TTL=1)");
+
+      List<String> columnNameList =
+          Arrays.asList("region_id", "plant_id", "device_id", "temperature", "file");
+      List<TSDataType> dataTypeList =
+          Arrays.asList(
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.FLOAT,
+              TSDataType.OBJECT);
+      List<ColumnCategory> columnTypeList =
+          new ArrayList<>(
+              Arrays.asList(
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.FIELD,
+                  ColumnCategory.FIELD));
+      Tablet tablet = new Tablet(tableName, columnNameList, dataTypeList, columnTypeList, 1);
+      int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, 0);
+      tablet.addValue(rowIndex, 0, "ttl_region");
+      tablet.addValue(rowIndex, 1, "ttl_plant");
+      tablet.addValue(rowIndex, 2, "ttl_device");
+      tablet.addValue(rowIndex, 3, 37.6F);
+      tablet.addValue(rowIndex, 4, true, 0, Files.readAllBytes(Paths.get(testObject)));
+
+      try {
+        session.insert(tablet);
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+      }
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select file from " + tableName)) {
+        Assert.assertFalse(dataSet.iterator().next());
+      }
+    }
+
+    Assert.assertFalse(hasObjectFileForExpiredInsert(tableName));
+  }
+
+  private boolean hasObjectFileForExpiredInsert(String tableName) {
+    for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      String objectDirStr = dataNodeWrapper.getDataNodeObjectDir();
+      File objectDir = new File(objectDirStr);
+      if (objectDir.exists() && objectDir.isDirectory()) {
+        File[] regionDirs = objectDir.listFiles();
+        if (regionDirs != null) {
+          for (File regionDir : regionDirs) {
+            if (regionDir.isDirectory()) {
+              File objectFile =
+                  new File(
+                      regionDir,
+                      convertPathString(tableName)
+                          + File.separator
+                          + convertPathString("ttl_region")
+                          + File.separator
+                          + convertPathString("ttl_plant")
+                          + File.separator
+                          + convertPathString("ttl_device")
+                          + File.separator
+                          + convertPathString("file")
+                          + File.separator
+                          + "0.bin");
+              if (objectFile.exists()) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   protected String convertPathString(String path) {
     return BaseEncoding.base32().omitPadding().encode(path.getBytes(StandardCharsets.UTF_8));
   }

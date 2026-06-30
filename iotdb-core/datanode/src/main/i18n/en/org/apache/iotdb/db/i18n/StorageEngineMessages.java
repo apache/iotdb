@@ -135,6 +135,10 @@ public final class StorageEngineMessages {
   public static final String PARTIAL_FAILED_INSERTING_MULTI_TABLETS = "Partial failed inserting multi tablets";
   public static final String INTERRUPTED_WAITING_DATA_REGION_DELETED = "Interrupted When waiting for data region deleted.";
   public static final String FAILED_TO_RENAME = "Failed to rename {} to {},";
+  public static final String CANNOT_INSERT_TSFILE_RECORD_FOR_OBJECT_FILE =
+      "Cannot insert TsFile record for {}";
+  public static final String FAILED_TO_DELETE_OBJECT_FILE_ON_TSFILE_INSERTION_FAILURE =
+      "Failed to delete object file {} on TsFile insertion failure";
 
   // ======================== Compaction ========================
 

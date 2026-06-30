@@ -3189,9 +3189,9 @@ public class DataRegion implements IDataRegionForQuery {
                     .forEach(
                         path -> {
                           try {
+                            long fileSize = Files.size(path);
                             if (Files.deleteIfExists(path)) {
                               String name = path.getFileName().toString();
-                              long fileSize = path.toFile().length();
                               count.incrementAndGet();
                               totalSize.addAndGet(fileSize);
                               long timePartition =
@@ -4247,7 +4247,10 @@ public class DataRegion implements IDataRegionForQuery {
         if (isGeneratedByPipe) {
           valueNode.markAsGeneratedByPipe();
         }
-        insert(valueNode);
+        if (!insertAndRemoveObjectOnException(valueNode, objectFile)) {
+          // insertion failed, skip following metric update
+          return;
+        }
         long fileLength = objectFile.length();
         FileMetrics.getInstance().increaseObjectFileNum(databaseName, dataRegionIdString, 1);
         FileMetrics.getInstance()
@@ -4267,6 +4270,36 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       writeUnlock();
     }
+  }
+
+  /**
+   * Inserts the metadata row for an object file and removes the object file if the insertion fails.
+   *
+   * <p>The object file has already been moved into the data directory before this method is called.
+   * If its metadata row cannot be inserted, keeping the file would leave an object file that is not
+   * reachable from TsFile metadata.
+   */
+  private boolean insertAndRemoveObjectOnException(RelationalInsertRowNode node, File objectFile) {
+    try {
+      insert(node);
+      return true;
+    } catch (OutOfTTLException e) {
+      // Out-of-TTL records are expected to be ignored, but the installed object file must be
+      // removed.
+      if (!objectFile.delete()) {
+        logger.warn(
+            StorageEngineMessages.FAILED_TO_DELETE_OBJECT_FILE_ON_TSFILE_INSERTION_FAILURE,
+            objectFile.getAbsolutePath());
+      }
+    } catch (WriteProcessException e) {
+      logger.warn(StorageEngineMessages.CANNOT_INSERT_TSFILE_RECORD_FOR_OBJECT_FILE, objectFile, e);
+      if (!objectFile.delete()) {
+        logger.warn(
+            StorageEngineMessages.FAILED_TO_DELETE_OBJECT_FILE_ON_TSFILE_INSERTION_FAILURE,
+            objectFile.getAbsolutePath());
+      }
+    }
+    return false;
   }
 
   /**
