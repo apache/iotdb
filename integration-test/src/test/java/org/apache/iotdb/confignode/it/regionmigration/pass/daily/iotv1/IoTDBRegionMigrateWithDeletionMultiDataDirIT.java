@@ -37,13 +37,18 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getAllDataNodes;
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getDataRegionMapWithLeader;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.MULTI_DATA_DIRS;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.awaitModsVisibleOnReplicas;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.awaitRegionReplicas;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.awaitTsFileResourceVisibleOnReplicas;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.awaitTsFileVisibleOnReplicas;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.getReplicaDataNodeIds;
 
 /**
  * Tree-model coverage for IoTConsensus region migration over multiple data dirs: a deletion (mods)
@@ -55,9 +60,6 @@ import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperatio
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
-
-  private static final String MULTI_DATA_DIRS =
-      "data/datanode/data/disk0,data/datanode/data/disk1,data/datanode/data/disk2";
 
   @Before
   public void setUp() throws Exception {
@@ -83,13 +85,21 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
       statement.execute(
           "INSERT INTO root.db.d1(timestamp, s1) VALUES (100, 100), (200, 200), (300, 300)");
       statement.execute("FLUSH");
-      statement.execute("DELETE FROM root.db.d1.s1 WHERE time <= 200");
-      statement.execute("FLUSH");
 
       Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMapWithLeader =
           getDataRegionMapWithLeader(statement);
       int dataRegionIdForTest =
           dataRegionMapWithLeader.keySet().stream().max(Integer::compareTo).orElseThrow();
+      Set<Integer> initialReplicaDataNodeIds =
+          getReplicaDataNodeIds(statement, dataRegionIdForTest);
+
+      awaitTsFileVisibleOnReplicas("root.db", dataRegionIdForTest, initialReplicaDataNodeIds);
+      awaitTsFileResourceVisibleOnReplicas(
+          statement, "root.db", dataRegionIdForTest, initialReplicaDataNodeIds);
+
+      statement.execute("DELETE FROM root.db.d1.s1 WHERE time <= 200");
+      statement.execute("FLUSH");
+      awaitModsVisibleOnReplicas("root.db", dataRegionIdForTest, initialReplicaDataNodeIds);
       assertDeletionVisibleOnAllReplicas(dataRegionIdForTest, 1);
 
       Pair<Integer, Set<Integer>> leaderAndNodes = dataRegionMapWithLeader.get(dataRegionIdForTest);
@@ -107,22 +117,8 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
           String.format(
               "migrate region %d from %d to %d", dataRegionIdForTest, leaderId, destDataNodeId));
 
-      // Wait until the migration has fully settled: the destination peer has been added AND the
-      // source peer has been removed, so the replica set is exactly {followerId, destDataNodeId}.
-      // Only checking that the destination appeared would race with the still-running
-      // REMOVE_REGION_PEER phase, leaving the source replica transiently in SHOW REGIONS and making
-      // the deletion assertion below query a peer that is being torn down.
-      final Set<Integer> expectedReplicaSet = new HashSet<>();
-      expectedReplicaSet.add(followerId);
-      expectedReplicaSet.add(destDataNodeId);
-      Awaitility.await()
-          .atMost(10, TimeUnit.MINUTES)
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(2, TimeUnit.SECONDS)
-          .untilAsserted(
-              () ->
-                  Assert.assertEquals(
-                      expectedReplicaSet, getReplicaDataNodeIds(statement, dataRegionIdForTest)));
+      awaitRegionReplicas(statement, dataRegionIdForTest, Set.of(followerId, destDataNodeId));
+      awaitModsVisibleOnReplicas("root.db", dataRegionIdForTest, Set.of(destDataNodeId));
 
       assertDeletionVisibleOnAllReplicas(dataRegionIdForTest, 1);
     }
@@ -160,20 +156,5 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
         Assert.assertFalse(deletedRangeResultSet.next());
       }
     }
-  }
-
-  private Set<Integer> getReplicaDataNodeIds(Statement statement, int dataRegionId)
-      throws Exception {
-    Set<Integer> replicaDataNodeIds = new HashSet<>();
-    try (ResultSet showRegions = statement.executeQuery("SHOW REGIONS")) {
-      while (showRegions.next()) {
-        if ("DataRegion".equals(showRegions.getString("Type"))
-            && showRegions.getInt("RegionId") == dataRegionId) {
-          replicaDataNodeIds.add(showRegions.getInt("DataNodeId"));
-        }
-      }
-    }
-    Assert.assertFalse(replicaDataNodeIds.isEmpty());
-    return replicaDataNodeIds;
   }
 }
