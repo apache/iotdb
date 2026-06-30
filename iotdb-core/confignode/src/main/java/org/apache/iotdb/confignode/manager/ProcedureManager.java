@@ -870,19 +870,24 @@ public class ProcedureManager {
   private TSStatus checkReconstructRegion(
       TReconstructRegionReq req,
       TConsensusGroupId regionId,
-      TDataNodeLocation targetDataNode,
+      @Nullable TDataNodeLocation targetDataNode,
       TDataNodeLocation coordinator) {
-    String failMessage =
-        regionOperationCommonCheck(
-            regionId,
-            targetDataNode,
-            Arrays.asList(
-                new Pair<>("Target DataNode", targetDataNode),
-                new Pair<>("Coordinator", coordinator)),
-            req.getModel());
-
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-    if (configManager
+    String failMessage;
+    // regionOperationCommonCheck reports "Cannot find Target DataNode" when targetDataNode is null
+    // (e.g. the requested id belongs to a ConfigNode or does not exist), so the following branches
+    // are only reached when targetDataNode is non-null. Keeping it as the first branch of the
+    // if-else chain avoids dereferencing a null targetDataNode.
+    if ((failMessage =
+            regionOperationCommonCheck(
+                regionId,
+                targetDataNode,
+                Arrays.asList(
+                    new Pair<>("Target DataNode", targetDataNode),
+                    new Pair<>("Coordinator", coordinator)),
+                req.getModel()))
+        != null) {
+      // need to do nothing more
+    } else if (configManager
             .getPartitionManager()
             .getAllReplicaSetsMap(regionId.getType())
             .get(regionId)
@@ -912,17 +917,24 @@ public class ProcedureManager {
   private TSStatus checkExtendRegion(
       TExtendRegionReq req,
       TConsensusGroupId regionId,
-      TDataNodeLocation targetDataNode,
+      @Nullable TDataNodeLocation targetDataNode,
       TDataNodeLocation coordinator) {
-    String failMessage =
-        regionOperationCommonCheck(
-            regionId,
-            targetDataNode,
-            Arrays.asList(
-                new Pair<>("Target DataNode", targetDataNode),
-                new Pair<>("Coordinator", coordinator)),
-            req.getModel());
-    if (configManager
+    String failMessage;
+    // regionOperationCommonCheck reports "Cannot find Target DataNode" when targetDataNode is null
+    // (e.g. the requested id belongs to a ConfigNode or does not exist), so the following branches
+    // are only reached when targetDataNode is non-null. Keeping it as the first branch of the
+    // if-else chain avoids dereferencing a null targetDataNode.
+    if ((failMessage =
+            regionOperationCommonCheck(
+                regionId,
+                targetDataNode,
+                Arrays.asList(
+                    new Pair<>("Target DataNode", targetDataNode),
+                    new Pair<>("Coordinator", coordinator)),
+                req.getModel()))
+        != null) {
+      // need to do nothing more
+    } else if (configManager
         .getPartitionManager()
         .getAllReplicaSets(targetDataNode.getDataNodeId())
         .stream()
