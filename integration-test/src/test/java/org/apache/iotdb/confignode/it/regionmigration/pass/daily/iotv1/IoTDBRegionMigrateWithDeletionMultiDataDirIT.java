@@ -91,9 +91,7 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
       Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMapWithLeader =
           getDataRegionMapWithLeader(statement);
       int dataRegionIdForTest =
-          dataRegionMapWithLeader
-              .keySet()
-              .stream()
+          dataRegionMapWithLeader.keySet().stream()
               .max(Integer::compareTo)
               .orElseThrow(() -> new AssertionError("No DataRegion found"));
       Set<Integer> initialReplicaDataNodeIds =
@@ -112,15 +110,12 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
       Set<Integer> allDataNodes = getAllDataNodes(statement);
       int leaderId = leaderAndNodes.getLeft();
       int followerId =
-          leaderAndNodes
-              .getRight()
-              .stream()
+          leaderAndNodes.getRight().stream()
               .filter(id -> id != leaderId)
               .findFirst()
               .orElseThrow(() -> new AssertionError("No follower DataNode found"));
       int destDataNodeId =
-          allDataNodes
-              .stream()
+          allDataNodes.stream()
               .filter(id -> id != leaderId && id != followerId)
               .findFirst()
               .orElseThrow(() -> new AssertionError("No destination DataNode found"));
