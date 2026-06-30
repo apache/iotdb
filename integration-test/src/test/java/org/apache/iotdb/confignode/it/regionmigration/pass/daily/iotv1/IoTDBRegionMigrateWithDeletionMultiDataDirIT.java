@@ -85,19 +85,24 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
       Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMapWithLeader =
           getDataRegionMapWithLeader(statement);
       int dataRegionIdForTest =
-          dataRegionMapWithLeader.keySet().stream().max(Integer::compareTo).orElseThrow();
+          dataRegionMapWithLeader.keySet().stream()
+              .max(Integer::compareTo)
+              .orElseThrow(() -> new AssertionError("No DataRegion found"));
       assertDeletionVisibleOnAllReplicas(statement, dataRegionIdForTest, 1);
 
       Pair<Integer, Set<Integer>> leaderAndNodes = dataRegionMapWithLeader.get(dataRegionIdForTest);
       Set<Integer> allDataNodes = getAllDataNodes(statement);
       int leaderId = leaderAndNodes.getLeft();
       int followerId =
-          leaderAndNodes.getRight().stream().filter(id -> id != leaderId).findFirst().orElseThrow();
+          leaderAndNodes.getRight().stream()
+              .filter(id -> id != leaderId)
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("No follower DataNode found"));
       int destDataNodeId =
           allDataNodes.stream()
               .filter(id -> id != leaderId && id != followerId)
               .findFirst()
-              .orElseThrow();
+              .orElseThrow(() -> new AssertionError("No destination DataNode found"));
 
       statement.execute(
           String.format(
@@ -132,7 +137,10 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
     Set<Integer> replicaDataNodeIds = getReplicaDataNodeIds(statement, dataRegionId);
     for (int dataNodeId : replicaDataNodeIds) {
       DataNodeWrapper dataNodeWrapper =
-          EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeId).orElseThrow();
+          EnvFactory.getEnv()
+              .dataNodeIdToWrapper(dataNodeId)
+              .orElseThrow(
+                  () -> new AssertionError("No DataNode wrapper found for DataNode " + dataNodeId));
       Awaitility.await()
           .atMost(2, TimeUnit.MINUTES)
           .pollDelay(500, TimeUnit.MILLISECONDS)
