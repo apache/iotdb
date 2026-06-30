@@ -3673,7 +3673,10 @@ public class ConfigManager implements IManager {
                     getProcedureManager()
                         .migrateRegion(
                             new TMigrateRegionReq(
-                                regionId, originalId, targetDataNodeIds.get(j), req.getModel()));
+                                Collections.singletonList(regionId),
+                                originalId,
+                                targetDataNodeIds.get(j),
+                                req.getModel()));
                 if (migrateStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                   LOGGER.info(
                       "[AutoMigration] Submit migrating region {} from DataNode {} to DataNode {}",

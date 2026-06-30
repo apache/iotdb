@@ -500,17 +500,19 @@ public class RegionMigrateService implements IService {
       // deletePeer: remove the peer from the consensus group
       TSStatus runResult = deletePeer();
       if (isFailed(runResult)) {
+        // A failed delete must NOT fall through to taskSucceed, otherwise the ConfigNode would
+        // forget the task while the peer/data is still present.
         taskFail(
             taskId,
             tRegionId,
             originalDataNode,
             TRegionMigrateFailedType.RemoveConsensusGroupFailed,
             runResult);
+        return;
       }
 
       // deleteRegion: delete region data
       runResult = deleteRegion();
-
       if (isFailed(runResult)) {
         taskFail(
             taskId,
@@ -518,6 +520,7 @@ public class RegionMigrateService implements IService {
             originalDataNode,
             TRegionMigrateFailedType.DeleteRegionFailed,
             runResult);
+        return;
       }
 
       taskSucceed(taskId, tRegionId, "DeletePeer");
@@ -537,6 +540,13 @@ public class RegionMigrateService implements IService {
         } else {
           SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(regionId);
         }
+      } catch (ConsensusGroupNotExistException e) {
+        // The peer is already absent (e.g. a retry after a previous attempt removed it, or the
+        // region group is being deleted outright). Treat it as success and continue to delete data.
+        taskLogger.info(
+            "{}, The local peer of region {} does not exist, skip deleting it",
+            REGION_MIGRATE_PROCESS,
+            regionId);
       } catch (ConsensusException e) {
         String errorMsg =
             String.format(
