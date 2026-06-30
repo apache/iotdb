@@ -577,7 +577,7 @@ getSeriesSlotList
 
 // ---- Migrate Region
 migrateRegion
-    : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
+    : MIGRATE REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
 reconstructRegion
@@ -598,7 +598,7 @@ verifyConnection
 
 // ---- Remove DataNode
 removeDataNode
-    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL
+    : REMOVE DATANODE dataNodeIds+=INTEGER_LITERAL (COMMA dataNodeIds+=INTEGER_LITERAL)*
     ;
 
 // ---- Remove ConfigNode
