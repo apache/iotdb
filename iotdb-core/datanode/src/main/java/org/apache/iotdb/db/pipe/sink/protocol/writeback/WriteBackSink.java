@@ -127,8 +127,6 @@ public class WriteBackSink implements PipeConnector {
 
   // Simulate the behavior of the client-to-server communication
   // for correctly handling data insertion in IoTDBReceiverAgent#receive method
-  private static final Coordinator COORDINATOR = Coordinator.getInstance();
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   public static final AtomicLong id = new AtomicLong();
   private InternalClientSession session;
 
@@ -140,9 +138,33 @@ public class WriteBackSink implements PipeConnector {
   private String invalidTargetTableModelDatabaseName;
   private String targetTreeModelDatabaseName;
 
-  private static final SqlParser RELATIONAL_SQL_PARSER = new SqlParser();
-
   private static final Set<String> ALREADY_CREATED_DATABASES = ConcurrentHashMap.newKeySet();
+
+  private static SessionManager getSessionManager() {
+    return SessionManagerHolder.INSTANCE;
+  }
+
+  private static SqlParser getRelationalSqlParser() {
+    return SqlParserHolder.INSTANCE;
+  }
+
+  private static class SessionManagerHolder {
+
+    private static final SessionManager INSTANCE = SessionManager.getInstance();
+
+    private SessionManagerHolder() {
+      // empty constructor
+    }
+  }
+
+  private static class SqlParserHolder {
+
+    private static final SqlParser INSTANCE = new SqlParser();
+
+    private SqlParserHolder() {
+      // empty constructor
+    }
+  }
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -279,13 +301,14 @@ public class WriteBackSink implements PipeConnector {
       customizeTargetDatabase(targetDatabase);
     }
 
-    if (SESSION_MANAGER.getCurrSession() == null) {
-      SESSION_MANAGER.registerSession(session);
+    final SessionManager sessionManager = getSessionManager();
+    if (sessionManager.getCurrSession() == null) {
+      sessionManager.registerSession(session);
     }
 
     // Check the password and its expiration
     if (Objects.nonNull(passwordString)
-        && SESSION_MANAGER
+        && sessionManager
                 .login(
                     session,
                     usernameString,
@@ -683,7 +706,9 @@ public class WriteBackSink implements PipeConnector {
   @Override
   public void close() throws Exception {
     if (session != null) {
-      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution, false);
+      getSessionManager()
+          .closeSession(
+              session, queryId -> Coordinator.getInstance().cleanupQueryExecution(queryId), false);
     }
   }
 
@@ -700,10 +725,10 @@ public class WriteBackSink implements PipeConnector {
       return Coordinator.getInstance()
           .executeForTableModel(
               new PipeEnrichedStatement(statement),
-              RELATIONAL_SQL_PARSER,
+              getRelationalSqlParser(),
               session,
-              SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfPipeReceiver(session, dataBaseName),
+              getSessionManager().requestQueryId(),
+              getSessionManager().getSessionInfoOfPipeReceiver(session, dataBaseName),
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -733,10 +758,10 @@ public class WriteBackSink implements PipeConnector {
         return Coordinator.getInstance()
             .executeForTableModel(
                 new PipeEnrichedStatement(statement),
-                RELATIONAL_SQL_PARSER,
+                getRelationalSqlParser(),
                 session,
-                SESSION_MANAGER.requestQueryId(),
-                SESSION_MANAGER.getSessionInfo(session),
+                getSessionManager().requestQueryId(),
+                getSessionManager().getSessionInfo(session),
                 "",
                 LocalExecutionPlanner.getInstance().metadata,
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -821,8 +846,8 @@ public class WriteBackSink implements PipeConnector {
       return Coordinator.getInstance()
           .executeForTreeModel(
               new PipeEnrichedStatement(statement),
-              SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfo(session),
+              getSessionManager().requestQueryId(),
+              getSessionManager().getSessionInfo(session),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
