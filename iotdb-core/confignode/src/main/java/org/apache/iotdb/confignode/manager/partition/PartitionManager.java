@@ -545,13 +545,13 @@ public class PartitionManager {
     return configManager
         .getProcedureManager()
         .getUnfinishedDataPartitionTableIntegrityCheckProcedure()
-        .map(procedure -> procedure.getProgress(configManager.getProcedureManager().getEnv()))
+        .map(DataPartitionTableIntegrityCheckProcedure::getProgress)
         .orElseGet(
             () ->
                 new TShowRepairDataPartitionTableProgressResp(
                         RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
                         RepairDataPartitionTableProgressState.IDLE.name(),
-                        100.0)
+                        0.0)
                     .setMessage("No running DataPartitionTable integrity check procedure"));
   }
 

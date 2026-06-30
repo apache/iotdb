@@ -749,6 +749,7 @@ struct TGenerateDataPartitionTableHeartbeatResp {
   2: required i32 errorCode
   3: optional string message
   4: optional list<binary> databaseScopedDataPartitionTables
+  5: optional double progress
 }
 
 struct TGetDataPartitionTableGeneratorProgressResp {
