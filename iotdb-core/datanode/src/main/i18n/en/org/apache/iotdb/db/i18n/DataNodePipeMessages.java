@@ -222,6 +222,9 @@ public final class DataNodePipeMessages {
   public static final String PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED =
       "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and "
           + "callbackExecutor {}.";
+  public static final String PIPE_SINK_SUBTASK_DELAYED_TO_AVOID_FREQUENT_HANDSHAKES =
+      "Pipe sink subtask {} is delayed for {} ms before polling events to avoid frequent "
+          + "handshakes after client borrow failures.";
   public static final String PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T =
       "Pipe skipping temporary TsFile which shouldn't be transferred: {}";
   public static final String PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING =
