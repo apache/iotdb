@@ -132,6 +132,9 @@ public class DeletionResourceManager implements AutoCloseable {
     LOGGER.info(DataNodePipeMessages.CLOSING_DELETION_RESOURCE_MANAGER_FOR, dataRegionId);
     this.deleteNode2ResourcesMap.clear();
     this.deletionBuffer.close();
+    if (DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP != null) {
+      DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.remove(dataRegionId, this);
+    }
     LOGGER.info(
         DataNodePipeMessages.DELETION_RESOURCE_MANAGER_FOR_HAS_BEEN_SUCCESSFULLY, dataRegionId);
   }
