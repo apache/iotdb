@@ -103,6 +103,16 @@ public class DeletionResourceTest {
   }
 
   @Test
+  public void testGetInstanceAfterCloseReturnsFreshManager() {
+    DeletionResourceManager closedDeletionResourceManager =
+        DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[0]);
+    closedDeletionResourceManager.close();
+
+    deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[0]);
+    Assert.assertNotSame(closedDeletionResourceManager, deletionResourceManager);
+  }
+
+  @Test
   public void testAddBatchDeletionResource()
       throws IllegalPathException, IOException, InterruptedException {
     addBatchDeletionResource(true, 0);
