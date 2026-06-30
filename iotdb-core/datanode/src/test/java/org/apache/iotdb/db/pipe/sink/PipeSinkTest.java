@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncS
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketConnectorServer;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketSink;
+import org.apache.iotdb.db.pipe.sink.protocol.writeback.WriteBackSink;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -45,6 +46,7 @@ import org.mockito.Mockito;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -277,6 +279,113 @@ public class PipeSinkTest {
     } catch (Exception e) {
       Assert.fail();
     }
+  }
+
+  @Test
+  public void testWriteBackSinkTargetDatabaseValidation() throws Exception {
+    assertWriteBackSinkTargetDatabaseValid("target");
+    assertWriteBackSinkTargetDatabaseValid("root.target");
+    assertWriteBackSinkTargetDatabaseValid("root.target.db");
+
+    Assert.assertThrows(PipeException.class, () -> assertWriteBackSinkTargetDatabaseValid("a.b"));
+    Assert.assertThrows(
+        PipeException.class, () -> assertWriteBackSinkTargetDatabaseValid("root.a+b"));
+  }
+
+  @Test
+  public void testWriteBackSinkRejectsInvalidTableModelDatabaseFromEvent() {
+    try (final WriteBackSink sink = new WriteBackSink()) {
+      final PipeRawTabletInsertionEvent event = createTableModelRawTabletInsertionEvent("root.a.b");
+      Assert.assertThrows(PipeException.class, () -> sink.transfer(event));
+    } catch (final Exception e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testWriteBackSinkRejectsInvalidTableModelDatabaseFromEventWithTargetDatabase()
+      throws Exception {
+    final PipeParameters parameters =
+        new PipeParameters(Collections.singletonMap("sink.database", "target"));
+
+    try (final WriteBackSink sink = new WriteBackSink()) {
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+
+      final PipeRawTabletInsertionEvent event = createTableModelRawTabletInsertionEvent("root.a.b");
+      Assert.assertThrows(PipeException.class, () -> sink.transfer(event));
+    }
+  }
+
+  @Test
+  public void testWriteBackSinkRejectsInvalidTreeModelDatabaseFromEventWithTargetDatabase()
+      throws Exception {
+    final PipeParameters parameters =
+        new PipeParameters(Collections.singletonMap("sink.database", "root.target"));
+
+    try (final WriteBackSink sink = new WriteBackSink()) {
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+
+      final PipeRawTabletInsertionEvent event = createTreeModelRawTabletInsertionEvent("root.a+b");
+      Assert.assertThrows(PipeException.class, () -> sink.transfer(event));
+    }
+  }
+
+  @Test
+  public void testWriteBackSinkRejectsInvalidTableModelDatabaseFromTreeTarget() throws Exception {
+    final PipeParameters parameters =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put("sink.database", "root.target.db");
+              }
+            });
+
+    try (final WriteBackSink sink = new WriteBackSink()) {
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+
+      final PipeRawTabletInsertionEvent event = createTableModelRawTabletInsertionEvent("valid_db");
+      Assert.assertThrows(PipeException.class, () -> sink.transfer(event));
+    }
+  }
+
+  private void assertWriteBackSinkTargetDatabaseValid(final String targetDatabase)
+      throws Exception {
+    try (final WriteBackSink sink = new WriteBackSink()) {
+      sink.validate(
+          new PipeParameterValidator(
+              new PipeParameters(Collections.singletonMap("sink.database", targetDatabase))));
+    }
+  }
+
+  private PipeRawTabletInsertionEvent createTableModelRawTabletInsertionEvent(
+      final String databaseName) {
+    final List<IMeasurementSchema> schemaList =
+        Arrays.asList(new MeasurementSchema("s1", TSDataType.INT64));
+    final Tablet tablet = new Tablet("table", schemaList, 1);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue("s1", 0, 1L);
+    return new PipeRawTabletInsertionEvent(
+        true, databaseName, null, null, tablet, false, "pipe", 0L, null, null, false);
+  }
+
+  private PipeRawTabletInsertionEvent createTreeModelRawTabletInsertionEvent(
+      final String databaseName) {
+    final List<IMeasurementSchema> schemaList =
+        Arrays.asList(new MeasurementSchema("s1", TSDataType.INT64));
+    final Tablet tablet = new Tablet(databaseName + ".d1", schemaList, 1);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue("s1", 0, 1L);
+    return new PipeRawTabletInsertionEvent(
+        false, databaseName, null, databaseName, tablet, false, "pipe", 0L, null, null, false);
   }
 
   private PipeRawTabletInsertionEvent createPipeRawTabletInsertionEvent(

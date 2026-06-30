@@ -49,8 +49,8 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualTreeModelManualIT 
         Arrays.asList(
             "create database root.source",
             "create timeseries root.source.d1.s1 with datatype=INT32,encoding=PLAIN",
-            "create database root.target",
-            "create timeseries root.target.d1.s1 with datatype=INT32,encoding=PLAIN"),
+            "create database root.target.db",
+            "create timeseries root.target.db.d1.s1 with datatype=INT32,encoding=PLAIN"),
         null);
 
     try (final SyncConfigNodeIServiceClient client =
@@ -65,7 +65,7 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualTreeModelManualIT 
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "write-back-sink");
-      sinkAttributes.put("sink.database", "target");
+      sinkAttributes.put("sink.database", "root.target.db");
       sinkAttributes.put("user", "root");
 
       final TSStatus status =
@@ -89,8 +89,8 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualTreeModelManualIT 
 
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        "select * from root.target.**",
-        "Time,root.target.d1.s1,",
+        "select * from root.target.db.**",
+        "Time,root.target.db.d1.s1,",
         Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1,", "2,2,"))));
   }
 }

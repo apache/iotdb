@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.writeback;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDevice
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -135,6 +137,7 @@ public class WriteBackSink implements PipeConnector {
 
   private UserEntity userEntity;
   private String targetTableModelDatabaseName;
+  private String invalidTargetTableModelDatabaseName;
   private String targetTreeModelDatabaseName;
 
   private static final SqlParser RELATIONAL_SQL_PARSER = new SqlParser();
@@ -162,20 +165,52 @@ public class WriteBackSink implements PipeConnector {
   }
 
   private static void validateTargetDatabase(final String targetDatabase) {
+    if (PathUtils.isTableModelDatabase(targetDatabase)) {
+      validateTableModelDatabaseName(targetDatabase);
+      validateAndNormalizeTreeModelDatabaseName(PathUtils.qualifyDatabaseName(targetDatabase));
+      return;
+    }
+
+    validateAndNormalizeTreeModelDatabaseName(targetDatabase);
+  }
+
+  private static void validateTableModelDatabaseName(final String databaseName) {
     try {
-      TableConfigTaskVisitor.validateDatabaseName(PathUtils.unQualifyDatabaseName(targetDatabase));
+      TableConfigTaskVisitor.validateDatabaseName(databaseName);
     } catch (final Exception e) {
       throw new PipeException(
           String.format(
-              "The target database %s is invalid. It should be a table-model database name or "
-                  + "the corresponding one-level tree-model database path like root.%s. It should "
-                  + "not contain '%s', should match the pattern %s, and the length should not "
-                  + "exceed %d",
-              targetDatabase,
-              PathUtils.unQualifyDatabaseName(targetDatabase),
-              PATH_SEPARATOR,
-              IoTDBConfig.DATABASE_PATTERN,
-              MAX_DATABASE_NAME_LENGTH),
+              "The table-model database %s is invalid. It should not contain '%s', should match "
+                  + "the pattern %s, and the length should not exceed %d",
+              databaseName, PATH_SEPARATOR, IoTDBConfig.DATABASE_PATTERN, MAX_DATABASE_NAME_LENGTH),
+          e);
+    }
+  }
+
+  private static String validateAndNormalizeTreeModelDatabaseName(final String databaseName) {
+    try {
+      final PartialPath databasePath = new PartialPath(databaseName);
+      final String[] nodes = databasePath.getNodes();
+      if (nodes.length <= 1 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
+        throw new IllegalPathException(
+            databaseName, "the database name in tree model must start with 'root.'.");
+      }
+
+      final String normalizedDatabaseName = databasePath.getFullPath();
+      MetaFormatUtils.checkDatabase(normalizedDatabaseName);
+
+      if (normalizedDatabaseName.length() > MAX_DATABASE_NAME_LENGTH) {
+        throw new IllegalPathException(
+            normalizedDatabaseName,
+            "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+      }
+      return normalizedDatabaseName;
+    } catch (final Exception e) {
+      throw new PipeException(
+          String.format(
+              "The tree-model database %s is invalid. It should be a legal tree-model database "
+                  + "path, should match the pattern %s, and the length should not exceed %d",
+              databaseName, IoTDBConfig.DATABASE_PATTERN, MAX_DATABASE_NAME_LENGTH),
           e);
     }
   }
@@ -241,9 +276,7 @@ public class WriteBackSink implements PipeConnector {
     final String targetDatabase =
         parameters.getStringByKeys(CONNECTOR_IOTDB_DATABASE_KEY, SINK_IOTDB_DATABASE_KEY);
     if (Objects.nonNull(targetDatabase)) {
-      targetTableModelDatabaseName =
-          PathUtils.unQualifyDatabaseName(targetDatabase).toLowerCase(Locale.ENGLISH);
-      targetTreeModelDatabaseName = PathUtils.qualifyDatabaseName(targetTableModelDatabaseName);
+      customizeTargetDatabase(targetDatabase);
     }
 
     if (SESSION_MANAGER.getCurrSession() == null) {
@@ -266,6 +299,30 @@ public class WriteBackSink implements PipeConnector {
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipePasswordCheckException(
           String.format("Failed to check password for pipe %s.", environment.getPipeName()));
+    }
+  }
+
+  private void customizeTargetDatabase(final String targetDatabase) {
+    targetTableModelDatabaseName = null;
+    invalidTargetTableModelDatabaseName = null;
+    targetTreeModelDatabaseName = null;
+
+    if (PathUtils.isTableModelDatabase(targetDatabase)) {
+      targetTableModelDatabaseName = targetDatabase.toLowerCase(Locale.ENGLISH);
+      targetTreeModelDatabaseName =
+          validateAndNormalizeTreeModelDatabaseName(
+              PathUtils.qualifyDatabaseName(targetTableModelDatabaseName));
+      return;
+    }
+
+    targetTreeModelDatabaseName = validateAndNormalizeTreeModelDatabaseName(targetDatabase);
+    final String tableModelDatabaseName =
+        PathUtils.unQualifyDatabaseName(targetTreeModelDatabaseName).toLowerCase(Locale.ENGLISH);
+    try {
+      TableConfigTaskVisitor.validateDatabaseName(tableModelDatabaseName);
+      targetTableModelDatabaseName = tableModelDatabaseName;
+    } catch (final Exception e) {
+      invalidTargetTableModelDatabaseName = tableModelDatabaseName;
     }
   }
 
@@ -322,7 +379,8 @@ public class WriteBackSink implements PipeConnector {
         pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
             ? getTargetTableModelDatabaseNameOrDefault(
                 pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName())
-            : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName();
+            : getTargetTreeModelDatabaseNameOrDefault(
+                pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName());
 
     final InsertBaseStatement insertBaseStatement;
     insertBaseStatement =
@@ -371,7 +429,8 @@ public class WriteBackSink implements PipeConnector {
         pipeRawTabletInsertionEvent.isTableModelEvent()
             ? getTargetTableModelDatabaseNameOrDefault(
                 pipeRawTabletInsertionEvent.getTableModelDatabaseName())
-            : pipeRawTabletInsertionEvent.getTreeModelDatabaseName();
+            : getTargetTreeModelDatabaseNameOrDefault(
+                pipeRawTabletInsertionEvent.getTreeModelDatabaseName());
 
     final InsertTabletStatement insertTabletStatement =
         PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
@@ -426,19 +485,24 @@ public class WriteBackSink implements PipeConnector {
   private void doTransfer(final PipeStatementInsertionEvent pipeStatementInsertionEvent)
       throws PipeException {
 
-    final TSStatus status =
-        pipeStatementInsertionEvent.isTableModelEvent()
-            ? executeStatementForTableModel(
-                rewriteTableModelDatabaseNameIfNecessary(
-                    pipeStatementInsertionEvent.getStatement()),
-                getTargetTableModelDatabaseNameOrDefault(
-                    pipeStatementInsertionEvent.getTableModelDatabaseName()),
-                pipeStatementInsertionEvent.getUserName())
-            : executeStatementForTreeModel(
-                rewriteTreeModelDatabaseNameIfNecessary(
-                    pipeStatementInsertionEvent.getStatement(),
-                    pipeStatementInsertionEvent.getTreeModelDatabaseName()),
-                pipeStatementInsertionEvent.getUserName());
+    final TSStatus status;
+    if (pipeStatementInsertionEvent.isTableModelEvent()) {
+      final String dataBaseName =
+          getTargetTableModelDatabaseNameOrDefault(
+              pipeStatementInsertionEvent.getTableModelDatabaseName());
+      status =
+          executeStatementForTableModel(
+              rewriteTableModelDatabaseNameIfNecessary(pipeStatementInsertionEvent.getStatement()),
+              dataBaseName,
+              pipeStatementInsertionEvent.getUserName());
+    } else {
+      status =
+          executeStatementForTreeModel(
+              rewriteTreeModelDatabaseNameIfNecessary(
+                  pipeStatementInsertionEvent.getStatement(),
+                  pipeStatementInsertionEvent.getTreeModelDatabaseName()),
+              pipeStatementInsertionEvent.getUserName());
+    }
 
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -453,9 +517,26 @@ public class WriteBackSink implements PipeConnector {
   }
 
   private String getTargetTableModelDatabaseNameOrDefault(final String databaseName) {
+    if (Objects.nonNull(invalidTargetTableModelDatabaseName)) {
+      throw new PipeException(
+          String.format(
+              "The target tree-model database %s cannot be used for table-model events because "
+                  + "the corresponding table-model database %s is invalid.",
+              targetTreeModelDatabaseName, invalidTargetTableModelDatabaseName));
+    }
+
+    validateTableModelDatabaseName(databaseName);
     return Objects.nonNull(targetTableModelDatabaseName)
         ? targetTableModelDatabaseName
         : databaseName;
+  }
+
+  private String getTargetTreeModelDatabaseNameOrDefault(final String databaseName) {
+    final String sourceTreeModelDatabaseName =
+        validateAndNormalizeTreeModelDatabaseName(databaseName);
+    return Objects.nonNull(targetTreeModelDatabaseName)
+        ? targetTreeModelDatabaseName
+        : sourceTreeModelDatabaseName;
   }
 
   private Statement rewriteTableModelDatabaseNameIfNecessary(final Statement statement) {
@@ -498,12 +579,13 @@ public class WriteBackSink implements PipeConnector {
 
   private InsertBaseStatement rewriteTreeModelDatabaseNameIfNecessary(
       final InsertBaseStatement statement, final String sourceTreeModelDatabaseName) {
+    final String normalizedSourceTreeModelDatabaseName =
+        validateAndNormalizeTreeModelDatabaseName(sourceTreeModelDatabaseName);
     if (Objects.isNull(targetTreeModelDatabaseName)) {
       return statement;
     }
 
-    rewriteTreeModelDatabaseName(
-        statement, PathUtils.qualifyDatabaseName(sourceTreeModelDatabaseName));
+    rewriteTreeModelDatabaseName(statement, normalizedSourceTreeModelDatabaseName);
     return statement;
   }
 
