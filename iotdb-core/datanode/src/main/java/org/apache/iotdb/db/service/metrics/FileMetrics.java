@@ -127,6 +127,14 @@ public class FileMetrics implements IMetricSet {
   }
 
   public Map<Integer, Long> getRegionSizeMap() {
+    return TS_FILE_METRICS.getRegionSizeMap();
+  }
+
+  public Map<Integer, Long> getRegionObjectSizeMap() {
+    return OBJECT_FILE_METRICS.getRegionSizeMap();
+  }
+
+  public Map<Integer, Long> getRegionTotalSizeMap() {
     Map<Integer, Long> regionSizeMap = new HashMap<>(TS_FILE_METRICS.getRegionSizeMap());
     OBJECT_FILE_METRICS
         .getRegionSizeMap()

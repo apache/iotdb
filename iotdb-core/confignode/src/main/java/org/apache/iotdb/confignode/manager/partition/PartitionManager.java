@@ -1147,6 +1147,14 @@ public class PartitionManager {
                         .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
                         .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
                 regionInfo.setRawDataSize(rawDataSize);
+
+                long objectFileSize =
+                    getLoadManager()
+                        .getLoadCache()
+                        .getRegionObjectSizeMap()
+                        .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
+                        .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
+                regionInfo.setObjectFileSize(objectFileSize);
               });
 
       return regionInfoListResp;

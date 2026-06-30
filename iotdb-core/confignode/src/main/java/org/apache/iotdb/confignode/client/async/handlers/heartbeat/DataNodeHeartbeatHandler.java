@@ -120,14 +120,24 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
         new RegionHeartbeatSample(
             heartbeatResp.getHeartbeatTimestamp(),
             getRegionHeartbeatStatus(regionGroupId, dataNodeRegionStatus));
-    // diskUsage is the TsFile bytes of this Region replica on this DataNode (nodeId). It is carried
-    // by the same heartbeat (regionDisk is keyed by the consensus group id). RegionGroupCache later
-    // sums it across replicas into the RegionGroup's diskUsage, which the LOAD BALANCE migrators
-    // and
-    // RemoveDataNodeHandler consume. Without this the diskUsage stays 0 and balancing becomes
-    // disk-blind (diskCounter shows 0MB).
+    // diskUsage is the total on-disk bytes of this Region replica on this DataNode:
+    // the TsFile bytes (regionDisk) plus the object-storage bytes
+    // (dataRegionObjectFileSize). The compression-ratio fix split the reported region
+    // disk into a TsFile-only map and an object map, so the two parts must be re-summed
+    // here for balancing while SHOW REGIONS reports them apart. RegionGroupCache later
+    // sums diskUsage across replicas into the RegionGroup's diskUsage, which the LOAD
+    // BALANCE migrators and RemoveDataNodeHandler consume. Object bytes must be included,
+    // otherwise object-storage DataRegions are under-counted and balancing goes blind to
+    // their footprint; without them diskUsage stays 0 (diskCounter shows 0MB).
     if (heartbeatResp.getRegionDisk() != null) {
-      sample.setDiskUsage(heartbeatResp.getRegionDisk().getOrDefault(regionGroupId.getId(), 0L));
+      long tsFileSize = heartbeatResp.getRegionDisk().getOrDefault(regionGroupId.getId(), 0L);
+      // dataRegionObjectFileSize is optional and may be unset by an older DataNode; in
+      // that case fall back to the TsFile-only size rather than risking an NPE.
+      long objectFileSize =
+          heartbeatResp.isSetDataRegionObjectFileSize()
+              ? heartbeatResp.getDataRegionObjectFileSize().getOrDefault(regionGroupId.getId(), 0L)
+              : 0L;
+      sample.setDiskUsage(tsFileSize + objectFileSize);
     }
     loadManager.getLoadCache().cacheRegionHeartbeatSample(regionGroupId, nodeId, sample, false);
   }
@@ -205,6 +215,11 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
   private void cacheRegionSizeSamples(TDataNodeHeartbeatResp heartbeatResp) {
     if (heartbeatResp.isSetRegionDisk()) {
       loadManager.getLoadCache().updateRegionSizeMap(nodeId, heartbeatResp.getRegionDisk());
+    }
+    if (heartbeatResp.isSetDataRegionObjectFileSize()) {
+      loadManager
+          .getLoadCache()
+          .updateRegionObjectSizeMap(nodeId, heartbeatResp.getDataRegionObjectFileSize());
     }
     if (heartbeatResp.isSetDataRegionRawDataSize()) {
       loadManager

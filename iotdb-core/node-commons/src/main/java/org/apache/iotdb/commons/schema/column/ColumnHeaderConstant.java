@@ -176,6 +176,7 @@ public class ColumnHeaderConstant {
   public static final String MIN_SESSION_PER_USER = "MinSessionPerUser";
   public static final String CREATE_TIME = "CreateTime";
   public static final String TSFILE_SIZE = "TsFileSize";
+  public static final String OBJECT_SIZE = "ObjectSize";
   public static final String COMPRESSION_RATIO = "CompressionRatio";
 
   // column names for show migrations statement
@@ -277,6 +278,7 @@ public class ColumnHeaderConstant {
   public static final String INTERNAL_ADDRESS_TABLE_MODEL = "internal_address";
   public static final String CREATE_TIME_TABLE_MODEL = "create_time";
   public static final String TS_FILE_SIZE_BYTES_TABLE_MODEL = "tsfile_size_bytes";
+  public static final String OBJECT_SIZE_BYTES_TABLE_MODEL = "object_size_bytes";
   public static final String COMPRESSION_RATIO_TABLE_MODEL = "compression_ratio";
 
   public static final String CREATION_TIME_TABLE_MODEL = "creation_time";
@@ -526,7 +528,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(ROLE, TSDataType.TEXT),
           new ColumnHeader(CREATE_TIME, TSDataType.TEXT),
           new ColumnHeader(TSFILE_SIZE, TSDataType.TEXT),
-          new ColumnHeader(COMPRESSION_RATIO, TSDataType.DOUBLE));
+          new ColumnHeader(COMPRESSION_RATIO, TSDataType.DOUBLE),
+          new ColumnHeader(OBJECT_SIZE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showMigrationsColumnHeaders =
       ImmutableList.of(

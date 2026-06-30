@@ -3401,6 +3401,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setLoadSample(loadSample);
 
       resp.setRegionDisk(FileMetrics.getInstance().getRegionSizeMap());
+      resp.setDataRegionObjectFileSize(FileMetrics.getInstance().getRegionObjectSizeMap());
       Map<Integer, Long> regionRawDataSize = new HashMap<>();
       CompressionRatio.getInstance()
           .getDataRegionRatioMap()

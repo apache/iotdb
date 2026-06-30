@@ -35,6 +35,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.record.Tablet;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -52,9 +53,13 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showRegionColumnHeaders;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -192,6 +197,48 @@ public class IoTDBObjectInsertIT {
       }
     }
     Assert.assertTrue(success);
+  }
+
+  @Test
+  public void testShowRegionSizeColumnsWithObjectFile()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "CREATE TABLE show_region_object_size("
+              + "tag1 string tag, s1 int64 field, s2 object field)");
+      session.executeNonQueryStatement(
+          "INSERT INTO show_region_object_size(time, tag1, s1, s2) "
+              + "VALUES(1, 'd1', 100, to_object(true, 0, X'cafe'))");
+      session.executeNonQueryStatement("FLUSH");
+
+      Awaitility.await()
+          .atMost(2, TimeUnit.MINUTES)
+          .pollDelay(1, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                boolean hasDataRegion = false;
+                try (final SessionDataSet dataSet =
+                    session.executeQueryStatement("SHOW REGIONS FROM db1")) {
+                  assertEquals(showRegionColumnHeaders.size(), dataSet.getColumnNames().size());
+                  assertEquals(
+                      "ObjectSize",
+                      dataSet.getColumnNames().get(showRegionColumnHeaders.size() - 1));
+
+                  final SessionDataSet.DataIterator iterator = dataSet.iterator();
+                  while (iterator.next()) {
+                    if (!"DataRegion".equals(iterator.getString("Type"))) {
+                      continue;
+                    }
+                    hasDataRegion = true;
+                    assertFalse("Unknown".equals(iterator.getString("TsFileSize")));
+                    assertTrue(iterator.getDouble("CompressionRatio") > 0);
+                    assertEquals("2 B", iterator.getString("ObjectSize"));
+                  }
+                }
+                assertTrue(hasDataRegion);
+              });
+    }
   }
 
   @Test

@@ -204,6 +204,9 @@ public class InformationSchema {
     regionTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.COMPRESSION_RATIO_TABLE_MODEL, TSDataType.DOUBLE));
+    regionTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.OBJECT_SIZE_BYTES_TABLE_MODEL, TSDataType.INT64));
     schemaTables.put(REGIONS, regionTable);
 
     final TsTable pipeTable = new TsTable(PIPES);

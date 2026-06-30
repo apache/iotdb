@@ -659,12 +659,19 @@ public class InformationSchemaContentSupplierFactory {
       if (regionInfo.getConsensusGroupId().getType().ordinal()
           == TConsensusGroupType.DataRegion.ordinal()) {
         columnBuilders[12].writeLong(regionInfo.getTsFileSize());
+        long totalDiskSize = regionInfo.getTsFileSize() + regionInfo.getObjectFileSize();
         columnBuilders[13].writeDouble(
-            MathUtils.roundWithGivenPrecision(
-                (double) regionInfo.getRawDataSize() / regionInfo.getTsFileSize(), 2));
+            totalDiskSize == 0
+                ? Double.NaN
+                : MathUtils.roundWithGivenPrecision(
+                    (double) (regionInfo.getRawDataSize() + regionInfo.getObjectFileSize())
+                        / totalDiskSize,
+                    2));
+        columnBuilders[14].writeLong(regionInfo.getObjectFileSize());
       } else {
         columnBuilders[12].appendNull();
         columnBuilders[13].appendNull();
+        columnBuilders[14].appendNull();
       }
       resultBuilder.declarePosition();
     }

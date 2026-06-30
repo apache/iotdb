@@ -812,6 +812,7 @@ struct TRegionInfo {
   11: optional string internalAddress
   12: optional i64 tsFileSize
   13: optional i64 rawDataSize
+  14: optional i64 objectFileSize
 }
 
 struct TShowRegionResp {

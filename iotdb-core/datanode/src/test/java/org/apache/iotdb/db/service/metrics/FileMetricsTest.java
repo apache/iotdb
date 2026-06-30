@@ -42,7 +42,7 @@ public class FileMetricsTest {
   }
 
   @Test
-  public void testRegionSizeMapIncludesObjectFileSize() {
+  public void testRegionSizeMaps() {
     FileMetrics.getInstance()
         .addTsFile(DATABASE, REGION_WITH_TSFILE, TSFILE_SIZE, true, TSFILE_NAME);
     FileMetrics.getInstance()
@@ -51,12 +51,23 @@ public class FileMetricsTest {
         .increaseObjectFileSize(DATABASE, REGION_WITH_OBJECT_ONLY, OBJECT_ONLY_SIZE);
 
     Map<Integer, Long> regionSizeMap = FileMetrics.getInstance().getRegionSizeMap();
+    Map<Integer, Long> regionObjectSizeMap = FileMetrics.getInstance().getRegionObjectSizeMap();
+    Map<Integer, Long> regionTotalSizeMap = FileMetrics.getInstance().getRegionTotalSizeMap();
 
     Assert.assertEquals(
-        Long.valueOf(TSFILE_SIZE + OBJECT_FILE_SIZE),
-        regionSizeMap.get(Integer.parseInt(REGION_WITH_TSFILE)));
+        Long.valueOf(TSFILE_SIZE), regionSizeMap.get(Integer.parseInt(REGION_WITH_TSFILE)));
+    Assert.assertNull(regionSizeMap.get(Integer.parseInt(REGION_WITH_OBJECT_ONLY)));
+    Assert.assertEquals(
+        Long.valueOf(OBJECT_FILE_SIZE),
+        regionObjectSizeMap.get(Integer.parseInt(REGION_WITH_TSFILE)));
     Assert.assertEquals(
         Long.valueOf(OBJECT_ONLY_SIZE),
-        regionSizeMap.get(Integer.parseInt(REGION_WITH_OBJECT_ONLY)));
+        regionObjectSizeMap.get(Integer.parseInt(REGION_WITH_OBJECT_ONLY)));
+    Assert.assertEquals(
+        Long.valueOf(TSFILE_SIZE + OBJECT_FILE_SIZE),
+        regionTotalSizeMap.get(Integer.parseInt(REGION_WITH_TSFILE)));
+    Assert.assertEquals(
+        Long.valueOf(OBJECT_ONLY_SIZE),
+        regionTotalSizeMap.get(Integer.parseInt(REGION_WITH_OBJECT_ONLY)));
   }
 }

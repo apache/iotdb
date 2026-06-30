@@ -101,6 +101,8 @@ public class LoadCache {
   private final Map<Integer, Map<Integer, Long>> regionSizeMap;
   // Map<NodeId, Map<RegionGroupId, RegionRawSize>>
   private final Map<Integer, Map<Integer, Long>> regionRawSizeMap;
+  // Map<NodeId, Map<RegionGroupId, RegionObjectFileSize>>
+  private final Map<Integer, Map<Integer, Long>> regionObjectSizeMap;
   // Map<RegionGroupId, ConsensusGroupCache>
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
@@ -115,6 +117,7 @@ public class LoadCache {
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
     this.regionSizeMap = new ConcurrentHashMap<>();
     this.regionRawSizeMap = new ConcurrentHashMap<>();
+    this.regionObjectSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
     this.topologyGraph = new HashMap<>();
@@ -927,11 +930,19 @@ public class LoadCache {
     this.regionRawSizeMap.put(dataNodeId, regionRawSizeMap);
   }
 
+  public void updateRegionObjectSizeMap(int dataNodeId, Map<Integer, Long> regionObjectSizeMap) {
+    this.regionObjectSizeMap.put(dataNodeId, regionObjectSizeMap);
+  }
+
   public Map<Integer, Map<Integer, Long>> getRegionSizeMap() {
     return regionSizeMap;
   }
 
   public Map<Integer, Map<Integer, Long>> getRegionRawSizeMap() {
     return regionRawSizeMap;
+  }
+
+  public Map<Integer, Map<Integer, Long>> getRegionObjectSizeMap() {
+    return regionObjectSizeMap;
   }
 }

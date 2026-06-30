@@ -115,19 +115,34 @@ public class ShowRegionTask implements IConfigTask {
         if (regionInfo.getConsensusGroupId().getType().ordinal()
             == TConsensusGroupType.DataRegion.ordinal()) {
           long tsFileSize = regionInfo.getTsFileSize();
+          long objectFileSize = regionInfo.getObjectFileSize();
           if (tsFileSize != -1) {
             regionSizeStr = FileUtils.humanReadableByteCountSI(tsFileSize);
           } else {
             regionSizeStr = "Unknown";
           }
           long rawDataSize = regionInfo.getRawDataSize();
-          if (rawDataSize != -1 && tsFileSize != -1) {
+          if (rawDataSize != -1 && tsFileSize != -1 && objectFileSize != -1) {
+            long totalDiskSize = tsFileSize + objectFileSize;
             compressionRatio =
-                MathUtils.roundWithGivenPrecision((double) rawDataSize / tsFileSize, 2);
+                totalDiskSize == 0
+                    ? Double.NaN
+                    : MathUtils.roundWithGivenPrecision(
+                        (double) (rawDataSize + objectFileSize) / totalDiskSize, 2);
           }
         }
         builder.getColumnBuilder(12).writeBinary(BytesUtils.valueOf(regionSizeStr));
         builder.getColumnBuilder(13).writeDouble(compressionRatio);
+        builder
+            .getColumnBuilder(14)
+            .writeBinary(
+                BytesUtils.valueOf(
+                    regionInfo.getObjectFileSize() != -1
+                        ? FileUtils.humanReadableByteCountSI(regionInfo.getObjectFileSize())
+                        : regionInfo.getConsensusGroupId().getType().ordinal()
+                                == TConsensusGroupType.DataRegion.ordinal()
+                            ? "Unknown"
+                            : ""));
         builder.declarePosition();
       }
     }
