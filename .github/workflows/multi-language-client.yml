@@ -1,4 +1,4 @@
-# Shared client CI: run only affected language jobs via paths-filter.
+# Shared client CI: run only affected language jobs via changed path detection.
 name: Multi-Language Client
 on:
   push:
@@ -50,36 +50,55 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
     steps:
       - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v3
-        id: filter
         with:
-          filters: |
-            cpp:
-              - 'iotdb-client/pom.xml'
-              - 'iotdb-client/client-cpp/**'
-              - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
-              - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
-              - '.github/workflows/multi-language-client.yml'
-              - '.github/workflows/client-cpp-package.yml'
-              - '.github/scripts/package-client-cpp-*.sh'
-            python:
-              - 'pom.xml'
-              - 'iotdb-client/pom.xml'
-              - 'iotdb-client/client-py/**'
-              - 'docker/src/main/Dockerfile-1c1d'
-              - '.github/workflows/multi-language-client.yml'
-            go:
-              - 'pom.xml'
-              - 'iotdb-core/**'
-              - 'iotdb-api/**'
-              - 'iotdb-protocol/**'
-              - 'distribution/**'
-              - 'integration-test/**'
-              - 'iotdb-client/session/**'
-              - 'iotdb-client/jdbc/**'
-              - 'iotdb-client/cli/**'
-              - 'iotdb-client/service-rpc/**'
-              - '.github/workflows/multi-language-client.yml'
+          fetch-depth: 0
+      - name: Detect changed client paths
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.sha }}"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          else
+            echo "cpp=true" >> "$GITHUB_OUTPUT"
+            echo "python=true" >> "$GITHUB_OUTPUT"
+            echo "go=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$BASE" =~ ^0+$ ]]; then
+            BASE="$(git hash-object -t tree /dev/null)"
+          fi
+
+          cpp=false
+          python=false
+          go=false
+          while IFS= read -r file; do
+            case "$file" in
+              iotdb-client/pom.xml|iotdb-client/client-cpp/*|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/multi-language-client.yml|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
+                cpp=true
+                ;;
+            esac
+            case "$file" in
+              pom.xml|iotdb-client/pom.xml|iotdb-client/client-py/*|docker/src/main/Dockerfile-1c1d|.github/workflows/multi-language-client.yml)
+                python=true
+                ;;
+            esac
+            case "$file" in
+              pom.xml|iotdb-core/*|iotdb-api/*|iotdb-protocol/*|distribution/*|integration-test/*|iotdb-client/session/*|iotdb-client/jdbc/*|iotdb-client/cli/*|iotdb-client/service-rpc/*|.github/workflows/multi-language-client.yml)
+                go=true
+                ;;
+            esac
+          done < <(git diff --name-only "$BASE" "$HEAD")
+
+          echo "cpp=${cpp}" >> "$GITHUB_OUTPUT"
+          echo "python=${python}" >> "$GITHUB_OUTPUT"
+          echo "go=${go}" >> "$GITHUB_OUTPUT"
 
   cpp:
     needs: changes
