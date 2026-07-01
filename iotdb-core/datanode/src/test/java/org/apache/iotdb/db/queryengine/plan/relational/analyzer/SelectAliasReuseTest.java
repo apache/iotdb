@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphJsonPrinter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
@@ -495,6 +496,24 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void lateralColumnAliasDeepChainPlanExpressionsRemainShallow() {
+    LogicalQueryPlan plan = new PlanTester().createPlan(wideLateralColumnAliasSql(200));
+    List<ProjectNode> projects = new ArrayList<>();
+    collectProjectNodes(plan.getRootNode(), projects);
+
+    int maxArithmeticDepth = 0;
+    for (ProjectNode project : projects) {
+      for (Expression expression : project.getAssignments().getExpressions()) {
+        maxArithmeticDepth = Math.max(maxArithmeticDepth, arithmeticDepth(expression));
+      }
+    }
+
+    assertTrue("Max arithmetic depth: " + maxArithmeticDepth, maxArithmeticDepth <= 32);
+    String planJson = PlanGraphJsonPrinter.toPrettyJson(plan.getRootNode());
+    assertTrue("Plan JSON length: " + planJson.length(), planJson.length() < 2_000_000);
+  }
+
+  @Test
   public void duplicateAliasesAreAmbiguous() {
     assertAnalyzeSemanticException(
         "SELECT s1 AS x, s2 AS x FROM table1 ORDER BY x", "Column alias 'x' is ambiguous");
@@ -679,6 +698,17 @@ public class SelectAliasReuseTest {
       }
     }
     return false;
+  }
+
+  private static int arithmeticDepth(Expression expression) {
+    if (!(expression instanceof ArithmeticBinaryExpression)) {
+      return 0;
+    }
+    ArithmeticBinaryExpression arithmeticExpression = (ArithmeticBinaryExpression) expression;
+    return 1
+        + Math.max(
+            arithmeticDepth(arithmeticExpression.getLeft()),
+            arithmeticDepth(arithmeticExpression.getRight()));
   }
 
   private static boolean isSymbolReference(Expression expression, Symbol symbol) {

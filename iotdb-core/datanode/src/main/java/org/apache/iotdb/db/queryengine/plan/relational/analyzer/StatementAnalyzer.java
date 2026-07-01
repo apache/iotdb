@@ -36,28 +36,19 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Columns;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentDatabase;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentTime;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentUser;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DecimalLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Fill;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupingElement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupingSets;
@@ -82,7 +73,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
@@ -257,6 +247,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -557,10 +548,6 @@ public class StatementAnalyzer {
         ExpressionTreeRewriter.rewriteWith(rewriter, expression), rewriter.getReferences());
   }
 
-  private static Expression copyExpression(Expression expression) {
-    return ExpressionTreeRewriter.rewriteWith(new DeepCopyExpressionRewriter(), expression);
-  }
-
   private static final class LateralColumnAliasRewrite {
     private final Expression expression;
     private final Map<NodeRef<Expression>, Expression> references;
@@ -583,8 +570,7 @@ public class StatementAnalyzer {
   private static final class LateralColumnAliasRewriter extends ExpressionRewriter<Void> {
     private final Scope scope;
     private final SelectAliasResolver visibleAliases;
-    private final ImmutableMap.Builder<NodeRef<Expression>, Expression> references =
-        ImmutableMap.builder();
+    private final Map<NodeRef<Expression>, Expression> references = new LinkedHashMap<>();
 
     private LateralColumnAliasRewriter(Scope scope, SelectAliasResolver visibleAliases) {
       this.scope = requireNonNull(scope, "scope is null");
@@ -592,7 +578,7 @@ public class StatementAnalyzer {
     }
 
     private Map<NodeRef<Expression>, Expression> getReferences() {
-      return references.buildOrThrow();
+      return ImmutableMap.copyOf(references);
     }
 
     @Override
@@ -613,9 +599,9 @@ public class StatementAnalyzer {
                 "Lateral column alias '%s' containing window function is not supported",
                 node.getValue()));
       }
-      Expression copiedExpression = copyExpression(selectAlias.get().getRewrittenExpression());
-      references.put(NodeRef.of(copiedExpression), selectAlias.get().getRewrittenExpression());
-      return copiedExpression;
+      Expression rewrittenExpression = selectAlias.get().getRewrittenExpression();
+      references.put(NodeRef.of(rewrittenExpression), rewrittenExpression);
+      return rewrittenExpression;
     }
 
     @Override
@@ -776,172 +762,6 @@ public class StatementAnalyzer {
       }
       return node;
     }
-  }
-
-  private static final class DeepCopyExpressionRewriter extends ExpressionRewriter<Void> {
-
-    @Override
-    public Expression rewriteIdentifier(
-        Identifier node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
-      return copyIdentifier(node);
-    }
-
-    @Override
-    public Expression rewriteFieldReference(
-        FieldReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
-      return new FieldReference(node.getFieldIndex());
-    }
-
-    @Override
-    public Expression rewriteAllRows(
-        AllRows node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
-      return node.getLocation().map(AllRows::new).orElseGet(AllRows::new);
-    }
-
-    @Override
-    public Expression rewriteFunctionCall(
-        FunctionCall node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
-      if (node.getWindow().isPresent()) {
-        throw new SemanticException(
-            String.format(
-                "Lateral column alias containing window function is not supported: %s", node));
-      }
-
-      List<Expression> arguments =
-          node.getArguments().stream()
-              .map(argument -> treeRewriter.rewrite(argument, context))
-              .collect(toImmutableList());
-      return node.getLocation()
-          .map(
-              location ->
-                  new FunctionCall(
-                      location,
-                      node.getName(),
-                      Optional.empty(),
-                      node.getNullTreatment(),
-                      node.isDistinct(),
-                      node.getProcessingMode(),
-                      arguments))
-          .orElseGet(
-              () ->
-                  new FunctionCall(
-                      node.getName(), node.isDistinct(), node.getProcessingMode(), arguments));
-    }
-
-    @Override
-    public Expression rewriteLiteral(
-        Literal node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
-      return copyLiteral(node);
-    }
-
-    @Override
-    public Expression rewriteParameter(
-        Parameter node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
-      return node.getLocation()
-          .map(location -> new Parameter(location, node.getId()))
-          .orElseGet(() -> new Parameter(node.getId()));
-    }
-
-    @Override
-    public Expression rewriteCurrentDatabase(
-        CurrentDatabase node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
-      return node.getLocation().map(CurrentDatabase::new).orElseGet(CurrentDatabase::new);
-    }
-
-    @Override
-    public Expression rewriteCurrentTime(
-        CurrentTime node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
-      return node.getLocation()
-          .map(
-              location ->
-                  node.getPrecision()
-                      .map(precision -> new CurrentTime(location, node.getFunction(), precision))
-                      .orElseGet(() -> new CurrentTime(location, node.getFunction())))
-          .orElseThrow(() -> new IllegalStateException("CurrentTime location is missing"));
-    }
-
-    @Override
-    public Expression rewriteCurrentUser(
-        CurrentUser node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
-      return node.getLocation().map(CurrentUser::new).orElseGet(CurrentUser::new);
-    }
-
-    @Override
-    public Expression rewriteSymbolReference(
-        SymbolReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
-      return new SymbolReference(node.getName());
-    }
-  }
-
-  private static Identifier copyIdentifier(Identifier node) {
-    return node.getLocation()
-        .map(location -> new Identifier(location, node.getValue(), node.isDelimited()))
-        .orElseGet(() -> new Identifier(node.getValue(), node.isDelimited()));
-  }
-
-  private static Literal copyLiteral(Literal node) {
-    if (node instanceof BinaryLiteral) {
-      BinaryLiteral literal = (BinaryLiteral) node;
-      return node.getLocation()
-          .map(location -> new BinaryLiteral(location, literal.toHexString()))
-          .orElseGet(() -> new BinaryLiteral(literal.getValue()));
-    }
-    if (node instanceof BooleanLiteral) {
-      BooleanLiteral literal = (BooleanLiteral) node;
-      String value = Boolean.toString(literal.getValue());
-      return node.getLocation()
-          .map(location -> new BooleanLiteral(location, value))
-          .orElseGet(() -> new BooleanLiteral(value));
-    }
-    if (node instanceof DecimalLiteral) {
-      DecimalLiteral literal = (DecimalLiteral) node;
-      return node.getLocation()
-          .map(location -> new DecimalLiteral(location, literal.getValue()))
-          .orElseGet(() -> new DecimalLiteral(literal.getValue()));
-    }
-    if (node instanceof DoubleLiteral) {
-      DoubleLiteral literal = (DoubleLiteral) node;
-      String value = Double.toString(literal.getValue());
-      return node.getLocation()
-          .map(location -> new DoubleLiteral(location, value))
-          .orElseGet(() -> new DoubleLiteral(literal.getValue()));
-    }
-    if (node instanceof FloatLiteral) {
-      FloatLiteral literal = (FloatLiteral) node;
-      String value = Float.toString(literal.getValue());
-      return node.getLocation()
-          .map(location -> new FloatLiteral(location, value))
-          .orElseGet(() -> new FloatLiteral(literal.getValue()));
-    }
-    if (node instanceof GenericLiteral) {
-      GenericLiteral literal = (GenericLiteral) node;
-      return node.getLocation()
-          .map(location -> new GenericLiteral(location, literal.getType(), literal.getValue()))
-          .orElseGet(() -> new GenericLiteral(literal.getType(), literal.getValue()));
-    }
-    if (node instanceof LongLiteral) {
-      LongLiteral literal = (LongLiteral) node;
-      return node.getLocation()
-          .map(location -> new LongLiteral(location, literal.getValue()))
-          .orElseGet(() -> new LongLiteral(literal.getValue()));
-    }
-    if (node instanceof NullLiteral) {
-      return node.getLocation().map(NullLiteral::new).orElseGet(NullLiteral::new);
-    }
-    if (node instanceof StringLiteral) {
-      StringLiteral literal = (StringLiteral) node;
-      return node.getLocation()
-          .map(location -> new StringLiteral(location, literal.getValue()))
-          .orElseGet(() -> new StringLiteral(literal.getValue()));
-    }
-    if (node instanceof TimeDurationLiteral) {
-      TimeDurationLiteral literal = (TimeDurationLiteral) node;
-      return node.getLocation()
-          .map(location -> new TimeDurationLiteral(location, literal.getValue()))
-          .orElseGet(() -> new TimeDurationLiteral(literal.getValue()));
-    }
-    throw new UnsupportedOperationException(
-        "Unsupported literal type for lateral column alias: " + node.getClass().getName());
   }
 
   /**
