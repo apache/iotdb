@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
@@ -292,6 +293,34 @@ public class PartitionInfoTest {
               Assert.assertEquals("127.0.0.1", regionInfo.getClientRpcIp());
               Assert.assertEquals("root.test1", regionInfo.getDatabase());
             });
+  }
+
+  @Test
+  public void testRegionGroupCount() throws DatabaseNotExistsException {
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.region_count")));
+
+    CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    createRegionGroupsPlan.addRegionGroup(
+        "root.region_count",
+        generateTRegionReplicaSet(
+            testFlag.SchemaPartition.getFlag(),
+            generateTConsensusGroupId(
+                testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion)));
+    createRegionGroupsPlan.addRegionGroup(
+        "root.region_count",
+        generateTRegionReplicaSet(
+            testFlag.DataPartition.getFlag(),
+            generateTConsensusGroupId(
+                testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion)));
+    partitionInfo.createRegionGroups(createRegionGroupsPlan);
+
+    Assert.assertEquals(
+        1,
+        partitionInfo.getRegionGroupCount("root.region_count", TConsensusGroupType.SchemaRegion));
+    Assert.assertEquals(
+        1, partitionInfo.getRegionGroupCount("root.region_count", TConsensusGroupType.DataRegion));
   }
 
   private TRegionReplicaSet generateTRegionReplicaSet(

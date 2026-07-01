@@ -50,6 +50,18 @@ public final class ConfigNodeMessages {
       "Can't force logWriter for ConfigNode SimpleConsensus mode";
   public static final String CAN_T_SERIALIZE_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
       "Can't serialize current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode";
+  public static final String PERSIST_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED =
+      "Persist ConfigNode SimpleConsensus log failed: ";
+  public static final String PERSIST_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED =
+      "Persist current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode failed";
+  public static final String FAILED_TO_ROLLBACK_PERSISTED_CONFIGNODE_SIMPLECONSENSUS_LOG =
+      "Failed to rollback persisted ConfigNode SimpleConsensus log. The persisted plan may be replayed after restart.";
+  public static final String ROLLBACK_FAILED_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED =
+      "Rollback failed ConfigPhysicalPlan for ConfigNode SimpleConsensus mode failed, planType: {}, logFile: {}, truncateOffset: {}, endIndexBeforeWrite: {}";
+  public static final String SEAL_RECOVERED_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED =
+      "Seal recovered ConfigNode SimpleConsensus log failed: {}";
+  public static final String SIMPLECONSENSUS_LOG_WRITER_IS_NOT_INITIALIZED =
+      "SimpleConsensus log writer is not initialized.";
   public static final String CAN_T_START_CONFIGNODE_CONSENSUS_GROUP =
       "Can't start ConfigNode consensus group!";
   public static final String CHANGE_REGIONS_LEADER_ERROR_ON_DATE_NODE =
