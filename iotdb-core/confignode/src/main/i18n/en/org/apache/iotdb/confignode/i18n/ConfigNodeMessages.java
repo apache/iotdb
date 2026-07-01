@@ -79,6 +79,13 @@ public final class ConfigNodeMessages {
   public static final String CONFIGNODE_EXITING = "ConfigNode exiting...";
   public static final String CONFIGNODE_NEED_REDIRECT_TO_RETRY =
       "ConfigNode need redirect to  {}, retry {} ...";
+  public static final String CONFIGNODE_MEMORY_PROPORTION_SHOULD_BE_IN_THE_FORM_OF_PIPE_FREE =
+      "The parameter confignode_memory_proportion should be in the form of Pipe:Free, "
+          + "but got {}. Use default value 1:9.";
+  public static final String INITIAL_CONFIGNODE_ALLOCATE_MEMORY_FOR_PIPE =
+      "initial ConfigNode allocateMemoryForPipe = {}";
+  public static final String INITIAL_CONFIGNODE_FREE_MEMORY =
+      "initial ConfigNode freeMemory = {}";
   public static final String CONFIGNODE_PORT_CHECK_SUCCESSFUL = "configNode port check successful.";
   public static final String CONFIGNODE_RPC_SERVICE_FINISHED_TO_REMOVE_AINODE_RESULT =
       "ConfigNode RPC Service finished to remove AINode, result: {}";

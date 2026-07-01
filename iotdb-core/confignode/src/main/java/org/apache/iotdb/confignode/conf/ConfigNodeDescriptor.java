@@ -66,6 +66,8 @@ public class ConfigNodeDescriptor {
 
   private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
+  private final ConfigNodeMemoryConfig memoryConfig = new ConfigNodeMemoryConfig();
+
   static {
     URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
@@ -87,6 +89,10 @@ public class ConfigNodeDescriptor {
 
   public ConfigNodeConfig getConf() {
     return conf;
+  }
+
+  public ConfigNodeMemoryConfig getMemoryConfig() {
+    return memoryConfig;
   }
 
   /**
@@ -202,11 +208,14 @@ public class ConfigNodeDescriptor {
       LOGGER.warn(
           ConfigNodeMessages.COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN,
           CommonConfig.SYSTEM_CONFIG_NAME);
+      memoryConfig.init(trimProperties);
     }
   }
 
   private void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
     ConfigurationFileUtils.updateAppliedProperties(properties, false);
+    memoryConfig.init(properties);
+
     conf.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
 
     conf.setInternalAddress(
