@@ -357,7 +357,7 @@ public class IoTDBRemoveDataNodeNormalIT {
         removeSuccess = true;
       } catch (ConditionTimeoutException e) {
         if (expectRemoveSuccess) {
-          LOGGER.error("Remove DataNodes timeout in 2 minutes");
+          LOGGER.error("Remove DataNodes timeout in 5 minutes");
           Assert.fail();
         }
       }

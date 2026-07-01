@@ -68,7 +68,14 @@ public class IoTDBMigrateMultiRegionForIoTV1IT extends IoTDBRegionOperationRelia
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataReplicationFactor(1)
-        .setSchemaReplicationFactor(1);
+        .setSchemaReplicationFactor(1)
+        // Create 6 data region groups (> 5 DataNodes) so that, with replication factor 1, at least
+        // one DataNode is guaranteed by pigeonhole to host >= 2 regions - the precondition of
+        // selectDataNodeHostingMultipleRegions below. Under the default AUTO policy only ~2-3
+        // regions were created and a balanced spread could leave every DataNode with a single
+        // region, making this test flaky ("Cannot find a DataNode hosting at least two regions").
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
+        .setDefaultDataRegionGroupNumPerDatabase(6);
 
     EnvFactory.getEnv().initClusterEnvironment(1, 5);
 
