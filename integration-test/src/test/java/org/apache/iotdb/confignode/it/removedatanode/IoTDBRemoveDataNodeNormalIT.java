@@ -56,12 +56,14 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getAllRegionMap;
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getDataRegionMap;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.awaitUntilSuccess;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.generateRemoveString;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.getConnectionWithSQLType;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.restartDataNodes;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.selectRemoveDataNodes;
+import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.selectRemoveDataNodesWithoutRegionConflict;
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
 @Category({ClusterIT.class})
@@ -286,8 +288,17 @@ public class IoTDBRemoveDataNodeNormalIT {
         allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
       }
 
-      // Select data nodes to remove
-      final Set<Integer> removeDataNodes = selectRemoveDataNodes(allDataNodeId, removeDataNodeNum);
+      // Select data nodes to remove. When removing more than one DataNode we must avoid picking two
+      // DataNodes that host replicas of the same consensus group, otherwise the
+      // RemoveDataNodesProcedure would try to migrate two replicas of one group at once, which the
+      // ConfigNode rejects ("Only one replica of the same consensus group is allowed to be migrated
+      // at the same time."). Selecting purely at random therefore makes this test flaky, so use a
+      // conflict-free selection.
+      final Set<Integer> removeDataNodes =
+          removeDataNodeNum > 1
+              ? selectRemoveDataNodesWithoutRegionConflict(
+                  allDataNodeId, removeDataNodeNum, getAllRegionMap(statement))
+              : selectRemoveDataNodes(allDataNodeId, removeDataNodeNum);
 
       List<DataNodeWrapper> removeDataNodeWrappers =
           removeDataNodes.stream()
