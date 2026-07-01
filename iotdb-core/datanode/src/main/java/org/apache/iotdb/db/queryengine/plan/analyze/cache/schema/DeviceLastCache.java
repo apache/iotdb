@@ -23,6 +23,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -122,15 +123,27 @@ public class DeviceLastCache {
       final @Nonnull String[] measurements,
       final @Nonnull TimeValuePair[] timeValuePairs,
       final boolean invalidateNull) {
+    return tryUpdate(measurements, null, timeValuePairs, invalidateNull);
+  }
+
+  int tryUpdate(
+      final @Nonnull String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final @Nonnull TimeValuePair[] timeValuePairs,
+      final boolean invalidateNull) {
     final AtomicInteger diff = new AtomicInteger(0);
     long lastTime = Long.MIN_VALUE;
 
     for (int i = 0; i < measurements.length; ++i) {
+      final String measurement = getRawMeasurement(measurements, measurementSchemas, i);
+      if (Objects.isNull(measurement)) {
+        continue;
+      }
       if (Objects.isNull(timeValuePairs[i])) {
         if (invalidateNull) {
           diff.addAndGet(
-              -((int) RamUsageEstimator.sizeOf(measurements[i])
-                  + getTvPairEntrySize(measurement2CachedLastMap.remove(measurements[i]))));
+              -((int) RamUsageEstimator.sizeOf(measurement)
+                  + getTvPairEntrySize(measurement2CachedLastMap.remove(measurement))));
         }
         continue;
       }
@@ -140,8 +153,8 @@ public class DeviceLastCache {
         lastTime = timeValuePairs[i].getTimestamp();
       }
       measurement2CachedLastMap.computeIfPresent(
-          measurements[i],
-          (measurement, tvPair) -> {
+          measurement,
+          (measurementName, tvPair) -> {
             if (tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
               diff.addAndGet(getDiffSize(tvPair, timeValuePairs[finalI]));
               return timeValuePairs[finalI];
@@ -157,6 +170,21 @@ public class DeviceLastCache {
                 ? new TimeValuePair(finalLastTime, EMPTY_PRIMITIVE_TYPE)
                 : tvPair);
     return diff.get();
+  }
+
+  @Nullable
+  private static String getRawMeasurement(
+      final @Nonnull String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final int index) {
+    if (Objects.isNull(measurements[index])) {
+      return null;
+    }
+    return Objects.nonNull(measurementSchemas)
+            && index < measurementSchemas.length
+            && Objects.nonNull(measurementSchemas[index])
+        ? measurementSchemas[index].getMeasurementId()
+        : measurements[index];
   }
 
   @GuardedBy("DataRegionInsertLock#writeLock")
