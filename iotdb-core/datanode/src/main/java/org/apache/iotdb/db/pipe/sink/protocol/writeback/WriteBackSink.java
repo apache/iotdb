@@ -333,8 +333,9 @@ public class WriteBackSink implements PipeConnector {
     invalidTargetTableModelDatabaseName = null;
     targetTreeModelDatabaseName = null;
 
-    // Write-back sink may receive both table-model and tree-model events from one pipe.
-    // Normalize one configured target database to both model names so each event can be rewritten.
+    // The sink only sees its own parameters during customization, without the pipe's isolated
+    // runtime model. Normalize one configured target database to both model names, and later use
+    // the one matching the incoming event model.
     if (PathUtils.isTableModelDatabase(targetDatabase)) {
       targetTableModelDatabaseName = targetDatabase.toLowerCase(Locale.ENGLISH);
       targetTreeModelDatabaseName =
