@@ -147,7 +147,12 @@ public class ShowCreateViewTask extends AbstractTableTask {
     if (ttlString.equals(TTL_INFINITE)) {
       ttlString = "'" + ttlString + "'";
     }
-    builder.append(" WITH (ttl=").append(ttlString).append(")");
+    builder
+        .append(" WITH (ttl=")
+        .append(ttlString)
+        .append(", need_last_cache=")
+        .append(table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).orElse("true"))
+        .append(")");
 
     builder.append(" AS ");
 

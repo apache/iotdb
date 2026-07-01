@@ -26,8 +26,10 @@ import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -67,6 +69,7 @@ public class TableDeviceSchemaCacheTest {
   private static final String database2 = "sg2";
   private static final String table1 = "t1";
   private static final String table2 = "t2";
+  private static final String tableNeedLastCacheDisabled = "t_need_last_cache_disabled";
   private static final String attributeName1 = "type";
   private static final String attributeName2 = "cycle";
   private static final String measurement1 = "s0";
@@ -145,6 +148,40 @@ public class TableDeviceSchemaCacheTest {
             measurement6, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     DataNodeTableCache.getInstance().preUpdateTable(database1, testTable2, null);
     DataNodeTableCache.getInstance().commitUpdateTable(database1, table2, null);
+
+    final TsTable testTableNeedLastCacheDisabled = new TsTable(tableNeedLastCacheDisabled);
+    columnHeaderList.forEach(
+        columnHeader ->
+            testTableNeedLastCacheDisabled.addColumnSchema(
+                new TagColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
+    testTableNeedLastCacheDisabled.addColumnSchema(
+        new AttributeColumnSchema(attributeName1, TSDataType.STRING));
+    testTableNeedLastCacheDisabled.addColumnSchema(
+        new AttributeColumnSchema(attributeName2, TSDataType.STRING));
+    testTableNeedLastCacheDisabled.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
+    testTableNeedLastCacheDisabled.addColumnSchema(
+        new FieldColumnSchema(
+            measurement1, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTableNeedLastCacheDisabled.addColumnSchema(
+        new FieldColumnSchema(
+            measurement2, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTableNeedLastCacheDisabled.addColumnSchema(
+        new FieldColumnSchema(
+            measurement3, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTableNeedLastCacheDisabled.addColumnSchema(
+        new FieldColumnSchema(
+            measurement4, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTableNeedLastCacheDisabled.addColumnSchema(
+        new FieldColumnSchema(
+            measurement5, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTableNeedLastCacheDisabled.addColumnSchema(
+        new FieldColumnSchema(
+            measurement6, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTableNeedLastCacheDisabled.addProp(
+        TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.FALSE.toString());
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(database1, testTableNeedLastCacheDisabled, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database1, tableNeedLastCacheDisabled, null);
 
     originMemConfig = memoryConfig.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes();
     changeSchemaCacheMemorySize(1300L);
@@ -590,6 +627,92 @@ public class TableDeviceSchemaCacheTest {
         tv3, cache.getLastEntry(database1, convertTagValuesToDeviceID(table1, device0), "s0"));
     Assert.assertNull(
         cache.getLastEntry(database1, convertTagValuesToDeviceID(table1, device0), "s2"));
+  }
+
+  @Test
+  public void testLastCacheIsInvalidatedWhenTableNeedLastCacheTurnsFalse() {
+    final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
+    final IDeviceID deviceID = convertTagValuesToDeviceID(table1, device0);
+    final String[] measurements = new String[] {measurement1};
+    final TimeValuePair[] values =
+        new TimeValuePair[] {new TimeValuePair(1L, new TsPrimitiveType.TsInt(1))};
+
+    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
+    updateLastCache4Query(cache, database1, deviceID, measurements, values);
+    Assert.assertEquals(values[0], cache.getLastEntry(database1, deviceID, measurement1));
+
+    final TsTable disabledTable =
+        new TsTable(DataNodeTableCache.getInstance().getTable(database1, table1));
+    disabledTable.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.FALSE.toString());
+    DataNodeTableCache.getInstance().preUpdateTable(database1, disabledTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database1, table1, null);
+
+    try {
+      Assert.assertNull(cache.getLastEntry(database1, deviceID, measurement1));
+    } finally {
+      final TsTable enabledTable = new TsTable(disabledTable);
+      enabledTable.removeProp(TsTable.NEED_LAST_CACHE_PROPERTY);
+      DataNodeTableCache.getInstance().preUpdateTable(database1, enabledTable, null);
+      DataNodeTableCache.getInstance().commitUpdateTable(database1, table1, null);
+    }
+  }
+
+  @Test
+  public void testLastCacheIsInvalidatedWhenDatabaseNeedLastCacheTurnsFalse() {
+    final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
+    final IDeviceID deviceInDatabase1 = convertTagValuesToDeviceID(table1, device0);
+    final IDeviceID deviceInDatabase2 = convertTagValuesToDeviceID(table1, device0);
+    final String[] measurements = new String[] {measurement1};
+    final TimeValuePair[] values =
+        new TimeValuePair[] {new TimeValuePair(1L, new TsPrimitiveType.TsInt(1))};
+
+    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
+    updateLastCache4Query(cache, database1, deviceInDatabase1, measurements, values);
+    updateLastCache4Query(cache, database2, deviceInDatabase2, measurements, values);
+    Assert.assertEquals(values[0], cache.getLastEntry(database1, deviceInDatabase1, measurement1));
+    Assert.assertEquals(values[0], cache.getLastEntry(database2, deviceInDatabase2, measurement1));
+
+    final PartitionCache partitionCache = new PartitionCache();
+    try {
+      final TDatabaseSchema enabledSchema = new TDatabaseSchema();
+      enabledSchema.setNeedLastCache(true);
+      partitionCache.updateDatabaseCache(Collections.singletonMap(database1, enabledSchema));
+      Assert.assertEquals(
+          values[0], cache.getLastEntry(database1, deviceInDatabase1, measurement1));
+
+      final TDatabaseSchema disabledSchema = new TDatabaseSchema();
+      disabledSchema.setNeedLastCache(false);
+      partitionCache.updateDatabaseCache(Collections.singletonMap(database1, disabledSchema));
+
+      Assert.assertNull(cache.getLastEntry(database1, deviceInDatabase1, measurement1));
+      Assert.assertEquals(
+          values[0], cache.getLastEntry(database2, deviceInDatabase2, measurement1));
+    } finally {
+      partitionCache.invalidAllCache();
+    }
+  }
+
+  @Test
+  public void testNeedLastCacheFalseSkipsInitLastCache() {
+    final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
+    final String[] measurements = new String[] {measurement1};
+    final TimeValuePair[] values =
+        new TimeValuePair[] {new TimeValuePair(1L, new TsPrimitiveType.TsInt(1))};
+
+    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
+    final IDeviceID disabledDevice =
+        convertTagValuesToDeviceID(tableNeedLastCacheDisabled, device0);
+
+    cache.initOrInvalidateLastCache(database1, disabledDevice, measurements, false);
+    cache.updateLastCacheIfExists(database1, disabledDevice, measurements, values);
+
+    Assert.assertNull(cache.getLastEntry(database1, disabledDevice, measurement1));
+
+    final IDeviceID enabledDevice = convertTagValuesToDeviceID(table1, device0);
+    cache.initOrInvalidateLastCache(database1, enabledDevice, measurements, false);
+    cache.updateLastCacheIfExists(database1, enabledDevice, measurements, values);
+
+    Assert.assertEquals(values[0], cache.getLastEntry(database1, enabledDevice, measurement1));
   }
 
   private void updateLastCache4Query(

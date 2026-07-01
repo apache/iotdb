@@ -113,6 +113,7 @@ public class IoTDBDatabaseIT {
 
       statement.execute("alter database if exists test1 set properties ttl='INF'");
       statement.execute("alter database test set properties ttl=default");
+      statement.execute("alter database test set properties need_last_cache=false");
 
       String[] databaseNames = new String[] {"test"};
       String[] TTLs = new String[] {"INF"};
@@ -168,6 +169,7 @@ public class IoTDBDatabaseIT {
           assertTrue(resultSet.getInt(7) >= defaultSchemaRegionGroupNum[cnt]);
           assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(8));
           assertTrue(resultSet.getInt(9) >= defaultDataRegionGroupNum[cnt]);
+          assertFalse(resultSet.getBoolean(10));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
@@ -319,6 +321,37 @@ public class IoTDBDatabaseIT {
   }
 
   @Test
+  public void testNeedLastCacheDatabaseProperty() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database need_cache_false with (need_last_cache=false)");
+      statement.execute("create database need_cache_default");
+
+      assertDatabaseNeedLastCache(statement, "need_cache_false", false);
+      assertDatabaseNeedLastCache(statement, "need_cache_default", true);
+
+      statement.execute("alter database need_cache_false set properties need_last_cache=true");
+      assertDatabaseNeedLastCache(statement, "need_cache_false", true);
+
+      statement.execute("alter database need_cache_false set properties need_last_cache=false");
+      assertDatabaseNeedLastCache(statement, "need_cache_false", false);
+
+      statement.execute("alter database need_cache_false set properties need_last_cache=default");
+      assertDatabaseNeedLastCache(statement, "need_cache_false", true);
+
+      try {
+        statement.execute("create database need_cache_invalid with (need_last_cache=1)");
+        fail("non-boolean need_last_cache should be rejected");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: need_last_cache value must be a BooleanLiteral, but now is LongLiteral, value: 1",
+            e.getMessage());
+      }
+    }
+  }
+
+  @Test
   public void testShowCreatePipe() throws SQLException {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -341,6 +374,30 @@ public class IoTDBDatabaseIT {
       assertShowCreateSystemDatabaseFails(statement, "information_schema");
       assertShowCreateSystemDatabaseFails(statement, "__audit");
     }
+  }
+
+  private static void assertDatabaseNeedLastCache(
+      final Statement statement, final String database, final boolean expected)
+      throws SQLException {
+    try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
+      boolean found = false;
+      while (resultSet.next()) {
+        if (!database.equals(resultSet.getString("Database"))) {
+          continue;
+        }
+        found = true;
+        assertEquals(expected, resultSet.getBoolean("NeedLastCache"));
+      }
+      assertTrue(found);
+    }
+
+    TestUtils.assertResultSetEqual(
+        statement.executeQuery(
+            "select database, need_last_cache from information_schema.databases where database = '"
+                + database
+                + "'"),
+        "database,need_last_cache,",
+        Collections.singleton(database + "," + expected + ","));
   }
 
   private static void assertShowCreateSystemDatabaseFails(
@@ -500,7 +557,8 @@ public class IoTDBDatabaseIT {
                   "schema_region_group_num,INT32,ATTRIBUTE,",
                   "max_schema_region_group_num,INT32,ATTRIBUTE,",
                   "data_region_group_num,INT32,ATTRIBUTE,",
-                  "max_data_region_group_num,INT32,ATTRIBUTE,")));
+                  "max_data_region_group_num,INT32,ATTRIBUTE,",
+                  "need_last_cache,BOOLEAN,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
           "ColumnName,DataType,Category,",
@@ -511,7 +569,8 @@ public class IoTDBDatabaseIT {
                   "ttl(ms),STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,",
                   "comment,STRING,ATTRIBUTE,",
-                  "table_type,STRING,ATTRIBUTE,")));
+                  "table_type,STRING,ATTRIBUTE,",
+                  "need_last_cache,BOOLEAN,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc columns"),
           "ColumnName,DataType,Category,",
@@ -706,7 +765,7 @@ public class IoTDBDatabaseIT {
       statement.execute(
           "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
       statement.execute(
-          "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) RESTRICT WITH (ttl=100) AS root.\"a\".**");
+          "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"a\".**");
 
       try (final ResultSet resultSet = statement.executeQuery("select * from databases")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
@@ -723,6 +782,7 @@ public class IoTDBDatabaseIT {
             for (int columnIndex = 3; columnIndex <= 9; columnIndex++) {
               assertNull(resultSet.getObject(columnIndex));
             }
+            assertFalse(resultSet.getBoolean(10));
           } else {
             assertEquals("test", resultSet.getString(1));
             assertEquals("INF", resultSet.getString(2));
@@ -733,6 +793,7 @@ public class IoTDBDatabaseIT {
             assertTrue(resultSet.getInt(7) >= 1);
             assertEquals(0, resultSet.getInt(8));
             assertTrue(resultSet.getInt(9) >= 2);
+            assertTrue(resultSet.getBoolean(10));
           }
           cnt++;
         }
@@ -740,32 +801,32 @@ public class IoTDBDatabaseIT {
       }
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from tables where status = 'USING'"),
-          "database,table_name,ttl(ms),status,comment,table_type,",
+          "database,table_name,ttl(ms),status,comment,table_type,need_last_cache,",
           new HashSet<>(
               Arrays.asList(
-                  "information_schema,databases,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,tables,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,columns,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,queries,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,regions,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,topics,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,pipes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,services,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,views,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,functions,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,keywords,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,nodes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,table_disk_usage,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,connections,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,current_queries,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,queries_costs_histogram,INF,USING,null,SYSTEM VIEW,",
-                  "test,test,INF,USING,test,BASE TABLE,",
-                  "test,view_table,100,USING,null,VIEW FROM TREE,")));
+                  "information_schema,databases,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,tables,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,columns,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,queries,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,regions,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,topics,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,pipes,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,services,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,views,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,functions,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,configurations,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,keywords,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,nodes,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,table_disk_usage,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,connections,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,current_queries,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,queries_costs_histogram,INF,USING,null,SYSTEM VIEW,false,",
+                  "test,test,INF,USING,test,BASE TABLE,true,",
+                  "test,view_table,100,USING,null,VIEW FROM TREE,true,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
@@ -812,7 +873,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("select * from views"),
           "database,table_name,view_definition,",
           Collections.singleton(
-              "test,view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"a\".**,"));
+              "test,view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"a\".**,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
@@ -871,12 +932,26 @@ public class IoTDBDatabaseIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create database root.test");
+      statement.execute("create database root.test with NEED_LAST_CACHE=false");
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS root.test")) {
+        assertTrue(resultSet.next());
+        assertEquals("root.test", resultSet.getString("Database"));
+        assertFalse(resultSet.getBoolean("NeedLastCache"));
+        assertFalse(resultSet.next());
+      }
       Assert.assertThrows(
           IoTDBSQLException.class,
           () ->
               statement.execute(
                   "alter database root.test WITH MAX_SCHEMA_REGION_GROUP_NUM=2, MAX_DATA_REGION_GROUP_NUM=3"));
+      try {
+        statement.execute("alter database root.test WITH NEED_LAST_CACHE=true");
+        fail("tree database need_last_cache alter should be rejected");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The tree model database does not support alter need last cache now.",
+            e.getMessage());
+      }
       statement.execute("insert into root.test.d1 (s1) values(1)");
       statement.execute("drop database root.test");
     }
@@ -995,8 +1070,9 @@ public class IoTDBDatabaseIT {
           Collections.singleton("information_schema,INF,null,null,null,"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.databases"),
-          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,max_schema_region_group_num,data_region_group_num,max_data_region_group_num,",
-          Collections.singleton("information_schema,INF,null,null,null,null,null,null,null,"));
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,max_schema_region_group_num,data_region_group_num,max_data_region_group_num,need_last_cache,",
+          Collections.singleton(
+              "information_schema,INF,null,null,null,null,null,null,null,false,"));
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

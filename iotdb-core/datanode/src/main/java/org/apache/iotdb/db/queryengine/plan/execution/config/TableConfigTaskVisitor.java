@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
@@ -288,9 +289,11 @@ import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrusted
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.commons.schema.table.TsTable.NEED_LAST_CACHE_PROPERTY;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AbstractDatabaseTask.NEED_LAST_CACHE_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_SCHEMA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
@@ -365,6 +368,11 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
               schema.setTTL(Long.MAX_VALUE);
             }
             break;
+          case NEED_LAST_CACHE_KEY:
+            if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
+              schema.setNeedLastCache(true);
+            }
+            break;
           default:
             throw new SemanticException(
                 DataNodeQueryMessages.UNSUPPORTED_DATABASE_PROPERTY_KEY + key);
@@ -399,6 +407,9 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         case MAX_DATA_REGION_GROUP_NUM_KEY:
           schema.setMaxDataRegionGroupNum(
               parseIntFromLiteral(value, MAX_DATA_REGION_GROUP_NUM_KEY));
+          break;
+        case NEED_LAST_CACHE_KEY:
+          schema.setNeedLastCache(parseBooleanFromLiteral(value, NEED_LAST_CACHE_KEY));
           break;
         default:
           throw new SemanticException(
@@ -918,17 +929,26 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
         if (!property.isSetToDefault()) {
           final Expression value = property.getNonDefaultValue();
-          final Optional<String> strValue = parseStringFromLiteralIfBinary(value);
-          if (strValue.isPresent()) {
-            if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
-              throw new SemanticException(
-                  "ttl value must be 'INF' or a long literal, but now is: " + value);
-            }
-            map.put(key, strValue.get().toUpperCase(Locale.ENGLISH));
-            continue;
+          switch (key) {
+            case TTL_PROPERTY:
+              final Optional<String> strValue = parseStringFromLiteralIfBinary(value);
+              if (strValue.isPresent()) {
+                if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
+                  throw new SemanticException(
+                      "ttl value must be 'INF' or a long literal, but now is: " + value);
+                }
+                map.put(key, strValue.get().toUpperCase(Locale.ENGLISH));
+                continue;
+              }
+              map.put(key, String.valueOf(parseLongFromLiteral(value, TTL_PROPERTY)));
+              break;
+            case NEED_LAST_CACHE_PROPERTY:
+              map.put(
+                  key, String.valueOf(parseBooleanFromLiteral(value, NEED_LAST_CACHE_PROPERTY)));
+              break;
+            default:
+              break;
           }
-          // TODO: support validation for other properties
-          map.put(key, String.valueOf(parseLongFromLiteral(value, TTL_PROPERTY)));
         } else if (serializeDefault) {
           map.put(key, null);
         }
@@ -1103,6 +1123,18 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     context.setQueryType(QueryType.OTHER);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new SetSystemStatusTask(((SetSystemStatusStatement) node.getInnerTreeStatement()));
+  }
+
+  private boolean parseBooleanFromLiteral(final Object value, final String name) {
+    if (!(value instanceof BooleanLiteral)) {
+      throw new SemanticException(
+          name
+              + " value must be a BooleanLiteral, but now is "
+              + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
+              + ", value: "
+              + value);
+    }
+    return ((BooleanLiteral) value).getValue();
   }
 
   private Optional<String> parseStringFromLiteralIfBinary(final Object value) {
