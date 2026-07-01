@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1;
 
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 
@@ -40,7 +41,7 @@ final class RegionMigrateFileAssertions {
   private static final String SEQUENCE_FOLDER = "sequence";
   private static final String TSFILE_SUFFIX = ".tsfile";
   private static final String TSFILE_RESOURCE_SUFFIX = ".tsfile.resource";
-  private static final String MODS_SUFFIX = ".mods2";
+  private static final String MODS_SUFFIX = ModificationFile.FILE_SUFFIX;
 
   private RegionMigrateFileAssertions() {}
 
