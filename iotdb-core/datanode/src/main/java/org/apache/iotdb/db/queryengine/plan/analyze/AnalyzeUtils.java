@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression.Operator;
@@ -66,6 +67,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.And;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.DeviceIn;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.SegmentExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.SegmentNotNull;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -522,6 +524,20 @@ public class AnalyzeUtils {
           }
           deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
         }
+      } else if (currExp instanceof IsNotNullPredicate) {
+        final PredicateParseResult parseResult =
+            parseIsNotNull((IsNotNullPredicate) currExp, tagPredicate, table);
+        tagPredicate = parseResult.tagPredicate;
+        if (parseResult.shouldQueryDevice()) {
+          if (Objects.isNull(deviceFilterExpressions)) {
+            deviceFilterExpressions = new ArrayList<>();
+          }
+          if (Objects.isNull(attributeColumns)) {
+            attributeColumns = new ArrayList<>();
+          }
+          deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
+          collectAttributeColumn(attributeColumns, parseResult.attributeColumn);
+        }
       } else {
         throw new SemanticException(
             DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + currExp + " in " + expression);
@@ -595,11 +611,39 @@ public class AnalyzeUtils {
     int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
     if (tagColumnOrdinal == -1) {
       throw new SemanticException(
-          "The column '" + columnName + "' does not exist or is not a tag column");
+          String.format(
+              DataNodeQueryMessages.THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN,
+              columnName));
     }
 
     // the first segment is the table name, so + 1
     TagPredicate newPredicate = new SegmentExactMatch(null, tagColumnOrdinal + 1);
+    return PredicateParseResult.tag(combinePredicates(oldPredicate, newPredicate));
+  }
+
+  private static PredicateParseResult parseIsNotNull(
+      IsNotNullPredicate isNotNullPredicate, TagPredicate oldPredicate, TsTable table) {
+    Expression leftHandExp = isNotNullPredicate.getValue();
+    if (!(leftHandExp instanceof Identifier)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
+    }
+    String columnName = ((Identifier) leftHandExp).getValue();
+    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    if (Objects.nonNull(columnSchema)
+        && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+      return PredicateParseResult.attribute(columnName, oldPredicate);
+    }
+    int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
+    if (tagColumnOrdinal == -1) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages.THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN,
+              columnName));
+    }
+
+    // the first segment is the table name, so + 1
+    TagPredicate newPredicate = new SegmentNotNull(tagColumnOrdinal + 1);
     return PredicateParseResult.tag(combinePredicates(oldPredicate, newPredicate));
   }
 
@@ -673,7 +717,9 @@ public class AnalyzeUtils {
     int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
     if (tagColumnOrdinal == -1) {
       throw new SemanticException(
-          "The column '" + columnName + "' does not exist or is not a tag column");
+          String.format(
+              DataNodeQueryMessages.THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN,
+              columnName));
     }
 
     TagPredicate newPredicate = getTagPredicate(comparisonExpression, right, tagColumnOrdinal);

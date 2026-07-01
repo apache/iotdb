@@ -55,7 +55,8 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     FULL_EXACT_MATCH,
     SEGMENT_EXACT_MATCH,
     AND,
-    DEVICE_IN;
+    DEVICE_IN,
+    SEGMENT_NOT_NULL;
 
     public long serialize(OutputStream stream) throws IOException {
       stream.write((byte) ordinal());
@@ -111,6 +112,8 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
       predicate = new And();
     } else if (Objects.requireNonNull(type) == TagPredicateType.DEVICE_IN) {
       predicate = new DeviceIn();
+    } else if (Objects.requireNonNull(type) == TagPredicateType.SEGMENT_NOT_NULL) {
+      predicate = new SegmentNotNull();
     } else {
       throw new IllegalArgumentException(StorageEngineMessages.UNRECOGNIZED_PREDICATE_TYPE + type);
     }
@@ -131,6 +134,8 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
       predicate = new And();
     } else if (Objects.requireNonNull(type) == TagPredicateType.DEVICE_IN) {
       predicate = new DeviceIn();
+    } else if (Objects.requireNonNull(type) == TagPredicateType.SEGMENT_NOT_NULL) {
+      predicate = new SegmentNotNull();
     } else {
       throw new IllegalArgumentException(StorageEngineMessages.UNRECOGNIZED_PREDICATE_TYPE + type);
     }
@@ -439,6 +444,83 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     @Override
     public long ramBytesUsed() {
       return SHALLOW_SIZE + RamUsageEstimator.sizeOfHashSet(deviceIDs);
+    }
+  }
+
+  public static class SegmentNotNull extends TagPredicate {
+
+    public static final long SHALLOW_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(SegmentNotNull.class);
+    private int segmentIndex;
+
+    public SegmentNotNull(int segmentIndex) {
+      super(TagPredicateType.SEGMENT_NOT_NULL);
+      this.segmentIndex = segmentIndex;
+    }
+
+    public SegmentNotNull() {
+      super(TagPredicateType.SEGMENT_NOT_NULL);
+    }
+
+    @Override
+    public int serializedSize() {
+      return super.serializedSize() + ReadWriteForEncodingUtils.varIntSize(segmentIndex);
+    }
+
+    @Override
+    public long serialize(OutputStream stream) throws IOException {
+      long size = super.serialize(stream);
+      size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, stream);
+      return size;
+    }
+
+    @Override
+    public long serialize(ByteBuffer buffer) {
+      long size = super.serialize(buffer);
+      size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, buffer);
+      return size;
+    }
+
+    @Override
+    public void deserialize(InputStream stream) throws IOException {
+      segmentIndex = ReadWriteForEncodingUtils.readVarInt(stream);
+    }
+
+    @Override
+    public void deserialize(ByteBuffer buffer) {
+      segmentIndex = ReadWriteForEncodingUtils.readVarInt(buffer);
+    }
+
+    @Override
+    public boolean matches(IDeviceID deviceID) {
+      return deviceID.segment(segmentIndex) != null;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      SegmentNotNull that = (SegmentNotNull) o;
+      return segmentIndex == that.segmentIndex;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hashCode(segmentIndex);
+    }
+
+    @Override
+    public String toString() {
+      return "SegmentNotNull{" + "segmentIndex=" + segmentIndex + '}';
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE;
     }
   }
 

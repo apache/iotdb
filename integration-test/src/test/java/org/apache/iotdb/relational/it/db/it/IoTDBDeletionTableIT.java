@@ -505,14 +505,7 @@ public class IoTDBDeletionTableIT {
       }
       assertEquals(List.of("d1,2,12", "d2,1,21", "d4,1,41", "d4,2,42"), actual);
 
-      try {
-        statement.execute("DELETE FROM delete_by_attr_other_ops WHERE attr1 IS NOT NULL");
-        fail("should not reach here!");
-      } catch (SQLException e) {
-        assertEquals(
-            "701: Unsupported expression: (attr1 IS NOT NULL) in (attr1 IS NOT NULL)",
-            e.getMessage());
-      }
+      statement.execute("DELETE FROM delete_by_attr_other_ops WHERE attr1 IS NOT NULL");
 
       actual = new ArrayList<>();
       try (ResultSet resultSet =
@@ -523,7 +516,49 @@ public class IoTDBDeletionTableIT {
               resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
         }
       }
-      assertEquals(List.of("d1,2,12", "d2,1,21", "d4,1,41", "d4,2,42"), actual);
+      assertEquals(List.of("d4,1,41", "d4,2,42"), actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByTagIsNotNullFilter() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_tag_not_null("
+              + "deviceId STRING TAG, site STRING TAG, attr1 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_tag_not_null(time, deviceId, site, attr1, s1) VALUES "
+              + "(1, 'd1', 'north', 'red', 11),"
+              + "(2, 'd1', 'north', 'red', 12),"
+              + "(1, 'd2', 'south', 'blue', 21),"
+              + "(2, 'd2', 'south', 'blue', 22)");
+      statement.execute(
+          "INSERT INTO delete_by_tag_not_null(time, deviceId, attr1, s1) VALUES "
+              + "(1, 'd3', 'green', 31),"
+              + "(2, 'd3', 'green', 32)");
+
+      statement.execute("DELETE FROM delete_by_tag_not_null WHERE site IS NOT NULL AND time = 1");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, site, time, s1 FROM delete_by_tag_not_null "
+                  + "ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1)
+                  + ","
+                  + resultSet.getString(2)
+                  + ","
+                  + resultSet.getLong(3)
+                  + ","
+                  + resultSet.getInt(4));
+        }
+      }
+      assertEquals(
+          List.of("d1,north,2,12", "d2,south,2,22", "d3,null,1,31", "d3,null,2,32"), actual);
     }
   }
 
