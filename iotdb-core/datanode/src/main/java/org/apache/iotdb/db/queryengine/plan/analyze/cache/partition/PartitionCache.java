@@ -60,6 +60,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.service.metrics.CacheMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -583,8 +584,14 @@ public class PartitionCache {
     databaseCacheLock.writeLock().lock();
     try {
       databaseMap.forEach(
-          (database, schema) ->
-              database2NeedLastCacheCache.put(database, isNeedLastCacheEnabled(schema)));
+          (database, schema) -> {
+            final boolean needLastCache = isNeedLastCacheEnabled(schema);
+            final Boolean previousNeedLastCache =
+                database2NeedLastCacheCache.put(database, needLastCache);
+            if (Boolean.TRUE.equals(previousNeedLastCache) && !needLastCache) {
+              TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(database);
+            }
+          });
     } finally {
       databaseCacheLock.writeLock().unlock();
     }

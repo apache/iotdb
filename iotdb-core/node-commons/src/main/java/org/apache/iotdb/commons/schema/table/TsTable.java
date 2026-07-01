@@ -380,6 +380,7 @@ public class TsTable {
             props = new HashMap<>();
           }
           props.put(key, value);
+          invalidateCachedPropValue(key);
         });
   }
 
@@ -390,7 +391,16 @@ public class TsTable {
             return;
           }
           props.remove(key);
+          invalidateCachedPropValue(key);
         });
+  }
+
+  private void invalidateCachedPropValue(final String key) {
+    if (TTL_PROPERTY.equals(key)) {
+      ttlValue = Long.MIN_VALUE;
+    } else if (NEED_LAST_CACHE_PROPERTY.equals(key)) {
+      needLastCache = null;
+    }
   }
 
   public void serialize(final OutputStream stream) throws IOException {
