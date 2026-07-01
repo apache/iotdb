@@ -151,6 +151,9 @@ public class SyncDataNodeClientPool {
         CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
         (req, client) ->
             client.generateDataPartitionTableHeartbeat((TGenerateDataPartitionTableReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.GET_DATA_PARTITION_TABLE_GENERATOR_PROGRESS,
+        (req, client) -> client.getDataPartitionTableGeneratorProgress());
     actionMap = actionMapBuilder.build();
   }
 

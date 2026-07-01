@@ -170,6 +170,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -745,6 +746,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus dataPartitionTableIntegrityCheck() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.dataPartitionTableIntegrityCheck(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress()
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showRepairDataPartitionTableProgress(),
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

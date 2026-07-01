@@ -24,12 +24,20 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,6 +47,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class PipeTableRespTest {
+
+  private ConfigNode oldInstance;
+
+  @Before
+  public void setUp() {
+    oldInstance = ConfigNode.getInstance();
+    final ConfigNode configNode = Mockito.mock(ConfigNode.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final NodeManager nodeManager = Mockito.mock(NodeManager.class);
+
+    Mockito.when(configNode.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getNodeManager()).thenReturn(nodeManager);
+    Mockito.when(nodeManager.getRegisteredDataNodeCount()).thenReturn(2);
+    ConfigNode.setInstance(configNode);
+  }
+
+  @After
+  public void tearDown() {
+    ConfigNode.setInstance(oldInstance);
+  }
 
   public PipeTableResp constructPipeTableResp() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -118,6 +146,26 @@ public class PipeTableRespTest {
 
     PipeTableResp allPipeTableResp = pipeTableResp.filter(true, null);
     Assert.assertEquals(3, allPipeTableResp.getAllPipeMeta().size());
+  }
+
+  @Test
+  public void testConvertToTShowPipeRespIncludesDegradedStatus() {
+    final PipeTableResp pipeTableResp = constructPipeTableResp();
+    ((PipeTemporaryMetaInCoordinator) pipeTableResp.getAllPipeMeta().get(0).getTemporaryMeta())
+        .setDegraded(1, true);
+    ((PipeTemporaryMetaInCoordinator) pipeTableResp.getAllPipeMeta().get(1).getTemporaryMeta())
+        .setDegraded(1, false);
+
+    final List<TShowPipeInfo> showPipeResult =
+        pipeTableResp.convertToTShowPipeResp().getPipeInfoList();
+
+    Assert.assertEquals(3, showPipeResult.size());
+    Assert.assertEquals("testPipe", showPipeResult.get(0).getId());
+    Assert.assertTrue(showPipeResult.get(0).isSetIsDegraded());
+    Assert.assertTrue(showPipeResult.get(0).isIsDegraded());
+    Assert.assertTrue(showPipeResult.get(1).isSetIsDegraded());
+    Assert.assertFalse(showPipeResult.get(1).isIsDegraded());
+    Assert.assertFalse(showPipeResult.get(2).isSetIsDegraded());
   }
 
   @Test

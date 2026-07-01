@@ -551,7 +551,8 @@ public class IoTDBDatabaseIT {
                   "pipe_sink,STRING,ATTRIBUTE,",
                   "exception_message,STRING,ATTRIBUTE,",
                   "remaining_event_count,INT64,ATTRIBUTE,",
-                  "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,")));
+                  "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,",
+                  "is_degraded,BOOLEAN,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc pipe_plugins"),
           "ColumnName,DataType,Category,",
@@ -673,7 +674,7 @@ public class IoTDBDatabaseIT {
       // Filter out not self-created pipes
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from pipes"),
-          "id,creation_time,state,pipe_source,pipe_processor,pipe_sink,exception_message,remaining_event_count,estimated_remaining_seconds,",
+          "id,creation_time,state,pipe_source,pipe_processor,pipe_sink,exception_message,remaining_event_count,estimated_remaining_seconds,is_degraded,",
           Collections.emptySet());
 
       // No auth needed

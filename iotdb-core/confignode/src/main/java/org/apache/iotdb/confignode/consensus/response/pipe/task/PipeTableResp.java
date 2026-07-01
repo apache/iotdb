@@ -289,6 +289,10 @@ public class PipeTableResp implements DataSet {
           canCalculateOnLocal ? -1 : temporaryMeta.getGlobalRemainingEvents());
       showPipeInfo.setEstimatedRemainingTime(
           canCalculateOnLocal ? -1 : temporaryMeta.getGlobalRemainingTime());
+      final Boolean isDegraded = temporaryMeta.getGlobalDegraded();
+      if (Objects.nonNull(isDegraded)) {
+        showPipeInfo.setIsDegraded(isDegraded);
+      }
       showPipeInfoList.add(showPipeInfo);
     }
 

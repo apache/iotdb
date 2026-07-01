@@ -171,6 +171,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -258,6 +259,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrent
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowRepairDataPartitionTableProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
@@ -1488,6 +1490,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       future.setException(new IoTDBException(tsStatus));
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showRepairDataPartitionTableProgress() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowRepairDataPartitionTableProgressResp resp =
+          client.showRepairDataPartitionTableProgress();
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        ShowRepairDataPartitionTableProgressTask.buildTsBlock(resp, future);
+      } else {
+        future.setException(new IoTDBException(resp.getStatus()));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+
     return future;
   }
 
@@ -3801,7 +3823,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TMigrateRegionReq tMigrateRegionReq =
           new TMigrateRegionReq(
-              migrateRegionTask.getStatement().getRegionId(),
+              migrateRegionTask.getStatement().getRegionIds(),
               migrateRegionTask.getStatement().getFromId(),
               migrateRegionTask.getStatement().getToId(),
               migrateRegionTask.getModel());
@@ -3833,11 +3855,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       invalidNodeIds.removeAll(validNodeIds);
 
       if (!invalidNodeIds.isEmpty()) {
-        LOGGER.info(DataNodeQueryMessages.CANNOT_REMOVE_INVALID_NODEIDS, invalidNodeIds);
-        nodeIds.removeAll(invalidNodeIds);
+        LOGGER.error(DataNodeQueryMessages.CANNOT_REMOVE_INVALID_NODEIDS, invalidNodeIds);
+        future.setException(
+            new IOException(
+                "The DataNode(s) to be removed "
+                    + invalidNodeIds
+                    + " are not in the cluster, or the input format is incorrect."));
+        return future;
       }
 
-      if (nodeIds.size() != 1) {
+      if (nodeIds.isEmpty()) {
         LOGGER.error(
             "The DataNode to be removed is not in the cluster, or the input format is incorrect.");
         future.setException(
