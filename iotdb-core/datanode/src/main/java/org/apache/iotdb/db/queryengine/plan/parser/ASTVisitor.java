@@ -362,7 +362,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String datatypeString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase()).toUpperCase();
       try {
-        createTimeSeriesStatement.setDataType(TSDataType.valueOf(datatypeString));
+        createTimeSeriesStatement.setDataType(parseTimeSeriesDataType(datatypeString));
         props.remove(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(String.format("Unsupported datatype: %s", datatypeString));
@@ -3428,12 +3428,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {
-        dataType = TSDataType.valueOf(dataTypeString);
+        dataType = parseTimeSeriesDataType(dataTypeString);
       } catch (Exception e) {
         throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
       }
     }
     return dataType;
+  }
+
+  private TSDataType parseTimeSeriesDataType(String dataTypeString) {
+    if ("INTEGER".equals(dataTypeString)) {
+      return TSDataType.INT32;
+    }
+    return TSDataType.valueOf(dataTypeString);
   }
 
   @Override

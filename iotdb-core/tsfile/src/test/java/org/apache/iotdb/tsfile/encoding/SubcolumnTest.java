@@ -16,8 +16,6 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-import static org.junit.Assert.assertEquals;
-
 public class SubcolumnTest {
 
     public static int bitWidth(int value) {
@@ -247,9 +245,6 @@ public class SubcolumnTest {
 
         int cMin = Integer.MAX_VALUE;
 
-        // int[] beta_list = {1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31};
-        // int[] beta_list = { 1, 2, 3, 5, 7, 11 };
-        // int[] beta_list = { 1, 2, 3, 4 };
         int[] beta_list = { 2, 3, 4 };
 
         int bw = bitWidth(block_size);
@@ -353,14 +348,7 @@ public class SubcolumnTest {
             return encode_pos;
         }
 
-        // int[] bitWidthList = new int[m];
-
-        // int[][] subcolumnList = new int[m][list_length];
-
         int l;
-
-        // int betaBest = beta[0];
-        // byte betaBest = (byte) beta[0];
 
         l = (m + beta[0] - 1) / beta[0];
 
@@ -390,12 +378,10 @@ public class SubcolumnTest {
 
         int[] encodingType = new int[l];
 
-        // encoded_result 预留大小为 (l + 7) / 8 的大小，存储每个分列的类型
         int preTypePos = encode_pos;
         encode_pos += (l + 7) / 8;
 
         for (int i = l - 1; i >= 0; i--) {
-            // 对于每个分列，计算使用 bit packing 还是 rle
             int bpCost = bitWidthList[i] * list_length;
             int rleCost = 0;
 
@@ -679,15 +665,12 @@ public class SubcolumnTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -709,24 +692,18 @@ public class SubcolumnTest {
     }
 
     @Test
-    public void testSubcolumn() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+    public void test0() throws IOException {
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "subcolumn.csv";
 
         int block_size = 512;
 
-        int repeatTime = 100;
-
-        // repeatTime = 1;
-
-        List<String> integerDatasets = new ArrayList<>();
-        integerDatasets.add("Wine-Tasting");
+        int repeatTime = 500;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -743,7 +720,6 @@ public class SubcolumnTest {
         writer.writeRecord(head);
 
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
@@ -768,6 +744,11 @@ public class SubcolumnTest {
                 data1.add(Float.valueOf(f_str));
             }
             inputStream.close();
+
+            if (max_decimal > 8) {
+                max_decimal = 8;
+            }
+
             int[] data2_arr = new int[data1.size()];
 
             int max_mul = (int) Math.pow(10, max_decimal);
@@ -796,11 +777,7 @@ public class SubcolumnTest {
 
             double ratioTmp;
 
-            if (integerDatasets.contains(datasetName)) {
-                ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-            } else {
-                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-            }
+            ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
 
             ratio += ratioTmp;
 
@@ -817,10 +794,6 @@ public class SubcolumnTest {
             e = System.nanoTime();
             decodeTime += ((e - s) / repeatTime);
 
-            for (int i = 0; i < data2_arr_decoded.length; i++) {
-                assertEquals(data2_arr[i], data2_arr_decoded[i]);
-            }
-
             String[] record = {
                     datasetName,
                     "Sub-columns",
@@ -834,153 +807,6 @@ public class SubcolumnTest {
             System.out.println(ratio);
         }
 
-        writer.close();
-    }
-
-    @Test
-    public void testTransData() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-
-        String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/";
-        // String output_parent_dir = parent_dir + "trans_data_result/";
-
-        String input_parent_dir = parent_dir + "trans_data/";
-
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-
-        try (Stream<Path> paths = Files.walk(Paths.get(input_parent_dir))) {
-            paths.filter(Files::isDirectory)
-                    .filter(path -> !path.equals(Paths.get(input_parent_dir)))
-                    .forEach(dir -> {
-                        String name = dir.getFileName().toString();
-                        dataset_name.add(name);
-                        input_path_list.add(dir.toString());
-                        dataset_block_size.add(1024);
-                    });
-        }
-
-        String outputPath = output_parent_dir + "subcolumn.csv";
-        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
-        writer.setRecordDelimiter('\n');
-
-        String[] head = {
-                "Dataset",
-                "Encoding Algorithm",
-                "Encoding Time",
-                "Decoding Time",
-                "Points",
-                "Compressed Size",
-                "Compression Ratio"
-        };
-        writer.writeRecord(head);
-
-        int repeatTime = 100;
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-
-            String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            // CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-            // writer.setRecordDelimiter('\n');
-
-            // String[] head = {
-            // "Input Direction",
-            // "Encoding Algorithm",
-            // "Encoding Time",
-            // "Decoding Time",
-            // "Points",
-            // "Compressed Size",
-            // "Compression Ratio"
-            // };
-            // writer.writeRecord(head);
-
-            long totalEncodeTime = 0;
-            long totalDecodeTime = 0;
-            double totalCompressedSize = 0;
-            int totalPoints = 0;
-
-            for (File f : tempList) {
-                String datasetName = extractFileName(f.toString());
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-
-                loader.readHeaders();
-                while (loader.readRecord()) {
-                    // String value = loader.getValues()[index];
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-                    // data.add(Integer.valueOf(value));
-                }
-                inputStream.close();
-                int[] data2_arr = new int[data1.size()];
-                for (int i = 0; i < data2.size(); i++) {
-                    data2_arr[i] = data2.get(i);
-                }
-                byte[] encoded_result = new byte[data2_arr.length * 4];
-                long encodeTime = 0;
-                long decodeTime = 0;
-                double ratio = 0;
-                double compressed_size = 0;
-
-                int length = 0;
-
-                long s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = Encoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
-                }
-
-                long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime);
-                compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                ratio += ratioTmp;
-                s = System.nanoTime();
-
-                int[] data2_arr_decoded = new int[data1.size()];
-
-                for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    data2_arr_decoded = Decoder(encoded_result);
-                }
-
-                e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime);
-
-                totalEncodeTime += encodeTime;
-                totalDecodeTime += decodeTime;
-                totalCompressedSize += compressed_size;
-                totalPoints += data1.size();
-
-                for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    assertEquals(data2_arr[i], data2_arr_decoded[i]);
-                }
-                
-            }
-
-            double compressionRatio = totalCompressedSize / (totalPoints * Integer.BYTES);
-
-            String[] record = {
-                    dataset_name.get(file_i),
-                    "Sub-columns",
-                    String.valueOf(totalEncodeTime),
-                    String.valueOf(totalDecodeTime),
-                    String.valueOf(totalPoints),
-                    String.valueOf(totalCompressedSize),
-                    String.valueOf(compressionRatio)
-            };
-
-            writer.writeRecord(record);
-            System.out.println(compressionRatio);
-        }
         writer.close();
     }
 

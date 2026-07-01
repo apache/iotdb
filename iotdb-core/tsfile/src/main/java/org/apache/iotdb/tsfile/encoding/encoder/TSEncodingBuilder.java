@@ -78,6 +78,8 @@ public abstract class TSEncodingBuilder {
         return new Sprintz();
       case RLBE:
         return new RLBE();
+      case SUBCOLUMN:
+        return new SubColumn();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -344,6 +346,27 @@ public abstract class TSEncodingBuilder {
           return new DoubleRLBE();
         default:
           throw new UnSupportedDataTypeException("RLBE doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class SubColumn extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntSubColumnEncoder();
+        case INT64:
+          return new LongSubColumnEncoder();
+        case FLOAT:
+          return new FloatSubColumnEncoder();
+        default:
+          throw new UnSupportedDataTypeException("SUBCOLUMN doesn't support data type: " + type);
       }
     }
 

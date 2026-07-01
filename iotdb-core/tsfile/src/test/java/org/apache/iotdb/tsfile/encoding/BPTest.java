@@ -18,23 +18,43 @@ import com.csvreader.CsvWriter;
 
 public class BPTest {
 
+    private static final int PACK_BIT_STEP = 4;
+    private static final int BIT_IO_STEP = 4;
+
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
+    }
+
+    private static void storeByteBits(byte[] result, int index, int byteVal) {
+        storeByteBits(result, index, byteVal, PACK_BIT_STEP);
+    }
+
+    private static void storeByteBits(byte[] result, int index, int byteVal, int step) {
+        int bitIndex = 8;
+        int remaining = 8;
+        while (remaining > 0) {
+            int bitsToWrite = Math.min(step, Math.min(bitIndex, remaining));
+            bitIndex -= bitsToWrite;
+            int mask = (1 << bitsToWrite) - 1;
+            int bits = (byteVal >> (remaining - bitsToWrite)) & mask;
+            result[index] &= (byte) ~(mask << bitIndex);
+            result[index] |= (byte) (bits << bitIndex);
+            remaining -= bitsToWrite;
+        }
     }
 
     public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
         int cnt = pos & 0x07;
         int index = pos >> 3;
         while (width > 0) {
-            int m = width + cnt >= 8 ? 8 - cnt : width;
+            int available = 8 - cnt;
+            int m = Math.min(BIT_IO_STEP, Math.min(available, width));
             width -= m;
-            int mask = 1 << (8 - cnt);
+            int mask = (1 << m) - 1;
+            int bits = (srcNum >> width) & mask;
+            int byteMask = mask << (8 - cnt - m);
+            result[index] = (byte) (result[index] & ~byteMask | (bits << (8 - cnt - m)));
             cnt += m;
-            byte y = (byte) (srcNum >>> width);
-            y = (byte) (y << (8 - cnt));
-            mask = ~(mask - (1 << (8 - cnt)));
-            result[index] = (byte) (result[index] & mask | y);
-            srcNum = srcNum & ~(-1 << width);
             if (cnt == 8) {
                 index++;
                 cnt = 0;
@@ -66,16 +86,12 @@ public class BPTest {
             byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Integer
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 32 bits as a part of result
             int buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 32;
 
-            // encode the left bits of current Integer to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values[valueIdx] << (32 - leftBit));
                 leftSize -= leftBit;
@@ -84,22 +100,23 @@ public class BPTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
                 buffer |= (values[valueIdx] << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Integer,
+
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
                 buffer |= (values[valueIdx] >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 4; j++) {
-                encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
+                int outByte = (buffer >>> ((3 - j) * 8)) & 0xFF;
+                if (j == 3) {
+                    storeByteBits(encoded_result, encode_pos, outByte, 3);
+                } else {
+                    storeByteBits(encoded_result, encode_pos, outByte);
+                }
                 encode_pos++;
                 bufIdx++;
                 if (bufIdx >= width) {
@@ -107,31 +124,22 @@ public class BPTest {
                 }
             }
         }
-
     }
 
     public static void unpack8Values(byte[] encoded, int offset, int width, int[] result_list, int result_offset) {
         int byteIdx = offset;
         long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
         int totalBits = 0;
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
-                // result_list.add((int) (buffer >>> (totalBits - width)));
                 result_list[result_offset + valueIdx] = (int) (buffer >>> (totalBits - width));
                 valueIdx++;
                 totalBits -= width;
@@ -162,12 +170,10 @@ public class BPTest {
 
     public static int decodeBitPacking(
             byte[] encoded, int decode_pos, int bit_width, int num_values, int[] result_list) {
-        // ArrayList<Integer> result_list = new ArrayList<>();
-        // int[] result_list = new int[num_values];
         int block_num = num_values / 8;
         int remainder = num_values % 8;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking
+        for (int i = 0; i < block_num; i++) {
             unpack8Values(encoded, decode_pos, bit_width, result_list, i * 8);
             decode_pos += bit_width;
         }
@@ -192,15 +198,10 @@ public class BPTest {
         }
 
         int m = bitWidth(maxValue);
-        // System.out.println("m: " + m);
 
-        // writeBits(encoded_result, startBitPosition, 8, m);
-        // startBitPosition += 8;
         encoded_result[encode_pos] = (byte) m;
         encode_pos += 1;
 
-        // bitPacking(list, encoded_result, startBitPosition, m, list_length);
-        // startBitPosition += m * list_length;
         encode_pos = bitPacking(list, m, encode_pos, encoded_result, list_length);
 
         return encode_pos;
@@ -372,15 +373,12 @@ public class BPTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -402,24 +400,19 @@ public class BPTest {
     }
 
     @Test
-    public void testSubcolumn() throws IOException {
+    public void test0() throws IOException {
+        // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
         String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "bp.csv";
 
         int block_size = 1024;
 
-        int repeatTime = 100;
-
-        // repeatTime = 1;
-
-        List<String> integerDatasets = new ArrayList<>();
-        integerDatasets.add("Wine-Tasting");
+        int repeatTime = 500;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -436,7 +429,6 @@ public class BPTest {
         writer.writeRecord(head);
 
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
@@ -458,10 +450,7 @@ public class BPTest {
                 if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
                 }
-                // String value = loader.getValues()[index];
                 data1.add(Float.valueOf(f_str));
-                // data2.add(Integer.valueOf(loader.getValues()[1]));
-                // data.add(Integer.valueOf(value));
             }
             inputStream.close();
             int[] data2_arr = new int[data1.size()];
@@ -491,11 +480,7 @@ public class BPTest {
 
             double ratioTmp;
 
-            if (integerDatasets.contains(datasetName)) {
-                ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-            } else {
-                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-            }
+            ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
 
             ratio += ratioTmp;
 
@@ -525,135 +510,6 @@ public class BPTest {
             System.out.println(ratio);
         }
 
-        writer.close();
-    }
-
-    @Test
-    public void testTransData() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-
-        String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/";
-        // String output_parent_dir = parent_dir + "trans_data_result/";
-
-        String input_parent_dir = parent_dir + "trans_data/";
-
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-
-        try (Stream<Path> paths = Files.walk(Paths.get(input_parent_dir))) {
-            paths.filter(Files::isDirectory)
-                    .filter(path -> !path.equals(Paths.get(input_parent_dir)))
-                    .forEach(dir -> {
-                        String name = dir.getFileName().toString();
-                        dataset_name.add(name);
-                        input_path_list.add(dir.toString());
-                        dataset_block_size.add(1024);
-                    });
-        }
-
-        String outputPath = output_parent_dir + "bp.csv";
-        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
-        writer.setRecordDelimiter('\n');
-
-        String[] head = {
-                "Dataset",
-                "Encoding Algorithm",
-                "Encoding Time",
-                "Decoding Time",
-                "Points",
-                "Compressed Size",
-                "Compression Ratio"
-        };
-        writer.writeRecord(head);
-
-        int repeatTime = 100;
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-
-            String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            long totalEncodeTime = 0;
-            long totalDecodeTime = 0;
-            double totalCompressedSize = 0;
-            int totalPoints = 0;
-
-            for (File f : tempList) {
-                String datasetName = extractFileName(f.toString());
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-
-                loader.readHeaders();
-                while (loader.readRecord()) {
-                    // String value = loader.getValues()[index];
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-                    // data.add(Integer.valueOf(value));
-                }
-                inputStream.close();
-                int[] data2_arr = new int[data1.size()];
-                for (int i = 0; i < data2.size(); i++) {
-                    data2_arr[i] = data2.get(i);
-                }
-                byte[] encoded_result = new byte[data2_arr.length * 4];
-                long encodeTime = 0;
-                long decodeTime = 0;
-                double ratio = 0;
-                double compressed_size = 0;
-
-                int length = 0;
-
-                long s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = Encoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
-                }
-
-                long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime);
-                compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                ratio += ratioTmp;
-                s = System.nanoTime();
-
-                int[] data2_arr_decoded = new int[data1.size()];
-
-                for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    data2_arr_decoded = Decoder(encoded_result);
-                }
-
-                e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime);
-
-                totalEncodeTime += encodeTime;
-                totalDecodeTime += decodeTime;
-                totalCompressedSize += compressed_size;
-                totalPoints += data1.size();
-                
-            }
-
-            double compressionRatio = totalCompressedSize / (totalPoints * Integer.BYTES);
-
-            String[] record = {
-                    dataset_name.get(file_i),
-                    "BP",
-                    String.valueOf(totalEncodeTime),
-                    String.valueOf(totalDecodeTime),
-                    String.valueOf(totalPoints),
-                    String.valueOf(totalCompressedSize),
-                    String.valueOf(compressionRatio)
-            };
-
-            writer.writeRecord(record);
-            System.out.println(compressionRatio);
-        }
         writer.close();
     }
 
