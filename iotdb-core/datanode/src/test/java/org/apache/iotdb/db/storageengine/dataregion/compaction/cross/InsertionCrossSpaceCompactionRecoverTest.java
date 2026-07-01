@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.MergeException;
@@ -55,6 +54,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -145,11 +145,10 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
 
       File sourceTsFile = unseqResource1.getTsFile();
       File targetTsFile = targetFile.getTsFile();
-      FileUtils.createLink(targetTsFile.toPath(), sourceTsFile.toPath(), true);
-      FileUtils.createLink(
+      Files.createLink(targetTsFile.toPath(), sourceTsFile.toPath());
+      Files.createLink(
           new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-          new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-          true);
+          new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
     }
 
     // recover compaction, all source file should exist and target file should be deleted
@@ -232,16 +231,14 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
 
       File sourceTsFile = unseqResource1.getTsFile();
       File targetTsFile = targetFile.getTsFile();
-      FileUtils.createLink(targetTsFile.toPath(), sourceTsFile.toPath(), true);
-      FileUtils.createLink(
+      Files.createLink(targetTsFile.toPath(), sourceTsFile.toPath());
+      Files.createLink(
           new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-          new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-          true);
+          new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
       if (unseqResource1.getModFile().exists()) {
-        FileUtils.createLink(
+        Files.createLink(
             new File(targetTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
-            new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
-            true);
+            new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath());
       }
     }
 
@@ -328,16 +325,14 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
 
       File sourceTsFile = unseqResource1.getTsFile();
       File targetTsFile = targetFile.getTsFile();
-      FileUtils.createLink(targetTsFile.toPath(), sourceTsFile.toPath(), true);
-      FileUtils.createLink(
+      Files.createLink(targetTsFile.toPath(), sourceTsFile.toPath());
+      Files.createLink(
           new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-          new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-          true);
+          new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
       if (unseqResource1.getModFile().exists()) {
-        FileUtils.createLink(
+        Files.createLink(
             new File(targetTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
-            new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
-            true);
+            new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath());
       }
     }
 
