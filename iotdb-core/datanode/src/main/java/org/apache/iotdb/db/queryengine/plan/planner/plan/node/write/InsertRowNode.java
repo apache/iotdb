@@ -863,18 +863,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public void updateLastCache(String databaseName) {
-    String[] rawMeasurements = getRawMeasurements();
-    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
-    for (int i = 0; i < rawMeasurements.length; i++) {
+    TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
       timeValuePairs[i] = composeTimeValuePair(i);
     }
     DataNodeSchemaCache.getInstance()
         .updateLastCacheIfExists(
-            databaseName,
-            devicePath,
-            rawMeasurements,
-            timeValuePairs,
-            isAligned,
-            measurementSchemas);
+            databaseName, devicePath, measurements, timeValuePairs, isAligned, measurementSchemas);
   }
 }
