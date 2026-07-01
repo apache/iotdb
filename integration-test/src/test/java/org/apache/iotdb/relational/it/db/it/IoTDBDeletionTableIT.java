@@ -249,14 +249,6 @@ public class IoTDBDeletionTableIT {
       }
 
       try {
-        statement.execute("DELETE FROM vehicle1  WHERE attr1 = 'text'");
-        fail("should not reach here!");
-      } catch (SQLException e) {
-        assertEquals(
-            "701: The column 'attr1' does not exist or is not a tag column", e.getMessage());
-      }
-
-      try {
         statement.execute("DELETE FROM vehicle1  WHERE s3 = 'text'");
         fail("should not reach here!");
       } catch (SQLException e) {
@@ -331,6 +323,72 @@ public class IoTDBDeletionTableIT {
           cnt++;
         }
         assertEquals(1, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilter() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr(deviceId STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr(time, deviceId, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'red', 'small', 1),"
+              + "(2, 'd1', 'red', 'small', 2),"
+              + "(1, 'd2', 'red', 'large', 3),"
+              + "(2, 'd2', 'red', 'large', 4),"
+              + "(1, 'd3', 'blue', 'small', 5),"
+              + "(2, 'd3', 'blue', 'small', 6)");
+
+      statement.execute("DELETE FROM delete_by_attr WHERE attr1 = 'red' AND attr2 = 'small'");
+
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT deviceId, s1 FROM delete_by_attr ORDER BY deviceId, s1")) {
+        assertTrue(resultSet.next());
+        assertEquals("d2", resultSet.getString(1));
+        assertEquals(3, resultSet.getInt(2));
+        assertTrue(resultSet.next());
+        assertEquals("d2", resultSet.getString(1));
+        assertEquals(4, resultSet.getInt(2));
+        assertTrue(resultSet.next());
+        assertEquals("d3", resultSet.getString(1));
+        assertEquals(5, resultSet.getInt(2));
+        assertTrue(resultSet.next());
+        assertEquals("d3", resultSet.getString(1));
+        assertEquals(6, resultSet.getInt(2));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterRejectsTooManyDevices() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_limit(deviceId STRING TAG, attr1 ATTRIBUTE, s1 INT32 FIELD)");
+      final StringBuilder builder =
+          new StringBuilder("INSERT INTO delete_by_attr_limit(time, deviceId, attr1, s1) VALUES ");
+      for (int i = 0; i <= 1000; i++) {
+        if (i > 0) {
+          builder.append(',');
+        }
+        builder.append("(1, 'd").append(i).append("', 'same', ").append(i).append(')');
+      }
+      statement.execute(builder.toString());
+
+      try {
+        statement.execute("DELETE FROM delete_by_attr_limit WHERE attr1 = 'same'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Too many devices (1001)"));
+        assertTrue(e.getMessage().contains("limit is 1000"));
+        assertTrue(e.getMessage().contains("attr1"));
+        assertTrue(e.getMessage().contains("Please remove all attribute filters"));
       }
     }
   }

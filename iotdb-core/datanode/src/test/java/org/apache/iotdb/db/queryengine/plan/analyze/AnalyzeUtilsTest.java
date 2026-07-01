@@ -69,7 +69,8 @@ public class AnalyzeUtilsTest {
             new LongLiteral("100"));
 
     List<TableDeletionEntry> entries =
-        AnalyzeUtils.parseExpressions2ModEntries(expression, table, "db", new MPPQueryContext(new QueryId("1")));
+        AnalyzeUtils.parseExpressions2ModEntries(
+            expression, table, "db", new MPPQueryContext(new QueryId("1")));
 
     assertEquals(1, entries.size());
     assertEquals(Long.MIN_VALUE, entries.get(0).getStartTime());
