@@ -1389,46 +1389,60 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
   }
 
+  interface PushMultiPipeMetaHandler {
+
+    TPushPipeMetaRespExceptionMessage handleDropPipe(String pipeName) throws Exception;
+
+    TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(ByteBuffer pipeMeta) throws Exception;
+  }
+
   @Override
   public TPushPipeMetaResp pushMultiPipeMeta(TPushMultiPipeMetaReq req) {
-    boolean hasException = false;
-    // If there is any exception, we use the size of exceptionMessages to record the fail index
-    List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
+    return pushMultiPipeMeta(
+        req,
+        new PushMultiPipeMetaHandler() {
+          @Override
+          public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
+            return PipeDataNodeAgent.task().handleDropPipe(pipeName);
+          }
+
+          @Override
+          public TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(final ByteBuffer pipeMeta) {
+            return PipeDataNodeAgent.task()
+                .handleSinglePipeMetaChanges(PipeMeta.deserialize4TaskAgent(pipeMeta));
+          }
+        });
+  }
+
+  static TPushPipeMetaResp pushMultiPipeMeta(
+      final TPushMultiPipeMetaReq req, final PushMultiPipeMetaHandler handler) {
+    final List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
     try {
       if (req.isSetPipeNamesToDrop()) {
-        for (String pipeNameToDrop : req.getPipeNamesToDrop()) {
-          TPushPipeMetaRespExceptionMessage message =
-              PipeDataNodeAgent.task().handleDropPipe(pipeNameToDrop);
-          exceptionMessages.add(message);
+        for (final String pipeNameToDrop : req.getPipeNamesToDrop()) {
+          final TPushPipeMetaRespExceptionMessage message = handler.handleDropPipe(pipeNameToDrop);
           if (message != null) {
-            // If there is any exception, skip the remaining pipes
-            hasException = true;
-            break;
+            exceptionMessages.add(message);
           }
         }
       } else if (req.isSetPipeMetas()) {
-        for (ByteBuffer byteBuffer : req.getPipeMetas()) {
-          final PipeMeta pipeMeta = PipeMeta.deserialize4TaskAgent(byteBuffer);
-          TPushPipeMetaRespExceptionMessage message =
-              PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
-          exceptionMessages.add(message);
+        for (final ByteBuffer pipeMeta : req.getPipeMetas()) {
+          final TPushPipeMetaRespExceptionMessage message = handler.handleSinglePipeMeta(pipeMeta);
           if (message != null) {
-            // If there is any exception, skip the remaining pipes
-            hasException = true;
-            break;
+            exceptionMessages.add(message);
           }
         }
       } else {
         throw new Exception(DataNodeMiscMessages.INVALID_PUSH_MULTI_PIPE_META_REQ);
       }
 
-      return hasException
+      return exceptionMessages.isEmpty()
           ? new TPushPipeMetaResp()
-              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
-              .setExceptionMessages(exceptionMessages)
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
           : new TPushPipeMetaResp()
-              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (Exception e) {
+              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(exceptionMessages);
+    } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.ERROR_PUSHING_MULTI_PIPE_META, e);
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
