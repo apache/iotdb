@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.RepairUnsortedFileCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -35,7 +36,6 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
@@ -169,9 +169,10 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
           filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
     } else {
       if (sourceFile.modFileExists()) {
-        Files.createLink(
+        FileUtils.createLink(
             new File(filesView.targetFilesInPerformer.get(0).getModFile().getFilePath()).toPath(),
-            new File(sourceFile.getModFile().getFilePath()).toPath());
+            new File(sourceFile.getModFile().getFilePath()).toPath(),
+            true);
       }
     }
   }
