@@ -60,12 +60,17 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 public class IoTDBConnection implements Connection {
@@ -82,6 +87,8 @@ public class IoTDBConnection implements Connection {
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
   private TTransport transport;
+  private final Set<IoTDBStatement> openStatements =
+      Collections.newSetFromMap(new ConcurrentHashMap<IoTDBStatement, Boolean>());
 
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
@@ -127,18 +134,15 @@ public class IoTDBConnection implements Connection {
     if (url == null) {
       throw new IoTDBURLException(JdbcMessages.INPUT_URL_NULL);
     }
-    params = Utils.parseUrl(url, info);
+    Properties properties = info == null ? new Properties() : info;
+    params = Utils.parseUrl(url, properties);
     this.url = url;
-    this.userName = info.get("user").toString();
+    this.userName = params.getUsername();
     this.networkTimeout = params.getNetworkTimeout();
     this.zoneId = ZoneId.of(params.getTimeZone());
     this.charset = params.getCharset();
     openTransport();
-    if (Config.rpcThriftCompressionEnable) {
-      setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
-    } else {
-      setClient(new IClientRPCService.Client(new TBinaryProtocol(transport)));
-    }
+    openClient();
     // open client session
     openSession();
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
@@ -156,21 +160,25 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_IS_WRAPPER_FOR);
+    checkOpen("isWrapperFor");
+    return JdbcWrapperUtils.isWrapperFor(this, arg0);
   }
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_UNWRAP);
+    checkOpen("unwrap");
+    return JdbcWrapperUtils.unwrap(this, arg0);
   }
 
   @Override
   public void abort(Executor arg0) throws SQLException {
+    checkOpen("abort");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_ABORT);
   }
 
   @Override
-  public void clearWarnings() {
+  public void clearWarnings() throws SQLException {
+    checkOpen("clearWarnings");
     warningChain = null;
   }
 
@@ -179,59 +187,77 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       return;
     }
+    SQLException statementCloseException = closeOpenStatements();
     TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
     try {
       getClient().closeSession(req);
     } catch (TException e) {
-      throw new SQLException(
-          "Error occurs when closing session at server. Maybe server is down.", e);
+      SQLException closeSessionException =
+          new SQLException("Error occurs when closing session at server. Maybe server is down.", e);
+      if (statementCloseException != null) {
+        closeSessionException.addSuppressed(statementCloseException);
+      }
+      throw closeSessionException;
     } finally {
       isClosed = true;
+      openStatements.clear();
       if (transport != null) {
         transport.close();
       }
     }
+    if (statementCloseException != null) {
+      throw statementCloseException;
+    }
   }
 
   @Override
-  public void commit() throws SQLException {}
+  public void commit() throws SQLException {
+    checkOpen("commit");
+  }
 
   @Override
   public Array createArrayOf(String arg0, Object[] arg1) throws SQLException {
+    checkOpen("createArrayOf");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_ARRAY_OF);
   }
 
   @Override
   public Blob createBlob() throws SQLException {
+    checkOpen("createBlob");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_BLOB);
   }
 
   @Override
   public Clob createClob() throws SQLException {
+    checkOpen("createClob");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_CLOB);
   }
 
   @Override
   public NClob createNClob() throws SQLException {
+    checkOpen("createNClob");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_NCLOB);
   }
 
   @Override
   public SQLXML createSQLXML() throws SQLException {
+    checkOpen("createSQLXML");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_SQLXML);
   }
 
   @Override
   public Statement createStatement() throws SQLException {
-    if (isClosed) {
-      throw new SQLException(JdbcMessages.CANNOT_CREATE_STATEMENT_CLOSED);
-    }
-    return new IoTDBStatement(this, getClient(), sessionId, zoneId, charset, queryTimeout);
+    checkOpen("createStatement");
+    IoTDBStatement statement =
+        new IoTDBStatement(this, getClient(), sessionId, zoneId, charset, queryTimeout);
+    registerStatement(statement);
+    return statement;
   }
 
   @Override
   public Statement createStatement(int resultSetType, int resultSetConcurrency)
       throws SQLException {
+    checkOpen("createStatement");
     if (resultSetConcurrency != ResultSet.CONCUR_READ_ONLY) {
       throw new SQLException(
           String.format(
@@ -241,37 +267,49 @@ public class IoTDBConnection implements Connection {
       throw new SQLException(
           String.format("Statements with ResultSet type %d are not supported", resultSetType));
     }
-    return new IoTDBStatement(this, getClient(), sessionId, zoneId, charset, queryTimeout);
+    IoTDBStatement statement =
+        new IoTDBStatement(this, getClient(), sessionId, zoneId, charset, queryTimeout);
+    registerStatement(statement);
+    return statement;
   }
 
   @Override
   public Statement createStatement(int arg0, int arg1, int arg2) throws SQLException {
+    checkOpen("createStatement");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_STATEMENT);
   }
 
   @Override
   public Struct createStruct(String arg0, Object[] arg1) throws SQLException {
+    checkOpen("createStruct");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_STRUCT);
   }
 
   @Override
-  public boolean getAutoCommit() {
+  public boolean getAutoCommit() throws SQLException {
+    checkOpen("getAutoCommit");
     return autoCommit;
   }
 
   @Override
-  public void setAutoCommit(boolean arg0) {
+  public void setAutoCommit(boolean arg0) throws SQLException {
+    checkOpen("setAutoCommit");
     autoCommit = arg0;
   }
 
   @Override
-  public String getCatalog() {
+  public String getCatalog() throws SQLException {
+    checkOpen("getCatalog");
     return APACHE_IOTDB;
   }
 
   @Override
   public void setCatalog(String arg0) throws SQLException {
+    checkOpen("setCatalog");
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      if (arg0 == null) {
+        throw new SQLException("catalog cannot be null");
+      }
       if (APACHE_IOTDB.equals(arg0)) {
         return;
       }
@@ -281,12 +319,10 @@ public class IoTDBConnection implements Connection {
         }
       }
 
-      PreparedStatement stmt = this.prepareStatement("USE ?");
-      stmt.setString(1, arg0);
-      try {
+      try (PreparedStatement stmt = this.prepareStatement("USE ?")) {
+        stmt.setString(1, arg0);
         stmt.execute();
       } catch (SQLException e) {
-        stmt.close();
         logger.error(JdbcMessages.USE_DATABASE_ERROR, e.getMessage());
         throw e;
       }
@@ -295,34 +331,37 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public Properties getClientInfo() throws SQLException {
+    checkOpen("getClientInfo");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_CLIENT_INFO);
   }
 
   @Override
   public void setClientInfo(Properties arg0) throws SQLClientInfoException {
+    checkOpenForClientInfo("setClientInfo");
     throw new SQLClientInfoException(JdbcMessages.NOT_SUPPORT_SET_CLIENT_INFO, null);
   }
 
   @Override
   public String getClientInfo(String arg0) throws SQLException {
+    checkOpen("getClientInfo");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_CLIENT_INFO);
   }
 
   @Override
-  public int getHoldability() {
-    return 0;
+  public int getHoldability() throws SQLException {
+    checkOpen("getHoldability");
+    return ResultSet.HOLD_CURSORS_OVER_COMMIT;
   }
 
   @Override
   public void setHoldability(int arg0) throws SQLException {
+    checkOpen("setHoldability");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_HOLDABILITY);
   }
 
   @Override
   public DatabaseMetaData getMetaData() throws SQLException {
-    if (isClosed) {
-      throw new SQLException(JdbcMessages.CANNOT_CREATE_STATEMENT_CLOSED);
-    }
+    checkOpen("getMetaData");
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       return new IoTDBRelationalDatabaseMetadata(this, getClient(), sessionId, zoneId);
     }
@@ -330,12 +369,14 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public int getNetworkTimeout() {
+  public int getNetworkTimeout() throws SQLException {
+    checkOpen("getNetworkTimeout");
     return networkTimeout;
   }
 
   @Override
   public String getSchema() throws SQLException {
+    checkOpen("getSchema");
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       return getDatabase();
     }
@@ -344,20 +385,22 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setSchema(String arg0) throws SQLException {
+    checkOpen("setSchema");
     // changeDefaultDatabase(arg0);
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      if (arg0 == null) {
+        throw new SQLException("schema cannot be null");
+      }
       for (String str : IoTDBRelationalDatabaseMetadata.allIotdbTableSQLKeywords) {
         if (arg0.equalsIgnoreCase(str)) {
           arg0 = "\"" + arg0 + "\"";
         }
       }
 
-      PreparedStatement stmt = this.prepareStatement("USE ?");
-      stmt.setString(1, arg0);
-      try {
+      try (PreparedStatement stmt = this.prepareStatement("USE ?")) {
+        stmt.setString(1, arg0);
         stmt.execute();
       } catch (SQLException e) {
-        stmt.close();
         logger.error(JdbcMessages.USE_DATABASE_ERROR, e.getMessage());
         throw e;
       }
@@ -365,27 +408,32 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public int getTransactionIsolation() {
+  public int getTransactionIsolation() throws SQLException {
+    checkOpen("getTransactionIsolation");
     return Connection.TRANSACTION_NONE;
   }
 
   @Override
   public void setTransactionIsolation(int arg0) throws SQLException {
+    checkOpen("setTransactionIsolation");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_TRANSACTION_ISOLATION);
   }
 
   @Override
   public Map<String, Class<?>> getTypeMap() throws SQLException {
+    checkOpen("getTypeMap");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_TYPE_MAP);
   }
 
   @Override
   public void setTypeMap(Map<String, Class<?>> arg0) throws SQLException {
+    checkOpen("setTypeMap");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_TYPE_MAP);
   }
 
   @Override
-  public SQLWarning getWarnings() {
+  public SQLWarning getWarnings() throws SQLException {
+    checkOpen("getWarnings");
     return warningChain;
   }
 
@@ -395,70 +443,91 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public boolean isReadOnly() {
+  public boolean isReadOnly() throws SQLException {
+    checkOpen("isReadOnly");
     return false;
   }
 
   @Override
   public void setReadOnly(boolean readonly) throws SQLException {
+    checkOpen("setReadOnly");
     if (readonly) {
       throw new SQLException(JdbcMessages.NOT_SUPPORT_READ_ONLY);
     }
   }
 
   @Override
-  public boolean isValid(int arg0) {
+  public boolean isValid(int arg0) throws SQLException {
+    if (arg0 < 0) {
+      throw new SQLException("timeout must be >= 0");
+    }
     return !isClosed;
   }
 
   @Override
   public String nativeSQL(String arg0) throws SQLException {
+    checkOpen("nativeSQL");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_NATIVE_SQL);
   }
 
   @Override
   public CallableStatement prepareCall(String arg0) throws SQLException {
+    checkOpen("prepareCall");
     throw new SQLException(NOT_SUPPORT_PREPARE_CALL);
   }
 
   @Override
   public CallableStatement prepareCall(String arg0, int arg1, int arg2) throws SQLException {
+    checkOpen("prepareCall");
     throw new SQLException(NOT_SUPPORT_PREPARE_CALL);
   }
 
   @Override
   public CallableStatement prepareCall(String arg0, int arg1, int arg2, int arg3)
       throws SQLException {
+    checkOpen("prepareCall");
     throw new SQLException(NOT_SUPPORT_PREPARE_CALL);
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
-    if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
-      return new IoTDBTablePreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
-    } else {
-      return new IoTDBPreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
+    checkOpen("prepareStatement");
+    if (sql == null) {
+      throw new SQLException("SQL statement cannot be null");
     }
+    IoTDBStatement statement;
+    if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      statement =
+          new IoTDBTablePreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
+    } else {
+      statement = new IoTDBPreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
+    }
+    registerStatement(statement);
+    return (PreparedStatement) statement;
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
+    checkOpen("prepareStatement");
     throw new SQLException(NOT_SUPPORT_PREPARE_STATEMENT);
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
+    checkOpen("prepareStatement");
     throw new SQLException(NOT_SUPPORT_PREPARE_STATEMENT);
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
+    checkOpen("prepareStatement");
     throw new SQLException(NOT_SUPPORT_PREPARE_STATEMENT);
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
       throws SQLException {
+    checkOpen("prepareStatement");
     throw new SQLException(NOT_SUPPORT_PREPARE_STATEMENT);
   }
 
@@ -466,27 +535,32 @@ public class IoTDBConnection implements Connection {
   public PreparedStatement prepareStatement(
       String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability)
       throws SQLException {
+    checkOpen("prepareStatement");
     throw new SQLException(NOT_SUPPORT_PREPARE_STATEMENT);
   }
 
   @Override
   public void releaseSavepoint(Savepoint arg0) throws SQLException {
+    checkOpen("releaseSavepoint");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_RELEASE_SAVEPOINT);
   }
 
   @Override
-  public void rollback() {
+  public void rollback() throws SQLException {
+    checkOpen("rollback");
     // do nothing in rollback
   }
 
   @Override
-  public void rollback(Savepoint arg0) {
+  public void rollback(Savepoint arg0) throws SQLException {
+    checkOpen("rollback");
     // do nothing in rollback
   }
 
   @Override
   public void setClientInfo(String name, String value) throws SQLClientInfoException {
-    if (name.equalsIgnoreCase("time_zone")) {
+    checkOpenForClientInfo("setClientInfo");
+    if ("time_zone".equalsIgnoreCase(name)) {
       try {
         setTimeZone(value);
       } catch (TException | IoTDBSQLException e) {
@@ -501,14 +575,17 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setNetworkTimeout(Executor arg0, int arg1) throws SQLException {
+    checkOpen("setNetworkTimeout");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_NETWORK_TIMEOUT);
   }
 
-  public int getQueryTimeout() {
+  public int getQueryTimeout() throws SQLException {
+    checkOpen("getQueryTimeout");
     return this.queryTimeout;
   }
 
   public void setQueryTimeout(int seconds) throws SQLException {
+    checkOpen("setQueryTimeout");
     if (seconds < 0) {
       throw new SQLException(
           String.format(JdbcMessages.QUERY_TIMEOUT_MUST_BE_NON_NEGATIVE, seconds));
@@ -518,11 +595,13 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public Savepoint setSavepoint() throws SQLException {
+    checkOpen("setSavepoint");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_SAVEPOINT);
   }
 
   @Override
   public Savepoint setSavepoint(String arg0) throws SQLException {
+    checkOpen("setSavepoint");
     throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_SAVEPOINT);
   }
 
@@ -547,17 +626,25 @@ public class IoTDBConnection implements Connection {
           DeepCopyRpcTransportFactory.INSTANCE.getTransportWithSSLConfig(
               params.getHost(),
               params.getPort(),
-              getNetworkTimeout(),
+              networkTimeout,
               params.getTrustStore(),
               params.getTrustStorePwd(),
               params.getSslProtocol());
     } else {
       transport =
           DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-              params.getHost(), params.getPort(), getNetworkTimeout());
+              params.getHost(), params.getPort(), networkTimeout);
     }
     if (!transport.isOpen()) {
       transport.open();
+    }
+  }
+
+  private void openClient() {
+    if (params.isRpcThriftCompressionEnabled()) {
+      setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
+    } else {
+      setClient(new IClientRPCService.Client(new TBinaryProtocol(transport)));
     }
   }
 
@@ -630,17 +717,16 @@ public class IoTDBConnection implements Connection {
   }
 
   public boolean reconnect() {
+    if (isClosed) {
+      return false;
+    }
     boolean flag = false;
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
       try {
         if (transport != null) {
           transport.close();
           openTransport();
-          if (Config.rpcThriftCompressionEnable) {
-            setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
-          } else {
-            setClient(new IClientRPCService.Client(new TBinaryProtocol(transport)));
-          }
+          openClient();
           openSession();
           setClient(RpcUtils.newSynchronizedClient(getClient()));
           flag = true;
@@ -666,6 +752,8 @@ public class IoTDBConnection implements Connection {
   }
 
   public void setTimeZone(String timeZone) throws TException, IoTDBSQLException {
+    checkOpenForIoTDBException("setTimeZone");
+    ZoneId newZoneId = parseTimeZone(timeZone);
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, timeZone);
     TSStatus resp = getClient().setTimeZone(req);
     try {
@@ -673,10 +761,22 @@ public class IoTDBConnection implements Connection {
     } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), resp);
     }
-    this.zoneId = ZoneId.of(timeZone);
+    this.zoneId = newZoneId;
+  }
+
+  private static ZoneId parseTimeZone(String timeZone) throws IoTDBSQLException {
+    if (timeZone == null) {
+      throw new IoTDBSQLException("Invalid time_zone: null");
+    }
+    try {
+      return ZoneId.of(timeZone);
+    } catch (DateTimeException e) {
+      throw new IoTDBSQLException("Invalid time_zone: " + timeZone, e);
+    }
   }
 
   public ServerProperties getServerProperties() throws TException {
+    checkOpenForTException("getServerProperties");
     return getClient().getProperties();
   }
 
@@ -697,5 +797,55 @@ public class IoTDBConnection implements Connection {
 
   public String getDatabase() {
     return params.getDb().orElse(null);
+  }
+
+  private void checkOpen(String action) throws SQLException {
+    if (isClosed) {
+      throw new SQLException(String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action));
+    }
+  }
+
+  private void registerStatement(IoTDBStatement statement) {
+    openStatements.add(statement);
+  }
+
+  void unregisterStatement(IoTDBStatement statement) {
+    openStatements.remove(statement);
+  }
+
+  private SQLException closeOpenStatements() {
+    SQLException statementCloseException = null;
+    for (IoTDBStatement statement : new ArrayList<>(openStatements)) {
+      try {
+        statement.close();
+      } catch (SQLException e) {
+        if (statementCloseException == null) {
+          statementCloseException = e;
+        } else {
+          statementCloseException.addSuppressed(e);
+        }
+      }
+    }
+    return statementCloseException;
+  }
+
+  private void checkOpenForClientInfo(String action) throws SQLClientInfoException {
+    if (isClosed) {
+      throw new SQLClientInfoException(
+          String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action), null);
+    }
+  }
+
+  private void checkOpenForIoTDBException(String action) throws IoTDBSQLException {
+    if (isClosed) {
+      throw new IoTDBSQLException(
+          String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action));
+    }
+  }
+
+  private void checkOpenForTException(String action) throws TException {
+    if (isClosed) {
+      throw new TException(String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action));
+    }
   }
 }

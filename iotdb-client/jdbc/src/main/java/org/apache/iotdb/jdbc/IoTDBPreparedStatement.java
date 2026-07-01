@@ -71,6 +71,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   private String sql;
   private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
   private static final Logger logger = LoggerFactory.getLogger(IoTDBPreparedStatement.class);
+  private final int parameterCount;
 
   /** save the SQL parameters as (paramLoc,paramValue) pairs. */
   private final Map<Integer, String> parameters = new HashMap<>();
@@ -83,79 +84,113 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       ZoneId zoneId,
       Charset charset)
       throws SQLException {
+    this(connection, client, sessionId, requireNonNullSql(sql), zoneId, charset, true);
+  }
+
+  private IoTDBPreparedStatement(
+      IoTDBConnection connection,
+      Iface client,
+      Long sessionId,
+      String sql,
+      ZoneId zoneId,
+      Charset charset,
+      boolean validated)
+      throws SQLException {
     super(connection, client, sessionId, zoneId, charset);
     this.sql = sql;
+    this.parameterCount = splitSqlStatement(sql).size() - 1;
   }
 
   // Only for tests
   IoTDBPreparedStatement(
       IoTDBConnection connection, Iface client, Long sessionId, String sql, ZoneId zoneId)
       throws SQLException {
-    super(connection, client, sessionId, zoneId, TSFileConfig.STRING_CHARSET);
-    this.sql = sql;
+    this(connection, client, sessionId, sql, zoneId, TSFileConfig.STRING_CHARSET);
+  }
+
+  private static String requireNonNullSql(String sql) throws SQLException {
+    if (sql == null) {
+      throw new SQLException("SQL statement cannot be null");
+    }
+    return sql;
   }
 
   @Override
   public void addBatch() throws SQLException {
+    checkConnection("addBatch");
     super.addBatch(createCompleteSql(sql, parameters));
   }
 
   @Override
-  public void clearParameters() {
+  public void clearParameters() throws SQLException {
+    checkConnection("clearParameters");
     this.parameters.clear();
   }
 
   @Override
   public boolean execute() throws SQLException {
+    checkConnection("execute");
+    closeCurrentResultSet();
     return super.execute(createCompleteSql(sql, parameters));
   }
 
   @Override
   public ResultSet executeQuery() throws SQLException {
+    checkConnection("executeQuery");
+    closeCurrentResultSet();
     return super.executeQuery(createCompleteSql(sql, parameters));
   }
 
   @Override
   public int executeUpdate() throws SQLException {
+    checkConnection("executeUpdate");
+    closeCurrentResultSet();
     return super.executeUpdate(createCompleteSql(sql, parameters));
   }
 
   @Override
   public ResultSetMetaData getMetaData() throws SQLException {
-    return getResultSet().getMetaData();
+    ResultSet currentResultSet = getResultSet();
+    return currentResultSet == null ? null : currentResultSet.getMetaData();
   }
 
   @Override
-  public ParameterMetaData getParameterMetaData() {
+  public ParameterMetaData getParameterMetaData() throws SQLException {
+    checkConnection("getParameterMetaData");
     return new ParameterMetaData() {
       @Override
-      public int getParameterCount() {
-        return parameters.size();
+      public int getParameterCount() throws SQLException {
+        checkConnection("getParameterMetaData");
+        return parameterCount;
       }
 
       @Override
-      public int isNullable(int param) {
+      public int isNullable(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return ParameterMetaData.parameterNullableUnknown;
       }
 
       @Override
-      public boolean isSigned(int param) {
+      public boolean isSigned(int param) throws SQLException {
+        String value = getParameterMetadataValue(param);
         try {
-          return Integer.parseInt(parameters.get(param)) < 0;
+          return Integer.parseInt(value) < 0;
         } catch (Exception e) {
           return false;
         }
       }
 
       @Override
-      public int getPrecision(int param) {
-        return parameters.get(param).length();
+      public int getPrecision(int param) throws SQLException {
+        String value = getParameterMetadataValue(param);
+        return value == null ? 0 : value.length();
       }
 
       @Override
-      public int getScale(int param) {
+      public int getScale(int param) throws SQLException {
+        String value = getParameterMetadataValue(param);
         try {
-          double d = Double.parseDouble(parameters.get(param));
+          double d = Double.parseDouble(value);
           if (d >= 1) { // we only need the fraction digits
             d = d - (long) d;
           }
@@ -175,69 +210,116 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       }
 
       @Override
-      public int getParameterType(int param) {
-        return 0;
+      public int getParameterType(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
+        return Types.NULL;
       }
 
       @Override
-      public String getParameterTypeName(int param) {
+      public String getParameterTypeName(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return null;
       }
 
       @Override
-      public String getParameterClassName(int param) {
+      public String getParameterClassName(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return null;
       }
 
       @Override
-      public int getParameterMode(int param) {
-        return 0;
+      public int getParameterMode(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
+        return ParameterMetaData.parameterModeUnknown;
       }
 
       @Override
-      public <T> T unwrap(Class<T> iface) {
-        return null;
+      public <T> T unwrap(Class<T> iface) throws SQLException {
+        checkConnection("getParameterMetaData");
+        return JdbcWrapperUtils.unwrap(this, iface);
       }
 
       @Override
-      public boolean isWrapperFor(Class<?> iface) {
-        return false;
+      public boolean isWrapperFor(Class<?> iface) throws SQLException {
+        checkConnection("getParameterMetaData");
+        return JdbcWrapperUtils.isWrapperFor(this, iface);
       }
     };
   }
 
+  private void checkParameterMetadataIndex(int param) throws SQLException {
+    checkConnection("getParameterMetaData");
+    checkParameterIndexRange(param);
+  }
+
+  private void checkParameterIndex(int param) throws SQLException {
+    checkConnection("set parameter");
+    checkParameterIndexRange(param);
+  }
+
+  private SQLException unsupportedParameterOperation(int param, String message)
+      throws SQLException {
+    checkConnection("set parameter");
+    return new SQLException(message);
+  }
+
+  private void checkParameterIndexRange(int param) throws SQLException {
+    if (param < 1 || param > parameterCount) {
+      throw new SQLException(
+          "Parameter index out of range: " + param + " (expected 1-" + parameterCount + ")");
+    }
+  }
+
+  private void setParameter(int parameterIndex, String value) throws SQLException {
+    checkParameterIndex(parameterIndex);
+    this.parameters.put(parameterIndex, value);
+  }
+
+  private String getParameterMetadataValue(int param) throws SQLException {
+    checkParameterMetadataIndex(param);
+    return parameters.get(param);
+  }
+
   @Override
   public void setArray(int parameterIndex, Array x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setAsciiStream(int parameterIndex, InputStream x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setAsciiStream(int parameterIndex, InputStream x, int length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setAsciiStream(int parameterIndex, InputStream x, long length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBigDecimal(int parameterIndex, BigDecimal x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
+    checkParameterIndex(parameterIndex);
+    if (length < 0) {
+      throw new SQLException("length must be >= 0");
+    }
+    if (x == null) {
+      setNull(parameterIndex, Types.BINARY);
+      return;
+    }
     byte[] bytes = null;
     try {
       bytes = ReadWriteIOUtils.readBytes(x, length);
@@ -245,156 +327,170 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       for (byte b : bytes) {
         sb.append(String.format("%02x", b));
       }
-      this.parameters.put(parameterIndex, "X'" + sb.toString() + "'");
+      setParameter(parameterIndex, "X'" + sb.toString() + "'");
     } catch (IOException e) {
-      throw new SQLException(Constant.PARAMETER_SUPPORTED);
+      throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
     }
   }
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x, long length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBlob(int parameterIndex, Blob x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBlob(int parameterIndex, InputStream inputStream) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBlob(int parameterIndex, InputStream inputStream, long length)
       throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
-  public void setBoolean(int parameterIndex, boolean x) {
-    this.parameters.put(parameterIndex, Boolean.toString(x));
+  public void setBoolean(int parameterIndex, boolean x) throws SQLException {
+    setParameter(parameterIndex, Boolean.toString(x));
   }
 
   @Override
   public void setByte(int parameterIndex, byte x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBytes(int parameterIndex, byte[] x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.BINARY);
+      return;
+    }
+    checkParameterIndex(parameterIndex);
     Binary binary = new Binary(x);
-    this.parameters.put(parameterIndex, binary.getStringValue(TSFileConfig.STRING_CHARSET));
+    setParameter(parameterIndex, binary.getStringValue(TSFileConfig.STRING_CHARSET));
   }
 
   @Override
   public void setCharacterStream(int parameterIndex, Reader reader) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setCharacterStream(int parameterIndex, Reader reader, int length)
       throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setCharacterStream(int parameterIndex, Reader reader, long length)
       throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setClob(int parameterIndex, Clob x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setClob(int parameterIndex, Reader reader) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setClob(int parameterIndex, Reader reader, long length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setDate(int parameterIndex, Date x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.DATE);
+      return;
+    }
+    checkParameterIndex(parameterIndex);
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    this.parameters.put(parameterIndex, "'" + dateFormat.format(x) + "'");
+    setParameter(parameterIndex, "'" + dateFormat.format(x) + "'");
   }
 
   @Override
   public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
-  public void setDouble(int parameterIndex, double x) {
-    this.parameters.put(parameterIndex, Double.toString(x));
+  public void setDouble(int parameterIndex, double x) throws SQLException {
+    setParameter(parameterIndex, Double.toString(x));
   }
 
   @Override
-  public void setFloat(int parameterIndex, float x) {
-    this.parameters.put(parameterIndex, Float.toString(x));
+  public void setFloat(int parameterIndex, float x) throws SQLException {
+    setParameter(parameterIndex, Float.toString(x));
   }
 
   @Override
-  public void setInt(int parameterIndex, int x) {
-    this.parameters.put(parameterIndex, Integer.toString(x));
+  public void setInt(int parameterIndex, int x) throws SQLException {
+    setParameter(parameterIndex, Integer.toString(x));
   }
 
   @Override
-  public void setLong(int parameterIndex, long x) {
-    this.parameters.put(parameterIndex, Long.toString(x));
+  public void setLong(int parameterIndex, long x) throws SQLException {
+    setParameter(parameterIndex, Long.toString(x));
   }
 
   @Override
   public void setNCharacterStream(int parameterIndex, Reader value) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNCharacterStream(int parameterIndex, Reader value, long length)
       throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNClob(int parameterIndex, NClob value) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNClob(int parameterIndex, Reader reader) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNClob(int parameterIndex, Reader reader, long length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNString(int parameterIndex, String value) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNull(int parameterIndex, int sqlType) throws SQLException {
-    this.parameters.put(parameterIndex, "NULL");
+    setParameter(parameterIndex, "NULL");
   }
 
   @Override
   public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
+    checkConnection("set parameter");
     throw new SQLException(Constant.PARAMETER_NOT_NULL);
   }
 
   @Override
   public void setObject(int parameterIndex, Object x) throws SQLException {
-    if (x instanceof String) {
+    checkConnection("set parameter");
+    if (x == null) {
+      setNull(parameterIndex, Types.NULL);
+    } else if (x instanceof String) {
       setString(parameterIndex, (String) x);
     } else if (x instanceof Integer) {
       setInt(parameterIndex, (Integer) x);
@@ -441,6 +537,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   @Override
   public void setObject(int parameterIndex, Object parameterObj, int targetSqlType, int scale)
       throws SQLException {
+    checkConnection("set parameter");
     if (parameterObj == null) {
       setNull(parameterIndex, java.sql.Types.OTHER);
     } else {
@@ -512,7 +609,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
           case Types.VARBINARY:
           case Types.LONGVARBINARY:
           case Types.BLOB:
-            throw new SQLException(Constant.PARAMETER_SUPPORTED);
+            throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
           case Types.DATE:
           case Types.TIMESTAMP:
             java.util.Date parameterAsDate;
@@ -566,14 +663,14 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
             break;
 
           case Types.OTHER:
-            throw new SQLException(Constant.PARAMETER_SUPPORTED); //
+            throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED); //
           default:
-            throw new SQLException(Constant.PARAMETER_SUPPORTED); //
+            throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED); //
         }
       } catch (SQLException ex) {
         throw ex;
       } catch (Exception ex) {
-        throw new SQLException(Constant.PARAMETER_SUPPORTED); //
+        throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED); //
       }
     }
   }
@@ -890,30 +987,30 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setRef(int parameterIndex, Ref x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setRowId(int parameterIndex, RowId x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw unsupportedParameterOperation(parameterIndex, METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public void setSQLXML(int parameterIndex, SQLXML xmlObject) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw unsupportedParameterOperation(parameterIndex, METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public void setShort(int parameterIndex, short x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
-  public void setString(int parameterIndex, String x) {
+  public void setString(int parameterIndex, String x) throws SQLException {
     if (x == null) {
-      this.parameters.put(parameterIndex, null);
+      setParameter(parameterIndex, null);
     } else {
-      this.parameters.put(parameterIndex, "'" + escapeSingleQuotes(x) + "'");
+      setParameter(parameterIndex, "'" + escapeSingleQuotes(x) + "'");
     }
   }
 
@@ -924,6 +1021,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setTime(int parameterIndex, Time x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.TIME);
+      return;
+    }
+    checkParameterIndex(parameterIndex);
     try {
       long time = x.getTime();
       String timeprecision = client.getProperties().getTimestampPrecision();
@@ -948,6 +1050,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.TIME);
+      return;
+    }
+    checkParameterIndex(parameterIndex);
     try {
       ZonedDateTime zonedDateTime = null;
       long time = x.getTime();
@@ -971,8 +1078,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       } else {
         zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(time), super.zoneId);
       }
-      this.parameters.put(
-          parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      setParameter(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     } catch (TException e) {
       logger.error(
           String.format("set time error when iotdb prepared statement :%s ", e.getMessage()));
@@ -980,15 +1086,24 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public void setTimestamp(int parameterIndex, Timestamp x) {
+  public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.TIMESTAMP);
+      return;
+    }
+    checkParameterIndex(parameterIndex);
     ZonedDateTime zonedDateTime =
         ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()), super.zoneId);
-    this.parameters.put(
-        parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+    setParameter(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
   }
 
   @Override
   public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.TIMESTAMP);
+      return;
+    }
+    checkParameterIndex(parameterIndex);
     ZonedDateTime zonedDateTime = null;
     if (cal != null) {
       zonedDateTime =
@@ -997,18 +1112,17 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     } else {
       zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()), super.zoneId);
     }
-    this.parameters.put(
-        parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+    setParameter(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
   }
 
   @Override
   public void setURL(int parameterIndex, URL x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setUnicodeStream(int parameterIndex, InputStream x, int length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   private String createCompleteSql(final String sql, Map<Integer, String> parameters)
@@ -1024,7 +1138,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       if (!parameters.containsKey(i)) {
         throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i));
       }
-      newSql.append(parameters.get(i));
+      String parameter = parameters.get(i);
+      newSql.append(parameter == null ? "NULL" : parameter);
       newSql.append(parts.get(i));
     }
     return newSql.toString();

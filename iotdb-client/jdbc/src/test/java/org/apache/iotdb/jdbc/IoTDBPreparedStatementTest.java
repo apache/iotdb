@@ -31,15 +31,27 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.sql.Date;
+import java.sql.ParameterMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,6 +74,18 @@ public class IoTDBPreparedStatementTest {
     when(execStatementResp.getQueryId()).thenReturn(queryId);
 
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
+    when(client.closeOperation(any())).thenReturn(Status_SUCCESS);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testConstructorRejectsNullSqlBeforeRequestingStatementId() throws Exception {
+    assertThrows(
+        SQLException.class,
+        () -> new IoTDBPreparedStatement(connection, client, sessionId, null, zoneId));
+
+    verify(client, never()).requestStatementId(anyLong());
+    verify(client, never()).closeOperation(any());
   }
 
   @SuppressWarnings("resource")
@@ -83,13 +107,89 @@ public class IoTDBPreparedStatementTest {
 
   @SuppressWarnings("resource")
   @Test
-  public void unusedArgument() throws SQLException {
+  public void testParameterMetadataWrapperMethods() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    assertTrue(metadata.isWrapperFor(ParameterMetaData.class));
+    assertFalse(metadata.isWrapperFor(String.class));
+    assertFalse(metadata.isWrapperFor(null));
+    assertSame(metadata, metadata.unwrap(ParameterMetaData.class));
+    assertThrows(SQLException.class, () -> metadata.unwrap(String.class));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testParameterMetadataRejectsUnsetIndexAndHandlesNullValue() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(
+            connection, client, sessionId, "SELECT ? FROM root.sg.d WHERE s = '?'", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    assertEquals(1, metadata.getParameterCount());
+    assertEquals(0, metadata.getPrecision(1));
+    assertThrows(SQLException.class, () -> metadata.getPrecision(0));
+    assertThrows(SQLException.class, () -> metadata.getParameterMode(2));
+    assertThrows(SQLException.class, () -> ps.setString(0, "x"));
+    assertThrows(SQLException.class, () -> ps.setInt(2, 1));
+
+    ps.setString(1, null);
+
+    assertEquals(1, metadata.getParameterCount());
+    assertEquals(0, metadata.getPrecision(1));
+    assertEquals(Types.NULL, metadata.getParameterType(1));
+    assertEquals(ParameterMetaData.parameterModeUnknown, metadata.getParameterMode(1));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void getMetaDataReturnsNullWhenNoResultSetExists() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+
+    assertNull(ps.getMetaData());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testClosedPreparedStatementRejectsParameterOperations() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    ps.close();
+
+    assertTrue(ps.isClosed());
+    assertThrows(SQLException.class, () -> ps.clearParameters());
+    assertThrows(SQLException.class, () -> ps.setInt(1, 1));
+    assertThrows(SQLException.class, () -> ps.setString(1, "x"));
+    assertThrows(
+        SQLException.class,
+        () -> ps.setBinaryStream(1, new ByteArrayInputStream(new byte[] {1}), 1));
+    assertThrows(SQLException.class, () -> ps.getParameterMetaData());
+    assertThrows(SQLException.class, () -> metadata.isWrapperFor(ParameterMetaData.class));
+    assertThrows(SQLException.class, () -> metadata.unwrap(ParameterMetaData.class));
+    assertThrows(SQLException.class, () -> metadata.getParameterCount());
+    assertThrows(SQLException.class, () -> metadata.getPrecision(1));
+
+    SQLException unsupportedException =
+        assertThrows(SQLException.class, () -> ps.setArray(1, null));
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    unsupportedException = assertThrows(SQLException.class, () -> ps.setRowId(1, null));
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    unsupportedException = assertThrows(SQLException.class, () -> ps.setObject(1, new Object()));
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void invalidParameterIndex() throws SQLException {
     String sql =
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00";
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
-    ps.setString(1, "123");
-    assertFalse(ps.execute());
+    assertThrows(SQLException.class, () -> ps.setString(1, "123"));
   }
 
   @SuppressWarnings("resource")
@@ -100,6 +200,20 @@ public class IoTDBPreparedStatementTest {
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
     assertThrows(SQLException.class, () -> ps.execute());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void executeWithUnsetParameterClosesPreviousResultSet() throws SQLException {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ResultSet previousResultSet = mock(ResultSet.class);
+    ps.resultSet = previousResultSet;
+
+    assertThrows(SQLException.class, ps::execute);
+
+    verify(previousResultSet).close();
+    assertNull(ps.resultSet);
   }
 
   @SuppressWarnings("resource")
@@ -234,6 +348,40 @@ public class IoTDBPreparedStatementTest {
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
         "SELECT status, 'temperature' FROM root.ln.wf01.wt01", argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void nullArgumentsUseSqlNullLiteral() throws Exception {
+    String sql = "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f,g) VALUES(1,?,?,?,?,?,?,?)";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+
+    ps.setString(1, null);
+    ps.setObject(2, null);
+    ps.setDate(3, (Date) null);
+    ps.setTime(4, (Time) null);
+    ps.setTimestamp(5, (Timestamp) null);
+    ps.setBytes(6, null);
+    ps.setBinaryStream(7, (InputStream) null, 0);
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f,g) VALUES(1,NULL,NULL,NULL,NULL,NULL,NULL,NULL)",
+        argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void setBinaryStreamRejectsNegativeLength() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+
+    assertThrows(
+        SQLException.class, () -> ps.setBinaryStream(1, new ByteArrayInputStream(new byte[0]), -1));
   }
 
   @SuppressWarnings("resource")

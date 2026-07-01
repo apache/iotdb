@@ -39,7 +39,7 @@ public class Config {
   /** If host is provided, without a port. */
   static final int IOTDB_DEFAULT_PORT = 6667;
 
-  /** TsFile's default series name. */
+  /** Default series name. */
   static final String DEFAULT_SERIES_NAME = "default";
 
   static final String AUTH_USER = "user";
@@ -50,6 +50,9 @@ public class Config {
 
   static final int RETRY_NUM = 3;
   static final long RETRY_INTERVAL_MS = 1000;
+
+  static final int DRIVER_MAJOR_VERSION = 4;
+  static final int DRIVER_MINOR_VERSION = 3;
 
   public static final int DEFAULT_FETCH_SIZE = 5000;
   static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;

@@ -21,24 +21,54 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde.DeserializedParam;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareReq;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareResp;
 
+import org.apache.thrift.TException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.sql.Date;
+import java.sql.ParameterMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.ZoneId;
+import java.util.Collections;
+import java.util.List;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +88,7 @@ public class IoTDBTablePreparedStatementTest {
   public void before() throws Exception {
     MockitoAnnotations.initMocks(this);
     when(connection.getSqlDialect()).thenReturn("table");
+    when(connection.getTimeFactor()).thenReturn(1_000);
     when(execStatementResp.getStatus()).thenReturn(Status_SUCCESS);
     when(execStatementResp.getQueryId()).thenReturn(queryId);
 
@@ -81,6 +112,9 @@ public class IoTDBTablePreparedStatementTest {
     // Mock for executePreparedStatement
     when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
         .thenReturn(execStatementResp);
+    when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
+    when(client.deallocatePreparedStatement(any())).thenReturn(Status_SUCCESS);
+    when(client.closeOperation(any())).thenReturn(Status_SUCCESS);
   }
 
   /** Count the number of '?' placeholders in a SQL string, ignoring those inside quotes */
@@ -110,6 +144,261 @@ public class IoTDBTablePreparedStatementTest {
   }
 
   // ========== Table Model SQL Injection Prevention Tests ==========
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testConstructorRejectsNullSqlBeforeRequestingStatementId() throws Exception {
+    assertThrows(
+        SQLException.class,
+        () -> new IoTDBTablePreparedStatement(connection, client, sessionId, null, zoneId));
+
+    verify(client, never()).requestStatementId(anyLong());
+    verify(client, never()).prepareStatement(any(TSPrepareReq.class));
+    verify(client, never()).closeOperation(any());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testParameterMetadataWrapperMethods() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    assertTrue(metadata.isWrapperFor(ParameterMetaData.class));
+    assertFalse(metadata.isWrapperFor(String.class));
+    assertFalse(metadata.isWrapperFor(null));
+    assertSame(metadata, metadata.unwrap(ParameterMetaData.class));
+    assertThrows(SQLException.class, () -> metadata.unwrap(String.class));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testParameterMetadataRejectsInvalidIndex() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    assertEquals(1, metadata.getParameterCount());
+    assertThrows(SQLException.class, () -> metadata.getParameterType(0));
+    assertThrows(SQLException.class, () -> metadata.isSigned(2));
+    assertThrows(SQLException.class, () -> ps.setInt(0, 1));
+    assertThrows(SQLException.class, () -> ps.setInt(2, 1));
+
+    ps.setInt(1, 1);
+
+    assertEquals(Types.INTEGER, metadata.getParameterType(1));
+    assertTrue(metadata.isSigned(1));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testClosedTablePreparedStatementRejectsParameterOperations() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    ps.close();
+
+    assertTrue(ps.isClosed());
+    assertThrows(SQLException.class, () -> ps.clearParameters());
+    assertThrows(SQLException.class, () -> ps.getMetaData());
+    assertThrows(SQLException.class, () -> ps.setInt(1, 1));
+    assertThrows(SQLException.class, () -> ps.setString(1, "x"));
+    assertThrows(
+        SQLException.class,
+        () -> ps.setBinaryStream(1, new ByteArrayInputStream(new byte[] {1}), 1));
+    assertThrows(SQLException.class, () -> ps.getParameterMetaData());
+    assertThrows(SQLException.class, () -> metadata.isWrapperFor(ParameterMetaData.class));
+    assertThrows(SQLException.class, () -> metadata.unwrap(ParameterMetaData.class));
+    assertThrows(SQLException.class, () -> metadata.getParameterCount());
+    assertThrows(SQLException.class, () -> metadata.getParameterType(1));
+
+    SQLException unsupportedException =
+        assertThrows(SQLException.class, () -> ps.setArray(1, null));
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    unsupportedException = assertThrows(SQLException.class, () -> ps.setRowId(1, null));
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    unsupportedException = assertThrows(SQLException.class, () -> ps.setObject(1, new Object()));
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testFailedServerSidePrepareClosesStatementOperation() throws Exception {
+    when(client.prepareStatement(any(TSPrepareReq.class)))
+        .thenThrow(new TException("prepare failed"));
+
+    assertThrows(
+        SQLException.class,
+        () -> new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId));
+
+    verify(client).closeOperation(any());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTablePreparedExecutionClosesPreviousResultSet() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ResultSet previousResultSet = mock(ResultSet.class);
+    ps.resultSet = previousResultSet;
+
+    ps.setInt(1, 1);
+    ps.execute();
+
+    verify(previousResultSet).close();
+    assertNull(ps.resultSet);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTablePreparedExecuteStoresQueryResultSet() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    when(execStatementResp.isSetQueryResult()).thenReturn(true);
+    when(execStatementResp.getColumns()).thenReturn(Collections.singletonList("s1"));
+    when(execStatementResp.getDataTypeList()).thenReturn(Collections.singletonList("INT32"));
+    when(execStatementResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(Collections.singletonList(0));
+    execStatementResp.queryResult = Collections.<ByteBuffer>emptyList();
+
+    ps.setInt(1, 1);
+
+    assertTrue(ps.execute());
+
+    ResultSet resultSet = ps.getResultSet();
+    assertNotNull(resultSet);
+    assertSame(resultSet, ps.getResultSet());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTablePreparedCancelCancelsActiveQueryResult() throws Exception {
+    long queryId = 12L;
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    when(execStatementResp.isSetQueryId()).thenReturn(true);
+    when(execStatementResp.getQueryId()).thenReturn(queryId);
+    when(execStatementResp.isSetQueryResult()).thenReturn(true);
+    when(execStatementResp.getColumns()).thenReturn(Collections.singletonList("s1"));
+    when(execStatementResp.getDataTypeList()).thenReturn(Collections.singletonList("INT32"));
+    when(execStatementResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(Collections.singletonList(0));
+    when(client.cancelOperation(any(TSCancelOperationReq.class))).thenReturn(Status_SUCCESS);
+    execStatementResp.queryResult = Collections.<ByteBuffer>emptyList();
+
+    ps.setInt(1, 1);
+    assertTrue(ps.execute());
+
+    ps.cancel();
+
+    ArgumentCaptor<TSCancelOperationReq> cancelReq =
+        ArgumentCaptor.forClass(TSCancelOperationReq.class);
+    verify(client).cancelOperation(cancelReq.capture());
+    assertEquals(queryId, cancelReq.getValue().getQueryId());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTablePreparedClosesUnexpectedQueryOperationWithoutResult() throws Exception {
+    long statementId = 3L;
+    long queryId = 13L;
+    when(client.requestStatementId(anyLong())).thenReturn(statementId);
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    TSExecuteStatementResp resp = new TSExecuteStatementResp();
+    resp.setStatus(Status_SUCCESS);
+    resp.setQueryId(queryId);
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class))).thenReturn(resp);
+
+    ps.setInt(1, 1);
+
+    assertFalse(ps.execute());
+
+    ArgumentCaptor<TSCloseOperationReq> closeReq =
+        ArgumentCaptor.forClass(TSCloseOperationReq.class);
+    verify(client).closeOperation(closeReq.capture());
+    assertEquals(statementId, closeReq.getValue().getStatementId());
+    assertEquals(queryId, closeReq.getValue().getQueryId());
+    assertNull(ps.resultSet);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTablePreparedClosesQueryOperationWhenResultSetCreationFails() throws Exception {
+    long queryId = 14L;
+    when(client.requestStatementId(anyLong())).thenReturn(4L);
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    TSExecuteStatementResp malformedResp = new TSExecuteStatementResp();
+    malformedResp.setStatus(Status_SUCCESS);
+    malformedResp.setQueryId(queryId);
+    malformedResp.setColumns(Collections.singletonList("s1"));
+    malformedResp.setDataTypeList(Collections.emptyList());
+    malformedResp.setQueryResult(Collections.<ByteBuffer>emptyList());
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
+        .thenReturn(malformedResp);
+
+    ps.setInt(1, 1);
+
+    assertThrows(SQLException.class, ps::execute);
+
+    ArgumentCaptor<TSCloseOperationReq> closeReq =
+        ArgumentCaptor.forClass(TSCloseOperationReq.class);
+    verify(client).closeOperation(closeReq.capture());
+    assertEquals(4L, closeReq.getValue().getStatementId());
+    assertEquals(queryId, closeReq.getValue().getQueryId());
+    assertNull(ps.resultSet);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTablePreparedUnsetParameterClosesPreviousResultSet() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ResultSet previousResultSet = mock(ResultSet.class);
+    ps.resultSet = previousResultSet;
+
+    assertThrows(SQLException.class, ps::execute);
+
+    verify(previousResultSet).close();
+    assertNull(ps.resultSet);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testCloseClosesResultSetBeforeDeallocatingPreparedStatement() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ResultSet resultSet = mock(ResultSet.class);
+    ps.resultSet = resultSet;
+
+    ps.close();
+
+    InOrder inOrder = inOrder(resultSet, client);
+    inOrder.verify(resultSet).close();
+    inOrder.verify(client).deallocatePreparedStatement(any());
+    assertTrue(ps.isClosed());
+    assertNull(ps.resultSet);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testCloseDeallocatesPreparedStatementWhenResultSetCloseFails() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ResultSet resultSet = mock(ResultSet.class);
+    doThrow(new SQLException("result set close failed")).when(resultSet).close();
+    ps.resultSet = resultSet;
+
+    SQLException closeException = assertThrows(SQLException.class, ps::close);
+
+    assertEquals("result set close failed", closeException.getMessage());
+    verify(client).deallocatePreparedStatement(any());
+    verify(client).closeOperation(any());
+    assertTrue(ps.isClosed());
+    assertNull(ps.resultSet);
+  }
 
   @SuppressWarnings("resource")
   @Test
@@ -236,5 +525,63 @@ public class IoTDBTablePreparedStatementTest {
         ArgumentCaptor.forClass(TSExecutePreparedReq.class);
     verify(client).executePreparedStatement(argument.capture());
     assertTrue(argument.getValue().getParameters() != null);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedNullSettersSerializeNulls() throws Exception {
+    String sql = "SELECT * FROM users WHERE a=? AND b=? AND c=? AND d=? AND e=? AND f=?";
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+
+    ps.setObject(1, null);
+    ps.setBytes(2, null);
+    ps.setDate(3, (Date) null);
+    ps.setTime(4, (Time) null);
+    ps.setTimestamp(5, (Timestamp) null);
+    ps.setBinaryStream(6, (InputStream) null, 0);
+    ps.execute();
+
+    ArgumentCaptor<TSExecutePreparedReq> argument =
+        ArgumentCaptor.forClass(TSExecutePreparedReq.class);
+    verify(client).executePreparedStatement(argument.capture());
+    List<DeserializedParam> parameters =
+        PreparedParameterSerde.deserialize(ByteBuffer.wrap(argument.getValue().getParameters()));
+
+    assertEquals(6, parameters.size());
+    for (DeserializedParam parameter : parameters) {
+      assertTrue(parameter.isNull());
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelSetBinaryStreamRejectsNegativeLength() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+
+    assertThrows(
+        SQLException.class, () -> ps.setBinaryStream(1, new ByteArrayInputStream(new byte[0]), -1));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelClientSideNullStringUsesSqlNullLiteral() throws Exception {
+    String sql = "INSERT INTO users(time,email) VALUES(1, ?)";
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+
+    assertEquals(1, ps.getParameterMetaData().getParameterCount());
+    assertThrows(SQLException.class, () -> ps.setString(0, null));
+    assertThrows(SQLException.class, () -> ps.setString(2, null));
+
+    ps.setString(1, null);
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "INSERT INTO users(time,email) VALUES(1, NULL)", argument.getValue().getStatement());
   }
 }

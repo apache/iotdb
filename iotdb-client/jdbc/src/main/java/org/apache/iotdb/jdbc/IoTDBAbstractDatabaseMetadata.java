@@ -539,17 +539,20 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getURL() throws SQLException {
+    checkConnectionOpen();
     // TODO: Return the URL for this DBMS or null if it cannot be generated
     return this.connection.getUrl();
   }
 
   @Override
   public String getUserName() throws SQLException {
+    checkConnectionOpen();
     return connection.getUserName();
   }
 
   @Override
   public boolean isReadOnly() throws SQLException {
+    checkConnectionOpen();
     try {
       return client.getProperties().isReadOnly;
     } catch (TException e) {
@@ -585,6 +588,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getDatabaseProductVersion() throws SQLException {
+    checkConnectionOpen();
     String serverVersion = "";
     String sql = "SHOW VERSION";
     try (Statement stmt = this.connection.createStatement();
@@ -606,12 +610,12 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public int getDriverMajorVersion() {
-    return 4;
+    return Config.DRIVER_MAJOR_VERSION;
   }
 
   @Override
   public int getDriverMinorVersion() {
-    return 3;
+    return Config.DRIVER_MINOR_VERSION;
   }
 
   @Override
@@ -681,6 +685,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getSystemFunctions() throws SQLException {
+    checkConnectionOpen();
     String result = "";
     Statement statement = null;
     ResultSet resultSet = null;
@@ -1037,6 +1042,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public int getMaxConnections() throws SQLException {
+    checkConnectionOpen();
     int maxcount = 0;
     try {
       maxcount = client.getProperties().getMaxConcurrentClientNum();
@@ -1083,6 +1089,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public int getMaxStatementLength() throws SQLException {
+    checkConnectionOpen();
     try {
       return client.getProperties().getThriftMaxFrameSize();
     } catch (TException e) {
@@ -2284,6 +2291,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public Connection getConnection() throws SQLException {
+    checkConnectionOpen();
     return connection;
   }
 
@@ -2462,6 +2470,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public int getDatabaseMajorVersion() throws SQLException {
+    checkConnectionOpen();
     int majorVersion = 0;
     try {
       String version = client.getProperties().getVersion();
@@ -2477,6 +2486,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public int getDatabaseMinorVersion() throws SQLException {
+    checkConnectionOpen();
     int minorVersion = 0;
     try {
       String version = client.getProperties().getVersion();
@@ -2858,11 +2868,20 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    checkConnectionOpen();
+    return JdbcWrapperUtils.unwrap(this, arg0);
   }
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    checkConnectionOpen();
+    return JdbcWrapperUtils.isWrapperFor(this, arg0);
+  }
+
+  protected final void checkConnectionOpen() throws SQLException {
+    if (connection == null || connection.isClosed()) {
+      throw new SQLException(
+          String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, "get metadata"));
+    }
   }
 }
