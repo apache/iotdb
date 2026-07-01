@@ -270,8 +270,8 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
             message.contains("NullPointerException"));
         // ... and the client should receive a clear, correct error message
         Assert.assertTrue(
-            "Expected a 'Cannot find Target DataNode' style error but got: " + message,
-            message.contains("Cannot find Target DataNode"));
+            "Expected a 'does not exist in the cluster' error but got: " + message,
+            message.contains("does not exist in the cluster"));
       }
     }
   }

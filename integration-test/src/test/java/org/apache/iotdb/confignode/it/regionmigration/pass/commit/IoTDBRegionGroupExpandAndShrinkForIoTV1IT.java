@@ -168,10 +168,13 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
         Assert.assertFalse(
             "ConfigNode should not throw NullPointerException, but got: " + message,
             message.contains("NullPointerException"));
-        // ... and the client should receive a clear, correct error message
+        // ... and the submission must be rejected cleanly. "extend region" wraps every region's
+        // result, so the top-level message only reports the aggregate counts; the concrete "does
+        // not
+        // exist in the cluster" reason is carried in the per-region sub-status.
         Assert.assertTrue(
-            "Expected a 'Cannot find Target DataNode' style error but got: " + message,
-            message.contains("Cannot find Target DataNode"));
+            "Expected the extend submission to be rejected but got: " + message,
+            message.contains("failed to submit: 1"));
       }
     }
   }
