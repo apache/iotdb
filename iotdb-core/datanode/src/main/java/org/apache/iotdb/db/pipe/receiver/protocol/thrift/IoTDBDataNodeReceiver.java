@@ -66,7 +66,6 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementDataTypeConver
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
@@ -221,20 +220,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         if (requestType != PipeRequestType.TRANSFER_SLICE) {
           sliceReqHandler.clear();
         }
+        final TPipeTransferResp authResp = checkPipeTransferAuthenticated(requestType);
+        if (Objects.nonNull(authResp)) {
+          return authResp;
+        }
         switch (requestType) {
           case HANDSHAKE_DATANODE_V1:
             {
               try {
-                if (PipeConfig.getInstance().isPipeEnableMemoryCheck()
-                    && PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
-                        < PipeConfig.getInstance().getPipeMinimumReceiverMemory()) {
-                  return new TPipeTransferResp(
-                      RpcUtils.getStatus(
-                          TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
-                          "The receiver memory is not enough to handle the handshake request from datanode."));
-                }
-                return handleTransferHandshakeV1(
-                    PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
+                return new TPipeTransferResp(getUnsupportedHandshakeV1Status());
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordHandshakeDatanodeV1Timer(System.nanoTime() - startTime);
@@ -526,6 +520,46 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected String getClusterId() {
     return IoTDBDescriptor.getInstance().getConfig().getClusterId();
+  }
+
+  private TPipeTransferResp checkPipeTransferAuthenticated(final PipeRequestType requestType) {
+    if (!requiresAuthentication(requestType)) {
+      return null;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (hasPipeHandshakeCredential || (clientSession != null && clientSession.isLogin())) {
+      if (!hasPipeHandshakeCredential && clientSession != null) {
+        username = clientSession.getUsername();
+        userEntity = AuthorityChecker.createIAuditEntity(username, clientSession);
+      }
+      return null;
+    }
+
+    return new TPipeTransferResp(getNotLoggedInStatus());
+  }
+
+  private static boolean requiresAuthentication(final PipeRequestType requestType) {
+    switch (requestType) {
+      case TRANSFER_TABLET_INSERT_NODE:
+      case TRANSFER_TABLET_INSERT_NODE_V2:
+      case TRANSFER_TABLET_RAW:
+      case TRANSFER_TABLET_RAW_V2:
+      case TRANSFER_TABLET_BINARY:
+      case TRANSFER_TABLET_BINARY_V2:
+      case TRANSFER_TABLET_BATCH:
+      case TRANSFER_TABLET_BATCH_V2:
+      case TRANSFER_TS_FILE_PIECE:
+      case TRANSFER_TS_FILE_SEAL:
+      case TRANSFER_TS_FILE_PIECE_WITH_MOD:
+      case TRANSFER_TS_FILE_SEAL_WITH_MOD:
+      case TRANSFER_PLAN_NODE:
+      case TRANSFER_SCHEMA_SNAPSHOT_PIECE:
+      case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override
@@ -1104,6 +1138,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected TSStatus login() {
     final IClientSession session = SESSION_MANAGER.getCurrSession();
+
+    if (!hasPipeHandshakeCredential) {
+      return session != null && session.isLogin()
+          ? RpcUtils.SUCCESS_STATUS
+          : getNotLoggedInStatus();
+    }
 
     if (session != null && !session.isLogin()) {
       final BasicOpenSessionResp openSessionResp =
