@@ -446,14 +446,26 @@ public class Session extends org.apache.iotdb.session.Session implements ISessio
     }
 
     @Override
-    public Builder trustStore(String keyStore) {
-      super.trustStore(keyStore);
+    public Builder trustStore(String trustStore) {
+      super.trustStore(trustStore);
       return this;
     }
 
     @Override
-    public Builder trustStorePwd(String keyStorePwd) {
-      super.trustStorePwd(keyStorePwd);
+    public Builder trustStorePwd(String trustStorePwd) {
+      super.trustStorePwd(trustStorePwd);
+      return this;
+    }
+
+    @Override
+    public Builder keyStore(String keyStore) {
+      super.keyStore(keyStore);
+      return this;
+    }
+
+    @Override
+    public Builder keyStorePwd(String keyStorePwd) {
+      super.keyStorePwd(keyStorePwd);
       return this;
     }
 
