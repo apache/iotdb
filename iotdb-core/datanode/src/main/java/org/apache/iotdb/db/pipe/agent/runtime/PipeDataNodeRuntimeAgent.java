@@ -43,6 +43,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -76,6 +78,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
   private final PipePeriodicalPhantomReferenceCleaner pipePeriodicalPhantomReferenceCleaner =
       new PipePeriodicalPhantomReferenceCleaner();
 
+  private PipeMemoryBlock pipeLogReducerMemoryBlock;
+
   //////////////////////////// System Service Interface ////////////////////////////
 
   public synchronized void preparePipeResources(
@@ -91,6 +95,22 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
     IoTDBTreePattern.setDevicePathGetter(PipeDataNodeRuntimeAgent::getPath);
     IoTDBTreePattern.setMeasurementPathGetter(PipeDataNodeRuntimeAgent::getPath);
+    initPipePeriodicalLogReducer();
+  }
+
+  private void initPipePeriodicalLogReducer() {
+    if (pipeLogReducerMemoryBlock == null) {
+      pipeLogReducerMemoryBlock =
+          PipeDataNodeResourceManager.memory()
+              .tryAllocate(PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
+    }
+
+    PipePeriodicalLogReducer.setMemoryResizeFunction(
+        targetSizeInBytes -> {
+          PipeDataNodeResourceManager.memory()
+              .resize(pipeLogReducerMemoryBlock, Math.max(0, targetSizeInBytes), false);
+          return pipeLogReducerMemoryBlock.getMemoryUsageInBytes();
+        });
     PipeLogger.setLogger(PipePeriodicalLogReducer::log);
   }
 

@@ -807,6 +807,11 @@ partition_table_recover_max_read_megabytes_per_second=10
 # effectiveMode: restart
 datanode_memory_proportion=3:3:1:1:1:1
 
+# ConfigNode Memory Allocation Ratio: Pipe and Free Memory.
+# The parameter form is a:b, where a and b are integers. Currently, only PipePeriodicalLogReducer is connected to Pipe memory on ConfigNode.
+# effectiveMode: restart
+confignode_memory_proportion=1:9
+
 # Schema Memory Allocation Ratio: SchemaRegion, SchemaCache, and PartitionCache.
 # The parameter form is a:b:c, where a, b and c are integers. for example: 1:1:1 , 6:2:1
 # effectiveMode: restart
