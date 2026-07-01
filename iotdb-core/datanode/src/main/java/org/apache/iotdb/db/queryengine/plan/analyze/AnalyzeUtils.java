@@ -491,6 +491,8 @@ public class AnalyzeUtils {
         if (parseResult.shouldQueryDevice()) {
           if (Objects.isNull(deviceFilterExpressions)) {
             deviceFilterExpressions = new ArrayList<>();
+          }
+          if (Objects.isNull(attributeColumns)) {
             attributeColumns = new ArrayList<>();
           }
           deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
@@ -508,6 +510,8 @@ public class AnalyzeUtils {
         if (parseResult.shouldQueryDevice()) {
           if (Objects.isNull(deviceFilterExpressions)) {
             deviceFilterExpressions = new ArrayList<>();
+          }
+          if (Objects.isNull(attributeColumns)) {
             attributeColumns = new ArrayList<>();
           }
           deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));

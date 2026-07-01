@@ -365,6 +365,85 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testDeleteDataByAttributeFilterWithTagAndTimeRange() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_tag_time("
+              + "deviceId STRING TAG, site STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, "
+              + "s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_tag_time(time, deviceId, site, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'north', 'red', 'small', 11),"
+              + "(2, 'd1', 'north', 'red', 'small', 12),"
+              + "(3, 'd1', 'north', 'red', 'small', 13),"
+              + "(4, 'd1', 'north', 'red', 'small', 14),"
+              + "(1, 'd2', 'south', 'red', 'small', 21),"
+              + "(2, 'd2', 'south', 'red', 'small', 22),"
+              + "(2, 'd3', 'north', 'blue', 'small', 32),"
+              + "(3, 'd4', 'north', 'red', 'large', 43)");
+
+      statement.execute(
+          "DELETE FROM delete_by_attr_tag_time "
+              + "WHERE time >= 2 AND time <= 3 "
+              + "AND site = 'north' AND attr1 = 'red' AND attr2 = 'small'");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_tag_time ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(
+          List.of("d1,1,11", "d1,4,14", "d2,1,21", "d2,2,22", "d3,2,32", "d4,3,43"), actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithOrAndNull() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_or_null("
+              + "deviceId STRING TAG, site STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, "
+              + "s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_or_null(time, deviceId, site, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'north', 'red', 'small', 11),"
+              + "(2, 'd1', 'north', 'red', 'small', 12),"
+              + "(1, 'd2', 'north', 'blue', 'small', 21),"
+              + "(2, 'd2', 'north', 'blue', 'small', 22),"
+              + "(1, 'd3', 'south', 'red', 'large', 31),"
+              + "(2, 'd3', 'south', 'red', 'large', 32)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_or_null(time, deviceId, site, attr1, s1) VALUES "
+              + "(1, 'd4', 'north', 'red', 41),"
+              + "(2, 'd4', 'north', 'red', 42)");
+
+      statement.execute(
+          "DELETE FROM delete_by_attr_or_null "
+              + "WHERE (attr1 = 'red' AND site = 'north' AND time = 1) "
+              + "OR (attr2 IS NULL AND time = 2)");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_or_null ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d1,2,12", "d2,1,21", "d2,2,22", "d3,1,31", "d3,2,32"), actual);
+    }
+  }
+
+  @Test
   public void testDeleteDataByAttributeFilterRejectsTooManyDevices() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
