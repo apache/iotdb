@@ -1185,13 +1185,14 @@ public class IoTDBSessionSimpleIT {
   public void insertRecordsWithExpiredDataTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      String device = "root.sg.expiredData.d1";
       List<Long> times = new ArrayList<>();
       List<List<String>> measurements = new ArrayList<>();
       List<List<TSDataType>> datatypes = new ArrayList<>();
       List<List<Object>> values = new ArrayList<>();
       List<String> devices = new ArrayList<>();
 
-      devices.add("root.sg.d1");
+      devices.add(device);
       addLine(
           times,
           measurements,
@@ -1204,14 +1205,14 @@ public class IoTDBSessionSimpleIT {
           TSDataType.INT32,
           1,
           2);
-      session.executeNonQueryStatement("set ttl to root.sg.d1 1");
-      try {
-        session.insertRecords(devices, times, measurements, datatypes, values);
-      } catch (Exception e) {
-        assertTrue(e.getMessage().contains("less than ttl time bound"));
-      }
-      session.executeNonQueryStatement("unset ttl to root.sg.d1");
-      SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
+      session.executeNonQueryStatement("set ttl to " + device + " 1");
+      StatementExecutionException exception =
+          assertThrows(
+              StatementExecutionException.class,
+              () -> session.insertRecords(devices, times, measurements, datatypes, values));
+      assertTrue(exception.getMessage().contains("less than ttl time bound"));
+      session.executeNonQueryStatement("unset ttl to " + device);
+      SessionDataSet dataSet = session.executeQueryStatement("select * from " + device);
       assertFalse(dataSet.hasNext());
     }
   }

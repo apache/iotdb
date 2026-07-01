@@ -168,7 +168,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   }
 
   public TSDataType getDataType(int index) {
-    return dataTypes[index];
+    return dataTypes == null || index < 0 || index >= dataTypes.length ? null : dataTypes[index];
   }
 
   public void setDataTypes(TSDataType[] dataTypes) {
@@ -318,9 +318,12 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   /** Serialized size of measurement schemas, ignoring failed time series */
   protected int serializeMeasurementSchemasSize() {
     int byteLen = 0;
-    for (int i = 0; i < measurements.length; i++) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
       // ignore failed partial insert
-      if (measurements[i] == null) {
+      if (measurements[i] == null
+          || measurementSchemas == null
+          || i >= measurementSchemas.length
+          || measurementSchemas[i] == null) {
         continue;
       }
       byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
@@ -330,9 +333,12 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
 
   /** Serialize measurement schemas, ignoring failed time series */
   protected void serializeMeasurementSchemasToWAL(IWALByteBufferView buffer) {
-    for (int i = 0; i < measurements.length; i++) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
       // ignore failed partial insert
-      if (measurements[i] == null) {
+      if (measurements[i] == null
+          || measurementSchemas == null
+          || i >= measurementSchemas.length
+          || measurementSchemas[i] == null) {
         continue;
       }
       WALWriteUtils.write(measurementSchemas[i], buffer);
@@ -373,8 +379,8 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   }
 
   public boolean hasValidMeasurements() {
-    for (Object o : measurements) {
-      if (o != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!isMeasurementFailed(i)) {
         return true;
       }
     }
@@ -389,11 +395,25 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     return failedMeasurementNumber;
   }
 
-  public boolean allMeasurementFailed() {
-    if (measurements != null) {
-      return failedMeasurementNumber >= measurements.length;
+  protected int getValidMeasurementNumber() {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!isMeasurementFailed(i)) {
+        validMeasurementNumber++;
+      }
     }
-    return true;
+    return validMeasurementNumber;
+  }
+
+  public boolean isMeasurementFailed(int index) {
+    return measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null;
+  }
+
+  public boolean allMeasurementFailed() {
+    return measurements == null || !hasValidMeasurements();
   }
 
   public String[] getRawMeasurements() {
@@ -401,7 +421,9 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     MeasurementSchema[] measurementSchemas = getMeasurementSchemas();
     String[] rawMeasurements = new String[measurements.length];
     for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
+      if (measurementSchemas != null
+          && i < measurementSchemas.length
+          && measurementSchemas[i] != null) {
         // get raw measurement rather than alias
         rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
       } else {

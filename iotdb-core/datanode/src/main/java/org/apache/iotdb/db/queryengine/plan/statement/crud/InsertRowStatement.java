@@ -88,8 +88,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
-    for (String m : measurements) {
-      PartialPath fullPath = devicePath.concatNode(m);
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!isColumnPresent(i)) {
+        continue;
+      }
+      PartialPath fullPath = devicePath.concatNode(measurements[i]);
       ret.add(fullPath);
     }
     return ret;
@@ -121,7 +124,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public boolean isEmpty() {
-    return values.length == 0;
+    return values == null || values.length == 0;
   }
 
   public void fillValues(ByteBuffer buffer) throws QueryProcessException {
@@ -181,11 +184,14 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public Object getFirstValueOfIndex(int index) {
-    return values[index];
+    return values == null || index < 0 || index >= values.length ? null : values[index];
   }
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    if (dataTypes == null || columnIndex < 0 || columnIndex >= dataTypes.length) {
+      return false;
+    }
     if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
       values[columnIndex] =
           CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
@@ -202,7 +208,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void transferType(ZoneId zoneId) throws QueryProcessException {
 
+    if (measurementSchemas == null) {
+      return;
+    }
     for (int i = 0; i < measurementSchemas.length; i++) {
+      if (!isColumnPresent(i) || dataTypes == null || i >= dataTypes.length) {
+        continue;
+      }
       // null when time series doesn't exist
       if (measurementSchemas[i] == null) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -220,6 +232,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       }
       // parse string value to specific type
       dataTypes[i] = measurementSchemas[i].getType();
+      if (values == null || i >= values.length || values[i] == null) {
+        continue;
+      }
       try {
         values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
       } catch (Exception e) {
@@ -243,7 +258,10 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public void markFailedMeasurement(int index, Exception cause) {
-    if (measurements[index] == null) {
+    if (measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null) {
       return;
     }
 
@@ -253,12 +271,19 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
     InsertBaseStatement.FailedMeasurementInfo failedMeasurementInfo =
         new InsertBaseStatement.FailedMeasurementInfo(
-            measurements[index], dataTypes[index], values[index], cause);
+            measurements[index],
+            getDataType(index),
+            values != null && index < values.length ? values[index] : null,
+            cause);
     failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
 
     measurements[index] = null;
-    dataTypes[index] = null;
-    values[index] = null;
+    if (dataTypes != null && index < dataTypes.length) {
+      dataTypes[index] = null;
+    }
+    if (values != null && index < values.length) {
+      values[index] = null;
+    }
   }
 
   @Override
@@ -268,15 +293,15 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
-          if (measurements != null) {
+          if (measurements != null && index < measurements.length) {
             measurements[index] = info.getMeasurement();
           }
 
-          if (dataTypes != null) {
+          if (dataTypes != null && index < dataTypes.length) {
             dataTypes[index] = info.getDataType();
           }
 
-          if (values != null) {
+          if (values != null && index < values.length) {
             values[index] = info.getValue();
           }
         });
@@ -290,7 +315,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public void semanticCheck() {
     super.semanticCheck();
-    if (measurements.length != values.length) {
+    if (measurements != null && values != null && measurements.length != values.length) {
       throw new SemanticException(
           String.format(
               "the measurementList's size %d is not consistent with the valueList's size %d",
@@ -376,10 +401,16 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public TSDataType getDataType(int index) {
     if (isNeedInferType) {
-      return TypeInferenceUtils.getPredictedDataType(values[index], true);
+      return TypeInferenceUtils.getPredictedDataType(
+          values != null && index >= 0 && index < values.length ? values[index] : null, true);
     } else {
-      return dataTypes[index];
+      return super.getDataType(index);
     }
+  }
+
+  @Override
+  public boolean isColumnPresent(final int index) {
+    return super.isColumnPresent(index) && values != null && index < values.length;
   }
 
   @Override

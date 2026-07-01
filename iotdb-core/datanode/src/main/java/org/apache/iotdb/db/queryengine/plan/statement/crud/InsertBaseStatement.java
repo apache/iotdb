@@ -119,6 +119,16 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     this.measurementSchemas = measurementSchemas;
   }
 
+  public void setMeasurementSchema(MeasurementSchema measurementSchema, int index) {
+    if (measurementSchemas == null || index >= measurementSchemas.length) {
+      measurementSchemas =
+          measurementSchemas == null
+              ? new MeasurementSchema[getRequiredColumnArrayLength(index)]
+              : Arrays.copyOf(measurementSchemas, getRequiredColumnArrayLength(index));
+    }
+    measurementSchemas[index] = measurementSchema;
+  }
+
   public boolean isAligned() {
     return isAligned;
   }
@@ -131,8 +141,22 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     return dataTypes;
   }
 
+  public TSDataType getDataType(int index) {
+    return dataTypes == null || index < 0 || index >= dataTypes.length ? null : dataTypes[index];
+  }
+
   public void setDataTypes(TSDataType[] dataTypes) {
     this.dataTypes = dataTypes;
+  }
+
+  public void setDataType(TSDataType dataType, int index) {
+    if (dataTypes == null || index >= dataTypes.length) {
+      dataTypes =
+          dataTypes == null
+              ? new TSDataType[getRequiredColumnArrayLength(index)]
+              : Arrays.copyOf(dataTypes, getRequiredColumnArrayLength(index));
+    }
+    dataTypes[index] = dataType;
   }
 
   /** Returns true when this statement is empty and no need to write into the server */
@@ -165,35 +189,46 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   /** Check whether data types are matched with measurement schemas */
   protected void selfCheckDataTypes(int index)
       throws DataTypeMismatchException, PathNotExistException {
+    final MeasurementSchema measurementSchema =
+        measurementSchemas != null && index >= 0 && index < measurementSchemas.length
+            ? measurementSchemas[index]
+            : null;
+    final TSDataType dataType = getDataType(index);
+    final String measurement =
+        measurements != null && index >= 0 && index < measurements.length
+            ? measurements[index]
+            : null;
+    final String fullPath =
+        measurement == null
+            ? devicePath.getFullPath()
+            : devicePath.concatNode(measurement).getFullPath();
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
       // if enable partial insert, mark failed measurements with exception
-      if (measurementSchemas[index] == null) {
-        markFailedMeasurement(
-            index,
-            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
-      } else if ((dataTypes[index] != measurementSchemas[index].getType()
-          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
+      if (measurementSchema == null) {
+        markFailedMeasurement(index, new PathNotExistException(fullPath));
+      } else if ((dataType != measurementSchema.getType()
+          && !checkAndCastDataType(index, measurementSchema.getType()))) {
         markFailedMeasurement(
             index,
             new DataTypeMismatchException(
                 devicePath.getFullPath(),
-                measurements[index],
-                dataTypes[index],
-                measurementSchemas[index].getType(),
+                measurement,
+                dataType,
+                measurementSchema.getType(),
                 getMinTime(),
                 getFirstValueOfIndex(index)));
       }
     } else {
       // if not enable partial insert, throw the exception directly
-      if (measurementSchemas[index] == null) {
-        throw new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath());
-      } else if ((dataTypes[index] != measurementSchemas[index].getType()
-          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
+      if (measurementSchema == null) {
+        throw new PathNotExistException(fullPath);
+      } else if ((dataType != measurementSchema.getType()
+          && !checkAndCastDataType(index, measurementSchema.getType()))) {
         throw new DataTypeMismatchException(
             devicePath.getFullPath(),
-            measurements[index],
-            dataTypes[index],
-            measurementSchemas[index].getType(),
+            measurement,
+            dataType,
+            measurementSchema.getType(),
             getMinTime(),
             getFirstValueOfIndex(index));
       }
@@ -208,8 +243,12 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   public void semanticCheck() {
     Set<String> deduplicatedMeasurements = new HashSet<>();
-    for (String measurement : measurements) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      final String measurement = measurements[i];
       if (measurement == null || measurement.isEmpty()) {
+        if (failedMeasurementIndex2Info != null && failedMeasurementIndex2Info.containsKey(i)) {
+          continue;
+        }
         throw new SemanticException(
             "Measurement contains null or empty string: " + Arrays.toString(measurements));
       }
@@ -241,12 +280,19 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   }
 
   public boolean hasValidMeasurements() {
-    for (Object o : measurements) {
-      if (o != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (isColumnPresent(i)) {
         return true;
       }
     }
     return false;
+  }
+
+  public boolean isColumnPresent(final int index) {
+    return measurements != null
+        && index >= 0
+        && index < measurements.length
+        && measurements[index] != null;
   }
 
   public boolean hasFailedMeasurements() {
@@ -357,6 +403,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
         new HashMap<>();
     for (int i = 0; i < this.measurements.length; i++) {
+      if (!isColumnPresent(i)) {
+        continue;
+      }
       PartialPath targetDevicePath;
       String measurementName;
       if (isLogicalView[i]) {
@@ -440,6 +489,10 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
                 RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
                     + (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF * list.size())
         : 0L;
+  }
+
+  private int getRequiredColumnArrayLength(final int index) {
+    return Math.max(measurements == null ? 0 : measurements.length, index + 1);
   }
 
   protected abstract long calculateBytesUsed();

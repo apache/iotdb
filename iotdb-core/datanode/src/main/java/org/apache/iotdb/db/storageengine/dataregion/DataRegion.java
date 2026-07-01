@@ -3746,6 +3746,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
           // we do not need to write these part of data, as they can not be queried
           // or the sub-plan has already been executed, we are retrying other sub-plans
+          markAllMeasurementsFailed(insertRowNode);
           insertRowsOfOneDeviceNode
               .getResults()
               .put(
@@ -3845,6 +3846,7 @@ public class DataRegion implements IDataRegionForQuery {
         long deviceTTL =
             DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
         if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
+          markAllMeasurementsFailed(insertRowNode);
           insertRowsNode
               .getResults()
               .put(
@@ -3856,7 +3858,6 @@ public class DataRegion implements IDataRegionForQuery {
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(
                               CommonDateTimeUtils.currentTime() - deviceTTL))));
-          insertRowNode.setFailedMeasurementNumber(insertRowNode.getMeasurements().length);
           continue;
         }
         // init map
@@ -3888,6 +3889,17 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       writeUnlock();
     }
+  }
+
+  private void markAllMeasurementsFailed(final InsertRowNode insertRowNode) {
+    final String[] measurements = insertRowNode.getMeasurements();
+    if (measurements == null) {
+      return;
+    }
+    for (int i = 0; i < measurements.length; i++) {
+      insertRowNode.markFailedMeasurement(i);
+    }
+    insertRowNode.setFailedMeasurementNumber(measurements.length);
   }
 
   /**
