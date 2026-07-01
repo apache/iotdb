@@ -134,6 +134,8 @@ public class Session implements ISession {
   protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
+  protected String keyStore;
+  protected String keyStorePwd;
   protected String sslProtocol;
 
   /**
@@ -475,6 +477,8 @@ public class Session implements ISession {
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
+    this.keyStore = builder.keyStore;
+    this.keyStorePwd = builder.keyStorePwd;
     this.sslProtocol = builder.sslProtocol;
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
@@ -545,6 +549,8 @@ public class Session implements ISession {
               useSSL,
               trustStore,
               trustStorePwd,
+              keyStore,
+              keyStorePwd,
               sslProtocol,
               enableRPCCompaction,
               version.toString());
@@ -4435,6 +4441,16 @@ public class Session implements ISession {
 
     public Builder trustStorePwd(String trustStorePwd) {
       this.trustStorePwd = trustStorePwd;
+      return this;
+    }
+
+    public Builder keyStore(String keyStore) {
+      this.keyStore = keyStore;
+      return this;
+    }
+
+    public Builder keyStorePwd(String keyStorePwd) {
+      this.keyStorePwd = keyStorePwd;
       return this;
     }
 

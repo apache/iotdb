@@ -153,7 +153,13 @@ public class SessionConnection {
     this.database = database;
     try {
       init(
-          endPoint, session.useSSL, session.trustStore, session.trustStorePwd, session.sslProtocol);
+          endPoint,
+          session.useSSL,
+          session.trustStore,
+          session.trustStorePwd,
+          session.keyStore,
+          session.keyStorePwd,
+          session.sslProtocol);
     } catch (StatementExecutionException e) {
       throw new IoTDBConnectionException(e.getMessage());
     } catch (IoTDBConnectionException e) {
@@ -186,6 +192,8 @@ public class SessionConnection {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
       String sslProtocol)
       throws IoTDBConnectionException, StatementExecutionException {
     DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
@@ -196,12 +204,14 @@ public class SessionConnection {
       }
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransportWithSSLConfig(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 session.connectionTimeoutInMs,
                 trustStore,
                 trustStorePwd,
+                keyStore,
+                keyStorePwd,
                 sslProtocol);
       } else {
         transport =
@@ -278,6 +288,8 @@ public class SessionConnection {
             session.useSSL,
             session.trustStore,
             session.trustStorePwd,
+            session.keyStore,
+            session.keyStorePwd,
             session.sslProtocol);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
@@ -1103,6 +1115,8 @@ public class SessionConnection {
                 session.useSSL,
                 session.trustStore,
                 session.trustStorePwd,
+                session.keyStore,
+                session.keyStorePwd,
                 session.sslProtocol);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {

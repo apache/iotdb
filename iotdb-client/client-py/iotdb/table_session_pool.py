@@ -37,6 +37,8 @@ class TableSessionPoolConfig(object):
         use_ssl: bool = False,
         ca_certs: str = None,
         connection_timeout_in_ms: int = None,
+        client_cert: str = None,
+        client_key: str = None,
     ):
         """
         Initialize a TableSessionPoolConfig object with the provided parameters.
@@ -77,6 +79,8 @@ class TableSessionPoolConfig(object):
             use_ssl=use_ssl,
             ca_certs=ca_certs,
             connection_timeout_in_ms=connection_timeout_in_ms,
+            client_cert=client_cert,
+            client_key=client_key,
         )
         self.max_pool_size = max_pool_size
         self.wait_timeout_in_ms = wait_timeout_in_ms

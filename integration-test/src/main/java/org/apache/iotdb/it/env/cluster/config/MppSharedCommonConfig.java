@@ -659,6 +659,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setThriftSSLClientAuth(boolean thriftSSLClientAuth) {
+    cnConfig.setThriftSSLClientAuth(thriftSSLClientAuth);
+    dnConfig.setThriftSSLClientAuth(thriftSSLClientAuth);
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
     cnConfig.setEnableInternalSSL(enableInternalSSL);
     dnConfig.setEnableInternalSSL(enableInternalSSL);
