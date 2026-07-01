@@ -64,9 +64,9 @@ public class PipeReceiverTest {
             PipeRequestType.TRANSFER_TABLET_RAW.getType(),
             0,
             1,
-            rawReq.getBody().duplicate(),
+            rawReq.body.duplicate(),
             0,
-            rawReq.getBody().limit());
+            rawReq.body.limit());
     final TPipeTransferResp sliceResp = receiver.receive(sliceReq);
     Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), sliceResp.getStatus().getCode());
   }
