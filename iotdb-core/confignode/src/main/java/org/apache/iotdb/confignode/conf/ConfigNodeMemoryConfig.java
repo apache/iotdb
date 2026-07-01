@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,15 +39,8 @@ public class ConfigNodeMemoryConfig {
   private MemoryManager pipeMemoryManager;
 
   public void init(final TrimProperties properties) {
-    String memoryAllocateProportion = properties.getProperty("confignode_memory_proportion", null);
-    if (memoryAllocateProportion == null) {
-      memoryAllocateProportion = properties.getProperty("config_node_memory_proportion", null);
-      if (memoryAllocateProportion != null) {
-        LOGGER.warn(
-            "The parameter config_node_memory_proportion is deprecated, "
-                + "please use confignode_memory_proportion instead.");
-      }
-    }
+    final String memoryAllocateProportion =
+        properties.getProperty("confignode_memory_proportion", null);
 
     final long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
     long pipeMemorySize = maxMemoryAvailable / 10;
@@ -67,8 +61,7 @@ public class ConfigNodeMemoryConfig {
         }
       } else {
         LOGGER.warn(
-            "The parameter confignode_memory_proportion should be in the form of Pipe:Free, "
-                + "but got {}. Use default value 1:9.",
+            ConfigNodeMessages.CONFIGNODE_MEMORY_PROPORTION_SHOULD_BE_IN_THE_FORM_OF_PIPE_FREE,
             memoryAllocateProportion);
       }
     }
@@ -81,9 +74,9 @@ public class ConfigNodeMemoryConfig {
     // serves PipePeriodicalLogReducer on ConfigNode.
 
     LOGGER.info(
-        "initial ConfigNode allocateMemoryForPipe = {}",
+        ConfigNodeMessages.INITIAL_CONFIGNODE_ALLOCATE_MEMORY_FOR_PIPE,
         pipeMemoryManager.getTotalMemorySizeInBytes());
-    LOGGER.info("initial ConfigNode freeMemory = {}", freeMemorySize);
+    LOGGER.info(ConfigNodeMessages.INITIAL_CONFIGNODE_FREE_MEMORY, freeMemorySize);
   }
 
   public MemoryManager getOnHeapMemoryManager() {
