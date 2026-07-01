@@ -46,7 +46,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -92,6 +91,10 @@ public abstract class AbstractOperatePipeProcedureV2
   // This variable should not be serialized into procedure store,
   // putting it here is just for convenience
   protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
+
+  // Only used to release global locks before retrying the same state. Do not serialize it because a
+  // recovered procedure is already re-scheduled by the procedure framework.
+  private transient boolean shouldYieldAfterExecution;
 
   private static final String SKIP_PIPE_PROCEDURE_MESSAGE =
       "Try to start a RUNNING pipe or stop a STOPPED pipe, do nothing.";
@@ -162,15 +165,17 @@ public abstract class AbstractOperatePipeProcedureV2
       LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
     } else {
       LOGGER.debug("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
-      if (this instanceof PipeMetaSyncProcedure) {
+      if (isSuccess() && this instanceof PipeMetaSyncProcedure) {
         configNodeProcedureEnv
             .getConfigManager()
             .getPipeManager()
             .getPipeTaskCoordinator()
             .updateLastSyncedVersion();
       }
-      PipeProcedureMetrics.getInstance()
-          .updateTimer(this.getOperation().getName(), this.elapsedTime());
+      if (isFinished()) {
+        PipeProcedureMetrics.getInstance()
+            .updateTimer(this.getOperation().getName(), this.elapsedTime());
+      }
       releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
     }
   }
@@ -196,7 +201,7 @@ public abstract class AbstractOperatePipeProcedureV2
   public abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
   /**
-   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.‘
+   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.
    *
    * @throws PipeException if configNode consensus write failed
    */
@@ -215,6 +220,7 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws InterruptedException {
+    shouldYieldAfterExecution = false;
     if (pipeTaskInfo == null) {
       LOGGER.warn(
           "ProcedureId {}: Pipe lock is not acquired, executeFromState's execution will be skipped.",
@@ -262,8 +268,7 @@ public abstract class AbstractOperatePipeProcedureV2
             RETRY_THRESHOLD,
             e);
         setNextState(getCurrentState());
-        // Wait 3s for next retry
-        TimeUnit.MILLISECONDS.sleep(3000L);
+        shouldYieldAfterExecution = true;
       } else {
         LOGGER.warn(
             "ProcedureId {}: All {} retries failed when trying to {} at state [{}], will rollback...",
@@ -281,6 +286,11 @@ public abstract class AbstractOperatePipeProcedureV2
       }
     }
     return Flow.HAS_MORE_STATE;
+  }
+
+  @Override
+  protected boolean isYieldAfterExecution(final ConfigNodeProcedureEnv env) {
+    return shouldYieldAfterExecution;
   }
 
   @Override
