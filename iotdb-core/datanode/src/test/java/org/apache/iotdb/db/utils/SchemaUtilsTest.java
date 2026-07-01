@@ -75,4 +75,16 @@ public class SchemaUtilsTest {
       // do nothing
     }
   }
+
+  @Test
+  public void checkSubColumnEncodingForInteger() throws MetadataException {
+    SchemaUtils.checkDataTypeWithEncoding(TSDataType.INT32, TSEncoding.SUBCOLUMN);
+    SchemaUtils.checkDataTypeWithEncoding(TSDataType.FLOAT, TSEncoding.SUBCOLUMN);
+    try {
+      SchemaUtils.checkDataTypeWithEncoding(TSDataType.TEXT, TSEncoding.SUBCOLUMN);
+      Assert.fail("expect exception");
+    } catch (MetadataException e) {
+      // do nothing
+    }
+  }
 }

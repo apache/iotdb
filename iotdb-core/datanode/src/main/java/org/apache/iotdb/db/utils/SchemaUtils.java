@@ -56,6 +56,7 @@ public class SchemaUtils {
     intSet.add(TSEncoding.CHIMP);
     intSet.add(TSEncoding.SPRINTZ);
     intSet.add(TSEncoding.RLBE);
+    intSet.add(TSEncoding.SUBCOLUMN);
 
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
@@ -69,9 +70,12 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.CHIMP);
     floatSet.add(TSEncoding.SPRINTZ);
     floatSet.add(TSEncoding.RLBE);
+    floatSet.add(TSEncoding.SUBCOLUMN);
 
     schemaChecker.put(TSDataType.FLOAT, floatSet);
-    schemaChecker.put(TSDataType.DOUBLE, floatSet);
+    Set<TSEncoding> doubleSet = new HashSet<>(floatSet);
+    doubleSet.remove(TSEncoding.SUBCOLUMN);
+    schemaChecker.put(TSDataType.DOUBLE, doubleSet);
 
     Set<TSEncoding> textSet = new HashSet<>();
     textSet.add(TSEncoding.PLAIN);

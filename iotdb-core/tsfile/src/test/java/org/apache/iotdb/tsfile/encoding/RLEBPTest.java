@@ -16,8 +16,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static java.lang.Math.pow;
-
 public class RLEBPTest {
 
     public static int getBitWith(int num) {
@@ -81,16 +79,12 @@ public class RLEBPTest {
             byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Integer
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 32 bits as a part of result
             int buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 32;
 
-            // encode the left bits of current Integer to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values.get(valueIdx) << (32 - leftBit));
                 leftSize -= leftBit;
@@ -99,20 +93,15 @@ public class RLEBPTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
                 buffer |= (values.get(valueIdx) << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Integer,
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
                 buffer |= (values.get(valueIdx) >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 4; j++) {
                 encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
                 encode_pos++;
@@ -128,23 +117,16 @@ public class RLEBPTest {
     public static void unpack8Values(byte[] encoded, int offset, int width, ArrayList<Integer> result_list) {
         int byteIdx = offset;
         long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
         int totalBits = 0;
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
                 result_list.add((int) (buffer >>> (totalBits - width)));
                 valueIdx++;
@@ -171,7 +153,7 @@ public class RLEBPTest {
         ArrayList<Integer> result_list = new ArrayList<>();
         int block_num = (block_size - 1) / 8;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking
+        for (int i = 0; i < block_num; i++) {
             unpack8Values(encoded, decode_pos, bit_width, result_list);
             decode_pos += bit_width;
         }
@@ -520,29 +502,22 @@ public class RLEBPTest {
             int encode_pos,
             byte[] cur_byte,
             int[] bit_index_list) {
-        // 找到要插入的位的索引
-        int bit_index = bit_index_list[0];// cur_byte[encode_pos + 1];
+        int bit_index = bit_index_list[0];
 
-        // 计算数值的起始位位置
         int remaining_bits = bit_width;
 
         while (remaining_bits > 0) {
-            // 计算在当前字节中可以使用的位数
             int available_bits = bit_index;
             int bits_to_write = Math.min(available_bits, remaining_bits);
 
-            // 更新 bit_index
             bit_index = available_bits - bits_to_write;
 
-            // 计算要写入的位的掩码和数值
             int mask = (1 << bits_to_write) - 1;
             int bits = (num >> (remaining_bits - bits_to_write)) & mask;
 
-            // 写入到当前位置
-            cur_byte[encode_pos] &= (byte) ~(mask << bit_index); // 清除对应位置的位
+            cur_byte[encode_pos] &= (byte) ~(mask << bit_index);
             cur_byte[encode_pos] |= (byte) (bits << bit_index);
 
-            // 更新位宽和数值
             remaining_bits -= bits_to_write;
             if (bit_index == 0) {
                 bit_index = 8;
@@ -550,7 +525,6 @@ public class RLEBPTest {
             }
         }
         bit_index_list[0] = bit_index;
-        // cur_byte[encode_pos + 1] = (byte) bit_index;
         return encode_pos;
     }
 
@@ -593,7 +567,6 @@ public class RLEBPTest {
         bit_index_list[0] = 8;
         for (int cur_value : ts_block_delta) {
             encode_pos = EncodeBits(cur_value, bit_width_final, encode_pos, cur_byte, bit_index_list);
-            // final_normal.add(cur_value);
         }
         if (bit_index_list[0] != 8) {
             encode_pos++;
@@ -652,11 +625,11 @@ public class RLEBPTest {
 
         int k_byte = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        int k1_byte = (int) (k_byte % pow(2, 16));
+        int k1_byte = (int) (k_byte % Math.pow(2, 16));
         int k1 = k1_byte / 2;
         int final_alpha = k1_byte % 2;
 
-        int k2 = (int) (k_byte / pow(2, 16));
+        int k2 = (int) (k_byte / Math.pow(2, 16));
 
         int min_delta = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
@@ -785,7 +758,7 @@ public class RLEBPTest {
         int right_outlier_i = 0;
         int normal_i = 0;
         int pre_v;
-        // int final_k_end_value = (int) (final_k_start_value + pow(2,
+        // int final_k_end_value = (int) (final_k_start_value + Math.pow(2,
         // bit_width_final));
 
         int cur_i = 0;
@@ -884,14 +857,11 @@ public class RLEBPTest {
             int available_bits = bit_index;
             int bits_to_read = Math.min(available_bits, remaining_bits);
 
-            // 计算要读取的位的掩码
             int mask = (1 << bits_to_read) - 1;
             int bits = (cur_byte[decode_pos] >> (available_bits - bits_to_read)) & mask;
 
-            // 将读取的位合并到结果中
             num = (num << bits_to_read) | bits;
 
-            // 更新位宽和 bit_index
             remaining_bits -= bits_to_read;
             bit_index = available_bits - bits_to_read;
 
@@ -1007,15 +977,12 @@ public class RLEBPTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -1037,24 +1004,18 @@ public class RLEBPTest {
     }
 
     @Test
-    public void testSubcolumn() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+    public void test0() throws IOException {
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "rle.csv";
 
-        int block_size = 1024;
+        int block_size = 512;
 
-        int repeatTime = 100;
-
-        // repeatTime = 1;
-
-        List<String> integerDatasets = new ArrayList<>();
-        integerDatasets.add("Wine-Tasting");
+        int repeatTime = 200;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -1068,7 +1029,7 @@ public class RLEBPTest {
                 "Compressed Size",
                 "Compression Ratio"
         };
-        writer.writeRecord(head); // write header to output file
+        writer.writeRecord(head);
         File directory = new File(input_parent_dir);
         // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
@@ -1081,9 +1042,7 @@ public class RLEBPTest {
 
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
             ArrayList<Float> data1 = new ArrayList<>();
-            // ArrayList<Integer> data2 = new ArrayList<>();
 
-            // loader.readHeaders();
             int max_decimal = 0;
             while (loader.readRecord()) {
                 String f_str = loader.getValues()[0];
@@ -1094,10 +1053,7 @@ public class RLEBPTest {
                 if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
                 }
-                // String value = loader.getValues()[index];
                 data1.add(Float.valueOf(f_str));
-                // data2.add(Integer.valueOf(loader.getValues()[1]));
-                // data.add(Integer.valueOf(value));
             }
 
             inputStream.close();
@@ -1108,7 +1064,7 @@ public class RLEBPTest {
             }
 
             System.out.println(max_decimal);
-            byte[] encoded_result = new byte[data2_arr.length * 4];
+            byte[] encoded_result = new byte[data2_arr.length * 8];
             long encodeTime = 0;
             long decodeTime = 0;
             double ratio = 0;
@@ -1127,11 +1083,7 @@ public class RLEBPTest {
             
             double ratioTmp;
 
-            if (integerDatasets.contains(datasetName)) {
-                ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-            } else {
-                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-            }
+            ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
 
             ratio += ratioTmp;
 
@@ -1158,133 +1110,6 @@ public class RLEBPTest {
         }
         writer.close();
 
-    }
-
-    @Test
-    public void testTransData() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-
-        String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/";
-        // String output_parent_dir = parent_dir + "trans_data_result/";
-
-        String input_parent_dir = parent_dir + "trans_data/";
-
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-
-        try (Stream<Path> paths = Files.walk(Paths.get(input_parent_dir))) {
-            paths.filter(Files::isDirectory)
-                    .filter(path -> !path.equals(Paths.get(input_parent_dir)))
-                    .forEach(dir -> {
-                        String name = dir.getFileName().toString();
-                        dataset_name.add(name);
-                        input_path_list.add(dir.toString());
-                        dataset_block_size.add(1024);
-                    });
-        }
-
-        String outputPath = output_parent_dir + "rle.csv";
-        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
-        writer.setRecordDelimiter('\n');
-
-        String[] head = {
-                "Dataset",
-                "Encoding Algorithm",
-                "Encoding Time",
-                "Decoding Time",
-                "Points",
-                "Compressed Size",
-                "Compression Ratio"
-        };
-        writer.writeRecord(head);
-
-        int repeatTime = 100;
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-
-            String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            long totalEncodeTime = 0;
-            long totalDecodeTime = 0;
-            double totalCompressedSize = 0;
-            int totalPoints = 0;
-
-            for (File f : tempList) {
-                String datasetName = extractFileName(f.toString());
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-
-                loader.readHeaders();
-                while (loader.readRecord()) {
-                    // String value = loader.getValues()[index];
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-                    // data.add(Integer.valueOf(value));
-                }
-                inputStream.close();
-                int[] data2_arr = new int[data1.size()];
-                for (int i = 0; i < data2.size(); i++) {
-                    data2_arr[i] = data2.get(i);
-                }
-                byte[] encoded_result = new byte[data2_arr.length * 4];
-                long encodeTime = 0;
-                long decodeTime = 0;
-                double ratio = 0;
-                double compressed_size = 0;
-
-                int length = 0;
-
-                long s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
-                }
-
-                long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime);
-                compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                ratio += ratioTmp;
-                s = System.nanoTime();
-
-                for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    BOSDecoderImprove(encoded_result);
-                }
-
-                e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime);
-
-                totalEncodeTime += encodeTime;
-                totalDecodeTime += decodeTime;
-                totalCompressedSize += compressed_size;
-                totalPoints += data1.size();
-                
-            }
-
-            double compressionRatio = totalCompressedSize / (totalPoints * Integer.BYTES);
-
-            String[] record = {
-                    dataset_name.get(file_i),
-                    "RLE",
-                    String.valueOf(totalEncodeTime),
-                    String.valueOf(totalDecodeTime),
-                    String.valueOf(totalPoints),
-                    String.valueOf(totalCompressedSize),
-                    String.valueOf(compressionRatio)
-            };
-
-            writer.writeRecord(record);
-            System.out.println(compressionRatio);
-        }
-        writer.close();
     }
 
 }

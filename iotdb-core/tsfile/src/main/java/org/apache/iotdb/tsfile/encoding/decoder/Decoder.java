@@ -161,6 +161,18 @@ public abstract class Decoder {
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
+      case SUBCOLUMN:
+        switch (dataType) {
+          case INT32:
+            return new IntSubColumnDecoder();
+          case INT64:
+          case VECTOR:
+            return new LongSubColumnDecoder();
+          case FLOAT:
+            return new FloatSubColumnDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

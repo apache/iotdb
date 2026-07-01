@@ -281,6 +281,32 @@ public class StatementGeneratorTest {
   }
 
   @Test
+  public void testCreateTimeSeriesWithSubColumnEncodingSql() throws IllegalPathException {
+    Statement parsed =
+        StatementGenerator.createStatement(
+            "create timeseries root.temperature INTEGER encoding=SubColumn",
+            ZonedDateTime.now().getOffset());
+
+    CreateTimeSeriesStatement statement = (CreateTimeSeriesStatement) parsed;
+    assertEquals(new PartialPath("root.temperature"), statement.getPath());
+    assertEquals(TSDataType.INT32, statement.getDataType());
+    assertEquals(TSEncoding.SUBCOLUMN, statement.getEncoding());
+  }
+
+  @Test
+  public void testCreateFloatTimeSeriesWithSubColumnEncodingSql() throws IllegalPathException {
+    Statement parsed =
+        StatementGenerator.createStatement(
+            "create timeseries root.temperature FLOAT encoding=SubColumn",
+            ZonedDateTime.now().getOffset());
+
+    CreateTimeSeriesStatement statement = (CreateTimeSeriesStatement) parsed;
+    assertEquals(new PartialPath("root.temperature"), statement.getPath());
+    assertEquals(TSDataType.FLOAT, statement.getDataType());
+    assertEquals(TSEncoding.SUBCOLUMN, statement.getEncoding());
+  }
+
+  @Test
   public void testCreateAlignedTimeSeries() throws IllegalPathException {
     TSCreateAlignedTimeseriesReq req =
         new TSCreateAlignedTimeseriesReq(
