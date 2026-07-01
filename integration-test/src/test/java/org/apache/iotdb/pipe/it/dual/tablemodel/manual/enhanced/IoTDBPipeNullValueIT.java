@@ -160,6 +160,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("end-time", "4");
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "object_test");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("user", "root");
 
       final TSStatus status =

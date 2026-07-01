@@ -115,6 +115,8 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
                         .setExtractorAttributes(Collections.singletonMap("user", "root"))
                         .setProcessorAttributes(Collections.emptyMap()))
                 .getCode());
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
         try {
           opcUaClient =
@@ -131,11 +133,11 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           }
         }
         value =
-            opcUaClient
-                .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/d1/`1`"))
-                .get();
-        Assert.assertEquals(new Variant(1.0), value.getValue());
-        Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
+            readEventually(
+                opcUaClient,
+                new NodeId(2, "root/db/d1/`1`"),
+                new Variant(1.0),
+                new DateTime(timestampToUtc(1)));
         opcUaClient.disconnect().get();
         break;
       }
@@ -385,5 +387,34 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
     client = new IoTDBOpcUaClient(nodeUrl, policy, provider, false);
     new ClientRunner(client, securityDir, password, userName, 10).run();
     return client.getClient();
+  }
+
+  private static DataValue readEventually(
+      final OpcUaClient client,
+      final NodeId nodeId,
+      final Variant expectedValue,
+      final DateTime expectedSourceTime)
+      throws Exception {
+    Throwable lastFailure = null;
+    final long startTime = System.currentTimeMillis();
+    while (System.currentTimeMillis() - startTime <= 10_000L) {
+      try {
+        final DataValue value = client.readValue(0, TimestampsToReturn.Both, nodeId).get();
+        Assert.assertEquals(expectedValue, value.getValue());
+        Assert.assertEquals(expectedSourceTime, value.getSourceTime());
+        return value;
+      } catch (final Throwable t) {
+        lastFailure = t;
+        Thread.sleep(200L);
+      }
+    }
+
+    if (lastFailure instanceof Exception) {
+      throw (Exception) lastFailure;
+    }
+    if (lastFailure instanceof Error) {
+      throw (Error) lastFailure;
+    }
+    throw new AssertionError("Timed out waiting for OPC UA value " + nodeId);
   }
 }

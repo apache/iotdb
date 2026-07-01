@@ -138,6 +138,8 @@ public class IoTDBPipeExternalOPCUAIT extends AbstractPipeSingleIT {
                       .setExtractorAttributes(sourceAttributes)
                       .setProcessorAttributes(Collections.emptyMap()))
               .getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       opcUaClient = getOpcUaClient(nodeUrl, SecurityPolicy.None);
       waitUntilRealtimePipeIsReady(opcUaClient);

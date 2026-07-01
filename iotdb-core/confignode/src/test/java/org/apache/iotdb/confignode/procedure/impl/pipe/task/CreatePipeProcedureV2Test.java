@@ -20,13 +20,18 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -45,6 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -87,6 +93,91 @@ public class CreatePipeProcedureV2Test {
   }
 
   @Test
+  public void serializeDeserializeWithNeedManuallyStartTest() throws Exception {
+    assertEquals(
+        new CreatePipeProcedureV2(createPipeRequest("testPipe", false).setNeedManuallyStart(false)),
+        serializeAndDeserialize(
+            new CreatePipeProcedureV2(
+                createPipeRequest("testPipe", false).setNeedManuallyStart(false))));
+    assertEquals(
+        new CreatePipeProcedureV2(createPipeRequest("testPipe", false).setNeedManuallyStart(true)),
+        serializeAndDeserialize(
+            new CreatePipeProcedureV2(
+                createPipeRequest("testPipe", false).setNeedManuallyStart(true))));
+  }
+
+  @Test
+  public void testNeedManuallyStartControlsInitialPipeStatus() throws Exception {
+    final TCreatePipeReq unsetReq = createPipeRequest("unsetFlagPipe", true);
+    assertFalse(unsetReq.isSetNeedManuallyStart());
+    assertEquals(PipeStatus.RUNNING, calculateInitialPipeStatus(unsetReq));
+
+    assertEquals(
+        PipeStatus.STOPPED,
+        calculateInitialPipeStatus(
+            createPipeRequest("manuallyStartedPipe", true).setNeedManuallyStart(true)));
+    assertEquals(
+        PipeStatus.RUNNING,
+        calculateInitialPipeStatus(
+            createPipeRequest("autoStartedPipe", true).setNeedManuallyStart(false)));
+  }
+
+  @Test
+  public void testCreatePipeWithoutDialectKeepsLegacyVisibility() throws Exception {
+    final TCreatePipeReq request = createPipeRequest("legacyCaptureTablePipe", true);
+    request
+        .getExtractorAttributes()
+        .put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.TRUE.toString());
+
+    final PipeStaticMeta pipeStaticMeta = calculatePipeStaticMeta(request);
+    final Map<String, String> sourceAttributes =
+        pipeStaticMeta.getSourceParameters().getAttribute();
+
+    assertFalse(sourceAttributes.containsKey(SystemConstant.SQL_DIALECT_KEY));
+    assertFalse(sourceAttributes.containsKey(SystemConstant.PIPE_VISIBILITY_KEY));
+    org.junit.Assert.assertTrue(pipeStaticMeta.visibleUnder(false));
+    org.junit.Assert.assertTrue(pipeStaticMeta.visibleUnderTableModel());
+
+    final TCreatePipeReq tableOnlyRequest = createPipeRequest("legacyTableOnlyPipe", true);
+    tableOnlyRequest
+        .getExtractorAttributes()
+        .put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.TRUE.toString());
+    tableOnlyRequest
+        .getExtractorAttributes()
+        .put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, Boolean.FALSE.toString());
+
+    final PipeStaticMeta tableOnlyPipeStaticMeta = calculatePipeStaticMeta(tableOnlyRequest);
+    final Map<String, String> tableOnlySourceAttributes =
+        tableOnlyPipeStaticMeta.getSourceParameters().getAttribute();
+
+    assertFalse(tableOnlySourceAttributes.containsKey(SystemConstant.SQL_DIALECT_KEY));
+    assertFalse(tableOnlySourceAttributes.containsKey(SystemConstant.PIPE_VISIBILITY_KEY));
+    assertFalse(tableOnlyPipeStaticMeta.visibleUnder(false));
+    org.junit.Assert.assertTrue(tableOnlyPipeStaticMeta.visibleUnderTableModel());
+  }
+
+  @Test
+  public void testCreatePipeWithDialectUsesStrictVisibility() throws Exception {
+    final TCreatePipeReq request = createPipeRequest("strictTablePipe", true);
+    request
+        .getExtractorAttributes()
+        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+
+    final PipeStaticMeta pipeStaticMeta = calculatePipeStaticMeta(request);
+    final Map<String, String> sourceAttributes =
+        pipeStaticMeta.getSourceParameters().getAttribute();
+
+    assertEquals(
+        SystemConstant.SQL_DIALECT_TABLE_VALUE,
+        sourceAttributes.get(SystemConstant.SQL_DIALECT_KEY));
+    assertEquals(
+        SystemConstant.PIPE_VISIBILITY_STRICT_VALUE,
+        sourceAttributes.get(SystemConstant.PIPE_VISIBILITY_KEY));
+    assertFalse(pipeStaticMeta.visibleUnder(false));
+    org.junit.Assert.assertTrue(pipeStaticMeta.visibleUnderTableModel());
+  }
+
+  @Test
   public void serializeDeserializeWithMissingOptionalAttributesTest() throws Exception {
     final PublicBAOS byteArrayOutputStream = new PublicBAOS();
     final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
@@ -104,6 +195,46 @@ public class CreatePipeProcedureV2Test {
         (CreatePipeProcedureV2) ProcedureFactory.getInstance().create(buffer);
 
     assertEquals(proc, proc2);
+  }
+
+  private CreatePipeProcedureV2 serializeAndDeserialize(final CreatePipeProcedureV2 procedure)
+      throws Exception {
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    procedure.serialize(outputStream);
+    final ByteBuffer buffer =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    return (CreatePipeProcedureV2) ProcedureFactory.getInstance().create(buffer);
+  }
+
+  private PipeStatus calculateInitialPipeStatus(final TCreatePipeReq request) throws Exception {
+    return calculatePipeStaticMetaAndRuntimeMeta(request).getPipeRuntimeMeta().getStatus().get();
+  }
+
+  private PipeStaticMeta calculatePipeStaticMeta(final TCreatePipeReq request) throws Exception {
+    return calculatePipeStaticMetaAndRuntimeMeta(request).getPipeStaticMeta();
+  }
+
+  private CreatePipePlanV2 calculatePipeStaticMetaAndRuntimeMeta(final TCreatePipeReq request)
+      throws Exception {
+    final CreatePipeProcedureV2 procedure =
+        new CreatePipeProcedureV2(request, new AtomicReference<>(new PipeTaskInfo()));
+    procedure.executeFromCalculateInfoForTask(Mockito.mock(ConfigNodeProcedureEnv.class));
+    return procedure.constructPlan();
+  }
+
+  private TCreatePipeReq createPipeRequest(
+      final String pipeName, final boolean shouldUseConsensusPipeName) {
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    if (shouldUseConsensusPipeName) {
+      extractorAttributes.put(PipeSourceConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY, "DataRegion[1]");
+      extractorAttributes.put(PipeSourceConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY, "1");
+    }
+    return new TCreatePipeReq(
+            shouldUseConsensusPipeName ? PipeStaticMeta.CONSENSUS_PIPE_PREFIX + pipeName : pipeName,
+            new HashMap<>())
+        .setExtractorAttributes(extractorAttributes)
+        .setProcessorAttributes(new HashMap<>());
   }
 
   @Test

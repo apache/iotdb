@@ -30,13 +30,10 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyString;
-
 public class PipeTaskCoordinatorTest {
 
   @Test
-  public void testLegacyStartPipeRequestUsesNameOnlyPipeExistenceCheck() {
+  public void testLegacyStartPipeRequestResolvesTableOnlyPipe() {
     final ConfigManager configManager = Mockito.mock(ConfigManager.class);
     final ProcedureManager procedureManager = Mockito.mock(ProcedureManager.class);
     final PipeTaskInfo pipeTaskInfo = Mockito.mock(PipeTaskInfo.class);
@@ -44,16 +41,19 @@ public class PipeTaskCoordinatorTest {
         new PipeTaskCoordinator(configManager, pipeTaskInfo);
 
     Mockito.when(configManager.getProcedureManager()).thenReturn(procedureManager);
-    Mockito.when(pipeTaskInfo.isPipeExisted("p1")).thenReturn(true);
-    Mockito.when(procedureManager.startPipe("p1"))
+    Mockito.when(pipeTaskInfo.isPipeExisted("p1", false)).thenReturn(false);
+    Mockito.when(pipeTaskInfo.isPipeExisted("p1", true)).thenReturn(true);
+    Mockito.when(procedureManager.startPipe("p1", true))
         .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
     final TSStatus status = pipeTaskCoordinator.startPipe(new TStartPipeReq("p1"));
 
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    Mockito.verify(pipeTaskInfo).isPipeExisted("p1");
-    Mockito.verify(pipeTaskInfo, Mockito.never()).isPipeExisted(anyString(), anyBoolean());
-    Mockito.verify(procedureManager).startPipe("p1");
+    Mockito.verify(pipeTaskInfo).isPipeExisted("p1", false);
+    Mockito.verify(pipeTaskInfo, Mockito.times(2)).isPipeExisted("p1", true);
+    Mockito.verify(pipeTaskInfo, Mockito.never()).isPipeExisted("p1");
+    Mockito.verify(procedureManager).startPipe("p1", true);
+    Mockito.verify(procedureManager, Mockito.never()).startPipe("p1");
   }
 
   @Test

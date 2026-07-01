@@ -2395,6 +2395,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .setPipeName(realtimePipeName)
               // NOTE: set if not exists always to true to handle partial failure
               .setIfNotExistsCondition(true)
+              .setNeedManuallyStart(false)
               // Use extractor parameters for real-time data
               .setExtractorAttributes(
                   sourcePipeParameters
@@ -2443,6 +2444,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               // Append suffix to the pipeline name for historical data
               .setPipeName(pipeName + "_history")
               .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
+              .setNeedManuallyStart(false)
               // Use source parameters for historical data
               .setExtractorAttributes(
                   sourcePipeParameters
@@ -2502,6 +2504,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TCreatePipeReq()
             .setPipeName(pipeName)
             .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
+            .setNeedManuallyStart(false)
             .setExtractorAttributes(sourcePipeParameters.getAttribute())
             .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
             .setConnectorAttributes(createPipeStatement.getSinkAttributes());

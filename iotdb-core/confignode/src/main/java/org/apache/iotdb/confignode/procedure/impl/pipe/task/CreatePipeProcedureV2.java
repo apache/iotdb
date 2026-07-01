@@ -116,10 +116,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (createPipeRequest.getExtractorAttributes() == null) {
       createPipeRequest.setExtractorAttributes(new HashMap<>());
     }
+    final Map<String, String> extractorAttributes =
+        new HashMap<>(createPipeRequest.getExtractorAttributes());
     createPipeRequest.setExtractorAttributes(
-        SystemConstant.addStrictPipeVisibilityIfNecessary(
-                new PipeParameters(createPipeRequest.getExtractorAttributes()))
-            .getAttribute());
+        extractorAttributes.containsKey(SystemConstant.SQL_DIALECT_KEY)
+            ? SystemConstant.addStrictPipeVisibilityIfNecessary(
+                    new PipeParameters(extractorAttributes))
+                .getAttribute()
+            : extractorAttributes);
     if (createPipeRequest.getProcessorAttributes() == null) {
       createPipeRequest.setProcessorAttributes(new HashMap<>());
     }
@@ -530,9 +534,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
 
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
-    if (!createPipeRequest.needManuallyStart) {
+    if (shouldStartPipeImmediatelyAfterCreation()) {
       pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
     }
+  }
+
+  private boolean shouldStartPipeImmediatelyAfterCreation() {
+    return !createPipeRequest.isSetNeedManuallyStart() || !createPipeRequest.isNeedManuallyStart();
   }
 
   @Override
@@ -660,6 +668,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
+    ReadWriteIOUtils.write(createPipeRequest.isSetNeedManuallyStart(), stream);
+    if (createPipeRequest.isSetNeedManuallyStart()) {
+      ReadWriteIOUtils.write(createPipeRequest.isNeedManuallyStart(), stream);
+    }
   }
 
   @Override
@@ -692,6 +704,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       pipeStaticMeta = PipeStaticMeta.deserialize(byteBuffer);
     }
+    if (byteBuffer.hasRemaining() && ReadWriteIOUtils.readBool(byteBuffer)) {
+      createPipeRequest.setNeedManuallyStart(ReadWriteIOUtils.readBool(byteBuffer));
+    }
   }
 
   @Override
@@ -712,7 +727,12 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             that.createPipeRequest.getProcessorAttributes())
         && Objects.equals(
             this.createPipeRequest.getConnectorAttributes(),
-            that.createPipeRequest.getConnectorAttributes());
+            that.createPipeRequest.getConnectorAttributes())
+        && this.createPipeRequest.isSetNeedManuallyStart()
+            == that.createPipeRequest.isSetNeedManuallyStart()
+        && (!this.createPipeRequest.isSetNeedManuallyStart()
+            || this.createPipeRequest.isNeedManuallyStart()
+                == that.createPipeRequest.isNeedManuallyStart());
   }
 
   @Override
@@ -721,6 +741,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         createPipeRequest.getPipeName(),
         createPipeRequest.getExtractorAttributes(),
         createPipeRequest.getProcessorAttributes(),
-        createPipeRequest.getConnectorAttributes());
+        createPipeRequest.getConnectorAttributes(),
+        createPipeRequest.isSetNeedManuallyStart(),
+        createPipeRequest.isSetNeedManuallyStart()
+            ? createPipeRequest.isNeedManuallyStart()
+            : null);
   }
 }
