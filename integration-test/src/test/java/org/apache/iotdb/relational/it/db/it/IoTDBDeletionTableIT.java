@@ -444,6 +444,90 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testDeleteDataByAttributeFilterWithOtherOperators() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_other_ops("
+              + "deviceId STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_other_ops(time, deviceId, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'a', 'x', 11),"
+              + "(2, 'd1', 'a', 'x', 12),"
+              + "(1, 'd2', 'b', 'y', 21),"
+              + "(2, 'd2', 'b', 'y', 22),"
+              + "(1, 'd3', 'c', 'z', 31),"
+              + "(2, 'd3', 'c', 'z', 32)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_other_ops(time, deviceId, attr2, s1) VALUES "
+              + "(1, 'd4', 'null_attr1', 41),"
+              + "(2, 'd4', 'null_attr1', 42)");
+
+      statement.execute("DELETE FROM delete_by_attr_other_ops WHERE attr1 > 'b' AND time = 1");
+
+      List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_other_ops ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(
+          List.of("d1,1,11", "d1,2,12", "d2,1,21", "d2,2,22", "d3,2,32", "d4,1,41", "d4,2,42"),
+          actual);
+
+      statement.execute("DELETE FROM delete_by_attr_other_ops WHERE attr1 != 'a' AND time = 2");
+
+      actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_other_ops ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d1,1,11", "d1,2,12", "d2,1,21", "d4,1,41", "d4,2,42"), actual);
+
+      statement.execute("DELETE FROM delete_by_attr_other_ops WHERE attr1 <= 'a' AND time = 1");
+
+      actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_other_ops ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d1,2,12", "d2,1,21", "d4,1,41", "d4,2,42"), actual);
+
+      try {
+        statement.execute("DELETE FROM delete_by_attr_other_ops WHERE attr1 IS NOT NULL");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: Unsupported expression: (attr1 IS NOT NULL) in (attr1 IS NOT NULL)",
+            e.getMessage());
+      }
+
+      actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_other_ops ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d1,2,12", "d2,1,21", "d4,1,41", "d4,2,42"), actual);
+    }
+  }
+
+  @Test
   public void testDeleteDataByAttributeFilterRejectsTooManyDevices() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
