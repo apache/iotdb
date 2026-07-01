@@ -524,6 +524,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                   final Tablet tablet = tabletIterator.next();
                   // Record tablet metrics
                   recordTabletMetrics(tablet);
+                  releaseTabletMemoryBlock();
                   final boolean isAligned =
                       deviceIsAlignedMap.getOrDefault(
                           IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);

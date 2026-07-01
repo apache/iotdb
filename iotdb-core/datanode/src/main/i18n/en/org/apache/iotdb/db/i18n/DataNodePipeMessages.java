@@ -283,8 +283,8 @@ public final class DataNodePipeMessages {
           + "PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. "
           + "Returning true to ensure data integrity.";
   public static final String FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE =
-      "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count "
-          + "is {}, will keep retrying.";
+      "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, "
+          + "will release parser memory and retry the TsFile event later.";
   public static final String FAILED_TO_BUILD_TABLET = "Failed to build tablet";
   public static final String FAILED_TO_CHECK_NEXT = "Failed to check next";
   public static final String FAILED_TO_CLOSE_TSFILEREADER = "Failed to close TsFileReader";

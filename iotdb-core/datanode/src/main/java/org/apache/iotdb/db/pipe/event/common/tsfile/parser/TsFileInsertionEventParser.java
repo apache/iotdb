@@ -177,6 +177,13 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
     }
   }
 
+  protected void releaseTabletMemoryBlock() {
+    if (allocatedMemoryBlockForTablet != null
+        && allocatedMemoryBlockForTablet.getMemoryUsageInBytes() > 0) {
+      PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForTablet, 0);
+    }
+  }
+
   @Override
   public void close() {
     tabletInsertionIterable = null;

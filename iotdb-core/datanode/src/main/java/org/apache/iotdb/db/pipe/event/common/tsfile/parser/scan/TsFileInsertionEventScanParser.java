@@ -231,6 +231,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   final Tablet tablet = getNextTablet();
                   // Record tablet metrics
                   recordTabletMetrics(tablet);
+                  releaseTabletMemoryBlock();
                   final boolean isLast = isLastTabletWithoutDeferredException();
                   try {
                     return sourceEvent == null

@@ -226,6 +226,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
                     final Tablet tablet = tabletIterator.next();
                     recordTabletMetrics(tablet);
+                    releaseTabletMemoryBlock();
                     if (!PipeRawTabletInsertionEvent.isTabletEmpty(tablet)) {
                       bufferedTablet = tablet;
                       return true;
