@@ -17,11 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource.log;
+package org.apache.iotdb.commons.pipe.resource.log;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -31,43 +29,57 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.LongUnaryOperator;
 
 public class PipePeriodicalLogReducer {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePeriodicalLogReducer.class);
-  private static final PipeMemoryBlock block;
-  protected static final Cache<String, String> loggerCache;
 
-  static {
-    // Never close because it's static
-    block =
-        PipeDataNodeResourceManager.memory()
-            .tryAllocate(PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
-    loggerCache =
-        Caffeine.newBuilder()
-            .expireAfterWrite(
-                PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds(), TimeUnit.SECONDS)
-            .weigher(
-                (k, v) ->
-                    Math.toIntExact(
-                        RamUsageEstimator.sizeOf((String) k)
-                            + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY))
-            .maximumWeight(block.getMemoryUsageInBytes())
-            .build();
+  private static final LongUnaryOperator DEFAULT_MEMORY_RESIZE_FUNCTION =
+      sizeInBytes -> sizeInBytes;
+
+  private static volatile LongUnaryOperator memoryResizeFunction = DEFAULT_MEMORY_RESIZE_FUNCTION;
+
+  protected static final Cache<String, String> LOGGER_CACHE =
+      Caffeine.newBuilder()
+          .expireAfterWrite(
+              PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds(), TimeUnit.SECONDS)
+          .weigher(PipePeriodicalLogReducer::estimateSize)
+          .maximumWeight(PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes())
+          .build();
+
+  private static int estimateSize(final String key, final String value) {
+    return Math.toIntExact(
+        RamUsageEstimator.sizeOf(key) + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
   }
 
   public static boolean log(
       final Consumer<String> loggerFunction, final String rawMessage, final Object... formatter) {
     final String loggerMessage = String.format(rawMessage, formatter);
-    if (!loggerCache.asMap().containsKey(loggerMessage)) {
-      loggerCache.put(loggerMessage, loggerMessage);
+    if (!LOGGER_CACHE.asMap().containsKey(loggerMessage)) {
+      LOGGER_CACHE.put(loggerMessage, loggerMessage);
       loggerFunction.accept(loggerMessage);
       return true;
     }
     return false;
   }
 
-  public static void update() {
-    loggerCache
+  public static synchronized void setMemoryResizeFunction(
+      final LongUnaryOperator memoryResizeFunction) {
+    PipePeriodicalLogReducer.memoryResizeFunction =
+        memoryResizeFunction == null ? DEFAULT_MEMORY_RESIZE_FUNCTION : memoryResizeFunction;
+    update();
+  }
+
+  public static synchronized void update() {
+    final long maxWeight =
+        memoryResizeFunction.applyAsLong(
+            PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
+    LOGGER.info("PipePeriodicalLogReducer is allocated to {} bytes.", maxWeight);
+    update(maxWeight);
+  }
+
+  public static synchronized void update(final long maxWeight) {
+    LOGGER_CACHE
         .policy()
         .expireAfterWrite()
         .ifPresent(
@@ -75,14 +87,7 @@ public class PipePeriodicalLogReducer {
                 time.setExpiresAfter(
                     PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds(),
                     TimeUnit.SECONDS));
-    PipeDataNodeResourceManager.memory()
-        .resize(block, PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes(), false);
-    LOGGER.info(
-        "PipePeriodicalLogReducer is allocated to {} bytes.", block.getMemoryUsageInBytes());
-    loggerCache
-        .policy()
-        .eviction()
-        .ifPresent(eviction -> eviction.setMaximum(block.getMemoryUsageInBytes()));
+    LOGGER_CACHE.policy().eviction().ifPresent(eviction -> eviction.setMaximum(maxWeight));
   }
 
   private PipePeriodicalLogReducer() {
