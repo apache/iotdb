@@ -841,8 +841,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (freeMemorySizeInBytes < needMemory + reservedMemorySizeInBytes) {
       final String message =
           String.format(
-              "%s Need memory: %d bytes, free memory: %d bytes, reserved memory: %d bytes, total memory: %d bytes",
-              PipeMessages.NOT_ENOUGH_MEMORY_FOR_PIPE,
+              PipeMessages.NOT_ENOUGH_MEMORY_FOR_PIPE_FORMAT,
               needMemory,
               freeMemorySizeInBytes,
               reservedMemorySizeInBytes,
@@ -999,8 +998,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (remainingMemory < needFloatingMemory) {
       final String message =
           String.format(
-              "%s Need Floating memory: %d  bytes, free Floating memory: %d bytes",
-              PipeMessages.NOT_ENOUGH_MEMORY_FOR_PIPE, needFloatingMemory, remainingMemory);
+              PipeMessages.NOT_ENOUGH_FLOATING_MEMORY_FOR_PIPE_FORMAT,
+              needFloatingMemory,
+              remainingMemory);
       LOGGER.warn(message);
       throw new PipeException(message);
     }

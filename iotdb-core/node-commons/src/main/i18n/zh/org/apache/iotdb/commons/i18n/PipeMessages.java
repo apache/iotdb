@@ -255,6 +255,12 @@ public final class PipeMessages {
   // ===================== PipeTaskAgent =====================
 
   public static final String NOT_ENOUGH_MEMORY_FOR_PIPE = "pipe 内存不足。";
+  public static final String NOT_ENOUGH_MEMORY_FOR_PIPE_FORMAT =
+      NOT_ENOUGH_MEMORY_FOR_PIPE
+          + "需要内存：%d 字节，空闲内存：%d 字节，保留内存：%d 字节，"
+          + "总内存：%d 字节";
+  public static final String NOT_ENOUGH_FLOATING_MEMORY_FOR_PIPE_FORMAT =
+      NOT_ENOUGH_MEMORY_FOR_PIPE + "需要浮动内存：%d 字节，空闲浮动内存：%d 字节";
   public static final String UNKNOWN_PIPE_STATUS = "Pipe %s 的状态 %s 未知";
   public static final String UNEXPECTED_PIPE_STATUS = "意外的 pipe 状态 %s：";
   public static final String INTERRUPTED_ACQUIRING_READ_LOCK =
