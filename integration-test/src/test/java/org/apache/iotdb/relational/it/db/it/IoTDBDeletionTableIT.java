@@ -269,14 +269,7 @@ public class IoTDBDeletionTableIT {
         assertEquals("701: The operator of tag predicate must be '=' for 'd0'", e.getMessage());
       }
 
-      try {
-        statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId is not null");
-        fail("should not reach here!");
-      } catch (SQLException e) {
-        assertEquals(
-            "701: Unsupported expression: (deviceId IS NOT NULL) in ((time < 10) AND (deviceId IS NOT NULL))",
-            e.getMessage());
-      }
+      statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId is not null");
 
       try {
         statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId = null");
@@ -521,6 +514,49 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testDeleteDataByAttributeFilterWithInvalidComparison() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_invalid_ops("
+              + "deviceId STRING TAG, attr1 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_invalid_ops(time, deviceId, attr1, s1) VALUES "
+              + "(1, 'd1', 'a', 11),"
+              + "(1, 'd2', 'b', 21)");
+
+      try {
+        statement.execute("DELETE FROM delete_by_attr_invalid_ops WHERE attr1 = 1");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The right hand value of attribute predicate must be a string: 1", e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM delete_by_attr_invalid_ops WHERE attr1 = null");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The right hand value of attribute predicate cannot be null with comparison operator, "
+                + "please use IS NULL or IS NOT NULL instead",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "DELETE FROM delete_by_attr_invalid_ops WHERE attr1 IS DISTINCT FROM 'a'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The operator of attribute predicate must be =, !=, <, <=, >, or >= for 'a'",
+            e.getMessage());
+      }
+    }
+  }
+
+  @Test
   public void testDeleteDataByTagIsNotNullFilter() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -537,7 +573,9 @@ public class IoTDBDeletionTableIT {
       statement.execute(
           "INSERT INTO delete_by_tag_not_null(time, deviceId, attr1, s1) VALUES "
               + "(1, 'd3', 'green', 31),"
-              + "(2, 'd3', 'green', 32)");
+              + "(2, 'd3', 'green', 32),"
+              + "(1, 'd4', 'red', 41),"
+              + "(2, 'd4', 'red', 42)");
 
       statement.execute("DELETE FROM delete_by_tag_not_null WHERE site IS NOT NULL AND time = 1");
 
@@ -558,7 +596,37 @@ public class IoTDBDeletionTableIT {
         }
       }
       assertEquals(
-          List.of("d1,north,2,12", "d2,south,2,22", "d3,null,1,31", "d3,null,2,32"), actual);
+          List.of(
+              "d1,north,2,12",
+              "d2,south,2,22",
+              "d3,null,1,31",
+              "d3,null,2,32",
+              "d4,null,1,41",
+              "d4,null,2,42"),
+          actual);
+
+      statement.execute(
+          "DELETE FROM delete_by_tag_not_null WHERE site IS NOT NULL AND attr1='red'");
+
+      actual.clear();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, site, time, s1 FROM delete_by_tag_not_null "
+                  + "ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1)
+                  + ","
+                  + resultSet.getString(2)
+                  + ","
+                  + resultSet.getLong(3)
+                  + ","
+                  + resultSet.getInt(4));
+        }
+      }
+      assertEquals(
+          List.of("d2,south,2,22", "d3,null,1,31", "d3,null,2,32", "d4,null,1,41", "d4,null,2,42"),
+          actual);
     }
   }
 

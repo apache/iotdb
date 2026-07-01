@@ -537,6 +537,11 @@ public class AnalyzeUtils {
           }
           deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
           collectAttributeColumn(attributeColumns, parseResult.attributeColumn);
+        } else if (parseResult.shouldFilterDevice()) {
+          if (Objects.isNull(deviceFilterExpressions)) {
+            deviceFilterExpressions = new ArrayList<>();
+          }
+          deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
         }
       } else {
         throw new SemanticException(
@@ -712,6 +717,7 @@ public class AnalyzeUtils {
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+      validateAttributeComparison(comparisonExpression);
       return PredicateParseResult.attribute(columnName, oldPredicate);
     }
     int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
@@ -724,6 +730,35 @@ public class AnalyzeUtils {
 
     TagPredicate newPredicate = getTagPredicate(comparisonExpression, right, tagColumnOrdinal);
     return PredicateParseResult.tag(combinePredicates(oldPredicate, newPredicate));
+  }
+
+  private static void validateAttributeComparison(final ComparisonExpression comparisonExpression) {
+    switch (comparisonExpression.getOperator()) {
+      case EQUAL:
+      case NOT_EQUAL:
+      case LESS_THAN:
+      case LESS_THAN_OR_EQUAL:
+      case GREATER_THAN:
+      case GREATER_THAN_OR_EQUAL:
+        break;
+      case IS_DISTINCT_FROM:
+      default:
+        throw new SemanticException(
+            DataNodeQueryMessages.THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR
+                + comparisonExpression.getRight());
+    }
+
+    final Expression right = comparisonExpression.getRight();
+    if (right instanceof NullLiteral) {
+      throw new SemanticException(
+          DataNodeQueryMessages
+              .THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR);
+    }
+    if (!(right instanceof StringLiteral)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_MUST_BE_A_STRING
+              + right);
+    }
   }
 
   private static String getTimeColumnName(final TsTable table) {
