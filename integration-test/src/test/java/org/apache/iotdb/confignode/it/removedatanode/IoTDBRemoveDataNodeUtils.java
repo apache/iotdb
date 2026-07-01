@@ -35,8 +35,10 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -71,6 +73,59 @@ public class IoTDBRemoveDataNodeUtils {
     List<Integer> shuffledDataNodeIds = new ArrayList<>(allDataNodeId);
     Collections.shuffle(shuffledDataNodeIds);
     return new HashSet<>(shuffledDataNodeIds.subList(0, removeDataNodeNum));
+  }
+
+  /**
+   * Select {@code removeDataNodeNum} DataNodes to remove such that no two of them host a replica of
+   * the same consensus group. Removing two DataNodes that share a region group would make the
+   * generated {@code RemoveDataNodesProcedure} try to migrate two replicas of the same group at
+   * once, which the ConfigNode rejects ("Only one replica of the same consensus group is allowed to
+   * be migrated at the same time."). Randomly picking DataNodes (see {@link
+   * #selectRemoveDataNodes}) therefore makes multi-DataNode-remove tests flaky; this method keeps
+   * the selection valid and deterministic-enough for such tests.
+   *
+   * @param allDataNodeId all registered DataNode ids
+   * @param removeDataNodeNum how many DataNodes to remove
+   * @param regionMap regionId -&gt; the set of DataNode ids hosting a replica of that region group
+   *     (all region types)
+   * @return the selected DataNode ids, or throws if no conflict-free selection of the requested
+   *     size exists
+   */
+  public static Set<Integer> selectRemoveDataNodesWithoutRegionConflict(
+      Set<Integer> allDataNodeId, int removeDataNodeNum, Map<Integer, Set<Integer>> regionMap) {
+    // dataNodeId -> the set of region groups it hosts a replica of
+    Map<Integer, Set<Integer>> dataNodeToRegions = new HashMap<>();
+    for (Integer dataNodeId : allDataNodeId) {
+      dataNodeToRegions.put(dataNodeId, new HashSet<>());
+    }
+    regionMap.forEach(
+        (regionId, dataNodeIds) ->
+            dataNodeIds.forEach(
+                dataNodeId ->
+                    dataNodeToRegions
+                        .computeIfAbsent(dataNodeId, id -> new HashSet<>())
+                        .add(regionId)));
+
+    List<Integer> shuffledDataNodeIds = new ArrayList<>(allDataNodeId);
+    Collections.shuffle(shuffledDataNodeIds);
+
+    Set<Integer> selected = new HashSet<>();
+    Set<Integer> coveredRegions = new HashSet<>();
+    for (Integer dataNodeId : shuffledDataNodeIds) {
+      Set<Integer> regions = dataNodeToRegions.getOrDefault(dataNodeId, Collections.emptySet());
+      if (Collections.disjoint(coveredRegions, regions)) {
+        selected.add(dataNodeId);
+        coveredRegions.addAll(regions);
+        if (selected.size() == removeDataNodeNum) {
+          return selected;
+        }
+      }
+    }
+    throw new IllegalStateException(
+        String.format(
+            "Cannot select %d DataNodes to remove without a same-region-group conflict. "
+                + "allDataNodeId=%s, regionMap=%s",
+            removeDataNodeNum, allDataNodeId, regionMap));
   }
 
   public static void restartDataNodes(List<DataNodeWrapper> dataNodeWrappers) {

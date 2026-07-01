@@ -881,7 +881,6 @@ public class ProcedureManager {
                 new Pair<>("Coordinator", coordinator)),
             req.getModel());
 
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (configManager
             .getPartitionManager()
             .getAllReplicaSetsMap(regionId.getType())
@@ -1245,10 +1244,29 @@ public class ProcedureManager {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  /**
+   * Resolve the location of a registered DataNode, or return {@code null} if the given id does not
+   * belong to any registered DataNode (e.g. it is a ConfigNode id or simply does not exist). {@link
+   * org.apache.iotdb.confignode.manager.node.NodeManager#getRegisteredDataNode} returns an empty
+   * {@link TDataNodeConfiguration} whose location is {@code null} in that case, so callers must not
+   * dereference the result blindly.
+   */
+  private TDataNodeLocation getRegisteredDataNodeLocationOrNull(int dataNodeId) {
+    return configManager.getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
+  }
+
   public TSStatus reconstructRegion(TReconstructRegionReq req) {
     RegionMaintainHandler handler = env.getRegionMaintainHandler();
     final TDataNodeLocation targetDataNode =
-        configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+        getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
+    if (targetDataNode == null) {
+      // The target id is not a registered DataNode. Reject here instead of pushing a null down into
+      // checkReconstructRegion, which would otherwise throw a NullPointerException.
+      return new TSStatus(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "Target DataNode %s does not exist in the cluster", req.getDataNodeId()));
+    }
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       List<ReconstructRegionProcedure> procedures = new ArrayList<>();
@@ -1352,7 +1370,15 @@ public class ProcedureManager {
 
       // find target dn
       final TDataNodeLocation targetDataNode =
-          configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+          getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
+      if (targetDataNode == null) {
+        // The target id is not a registered DataNode. Reject here instead of pushing a null down
+        // into checkExtendRegion, which would otherwise throw a NullPointerException.
+        return new TSStatus(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    "Target DataNode %s does not exist in the cluster", req.getDataNodeId()));
+      }
       // select coordinator for adding peer
       RegionMaintainHandler handler = env.getRegionMaintainHandler();
       // TODO: choose the DataNode which has lowest load

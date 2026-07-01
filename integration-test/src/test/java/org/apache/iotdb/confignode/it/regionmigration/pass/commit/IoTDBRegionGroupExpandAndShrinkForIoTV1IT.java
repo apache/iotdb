@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -116,6 +117,64 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
           // update regionMap every time
           regionMap = getAllRegionMap(statement);
         }
+      }
+    }
+  }
+
+  /**
+   * Regression test for TIMECHODB-0689: when the target id of "extend region" does not belong to
+   * any registered DataNode (e.g. it is a ConfigNode id or simply does not exist), the ConfigNode
+   * used to throw a NullPointerException in {@code checkExtendRegion} and the client only saw a
+   * misleading "Fail to connect to any config node" message. After the fix a clear, actionable
+   * error message must be returned instead.
+   */
+  @Test
+  public void extendRegionToInvalidDataNodeTest() throws Exception {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1);
+
+    EnvFactory.getEnv().initClusterEnvironment(1, 3);
+
+    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        final Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      // prepare data so that at least one region exists
+      statement.execute(INSERTION1);
+      statement.execute(FLUSH_COMMAND);
+
+      Map<Integer, Set<Integer>> regionMap = getAllRegionMap(statement);
+      Set<Integer> allDataNodeId = getAllDataNodes(statement);
+      Assert.assertFalse(regionMap.isEmpty());
+
+      int selectedRegion = regionMap.keySet().iterator().next();
+      // an id that is guaranteed not to belong to any registered DataNode; a ConfigNode id triggers
+      // the exact same code path (getRegisteredDataNode returns an empty configuration whose
+      // location is null)
+      int invalidDataNodeId = 9999;
+      Assert.assertFalse(allDataNodeId.contains(invalidDataNodeId));
+
+      try {
+        statement.execute(String.format(EXPAND_FORMAT, selectedRegion, invalidDataNodeId));
+        Assert.fail("extend region to a non-existent DataNode is expected to fail");
+      } catch (SQLException e) {
+        String message = e.getMessage();
+        LOGGER.info("extend region to invalid DataNode failed as expected: {}", message);
+        Assert.assertNotNull(message);
+        // the ConfigNode must not crash with an NPE any more ...
+        Assert.assertFalse(
+            "ConfigNode should not throw NullPointerException, but got: " + message,
+            message.contains("NullPointerException"));
+        // ... and the submission must be rejected cleanly. "extend region" wraps every region's
+        // result, so the top-level message only reports the aggregate counts; the concrete "does
+        // not
+        // exist in the cluster" reason is carried in the per-region sub-status.
+        Assert.assertTrue(
+            "Expected the extend submission to be rejected but got: " + message,
+            message.contains("failed to submit: 1"));
       }
     }
   }
