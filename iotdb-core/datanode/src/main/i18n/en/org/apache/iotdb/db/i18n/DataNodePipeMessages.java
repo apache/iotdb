@@ -1450,6 +1450,21 @@ public final class DataNodePipeMessages {
   public static final String PLUGIN_NOT_REGISTERED_FMT = "plugin %s is not registered.";
 
   // ---------------------------------------------------------------------------
+  // pipe - WriteBackSink
+  // ---------------------------------------------------------------------------
+  public static final String TABLE_MODEL_DATABASE_INVALID_FMT =
+      "The table-model database %s is invalid. It should not contain '%s', should match the "
+          + "pattern %s, and the length should not exceed %d";
+  public static final String TREE_MODEL_DATABASE_INVALID_FMT =
+      "The tree-model database %s is invalid. It should be a legal tree-model database path, "
+          + "should match the pattern %s, and the length should not exceed %d";
+  public static final String TARGET_TREE_MODEL_DATABASE_CANNOT_BE_USED_FOR_TABLE_MODEL_EVENTS_FMT =
+      "The target tree-model database %s cannot be used for table-model events because the "
+          + "corresponding table-model database %s is invalid.";
+  public static final String FAILED_TO_REWRITE_TREE_MODEL_DATABASE_FMT =
+      "Failed to rewrite tree-model database from %s to %s for device %s.";
+
+  // ---------------------------------------------------------------------------
   // pipe – PipeTransferTrackableHandler
   // ---------------------------------------------------------------------------
   public static final String TPIPE_TRANSFER_RESP_IS_NULL_WHEN_TRANSFERRING_SLICE =
