@@ -97,6 +97,8 @@ public abstract class AbstractDataTool {
   protected static Boolean useSsl;
   protected static String trustStore;
   protected static String trustStorePwd;
+  protected static String keyStore;
+  protected static String keyStorePwd;
   protected static String sslProtocol;
   protected static Boolean aligned;
   protected static String database;
@@ -142,6 +144,9 @@ public abstract class AbstractDataTool {
 
   protected static Session.Builder configureSsl(Session.Builder builder) {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
@@ -150,6 +155,9 @@ public abstract class AbstractDataTool {
 
   protected static SessionPool.Builder configureSsl(SessionPool.Builder builder) {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
@@ -158,6 +166,9 @@ public abstract class AbstractDataTool {
 
   protected static TableSessionBuilder configureSsl(TableSessionBuilder builder) {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
@@ -166,6 +177,9 @@ public abstract class AbstractDataTool {
 
   protected static TableSessionPoolBuilder configureSsl(TableSessionPoolBuilder builder) {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
@@ -220,6 +234,13 @@ public abstract class AbstractDataTool {
         trustStorePwd = givenTPW;
       } else {
         trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+      }
+      keyStore = commandLine.getOptionValue(Constants.KEY_STORE_ARGS);
+      keyStorePwd = commandLine.getOptionValue(Constants.KEY_STORE_PWD_ARGS);
+      if (keyStore != null && keyStorePwd == null) {
+        keyStorePwd = cliCtx.getLineReader().readLine("please input your key_store_pwd:", '\0');
+      } else if (keyStore == null && keyStorePwd != null) {
+        keyStore = cliCtx.getLineReader().readLine("please input your key_store:", '\0');
       }
     }
     if (commandLine.hasOption(Constants.PW_ARGS)) {

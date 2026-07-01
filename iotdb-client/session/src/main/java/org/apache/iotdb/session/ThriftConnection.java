@@ -78,6 +78,8 @@ public class ThriftConnection {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
       String sslProtocol,
       String username,
       String password,
@@ -90,12 +92,14 @@ public class ThriftConnection {
     try {
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransportWithSSLConfig(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 connectionTimeoutInMs,
                 trustStore,
                 trustStorePwd,
+                keyStore,
+                keyStorePwd,
                 sslProtocol);
       } else {
         transport =

@@ -75,8 +75,10 @@ public abstract class AbstractCli {
 
   static final String USE_SSL_ARGS = "usessl";
   static final String TRUST_STORE_ARGS = "ts";
+  static final String KEY_STORE_ARGS = "ks";
 
   static final String TRUST_STORE_PWD_ARGS = "tpw";
+  static final String KEY_STORE_PWD_ARGS = "kpw";
 
   static final String SSL_PROTOCOL_ARGS = "ssl_protocol";
 
@@ -84,8 +86,10 @@ public abstract class AbstractCli {
 
   private static final String USE_SSL = "use_ssl";
   private static final String TRUST_STORE = "trust_store";
+  private static final String KEY_STORE = "key_store";
 
   private static final String TRUST_STORE_PWD = "trust_store_pwd";
+  private static final String KEY_STORE_PWD = "key_store_pwd";
   private static final String SSL_PROTOCOL = "ssl_protocol";
   private static final String NULL = "null";
 
@@ -136,6 +140,8 @@ public abstract class AbstractCli {
   static String trustStore;
   // TODO: Make non-static
   static String trustStorePwd;
+  static String keyStore;
+  static String keyStorePwd;
   static String sslProtocol;
 
   static String execute;
@@ -161,6 +167,8 @@ public abstract class AbstractCli {
     keywordSet.add("-" + USE_SSL_ARGS);
     keywordSet.add("-" + TRUST_STORE_ARGS);
     keywordSet.add("-" + TRUST_STORE_PWD_ARGS);
+    keywordSet.add("-" + KEY_STORE_ARGS);
+    keywordSet.add("-" + KEY_STORE_PWD_ARGS);
     keywordSet.add("-" + SSL_PROTOCOL_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
@@ -219,6 +227,42 @@ public abstract class AbstractCli {
             .desc("Use SSL statement. (optional)")
             .build();
     options.addOption(useSSL);
+
+    Option trustStore =
+        Option.builder(TRUST_STORE_ARGS)
+            .longOpt(TRUST_STORE)
+            .argName(TRUST_STORE)
+            .hasArg()
+            .desc("Trust store. (optional)")
+            .build();
+    options.addOption(trustStore);
+
+    Option trustStorePwd =
+        Option.builder(TRUST_STORE_PWD_ARGS)
+            .longOpt(TRUST_STORE_PWD)
+            .argName(TRUST_STORE_PWD)
+            .hasArg()
+            .desc("Trust store password. (optional)")
+            .build();
+    options.addOption(trustStorePwd);
+
+    Option keyStore =
+        Option.builder(KEY_STORE_ARGS)
+            .longOpt(KEY_STORE)
+            .argName(KEY_STORE)
+            .hasArg()
+            .desc("Key store for mutual SSL. (optional)")
+            .build();
+    options.addOption(keyStore);
+
+    Option keyStorePwd =
+        Option.builder(KEY_STORE_PWD_ARGS)
+            .longOpt(KEY_STORE_PWD)
+            .argName(KEY_STORE_PWD)
+            .hasArg()
+            .desc("Key store password for mutual SSL. (optional)")
+            .build();
+    options.addOption(keyStorePwd);
 
     Option sslProtocol =
         Option.builder(SSL_PROTOCOL_ARGS)

@@ -205,6 +205,8 @@ public interface CommonConfig {
 
   CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL);
 
+  CommonConfig setThriftSSLClientAuth(boolean thriftSSLClientAuth);
+
   CommonConfig setEnableInternalSSL(boolean enableInternalSSL);
 
   CommonConfig setKeyStorePath(String keyStorePath);

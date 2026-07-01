@@ -135,6 +135,24 @@ public class TableSessionPoolBuilder extends org.apache.iotdb.session.pool.Table
   }
 
   @Override
+  public TableSessionPoolBuilder keyStore(String keyStore) {
+    super.keyStore(keyStore);
+    return this;
+  }
+
+  @Override
+  public TableSessionPoolBuilder keyStorePwd(String keyStorePwd) {
+    super.keyStorePwd(keyStorePwd);
+    return this;
+  }
+
+  @Override
+  public TableSessionPoolBuilder sslProtocol(String sslProtocol) {
+    super.sslProtocol(sslProtocol);
+    return this;
+  }
+
+  @Override
   public TableSessionPoolBuilder user(String user) {
     super.user(user);
     return this;

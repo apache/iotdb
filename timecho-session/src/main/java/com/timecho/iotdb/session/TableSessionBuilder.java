@@ -133,6 +133,24 @@ public class TableSessionBuilder extends org.apache.iotdb.session.TableSessionBu
   }
 
   @Override
+  public TableSessionBuilder keyStore(String keyStore) {
+    super.keyStore(keyStore);
+    return this;
+  }
+
+  @Override
+  public TableSessionBuilder keyStorePwd(String keyStorePwd) {
+    super.keyStorePwd(keyStorePwd);
+    return this;
+  }
+
+  @Override
+  public TableSessionBuilder sslProtocol(String sslProtocol) {
+    super.sslProtocol(sslProtocol);
+    return this;
+  }
+
+  @Override
   public TableSessionBuilder username(String username) {
     super.username(username);
     return this;

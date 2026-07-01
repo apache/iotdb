@@ -777,6 +777,10 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_thrift_ssl", Boolean.toString(config.isEnableThriftClientSSL()))));
+    config.setThriftSSLClientAuth(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "thrift_ssl_client_auth", Boolean.toString(config.isThriftSSLClientAuth()))));
     config.setEnableInternalSSL(
         Boolean.parseBoolean(
             properties.getProperty(

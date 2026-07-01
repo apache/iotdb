@@ -497,6 +497,9 @@ public class CommonConfig {
   /** Enable the Thrift Client ssl. */
   private boolean enableThriftClientSSL = false;
 
+  /** Whether the external Thrift SSL service requires client certificate authentication. */
+  private boolean thriftSSLClientAuth = false;
+
   /** Enable the cluster internal connection ssl. */
   private boolean enableInternalSSL = false;
 
@@ -3103,6 +3106,14 @@ public class CommonConfig {
 
   public void setEnableThriftClientSSL(boolean enableThriftClientSSL) {
     this.enableThriftClientSSL = enableThriftClientSSL;
+  }
+
+  public boolean isThriftSSLClientAuth() {
+    return thriftSSLClientAuth;
+  }
+
+  public void setThriftSSLClientAuth(boolean thriftSSLClientAuth) {
+    this.thriftSSLClientAuth = thriftSSLClientAuth;
   }
 
   public boolean isEnableInternalSSL() {
