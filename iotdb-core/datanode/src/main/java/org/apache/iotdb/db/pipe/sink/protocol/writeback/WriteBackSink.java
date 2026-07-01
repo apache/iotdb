@@ -202,9 +202,11 @@ public class WriteBackSink implements PipeConnector {
     } catch (final Exception e) {
       throw new PipeException(
           String.format(
-              "The table-model database %s is invalid. It should not contain '%s', should match "
-                  + "the pattern %s, and the length should not exceed %d",
-              databaseName, PATH_SEPARATOR, IoTDBConfig.DATABASE_PATTERN, MAX_DATABASE_NAME_LENGTH),
+              DataNodePipeMessages.TABLE_MODEL_DATABASE_INVALID_FMT,
+              databaseName,
+              PATH_SEPARATOR,
+              IoTDBConfig.DATABASE_PATTERN,
+              MAX_DATABASE_NAME_LENGTH),
           e);
     }
   }
@@ -230,9 +232,10 @@ public class WriteBackSink implements PipeConnector {
     } catch (final Exception e) {
       throw new PipeException(
           String.format(
-              "The tree-model database %s is invalid. It should be a legal tree-model database "
-                  + "path, should match the pattern %s, and the length should not exceed %d",
-              databaseName, IoTDBConfig.DATABASE_PATTERN, MAX_DATABASE_NAME_LENGTH),
+              DataNodePipeMessages.TREE_MODEL_DATABASE_INVALID_FMT,
+              databaseName,
+              IoTDBConfig.DATABASE_PATTERN,
+              MAX_DATABASE_NAME_LENGTH),
           e);
     }
   }
@@ -330,6 +333,8 @@ public class WriteBackSink implements PipeConnector {
     invalidTargetTableModelDatabaseName = null;
     targetTreeModelDatabaseName = null;
 
+    // Write-back sink may receive both table-model and tree-model events from one pipe.
+    // Normalize one configured target database to both model names so each event can be rewritten.
     if (PathUtils.isTableModelDatabase(targetDatabase)) {
       targetTableModelDatabaseName = targetDatabase.toLowerCase(Locale.ENGLISH);
       targetTreeModelDatabaseName =
@@ -345,6 +350,8 @@ public class WriteBackSink implements PipeConnector {
       TableConfigTaskVisitor.validateDatabaseName(tableModelDatabaseName);
       targetTableModelDatabaseName = tableModelDatabaseName;
     } catch (final Exception e) {
+      // A valid multi-level tree database like root.target.db cannot be converted to a valid
+      // table-model database name, but tree-model events can still use the original target.
       invalidTargetTableModelDatabaseName = tableModelDatabaseName;
     }
   }
@@ -543,9 +550,10 @@ public class WriteBackSink implements PipeConnector {
     if (Objects.nonNull(invalidTargetTableModelDatabaseName)) {
       throw new PipeException(
           String.format(
-              "The target tree-model database %s cannot be used for table-model events because "
-                  + "the corresponding table-model database %s is invalid.",
-              targetTreeModelDatabaseName, invalidTargetTableModelDatabaseName));
+              DataNodePipeMessages
+                  .TARGET_TREE_MODEL_DATABASE_CANNOT_BE_USED_FOR_TABLE_MODEL_EVENTS_FMT,
+              targetTreeModelDatabaseName,
+              invalidTargetTableModelDatabaseName));
     }
 
     validateTableModelDatabaseName(databaseName);
@@ -662,6 +670,8 @@ public class WriteBackSink implements PipeConnector {
       final String[] sourceDatabaseNodes = new PartialPath(sourceTreeModelDatabaseName).getNodes();
       final String[] targetDatabaseNodes = new PartialPath(targetTreeModelDatabaseName).getNodes();
       final String[] deviceNodes = devicePath.getNodes();
+      // A processor may rewrite the device path before write-back sink receives the event.
+      // If it no longer belongs to the source database, keep it untouched to avoid corruption.
       if (!startsWith(deviceNodes, sourceDatabaseNodes)) {
         return devicePath;
       }
@@ -676,8 +686,10 @@ public class WriteBackSink implements PipeConnector {
     } catch (final Exception e) {
       throw new PipeException(
           String.format(
-              "Failed to rewrite tree-model database from %s to %s for device %s.",
-              sourceTreeModelDatabaseName, targetTreeModelDatabaseName, devicePath),
+              DataNodePipeMessages.FAILED_TO_REWRITE_TREE_MODEL_DATABASE_FMT,
+              sourceTreeModelDatabaseName,
+              targetTreeModelDatabaseName,
+              devicePath),
           e);
     }
   }

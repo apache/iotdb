@@ -1395,6 +1395,18 @@ public final class DataNodePipeMessages {
   public static final String PLUGIN_NOT_REGISTERED_FMT = "插件 %s 未注册。";
 
   // ---------------------------------------------------------------------------
+  // pipe - WriteBackSink
+  // ---------------------------------------------------------------------------
+  public static final String TABLE_MODEL_DATABASE_INVALID_FMT =
+      "表模型数据库 %s 非法：不应包含 '%s'，应匹配 %s，且长度不应超过 %d";
+  public static final String TREE_MODEL_DATABASE_INVALID_FMT =
+      "树模型数据库 %s 非法：应为合法的树模型数据库路径，应匹配 %s，且长度不应超过 %d";
+  public static final String TARGET_TREE_MODEL_DATABASE_CANNOT_BE_USED_FOR_TABLE_MODEL_EVENTS_FMT =
+      "目标树模型数据库 %s 不能用于表模型事件，因为对应的表模型数据库 %s 非法。";
+  public static final String FAILED_TO_REWRITE_TREE_MODEL_DATABASE_FMT =
+      "将树模型数据库从 %s 重写为 %s 失败，设备为 %s。";
+
+  // ---------------------------------------------------------------------------
   // pipe – PipeTransferTrackableHandler
   // ---------------------------------------------------------------------------
   public static final String TPIPE_TRANSFER_RESP_IS_NULL_WHEN_TRANSFERRING_SLICE =
