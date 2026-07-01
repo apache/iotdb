@@ -1897,8 +1897,7 @@ public class ConsensusPrefetchingQueue {
       final int maxTablets,
       final long maxBatchBytes) {
     bufferRealtimeEntry(preparedEntry);
-    return drainRealtimeWriters(
-        batchState, expectedSeekGeneration, maxTablets, maxBatchBytes);
+    return drainRealtimeWriters(batchState, expectedSeekGeneration, maxTablets, maxBatchBytes);
   }
 
   private int getRealtimeBufferedEntryCount() {
@@ -1916,8 +1915,7 @@ public class ConsensusPrefetchingQueue {
       final long maxBatchBytes) {
     while (!realtimeEntriesByWriter.isEmpty()) {
       final int bufferedBefore = getRealtimeBufferedEntryCount();
-      if (!drainRealtimeWriters(
-          batchState, expectedSeekGeneration, maxTablets, maxBatchBytes)) {
+      if (!drainRealtimeWriters(batchState, expectedSeekGeneration, maxTablets, maxBatchBytes)) {
         return false;
       }
 

@@ -265,5 +265,4 @@ public class ConsensusPrefetchingQueueTest {
       return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
     }
   }
-
 }
