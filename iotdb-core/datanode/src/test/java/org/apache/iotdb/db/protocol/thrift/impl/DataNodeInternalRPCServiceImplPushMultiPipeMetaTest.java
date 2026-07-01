@@ -39,14 +39,14 @@ public class DataNodeInternalRPCServiceImplPushMultiPipeMetaTest {
   public void testPushMultiPipeMetaContinuesAfterSinglePipeFailure() {
     final AtomicInteger pushedPipeCount = new AtomicInteger(0);
     final TPushPipeMetaResp resp =
-        DataNodeInternalRPCServiceImpl.pushMultiPipeMeta(
+        PushMultiPipeMetaHelper.pushMultiPipeMeta(
             new TPushMultiPipeMetaReq()
                 .setPipeMetas(
                     Arrays.asList(
                         ByteBuffer.wrap(new byte[] {1}),
                         ByteBuffer.wrap(new byte[] {2}),
                         ByteBuffer.wrap(new byte[] {3}))),
-            new DataNodeInternalRPCServiceImpl.PushMultiPipeMetaHandler() {
+            new PushMultiPipeMetaHelper.Handler() {
               @Override
               public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
                 Assert.fail("Unexpected drop pipe request");
@@ -72,9 +72,9 @@ public class DataNodeInternalRPCServiceImplPushMultiPipeMetaTest {
   public void testDropMultiPipeContinuesAfterSinglePipeFailure() {
     final List<String> droppedPipeNames = new ArrayList<>();
     final TPushPipeMetaResp resp =
-        DataNodeInternalRPCServiceImpl.pushMultiPipeMeta(
+        PushMultiPipeMetaHelper.pushMultiPipeMeta(
             new TPushMultiPipeMetaReq().setPipeNamesToDrop(Arrays.asList("pipe-1", "pipe-2")),
-            new DataNodeInternalRPCServiceImpl.PushMultiPipeMetaHandler() {
+            new PushMultiPipeMetaHelper.Handler() {
               @Override
               public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
                 droppedPipeNames.add(pipeName);
@@ -100,12 +100,12 @@ public class DataNodeInternalRPCServiceImplPushMultiPipeMetaTest {
   public void testPushMultiPipeMetaReturnsSuccessWithoutExceptionMessages() {
     final AtomicInteger pushedPipeCount = new AtomicInteger(0);
     final TPushPipeMetaResp resp =
-        DataNodeInternalRPCServiceImpl.pushMultiPipeMeta(
+        PushMultiPipeMetaHelper.pushMultiPipeMeta(
             new TPushMultiPipeMetaReq()
                 .setPipeMetas(
                     Arrays.asList(
                         ByteBuffer.wrap(new byte[] {1}), ByteBuffer.wrap(new byte[] {2}))),
-            new DataNodeInternalRPCServiceImpl.PushMultiPipeMetaHandler() {
+            new PushMultiPipeMetaHelper.Handler() {
               @Override
               public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
                 Assert.fail("Unexpected drop pipe request");
@@ -129,12 +129,12 @@ public class DataNodeInternalRPCServiceImplPushMultiPipeMetaTest {
   public void testPushMultiPipeMetaKeepsCollectedExceptionMessagesWhenLaterPipeThrows() {
     final AtomicInteger pushedPipeCount = new AtomicInteger(0);
     final TPushPipeMetaResp resp =
-        DataNodeInternalRPCServiceImpl.pushMultiPipeMeta(
+        PushMultiPipeMetaHelper.pushMultiPipeMeta(
             new TPushMultiPipeMetaReq()
                 .setPipeMetas(
                     Arrays.asList(
                         ByteBuffer.wrap(new byte[] {1}), ByteBuffer.wrap(new byte[] {2}))),
-            new DataNodeInternalRPCServiceImpl.PushMultiPipeMetaHandler() {
+            new PushMultiPipeMetaHelper.Handler() {
               @Override
               public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
                 Assert.fail("Unexpected drop pipe request");
@@ -163,9 +163,9 @@ public class DataNodeInternalRPCServiceImplPushMultiPipeMetaTest {
   public void testDropMultiPipeMetaReturnsSuccessWithoutExceptionMessages() {
     final List<String> droppedPipeNames = new ArrayList<>();
     final TPushPipeMetaResp resp =
-        DataNodeInternalRPCServiceImpl.pushMultiPipeMeta(
+        PushMultiPipeMetaHelper.pushMultiPipeMeta(
             new TPushMultiPipeMetaReq().setPipeNamesToDrop(Arrays.asList("pipe-1", "pipe-2")),
-            new DataNodeInternalRPCServiceImpl.PushMultiPipeMetaHandler() {
+            new PushMultiPipeMetaHelper.Handler() {
               @Override
               public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
                 droppedPipeNames.add(pipeName);
@@ -188,9 +188,9 @@ public class DataNodeInternalRPCServiceImplPushMultiPipeMetaTest {
   @Test
   public void testInvalidPushMultiPipeMetaRequestReturnsErrorWithoutCallingHandler() {
     final TPushPipeMetaResp resp =
-        DataNodeInternalRPCServiceImpl.pushMultiPipeMeta(
+        PushMultiPipeMetaHelper.pushMultiPipeMeta(
             new TPushMultiPipeMetaReq(),
-            new DataNodeInternalRPCServiceImpl.PushMultiPipeMetaHandler() {
+            new PushMultiPipeMetaHelper.Handler() {
               @Override
               public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
                 Assert.fail("Unexpected drop pipe request");
@@ -214,12 +214,12 @@ public class DataNodeInternalRPCServiceImplPushMultiPipeMetaTest {
   public void testPushMultiPipeMetaStopsOnUnexpectedException() {
     final AtomicInteger pushedPipeCount = new AtomicInteger(0);
     final TPushPipeMetaResp resp =
-        DataNodeInternalRPCServiceImpl.pushMultiPipeMeta(
+        PushMultiPipeMetaHelper.pushMultiPipeMeta(
             new TPushMultiPipeMetaReq()
                 .setPipeMetas(
                     Arrays.asList(
                         ByteBuffer.wrap(new byte[] {1}), ByteBuffer.wrap(new byte[] {2}))),
-            new DataNodeInternalRPCServiceImpl.PushMultiPipeMetaHandler() {
+            new PushMultiPipeMetaHelper.Handler() {
               @Override
               public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
                 Assert.fail("Unexpected drop pipe request");

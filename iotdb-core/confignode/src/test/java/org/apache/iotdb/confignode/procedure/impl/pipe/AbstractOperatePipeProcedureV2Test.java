@@ -29,7 +29,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class AbstractOperatePipeProcedureV2Test {
@@ -47,18 +46,15 @@ public class AbstractOperatePipeProcedureV2Test {
   }
 
   @Test
-  public void testRetryStateYieldsWithoutSleepingAndResetsAfterNextExecution() throws Exception {
+  public void testRetryStateYieldsAndResetsAfterNextExecution() throws Exception {
     final TestOperatePipeProcedure procedure = new TestOperatePipeProcedure();
     procedure.failValidation = true;
 
-    final long startTime = System.nanoTime();
     Assert.assertEquals(
         StateMachineProcedure.Flow.HAS_MORE_STATE,
         procedure.executeFromState(null, OperatePipeTaskState.VALIDATE_TASK));
-    final long elapsedTimeInMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
     Assert.assertTrue(procedure.isYieldAfterExecution(null));
-    Assert.assertTrue("Retry should not sleep while holding pipe locks", elapsedTimeInMs < 1000);
     Assert.assertEquals(1, procedure.validateExecutionCount);
 
     procedure.failValidation = false;

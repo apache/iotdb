@@ -1389,18 +1389,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
   }
 
-  interface PushMultiPipeMetaHandler {
-
-    TPushPipeMetaRespExceptionMessage handleDropPipe(String pipeName) throws Exception;
-
-    TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(ByteBuffer pipeMeta) throws Exception;
-  }
-
   @Override
   public TPushPipeMetaResp pushMultiPipeMeta(TPushMultiPipeMetaReq req) {
-    return pushMultiPipeMeta(
+    return PushMultiPipeMetaHelper.pushMultiPipeMeta(
         req,
-        new PushMultiPipeMetaHandler() {
+        new PushMultiPipeMetaHelper.Handler() {
           @Override
           public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
             return PipeDataNodeAgent.task().handleDropPipe(pipeName);
@@ -1412,42 +1405,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .handleSinglePipeMetaChanges(PipeMeta.deserialize4TaskAgent(pipeMeta));
           }
         });
-  }
-
-  static TPushPipeMetaResp pushMultiPipeMeta(
-      final TPushMultiPipeMetaReq req, final PushMultiPipeMetaHandler handler) {
-    final List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
-    try {
-      if (req.isSetPipeNamesToDrop()) {
-        for (final String pipeNameToDrop : req.getPipeNamesToDrop()) {
-          final TPushPipeMetaRespExceptionMessage message = handler.handleDropPipe(pipeNameToDrop);
-          if (message != null) {
-            exceptionMessages.add(message);
-          }
-        }
-      } else if (req.isSetPipeMetas()) {
-        for (final ByteBuffer pipeMeta : req.getPipeMetas()) {
-          final TPushPipeMetaRespExceptionMessage message = handler.handleSinglePipeMeta(pipeMeta);
-          if (message != null) {
-            exceptionMessages.add(message);
-          }
-        }
-      } else {
-        throw new Exception(DataNodeMiscMessages.INVALID_PUSH_MULTI_PIPE_META_REQ);
-      }
-
-      return exceptionMessages.isEmpty()
-          ? new TPushPipeMetaResp()
-              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
-          : new TPushPipeMetaResp()
-              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
-              .setExceptionMessages(exceptionMessages);
-    } catch (final Exception e) {
-      LOGGER.warn(DataNodeMiscMessages.ERROR_PUSHING_MULTI_PIPE_META, e);
-      return new TPushPipeMetaResp()
-          .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
-          .setExceptionMessages(exceptionMessages);
-    }
   }
 
   @Override
