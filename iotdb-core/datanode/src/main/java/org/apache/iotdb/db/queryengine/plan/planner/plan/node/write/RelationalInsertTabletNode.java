@@ -444,20 +444,19 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   public void updateLastCache(final String databaseName, final TSStatus[] results) {
-    final String[] rawMeasurements = getRawMeasurements();
-
     final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs = splitByDevice(0, rowCount);
     int startOffset = 0;
     for (final Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
       final IDeviceID deviceID = deviceEndOffsetPair.getLeft();
       final int endOffset = deviceEndOffsetPair.getRight();
 
-      final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
-      for (int i = 0; i < rawMeasurements.length; i++) {
+      final TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
+      for (int i = 0; i < measurements.length; i++) {
         timeValuePairs[i] = composeLastTimeValuePair(i, results, startOffset, endOffset);
       }
       TableDeviceSchemaCache.getInstance()
-          .updateLastCacheIfExists(databaseName, deviceID, rawMeasurements, timeValuePairs);
+          .updateLastCacheIfExists(
+              databaseName, deviceID, measurements, measurementSchemas, timeValuePairs);
 
       startOffset = endOffset;
     }

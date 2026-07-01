@@ -90,6 +90,40 @@ Notice: this RPC compression status of client must comply with that of IoTDB ser
 session.close()
 ```
 
+### SSL and Mutual TLS
+
+Use `use_ssl=True` and `ca_certs` to enable SSL and verify the server certificate.
+
+```python
+session = Session(
+    ip,
+    port_,
+    username_,
+    password_,
+    use_ssl=True,
+    ca_certs="/path/ca.crt",
+)
+```
+
+When the server enables Thrift mutual TLS, also configure a client certificate and an unencrypted PEM private key.
+
+```python
+session = Session(
+    ip,
+    port_,
+    username_,
+    password_,
+    use_ssl=True,
+    ca_certs="/path/ca.crt",
+    client_cert="/path/client.crt",
+    client_key="/path/client.key",
+)
+```
+
+`client_cert` and `client_key` must be set together. `client_key` should be protected by file permissions because encrypted private keys are not supported by this client API.
+
+The same SSL parameters are available in `PoolConfig`, `TableSessionConfig`, `TableSessionPoolConfig`, and DBAPI `connect`.
+
 ### Data Definition Interface (DDL Interface)
 
 #### DATABASE Management
@@ -604,7 +638,5 @@ Namely, these are
 * Run Tests via pytest (optional)
 * Build
 * Release to pypi
-
-
 
 

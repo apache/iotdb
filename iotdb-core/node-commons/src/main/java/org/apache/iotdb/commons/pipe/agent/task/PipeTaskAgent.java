@@ -191,8 +191,10 @@ public abstract class PipeTaskAgent {
               pipeName,
               e.getMessage());
       LOGGER.warn(PipeMessages.FAILED_TO_HANDLE_SINGLE_PIPE_META_CHANGES, pipeName, e);
-      return new TPushPipeMetaRespExceptionMessage(
-          pipeName, errorMessage, System.currentTimeMillis());
+      final TPushPipeMetaRespExceptionMessage exceptionMessage =
+          new TPushPipeMetaRespExceptionMessage(pipeName, errorMessage, System.currentTimeMillis());
+      exceptionMessage.setCreationTime(pipeMetaFromCoordinator.getStaticMeta().getCreationTime());
+      return exceptionMessage;
     }
   }
 
@@ -201,6 +203,7 @@ public abstract class PipeTaskAgent {
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
+    final long creationTime = metaFromCoordinator.getStaticMeta().getCreationTime();
 
     // Do nothing with the subscription pipe if disable subscription
     if (PipeStaticMeta.isSubscriptionPipe(pipeName)
@@ -208,13 +211,18 @@ public abstract class PipeTaskAgent {
       return;
     }
 
-    final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (metaFromCoordinator.getRuntimeMeta().getStatus().get() == PipeStatus.DROPPED) {
+      dropPipe(pipeName, creationTime);
+      return;
+    }
+
+    final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(metaFromCoordinator.getStaticMeta());
 
     // If pipe meta does not exist on local agent, create a new pipe
     if (metaInAgent == null) {
       if (createPipe(metaFromCoordinator)) {
         // If the status recorded in coordinator is RUNNING, start the pipe
-        startPipe(pipeName, metaFromCoordinator.getStaticMeta().getCreationTime());
+        startPipe(pipeName, creationTime);
       }
       // If the status recorded in coordinator is STOPPED or DROPPED, do nothing
       return;
@@ -226,7 +234,7 @@ public abstract class PipeTaskAgent {
 
     // First check if pipe static meta has changed, if so, drop the pipe and create a new one
     if (!staticMetaInAgent.equals(staticMetaFromCoordinator)) {
-      dropPipe(pipeName);
+      dropPipe(pipeName, staticMetaInAgent.getCreationTime());
       if (createPipe(metaFromCoordinator)) {
         startPipe(pipeName, metaFromCoordinator.getStaticMeta().getCreationTime());
       }
@@ -425,9 +433,11 @@ public abstract class PipeTaskAgent {
                   PipeMessages.FAILED_TO_HANDLE_PIPE_META_CHANGES_FORMAT, pipeName, e.getMessage());
           PipeLogger.log(
               LOGGER::warn, e, PipeMessages.FAILED_TO_HANDLE_PIPE_META_CHANGES_LOG, pipeName);
-          exceptionMessages.add(
+          final TPushPipeMetaRespExceptionMessage exceptionMessage =
               new TPushPipeMetaRespExceptionMessage(
-                  pipeName, errorMessage, System.currentTimeMillis()));
+                  pipeName, errorMessage, System.currentTimeMillis());
+          exceptionMessage.setCreationTime(metaFromCoordinator.getStaticMeta().getCreationTime());
+          exceptionMessages.add(exceptionMessage);
         }
       }
       // If the number of successful changes to pipe meta is 0, it means that the failure has
@@ -438,16 +448,18 @@ public abstract class PipeTaskAgent {
     }
 
     // Check if there are pipes on local agent that do not exist on coordinator, if so, drop them
-    final Set<String> pipeNamesFromCoordinator =
+    final Set<PipeStaticMeta> pipeStaticMetasFromCoordinator =
         pipeMetaListFromCoordinator.stream()
-            .map(meta -> meta.getStaticMeta().getPipeName())
+            .map(PipeMeta::getStaticMeta)
             .collect(Collectors.toSet());
     for (final PipeMeta metaInAgent : pipeMetaKeeper.getPipeMetaList()) {
       final String pipeName = metaInAgent.getStaticMeta().getPipeName();
 
       try {
-        if (!pipeNamesFromCoordinator.contains(pipeName)) {
-          dropPipe(metaInAgent.getStaticMeta().getPipeName());
+        if (!pipeStaticMetasFromCoordinator.contains(metaInAgent.getStaticMeta())) {
+          dropPipe(
+              metaInAgent.getStaticMeta().getPipeName(),
+              metaInAgent.getStaticMeta().getCreationTime());
         }
       } catch (final Exception e) {
         // Report the exception message for CN to sense the failure of meta sync
@@ -456,9 +468,11 @@ public abstract class PipeTaskAgent {
                 PipeMessages.FAILED_TO_HANDLE_PIPE_META_CHANGES_FORMAT, pipeName, e.getMessage());
         PipeLogger.log(
             LOGGER::warn, e, PipeMessages.FAILED_TO_HANDLE_PIPE_META_CHANGES_LOG, pipeName);
-        exceptionMessages.add(
+        final TPushPipeMetaRespExceptionMessage exceptionMessage =
             new TPushPipeMetaRespExceptionMessage(
-                pipeName, errorMessage, System.currentTimeMillis()));
+                pipeName, errorMessage, System.currentTimeMillis());
+        exceptionMessage.setCreationTime(metaInAgent.getStaticMeta().getCreationTime());
+        exceptionMessages.add(exceptionMessage);
       }
     }
 
@@ -514,7 +528,8 @@ public abstract class PipeTaskAgent {
         pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters(),
         pipeMetaFromCoordinator.getStaticMeta().getSinkParameters());
 
-    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final PipeMeta existedPipeMeta =
+        pipeMetaKeeper.getOverlappedPipeMeta(pipeMetaFromCoordinator.getStaticMeta());
     if (existedPipeMeta != null) {
       if (!checkBeforeCreatePipe(existedPipeMeta, pipeName, creationTime)) {
         return false;
@@ -567,7 +582,7 @@ public abstract class PipeTaskAgent {
    * @return {@code true} if a pipe has indeed been dropped, otherwise {@code false}.
    */
   protected boolean dropPipe(final String pipeName, final long creationTime) {
-    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
 
     if (!checkBeforeDropPipe(existedPipeMeta, pipeName, creationTime)) {
       return false;
@@ -592,7 +607,7 @@ public abstract class PipeTaskAgent {
     LOGGER.info(PipeMessages.DROP_ALL_PIPE_TASKS, pipeName, System.currentTimeMillis() - startTime);
 
     // Remove pipe meta from pipe meta keeper
-    pipeMetaKeeper.removePipeMeta(pipeName);
+    pipeMetaKeeper.removePipeMeta(existedPipeMeta.getStaticMeta());
 
     return true;
   }
@@ -626,13 +641,13 @@ public abstract class PipeTaskAgent {
     LOGGER.info(PipeMessages.DROP_ALL_PIPE_TASKS, pipeName, System.currentTimeMillis() - startTime);
 
     // Remove pipe meta from pipe meta keeper
-    pipeMetaKeeper.removePipeMeta(pipeName);
+    pipeMetaKeeper.removePipeMeta(existedPipeMeta.getStaticMeta());
 
     return true;
   }
 
   protected void startPipe(final String pipeName, final long creationTime) {
-    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
 
     if (!checkBeforeStartPipe(existedPipeMeta, pipeName, creationTime)) {
       return;
@@ -665,7 +680,7 @@ public abstract class PipeTaskAgent {
   }
 
   private void stopPipe(final String pipeName, final long creationTime) {
-    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
 
     if (!checkBeforeStopPipe(existedPipeMeta, pipeName, creationTime)) {
       return;
@@ -887,7 +902,7 @@ public abstract class PipeTaskAgent {
 
   private void dropPipeTask(final int consensusGroupId, final PipeStaticMeta pipeStaticMeta) {
     pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getPipeMeta(pipeStaticMeta)
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .remove(consensusGroupId);
@@ -1095,8 +1110,12 @@ public abstract class PipeTaskAgent {
     return pipeMeta == null ? 0 : pipeMeta.getStaticMeta().getCreationTime();
   }
 
+  public boolean isPipeExisted(final String pipeName, final long creationTime) {
+    return pipeMetaKeeper.getPipeMeta(pipeName, creationTime) != null;
+  }
+
   public String getPipeNameWithCreationTime(final String pipeName, final long creationTime) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
     return pipeMeta == null
         ? pipeName + "_" + creationTime
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getPipeNameWithCreationTime();
@@ -1104,7 +1123,7 @@ public abstract class PipeTaskAgent {
 
   public CommitterKey getCommitterKey(
       final String pipeName, final long creationTime, final int regionId, final int restartTime) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
     return pipeMeta == null
         ? new CommitterKey(pipeName, creationTime, regionId, restartTime)
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
@@ -1130,9 +1149,16 @@ public abstract class PipeTaskAgent {
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getFloatingMemoryUsageInByte();
   }
 
+  public long getFloatingMemoryUsageInByte(final String pipeName, final long creationTime) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+    return pipeMeta == null
+        ? 0
+        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getFloatingMemoryUsageInByte();
+  }
+
   public void addFloatingMemoryUsageInByte(
       final String pipeName, final long creationTime, final long sizeInByte) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
     // To avoid stale pipe before alter
     if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
       ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
@@ -1142,11 +1168,33 @@ public abstract class PipeTaskAgent {
 
   public void decreaseFloatingMemoryUsageInByte(
       final String pipeName, final long creationTime, final long sizeInByte) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
     // To avoid stale pipe before alter
     if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
       ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
           .decreaseFloatingMemoryUsageInByte(sizeInByte);
+    }
+  }
+
+  public void setPipeTsFileEpochDegraded(
+      final String pipeName,
+      final long creationTime,
+      final int regionId,
+      final boolean isDegraded) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    // To avoid stale pipe before alter
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+          .setTsFileEpochDegraded(regionId, isDegraded);
+    }
+  }
+
+  public void clearPipeTsFileEpochDegraded(
+      final String pipeName, final long creationTime, final int regionId) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    // To avoid stale pipe before alter
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).clearTsFileEpochDegraded(regionId);
     }
   }
 

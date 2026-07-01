@@ -82,6 +82,10 @@ public class Config {
 
   public static final String TRUST_STORE_PWD = "trust_store_pwd";
 
+  public static final String KEY_STORE = "key_store";
+
+  public static final String KEY_STORE_PWD = "key_store_pwd";
+
   public static final String SSL_PROTOCOL = "ssl_protocol";
 
   static final String DEFAULT_SSL_PROTOCOL = "TLS";

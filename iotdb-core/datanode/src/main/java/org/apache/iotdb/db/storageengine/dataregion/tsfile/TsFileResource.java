@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -74,7 +75,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -407,10 +407,11 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public void link(TsFileResource target) throws IOException {
-    Files.createLink(target.getTsFile().toPath(), this.getTsFile().toPath());
-    Files.createLink(
+    FileUtils.createLink(target.getTsFile().toPath(), this.getTsFile().toPath(), true);
+    FileUtils.createLink(
         new File(target.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-        new File(this.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+        new File(this.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
+        true);
     linkModFile(target);
   }
 
@@ -422,8 +423,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
     try {
       if (sourceModFile.exists()) {
         // inherit modifications from the source file
-        Files.createLink(
-            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
+        FileUtils.createLink(
+            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath(), true);
       }
       // ensure that new modifications will be written into the target file
       targetModsFileObject = new ModificationFile(targetModsFile, true);

@@ -213,6 +213,8 @@ public final class DataNodePipeMessages {
   public static final String PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED =
       "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and "
           + "callbackExecutor {}.";
+  public static final String PIPE_SINK_SUBTASK_DELAYED_TO_AVOID_FREQUENT_HANDSHAKES =
+      "Pipe sink 子任务 {} 在拉取事件前延迟 {} ms，以避免客户端借用失败后频繁握手。";
   public static final String PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T =
       "Pipe 跳过不应传输的临时 TsFile：{}";
   public static final String PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING =

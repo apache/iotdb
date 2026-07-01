@@ -36,7 +36,6 @@ import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -51,7 +50,9 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -107,6 +108,9 @@ public class CreateRegionGroupsProcedure
       case SHUNT_REGION_REPLICAS:
         persistPlan = new CreateRegionGroupsPlan();
         final OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
+        // RegionGroups that failed to reach a serving quorum are removed via a child
+        // RemoveRegionGroupProcedure, which deletes every replica that did get created.
+        final List<RemoveRegionGroupProcedure> removeRegionGroupProcedures = new ArrayList<>();
         // Filter those RegionGroups that created successfully
         createRegionGroupsPlan
             .getRegionGroupMap()
@@ -154,7 +158,11 @@ public class CreateRegionGroupsProcedure
                                       .CREATEREGIONGROUPS_FAILED_TO_CREATE_SOME_REPLICAS_OF_REGIONGROUP_BUT_THIS,
                                   regionReplicaSet.getRegionId());
                             } else {
-                              // The redundant RegionReplicas should be deleted otherwise
+                              // The redundant RegionReplicas (the ones that did get created) should
+                              // be deleted otherwise
+                              final TRegionReplicaSet redundantReplicas =
+                                  new TRegionReplicaSet()
+                                      .setRegionId(regionReplicaSet.getRegionId());
                               regionReplicaSet
                                   .getDataNodeLocations()
                                   .forEach(
@@ -162,12 +170,13 @@ public class CreateRegionGroupsProcedure
                                         if (!failedRegionReplicas
                                             .getDataNodeLocations()
                                             .contains(targetDataNode)) {
-                                          RegionDeleteTask deleteTask =
-                                              new RegionDeleteTask(
-                                                  targetDataNode, regionReplicaSet.getRegionId());
-                                          offerPlan.appendRegionMaintainTask(deleteTask);
+                                          redundantReplicas.addToDataNodeLocations(targetDataNode);
                                         }
                                       });
+                              if (redundantReplicas.getDataNodeLocationsSize() > 0) {
+                                removeRegionGroupProcedures.add(
+                                    new RemoveRegionGroupProcedure(redundantReplicas));
+                              }
 
                               LOGGER.info(
                                   ProcedureMessages
@@ -188,6 +197,7 @@ public class CreateRegionGroupsProcedure
           LOGGER.warn(
               ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
         }
+        removeRegionGroupProcedures.forEach(this::addChildProcedure);
         setNextState(CreateRegionGroupsState.REBALANCE_DATA_PARTITION_POLICY);
         break;
       case REBALANCE_DATA_PARTITION_POLICY:

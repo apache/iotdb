@@ -692,6 +692,10 @@ public abstract class AbstractEnv implements BaseEnv {
     return Boolean.parseBoolean(getDataNodeCommonConfigProperty("enable_thrift_ssl", "false"));
   }
 
+  private boolean isThriftSSLClientAuthEnabled() {
+    return Boolean.parseBoolean(getDataNodeCommonConfigProperty("thrift_ssl_client_auth", "false"));
+  }
+
   private String getDataNodeCommonConfigProperty(final String key, final String defaultValue) {
     return ((MppCommonConfig) clusterConfig.getDataNodeCommonConfig())
         .getProperty(key, defaultValue);
@@ -711,6 +715,11 @@ public abstract class AbstractEnv implements BaseEnv {
       putIfPresent(
           info, Config.TRUST_STORE_PWD, getDataNodeCommonConfigProperty("trust_store_pwd", ""));
       putIfPresent(info, Config.SSL_PROTOCOL, getClientSSLProtocol());
+      if (isThriftSSLClientAuthEnabled()) {
+        putIfPresent(info, Config.KEY_STORE, getDataNodeCommonConfigProperty("key_store_path", ""));
+        putIfPresent(
+            info, Config.KEY_STORE_PWD, getDataNodeCommonConfigProperty("key_store_pwd", ""));
+      }
     }
     return info;
   }
@@ -728,6 +737,11 @@ public abstract class AbstractEnv implements BaseEnv {
           .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
           .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
           .sslProtocol(getClientSSLProtocol());
+      if (isThriftSSLClientAuthEnabled()) {
+        builder
+            .keyStore(getDataNodeCommonConfigProperty("key_store_path", ""))
+            .keyStorePwd(getDataNodeCommonConfigProperty("key_store_pwd", ""));
+      }
     }
     return builder;
   }
@@ -739,6 +753,11 @@ public abstract class AbstractEnv implements BaseEnv {
           .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
           .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
           .sslProtocol(getClientSSLProtocol());
+      if (isThriftSSLClientAuthEnabled()) {
+        builder
+            .keyStore(getDataNodeCommonConfigProperty("key_store_path", ""))
+            .keyStorePwd(getDataNodeCommonConfigProperty("key_store_pwd", ""));
+      }
     }
     return builder;
   }
@@ -750,6 +769,11 @@ public abstract class AbstractEnv implements BaseEnv {
           .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
           .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
           .sslProtocol(getClientSSLProtocol());
+      if (isThriftSSLClientAuthEnabled()) {
+        builder
+            .keyStore(getDataNodeCommonConfigProperty("key_store_path", ""))
+            .keyStorePwd(getDataNodeCommonConfigProperty("key_store_pwd", ""));
+      }
     }
     return builder;
   }
@@ -761,6 +785,11 @@ public abstract class AbstractEnv implements BaseEnv {
           .trustStore(getDataNodeCommonConfigProperty("trust_store_path", ""))
           .trustStorePwd(getDataNodeCommonConfigProperty("trust_store_pwd", ""))
           .sslProtocol(getClientSSLProtocol());
+      if (isThriftSSLClientAuthEnabled()) {
+        builder
+            .keyStore(getDataNodeCommonConfigProperty("key_store_path", ""))
+            .keyStorePwd(getDataNodeCommonConfigProperty("key_store_pwd", ""));
+      }
     }
     return builder;
   }

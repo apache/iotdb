@@ -66,13 +66,18 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
     final int length = measurements.length;
 
     for (int i = 0; i < length; ++i) {
-      // Skip this to avoid instance creation/gc for writing performance
-      if (measurements[i] == null
-          || schemas[i] == null
-          || measurementMap.containsKey(measurements[i])) {
+      final String inputMeasurement = measurements[i];
+      if (Objects.isNull(inputMeasurement)) {
         continue;
       }
-      diff += putEntry(measurements[i], schemas[i], null);
+      final IMeasurementSchema schema = i < schemas.length ? schemas[i] : null;
+      final String measurement =
+          Objects.nonNull(schema) ? schema.getMeasurementName() : inputMeasurement;
+      // Skip this to avoid instance creation/gc for writing performance
+      if (schema == null || measurementMap.containsKey(measurement)) {
+        continue;
+      }
+      diff += putEntry(measurement, schema, null);
     }
     return diff;
   }

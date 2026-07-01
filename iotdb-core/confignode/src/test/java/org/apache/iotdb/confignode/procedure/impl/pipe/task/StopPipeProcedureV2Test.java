@@ -91,7 +91,7 @@ public class StopPipeProcedureV2Test {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    StopPipeProcedureV2 proc = new StopPipeProcedureV2("testPipe");
+    StopPipeProcedureV2 proc = new StopPipeProcedureV2("testPipe", true);
 
     try {
       proc.serialize(outputStream);
@@ -108,6 +108,26 @@ public class StopPipeProcedureV2Test {
 
   @Test
   public void serializeDeserializeLegacyFormatTest() {
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    final StopPipeProcedureV2 proc = new StopPipeProcedureV2("testPipe");
+
+    try {
+      proc.serialize(outputStream);
+      final ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      final StopPipeProcedureV2 proc2 =
+          (StopPipeProcedureV2) ProcedureFactory.getInstance().create(buffer);
+
+      assertEquals(proc, proc2);
+    } catch (Exception e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void serializeDeserializeOldestFormatTest() {
     final PublicBAOS byteArrayOutputStream = new PublicBAOS();
     final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 

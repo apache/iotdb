@@ -339,6 +339,9 @@ public class QueryModificationLoaderTest {
       reservedBytes += bytesToBeReserved + bytesAlreadyReserved;
     }
 
+    @Override
+    public void setHighestPriority(boolean isHighestPriority) {}
+
     private long getReservedBytes() {
       return reservedBytes;
     }
