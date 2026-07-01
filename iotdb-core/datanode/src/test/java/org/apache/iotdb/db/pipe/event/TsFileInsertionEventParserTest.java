@@ -191,6 +191,11 @@ public class TsFileInsertionEventParserTest {
     resource = new TsFileResource(nonalignedTsFile);
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
 
+    // The TsFile generator only creates the file, so mark the resource non-empty explicitly.
+    final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0");
+    resource.updateStartTime(deviceID, 0);
+    resource.updateEndTime(deviceID, 9);
+
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             false,
