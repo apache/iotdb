@@ -2011,6 +2011,20 @@ pipe_air_gap_receiver_port=9780
 # Datatype: double
 pipe_all_sinks_rate_limit_bytes_per_second=-1
 
+# When an IoTConsensusV2 consensus pipe is in stream mode, table-model insertion events whose
+# measurement count reaches this threshold will be downgraded to TsFile replication.
+# Values less than or equal to 0 disable this measurement-count trigger.
+# effectiveMode: restart
+# Datatype: int
+pipe_realtime_iot_consensus_v2_force_tsfile_measurement_count_threshold=512
+
+# When an IoTConsensusV2 consensus pipe is in stream mode, table-model insertion events whose
+# estimated memory reaches this threshold will be downgraded to TsFile replication.
+# Values less than or equal to 0 disable this memory trigger.
+# effectiveMode: restart
+# Datatype: long
+pipe_realtime_iot_consensus_v2_force_tsfile_memory_threshold_in_bytes=15728640
+
 ####################
 ### Subscription Consensus Configuration
 ####################

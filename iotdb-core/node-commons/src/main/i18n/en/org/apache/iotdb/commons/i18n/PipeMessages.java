@@ -66,6 +66,12 @@ public final class PipeMessages {
       "PipeRealtimeForceDowngradingEnabled: {}";
   public static final String CONFIG_PIPE_REALTIME_FORCE_DOWNGRADING_PROPORTION =
       "PipeRealtimeForceDowngradingProportion: {}";
+  public static final String
+      CONFIG_PIPE_REALTIME_IOT_CONSENSUS_V2_FORCE_TSFILE_MEASUREMENT_COUNT_THRESHOLD =
+          "PipeRealtimeIotConsensusV2ForceTsFileMeasurementCountThreshold: {}";
+  public static final String
+      CONFIG_PIPE_REALTIME_IOT_CONSENSUS_V2_FORCE_TSFILE_MEMORY_THRESHOLD_IN_BYTES =
+          "PipeRealtimeIotConsensusV2ForceTsFileMemoryThresholdInBytes: {}";
   public static final String CONFIG_PIPE_SUBTASK_EXECUTOR_MAX_THREAD_NUM =
       "PipeSubtaskExecutorMaxThreadNum: {}";
   public static final String
