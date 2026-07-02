@@ -1826,7 +1826,7 @@ public class TableDistributedPlanGenerator
     if (node.getChildren().isEmpty()) {
       return Collections.singletonList(node);
     }
-    boolean canSplitPushDown = node.isRowSemantic() || (node.getChild() instanceof GroupNode);
+    boolean canSplitPushDown = node.isRowSemantic() || isPartitionedGroup(node.getChild());
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
@@ -1840,6 +1840,10 @@ public class TableDistributedPlanGenerator
     } else {
       return splitForEachChild(node, childrenNodes);
     }
+  }
+
+  private boolean isPartitionedGroup(PlanNode node) {
+    return node instanceof GroupNode && ((GroupNode) node).getPartitionKeyCount() > 0;
   }
 
   private void buildRegionNodeMap(

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.Forecas
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.PatternMatchTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CumulateTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
@@ -45,6 +46,7 @@ public enum TableBuiltinTableFunction {
   VARIATION("variation"),
   CAPACITY("capacity"),
   M4("m4"),
+  FFT("fft"),
   FORECAST("forecast"),
   PATTERN_MATCH("pattern_match"),
   CLASSIFY("classify");
@@ -91,6 +93,8 @@ public enum TableBuiltinTableFunction {
         return new CapacityTableFunction();
       case "m4":
         return new M4TableFunction();
+      case "fft":
+        return new FFTTableFunction();
       case "forecast":
         return new ForecastTableFunction();
       case "classify":
