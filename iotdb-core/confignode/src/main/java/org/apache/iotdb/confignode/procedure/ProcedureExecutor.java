@@ -78,12 +78,12 @@ public class ProcedureExecutor<Env> {
 
   /**
    * The internal cleaner that recycles completed procedures. Kept as a reference so that its clean
-   * interval / evict TTL can be reloaded at runtime (see {@link #restartCompletedCleaner}). Written
-   * by both {@link #startCompletedCleaner} (leader transition) and {@link #restartCompletedCleaner}
-   * (hot reload); both writers are {@code synchronized} and the field is {@code volatile} for
-   * cross-thread visibility.
+   * interval / evict TTL can be reloaded at runtime (see {@link #restartCompletedCleaner}). All
+   * accesses ({@link #startCompletedCleaner} on leader transition, {@link #restartCompletedCleaner}
+   * on hot reload, and the test getter) are performed while holding this instance's monitor, so the
+   * field is guarded by {@code synchronized} for both mutual exclusion and cross-thread visibility.
    */
-  private volatile CompletedProcedureRecycler<Env> completedProcedureRecycler;
+  private CompletedProcedureRecycler<Env> completedProcedureRecycler;
 
   private final ProcedureScheduler scheduler;
 
@@ -318,7 +318,7 @@ public class ProcedureExecutor<Env> {
   }
 
   @TestOnly
-  CompletedProcedureRecycler<Env> getCompletedProcedureRecycler() {
+  synchronized CompletedProcedureRecycler<Env> getCompletedProcedureRecycler() {
     return completedProcedureRecycler;
   }
 
