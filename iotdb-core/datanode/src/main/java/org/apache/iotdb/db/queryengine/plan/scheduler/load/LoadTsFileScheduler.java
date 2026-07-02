@@ -82,6 +82,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -136,6 +137,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
+  private final String treeDatabaseForRetry;
   private final Map<TTimePartitionSlot, ProgressIndex> timePartitionSlotToProgressIndex;
   private final LoadTsFileDataCacheMemoryBlock block;
 
@@ -145,7 +147,8 @@ public class LoadTsFileScheduler implements IScheduler {
       QueryStateMachine stateMachine,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
       IPartitionFetcher partitionFetcher,
-      boolean isGeneratedByPipe) {
+      boolean isGeneratedByPipe,
+      String treeDatabaseForRetry) {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
@@ -155,6 +158,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.treeDatabaseForRetry = treeDatabaseForRetry;
     this.timePartitionSlotToProgressIndex = new HashMap<>();
     this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
 
@@ -551,9 +555,7 @@ public class LoadTsFileScheduler implements IScheduler {
         final TSStatus status =
             loadTsFileDataTypeConverter
                 .convertForTreeModel(
-                    LoadTsFileStatement.createUnchecked(filePath)
-                        .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
-                        .setConvertOnTypeMismatch(true))
+                    buildRetryTreeLoadStatement(filePath, failedNode.isDeleteAfterLoad()))
                 .orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {
@@ -590,6 +592,22 @@ public class LoadTsFileScheduler implements IScheduler {
       LOGGER.warn(errorMsg);
       stateMachine.transitionToFailed(new LoadFileException(errorMsg));
     }
+  }
+
+  private LoadTsFileStatement buildRetryTreeLoadStatement(
+      final String filePath, final boolean deleteAfterLoad) throws FileNotFoundException {
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(filePath)
+            .setDeleteAfterLoad(deleteAfterLoad)
+            .setConvertOnTypeMismatch(true);
+    if (treeDatabaseForRetry != null) {
+      statement.setDatabase(treeDatabaseForRetry);
+      statement.updateDatabaseLevelByTreeDatabase();
+    }
+    if (isGeneratedByPipe) {
+      statement.markIsGeneratedByPipe();
+    }
+    return statement;
   }
 
   @Override

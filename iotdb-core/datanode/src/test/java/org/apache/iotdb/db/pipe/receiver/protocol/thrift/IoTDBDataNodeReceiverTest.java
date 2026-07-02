@@ -152,4 +152,23 @@ public class IoTDBDataNodeReceiverTest {
       Files.deleteIfExists(tsFile);
     }
   }
+
+  @Test
+  public void testClearTreeDatabaseNameForLoadTsFileStatement() throws Exception {
+    final Path tsFile = Files.createTempFile("pipe-load-clear-tree-database", ".tsfile");
+    try {
+      final LoadTsFileStatement statement =
+          IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(
+              "root.test.sg_0", tsFile.toString(), true, true);
+
+      IoTDBDataNodeReceiver.clearTreeDatabaseName(statement);
+
+      Assert.assertNull(statement.getDatabase());
+      Assert.assertEquals(
+          IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel(),
+          statement.getDatabaseLevel());
+    } finally {
+      Files.deleteIfExists(tsFile);
+    }
+  }
 }
