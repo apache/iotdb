@@ -54,6 +54,19 @@ public class IoTDBSyncClient extends IClientRPCService.Client
       String trustStore,
       String trustStorePwd)
       throws TTransportException {
+    this(property, ipAddress, port, useSSL, trustStore, trustStorePwd, null, null);
+  }
+
+  public IoTDBSyncClient(
+      ThriftClientProperty property,
+      String ipAddress,
+      int port,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      String keyStore,
+      String keyStorePwd)
+      throws TTransportException {
     super(
         property
             .getProtocolFactory()
@@ -64,7 +77,9 @@ public class IoTDBSyncClient extends IClientRPCService.Client
                         port,
                         property.getConnectionTimeoutMs(),
                         trustStore,
-                        trustStorePwd)
+                        trustStorePwd,
+                        keyStore,
+                        keyStorePwd)
                     : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         ipAddress, port, property.getConnectionTimeoutMs())));
     this.ipAddress = ipAddress;
