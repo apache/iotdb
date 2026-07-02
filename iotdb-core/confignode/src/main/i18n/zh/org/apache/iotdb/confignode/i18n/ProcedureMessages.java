@@ -621,7 +621,7 @@ public final class ProcedureMessages {
   public static final String PID_REMOVEREGIONGROUP_STATE_FAILED =
       "[pid{}][RemoveRegionGroup] 状态 {} 失败";
   public static final String PID_REMOVEREGIONGROUP_DELETE_REPLICA_FAILED =
-      "[pid{}][RemoveRegionGroup] 删除 region {} 的一个副本失败（第 {}/{} 次尝试），将重试。原因：{}";
+      "[pid{}][RemoveRegionGroup] 删除 region {} 的一个副本失败（第 {} 次尝试），将持续重试直到删除成功。原因：{}";
   public static final String PID_REMOVEREGIONGROUP_SUCCESS_PROCEDURE_TOOK =
       "[pid{}][RemoveRegionGroup] 成功，region group {} 已删除。过程耗时 {}（开始于 {}）。";
   public static final String PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO =
