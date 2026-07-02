@@ -317,6 +317,11 @@ public class ProcedureExecutor<Env> {
     startCompletedCleaner(cleanTimeInterval, cleanEvictTTL);
   }
 
+  @TestOnly
+  CompletedProcedureRecycler<Env> getCompletedProcedureRecycler() {
+    return completedProcedureRecycler;
+  }
+
   public void addInternalProcedure(InternalProcedure interalProcedure) {
     if (interalProcedure == null) {
       return;
