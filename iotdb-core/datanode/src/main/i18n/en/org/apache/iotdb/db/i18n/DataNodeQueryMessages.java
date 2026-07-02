@@ -271,6 +271,19 @@ public final class DataNodeQueryMessages {
       "The table '%s' does not contain a time column";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "The operator of tag predicate must be '=' for ";
+  public static final String THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR =
+      "The operator of attribute predicate must be =, !=, <, <=, >, or >= for ";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "The right hand value of attribute predicate cannot be null with comparison operator, "
+              + "please use IS NULL or IS NOT NULL instead";
+  public static final String THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_MUST_BE_A_STRING =
+      "The right hand value of attribute predicate must be a string: ";
+  public static final String THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
+      "The column '%s' does not exist or is not a tag column";
+  public static final String TOO_MANY_DEVICES_MATCHED_BY_ATTRIBUTE_FILTERS_IN_DELETION =
+      "Too many devices (%d) matched by attribute filters in deletion, limit is %d. "
+          + "Please remove all attribute filters (%s) or add more attribute filters.";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =
       "Only time filters are supported in LAST query";
   public static final String VIEWS_CANNOT_BE_USED_IN_GROUP_BY_TAGS =

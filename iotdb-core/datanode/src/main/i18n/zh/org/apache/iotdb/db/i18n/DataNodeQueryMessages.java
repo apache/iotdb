@@ -269,6 +269,17 @@ public final class DataNodeQueryMessages {
       "表 '%s' 不包含时间列";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "标签谓词的运算符必须为 '='，目标：";
+  public static final String THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR =
+      "属性谓词的运算符必须为 =, !=, <, <=, > 或 >=，目标：";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "属性谓词的右侧值不能在比较运算符中为 null，请改用 IS NULL 或 IS NOT NULL";
+  public static final String THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_MUST_BE_A_STRING =
+      "属性谓词的右侧值必须为字符串：";
+  public static final String THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
+      "列 '%s' 不存在或不是标签列";
+  public static final String TOO_MANY_DEVICES_MATCHED_BY_ATTRIBUTE_FILTERS_IN_DELETION =
+      "删除语句中的属性过滤条件匹配了过多设备（%d），限制为 %d。请移除所有属性过滤条件（%s），或进一步增加属性过滤条件。";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =
       "LAST 查询中仅支持时间过滤器";
   public static final String VIEWS_CANNOT_BE_USED_IN_GROUP_BY_TAGS =

@@ -80,6 +80,8 @@ public final class StorageEngineMessages {
   public static final String INTERRUPTED_WAITING_THREAD_POOL_EXIT = "Interrupted while waiting {} thread pool to exit. ";
   public static final String BUFFERED_ARRAY_SIZE_THRESHOLD = "BufferedArraySizeThreshold is {}";
   public static final String CURRENT_SG_COST = "Current Sg cost is {}";
+  public static final String DIRECT_BUFFER_MEMORY_ALLOCATION_FAILED =
+      "Total allocated memory for direct buffer will be %d, which is greater than limit mem cost: %d";
   public static final String FORCE_DEGRADE_TSFILE_RESOURCE = "Force degrade tsfile resource {}";
   public static final String CANNOT_DEGRADE_TIME_INDEX_ALL_FILE_LEVEL = "Can't degrade time index any more because all time index are file level.";
   public static final String DEGRADE_TSFILE_RESOURCE = "Degrade tsfile resource {}";
