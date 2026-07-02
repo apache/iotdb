@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression.Operator;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
@@ -543,6 +544,25 @@ public class AnalyzeUtils {
           }
           deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
         }
+      } else if (currExp instanceof LikePredicate) {
+        final PredicateParseResult parseResult =
+            parseLike((LikePredicate) currExp, tagPredicate, table);
+        tagPredicate = parseResult.tagPredicate;
+        if (parseResult.shouldQueryDevice()) {
+          if (Objects.isNull(deviceFilterExpressions)) {
+            deviceFilterExpressions = new ArrayList<>();
+          }
+          if (Objects.isNull(attributeColumns)) {
+            attributeColumns = new ArrayList<>();
+          }
+          deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
+          collectAttributeColumn(attributeColumns, parseResult.attributeColumn);
+        } else if (parseResult.shouldFilterDevice()) {
+          if (Objects.isNull(deviceFilterExpressions)) {
+            deviceFilterExpressions = new ArrayList<>();
+          }
+          deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
+        }
       } else {
         throw new SemanticException(
             DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + currExp + " in " + expression);
@@ -652,6 +672,32 @@ public class AnalyzeUtils {
     return PredicateParseResult.tag(combinePredicates(oldPredicate, newPredicate));
   }
 
+  private static PredicateParseResult parseLike(
+      LikePredicate likePredicate, TagPredicate oldPredicate, TsTable table) {
+    Expression leftHandExp = likePredicate.getValue();
+    if (!(leftHandExp instanceof Identifier)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
+    }
+    String columnName = ((Identifier) leftHandExp).getValue();
+    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    if (Objects.nonNull(columnSchema)
+        && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+      validateAttributeComparison(likePredicate);
+      return PredicateParseResult.attribute(columnName, oldPredicate);
+    }
+    int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
+    if (tagColumnOrdinal == -1) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages.THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN,
+              columnName));
+    }
+    throw new SemanticException(
+        DataNodeQueryMessages.THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR
+            + likePredicate.getPattern());
+  }
+
   private static TagPredicate combinePredicates(
       TagPredicate oldPredicate, TagPredicate newPredicate) {
     if (oldPredicate == null) {
@@ -732,6 +778,13 @@ public class AnalyzeUtils {
     return PredicateParseResult.tag(combinePredicates(oldPredicate, newPredicate));
   }
 
+  private static void validateAttributeComparison(final LikePredicate likePredicate) {
+    validateAttributePredicateStringValue(likePredicate.getPattern());
+    if (likePredicate.getEscape().isPresent()) {
+      validateAttributePredicateStringValue(likePredicate.getEscape().get());
+    }
+  }
+
   private static void validateAttributeComparison(final ComparisonExpression comparisonExpression) {
     switch (comparisonExpression.getOperator()) {
       case EQUAL:
@@ -748,16 +801,19 @@ public class AnalyzeUtils {
                 + comparisonExpression.getRight());
     }
 
-    final Expression right = comparisonExpression.getRight();
-    if (right instanceof NullLiteral) {
+    validateAttributePredicateStringValue(comparisonExpression.getRight());
+  }
+
+  private static void validateAttributePredicateStringValue(final Expression expression) {
+    if (expression instanceof NullLiteral) {
       throw new SemanticException(
           DataNodeQueryMessages
               .THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR);
     }
-    if (!(right instanceof StringLiteral)) {
+    if (!(expression instanceof StringLiteral)) {
       throw new SemanticException(
           DataNodeQueryMessages.THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_MUST_BE_A_STRING
-              + right);
+              + expression);
     }
   }
 

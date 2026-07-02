@@ -272,7 +272,7 @@ public final class DataNodeQueryMessages {
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "The operator of tag predicate must be '=' for ";
   public static final String THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR =
-      "The operator of attribute predicate must be =, !=, <, <=, >, or >= for ";
+      "The operator of attribute predicate must be =, !=, <, <=, >, >=, or LIKE for ";
   public static final String
       THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
           "The right hand value of attribute predicate cannot be null with comparison operator, "

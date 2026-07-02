@@ -514,6 +514,38 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testDeleteDataByAttributeFilterWithLike() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_like("
+              + "deviceId STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_like(time, deviceId, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'red-small', 'a', 11),"
+              + "(2, 'd1', 'red-small', 'a', 12),"
+              + "(1, 'd2', 'red-large', 'b', 21),"
+              + "(2, 'd2', 'red-large', 'b', 22),"
+              + "(1, 'd3', 'blue-small', 'c', 31),"
+              + "(2, 'd3', 'blue-small', 'c', 32)");
+
+      statement.execute("DELETE FROM delete_by_attr_like WHERE attr1 LIKE 'red%' AND time = 1");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_like ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d1,2,12", "d2,2,22", "d3,1,31", "d3,2,32"), actual);
+    }
+  }
+
+  @Test
   public void testDeleteDataByAttributeFilterWithInvalidComparison() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -550,7 +582,7 @@ public class IoTDBDeletionTableIT {
         fail("should not reach here!");
       } catch (SQLException e) {
         assertEquals(
-            "701: The operator of attribute predicate must be =, !=, <, <=, >, or >= for 'a'",
+            "701: The operator of attribute predicate must be =, !=, <, <=, >, >=, or LIKE for 'a'",
             e.getMessage());
       }
     }
