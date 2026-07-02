@@ -263,6 +263,20 @@ public class ProcedureManager {
     }
   }
 
+  /**
+   * Reload the completed-procedure cleaner with the current {@code
+   * procedure_completed_clean_interval} and {@code procedure_completed_evict_ttl}. Only takes
+   * effect on the running (leader) ConfigNode; on a follower the executor is stopped and the fresh
+   * values are picked up when {@link #startExecutor} runs after the next leader switch.
+   */
+  public void updateCompletedProcedureCleaner() {
+    if (executor.isRunning()) {
+      executor.restartCompletedCleaner(
+          CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
+          CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
+    }
+  }
+
   public boolean isProcedureExecutionThread() {
     return ProcedureExecutor.isProcedureExecutionThread();
   }

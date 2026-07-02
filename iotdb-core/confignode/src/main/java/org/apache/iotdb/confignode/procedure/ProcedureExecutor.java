@@ -76,6 +76,15 @@ public class ProcedureExecutor<Env> {
   private int corePoolSize;
   private int maxPoolSize;
 
+  /**
+   * The internal cleaner that recycles completed procedures. Kept as a reference so that its clean
+   * interval / evict TTL can be reloaded at runtime (see {@link #restartCompletedCleaner}). Written
+   * by both {@link #startCompletedCleaner} (leader transition) and {@link #restartCompletedCleaner}
+   * (hot reload); both writers are {@code synchronized} and the field is {@code volatile} for
+   * cross-thread visibility.
+   */
+  private volatile CompletedProcedureRecycler<Env> completedProcedureRecycler;
+
   private final ProcedureScheduler scheduler;
 
   private final AtomicLong workId = new AtomicLong(0);
@@ -289,9 +298,23 @@ public class ProcedureExecutor<Env> {
     LOG.info(ProcedureMessages.PROCEDURE_WORKERS_ARE_STARTED, workerThreads.size());
   }
 
-  public void startCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
-    addInternalProcedure(
-        new CompletedProcedureRecycler(store, completed, cleanTimeInterval, cleanEvictTTL));
+  public synchronized void startCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
+    completedProcedureRecycler =
+        new CompletedProcedureRecycler<>(store, completed, cleanTimeInterval, cleanEvictTTL);
+    addInternalProcedure(completedProcedureRecycler);
+  }
+
+  /**
+   * Reload the completed-procedure cleaner with a new clean interval / evict TTL at runtime. The
+   * clean interval and evict TTL are captured by {@link CompletedProcedureRecycler} at
+   * construction, so applying the new values requires removing the current recycler and scheduling
+   * a fresh one.
+   */
+  public synchronized void restartCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
+    if (completedProcedureRecycler != null) {
+      removeInternalProcedure(completedProcedureRecycler);
+    }
+    startCompletedCleaner(cleanTimeInterval, cleanEvictTTL);
   }
 
   public void addInternalProcedure(InternalProcedure interalProcedure) {
