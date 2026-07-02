@@ -298,6 +298,37 @@ ainode-test-1c1d1a:
       - integration-test/target/ainode-logs
     expire_in: 7 day
 
+# Fast, hermetic AINode Python unit tests. Guards the user-defined model
+# registration manifest (data/ainode/models/user_defined/manifest.json): an
+# unrecognized/stray directory must never crash AINode restart, and restart must
+# perceive only manifest-listed models. The AICluster image already carries the
+# AINode DL stack; building iotdb-core/ainode first generates the Python thrift
+# stubs (iotdb/thrift/*) these tests import.
+ainode-ut:
+  stage: test
+  image: timechodb:AICluster
+  tags:
+    - gpu
+  variables:
+    # Reuse the venv that build_binary.py creates during the maven build – it has
+    # the full AINode stack (thrift, torch, transformers, ...) the tests import.
+    AINODE_VENV_PY: /root/.cache/iotdb-ainode-build/ainode/bin/python
+  script:
+    # `iotdb-core/ainode` is only in the reactor under the `with-ainode` profile
+    # (iotdb-core/pom.xml); building it copies the python thrift stubs these tests
+    # import AND provisions the build venv with all AINode dependencies.
+    # Disable the local Develocity build cache: this one-shot fresh build gains
+    # nothing from it and it intermittently deadlocks on a stale v1.lock in the CI image.
+    - 'mvn install -DskipTests -Djarsigner.skip=true -Ddevelocity.cache.local.enabled=false -P with-ainode -pl iotdb-core/ainode -am -s $MAVEN_SETTINGS_XML'
+    # Fall back to the system python only if the build venv is somehow absent.
+    - 'if [ ! -x "$AINODE_VENV_PY" ]; then AINODE_VENV_PY=$(command -v python); fi'
+    - '"$AINODE_VENV_PY" -m pip install "pytest==8.3.4" -i https://nexus.infra.timecho.com:8443/repository/pypi-proxy/simple --trusted-host nexus.infra.timecho.com'
+    - 'cd iotdb-core/ainode && "$AINODE_VENV_PY" -m pytest -q test/test_model_manifest.py test/test_model_storage_discovery.py'
+  interruptible: true
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
+  needs: []
+
 pipe-single:
   stage: test
   tags:

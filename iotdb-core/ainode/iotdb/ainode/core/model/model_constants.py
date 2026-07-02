@@ -45,6 +45,20 @@ TRAINING_STATE = "training_state.pt"
 MODEL_WEIGHT_FILES = (MODEL_SAFETENSORS, MODEL_PT, MODEL_BIN)
 ADAPTER_WEIGHT_FILES = (ADAPTER_SAFETENSORS, ADAPTER_PT, ADAPTER_BIN)
 
+# -- User-defined model registration manifest --
+#
+# The manifest is the durable source of truth for which user-defined models the
+# user actually registered. On restart AINode trusts ONLY this manifest for the
+# user_defined category, instead of blindly scanning every sub-directory (which
+# used to crash startup when an unrecognized/stray directory was present).
+USER_DEFINED_MANIFEST = (
+    "manifest.json"  # source of truth for registered user_defined models
+)
+MANIFEST_TEMP_SUFFIX = (
+    ".tmp"  # atomic-write staging suffix (matches task_queue precedent)
+)
+MANIFEST_VERSION = 1  # schema version for forward evolution
+
 # -- Backward-compatible aliases (deprecated, will be removed) --
 MODEL_WEIGHTS_FILE_IN_SAFETENSORS = MODEL_SAFETENSORS
 MODEL_CONFIG_FILE_IN_JSON = CONFIG_JSON
