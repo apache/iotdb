@@ -30,8 +30,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,6 +46,31 @@ import java.util.Set;
 public class AuthorizerManagerTest {
 
   ClusterAuthorityFetcher authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
+
+  @Test
+  public void configNodeConnectionErrorLoggedOnlyOnceUntilReset() {
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.setContext(logger.getLoggerContext());
+    appender.start();
+    logger.addAppender(appender);
+
+    ClusterAuthorityFetcher.resetConfigNodeConnectionErrorLogTime();
+    try {
+      ClusterAuthorityFetcher.logConfigNodeConnectionError();
+      ClusterAuthorityFetcher.logConfigNodeConnectionError();
+      Assert.assertEquals(1, countLogEvents(appender, "Failed to connect to config node."));
+
+      ClusterAuthorityFetcher.resetConfigNodeConnectionErrorLogTime();
+      ClusterAuthorityFetcher.logConfigNodeConnectionError();
+      Assert.assertEquals(2, countLogEvents(appender, "Failed to connect to config node."));
+    } finally {
+      ClusterAuthorityFetcher.resetConfigNodeConnectionErrorLogTime();
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
 
   @Test
   public void permissionCacheTest() throws IllegalPathException {
@@ -257,5 +285,11 @@ public class AuthorizerManagerTest {
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_CQ).getCode());
+  }
+
+  private long countLogEvents(ListAppender<ILoggingEvent> appender, String messagePattern) {
+    return appender.list.stream()
+        .filter(event -> messagePattern.equals(event.getMessage()))
+        .count();
   }
 }

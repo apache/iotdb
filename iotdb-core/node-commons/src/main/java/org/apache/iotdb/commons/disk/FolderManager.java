@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.disk;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategy;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.disk.strategy.SequenceStrategy;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,9 +44,15 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class FolderManager {
   private static final Logger logger = LoggerFactory.getLogger(FolderManager.class);
+  private static final long ALL_FOLDERS_FULL_LOG_INTERVAL_MS = 3600 * 1000L;
+  private static final ConcurrentMap<String, AtomicLong> ALL_FOLDERS_FULL_LAST_LOG_TIME_MAP =
+      new ConcurrentHashMap<>();
 
   /** Represents the operational states of a data folder. */
   public enum FolderState {
@@ -63,10 +71,12 @@ public class FolderManager {
   private final Map<String, FolderState> foldersStates = new HashMap<>();
 
   private final DirectoryStrategy selectStrategy;
+  private final String foldersKey;
 
   public FolderManager(List<String> folders, DirectoryStrategyType type)
       throws DiskSpaceInsufficientException {
     this.folders = folders;
+    this.foldersKey = folders.toString();
     folders.forEach(dir -> foldersStates.put(dir, FolderState.HEALTHY));
     switch (type) {
       case SEQUENCE_STRATEGY:
@@ -87,10 +97,9 @@ public class FolderManager {
     try {
       this.selectStrategy.setFolders(folders);
       this.selectStrategy.setFoldersStates(foldersStates);
+      resetAllFoldersFullLogTime();
     } catch (DiskSpaceInsufficientException e) {
-      logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+      handleAllFoldersFull(e);
       throw e;
     }
   }
@@ -98,15 +107,18 @@ public class FolderManager {
   public void updateFolderState(String folder, FolderState state) {
     foldersStates.replace(folder, state);
     selectStrategy.updateFolderState(folder, state);
+    if (FolderState.HEALTHY.equals(state)) {
+      resetAllFoldersFullLogTime();
+    }
   }
 
   public String getNextFolder() throws DiskSpaceInsufficientException {
     try {
-      return folders.get(selectStrategy.nextFolderIndex());
+      String folder = folders.get(selectStrategy.nextFolderIndex());
+      resetAllFoldersFullLogTime();
+      return folder;
     } catch (DiskSpaceInsufficientException e) {
-      logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+      handleAllFoldersFull(e);
       throw e;
     }
   }
@@ -135,19 +147,50 @@ public class FolderManager {
       try {
         folder = folders.get(selectStrategy.nextFolderIndex());
       } catch (DiskSpaceInsufficientException e) {
-        logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-        CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+        handleAllFoldersFull(e);
         throw e;
       }
       try {
-        return folderConsumer.apply(folder);
+        T result = folderConsumer.apply(folder);
+        resetAllFoldersFullLogTime();
+        return result;
       } catch (Exception e) {
         updateFolderState(folder, FolderState.ABNORMAL);
         logger.warn(UtilMessages.FAILED_TO_PROCESS_FOLDER, folder);
       }
     }
-    throw new DiskSpaceInsufficientException(folders);
+    DiskSpaceInsufficientException exception = new DiskSpaceInsufficientException(folders);
+    handleAllFoldersFull(exception);
+    throw exception;
+  }
+
+  private void handleAllFoldersFull(DiskSpaceInsufficientException e) {
+    logAllFoldersFullIfNecessary(e);
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    if (!NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())) {
+      commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+    }
+    commonConfig.setStatusReason(NodeStatus.DISK_FULL);
+  }
+
+  void logAllFoldersFullIfNecessary(DiskSpaceInsufficientException e) {
+    AtomicLong lastAllFoldersFullLogTime =
+        ALL_FOLDERS_FULL_LAST_LOG_TIME_MAP.computeIfAbsent(foldersKey, key -> new AtomicLong(0L));
+    long now = System.currentTimeMillis();
+    long lastLogTime = lastAllFoldersFullLogTime.get();
+    if ((lastLogTime == 0 || now - lastLogTime >= ALL_FOLDERS_FULL_LOG_INTERVAL_MS)
+        && lastAllFoldersFullLogTime.compareAndSet(lastLogTime, now)) {
+      logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
+    }
+  }
+
+  void resetAllFoldersFullLogTime() {
+    ALL_FOLDERS_FULL_LAST_LOG_TIME_MAP.remove(foldersKey);
+  }
+
+  @TestOnly
+  static void resetAllFoldersFullLogTimes() {
+    ALL_FOLDERS_FULL_LAST_LOG_TIME_MAP.clear();
   }
 
   public List<String> getFolders() {

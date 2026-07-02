@@ -333,7 +333,7 @@ public class WALNodeTest {
   @Test
   public void testDeleteOutdatedFiles() throws Exception {
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
-    // write until log is rolled
+    // Write entries, then roll explicitly so the next active memTable starts in a new WAL file.
     long time = 0;
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     long memTableId = memTable.getMemTableId();
@@ -352,7 +352,7 @@ public class WALNodeTest {
         .setDataRegion(
             new DataRegionId(1), new DataRegionTest.DummyDataRegion(logDirectory, databasePath));
     walNode.onMemTableCreated(memTable, tsFilePath);
-    while (time < 20000) {
+    while (time < 10) {
       ++time;
       InsertTabletNode insertTabletNode =
           getInsertTabletNode(devicePath + memTableId, new long[] {time});
@@ -364,6 +364,7 @@ public class WALNodeTest {
       walFlushListeners.add(walFlushListener);
     }
     walNode.onMemTableFlushed(memTable);
+    walNode.rollWALFile();
     walNode.onMemTableCreated(new PrimitiveMemTable(databasePath, dataRegionId), tsFilePath);
     Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed());
     // check existence of _0-0-0.wal file and _1-0-1.wal file

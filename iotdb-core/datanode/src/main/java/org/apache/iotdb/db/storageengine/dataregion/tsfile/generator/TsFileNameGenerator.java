@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,6 +49,8 @@ public class TsFileNameGenerator {
 
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileNameGenerator.class);
+  private static final long ALL_DISKS_FULL_LOG_INTERVAL_MS = 3600 * 1000L;
+  private static final AtomicLong LAST_ALL_DISKS_FULL_LOG_TIME = new AtomicLong(0L);
 
   public static String generateNewTsFilePath(
       String tsFileDir,
@@ -98,41 +101,57 @@ public class TsFileNameGenerator {
       throws DiskSpaceInsufficientException, IOException {
     FolderManager folderManager = TierManager.getInstance().getFolderManager(tierLevel, sequence);
     try {
-      return folderManager.getNextWithRetry(
-          baseDir -> {
-            String tsFileDir =
-                baseDir
+      String tsFilePath =
+          folderManager.getNextWithRetry(
+              baseDir -> {
+                String tsFileDir =
+                    baseDir
+                        + File.separator
+                        + logicalStorageGroup
+                        + File.separator
+                        + virtualStorageGroup
+                        + File.separator
+                        + timePartitionId;
+                File targetDir = fsFactory.getFile(tsFileDir);
+                if (!targetDir.exists()) {
+                  if (!targetDir.mkdirs() && !targetDir.exists()) {
+                    throw new IOException(
+                        "Directory creation failed: "
+                            + tsFileDir
+                            + " (Permission denied or parent not writable)");
+                  }
+                }
+                return tsFileDir
                     + File.separator
-                    + logicalStorageGroup
-                    + File.separator
-                    + virtualStorageGroup
-                    + File.separator
-                    + timePartitionId;
-            File targetDir = fsFactory.getFile(tsFileDir);
-            if (!targetDir.exists()) {
-              if (!targetDir.mkdirs() && !targetDir.exists()) {
-                throw new IOException(
-                    "Directory creation failed: "
-                        + tsFileDir
-                        + " (Permission denied or parent not writable)");
-              }
-            }
-            return tsFileDir
-                + File.separator
-                + generateNewTsFileName(
-                    time,
-                    version,
-                    innerSpaceCompactionCount,
-                    crossSpaceCompactionCount,
-                    customSuffix);
-          });
+                    + generateNewTsFileName(
+                        time,
+                        version,
+                        innerSpaceCompactionCount,
+                        crossSpaceCompactionCount,
+                        customSuffix);
+              });
+      resetAllDisksFullLogTime();
+      return tsFilePath;
     } catch (DiskSpaceInsufficientException e) {
-      LOGGER.error(StorageEngineMessages.ALL_DISKS_FULL_CANNOT_CREATE_TSFILE_DIR, e);
+      logAllDisksFullCannotCreateTsFileDirIfNecessary(e);
       throw new IOException(StorageEngineMessages.DISK_SPACE_INSUFFICIENT, e);
     } catch (Exception e) {
       LOGGER.warn(StorageEngineMessages.FAILED_TO_CREATE_TSFILE_DIR_AFTER_RETRIES, e);
       throw new IOException(StorageEngineMessages.FAILED_TO_CREATE_DIR_AFTER_RETRIES, e);
     }
+  }
+
+  static void logAllDisksFullCannotCreateTsFileDirIfNecessary(DiskSpaceInsufficientException e) {
+    long now = System.currentTimeMillis();
+    long lastLogTime = LAST_ALL_DISKS_FULL_LOG_TIME.get();
+    if ((lastLogTime == 0 || now - lastLogTime >= ALL_DISKS_FULL_LOG_INTERVAL_MS)
+        && LAST_ALL_DISKS_FULL_LOG_TIME.compareAndSet(lastLogTime, now)) {
+      LOGGER.error(StorageEngineMessages.ALL_DISKS_FULL_CANNOT_CREATE_TSFILE_DIR, e);
+    }
+  }
+
+  static void resetAllDisksFullLogTime() {
+    LAST_ALL_DISKS_FULL_LOG_TIME.set(0L);
   }
 
   public static String generateNewTsFileName(

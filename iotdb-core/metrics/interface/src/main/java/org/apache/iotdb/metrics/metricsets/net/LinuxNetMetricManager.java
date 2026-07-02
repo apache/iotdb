@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class LinuxNetMetricManager implements INetMetricManager {
@@ -55,6 +56,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
 
   private static final String BYTES = "bytes";
   private static final String PACKETS = "packets";
+  private static final long FAILURE_LOG_INTERVAL = TimeUnit.MINUTES.toMillis(5);
 
   private static final int IFACE_NAME_INDEX = 0;
 
@@ -91,6 +93,8 @@ public class LinuxNetMetricManager implements INetMetricManager {
   }
 
   private long lastUpdateTime = 0L;
+  private final FailureLogState netStatusFailureLogState = new FailureLogState();
+  private final FailureLogState socketNumFailureLogState = new FailureLogState();
 
   @Override
   public Set<String> getIfaceSet() {
@@ -213,8 +217,9 @@ public class LinuxNetMetricManager implements INetMetricManager {
         long transmittedPackets = Long.parseLong(statusInfoAsList.get(transmittedPacketsIndex));
         transmittedPacketsMapForIface.put(iface, transmittedPackets);
       }
+      clearFailureLogState(netStatusFailureLogState);
     } catch (IOException e) {
-      LOGGER.error(MetricsMessages.READ_NET_STATUS_FOR_NET_ERROR, NET_STATUS_PATH, e);
+      logReadNetStatusForNetErrorIfNecessary(e);
     }
 
     if (MetricLevel.higherOrEqual(MetricLevel.NORMAL, METRIC_CONFIG.getMetricLevel())) {
@@ -232,18 +237,70 @@ public class LinuxNetMetricManager implements INetMetricManager {
         }
         process.waitFor();
         this.connectionNum = Integer.parseInt(result.toString().trim());
+        clearFailureLogState(socketNumFailureLogState);
       } catch (IOException e) {
-        LOGGER.error(MetricsMessages.FAILED_TO_GET_SOCKET_NUM, e);
+        logFailedToGetSocketNumIfNecessary(e);
       } catch (InterruptedException e) {
-        LOGGER.error(MetricsMessages.INTERRUPTED_WHILE_WAITING_SOCKET_NUM, e);
+        logInterruptedWhileWaitingSocketNumIfNecessary(e);
         Thread.currentThread().interrupt();
       } catch (NumberFormatException e) {
-        LOGGER.error(MetricsMessages.FAILED_TO_PARSE_SOCKET_NUM, e.getMessage());
+        logFailedToParseSocketNumIfNecessary(e);
       } finally {
         if (process != null && process.isAlive()) {
           process.destroyForcibly();
         }
       }
     }
+  }
+
+  private void logReadNetStatusForNetErrorIfNecessary(IOException e) {
+    if (shouldLogFailure(netStatusFailureLogState, MetricsMessages.READ_NET_STATUS_FOR_NET_ERROR)) {
+      LOGGER.error(MetricsMessages.READ_NET_STATUS_FOR_NET_ERROR, NET_STATUS_PATH, e);
+    }
+  }
+
+  private void logFailedToGetSocketNumIfNecessary(IOException e) {
+    if (shouldLogFailure(socketNumFailureLogState, MetricsMessages.FAILED_TO_GET_SOCKET_NUM)) {
+      LOGGER.error(MetricsMessages.FAILED_TO_GET_SOCKET_NUM, e);
+    }
+  }
+
+  private void logInterruptedWhileWaitingSocketNumIfNecessary(InterruptedException e) {
+    if (shouldLogFailure(
+        socketNumFailureLogState, MetricsMessages.INTERRUPTED_WHILE_WAITING_SOCKET_NUM)) {
+      LOGGER.error(MetricsMessages.INTERRUPTED_WHILE_WAITING_SOCKET_NUM, e);
+    }
+  }
+
+  private void logFailedToParseSocketNumIfNecessary(NumberFormatException e) {
+    if (shouldLogFailure(
+        socketNumFailureLogState, MetricsMessages.FAILED_TO_PARSE_SOCKET_NUM + e.getMessage())) {
+      LOGGER.error(MetricsMessages.FAILED_TO_PARSE_SOCKET_NUM, e.getMessage());
+    }
+  }
+
+  private static boolean shouldLogFailure(FailureLogState failureLogState, String failureMessage) {
+    synchronized (failureLogState) {
+      long currentTime = System.currentTimeMillis();
+      if (!failureMessage.equals(failureLogState.lastFailure)
+          || currentTime >= failureLogState.nextLogTime) {
+        failureLogState.lastFailure = failureMessage;
+        failureLogState.nextLogTime = currentTime + FAILURE_LOG_INTERVAL;
+        return true;
+      }
+      return false;
+    }
+  }
+
+  private static void clearFailureLogState(FailureLogState failureLogState) {
+    synchronized (failureLogState) {
+      failureLogState.lastFailure = "";
+      failureLogState.nextLogTime = 0L;
+    }
+  }
+
+  private static class FailureLogState {
+    private long nextLogTime = 0L;
+    private String lastFailure = "";
   }
 }

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.commons.utils.LogThrottler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -111,6 +112,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   /** Variables for {@link ConfigNode} Simple Consensus. */
   private LogWriter simpleLogWriter;
+
+  private final LogThrottler simpleConsensusWalFlushFailureLogThrottler = new LogThrottler();
 
   private File simpleLogFile;
   private int startIndex;
@@ -679,9 +682,14 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (simpleLogWriter != null) {
       try {
         simpleLogWriter.force();
+        simpleConsensusWalFlushFailureLogThrottler.reset();
       } catch (IOException e) {
-        LOGGER.error(
-            ConfigNodeMessages.CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_FLUSHWALFORSIMPLECONSENSUS, e);
+        if (simpleConsensusWalFlushFailureLogThrottler.shouldLog(
+            LogThrottler.getFailureSignature(e))) {
+          LOGGER.error(
+              ConfigNodeMessages.CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_FLUSHWALFORSIMPLECONSENSUS,
+              e);
+        }
       }
     }
   }

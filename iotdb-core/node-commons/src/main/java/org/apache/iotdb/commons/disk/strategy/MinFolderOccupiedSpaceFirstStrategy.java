@@ -26,6 +26,9 @@ import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Selects the folder with the least occupied space.
@@ -42,6 +45,10 @@ import java.io.UncheckedIOException;
  * the number of full directory scans.
  */
 public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
+
+  private static final long CANNOT_CALCULATE_OCCUPIED_SPACE_LOG_INTERVAL_MS = 3600 * 1000L;
+  private static final ConcurrentMap<String, AtomicLong>
+      CANNOT_CALCULATE_OCCUPIED_SPACE_LAST_LOG_TIME_MAP = new ConcurrentHashMap<>();
 
   private long refreshIntervalMs =
       CommonDescriptor.getInstance().getConfig().getMinFolderOccupiedSpaceCacheRefreshIntervalMs();
@@ -119,13 +126,36 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
       }
       try {
         cachedOccupiedSpace[i] = JVMCommonUtils.getOccupiedSpace(folder);
+        resetCannotCalculateOccupiedSpaceLogTime(folder);
       } catch (IOException | UncheckedIOException e) {
-        LOGGER.error(UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE, folder, e);
+        logCannotCalculateOccupiedSpaceIfNecessary(folder, e);
         cachedOccupiedSpace[i] = Long.MAX_VALUE;
       }
     }
     selectionsSinceRefresh = 0;
     lastRefreshTimeMs = System.currentTimeMillis();
+  }
+
+  private static void logCannotCalculateOccupiedSpaceIfNecessary(String folder, Exception e) {
+    AtomicLong lastLogTime =
+        CANNOT_CALCULATE_OCCUPIED_SPACE_LAST_LOG_TIME_MAP.computeIfAbsent(
+            folder, key -> new AtomicLong(0L));
+    long now = System.currentTimeMillis();
+    long previousLogTime = lastLogTime.get();
+    if ((previousLogTime == 0
+            || now - previousLogTime >= CANNOT_CALCULATE_OCCUPIED_SPACE_LOG_INTERVAL_MS)
+        && lastLogTime.compareAndSet(previousLogTime, now)) {
+      LOGGER.error(UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE, folder, e);
+    }
+  }
+
+  private static void resetCannotCalculateOccupiedSpaceLogTime(String folder) {
+    CANNOT_CALCULATE_OCCUPIED_SPACE_LAST_LOG_TIME_MAP.remove(folder);
+  }
+
+  @TestOnly
+  public static void resetCannotCalculateOccupiedSpaceLogTimes() {
+    CANNOT_CALCULATE_OCCUPIED_SPACE_LAST_LOG_TIME_MAP.clear();
   }
 
   @TestOnly

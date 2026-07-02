@@ -31,11 +31,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 public class JVMCommonUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JVMCommonUtils.class);
+  private static final long DISK_WARNING_PRINT_INTERVAL_MS = 3600 * 1000L;
 
   /** Default executor pool maximum size. */
   public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
@@ -44,6 +48,14 @@ public class JVMCommonUtils {
 
   private static double diskSpaceWarningThreshold =
       CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold();
+  private static final ConcurrentMap<String, Long> cannotGetFreeSpaceLastPrintTimeMap =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentMap<String, Long> diskAboveWarningThresholdLastPrintTimeMap =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentMap<String, Long> unexpectedGetUsableSpaceErrorLastPrintTimeMap =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentMap<String, Long> unexpectedGetDiskFreeRatioErrorLastPrintTimeMap =
+      new ConcurrentHashMap<>();
 
   /**
    * get JDK version.
@@ -69,10 +81,15 @@ public class JVMCommonUtils {
     try {
       File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
       dirFile.mkdirs();
-      return IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0)
-          .orElse(0L);
+      long usableSpace =
+          IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
+      unexpectedGetUsableSpaceErrorLastPrintTimeMap.remove(String.valueOf(dir));
+      return usableSpace;
     } catch (Exception e) {
-      LOGGER.error(UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE_FOR_DIR, dir, e);
+      if (shouldPrintDiskWarning(
+          unexpectedGetUsableSpaceErrorLastPrintTimeMap, String.valueOf(dir))) {
+        LOGGER.error(UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE_FOR_DIR, dir, e);
+      }
       return 0L;
     }
   }
@@ -87,20 +104,28 @@ public class JVMCommonUtils {
       long freeSpace =
           IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
       if (freeSpace == 0) {
-        LOGGER.warn(UtilMessages.CANNOT_GET_FREE_SPACE, dir);
+        if (shouldPrintDiskWarning(cannotGetFreeSpaceLastPrintTimeMap, dir)) {
+          LOGGER.warn(UtilMessages.CANNOT_GET_FREE_SPACE, dir);
+        }
+      } else {
+        cannotGetFreeSpaceLastPrintTimeMap.remove(dir);
       }
       long totalSpace = dirFile.getTotalSpace();
       double ratio = 1.0 * freeSpace / totalSpace;
       if (ratio <= diskSpaceWarningThreshold) {
-        LOGGER.warn(
-            "{} is above the warning threshold, free space {}, total space {}",
-            dir,
-            freeSpace,
-            totalSpace);
+        if (shouldPrintDiskWarning(diskAboveWarningThresholdLastPrintTimeMap, dir)) {
+          LOGGER.warn(UtilMessages.DISK_ABOVE_WARNING_THRESHOLD, dir, freeSpace, totalSpace);
+        }
+      } else {
+        diskAboveWarningThresholdLastPrintTimeMap.remove(dir);
       }
+      unexpectedGetDiskFreeRatioErrorLastPrintTimeMap.remove(String.valueOf(dir));
       return ratio;
     } catch (Exception e) {
-      LOGGER.error(UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE, dir, e);
+      if (shouldPrintDiskWarning(
+          unexpectedGetDiskFreeRatioErrorLastPrintTimeMap, String.valueOf(dir))) {
+        LOGGER.error(UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE, dir, e);
+      }
       return 0;
     }
   }
@@ -136,5 +161,29 @@ public class JVMCommonUtils {
   @TestOnly
   public static void setDiskSpaceWarningThreshold(double threshold) {
     diskSpaceWarningThreshold = threshold;
+  }
+
+  @TestOnly
+  static void resetDiskWarningLastPrintTimes() {
+    cannotGetFreeSpaceLastPrintTimeMap.clear();
+    diskAboveWarningThresholdLastPrintTimeMap.clear();
+    unexpectedGetUsableSpaceErrorLastPrintTimeMap.clear();
+    unexpectedGetDiskFreeRatioErrorLastPrintTimeMap.clear();
+  }
+
+  private static boolean shouldPrintDiskWarning(
+      ConcurrentMap<String, Long> lastPrintTimeMap, String dir) {
+    long now = System.currentTimeMillis();
+    AtomicBoolean shouldPrint = new AtomicBoolean(false);
+    lastPrintTimeMap.compute(
+        dir,
+        (key, lastPrintTime) -> {
+          if (lastPrintTime == null || now - lastPrintTime > DISK_WARNING_PRINT_INTERVAL_MS) {
+            shouldPrint.set(true);
+            return now;
+          }
+          return lastPrintTime;
+        });
+    return shouldPrint.get();
   }
 }
