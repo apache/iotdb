@@ -103,10 +103,24 @@ public class DeleteDatabaseProcedure
               "[DeleteDatabaseProcedure] Delete DatabaseSchema: {}",
               deleteDatabaseSchema.getName());
 
-          // Delete every region group (both schema and data regions) of this database via a
-          // RemoveRegionGroupProcedure child. The DatabasePartitionTable (handled in the next
-          // state) is only removed once these children have finished, so a slow region deletion is
-          // always completed before the coordinator forgets about it.
+          // Enqueue deletion of every region group (both schema and data regions) of this database.
+          // Each is submitted as an INDEPENDENT root RemoveRegionGroupProcedure rather than a
+          // child:
+          // this procedure only submits the deletions and then returns, so it can neither wait for
+          // nor be failed/rolled-back by a slow or failing region deletion. Each carries its own
+          // copy of the replica set, so the deletion still completes (and survives leader change /
+          // restart) even after the next state drops the partition table.
+          //
+          // Submission is intentionally NOT guarded by isStateDeserialized(): the executor persists
+          // a procedure at a state BEFORE that state's body has run (it advances the state on the
+          // previous cycle, then may stop at the inter-state boundary on a leader switch — see
+          // ProcedureExecutor#executeProcedure). So a recovery that lands on this state means the
+          // submission has NOT happened yet; skipping it would drop every region group's cleanup
+          // while the next state still drops the partition table, orphaning the region peers/data
+          // on
+          // disk with no record of where they live. Re-submitting on recovery is safe instead:
+          // every RemoveRegionGroupProcedure gets a fresh procId and performs an idempotent delete,
+          // so a duplicate is harmless whereas a skip leaks data.
           final List<TRegionReplicaSet> regionReplicaSets =
               env.getAllReplicaSets(deleteDatabaseSchema.getName());
           regionReplicaSets.forEach(
@@ -115,7 +129,10 @@ public class DeleteDatabaseProcedure
                 env.getConfigManager()
                     .getLoadManager()
                     .removeRegionGroupRelatedCache(regionReplicaSet.getRegionId());
-                addChildProcedure(new RemoveRegionGroupProcedure(regionReplicaSet));
+                env.getConfigManager()
+                    .getProcedureManager()
+                    .getExecutor()
+                    .submitProcedure(new RemoveRegionGroupProcedure(regionReplicaSet));
               });
           setNextState(DeleteDatabaseState.DELETE_DATABASE_CONFIG);
           break;
