@@ -1155,49 +1155,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushPipeMetaResp pushMultiPipeMeta(TPushMultiPipeMetaReq req) {
-    boolean hasException = false;
-    // If there is any exception, we use the size of exceptionMessages to record the fail index
-    List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
-    try {
-      if (req.isSetPipeNamesToDrop()) {
-        for (String pipeNameToDrop : req.getPipeNamesToDrop()) {
-          TPushPipeMetaRespExceptionMessage message =
-              PipeDataNodeAgent.task().handleDropPipe(pipeNameToDrop);
-          exceptionMessages.add(message);
-          if (message != null) {
-            // If there is any exception, skip the remaining pipes
-            hasException = true;
-            break;
+    return PushMultiPipeMetaHelper.pushMultiPipeMeta(
+        req,
+        new PushMultiPipeMetaHelper.Handler() {
+          @Override
+          public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
+            return PipeDataNodeAgent.task().handleDropPipe(pipeName);
           }
-        }
-      } else if (req.isSetPipeMetas()) {
-        for (ByteBuffer byteBuffer : req.getPipeMetas()) {
-          final PipeMeta pipeMeta = PipeMeta.deserialize4TaskAgent(byteBuffer);
-          TPushPipeMetaRespExceptionMessage message =
-              PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
-          exceptionMessages.add(message);
-          if (message != null) {
-            // If there is any exception, skip the remaining pipes
-            hasException = true;
-            break;
-          }
-        }
-      } else {
-        throw new Exception("Invalid TPushMultiPipeMetaReq");
-      }
 
-      return hasException
-          ? new TPushPipeMetaResp()
-              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
-              .setExceptionMessages(exceptionMessages)
-          : new TPushPipeMetaResp()
-              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (Exception e) {
-      LOGGER.warn("Error occurred when pushing multi pipe meta", e);
-      return new TPushPipeMetaResp()
-          .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
-          .setExceptionMessages(exceptionMessages);
-    }
+          @Override
+          public TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(final ByteBuffer pipeMeta) {
+            return PipeDataNodeAgent.task()
+                .handleSinglePipeMetaChanges(PipeMeta.deserialize4TaskAgent(pipeMeta));
+          }
+        });
   }
 
   @Override
