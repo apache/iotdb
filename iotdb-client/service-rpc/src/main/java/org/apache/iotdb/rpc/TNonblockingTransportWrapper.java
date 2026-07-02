@@ -23,16 +23,10 @@ import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
 
-import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
-import java.nio.file.AccessDeniedException;
-import java.security.KeyStore;
 
 /**
  * TNonblockingSocket's constructor declares a TTransportException for compatibility, but this code
@@ -75,8 +69,21 @@ public class TNonblockingTransportWrapper {
       String keyStorePwd,
       String trustStore,
       String trustStorePwd) {
+    return wrap(host, port, timeout, keyStore, keyStorePwd, trustStore, trustStorePwd, null);
+  }
+
+  public static TNonblockingTransport wrap(
+      String host,
+      int port,
+      int timeout,
+      String keyStore,
+      String keyStorePwd,
+      String trustStore,
+      String trustStorePwd,
+      String sslProtocol) {
     try {
-      SSLContext sslContext = createSSLContext(keyStore, keyStorePwd, trustStore, trustStorePwd);
+      SSLContext sslContext =
+          createSSLContext(keyStore, keyStorePwd, trustStore, trustStorePwd, sslProtocol);
       return new TNonblockingSSLSocket(host, port, timeout, sslContext);
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -87,46 +94,12 @@ public class TNonblockingTransportWrapper {
       String keystorePath,
       String keystorePassword,
       String truststorePath,
-      String truststorePassword)
+      String truststorePassword,
+      String sslProtocol)
       throws Exception {
 
-    KeyManagerFactory kmf = null;
-    TrustManagerFactory tmf = null;
-
-    SSLContext ctx = SSLContext.getInstance("TLS");
-    if (keystorePath != null && keystorePassword != null) {
-      KeyStore keyStore = KeyStore.getInstance("JKS");
-      try (FileInputStream fis = new FileInputStream(keystorePath)) {
-        keyStore.load(fis, keystorePassword.toCharArray());
-      } catch (AccessDeniedException e) {
-        throw new AccessDeniedException("Failed to load keystore file");
-      } catch (FileNotFoundException e) {
-        throw new FileNotFoundException("keystore file not found");
-      }
-      kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-      kmf.init(keyStore, keystorePassword.toCharArray());
-    }
-
-    if (truststorePath != null && truststorePassword != null) {
-      KeyStore trustStore = KeyStore.getInstance("JKS");
-      try (FileInputStream fis = new FileInputStream(truststorePath)) {
-        trustStore.load(fis, truststorePassword.toCharArray());
-      } catch (AccessDeniedException e) {
-        throw new AccessDeniedException("Failed to load truststore file");
-      } catch (FileNotFoundException e) {
-        throw new FileNotFoundException("truststore file not found");
-      }
-      tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-      tmf.init(trustStore);
-    }
-    if (kmf != null && tmf != null) {
-      ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-    } else if (kmf != null) {
-      ctx.init(kmf.getKeyManagers(), null, null);
-    } else if (tmf != null) {
-      ctx.init(null, tmf.getTrustManagers(), null);
-    }
-    return ctx;
+    return RpcSslUtils.createSSLContext(
+        keystorePath, keystorePassword, truststorePath, truststorePassword, sslProtocol);
   }
 
   private TNonblockingTransportWrapper() {}

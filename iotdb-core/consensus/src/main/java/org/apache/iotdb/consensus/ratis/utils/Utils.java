@@ -45,11 +45,13 @@ import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.thirdparty.com.google.common.cache.Cache;
 import org.apache.ratis.thirdparty.com.google.common.cache.CacheBuilder;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
+import org.apache.ratis.thirdparty.io.netty.handler.ssl.SslProvider;
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -384,7 +386,15 @@ public class Utils {
         KeyManager keyManager = RpcSslUtils.createKeyManagers(keyStorePath, keyStorePassword)[0];
         TrustManager trustManager =
             RpcSslUtils.createTrustManagers(trustStorePath, trustStorePassword)[0];
-        GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
+        GrpcTlsConfig.Builder tlsConfig =
+            GrpcTlsConfig.newBuilder()
+                .setKeyManager(keyManager)
+                .setTrustManager(trustManager)
+                .setMutualTls(true);
+        boolean useJsseProvider = configureRatisTlsProvider(tlsConfig);
+        configureRatisTlsProtocol(tlsConfig);
+        configureRatisTlsCipherSuites(tlsConfig, useJsseProvider);
+        GrpcConfigKeys.TLS.setConf(parameters, tlsConfig.build());
       } catch (AccessDeniedException e) {
         LOGGER.error(ConsensusMessages.FAILED_TO_LOAD_KEYSTORE);
       } catch (FileNotFoundException e) {
@@ -394,6 +404,44 @@ public class Utils {
       }
     }
     return parameters;
+  }
+
+  private static boolean configureRatisTlsProvider(GrpcTlsConfig.Builder tlsConfig)
+      throws TTransportException {
+    if (!shouldUseJsseProviderForRatis()) {
+      return false;
+    }
+    try {
+      String providerName = RpcSslUtils.getSSLContextProviderName();
+      if (providerName != null && !providerName.isEmpty()) {
+        tlsConfig.setSslProvider(SslProvider.JDK).setJsseProviderName(providerName);
+        return true;
+      }
+      return false;
+    } catch (Exception e) {
+      throw new TTransportException("Failed to initialize SSL context", e);
+    }
+  }
+
+  private static boolean shouldUseJsseProviderForRatis() {
+    return RpcSslUtils.isTlcpProtocol();
+  }
+
+  private static void configureRatisTlsProtocol(GrpcTlsConfig.Builder tlsConfig) {
+    String protocol = RpcSslUtils.getProtocol();
+    if (protocol != null && !protocol.isEmpty()) {
+      tlsConfig.setProtocols(protocol);
+    }
+  }
+
+  private static void configureRatisTlsCipherSuites(
+      GrpcTlsConfig.Builder tlsConfig, boolean useJsseProvider) throws TTransportException {
+    if (useJsseProvider) {
+      String[] enabledCipherSuites = RpcSslUtils.getEnabledCipherSuites();
+      if (enabledCipherSuites != null && enabledCipherSuites.length > 0) {
+        tlsConfig.setCipherSuites(enabledCipherSuites);
+      }
+    }
   }
 
   public static boolean anyOf(BooleanSupplier... conditions) {

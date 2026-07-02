@@ -518,9 +518,9 @@ trust_store_path=
 # Datatype: String
 trust_store_pwd=
 
-# SSL protocol used by server-side SSL services.
+# SSL protocol used by thrift, REST, and ratis internal communication.
 # The protocol is passed to the current JSSE provider, such as TLS, TLSv1.2,
-# TLSv1.3, or another provider-specific SSL protocol name.
+# TLSv1.3, or TLCPv1.1 with Tencent Kona JDK.
 # effectiveMode: restart
 # Datatype: String
 # Privilege: SECURITY

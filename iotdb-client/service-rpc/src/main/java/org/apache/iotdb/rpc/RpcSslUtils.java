@@ -25,6 +25,7 @@ import org.apache.thrift.transport.TTransportException;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
@@ -286,6 +287,10 @@ public final class RpcSslUtils {
         .toArray(String[]::new);
   }
 
+  private static SSLContext newSSLContext(String sslProtocol) throws GeneralSecurityException {
+    return SSLContext.getInstance(resolveProtocol(sslProtocol));
+  }
+
   private static String keyManagerType(String sslProtocol) {
     return isTlcpProtocol(sslProtocol)
         ? TLCP_KEY_MANAGER_TYPE
@@ -300,5 +305,24 @@ public final class RpcSslUtils {
 
   private static boolean isTlcpProtocol(String protocol) {
     return protocol != null && protocol.trim().toUpperCase(Locale.ROOT).startsWith("TLCP");
+  }
+
+  public static boolean isTlcpProtocol() {
+    return isTlcpProtocol(protocol);
+  }
+
+  public static String getSSLContextProviderName() throws GeneralSecurityException {
+    return newSSLContext(protocol).getProvider().getName();
+  }
+
+  public static String[] getEnabledCipherSuites() throws TTransportException {
+    try {
+      SSLContext context = newSSLContext(protocol);
+      context.init(null, null, null);
+      SSLEngine engine = context.createSSLEngine();
+      return engine.getEnabledCipherSuites();
+    } catch (GeneralSecurityException e) {
+      throw new TTransportException("Failed to initialize SSL context", e);
+    }
   }
 }

@@ -66,6 +66,22 @@ public class UtilsTest {
   }
 
   @Test
+  public void testParseSSLConfig() throws IoTDBURLException {
+    Properties properties = new Properties();
+    IoTDBConnectionParams params =
+        Utils.parseUrl(
+            Config.IOTDB_URL_PREFIX
+                + "127.0.0.1:6667?use_ssl=true&trust_store=/tmp/client.truststore"
+                + "&trust_store_pwd=pwd&ssl_protocol=TLCPv1.1",
+            properties);
+
+    assertTrue(params.isUseSSL());
+    assertEquals("/tmp/client.truststore", params.getTrustStore());
+    assertEquals("pwd", params.getTrustStorePwd());
+    assertEquals("TLCPv1.1", params.getSslProtocol());
+  }
+
+  @Test
   public void testParseIPV6URL() throws IoTDBURLException {
     String userName = "test";
     String userPwd = "test";

@@ -258,6 +258,27 @@ tsfile-backup-it-scp:
       - integration-test/target/tsfile-backup-it
     expire_in: 7 day
 
+tlcp-integration-test:
+  stage: test
+  image:
+    name: timechodb/maven:3.8.6-kona17-lsof-x86_64
+    pull_policy: if-not-present
+  tags:
+    - gmssl
+  script:
+    - java -version
+    - 'mvn verify -P with-integration-tests -PTLCPIT -DskipUTs -Dtlcp.it=true -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 -pl integration-test -am -s $MAVEN_SETTINGS_XML'
+  interruptible: true
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
+
+  artifacts:
+    when: on_failure
+    name: tlcp-it-log
+    paths:
+      - integration-test/target/cluster-logs
+    expire_in: 7 day
+
 ainode-test-1c1d1a:
   stage: test
   image: timechodb:AICluster
