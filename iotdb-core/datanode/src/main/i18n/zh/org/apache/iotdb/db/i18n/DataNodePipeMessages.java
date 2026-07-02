@@ -274,8 +274,8 @@ public final class DataNodePipeMessages {
       "determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the "
           + "time range: [{}, {}]. Returning true to ensure data integrity 时发生异常";
   public static final String FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE =
-      "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count "
-          + "is {}, will keep retrying.";
+      "{}：为解析 TsFile {} 分配内存失败，tablet 事件编号 {}，"
+          + "将释放解析器内存并稍后重试该 TsFile 事件。";
   public static final String FAILED_TO_BUILD_TABLET = "构建 tablet 失败";
   public static final String FAILED_TO_CHECK_NEXT = "check next 失败";
   public static final String FAILED_TO_CLOSE_TSFILEREADER = "关闭 TsFileReader 失败";

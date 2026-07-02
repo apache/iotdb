@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -144,12 +143,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
     this.allocatedMemoryBlockForBatchData =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(
-                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
     this.allocatedMemoryBlockForChunk =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(PipeConfig.getInstance().getPipeMaxReaderChunkSize());
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
     try {
       currentModifications =
@@ -235,6 +231,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   final Tablet tablet = getNextTablet();
                   // Record tablet metrics
                   recordTabletMetrics(tablet);
+                  releaseTabletMemoryBlock();
                   final boolean isLast = isLastTabletWithoutDeferredException();
                   try {
                     return sourceEvent == null
