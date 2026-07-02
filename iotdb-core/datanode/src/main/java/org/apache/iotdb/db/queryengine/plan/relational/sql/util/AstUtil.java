@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
@@ -29,12 +31,21 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.NoOpSymbolResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 
 import com.google.common.graph.SuccessorsFunction;
 import com.google.common.graph.Traverser;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalInt;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -117,6 +128,14 @@ public final class AstUtil {
     throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + expression);
   }
 
+  public static Object expressionToTsValue(
+      Expression expression, PlannerContext plannerContext, SessionInfo session) {
+    if (expression instanceof Literal) {
+      return expressionToTsValue(expression);
+    }
+    return evaluateInsertConstantExpression(expression, plannerContext, session);
+  }
+
   public static long expressionToTimestamp(Expression expression, ZoneId zoneId) {
     long timestamp;
     if (expression instanceof LongLiteral) {
@@ -131,6 +150,60 @@ public final class AstUtil {
       throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + expression);
     }
     return timestamp;
+  }
+
+  public static long expressionToTimestamp(
+      Expression expression, ZoneId zoneId, PlannerContext plannerContext, SessionInfo session) {
+    if (expression instanceof LongLiteral
+        || expression instanceof NullLiteral
+        || expression instanceof StringLiteral) {
+      return expressionToTimestamp(expression, zoneId);
+    }
+
+    Object value = evaluateInsertConstantExpression(expression, plannerContext, session);
+    if (value == null) {
+      throw new SemanticException(DataNodeQueryMessages.TIMESTAMP_CANNOT_BE_NULL);
+    }
+    if (value instanceof Integer || value instanceof Long) {
+      return ((Number) value).longValue();
+    }
+    if (value instanceof Binary) {
+      return parseDateTimeFormat(
+          ((Binary) value).getStringValue(TSFileConfig.STRING_CHARSET),
+          CommonDateTimeUtils.currentTime(),
+          zoneId);
+    }
+    throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + expression);
+  }
+
+  private static Object evaluateInsertConstantExpression(
+      Expression expression, PlannerContext plannerContext, SessionInfo session) {
+    if (expression instanceof Identifier) {
+      throw new SemanticException(
+          String.format("Cannot insert identifier %s, please use string literal", expression));
+    }
+
+    try {
+      Map<NodeRef<Expression>, Type> types =
+          new IrTypeAnalyzer(plannerContext).getTypes(session, TypeProvider.empty(), expression);
+      Object value =
+          new IrExpressionInterpreter(expression, plannerContext, session, types)
+              .optimize(NoOpSymbolResolver.INSTANCE);
+      if (value instanceof Expression) {
+        throw new SemanticException(
+            String.format(
+                "Insert expression must be constant after constant folding: %s (folded to %s)",
+                expression, value));
+      }
+      return value;
+    } catch (SemanticException e) {
+      throw e;
+    } catch (RuntimeException e) {
+      throw new SemanticException(
+          String.format(
+              "Cannot evaluate insert expression as a constant: %s. %s",
+              expression, e.getMessage()));
+    }
   }
 
   private AstUtil() {}
