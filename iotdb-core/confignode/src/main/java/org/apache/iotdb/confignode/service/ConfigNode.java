@@ -223,19 +223,10 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         // Generate the builtin admin users after initConsensusManager
         initBuiltinUsers();
 
-        // Persistence system parameters after the consensusGroup is built,
-        // or the consensusGroup will not be initialized successfully otherwise.
-        SystemPropertiesUtils.storeSystemParameters();
-
         // Wait for ConfigNode-leader elected before applying itself
         waitForLeaderElected();
 
-        // Seed-ConfigNode should apply itself when first start
-        configManager
-            .getNodeManager()
-            .applyConfigNode(
-                CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(SEED_CONFIG_NODE_ID),
-                new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
+        applySeedConfigNodeAndStoreSystemParameters();
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until Seed-ConfigNode is fully initialized
@@ -291,6 +282,25 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   protected void initBuiltinUsers() {
     // nothing to do
+  }
+
+  protected void applySeedConfigNodeAndStoreSystemParameters()
+      throws StartupException, IOException {
+    // Seed-ConfigNode should apply itself when first start.
+    TSStatus applyConfigNodeStatus =
+        configManager
+            .getNodeManager()
+            .applyConfigNode(
+                CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(SEED_CONFIG_NODE_ID),
+                new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
+    if (applyConfigNodeStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new StartupException(
+          "Failed to apply Seed-ConfigNode when first startup: " + applyConfigNodeStatus);
+    }
+
+    // Persist system parameters only after the consensus group is created, a leader exists and the
+    // Seed-ConfigNode has been applied through consensus.
+    SystemPropertiesUtils.storeSystemParameters();
   }
 
   void processPid() {

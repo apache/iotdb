@@ -208,7 +208,7 @@ class ConfigNodeClient(object):
         cluster_name: str,
         configuration: TAINodeConfiguration,
         version_info: TNodeVersionInfo,
-    ) -> None:
+    ) -> TSStatus:
         req = TAINodeRestartReq(
             clusterName=cluster_name,
             aiNodeConfiguration=configuration,
@@ -219,6 +219,15 @@ class ConfigNodeClient(object):
             try:
                 resp = self._client.restartAINode(req)
                 if not self._update_config_node_leader(resp.status):
+                    if (
+                        resp.status.code
+                        != TSStatusCode.SUCCESS_STATUS.get_status_code()
+                    ):
+                        logger.warning(
+                            "AINode restart is rejected by ConfigNode. "
+                            "The local system.properties will be kept and AINode will not "
+                            "register a new id automatically."
+                        )
                     verify_success(
                         resp.status, "An error occurs when calling node_restart()"
                     )

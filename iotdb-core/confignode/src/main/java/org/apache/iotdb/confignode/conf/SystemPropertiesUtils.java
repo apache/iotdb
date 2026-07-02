@@ -61,6 +61,22 @@ public class SystemPropertiesUtils {
   private static final String SERIES_PARTITION_EXECUTOR_CLASS = "series_partition_executor_class";
   private static final String TIME_PARTITION_ORIGIN = "time_partition_origin";
   private static final String TIME_PARTITION_INTERVAL = "time_partition_interval";
+  private static final String CONFIG_NODE_ID = "config_node_id";
+  private static final String IS_SEED_CONFIG_NODE = "is_seed_config_node";
+
+  public enum StartupState {
+    FIRST_START,
+    RESTART,
+    PARTIAL_START_CONSENSUS_ONLY,
+    PARTIAL_START_SYSTEM_ONLY,
+    CORRUPTED_OR_INCONSISTENT
+  }
+
+  private enum LocalStorageState {
+    EMPTY,
+    PRESENT,
+    UNREADABLE
+  }
 
   private SystemPropertiesUtils() {
     throw new IllegalStateException(ConfigNodeMessages.UTILITY_CLASS_SYSTEMPROPERTIESUTILS);
@@ -76,10 +92,93 @@ public class SystemPropertiesUtils {
   /**
    * Check if the ConfigNode is restarted.
    *
-   * @return True if confignode-system.properties file exist.
+   * @return True if both confignode-system.properties and local consensus state exist.
    */
   public static boolean isRestarted() {
-    return !systemPropertiesHandler.isFirstStart();
+    return getStartupState() == StartupState.RESTART;
+  }
+
+  public static StartupState getStartupState() {
+    boolean hasSystemProperties = systemPropertiesHandler.fileExist();
+    LocalStorageState consensusState = getConsensusStorageState(new File(conf.getConsensusDir()));
+
+    if (consensusState == LocalStorageState.UNREADABLE) {
+      return StartupState.CORRUPTED_OR_INCONSISTENT;
+    }
+
+    boolean hasConsensusState = consensusState == LocalStorageState.PRESENT;
+    if (!hasSystemProperties && !hasConsensusState) {
+      return StartupState.FIRST_START;
+    }
+    if (!hasSystemProperties) {
+      return StartupState.PARTIAL_START_CONSENSUS_ONLY;
+    }
+    if (!hasRequiredRestartSystemProperties()) {
+      return StartupState.CORRUPTED_OR_INCONSISTENT;
+    }
+    return hasConsensusState ? StartupState.RESTART : StartupState.PARTIAL_START_SYSTEM_ONLY;
+  }
+
+  private static LocalStorageState getConsensusStorageState(File file) {
+    if (!file.exists()) {
+      return LocalStorageState.EMPTY;
+    }
+    if (file.isFile() || !file.isDirectory()) {
+      return LocalStorageState.PRESENT;
+    }
+
+    File[] children = file.listFiles();
+    if (children == null) {
+      LOGGER.warn("Cannot list ConfigNode consensus directory: {}", file.getAbsolutePath());
+      return LocalStorageState.UNREADABLE;
+    }
+
+    for (File child : children) {
+      LocalStorageState childState = getConsensusStorageState(child);
+      if (childState != LocalStorageState.EMPTY) {
+        return childState;
+      }
+    }
+    return LocalStorageState.EMPTY;
+  }
+
+  private static boolean hasRequiredRestartSystemProperties() {
+    try {
+      Properties systemProperties = systemPropertiesHandler.read();
+      return isNonNegativeInteger(systemProperties.getProperty(CONFIG_NODE_ID, null))
+          && isBoolean(systemProperties.getProperty(IS_SEED_CONFIG_NODE, null))
+          && isNotEmpty(systemProperties.getProperty(CN_INTERNAL_ADDRESS, null))
+          && isValidPort(systemProperties.getProperty(CN_INTERNAL_PORT, null))
+          && isValidPort(systemProperties.getProperty(CN_CONSENSUS_PORT, null));
+    } catch (IOException | IllegalArgumentException e) {
+      LOGGER.warn("Cannot load ConfigNode system properties for restart state check.", e);
+      return false;
+    }
+  }
+
+  private static boolean isNotEmpty(String value) {
+    return value != null && !value.trim().isEmpty();
+  }
+
+  private static boolean isBoolean(String value) {
+    return "true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value);
+  }
+
+  private static boolean isNonNegativeInteger(String value) {
+    try {
+      return isNotEmpty(value) && Integer.parseInt(value) >= 0;
+    } catch (NumberFormatException e) {
+      return false;
+    }
+  }
+
+  private static boolean isValidPort(String value) {
+    try {
+      int port = Integer.parseInt(value);
+      return port > 0 && port <= 65535;
+    } catch (NumberFormatException e) {
+      return false;
+    }
   }
 
   /**
@@ -272,11 +371,10 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty("commit_id", IoTDBConstant.BUILD_INFO);
 
     // Cluster configuration
-    systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
+    systemProperties.setProperty(CONFIG_NODE_ID, String.valueOf(conf.getConfigNodeId()));
     LOGGER.info(ConfigNodeMessages.SYSTEMPROPERTIES_STORE_CONFIG_NODE_ID, conf.getConfigNodeId());
     systemProperties.setProperty(
-        "is_seed_config_node",
-        String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
+        IS_SEED_CONFIG_NODE, String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
     LOGGER.info(
         ConfigNodeMessages.SYSTEMPROPERTIES_STORE_IS_SEED_CONFIG_NODE,
         ConfigNodeDescriptor.getInstance().isSeedConfigNode());
@@ -345,7 +443,7 @@ public class SystemPropertiesUtils {
   public static int loadConfigNodeIdWhenRestarted() throws IOException {
     Properties systemProperties = systemPropertiesHandler.read();
     try {
-      return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
+      return Integer.parseInt(systemProperties.getProperty(CONFIG_NODE_ID, null));
     } catch (NumberFormatException e) {
       throw new IOException(
           ConfigNodeMessages.THE_PARAMETER_CONFIG_NODE_ID_DOESN_T_EXIST_IN
@@ -366,7 +464,7 @@ public class SystemPropertiesUtils {
     try {
       Properties systemProperties = systemPropertiesHandler.read();
       boolean isSeedConfigNode =
-          Boolean.parseBoolean(systemProperties.getProperty("is_seed_config_node", null));
+          Boolean.parseBoolean(systemProperties.getProperty(IS_SEED_CONFIG_NODE, null));
       if (isSeedConfigNode) {
         return true;
       } else {
