@@ -43,6 +43,8 @@ public class UDFClassLoaderManager implements IService {
   /** The keys in the map are the query IDs of the UDF queries being executed. */
   private final Map<String, UDFClassLoader> queryIdToUDFClassLoaderMap;
 
+  private final Object activeClassLoaderLock = new Object();
+
   /**
    * activeClassLoader is used to load all classes under libRoot. libRoot may be updated before the
    * user executes CREATE FUNCTION or after the user executes DROP FUNCTION. Therefore, we need to
@@ -64,12 +66,24 @@ public class UDFClassLoaderManager implements IService {
   }
 
   public void initializeUDFQuery(String queryId) {
-    activeClassLoader.get().acquire();
-    queryIdToUDFClassLoaderMap.put(queryId, activeClassLoader.get());
+    final UDFClassLoader previousClassLoader;
+    synchronized (activeClassLoaderLock) {
+      final UDFClassLoader currentClassLoader = activeClassLoader.get();
+      currentClassLoader.acquire();
+      previousClassLoader = queryIdToUDFClassLoaderMap.put(queryId, currentClassLoader);
+    }
+    releaseClassLoader(queryId, previousClassLoader);
   }
 
   public void finalizeUDFQuery(String queryId) {
-    UDFClassLoader classLoader = queryIdToUDFClassLoaderMap.remove(queryId);
+    final UDFClassLoader classLoader;
+    synchronized (activeClassLoaderLock) {
+      classLoader = queryIdToUDFClassLoaderMap.remove(queryId);
+    }
+    releaseClassLoader(queryId, classLoader);
+  }
+
+  private void releaseClassLoader(String queryId, UDFClassLoader classLoader) {
     try {
       if (classLoader != null) {
         classLoader.release();
@@ -81,12 +95,14 @@ public class UDFClassLoaderManager implements IService {
   }
 
   public UDFClassLoader updateAndGetActiveClassLoader() throws IOException {
-    UDFClassLoader deprecatedClassLoader = activeClassLoader.get();
-    activeClassLoader.set(new UDFClassLoader(libRoot));
-    if (deprecatedClassLoader != null) {
-      deprecatedClassLoader.markAsDeprecated();
+    synchronized (activeClassLoaderLock) {
+      UDFClassLoader deprecatedClassLoader = activeClassLoader.get();
+      activeClassLoader.set(new UDFClassLoader(libRoot));
+      if (deprecatedClassLoader != null) {
+        deprecatedClassLoader.markAsDeprecated();
+      }
+      return activeClassLoader.get();
     }
-    return activeClassLoader.get();
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

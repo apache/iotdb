@@ -92,6 +92,30 @@ public class L2PriorityQueueTest {
   }
 
   @Test
+  public void testPushDuplicateId() throws InterruptedException {
+    IndexedBlockingQueue<QueueElement> queue =
+        new L2PriorityQueue<>(
+            10,
+            (o1, o2) -> {
+              if (o1.equals(o2)) {
+                return 0;
+              }
+              return Integer.compare(o1.getValue(), o2.getValue());
+            },
+            new QueueElement(new QueueElement.QueueElementID(0), 0));
+    QueueElement.QueueElementID id = new QueueElement.QueueElementID(1);
+    QueueElement e1 = new QueueElement(id, 1);
+    QueueElement e2 = new QueueElement(id, 2);
+    queue.push(e1);
+
+    Assert.assertThrows(IllegalStateException.class, () -> queue.push(e2));
+    Assert.assertEquals(1, queue.size());
+    Assert.assertEquals(e1, queue.poll());
+    Assert.assertEquals(0, queue.size());
+    Assert.assertTrue(queue.isEmpty());
+  }
+
+  @Test
   public void testPushAndPoll() throws InterruptedException {
     IndexedBlockingQueue<QueueElement> queue =
         new L2PriorityQueue<>(

@@ -43,6 +43,9 @@ public class FixedPriorityBlockingQueue<T> {
   protected List<PollLastHook> pollLastHookList = new CopyOnWriteArrayList<>();
 
   public FixedPriorityBlockingQueue(int maxSize, Comparator<T> comparator) {
+    if (maxSize <= 0) {
+      throw new IllegalArgumentException("maxSize must be greater than 0.");
+    }
     this.maxSize = maxSize;
     this.comparator = comparator;
     this.queue = MinMaxPriorityQueue.orderedBy(comparator).maximumSize(maxSize + 1).create();
