@@ -20,8 +20,10 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -40,6 +42,8 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
@@ -120,6 +124,11 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(ProcedureMessages.STARTPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
+    final long exceptionsClearTime = System.currentTimeMillis();
+    final boolean isStoppedByRuntimeException =
+        isTableModelSet
+            ? pipeTaskInfo.get().isStoppedByRuntimeException(pipeName, isTableModel)
+            : pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
     final PipeStaticMeta pipeStaticMeta =
         (isTableModelSet
                 ? pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel)
@@ -141,9 +150,38 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (isTableModelSet) {
       pipeTaskInfo
           .get()
-          .clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(pipeName, isTableModel);
+          .clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(
+              pipeName, isTableModel, exceptionsClearTime);
     } else {
-      pipeTaskInfo.get().clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(pipeName);
+      pipeTaskInfo
+          .get()
+          .clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(pipeName, exceptionsClearTime);
+    }
+
+    if (isStoppedByRuntimeException) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
+    }
+  }
+
+  private void writePipeMetaChangesToConfigNodeConsensus(final ConfigNodeProcedureEnv env) {
+    final List<PipeMeta> pipeMetaList = new ArrayList<>();
+    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+      pipeMetaList.add(pipeMeta);
+    }
+
+    TSStatus response;
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new PipeHandleMetaChangePlan(pipeMetaList));
+    } catch (ConsensusException e) {
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(response.getMessage());
     }
   }
 
