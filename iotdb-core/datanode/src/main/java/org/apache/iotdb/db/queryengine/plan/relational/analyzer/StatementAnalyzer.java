@@ -473,7 +473,7 @@ public class StatementAnalyzer {
 
     private static Optional<SelectAlias> resolveFrom(
         Map<String, List<SelectAlias>> aliasesByCanonicalName, Identifier identifier) {
-      List<SelectAlias> matches = aliasesByCanonicalName.get(identifier.getCanonicalValue());
+      List<SelectAlias> matches = aliasesByCanonicalName.get(canonicalSelectAliasName(identifier));
       if (matches == null || matches.isEmpty()) {
         return Optional.empty();
       }
@@ -515,6 +515,10 @@ public class StatementAnalyzer {
         return resolveFrom(aliasesByCanonicalName, identifier);
       }
     }
+  }
+
+  private static String canonicalSelectAliasName(Identifier identifier) {
+    return identifier.getCanonicalValue().toUpperCase(ENGLISH);
   }
 
   private static boolean resolvesToInputColumn(Scope scope, Identifier identifier) {
@@ -2039,7 +2043,8 @@ public class StatementAnalyzer {
             if (singleColumn.getAlias().isPresent()) {
               Identifier alias = singleColumn.getAlias().get();
               SelectAlias selectAlias =
-                  new SelectAlias(alias.getCanonicalValue(), outputPosition, rewrittenExpression);
+                  new SelectAlias(
+                      canonicalSelectAliasName(alias), outputPosition, rewrittenExpression);
               selectAliasBuilder.add(selectAlias);
             }
             outputPosition++;

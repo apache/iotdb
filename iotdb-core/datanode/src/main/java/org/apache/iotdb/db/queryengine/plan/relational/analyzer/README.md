@@ -39,6 +39,11 @@ For an unqualified identifier in a later SELECT item, the resolution order is:
 2. Previously visible SELECT aliases.
 3. Existing analyzer resolution.
 
+SELECT alias matching uses a canonical alias key derived from `Identifier.getCanonicalValue()` and
+folded to uppercase. As a result, ordinary aliases and delimited aliases are matched
+case-insensitively for SELECT alias reuse: `x`, `X`, `"x"`, and `"X"` all refer to the same alias
+name. This alias rule does not change the source-column precedence above.
+
 If multiple previous aliases have the same canonical name, the reference is ambiguous unless a
 local source column with that name takes precedence.
 

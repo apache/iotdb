@@ -288,23 +288,42 @@ public class SelectAliasReuseTest {
   }
 
   @Test
-  public void lateralColumnAliasHonorsDelimitedCaseSensitivity() {
+  public void lateralColumnAliasMatchesDelimitedIdentifiersByCanonicalName() {
     String exactMatch = "SELECT s1 AS \"x\", \"x\" + 1 AS y FROM table1";
     AnalyzedQuery analyzedQuery = analyze(exactMatch);
     assertArithmeticIdentifiers(getSelectExpression(analyzedQuery, 1), "s1", null);
     new PlanTester().createPlan(exactMatch);
 
-    assertAnalyzeSemanticException(
-        "SELECT s1 AS \"x\", x + 1 AS y FROM table1", "Column 'x' cannot be resolved");
+    String uppercaseExactMatch = "SELECT s1 AS \"X\", \"X\" + 1 AS y FROM table1";
+    AnalyzedQuery analyzedUppercaseQuery = analyze(uppercaseExactMatch);
+    assertArithmeticIdentifiers(getSelectExpression(analyzedUppercaseQuery, 1), "s1", null);
+    new PlanTester().createPlan(uppercaseExactMatch);
 
-    assertAnalyzeSemanticException(
-        "SELECT s1 AS x, \"x\" + 1 AS y FROM table1", "Column 'x' cannot be resolved");
+    String caseDifferingDelimitedMatch = "SELECT s1 AS \"X\", \"x\" + 1 AS y FROM table1";
+    AnalyzedQuery analyzedCaseDifferingDelimitedQuery = analyze(caseDifferingDelimitedMatch);
+    assertArithmeticIdentifiers(
+        getSelectExpression(analyzedCaseDifferingDelimitedQuery, 1), "s1", null);
+    new PlanTester().createPlan(caseDifferingDelimitedMatch);
+
+    String unquotedReferenceToDelimitedAlias = "SELECT s1 AS \"x\", x + 1 AS y FROM table1";
+    AnalyzedQuery analyzedUnquotedReferenceQuery = analyze(unquotedReferenceToDelimitedAlias);
+    assertArithmeticIdentifiers(getSelectExpression(analyzedUnquotedReferenceQuery, 1), "s1", null);
+    new PlanTester().createPlan(unquotedReferenceToDelimitedAlias);
+
+    String delimitedReferenceToUnquotedAlias = "SELECT s1 AS x, \"x\" + 1 AS y FROM table1";
+    AnalyzedQuery analyzedDelimitedReferenceQuery = analyze(delimitedReferenceToUnquotedAlias);
+    assertArithmeticIdentifiers(
+        getSelectExpression(analyzedDelimitedReferenceQuery, 1), "s1", null);
+    new PlanTester().createPlan(delimitedReferenceToUnquotedAlias);
   }
 
   @Test
   public void duplicateLateralColumnAliasesAreAmbiguousUnlessInputColumnMatches() {
     assertAnalyzeSemanticException(
         "SELECT s1 AS x, s2 AS x, x + 1 AS y FROM table1", "Column alias 'x' is ambiguous");
+
+    assertAnalyzeSemanticException(
+        "SELECT s1 AS \"x\", s2 AS X, x + 1 AS y FROM table1", "Column alias 'x' is ambiguous");
 
     String sql = "SELECT s1 AS x, s2 AS x, x + 1 AS y FROM table_with_x";
     AnalyzedQuery analyzedQuery = analyze(sql);
