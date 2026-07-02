@@ -53,7 +53,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
 
 /**
  * Handles setup and teardown of consensus-based subscription queues on DataNode.
@@ -68,6 +67,8 @@ public class ConsensusSubscriptionSetupHandler {
       LoggerFactory.getLogger(ConsensusSubscriptionSetupHandler.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final long FIRST_CONSENSUS_SEARCH_INDEX = 1L;
 
   /** Last-known preferred writer node ID per region, used to detect routing changes. */
   private static final ConcurrentHashMap<TConsensusGroupId, Integer> lastKnownPreferredWriter =
@@ -177,7 +178,8 @@ public class ConsensusSubscriptionSetupHandler {
           }
 
           final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
-          final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
+          final ConsensusLogToTabletConverter converter =
+              buildConverter(topicName, topicConfig, actualDbName);
           final SubscriptionWalRetentionPolicy retentionPolicy =
               buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
 
@@ -188,7 +190,10 @@ public class ConsensusSubscriptionSetupHandler {
                   commitManager, consumerGroupId, topicName, groupId);
           final boolean hasLocalPersistedState =
               commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
-          final long tailStartSearchIndex = serverImpl.getSearchIndex() + 1;
+          // This region is created after the subscription already exists. Its first WAL entry may
+          // already be visible by the time this callback runs, so start from the beginning of this
+          // new region instead of tail+1 to avoid skipping the first write.
+          final long tailStartSearchIndex = FIRST_CONSENSUS_SEARCH_INDEX;
           final long initialRuntimeVersion =
               regionRuntimeVersion.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
           final boolean initialActive =
@@ -412,7 +417,8 @@ public class ConsensusSubscriptionSetupHandler {
       }
 
       final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
-      final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
+      final ConsensusLogToTabletConverter converter =
+          buildConverter(topicName, topicConfig, actualDbName);
       final SubscriptionWalRetentionPolicy retentionPolicy =
           buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
 
@@ -487,7 +493,7 @@ public class ConsensusSubscriptionSetupHandler {
   }
 
   private static ConsensusLogToTabletConverter buildConverter(
-      final TopicConfig topicConfig, final String actualDatabaseName) {
+      final String topicName, final TopicConfig topicConfig, final String actualDatabaseName) {
     // Determine tree or table model
     final boolean isTableTopic = topicConfig.isTableTopic();
 
@@ -495,15 +501,11 @@ public class ConsensusSubscriptionSetupHandler {
     TablePattern tablePattern = null;
 
     if (isTableTopic) {
+      SubscriptionAgent.broker().refreshColumnFilter(topicName, topicConfig);
       // Table model: database + table name pattern
-      final String column =
-          topicConfig.getStringOrDefault(
-              TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
       tablePattern = buildTablePattern(topicConfig);
-      final Pattern columnPattern =
-          TopicConstant.COLUMN_DEFAULT_VALUE.equals(column) ? null : Pattern.compile(column);
       return new ConsensusLogToTabletConverter(
-          null, tablePattern, columnPattern, actualDatabaseName);
+          null, tablePattern, topicName, null, actualDatabaseName);
     } else {
       // Tree model: path or pattern
       if (topicConfig.getAttribute().containsKey(TopicConstant.PATTERN_KEY)) {

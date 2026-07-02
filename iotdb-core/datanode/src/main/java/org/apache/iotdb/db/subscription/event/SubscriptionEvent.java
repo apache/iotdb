@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -84,14 +85,38 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
       final short responseType,
       final SubscriptionPollPayload payload,
       final SubscriptionCommitContext commitContext) {
+    this(responseType, payload, commitContext, true);
+  }
+
+  public SubscriptionEvent(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected) {
+    this(responseType, payload, commitContext, timeSelected, null);
+  }
+
+  public SubscriptionEvent(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected,
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
     this.pipeEvents = new SubscriptionPipeEmptyEvent();
-    this.response = new SubscriptionEventSingleResponse(responseType, payload, commitContext);
+    this.response =
+        new SubscriptionEventSingleResponse(
+            responseType, payload, commitContext, timeSelected, timeSelectedByTable);
     this.commitContext = commitContext;
   }
 
   @TestOnly
   public SubscriptionEvent(final SubscriptionPollResponse response) {
-    this(response.getResponseType(), response.getPayload(), response.getCommitContext());
+    this(
+        response.getResponseType(),
+        response.getPayload(),
+        response.getCommitContext(),
+        response.isTimeSelected(),
+        response.getTimeSelectedByTable());
   }
 
   /**

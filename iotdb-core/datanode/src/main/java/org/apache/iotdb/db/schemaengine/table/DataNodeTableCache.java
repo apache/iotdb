@@ -338,6 +338,28 @@ public class DataNodeTableCache implements ITableCache {
     return instanceVersion.get();
   }
 
+  public Map<String, Map<String, TsTable>> getTableSnapshot() {
+    readWriteLock.readLock().lock();
+    try {
+      return databaseTableMap.entrySet().stream()
+          .collect(
+              Collectors.toMap(
+                  Map.Entry::getKey,
+                  entry ->
+                      entry.getValue().entrySet().stream()
+                          .collect(
+                              Collectors.toMap(
+                                  Map.Entry::getKey,
+                                  tableEntry -> new TsTable(tableEntry.getValue()),
+                                  (left, right) -> right,
+                                  HashMap::new)),
+                  (left, right) -> right,
+                  HashMap::new));
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public TsTable getTableInWrite(final String database, final String tableName) {
     final TsTable result = getTableInCache(database, tableName);
     return Objects.nonNull(result) ? result : getTable(database, tableName, false);

@@ -29,26 +29,52 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 public class SubscriptionPollResponse {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPollResponse.class);
 
-  private final transient short responseType;
+  private final short responseType;
 
-  private final transient SubscriptionPollPayload payload;
+  private final SubscriptionPollPayload payload;
 
-  private final transient SubscriptionCommitContext commitContext;
+  private final SubscriptionCommitContext commitContext;
+
+  private final boolean timeSelected;
+
+  private final Map<String, Map<String, Boolean>> timeSelectedByTable;
 
   public SubscriptionPollResponse(
       final short responseType,
       final SubscriptionPollPayload payload,
       final SubscriptionCommitContext commitContext) {
+    this(responseType, payload, commitContext, true);
+  }
+
+  public SubscriptionPollResponse(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected) {
+    this(responseType, payload, commitContext, timeSelected, Collections.emptyMap());
+  }
+
+  public SubscriptionPollResponse(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected,
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
     this.responseType = responseType;
     this.payload = payload;
     this.commitContext = commitContext;
+    this.timeSelected = timeSelected;
+    this.timeSelectedByTable = copyTimeSelectedByTable(timeSelectedByTable);
   }
 
   public short getResponseType() {
@@ -61,6 +87,14 @@ public class SubscriptionPollResponse {
 
   public SubscriptionCommitContext getCommitContext() {
     return commitContext;
+  }
+
+  public boolean isTimeSelected() {
+    return timeSelected;
+  }
+
+  public Map<String, Map<String, Boolean>> getTimeSelectedByTable() {
+    return timeSelectedByTable;
   }
 
   /////////////////////////////// de/ser ///////////////////////////////
@@ -77,6 +111,8 @@ public class SubscriptionPollResponse {
     ReadWriteIOUtils.write(responseType, stream);
     payload.serialize(stream);
     commitContext.serialize(stream);
+    ReadWriteIOUtils.write(timeSelected, stream);
+    serializeTimeSelectedByTable(stream);
   }
 
   public static SubscriptionPollResponse deserialize(final ByteBuffer buffer) {
@@ -114,7 +150,72 @@ public class SubscriptionPollResponse {
     }
 
     final SubscriptionCommitContext commitContext = SubscriptionCommitContext.deserialize(buffer);
-    return new SubscriptionPollResponse(responseType, payload, commitContext);
+    final boolean timeSelected = buffer.hasRemaining() ? ReadWriteIOUtils.readBool(buffer) : true;
+    final Map<String, Map<String, Boolean>> timeSelectedByTable =
+        buffer.hasRemaining() ? deserializeTimeSelectedByTable(buffer) : Collections.emptyMap();
+    return new SubscriptionPollResponse(
+        responseType, payload, commitContext, timeSelected, timeSelectedByTable);
+  }
+
+  private void serializeTimeSelectedByTable(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(timeSelectedByTable.size(), stream);
+    for (final Map.Entry<String, Map<String, Boolean>> databaseEntry :
+        timeSelectedByTable.entrySet()) {
+      ReadWriteIOUtils.write(databaseEntry.getKey(), stream);
+      ReadWriteIOUtils.write(databaseEntry.getValue().size(), stream);
+      for (final Map.Entry<String, Boolean> tableEntry : databaseEntry.getValue().entrySet()) {
+        ReadWriteIOUtils.write(tableEntry.getKey(), stream);
+        ReadWriteIOUtils.write(tableEntry.getValue(), stream);
+      }
+    }
+  }
+
+  private static Map<String, Map<String, Boolean>> deserializeTimeSelectedByTable(
+      final ByteBuffer buffer) {
+    final int databaseSize = ReadWriteIOUtils.readInt(buffer);
+    if (databaseSize <= 0) {
+      return Collections.emptyMap();
+    }
+    final Map<String, Map<String, Boolean>> result = new HashMap<>();
+    for (int i = 0; i < databaseSize; ++i) {
+      final String databaseName = ReadWriteIOUtils.readString(buffer);
+      final int tableSize = ReadWriteIOUtils.readInt(buffer);
+      final Map<String, Boolean> tableMap = new HashMap<>();
+      for (int j = 0; j < tableSize; ++j) {
+        tableMap.put(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readBool(buffer));
+      }
+      result.put(databaseName, tableMap);
+    }
+    return copyTimeSelectedByTable(result);
+  }
+
+  private static Map<String, Map<String, Boolean>> copyTimeSelectedByTable(
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
+    if (Objects.isNull(timeSelectedByTable) || timeSelectedByTable.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    final Map<String, Map<String, Boolean>> copied = new HashMap<>();
+    timeSelectedByTable.forEach(
+        (databaseName, tableMap) -> {
+          if (Objects.isNull(databaseName) || Objects.isNull(tableMap) || tableMap.isEmpty()) {
+            return;
+          }
+          final String normalizedDatabaseName = databaseName.trim().toLowerCase(Locale.ROOT);
+          final Map<String, Boolean> copiedTableMap = new HashMap<>();
+          tableMap.forEach(
+              (tableName, timeSelected) -> {
+                if (Objects.nonNull(tableName) && Objects.nonNull(timeSelected)) {
+                  copiedTableMap.put(tableName.trim().toLowerCase(Locale.ROOT), timeSelected);
+                }
+              });
+          if (!copiedTableMap.isEmpty()) {
+            copied.put(normalizedDatabaseName, Collections.unmodifiableMap(copiedTableMap));
+          }
+        });
+    if (copied.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return Collections.unmodifiableMap(copied);
   }
 
   /////////////////////////////// stringify ///////////////////////////////
@@ -130,6 +231,8 @@ public class SubscriptionPollResponse {
     result.put("responseType", type != null ? type.toString() : "UNKNOWN(" + responseType + ")");
     result.put("payload", payload != null ? payload.toString() : "null");
     result.put("commitContext", commitContext != null ? commitContext.toString() : "null");
+    result.put("timeSelected", String.valueOf(timeSelected));
+    result.put("timeSelectedByTable", String.valueOf(timeSelectedByTable));
     return result;
   }
 }

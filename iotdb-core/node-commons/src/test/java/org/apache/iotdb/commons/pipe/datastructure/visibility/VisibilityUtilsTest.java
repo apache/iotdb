@@ -34,13 +34,11 @@ import java.util.Map;
 public class VisibilityUtilsTest {
 
   @Test
-  public void testStrictVisibilityUsesDialectOnly() {
+  public void testStrictVisibilityUsesDialectWhenCaptureAttributesAbsent() {
     final Map<String, String> treeAttributes = new HashMap<>();
     treeAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
     treeAttributes.put(
         SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
-    treeAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "false");
-    treeAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "true");
     treeAttributes.put(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY, "true");
     assertVisibility(Visibility.TREE_ONLY, treeAttributes, true, false);
 
@@ -48,10 +46,35 @@ public class VisibilityUtilsTest {
     tableAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
     tableAttributes.put(
         SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
-    tableAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, "true");
-    tableAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "false");
     tableAttributes.put(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY, "true");
     assertVisibility(Visibility.TABLE_ONLY, tableAttributes, false, true);
+  }
+
+  @Test
+  public void testStrictVisibilityUsesExplicitCaptureAttributesForDataCaptureOnly() {
+    final Map<String, String> treeViewAttributes = new HashMap<>();
+    treeViewAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    treeViewAttributes.put(
+        SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
+    treeViewAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, "true");
+    treeViewAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "false");
+    treeViewAttributes.put(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY, "true");
+    assertVisibility(Visibility.TABLE_ONLY, treeViewAttributes, true, false);
+
+    final Map<String, String> tableOnlyAttributes = new HashMap<>();
+    tableOnlyAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    tableOnlyAttributes.put(
+        SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
+    tableOnlyAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "false");
+    tableOnlyAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "true");
+    assertVisibility(Visibility.TREE_ONLY, tableOnlyAttributes, false, true);
+
+    final Map<String, String> captureBothAttributes = new HashMap<>();
+    captureBothAttributes.put(
+        SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
+    captureBothAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "true");
+    captureBothAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "true");
+    assertVisibility(Visibility.TREE_ONLY, captureBothAttributes, true, true);
   }
 
   @Test

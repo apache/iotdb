@@ -40,6 +40,8 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   private final SubscriptionMessageHandler handler;
 
+  private final boolean timeSelected;
+
   /** Watermark timestamp, valid only when messageType == WATERMARK. */
   private final long watermarkTimestamp;
 
@@ -47,9 +49,25 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   public SubscriptionMessage(
       final SubscriptionCommitContext commitContext, final Map<String, List<Tablet>> tablets) {
+    this(commitContext, tablets, true);
+  }
+
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext,
+      final Map<String, List<Tablet>> tablets,
+      final boolean timeSelected) {
+    this(commitContext, tablets, timeSelected, null);
+  }
+
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext,
+      final Map<String, List<Tablet>> tablets,
+      final boolean timeSelected,
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.RECORD_HANDLER.getType();
-    this.handler = new SubscriptionRecordHandler(tablets);
+    this.handler = new SubscriptionRecordHandler(tablets, timeSelected, timeSelectedByTable);
+    this.timeSelected = timeSelected;
     this.watermarkTimestamp = Long.MIN_VALUE;
   }
 
@@ -57,9 +75,18 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
       final SubscriptionCommitContext commitContext,
       final String absolutePath,
       @Nullable final String databaseName) {
+    this(commitContext, absolutePath, databaseName, true);
+  }
+
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext,
+      final String absolutePath,
+      @Nullable final String databaseName,
+      final boolean timeSelected) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.TS_FILE.getType();
     this.handler = new SubscriptionTsFileHandler(absolutePath, databaseName);
+    this.timeSelected = timeSelected;
     this.watermarkTimestamp = Long.MIN_VALUE;
   }
 
@@ -69,6 +96,7 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.WATERMARK.getType();
     this.handler = null;
+    this.timeSelected = true;
     this.watermarkTimestamp = watermarkTimestamp;
   }
 
@@ -78,6 +106,10 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   public short getMessageType() {
     return messageType;
+  }
+
+  public boolean isTimeSelected() {
+    return timeSelected;
   }
 
   /**
@@ -140,13 +172,14 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     final SubscriptionMessage that = (SubscriptionMessage) obj;
     return Objects.equals(this.commitContext, that.commitContext)
         && this.watermarkTimestamp == that.watermarkTimestamp
+        && this.timeSelected == that.timeSelected
         && Objects.equals(this.messageType, that.messageType)
         && Objects.equals(this.handler, that.handler);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(commitContext, messageType, handler, watermarkTimestamp);
+    return Objects.hash(commitContext, messageType, handler, timeSelected, watermarkTimestamp);
   }
 
   @Override
@@ -160,6 +193,8 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
         + commitContext
         + ", messageType="
         + SubscriptionMessageType.valueOf(messageType).toString()
+        + ", timeSelected="
+        + timeSelected
         + ", watermarkTimestamp="
         + watermarkTimestamp
         + "}";
