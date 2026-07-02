@@ -368,6 +368,20 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setCheckPeriodWhenInsertBlocked(int checkPeriodWhenInsertBlocked) {
+    cnConfig.setCheckPeriodWhenInsertBlocked(checkPeriodWhenInsertBlocked);
+    dnConfig.setCheckPeriodWhenInsertBlocked(checkPeriodWhenInsertBlocked);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
+    cnConfig.setMaxWaitingTimeWhenInsertBlocked(maxWaitingTimeWhenInsertBlocked);
+    dnConfig.setMaxWaitingTimeWhenInsertBlocked(maxWaitingTimeWhenInsertBlocked);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
     cnConfig.setDegreeOfParallelism(degreeOfParallelism);
     dnConfig.setDegreeOfParallelism(degreeOfParallelism);
