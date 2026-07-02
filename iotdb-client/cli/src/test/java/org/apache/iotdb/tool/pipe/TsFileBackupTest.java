@@ -61,7 +61,7 @@ public class TsFileBackupTest {
     Path pluginDir = Files.createDirectories(tempDir.resolve("ext").resolve("pipe"));
     Path pluginJar =
         Files.createFile(
-            pluginDir.resolve("tsfile-remote-sink-2.0.8-SNAPSHOT-jar-with-dependencies.jar"));
+            pluginDir.resolve("tsfile-remote-sink-2.0.11-SNAPSHOT-jar-with-dependencies.jar"));
 
     File resolvedPluginJar = TsFileBackup.resolvePluginJar(null, tempDir.toString());
 

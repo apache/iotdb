@@ -55,7 +55,7 @@ e.g.
 ./do-docker-build.sh -t ainode -v 2.0.5-SNAPSHOT
 # for ainode, start from 2.0.8
 cd src/main
-./build-ainode.sh -v 2.0.8-SNAPSHOT -d /data/ainode
+./build-ainode.sh -v 2.0.11-SNAPSHOT -d /data/ainode
 ```
 Notice:
 Make directory of src/main/target and put the zip file downloading from the official download page. 
@@ -108,7 +108,7 @@ docker run -d \
   -e AIN_CLUSTER_INGRESS_PORT=6667 \
   -e AIN_CLUSTER_INGRESS_USERNAME=root \
   -e AIN_CLUSTER_INGRESS_PASSWORD=root \
-  apache/iotdb:2.0.7-SNAPSHOT-ainode
+  apache/iotdb:2.0.11-SNAPSHOT-ainode
 ```
 
 ## Quick start
