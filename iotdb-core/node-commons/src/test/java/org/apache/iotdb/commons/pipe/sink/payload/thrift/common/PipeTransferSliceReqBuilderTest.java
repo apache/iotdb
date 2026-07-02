@@ -38,6 +38,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertVersionAndType;
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.copyOf;
+
 public class PipeTransferSliceReqBuilderTest {
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
@@ -63,28 +66,32 @@ public class PipeTransferSliceReqBuilderTest {
     Assert.assertTrue(PipeTransferSliceReqBuilder.shouldSlice(req, bodySizeLimit));
     Assert.assertEquals(3, PipeTransferSliceReqBuilder.getSliceCount(req, bodySizeLimit));
 
-    final PipeTransferSliceReq firstSlice =
-        PipeTransferSliceReqBuilder.buildSliceReq(req, 123, 0, 3, bodySizeLimit);
-    final PipeTransferSliceReq secondSlice =
-        PipeTransferSliceReqBuilder.buildSliceReq(req, 123, 1, 3, bodySizeLimit);
-    final PipeTransferSliceReq thirdSlice =
-        PipeTransferSliceReqBuilder.buildSliceReq(req, 123, 2, 3, bodySizeLimit);
-
-    Assert.assertArrayEquals(new byte[] {0, 1, 2, 3}, firstSlice.getSliceBody());
-    Assert.assertArrayEquals(new byte[] {4, 5, 6, 7}, secondSlice.getSliceBody());
-    Assert.assertArrayEquals(new byte[] {8, 9}, thirdSlice.getSliceBody());
-    Assert.assertEquals(0, firstSlice.getSliceIndex());
-    Assert.assertEquals(1, secondSlice.getSliceIndex());
-    Assert.assertEquals(2, thirdSlice.getSliceIndex());
-    Assert.assertEquals(3, firstSlice.getSliceCount());
-    Assert.assertEquals(req.getType(), firstSlice.getOriginReqType());
-    Assert.assertEquals(10, firstSlice.getOriginBodySize());
+    final byte[][] expectedBodies = {
+      new byte[] {0, 1, 2, 3}, new byte[] {4, 5, 6, 7}, new byte[] {8, 9}
+    };
+    for (int i = 0; i < expectedBodies.length; i++) {
+      final PipeTransferSliceReq slice =
+          PipeTransferSliceReqBuilder.buildSliceReq(req, 123, i, 3, bodySizeLimit);
+      assertSlice(slice, 123, req.getType(), 10, expectedBodies[i], i, 3);
+      assertSlice(
+          PipeTransferSliceReq.fromTPipeTransferReq(copyOf(slice)),
+          123,
+          req.getType(),
+          10,
+          expectedBodies[i],
+          i,
+          3);
+    }
+    Assert.assertEquals(0, req.body.position());
   }
 
   @Test
   public void testShouldSliceOnlyForVersion1RequestsAboveThreshold() {
     final int bodySizeLimit = PipeTransferSliceReqBuilder.getBodySizeLimit();
 
+    Assert.assertFalse(
+        PipeTransferSliceReqBuilder.shouldSlice(
+            createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 0), bodySizeLimit));
     Assert.assertFalse(
         PipeTransferSliceReqBuilder.shouldSlice(
             createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 3), bodySizeLimit));
@@ -95,6 +102,38 @@ public class PipeTransferSliceReqBuilderTest {
     Assert.assertTrue(
         PipeTransferSliceReqBuilder.shouldSlice(
             createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 4), bodySizeLimit));
+  }
+
+  @Test
+  public void testGetSliceCountForBoundaryBodySizes() {
+    final int bodySizeLimit = PipeTransferSliceReqBuilder.getBodySizeLimit();
+
+    Assert.assertEquals(
+        0,
+        PipeTransferSliceReqBuilder.getSliceCount(
+            createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 0), bodySizeLimit));
+    Assert.assertEquals(
+        1,
+        PipeTransferSliceReqBuilder.getSliceCount(
+            createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), bodySizeLimit),
+            bodySizeLimit));
+    Assert.assertEquals(
+        2,
+        PipeTransferSliceReqBuilder.getSliceCount(
+            createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), bodySizeLimit + 1),
+            bodySizeLimit));
+    Assert.assertEquals(
+        2,
+        PipeTransferSliceReqBuilder.getSliceCount(
+            createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), bodySizeLimit * 2),
+            bodySizeLimit));
+  }
+
+  @Test
+  public void testSliceOrderIdIncreases() {
+    final int firstOrderId = PipeTransferSliceReqBuilder.nextSliceOrderId();
+
+    Assert.assertEquals(firstOrderId + 1, PipeTransferSliceReqBuilder.nextSliceOrderId());
   }
 
   @Test
@@ -121,6 +160,24 @@ public class PipeTransferSliceReqBuilderTest {
     Assert.assertArrayEquals(new byte[] {2, 3, 4}, sliceReq.getSliceBody());
     Assert.assertEquals(1, sliceReq.getSliceIndex());
     Assert.assertEquals(2, sliceReq.getSliceCount());
+  }
+
+  private static void assertSlice(
+      final PipeTransferSliceReq sliceReq,
+      final int expectedOrderId,
+      final short expectedOriginReqType,
+      final int expectedOriginBodySize,
+      final byte[] expectedSliceBody,
+      final int expectedSliceIndex,
+      final int expectedSliceCount) {
+    assertVersionAndType(
+        sliceReq, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_SLICE);
+    Assert.assertEquals(expectedOrderId, sliceReq.getOrderId());
+    Assert.assertEquals(expectedOriginReqType, sliceReq.getOriginReqType());
+    Assert.assertEquals(expectedOriginBodySize, sliceReq.getOriginBodySize());
+    Assert.assertArrayEquals(expectedSliceBody, sliceReq.getSliceBody());
+    Assert.assertEquals(expectedSliceIndex, sliceReq.getSliceIndex());
+    Assert.assertEquals(expectedSliceCount, sliceReq.getSliceCount());
   }
 
   private static TPipeTransferReq createReq(final byte version, final int bodySize) {

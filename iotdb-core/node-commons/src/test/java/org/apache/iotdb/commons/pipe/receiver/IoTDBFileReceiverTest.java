@@ -47,101 +47,124 @@ public class IoTDBFileReceiverTest {
 
   @Test
   public void testRejectPathTraversalFileName() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      final IOException exception =
-          Assert.assertThrows(
-              IOException.class, () -> receiver.createWritingFile("../outside.tsfile", true));
-      Assert.assertTrue(exception.getMessage().contains("Illegal fileName"));
-    } finally {
-      receiver.handleExit();
-    }
+    withReceiver(
+        receiver -> {
+          final IOException exception =
+              Assert.assertThrows(
+                  IOException.class, () -> receiver.createWritingFile("../outside.tsfile", true));
+          Assert.assertTrue(exception.getMessage().contains("Illegal fileName"));
+        });
   }
 
   @Test
   public void testAllowNormalFileName() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      receiver.createWritingFile("normal.tsfile", true);
-      Assert.assertTrue(receiver.getWritingFileInBaseDir("normal.tsfile").exists());
-    } finally {
-      receiver.handleExit();
-    }
+    withReceiver(
+        receiver -> {
+          receiver.createWritingFile("normal.tsfile", true);
+          Assert.assertTrue(receiver.getWritingFileInBaseDir("normal.tsfile").exists());
+        });
   }
 
   @Test
   public void testRejectPathTraversalFileNameInSealRequest() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      receiver.createWritingFile("normal.tsfile", false);
+    withReceiver(
+        receiver -> {
+          receiver.createWritingFile("normal.tsfile", false);
 
-      final TPipeTransferResp response =
-          receiver.sealFiles(
-              Arrays.asList("../outside.mod", "normal.tsfile"), Arrays.asList(0L, 0L));
+          final TPipeTransferResp response =
+              receiver.sealFiles(
+                  Arrays.asList("../outside.mod", "normal.tsfile"), Arrays.asList(0L, 0L));
 
-      Assert.assertEquals(
-          TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
-      Assert.assertTrue(response.getStatus().getMessage().contains("Illegal fileName"));
-    } finally {
-      receiver.handleExit();
-    }
+          Assert.assertEquals(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(),
+              response.getStatus().getCode());
+          Assert.assertTrue(response.getStatus().getMessage().contains("Illegal fileName"));
+        });
   }
 
   @Test
   public void testHandshakeResetsWritingFileState() throws Exception {
+    withReceiver(
+        receiver -> {
+          receiver.handshake();
+          receiver.createWritingFile("normal.tsfile", true);
+          receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+
+          final File oldReceiverDir = receiver.getCurrentReceiverDir();
+          Assert.assertNotNull(receiver.getCurrentWritingFile());
+          Assert.assertNotNull(receiver.getCurrentWritingFileWriter());
+
+          receiver.handshake();
+
+          Assert.assertFalse(oldReceiverDir.exists());
+          Assert.assertNull(receiver.getCurrentWritingFile());
+          Assert.assertNull(receiver.getCurrentWritingFileWriter());
+          Assert.assertNotEquals(
+              oldReceiverDir.getAbsolutePath(), receiver.getCurrentReceiverDir().getAbsolutePath());
+        });
+  }
+
+  @Test
+  public void testSealFileV1SuccessKeepsTransferredFileForLoader() throws Exception {
+    withReceiver(
+        receiver -> {
+          receiver.createWritingFile("normal.tsfile", true);
+          receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+
+          final File transferredFile = receiver.getWritingFileInBaseDir("normal.tsfile");
+          final TPipeTransferResp response = receiver.sealFileV1("normal.tsfile", 3L);
+
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+          Assert.assertTrue(transferredFile.exists());
+          Assert.assertEquals(transferredFile.getAbsolutePath(), receiver.getLoadedFileV1Path());
+          Assert.assertNull(receiver.getCurrentWritingFile());
+          Assert.assertNull(receiver.getCurrentWritingFileWriter());
+        });
+  }
+
+  @Test
+  public void testSealFileV1FailureDeletesTransferredFile() throws Exception {
+    withReceiver(
+        receiver -> {
+          receiver.createWritingFile("normal.tsfile", true);
+          receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+          receiver.setLoadFileV1Status(
+              new TSStatus(TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode()));
+
+          final File transferredFile = receiver.getWritingFileInBaseDir("normal.tsfile");
+          final TPipeTransferResp response = receiver.sealFileV1("normal.tsfile", 3L);
+
+          Assert.assertEquals(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(),
+              response.getStatus().getCode());
+          Assert.assertFalse(transferredFile.exists());
+          Assert.assertNull(receiver.getCurrentWritingFile());
+          Assert.assertNull(receiver.getCurrentWritingFileWriter());
+        });
+  }
+
+  private static void withReceiver(final ReceiverConsumer action) throws Exception {
     final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
     final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
     try {
-      receiver.handshake();
-      receiver.createWritingFile("normal.tsfile", true);
-      receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
-
-      final File oldReceiverDir = receiver.getCurrentReceiverDir();
-      Assert.assertNotNull(receiver.getCurrentWritingFile());
-      Assert.assertNotNull(receiver.getCurrentWritingFileWriter());
-
-      receiver.handshake();
-
-      Assert.assertFalse(oldReceiverDir.exists());
-      Assert.assertNull(receiver.getCurrentWritingFile());
-      Assert.assertNull(receiver.getCurrentWritingFileWriter());
-      Assert.assertNotEquals(
-          oldReceiverDir.getAbsolutePath(), receiver.getCurrentReceiverDir().getAbsolutePath());
+      action.accept(receiver);
     } finally {
       receiver.handleExit();
     }
   }
 
-  @Test
-  public void testSealFileV1FailureDeletesTransferredFile() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      receiver.createWritingFile("normal.tsfile", true);
-      receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
-      receiver.setLoadFileV1Status(
-          new TSStatus(TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode()));
+  @FunctionalInterface
+  private interface ReceiverConsumer {
 
-      final File transferredFile = receiver.getWritingFileInBaseDir("normal.tsfile");
-      final TPipeTransferResp response = receiver.sealFileV1("normal.tsfile", 3L);
-
-      Assert.assertEquals(
-          TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
-      Assert.assertFalse(transferredFile.exists());
-      Assert.assertNull(receiver.getCurrentWritingFile());
-      Assert.assertNull(receiver.getCurrentWritingFileWriter());
-    } finally {
-      receiver.handleExit();
-    }
+    void accept(DummyFileReceiver receiver) throws Exception;
   }
 
   private static class DummyFileReceiver extends IoTDBFileReceiver {
 
     private final File receiverFileBaseDir;
     private TSStatus loadFileV1Status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    private String loadedFileV1Path;
 
     DummyFileReceiver(final File baseDir) {
       receiverFileBaseDir = baseDir;
@@ -164,6 +187,10 @@ public class IoTDBFileReceiverTest {
 
     void setLoadFileV1Status(final TSStatus status) {
       loadFileV1Status = status;
+    }
+
+    String getLoadedFileV1Path() {
+      return loadedFileV1Path;
     }
 
     TPipeTransferResp sealFileV1(final String fileName, final long fileLength) throws IOException {
@@ -231,6 +258,7 @@ public class IoTDBFileReceiverTest {
     @Override
     protected TSStatus loadFileV1(
         final PipeTransferFileSealReqV1 req, final String fileAbsolutePath) {
+      loadedFileV1Path = fileAbsolutePath;
       return loadFileV1Status;
     }
 

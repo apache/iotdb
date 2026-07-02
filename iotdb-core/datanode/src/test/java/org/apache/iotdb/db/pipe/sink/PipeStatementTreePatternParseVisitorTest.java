@@ -46,6 +46,9 @@ import java.util.Map;
 
 public class PipeStatementTreePatternParseVisitorTest {
 
+  private final PipeStatementTreePatternParseVisitor visitor =
+      new PipeStatementTreePatternParseVisitor();
+
   private final IoTDBTreePatternOperations prefixPathPattern =
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.**"));
   private final IoTDBTreePatternOperations fullPathPattern =
@@ -55,6 +58,8 @@ public class PipeStatementTreePatternParseVisitorTest {
           Arrays.asList(
               new IoTDBTreePattern("root.db.device.s1"),
               new IoTDBTreePattern("root.db.device.s2")));
+  private final IoTDBTreePatternOperations nonOverlappingPattern =
+      new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db1.device.**"));
   private final IoTDBTreePatternOperations exclusionPattern =
       new WithExclusionIoTDBTreePattern(
           new UnionIoTDBTreePattern(
@@ -65,68 +70,47 @@ public class PipeStatementTreePatternParseVisitorTest {
 
   @Test
   public void testCreateTimeSeries() throws IllegalPathException {
-    final CreateTimeSeriesStatement createTimeSeriesStatementS1 = new CreateTimeSeriesStatement();
-    createTimeSeriesStatementS1.setPath(new MeasurementPath("root.db.device.s1"));
-    createTimeSeriesStatementS1.setDataType(TSDataType.FLOAT);
-    createTimeSeriesStatementS1.setEncoding(TSEncoding.RLE);
-    createTimeSeriesStatementS1.setCompressor(CompressionType.SNAPPY);
-    createTimeSeriesStatementS1.setProps(Collections.emptyMap());
-    createTimeSeriesStatementS1.setTags(Collections.emptyMap());
-    createTimeSeriesStatementS1.setAttributes(Collections.emptyMap());
-    createTimeSeriesStatementS1.setAlias("a1");
-
-    final CreateTimeSeriesStatement createTimeSeriesStatementS2 = new CreateTimeSeriesStatement();
-    createTimeSeriesStatementS2.setPath(new MeasurementPath("root.db.device.s2"));
-    createTimeSeriesStatementS2.setDataType(TSDataType.INT32);
-    createTimeSeriesStatementS2.setEncoding(TSEncoding.PLAIN);
-    createTimeSeriesStatementS2.setCompressor(CompressionType.SNAPPY);
-    createTimeSeriesStatementS2.setProps(Collections.emptyMap());
-    createTimeSeriesStatementS2.setTags(Collections.emptyMap());
-    createTimeSeriesStatementS2.setAttributes(Collections.emptyMap());
-    createTimeSeriesStatementS2.setAlias("a2");
-
+    final CreateTimeSeriesStatement createTimeSeriesStatementS1 =
+        createTimeSeriesStatement("root.db.device.s1", TSDataType.FLOAT, TSEncoding.RLE, "a1");
+    final CreateTimeSeriesStatement createTimeSeriesStatementS2 =
+        createTimeSeriesStatement("root.db.device.s2", TSDataType.INT32, TSEncoding.PLAIN, "a2");
     final CreateTimeSeriesStatement createTimeSeriesStatementToFilter =
-        new CreateTimeSeriesStatement();
-    createTimeSeriesStatementToFilter.setPath(new MeasurementPath("root.db1.device.s1"));
-    createTimeSeriesStatementToFilter.setDataType(TSDataType.FLOAT);
-    createTimeSeriesStatementToFilter.setEncoding(TSEncoding.RLE);
-    createTimeSeriesStatementToFilter.setCompressor(CompressionType.SNAPPY);
-    createTimeSeriesStatementToFilter.setProps(Collections.emptyMap());
-    createTimeSeriesStatementToFilter.setTags(Collections.emptyMap());
-    createTimeSeriesStatementToFilter.setAttributes(Collections.emptyMap());
-    createTimeSeriesStatementToFilter.setAlias("a3");
+        createTimeSeriesStatement("root.db1.device.s1", TSDataType.FLOAT, TSEncoding.RLE, "a3");
 
     Assert.assertEquals(
         createTimeSeriesStatementS1,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitCreateTimeseries(createTimeSeriesStatementS1, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitCreateTimeseries(createTimeSeriesStatementToFilter, prefixPathPattern)
             .isPresent());
 
     Assert.assertEquals(
         createTimeSeriesStatementS1,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitCreateTimeseries(createTimeSeriesStatementS1, multiplePathPattern)
             .orElseThrow(AssertionError::new));
+    Assert.assertEquals(
+        createTimeSeriesStatementS2,
+        visitor
+            .visitCreateTimeseries(createTimeSeriesStatementS2, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitCreateTimeseries(createTimeSeriesStatementToFilter, multiplePathPattern)
             .isPresent());
 
     Assert.assertEquals(
         createTimeSeriesStatementS1,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitCreateTimeseries(createTimeSeriesStatementS1, exclusionPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementTreePatternParseVisitor()
-            .visitCreateTimeseries(createTimeSeriesStatementS2, exclusionPattern)
-            .isPresent());
+        visitor.visitCreateTimeseries(createTimeSeriesStatementS2, exclusionPattern).isPresent());
     Assert.assertFalse(
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitCreateTimeseries(createTimeSeriesStatementToFilter, exclusionPattern)
             .isPresent());
   }
@@ -169,13 +153,13 @@ public class PipeStatementTreePatternParseVisitorTest {
 
     Assert.assertEquals(
         expectedS1Only,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitCreateAlignedTimeseries(originalS1S2, fullPathPattern)
             .orElseThrow(AssertionError::new));
 
     Assert.assertEquals(
         originalS1S2,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitCreateAlignedTimeseries(originalS1S2S3, multiplePathPattern)
             .orElseThrow(AssertionError::new));
 
@@ -191,9 +175,11 @@ public class PipeStatementTreePatternParseVisitorTest {
 
     Assert.assertEquals(
         expectedS1S3,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitCreateAlignedTimeseries(originalS1S2S3, exclusionPattern)
             .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        visitor.visitCreateAlignedTimeseries(originalS1S2S3, nonOverlappingPattern).isPresent());
   }
 
   @Test
@@ -224,35 +210,33 @@ public class PipeStatementTreePatternParseVisitorTest {
 
     Assert.assertEquals(
         alterTimeSeriesStatementS1,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitAlterTimeSeries(alterTimeSeriesStatementS1, fullPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, prefixPathPattern)
             .isPresent());
 
     Assert.assertEquals(
         alterTimeSeriesStatementS1,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitAlterTimeSeries(alterTimeSeriesStatementS1, multiplePathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, multiplePathPattern)
             .isPresent());
 
     Assert.assertEquals(
         alterTimeSeriesStatementS1,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitAlterTimeSeries(alterTimeSeriesStatementS1, exclusionPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementTreePatternParseVisitor()
-            .visitAlterTimeSeries(alterTimeSeriesStatementS2, exclusionPattern)
-            .isPresent());
+        visitor.visitAlterTimeSeries(alterTimeSeriesStatementS2, exclusionPattern).isPresent());
     Assert.assertFalse(
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, exclusionPattern)
             .isPresent());
   }
@@ -266,20 +250,20 @@ public class PipeStatementTreePatternParseVisitorTest {
 
     Assert.assertEquals(
         activateTemplateStatement,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitActivateTemplate(activateTemplateStatement, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitActivateTemplate(activateTemplateStatementToFilter, prefixPathPattern)
             .isPresent());
     Assert.assertEquals(
         activateTemplateStatement,
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitActivateTemplate(activateTemplateStatement, multiplePathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementTreePatternParseVisitor()
+        visitor
             .visitActivateTemplate(activateTemplateStatementToFilter, multiplePathPattern)
             .isPresent());
   }
@@ -295,7 +279,7 @@ public class PipeStatementTreePatternParseVisitorTest {
 
     final CreateLogicalViewStatement targetLogicalViewStatement =
         (CreateLogicalViewStatement)
-            new PipeStatementTreePatternParseVisitor()
+            visitor
                 .visitCreateLogicalView(createLogicalViewStatement, prefixPathPattern)
                 .orElseThrow(AssertionError::new);
     Assert.assertEquals(
@@ -304,5 +288,22 @@ public class PipeStatementTreePatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new TimeSeriesViewOperand("root.sg1.d1")),
         targetLogicalViewStatement.getViewExpressions());
+    Assert.assertFalse(
+        visitor.visitCreateLogicalView(createLogicalViewStatement, fullPathPattern).isPresent());
+  }
+
+  private static CreateTimeSeriesStatement createTimeSeriesStatement(
+      final String path, final TSDataType dataType, final TSEncoding encoding, final String alias)
+      throws IllegalPathException {
+    final CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
+    statement.setPath(new MeasurementPath(path));
+    statement.setDataType(dataType);
+    statement.setEncoding(encoding);
+    statement.setCompressor(CompressionType.SNAPPY);
+    statement.setProps(Collections.emptyMap());
+    statement.setTags(Collections.emptyMap());
+    statement.setAttributes(Collections.emptyMap());
+    statement.setAlias(alias);
+    return statement;
   }
 }

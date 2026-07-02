@@ -27,11 +27,13 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -55,6 +57,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.function.Function;
 
 public class PipeConfigTreePatternParseVisitorTest {
 
@@ -69,74 +72,16 @@ public class PipeConfigTreePatternParseVisitorTest {
               new IoTDBTreePattern("root.db.device.s2")));
 
   @Test
-  public void testCreateDatabase() {
-    final DatabaseSchemaPlan createDatabasePlan =
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.db"));
-    final DatabaseSchemaPlan createDatabasePlanToFilter =
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.db1"));
-
-    Assert.assertEquals(
-        createDatabasePlan,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCreateDatabase(createDatabasePlan, prefixPathPattern)
-            .orElseThrow(AssertionError::new));
-    Assert.assertFalse(
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCreateDatabase(createDatabasePlanToFilter, prefixPathPattern)
-            .isPresent());
-    Assert.assertEquals(
-        createDatabasePlan,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCreateDatabase(createDatabasePlan, multiplePathPattern)
-            .orElseThrow(AssertionError::new));
-  }
-
-  @Test
-  public void testAlterDatabase() {
-    final DatabaseSchemaPlan alterDatabasePlan =
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("root.db"));
-    final DatabaseSchemaPlan alterDatabasePlanToFilter =
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("root.db1"));
-
-    Assert.assertEquals(
-        alterDatabasePlan,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitAlterDatabase(alterDatabasePlan, prefixPathPattern)
-            .orElseThrow(AssertionError::new));
-    Assert.assertFalse(
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitAlterDatabase(alterDatabasePlanToFilter, prefixPathPattern)
-            .isPresent());
-    Assert.assertEquals(
-        alterDatabasePlan,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitAlterDatabase(alterDatabasePlan, multiplePathPattern)
-            .orElseThrow(AssertionError::new));
-  }
-
-  @Test
-  public void testDeleteDatabase() {
-    final DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan("root.db");
-    final DeleteDatabasePlan deleteDatabasePlanToFilter = new DeleteDatabasePlan("root.db1");
-
-    Assert.assertEquals(
-        deleteDatabasePlan,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitDeleteDatabase(deleteDatabasePlan, prefixPathPattern)
-            .orElseThrow(AssertionError::new));
-    Assert.assertFalse(
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitDeleteDatabase(deleteDatabasePlanToFilter, prefixPathPattern)
-            .isPresent());
-    Assert.assertEquals(
-        deleteDatabasePlan,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitDeleteDatabase(deleteDatabasePlan, multiplePathPattern)
-            .orElseThrow(AssertionError::new));
+  public void testDatabasePlans() {
+    Arrays.<Function<String, ConfigPhysicalPlan>>asList(
+            database ->
+                new DatabaseSchemaPlan(
+                    ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database)),
+            database ->
+                new DatabaseSchemaPlan(
+                    ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema(database)),
+            DeleteDatabasePlan::new)
+        .forEach(this::assertDatabasePlanMatches);
   }
 
   @Test
@@ -270,91 +215,11 @@ public class PipeConfigTreePatternParseVisitorTest {
   }
 
   @Test
-  public void testGrantUser() throws IllegalPathException {
-    Assert.assertEquals(
-        Collections.singletonList(new PartialPath("root.db.device.**")),
-        ((AuthorTreePlan)
-                IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-                    .visitGrantUser(
-                        new AuthorTreePlan(
-                            ConfigPhysicalPlanType.GrantUser,
-                            "tempUser",
-                            "",
-                            "",
-                            "",
-                            new HashSet<>(Arrays.asList(1, 2)),
-                            true,
-                            Arrays.asList(
-                                new PartialPath("root.db.**"), new PartialPath("root.abc.**"))),
-                        prefixPathPattern)
-                    .orElseThrow(AssertionError::new))
-            .getNodeNameList());
-  }
-
-  @Test
-  public void testRevokeUser() throws IllegalPathException {
-    Assert.assertEquals(
-        Collections.singletonList(new PartialPath("root.db.device.**")),
-        ((AuthorTreePlan)
-                IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-                    .visitRevokeUser(
-                        new AuthorTreePlan(
-                            ConfigPhysicalPlanType.RevokeUser,
-                            "tempUser",
-                            "",
-                            "",
-                            "",
-                            new HashSet<>(Arrays.asList(1, 2)),
-                            false,
-                            Arrays.asList(
-                                new PartialPath("root.db.**"), new PartialPath("root.abc.**"))),
-                        prefixPathPattern)
-                    .orElseThrow(AssertionError::new))
-            .getNodeNameList());
-  }
-
-  @Test
-  public void testGrantRole() throws IllegalPathException {
-    Assert.assertEquals(
-        Collections.singletonList(new PartialPath("root.db.device.**")),
-        ((AuthorTreePlan)
-                IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-                    .visitGrantRole(
-                        new AuthorTreePlan(
-                            ConfigPhysicalPlanType.GrantRole,
-                            "",
-                            "tempRole",
-                            "",
-                            "",
-                            new HashSet<>(Arrays.asList(1, 2)),
-                            true,
-                            Arrays.asList(
-                                new PartialPath("root.db.**"), new PartialPath("root.abc.**"))),
-                        prefixPathPattern)
-                    .orElseThrow(AssertionError::new))
-            .getNodeNameList());
-  }
-
-  @Test
-  public void testRevokeRole() throws IllegalPathException {
-    Assert.assertEquals(
-        Collections.singletonList(new PartialPath("root.db.device.**")),
-        ((AuthorTreePlan)
-                IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-                    .visitRevokeRole(
-                        new AuthorTreePlan(
-                            ConfigPhysicalPlanType.RevokeRole,
-                            "",
-                            "tempRole",
-                            "",
-                            "",
-                            new HashSet<>(Arrays.asList(1, 2)),
-                            false,
-                            Arrays.asList(
-                                new PartialPath("root.db.**"), new PartialPath("root.abc.**"))),
-                        prefixPathPattern)
-                    .orElseThrow(AssertionError::new))
-            .getNodeNameList());
+  public void testAuthorPlans() throws IllegalPathException {
+    assertAuthorPlanMatches(ConfigPhysicalPlanType.GrantUser, true, true);
+    assertAuthorPlanMatches(ConfigPhysicalPlanType.RevokeUser, true, false);
+    assertAuthorPlanMatches(ConfigPhysicalPlanType.GrantRole, false, true);
+    assertAuthorPlanMatches(ConfigPhysicalPlanType.RevokeRole, false, false);
   }
 
   @Test
@@ -417,6 +282,29 @@ public class PipeConfigTreePatternParseVisitorTest {
                             .orElseThrow(AssertionError::new))
                     .getPatternTreeBytes())
             .getAllPathPatterns());
+  }
+
+  @Test
+  public void testPipeAlterEncodingCompressor() throws IllegalPathException, IOException {
+    final PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.*.device.s1"));
+    patternTree.constructTree();
+
+    final PipeAlterEncodingCompressorPlan plan =
+        (PipeAlterEncodingCompressorPlan)
+            IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
+                .visitPipeAlterEncodingCompressor(
+                    new PipeAlterEncodingCompressorPlan(
+                        patternTree.serialize(), (byte) 1, (byte) 2, true),
+                    prefixPathPattern)
+                .orElseThrow(AssertionError::new);
+
+    Assert.assertEquals(
+        Collections.singletonList(new PartialPath("root.db.device.s1")),
+        PathPatternTree.deserialize(plan.getPatternTreeBytes()).getAllPathPatterns());
+    Assert.assertEquals((byte) 1, plan.getEncoding());
+    Assert.assertEquals((byte) 2, plan.getCompressor());
+    Assert.assertTrue(plan.isMayAlterAudit());
   }
 
   @Test
@@ -493,5 +381,53 @@ public class PipeConfigTreePatternParseVisitorTest {
         new PartialPath("root.db.device.a"), new PartialPath(plan.getMeasurementPath().getNodes()));
     Assert.assertEquals((byte) 0, plan.getOperationType());
     Assert.assertEquals(plan.getDataType(), TSDataType.DOUBLE);
+  }
+
+  private void assertDatabasePlanMatches(final Function<String, ConfigPhysicalPlan> planFactory) {
+    final ConfigPhysicalPlan matchedPlan = planFactory.apply("root.db");
+    final ConfigPhysicalPlan filteredPlan = planFactory.apply("root.db1");
+
+    Assert.assertEquals(
+        matchedPlan,
+        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
+            .process(matchedPlan, prefixPathPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
+            .process(filteredPlan, prefixPathPattern)
+            .isPresent());
+    Assert.assertEquals(
+        matchedPlan,
+        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
+            .process(matchedPlan, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
+  }
+
+  private void assertAuthorPlanMatches(
+      final ConfigPhysicalPlanType type, final boolean isUser, final boolean grantOpt)
+      throws IllegalPathException {
+    final AuthorTreePlan plan =
+        new AuthorTreePlan(
+            type,
+            isUser ? "tempUser" : "",
+            isUser ? "" : "tempRole",
+            "",
+            "",
+            new HashSet<>(Arrays.asList(1, 2)),
+            grantOpt,
+            Arrays.asList(new PartialPath("root.db.**"), new PartialPath("root.abc.**")));
+
+    final AuthorTreePlan parsedPlan =
+        (AuthorTreePlan)
+            IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
+                .process(plan, prefixPathPattern)
+                .orElseThrow(AssertionError::new);
+
+    Assert.assertEquals(
+        Collections.singletonList(new PartialPath("root.db.device.**")),
+        parsedPlan.getNodeNameList());
+    Assert.assertEquals(plan.getPermissions(), parsedPlan.getPermissions());
+    Assert.assertEquals(grantOpt, parsedPlan.getGrantOpt());
+    Assert.assertEquals(type, parsedPlan.getAuthorType());
   }
 }

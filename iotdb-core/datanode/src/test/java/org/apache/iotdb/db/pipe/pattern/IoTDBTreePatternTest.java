@@ -27,127 +27,189 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.function.Predicate;
 
 import static org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern.applyReversedIndexesOnList;
 
 public class IoTDBTreePatternTest {
 
+  private static final String DB = "root.db";
+  private static final IDeviceID DEVICE = new StringArrayDeviceID("root.db.d1");
+  private static final String MEASUREMENT = "s1";
+
   @Test
-  public void testIotdbPipePattern() {
-    // Test legal and illegal pattern
-    final String[] legalPatterns = {
-      "root", "root.db", "root.db.d1.s", "root.db.`1`", "root.*.d.*s.s",
-    };
-    final String[] illegalPatterns = {
-      "root.", "roo", "", "root..", "root./",
-    };
-    for (final String s : legalPatterns) {
-      Assert.assertTrue(new IoTDBTreePattern(s).isLegal());
-    }
-    for (final String t : illegalPatterns) {
-      try {
-        Assert.assertFalse(new IoTDBTreePattern(t).isLegal());
-      } catch (final Exception e) {
-        Assert.assertTrue(e instanceof PipeException);
-      }
-    }
+  public void testLegalPattern() {
+    assertLegal("root", "root.db", "root.db.d1.s", "root.db.`1`", "root.*.d.*s.s", null);
+    assertIllegalOrInvalid("root.", "roo", "", "root..", "root./");
+  }
 
-    // Test pattern cover db
-    final String db = "root.db";
-    final String[] patternsCoverDb = {
-      "root.**", "root.db.**", "root.*db*.**",
-    };
-    final String[] patternsNotCoverDb = {
-      "root.db", "root.*", "root.*.*", "root.db.*.**", "root.db.d1", "root.**.db.**",
-    };
-    for (final String s : patternsCoverDb) {
-      Assert.assertTrue(new IoTDBTreePattern(s).coversDb(db));
-    }
-    for (final String t : patternsNotCoverDb) {
-      Assert.assertFalse(new IoTDBTreePattern(t).coversDb(db));
-    }
+  @Test
+  public void testRootPattern() {
+    Assert.assertTrue(new IoTDBTreePattern(null).isRoot());
+    Assert.assertTrue(new IoTDBTreePattern("root.**").isRoot());
+    Assert.assertFalse(new IoTDBTreePattern("root").isRoot());
+  }
 
-    final IDeviceID device = new StringArrayDeviceID("root.db.d1");
+  @Test
+  public void testCoversDb() {
+    assertPatternResult(
+        true, pattern -> pattern.coversDb(DB), "root.**", "root.db.**", "root.*db*.**");
+    assertPatternResult(
+        false,
+        pattern -> pattern.coversDb(DB),
+        "root.db",
+        "root.*",
+        "root.*.*",
+        "root.db.*.**",
+        "root.db.d1",
+        "root.**.db.**");
+  }
 
-    // Test pattern cover device
-    final String[] patternsCoverDevice = {
-      "root.**", "root.db.**", "root.*.*.*", "root.db.d1.*", "root.*db*.*d*.*", "root.**.*1.*",
-    };
-    final String[] patternsNotCoverDevice = {
-      "root.*", "root.*.*", "root.db.d1", "root.db.d2.*", "root.**.d2.**",
-    };
-    for (final String s : patternsCoverDevice) {
-      Assert.assertTrue(new IoTDBTreePattern(s).coversDevice(device));
-    }
-    for (String t : patternsNotCoverDevice) {
-      Assert.assertFalse(new IoTDBTreePattern(t).coversDevice(device));
-    }
+  @Test
+  public void testMayOverlapWithDb() {
+    assertPatternResult(
+        true,
+        pattern -> pattern.mayOverlapWithDb(DB),
+        "root.**",
+        "root.db.**",
+        "root.db.d1",
+        "root.*.d1");
+    assertPatternResult(
+        false,
+        pattern -> pattern.mayOverlapWithDb(DB),
+        "root.other.**",
+        "root.other.d1",
+        "root.db2.d1");
+  }
 
-    // Test pattern may overlap with device
-    final String[] patternsOverlapWithDevice = {
-      "root.db.**", "root.db.d1", "root.db.d1.*", "root.db.d1.s1", "root.**.d2.**", "root.*.d*.**",
-    };
-    final String[] patternsNotOverlapWithDevice = {
-      "root.db.d2.**", "root.db2.d1.**", "root.db.db.d1.**",
-    };
-    final String[] patternsFalsePositiveOverLap = {"root.**.d2.**"};
-    for (final String s : patternsOverlapWithDevice) {
-      Assert.assertTrue(new IoTDBTreePattern(s).mayOverlapWithDevice(device));
-    }
-    for (final String t : patternsNotOverlapWithDevice) {
-      Assert.assertFalse(new IoTDBTreePattern(t).mayOverlapWithDevice(device));
-    }
-    for (final String t : patternsFalsePositiveOverLap) {
-      Assert.assertTrue(new IoTDBTreePattern(t).mayOverlapWithDevice(device));
-      Assert.assertFalse(new IoTDBTreePattern(t).overlapWithDevice(device));
-    }
+  @Test
+  public void testCoversDevice() {
+    assertPatternResult(
+        true,
+        pattern -> pattern.coversDevice(DEVICE),
+        "root.**",
+        "root.db.**",
+        "root.*.*.*",
+        "root.db.d1.*",
+        "root.*db*.*d*.*",
+        "root.**.*1.*");
+    assertPatternResult(
+        false,
+        pattern -> pattern.coversDevice(DEVICE),
+        "root.*",
+        "root.*.*",
+        "root.db.d1",
+        "root.db.d2.*",
+        "root.**.d2.**");
+  }
 
-    // Test pattern match measurement
-    final String measurement = "s1";
-    final String[] patternsMatchMeasurement = {
-      "root.db.d1.s1", "root.db.d1.*",
-    };
-    final String[] patternsNotMatchMeasurement = {
-      "root.db.d1", "root.db.d1", "root.db.d1.*.*",
-    };
-    for (final String s : patternsMatchMeasurement) {
-      Assert.assertTrue(new IoTDBTreePattern(s).matchesMeasurement(device, measurement));
-    }
-    for (final String t : patternsNotMatchMeasurement) {
-      Assert.assertFalse(new IoTDBTreePattern(t).matchesMeasurement(device, measurement));
-    }
+  @Test
+  public void testOverlapsDevice() {
+    assertPatternResult(
+        true,
+        pattern -> pattern.mayOverlapWithDevice(DEVICE),
+        "root.db.**",
+        "root.db.d1",
+        "root.db.d1.*",
+        "root.db.d1.s1",
+        "root.**.d2.**",
+        "root.*.d*.**");
+    assertPatternResult(
+        false,
+        pattern -> pattern.mayOverlapWithDevice(DEVICE),
+        "root.db.d2.**",
+        "root.db2.d1.**",
+        "root.db.db.d1.**");
+
+    final IoTDBTreePattern falsePositivePattern = new IoTDBTreePattern("root.**.d2.**");
+    Assert.assertTrue(falsePositivePattern.mayOverlapWithDevice(DEVICE));
+    Assert.assertFalse(falsePositivePattern.overlapWithDevice(DEVICE));
+  }
+
+  @Test
+  public void testMatchesMeasurement() {
+    assertPatternResult(
+        true,
+        pattern -> pattern.matchesMeasurement(DEVICE, MEASUREMENT),
+        "root.db.d1.s1",
+        "root.db.d1.*");
+    assertPatternResult(
+        false,
+        pattern -> pattern.matchesMeasurement(DEVICE, MEASUREMENT),
+        "root.db.d1",
+        "root.db.d1.*.*",
+        "root.db.d2.s1");
+
+    final IoTDBTreePattern matchAllMeasurements = new IoTDBTreePattern("root.db.d1.*");
+    Assert.assertFalse(matchAllMeasurements.matchesMeasurement(DEVICE, null));
+    Assert.assertFalse(matchAllMeasurements.matchesMeasurement(DEVICE, ""));
+  }
+
+  @Test
+  public void testSchemaPatternHelpers() {
+    final IoTDBTreePattern prefixPattern = new IoTDBTreePattern("root.db.**");
+    Assert.assertTrue(prefixPattern.matchPrefixPath("root.db"));
+    Assert.assertFalse(prefixPattern.matchPrefixPath("root.other"));
+    Assert.assertTrue(prefixPattern.matchTailNode("any"));
+    Assert.assertTrue(prefixPattern.isPrefixOrFullPath());
+    Assert.assertTrue(prefixPattern.mayMatchMultipleTimeSeriesInOneDevice());
+
+    final IoTDBTreePattern fullPathPattern = new IoTDBTreePattern("root.db.d1.s1");
+    Assert.assertTrue(fullPathPattern.matchTailNode("s1"));
+    Assert.assertFalse(fullPathPattern.matchTailNode("s2"));
+    Assert.assertTrue(fullPathPattern.isPrefixOrFullPath());
+    Assert.assertFalse(fullPathPattern.mayMatchMultipleTimeSeriesInOneDevice());
+
+    final IoTDBTreePattern wildcardMiddlePattern = new IoTDBTreePattern("root.*.**");
+    Assert.assertFalse(wildcardMiddlePattern.isPrefixOrFullPath());
+  }
+
+  @Test
+  public void testMatchDevice() {
+    assertPatternResult(
+        true, pattern -> pattern.matchDevice("root.db.d1"), "root.db.d1.*", "root.db.**");
+    assertPatternResult(
+        false, pattern -> pattern.matchDevice("root.db.d1"), "root.db.d2.*", "root.db2.**");
   }
 
   @Test
   public void testApplyReversedIndexes() {
-    final int elementNum = 10_000_000;
-    final int filteredNum = elementNum / 10;
-    final Random random = new Random();
-    final List<Integer> originalList =
-        IntStream.range(0, elementNum).boxed().collect(Collectors.toList());
-    List<Integer> filteredIndexes = new ArrayList<>(filteredNum);
-    for (int i = 0; i < filteredNum; i++) {
-      filteredIndexes.add(random.nextInt(elementNum));
-    }
-    filteredIndexes = filteredIndexes.stream().sorted().distinct().collect(Collectors.toList());
+    Assert.assertEquals(
+        Arrays.asList(0, 2, 4),
+        applyReversedIndexesOnList(Arrays.asList(1, 3), Arrays.asList(0, 1, 2, 3, 4)));
+    Assert.assertEquals(
+        Arrays.asList("a", "b"),
+        applyReversedIndexesOnList(Collections.emptyList(), Arrays.asList("a", "b")));
+    Assert.assertEquals(
+        Collections.emptyList(),
+        applyReversedIndexesOnList(Arrays.asList(0, 1, 2), Arrays.asList(0, 1, 2)));
+    Assert.assertNull(applyReversedIndexesOnList(Collections.singletonList(0), null));
+  }
 
-    final long start = System.currentTimeMillis();
-    final List<Integer> appliedList = applyReversedIndexesOnList(filteredIndexes, originalList);
-    System.out.println(System.currentTimeMillis() - start);
-    final Set<Integer> appliedSet = new HashSet<>(appliedList);
-    for (Integer filteredIndex : filteredIndexes) {
-      if (appliedSet.contains(filteredIndex)) {
-        System.out.println("Incorrect implementation");
-        System.exit(-1);
+  private static void assertLegal(final String... patterns) {
+    for (final String pattern : patterns) {
+      Assert.assertTrue(String.valueOf(pattern), new IoTDBTreePattern(pattern).isLegal());
+    }
+  }
+
+  private static void assertIllegalOrInvalid(final String... patterns) {
+    for (final String pattern : patterns) {
+      try {
+        Assert.assertFalse(String.valueOf(pattern), new IoTDBTreePattern(pattern).isLegal());
+      } catch (final Exception e) {
+        Assert.assertTrue(e instanceof PipeException);
       }
     }
-    Assert.assertEquals(null, applyReversedIndexesOnList(filteredIndexes, null));
+  }
+
+  private static void assertPatternResult(
+      final boolean expected,
+      final Predicate<IoTDBTreePattern> assertion,
+      final String... patterns) {
+    for (final String pattern : patterns) {
+      Assert.assertEquals(pattern, expected, assertion.test(new IoTDBTreePattern(pattern)));
+    }
   }
 }
