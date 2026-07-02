@@ -158,7 +158,7 @@ public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.Async
           new AsyncPipeConsensusServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 
