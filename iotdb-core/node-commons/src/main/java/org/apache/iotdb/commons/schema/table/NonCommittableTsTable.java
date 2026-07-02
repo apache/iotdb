@@ -31,6 +31,8 @@ import java.io.OutputStream;
  * version.
  */
 public class NonCommittableTsTable extends TsTable {
+  public static final int NON_COMMITTABLE_MARKER = -1;
+
   public NonCommittableTsTable(final String tableName) {
     super(tableName);
   }
@@ -38,6 +40,6 @@ public class NonCommittableTsTable extends TsTable {
   @Override
   public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tableName, stream);
-    ReadWriteIOUtils.write(-1, stream);
+    ReadWriteIOUtils.write(NON_COMMITTABLE_MARKER, stream);
   }
 }

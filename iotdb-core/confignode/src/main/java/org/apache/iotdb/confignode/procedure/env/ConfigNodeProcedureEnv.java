@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.env;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -36,9 +35,7 @@ import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
-import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
@@ -47,6 +44,7 @@ import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -97,7 +95,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -165,74 +162,33 @@ public class ConfigNodeProcedureEnv {
     getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
   }
 
-  /**
-   * @param databaseName database name
-   * @return ALL SUCCESS OR NOT
-   * @throws IOException IOE
-   * @throws TException Thrift IOE
-   */
   public boolean invalidateCache(final String databaseName) throws IOException, TException {
-    final List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
     final TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(databaseName);
-    for (final TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
-      final int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
-
-      // If the node is not alive, retry for up to 10 times
-      NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
-      int retryNum = 10;
-      if (nodeStatus == NodeStatus.Unknown) {
-        for (int i = 0; i < retryNum && nodeStatus == NodeStatus.Unknown; i++) {
-          try {
-            TimeUnit.MILLISECONDS.sleep(500);
-          } catch (final InterruptedException e) {
-            LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
-            Thread.currentThread().interrupt();
-            break;
-          }
-          nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
-        }
-      }
-
-      if (nodeStatus == NodeStatus.Unknown) {
-        LOG.warn(
-            "Invalidate cache failed, because DataNode {} is Unknown",
-            dataNodeConfiguration.getLocation().getInternalEndPoint());
-        return false;
-      }
-
-      // Always invalidate PartitionCache first
-      final TSStatus invalidatePartitionStatus =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithRetry(
-                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                      invalidateCacheReq,
-                      CnToDnSyncRequestType.INVALIDATE_PARTITION_CACHE);
-
-      final TSStatus invalidateSchemaStatus =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithRetry(
-                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                      invalidateCacheReq,
-                      CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE);
-
-      if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
-        LOG.error(
-            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine cache status is {}",
-            invalidatePartitionStatus,
-            invalidateSchemaStatus);
-        return false;
-      }
+    // The per-round cache invalidation is sent asynchronously so the lease framework can collect a
+    // cluster-wide ack map and decide whether unAcked DataNodes are safely fenced.
+    final ClusterCachePropagator propagator = new ClusterCachePropagator(configManager);
+    if (!propagator.propagate(
+        targets ->
+            invalidateDatabaseCacheOnce(
+                targets, invalidateCacheReq, CnToDnAsyncRequestType.INVALIDATE_PARTITION_CACHE))) {
+      return false;
     }
-    return true;
+    return propagator.propagate(
+        targets ->
+            invalidateDatabaseCacheOnce(
+                targets, invalidateCacheReq, CnToDnAsyncRequestType.INVALIDATE_SCHEMA_CACHE));
   }
 
-  public boolean verifySucceed(TSStatus... status) {
-    return Arrays.stream(status)
-        .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  private Map<Integer, TSStatus> invalidateDatabaseCacheOnce(
+      final Map<Integer, TDataNodeLocation> targets,
+      final TInvalidateCacheReq invalidateCacheReq,
+      final CnToDnAsyncRequestType requestType) {
+    final DataNodeAsyncRequestContext<TInvalidateCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(requestType, invalidateCacheReq, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseMap();
   }
 
   /**

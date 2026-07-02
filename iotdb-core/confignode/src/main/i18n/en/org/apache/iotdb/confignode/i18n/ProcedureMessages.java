@@ -435,6 +435,7 @@ public final class ProcedureMessages {
       "Failed to pre-release {} for table {}.{} to DataNode, failure results: {}";
   public static final String FAILED_TO_PRE_SET_TEMPLATE_ON_PATH_DUE_TO =
       "Failed to pre set template {} on path {} due to {}";
+  public static final String FAILED_TO_PROVE_DN_IS_FENCED = "Failed to prove DN is fenced";
   public static final String FAILED_TO_PUSH_CONSUMER_GROUP_META_TO_DATANODES_DETAILS =
       "Failed to push consumer group meta to dataNodes, details: %s";
   public static final String FAILED_TO_PUSH_PIPE_META_LIST_TO_DATA_NODES_WILL =
@@ -510,7 +511,7 @@ public final class ProcedureMessages {
   public static final String FAILED_TO_SYNC_TABLE_PRE_CREATE_INFO_TO_DATANODE_FAILURE =
       "Failed to sync table {}.{} pre-create info to DataNode, failure results: {}";
   public static final String FAILED_TO_SYNC_TABLE_ROLLBACK_CREATE_INFO_TO_DATANODE_FAILURE =
-      "Failed to sync table {}.{} rollback-create info to DataNode {}, failure results: ";
+      "Failed to sync table {}.{} rollback-create info to DataNode, failure results: {}";
   public static final String FAILED_TO_SYNC_TEMPLATE_COMMIT_SET_INFO_ON_PATH_TO =
       "Failed to sync template {} commit-set info on path {} to DataNode {}";
   public static final String FAILED_TO_SYNC_TEMPLATE_PRE_SET_INFO_ON_PATH_TO =
@@ -575,8 +576,10 @@ public final class ProcedureMessages {
       "Invalidate view schemaengine cache failed";
   public static final String INVALIDATING_CACHE_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN =
       "Invalidating cache for column {} in {}.{} when dropping column";
-  public static final String INVALIDATING_CACHE_FOR_TABLE_WHEN_DROPPING_TABLE =
-      "Invalidating cache for table {}.{} when dropping table";
+  public static final String PRE_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE =
+      "pre release delete table {}.{} when dropping table";
+  public static final String COMMIT_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE =
+    "commit release delete table {}.{} when dropping table";
   public static final String INVALID_DATA_TYPE_CANNOT_BE_USED_AS_A_NEW_TYPE =
       "Invalid data type cannot be used as a new type";
   public static final String IO_ERROR_WHEN_DESERIALIZE_AUTHPLAN =
@@ -845,6 +848,8 @@ public final class ProcedureMessages {
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
   public static final String ROLLBACK_CREATE_TABLE_FAILED = "Rollback create table failed";
   public static final String ROLLBACK_DROPTABLE_COSTS_MS = "Rollback DropTable-{} costs {}ms.";
+  public static final String ROLLBACK_PRE_DELETE_TABLE_FAILED =
+      "Rollback pre-delete table %s.%s failed, please manually drop the table";
   public static final String ROLLBACK_PRE_RELEASE = "Rollback pre-release ";
   public static final String ROLLBACK_PRE_RELEASE_TEMPLATE_FAILED =
       "Rollback pre release template failed";

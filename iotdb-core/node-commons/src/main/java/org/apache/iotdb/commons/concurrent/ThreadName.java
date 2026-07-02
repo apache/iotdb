@@ -105,6 +105,7 @@ public enum ThreadName {
   CONFIG_NODE_TIMEOUT_EXECUTOR("ProcedureTimeoutExecutor"),
   CONFIG_NODE_WORKER_THREAD_MONITOR("ProcedureWorkerThreadMonitor"),
   CONFIG_NODE_RETRY_FAILED_TASK("Cluster-RetryFailedTasks-Service"),
+  RELOAD_TABLE_METADATA_CACHE("Reload-table-metadata-cache"),
   // -------------------------- IoTConsensusV2 --------------------------
   IOT_CONSENSUS_V2_RPC_SERVICE("IoTConsensusV2RPC-Service"),
   IOT_CONSENSUS_V2_RPC_PROCESSOR("IoTConsensusV2RPC-Processor"),
@@ -383,7 +384,8 @@ public enum ThreadName {
               CONFIG_NODE_PROCEDURE_WORKER,
               CONFIG_NODE_WORKER_THREAD_MONITOR,
               CONFIG_NODE_TIMEOUT_EXECUTOR,
-              CONFIG_NODE_RETRY_FAILED_TASK));
+              CONFIG_NODE_RETRY_FAILED_TASK,
+              RELOAD_TABLE_METADATA_CACHE));
 
   private static final Set<ThreadName> metricsThreadNames =
       new HashSet<>(

@@ -391,8 +391,11 @@ public class TsTable {
   public static TsTable deserialize(final InputStream inputStream) throws IOException {
     final String name = ReadWriteIOUtils.readString(inputStream);
     final int columnNum = ReadWriteIOUtils.readInt(inputStream);
-    if (columnNum < 0) {
+    if (columnNum == NonCommittableTsTable.NON_COMMITTABLE_MARKER) {
       return new NonCommittableTsTable(name);
+    }
+    if (columnNum == PreDeleteTsTable.PRE_DELETE_MARKER) {
+      return new PreDeleteTsTable(name);
     }
     final TsTable table = new TsTable(name);
     for (int i = 0; i < columnNum; i++) {
@@ -405,8 +408,11 @@ public class TsTable {
   public static TsTable deserialize(final ByteBuffer buffer) {
     final String name = ReadWriteIOUtils.readString(buffer);
     final int columnNum = ReadWriteIOUtils.readInt(buffer);
-    if (columnNum < 0) {
+    if (columnNum == NonCommittableTsTable.NON_COMMITTABLE_MARKER) {
       return new NonCommittableTsTable(name);
+    }
+    if (columnNum == PreDeleteTsTable.PRE_DELETE_MARKER) {
+      return new PreDeleteTsTable(name);
     }
     final TsTable table = new TsTable(name);
     for (int i = 0; i < columnNum; i++) {
