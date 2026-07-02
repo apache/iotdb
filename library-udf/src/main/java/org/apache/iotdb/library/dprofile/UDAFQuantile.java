@@ -65,6 +65,9 @@ public class UDAFQuantile implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     final long encoded;
     switch (dataType) {
       case INT32:
@@ -74,7 +77,11 @@ public class UDAFQuantile implements UDTF {
         encoded = row.getLong(0);
         break;
       default:
-        encoded = dataToLong(Util.getValueAsDouble(row));
+        double v = Util.getValueAsDouble(row);
+        if (!Double.isFinite(v)) {
+          return;
+        }
+        encoded = dataToLong(v);
         break;
     }
     sketch.update(encoded);
@@ -83,18 +90,18 @@ public class UDAFQuantile implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     long n = sketch.getN();
+    if (n == 0) {
+      return;
+    }
     // Nearest-rank: k-th smallest uses getApproxRank (strictly-less-than count) in [0, n-1];
     // rank=1 must map to k=n-1, not k=n which is unreachable and can overshoot the max sample.
-    long k = 0;
-    if (n > 0) {
-      k = (long) Math.ceil(rank * n) - 1;
-      if (k < 0) {
-        k = 0;
-      } else if (k >= n) {
-        k = n - 1;
-      }
+    long k = (long) Math.ceil(rank * n) - 1;
+    if (k < 0) {
+      k = 0;
+    } else if (k >= n) {
+      k = n - 1;
     }
-    long result = sketch.findMinValueWithRank(k);
+    long result = sketch.findMaxValueWithRank(k);
     switch (dataType) {
       case INT32:
         collector.putInt(0, (int) result);

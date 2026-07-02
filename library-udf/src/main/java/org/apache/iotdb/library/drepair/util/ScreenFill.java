@@ -37,7 +37,9 @@ public class ScreenFill extends ValueFill {
 
   public ScreenFill(RowIterator dataIterator) throws Exception {
     super(dataIterator);
-    setParameters();
+    if (hasValidValue()) {
+      setParameters();
+    }
   }
 
   @Override
@@ -100,6 +102,9 @@ public class ScreenFill extends ValueFill {
                 + smax * (list.get(index).getLeft() - list.get(index + i).getLeft());
         tempCount++;
       }
+    }
+    if (count == 0) {
+      return Double.NaN;
     }
     Arrays.sort(x);
     return x[count];

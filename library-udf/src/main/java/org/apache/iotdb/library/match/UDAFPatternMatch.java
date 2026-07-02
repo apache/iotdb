@@ -40,6 +40,7 @@ import org.apache.tsfile.utils.BitMap;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -77,9 +78,12 @@ public class UDAFPatternMatch implements UDAF {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!columns[1].isNull(i)) {
-        long timestamp = columns[1].getLong(i);
+      if (!columns[0].isNull(i) && !columns[1].isNull(i)) {
         double value = getValue(columns[0], i);
+        if (!Double.isFinite(value)) {
+          continue;
+        }
+        long timestamp = columns[1].getLong(i);
         matchState.updateBuffer(timestamp, value);
       }
     }
@@ -92,6 +96,9 @@ public class UDAFPatternMatch implements UDAF {
 
     List<Long> times = newMatchState.getTimeBuffer();
     List<Double> values = newMatchState.getValueBuffer();
+    if (times == null || values == null || times.isEmpty() || values.isEmpty()) {
+      return;
+    }
 
     for (int i = 0; i < times.size(); i++) {
       matchState.updateBuffer(times.get(i), values.get(i));
@@ -101,18 +108,26 @@ public class UDAFPatternMatch implements UDAF {
   @Override
   public void outputFinal(State state, ResultValue resultValue) {
     PatternState matchState = (PatternState) state;
-    PatternExecutor executor = new PatternExecutor();
+    List<Long> times = matchState.getTimeBuffer();
+    List<Double> values = matchState.getValueBuffer();
+    if (times == null || values == null || times.size() < 2 || values.size() < 2) {
+      resultValue.setNull();
+      return;
+    }
 
-    List<Point> sourcePointsExtract =
-        executor.scalePoint(matchState.getTimeBuffer(), matchState.getValueBuffer());
-    List<Point> queryPointsExtract = executor.extractPoints(timePattern, valuePattern);
+    List<PatternResult> results = Collections.emptyList();
+    if (hasPositiveTimeRange(times) && hasPositiveValueRange(values)) {
+      PatternExecutor executor = new PatternExecutor();
+      List<Point> sourcePointsExtract = executor.scalePoint(times, values);
+      List<Point> queryPointsExtract = executor.extractPoints(timePattern, valuePattern);
 
-    executor.setPoints(queryPointsExtract);
-    PatternContext ctx = new PatternContext();
-    ctx.setThreshold(threshold);
-    ctx.setDataPoints(sourcePointsExtract);
-    // State only records time and recorded values, and the final result is calculated
-    List<PatternResult> results = executor.executeQuery(ctx);
+      executor.setPoints(queryPointsExtract);
+      PatternContext ctx = new PatternContext();
+      ctx.setThreshold(threshold);
+      ctx.setDataPoints(sourcePointsExtract);
+      // State only records time and recorded values, and the final result is calculated
+      results = executor.executeQuery(ctx);
+    }
     if (!results.isEmpty()) {
       resultValue.setBinary(new Binary(results.toString(), Charset.defaultCharset()));
     } else {
@@ -127,6 +142,28 @@ public class UDAFPatternMatch implements UDAF {
         resultValue.setNull();
       }
     }
+  }
+
+  private static boolean hasPositiveTimeRange(List<Long> times) {
+    long previous = times.get(0);
+    for (int i = 1; i < times.size(); i++) {
+      long time = times.get(i);
+      if (time <= previous) {
+        return false;
+      }
+      previous = time;
+    }
+    return true;
+  }
+
+  private static boolean hasPositiveValueRange(List<Double> values) {
+    double min = Double.POSITIVE_INFINITY;
+    double max = Double.NEGATIVE_INFINITY;
+    for (double value : values) {
+      min = Math.min(min, value);
+      max = Math.max(max, value);
+    }
+    return min < max;
   }
 
   @Override
@@ -173,7 +210,25 @@ public class UDAFPatternMatch implements UDAF {
             payload -> ((Long[]) payload[0]).length == ((Double[]) payload[1]).length,
             "Illegal parameter, timePattern size must equals valuePattern size.",
             timePattern,
-            valuePattern);
+            valuePattern)
+        .validate(
+            (UDFParameterValidator.SingleObjectValidationRule)
+                payload -> Arrays.stream((Double[]) payload).allMatch(Double::isFinite),
+            "Illegal parameter, valuePattern values must be finite.",
+            valuePattern)
+        .validate(
+            x -> isFiniteNonNegativeFloat((String) x),
+            "Illegal parameter, threshold must be a finite non-negative number.",
+            validator.getParameters().getStringOrDefault(THRESHOLD_PARAM, ""));
+  }
+
+  private static boolean isFiniteNonNegativeFloat(String value) {
+    try {
+      float threshold = Float.parseFloat(value);
+      return Float.isFinite(threshold) && threshold >= 0;
+    } catch (NumberFormatException e) {
+      return false;
+    }
   }
 
   private double getValue(Column column, int i) {

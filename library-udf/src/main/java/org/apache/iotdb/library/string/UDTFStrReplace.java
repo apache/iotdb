@@ -48,6 +48,8 @@ public class UDTFStrReplace implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.TEXT)
+        .validateRequiredAttribute("target")
+        .validateRequiredAttribute("replace")
         .validate(
             target -> ((String) target).length() > 0,
             "target should not be empty",
@@ -78,6 +80,9 @@ public class UDTFStrReplace implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     String origin = row.getString(0);
     String result = getResult(origin);
     collector.putString(row.getTime(), result);

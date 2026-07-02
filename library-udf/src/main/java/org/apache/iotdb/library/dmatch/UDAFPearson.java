@@ -78,14 +78,20 @@ public class UDAFPearson implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (count > 0) { // calculate R only when there is more than 1 point
-      double pearson =
-          (count * sumXY - sumX * sumY)
-              / Math.sqrt(count * sumXX - sumX * sumX)
-              / Math.sqrt(count * sumYY - sumY * sumY);
+    if (count == 0) {
+      return;
+    }
+    double xVariance = count * sumXX - sumX * sumX;
+    double yVariance = count * sumYY - sumY * sumY;
+    if (!Double.isFinite(xVariance)
+        || !Double.isFinite(yVariance)
+        || xVariance <= 0
+        || yVariance <= 0) {
+      return;
+    }
+    double pearson = (count * sumXY - sumX * sumY) / Math.sqrt(xVariance) / Math.sqrt(yVariance);
+    if (Double.isFinite(pearson)) {
       collector.putDouble(0, pearson);
-    } else {
-      collector.putDouble(0, Double.NaN);
     }
   }
 }

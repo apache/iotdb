@@ -30,11 +30,16 @@ import org.eclipse.collections.api.tuple.primitive.LongIntPair;
 import org.eclipse.collections.impl.map.mutable.primitive.LongIntHashMap;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 /** This class offers functions of getting and putting values from iotdb interface. */
 public class Util {
   private static final String TIMESTAMP_PRECISION = "timestampPrecision";
+  private static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
   public static final String MS_PRECISION = "ms";
 
   private Util() {
@@ -380,6 +385,40 @@ public class Util {
     }
 
     double v = Double.parseDouble(s);
-    return (long) (unit * v);
+    double duration = unit * v;
+    if (!Double.isFinite(v)
+        || !Double.isFinite(duration)
+        || duration > Long.MAX_VALUE
+        || duration < Long.MIN_VALUE) {
+      throw new IllegalArgumentException("Time value should be finite.");
+    }
+    return (long) duration;
+  }
+
+  public static boolean isPositiveTime(String s, UDFParameters parameters) {
+    try {
+      return parseTime(s, parameters) > 0;
+    } catch (RuntimeException e) {
+      return false;
+    }
+  }
+
+  public static boolean isPositiveDateTime(String s) {
+    try {
+      return parseDateTime(s) > 0;
+    } catch (ParseException e) {
+      return false;
+    }
+  }
+
+  public static long parseDateTime(String s) throws ParseException {
+    SimpleDateFormat format = new SimpleDateFormat(DATE_TIME_FORMAT);
+    format.setLenient(false);
+    ParsePosition position = new ParsePosition(0);
+    Date date = format.parse(s, position);
+    if (date == null || position.getIndex() != s.length()) {
+      throw new ParseException("Invalid datetime format.", position.getErrorIndex());
+    }
+    return date.getTime();
   }
 }

@@ -48,8 +48,8 @@ public class UDTFPtnSym implements UDTF {
             "window has to be a positive integer.",
             validator.getParameters().getIntOrDefault("window", 10))
         .validate(
-            x -> (double) x >= 0.0d,
-            "threshold has to be non-negative.",
+            x -> Double.isFinite((double) x) && (double) x >= 0.0d,
+            "threshold has to be finite and non-negative.",
             validator.getParameters().getDoubleOrDefault("threshold", Double.MAX_VALUE));
   }
 
@@ -74,7 +74,14 @@ public class UDTFPtnSym implements UDTF {
     long time = rowWindow.getRow(0).getTime();
     for (int i = 0; i < n; i++) {
       Row row = rowWindow.getRow(i);
-      a.add(Util.getValueAsDouble(row, 0));
+      if (row.isNull(0)) {
+        return;
+      }
+      double value = Util.getValueAsDouble(row, 0);
+      if (!Double.isFinite(value)) {
+        return;
+      }
+      a.add(value);
     }
     int m = a.size();
     double[][] dp = new double[m + 1][m + 1];
@@ -85,9 +92,9 @@ public class UDTFPtnSym implements UDTF {
       }
     }
     for (int len = 3; len <= m; len++) {
-      for (int i = 1, j = len; j <= m; j++) {
+      for (int i = 1, j = len; j <= m; i++, j++) {
         dp[i][j] =
-            Math.pow(Math.abs(a.get(0) - a.get(j - 1)), 2)
+            Math.pow(Math.abs(a.get(i - 1) - a.get(j - 1)), 2)
                 + Math.min(Math.min(dp[i + 1][j], dp[i][j - 1]), dp[i + 1][j - 1]);
       }
     }

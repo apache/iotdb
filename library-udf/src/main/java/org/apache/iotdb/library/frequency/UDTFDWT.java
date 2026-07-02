@@ -60,7 +60,15 @@ public class UDTFDWT implements UDTF {
         .validate(
             x -> (int) x > 0,
             "layer has to be a positive integer.",
-            validator.getParameters().getIntOrDefault("layer", 1));
+            validator.getParameters().getIntOrDefault("layer", 1))
+        .validate(
+            params ->
+                !((String) params[0]).equals("")
+                    || ((String) params[1]).equals("")
+                    || DWTUtil.isFiniteCoefficientList((String) params[1]),
+            "coef should be finite double,double... when method is blank.",
+            validator.getParameters().getStringOrDefault("method", ""),
+            validator.getParameters().getStringOrDefault("coef", ""));
   }
 
   @Override
@@ -76,18 +84,28 @@ public class UDTFDWT implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector pointCollector) throws Exception {
-    timestamp.add(row.getTime());
-    value.add(Util.getValueAsDouble(row));
+    if (!row.isNull(0)) {
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        timestamp.add(row.getTime());
+        value.add(v);
+      }
+    }
   }
 
   @Override
   public void terminate(PointCollector pointCollector) throws Exception {
+    if (value.isEmpty()) {
+      return;
+    }
     if (!s.equals("") || !method.equals("")) { // When user offers at least one parameter
       DWTUtil transformer = new DWTUtil(method, s, layer, value);
       transformer.waveletTransform();
       double[] r = transformer.getData();
       for (int i = 0; i < r.length; i++) {
-        pointCollector.putDouble(timestamp.get(i), r[i]);
+        if (Double.isFinite(r[i])) {
+          pointCollector.putDouble(timestamp.get(i), r[i]);
+        }
       }
     }
   }

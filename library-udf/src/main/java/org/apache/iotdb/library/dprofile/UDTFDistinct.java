@@ -97,6 +97,9 @@ public class UDTFDistinct implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector pc) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     switch (dataType) {
       case INT32:
         intSet.add(row.getInt(0));

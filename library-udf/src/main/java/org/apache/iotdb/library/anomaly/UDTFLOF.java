@@ -31,11 +31,15 @@ import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrat
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /** This function is used to detect density anomaly of time series. */
 public class UDTFLOF implements UDTF {
   private int multipleK;
   private int dim;
   private static final String DEFAULT_METHOD = "default";
+  private static final String METHOD_SERIES = "series";
   private String method = DEFAULT_METHOD;
   private int window;
 
@@ -119,7 +123,27 @@ public class UDTFLOF implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
+    validator.validateInputSeriesNumber(1, Integer.MAX_VALUE);
+    for (int i = 0; i < validator.getParameters().getChildExpressionsSize(); i++) {
+      validator.validateInputSeriesDataType(i, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
+    }
+    validator
+        .validate(
+            k -> (int) k > 0,
+            "Parameter k should be a positive integer.",
+            validator.getParameters().getIntOrDefault("k", 3))
+        .validate(
+            window -> (int) window > 0,
+            "Parameter window should be a positive integer.",
+            validator.getParameters().getIntOrDefault("window", 10000))
+        .validate(
+            method -> isValidMethod((String) method),
+            "Method should be default or series.",
+            validator.getParameters().getStringOrDefault("method", DEFAULT_METHOD));
+  }
+
+  private static boolean isValidMethod(String method) {
+    return DEFAULT_METHOD.equalsIgnoreCase(method) || METHOD_SERIES.equalsIgnoreCase(method);
   }
 
   @Override
@@ -137,24 +161,31 @@ public class UDTFLOF implements UDTF {
 
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
-    if (this.method.equals(DEFAULT_METHOD)) {
-      int size = rowWindow.windowSize();
-      Double[][] knn = new Double[size][dim];
-      long[] timestamp = new long[size];
-      int i = 0;
+    if (this.method.equalsIgnoreCase(DEFAULT_METHOD)) {
+      int size = 0;
+      Double[][] knn = new Double[rowWindow.windowSize()][dim];
+      long[] timestamp = new long[rowWindow.windowSize()];
       int row = 0;
       while (row < rowWindow.windowSize()) {
-        timestamp[i] = rowWindow.getRow(row).getTime();
+        Double[] values = new Double[dim];
+        boolean valid = true;
         for (int j = 0; j < dim; j++) {
-          if (!rowWindow.getRow(row).isNull(j)) {
-            knn[i][j] = Util.getValueAsDouble(rowWindow.getRow(i), j);
-          } else {
-            i--;
-            size--;
+          if (rowWindow.getRow(row).isNull(j)) {
+            valid = false;
             break;
           }
+          double value = Util.getValueAsDouble(rowWindow.getRow(row), j);
+          if (!Double.isFinite(value)) {
+            valid = false;
+            break;
+          }
+          values[j] = value;
         }
-        i++;
+        if (valid) {
+          timestamp[size] = rowWindow.getRow(row).getTime();
+          knn[size] = values;
+          size++;
+        }
         row++;
       }
       if (size > multipleK) {
@@ -168,39 +199,35 @@ public class UDTFLOF implements UDTF {
           }
         }
       }
-    } else if (this.method.equals("series")) {
+    } else if (this.method.equalsIgnoreCase(METHOD_SERIES)) {
       int size = rowWindow.windowSize() - window + 1;
       if (size > 0) {
-        Double[][] knn = new Double[size][window];
-        long[] timestamp = new long[rowWindow.windowSize()];
-        double temp;
-        int i = 0;
+        List<Long> timestamp = new ArrayList<>();
+        List<Double> values = new ArrayList<>();
         int row = 0;
         while (row < rowWindow.windowSize()) {
-          timestamp[i] = rowWindow.getRow(row).getTime();
           if (!rowWindow.getRow(row).isNull(0)) {
-            temp = Util.getValueAsDouble(rowWindow.getRow(row), 0);
-            for (int p = 0; p < window; p++) {
-              if (i - p < 0) {
-                break;
-              }
-              if (i - p < size) {
-                knn[i - p][p] = temp;
-              }
+            double value = Util.getValueAsDouble(rowWindow.getRow(row), 0);
+            if (Double.isFinite(value)) {
+              timestamp.add(rowWindow.getRow(row).getTime());
+              values.add(value);
             }
-          } else {
-            i--;
-            size--;
           }
-          i++;
           row++;
         }
+        size = values.size() - window + 1;
         if (size > multipleK) {
+          Double[][] knn = new Double[size][window];
+          for (int i = 0; i < size; i++) {
+            for (int p = 0; p < window; p++) {
+              knn[i][p] = values.get(i + p);
+            }
+          }
           double[] lof = new double[size];
           for (int m = 0; m < size; m++) {
             try {
               lof[m] = getLOF(knn, knn[m], size);
-              collector.putDouble(timestamp[m], lof[m]);
+              collector.putDouble(timestamp.get(m), lof[m]);
             } catch (Exception e) {
               throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + m, e);
             }

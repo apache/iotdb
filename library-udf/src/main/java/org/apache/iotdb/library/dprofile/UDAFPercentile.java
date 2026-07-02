@@ -33,13 +33,14 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 /** calculate the approximate percentile. */
 public class UDAFPercentile implements UDTF {
-  protected static Map<Integer, Long> intDic;
-  protected static Map<Long, Long> longDic;
-  protected static Map<Float, Long> floatDic;
-  protected static Map<Double, Long> doubleDic;
+  protected Map<Integer, Long> intDic;
+  protected Map<Long, Long> longDic;
+  protected Map<Float, Long> floatDic;
+  protected Map<Double, Long> doubleDic;
   private ExactOrderStatistics statistics;
   private GKArray sketch;
   private boolean exact;
@@ -102,6 +103,9 @@ public class UDAFPercentile implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (exact) {
       statistics.insert(row);
       switch (dataType) {
@@ -112,10 +116,16 @@ public class UDAFPercentile implements UDTF {
           longDic.put(row.getLong(0), row.getTime());
           break;
         case FLOAT:
-          floatDic.put(row.getFloat(0), row.getTime());
+          float fv = row.getFloat(0);
+          if (Float.isFinite(fv)) {
+            floatDic.put(fv, row.getTime());
+          }
           break;
         case DOUBLE:
-          doubleDic.put(row.getDouble(0), row.getTime());
+          double dv = row.getDouble(0);
+          if (Double.isFinite(dv)) {
+            doubleDic.put(dv, row.getTime());
+          }
           break;
         case BLOB:
         case BOOLEAN:
@@ -128,68 +138,75 @@ public class UDAFPercentile implements UDTF {
       }
     } else {
       double res = Util.getValueAsDouble(row);
+      if (!Double.isFinite(res)) {
+        return;
+      }
       sketch.insert(res);
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (exact) {
-      long time;
-      switch (dataType) {
-        case INT32:
-          int ires = Integer.parseInt(statistics.getPercentile(rank));
-          time = intDic.getOrDefault(ires, 0L);
-          collector.putInt(time, ires);
-          break;
-        case INT64:
-          long lres = Long.parseLong(statistics.getPercentile(rank));
-          time = longDic.getOrDefault(lres, 0L);
-          collector.putLong(time, lres);
-          break;
-        case FLOAT:
-          float fres = Float.parseFloat(statistics.getPercentile(rank));
-          time = floatDic.getOrDefault(fres, 0L);
-          collector.putFloat(time, fres);
-          break;
-        case DOUBLE:
-          double dres = Double.parseDouble(statistics.getPercentile(rank));
-          time = doubleDic.getOrDefault(dres, 0L);
-          collector.putDouble(time, dres);
-          break;
-        case DATE:
-        case TIMESTAMP:
-        case TEXT:
-        case STRING:
-        case BOOLEAN:
-        case BLOB:
-        default:
-          break;
+    try {
+      if (exact) {
+        long time;
+        switch (dataType) {
+          case INT32:
+            int ires = Integer.parseInt(statistics.getPercentile(rank));
+            time = intDic.getOrDefault(ires, 0L);
+            collector.putInt(time, ires);
+            break;
+          case INT64:
+            long lres = Long.parseLong(statistics.getPercentile(rank));
+            time = longDic.getOrDefault(lres, 0L);
+            collector.putLong(time, lres);
+            break;
+          case FLOAT:
+            float fres = Float.parseFloat(statistics.getPercentile(rank));
+            time = floatDic.getOrDefault(fres, 0L);
+            collector.putFloat(time, fres);
+            break;
+          case DOUBLE:
+            double dres = Double.parseDouble(statistics.getPercentile(rank));
+            time = doubleDic.getOrDefault(dres, 0L);
+            collector.putDouble(time, dres);
+            break;
+          case DATE:
+          case TIMESTAMP:
+          case TEXT:
+          case STRING:
+          case BOOLEAN:
+          case BLOB:
+          default:
+            break;
+        }
+      } else {
+        double res = sketch.query(rank);
+        switch (dataType) {
+          case INT32:
+            collector.putInt(0, (int) res);
+            break;
+          case INT64:
+            collector.putLong(0, (long) res);
+            break;
+          case FLOAT:
+            collector.putFloat(0, (float) res);
+            break;
+          case DOUBLE:
+            collector.putDouble(0, res);
+            break;
+          case BOOLEAN:
+          case BLOB:
+          case STRING:
+          case TEXT:
+          case TIMESTAMP:
+          case DATE:
+          default:
+            break;
+        }
       }
-    } else {
-      double res = sketch.query(rank);
-      switch (dataType) {
-        case INT32:
-          collector.putInt(0, (int) res);
-          break;
-        case INT64:
-          collector.putLong(0, (long) res);
-          break;
-        case FLOAT:
-          collector.putFloat(0, (float) res);
-          break;
-        case DOUBLE:
-          collector.putDouble(0, res);
-          break;
-        case BOOLEAN:
-        case BLOB:
-        case STRING:
-        case TEXT:
-        case TIMESTAMP:
-        case DATE:
-        default:
-          break;
-      }
+    } catch (NoSuchElementException | ArithmeticException e) {
+      // Empty inputs have no percentile to emit.
     }
   }
 }

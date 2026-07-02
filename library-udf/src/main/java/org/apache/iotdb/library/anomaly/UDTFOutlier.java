@@ -24,6 +24,7 @@ import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
@@ -48,37 +49,65 @@ public class UDTFOutlier implements UDTF {
   private Map<Long, Double> outliers = new HashMap<>();
 
   @Override
+  public void validate(UDFParameterValidator validator) throws Exception {
+    validator
+        .validateInputSeriesNumber(1)
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
+        .validate(
+            x -> (int) x > 0,
+            "Parameter k should be a positive integer.",
+            validator.getParameters().getIntOrDefault("k", 3))
+        .validate(
+            x -> Double.isFinite((double) x) && (double) x >= 0,
+            "Parameter r should be finite and non-negative.",
+            validator.getParameters().getDoubleOrDefault("r", 5))
+        .validate(
+            x -> (int) x > 0,
+            "Parameter w should be a positive integer.",
+            validator.getParameters().getIntOrDefault("w", 1000))
+        .validate(
+            x -> (int) x > 0,
+            "Parameter s should be a positive integer.",
+            validator.getParameters().getIntOrDefault("s", 500));
+  }
+
+  @Override
   public void beforeStart(UDFParameters udfParameters, UDTFConfigurations udtfConfigurations)
       throws Exception {
     udtfConfigurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(udfParameters.getDataType(0));
+        .setOutputDataType(Type.DOUBLE);
     this.k = udfParameters.getIntOrDefault("k", 3);
     this.r = udfParameters.getDoubleOrDefault("r", 5);
     this.w = udfParameters.getIntOrDefault("w", 1000);
     this.s = udfParameters.getIntOrDefault("s", 500);
 
     this.i = 0;
-
-    udtfConfigurations.setAccessStrategy(new RowByRowAccessStrategy());
-    udtfConfigurations.setOutputDataType(Type.DOUBLE);
+    currentTimeWindow.clear();
+    currentValueWindow.clear();
+    outliers.clear();
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    if (!row.isNull(0)) {
-      if (i >= w && (i - w) % s == 0) {
-        detect();
-      }
-
-      if (i >= w) {
-        currentValueWindow.remove(0);
-        currentTimeWindow.remove(0);
-      }
-      currentTimeWindow.add(row.getTime());
-      currentValueWindow.add(Util.getValueAsDouble(row));
-      i += 1;
+    if (row.isNull(0)) {
+      return;
     }
+    double v = Util.getValueAsDouble(row);
+    if (!Double.isFinite(v)) {
+      return;
+    }
+    if (i >= w && (i - w) % s == 0) {
+      detect();
+    }
+
+    if (i >= w) {
+      currentValueWindow.remove(0);
+      currentTimeWindow.remove(0);
+    }
+    currentTimeWindow.add(row.getTime());
+    currentValueWindow.add(v);
+    i += 1;
   }
 
   @Override
