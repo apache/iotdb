@@ -584,8 +584,6 @@ public final class DataNodePipeMessages {
       "The pipe cannot extract table model data when sql dialect is set to tree.";
   public static final String THE_PIPE_CANNOT_EXTRACT_TREE_MODEL_DATA =
       "The pipe cannot extract tree model data when sql dialect is set to table.";
-  public static final String THE_PIPE_CANNOT_TRANSFER_DATA_WHEN_DATA =
-      "The pipe cannot transfer data when data region is using ratis consensus.";
   public static final String THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT =
       "The reference count of the event {} cannot be increased, skipping it.";
   public static final String THE_REFERENCE_COUNT_OF_THE_REALTIME_EVENT =
