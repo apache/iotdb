@@ -51,6 +51,11 @@ public class PipeTransferCompressedReqTest {
             Collections.singletonList(
                 PipeCompressorFactory.getCompressor(
                     PipeCompressor.PipeCompressionType.GZIP.getIndex())));
+    Assert.assertEquals(
+        Math.max(compressedReq.body.remaining(), originalReq.body.remaining() + 3),
+        PipeTransferCompressedReq.getMaxDecompressedLengthInBytes(compressedReq));
+    Assert.assertEquals(0, compressedReq.body.position());
+
     final TPipeTransferReq decompressedReq =
         PipeTransferCompressedReq.fromTPipeTransferReq(compressedReq);
 

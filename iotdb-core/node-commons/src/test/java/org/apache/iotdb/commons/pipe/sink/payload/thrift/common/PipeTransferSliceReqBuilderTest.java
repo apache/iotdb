@@ -123,6 +123,20 @@ public class PipeTransferSliceReqBuilderTest {
     Assert.assertEquals(2, sliceReq.getSliceCount());
   }
 
+  @Test
+  public void testSliceReqHandlerRejectsOversizedSlices() throws IOException {
+    final TPipeTransferReq req = createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 6);
+    final PipeTransferSliceReq firstSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(7, req.getType(), 0, 2, req.body.duplicate(), 0, 4);
+    final PipeTransferSliceReq oversizedSecondSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(7, req.getType(), 1, 2, req.body.duplicate(), 2, 6);
+
+    final PipeTransferSliceReqHandler handler = new PipeTransferSliceReqHandler();
+    Assert.assertTrue(handler.receiveSlice(firstSlice));
+    Assert.assertFalse(handler.receiveSlice(oversizedSecondSlice));
+    Assert.assertFalse(handler.makeReqIfComplete().isPresent());
+  }
+
   private static TPipeTransferReq createReq(final byte version, final int bodySize) {
     final byte[] body = new byte[bodySize];
     for (int i = 0; i < body.length; ++i) {
