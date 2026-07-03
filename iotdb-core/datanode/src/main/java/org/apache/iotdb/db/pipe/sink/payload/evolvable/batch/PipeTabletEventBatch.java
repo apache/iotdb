@@ -134,9 +134,8 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       return;
     }
 
-    final long newTotalBufferSize = totalBufferSize + bufferSize;
-    PipeDataNodeResourceManager.memory()
-        .forceResize(allocatedMemoryBlock, Math.min(newTotalBufferSize, maxBatchSizeInBytes));
+    final long newTotalBufferSize = Math.min(totalBufferSize + bufferSize, maxBatchSizeInBytes);
+    PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlock, newTotalBufferSize);
     totalBufferSize = newTotalBufferSize;
   }
 

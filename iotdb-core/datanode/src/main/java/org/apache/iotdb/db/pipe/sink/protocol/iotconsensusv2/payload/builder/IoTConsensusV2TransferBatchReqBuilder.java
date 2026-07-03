@@ -162,9 +162,9 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
       return;
     }
 
-    final long newTotalBufferSize = totalBufferSize + bufferSize;
-    PipeDataNodeResourceManager.memory()
-        .forceResize(allocatedMemoryBlock, Math.min(newTotalBufferSize, getMaxBatchSizeInBytes()));
+    final long newTotalBufferSize =
+        Math.min(totalBufferSize + bufferSize, getMaxBatchSizeInBytes());
+    PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlock, newTotalBufferSize);
     totalBufferSize = newTotalBufferSize;
   }
 
@@ -172,15 +172,9 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
       final int previousEventsSize,
       final int previousRequestCommitIdsSize,
       final int previousBatchReqsSize) {
-    while (events.size() > previousEventsSize) {
-      events.remove(events.size() - 1);
-    }
-    while (requestCommitIds.size() > previousRequestCommitIdsSize) {
-      requestCommitIds.remove(requestCommitIds.size() - 1);
-    }
-    while (batchReqs.size() > previousBatchReqsSize) {
-      batchReqs.remove(batchReqs.size() - 1);
-    }
+    events.subList(previousEventsSize, events.size()).clear();
+    requestCommitIds.subList(previousRequestCommitIdsSize, requestCommitIds.size()).clear();
+    batchReqs.subList(previousBatchReqsSize, batchReqs.size()).clear();
   }
 
   private void resetMemoryUsage() {

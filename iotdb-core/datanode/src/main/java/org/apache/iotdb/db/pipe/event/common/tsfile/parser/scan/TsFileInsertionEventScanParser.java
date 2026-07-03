@@ -221,6 +221,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     throw new NoSuchElementException();
                   }
 
+                  // Release the previous parser-owned tablet buffer before allocating the next
+                  // tablet.
+                  releaseTabletMemoryBlock();
                   // currentIsAligned is initialized when TsFileInsertionEventScanParser is
                   // constructed.
                   // When the getNextTablet function is called, currentIsAligned may be updated,
@@ -231,7 +234,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   final Tablet tablet = getNextTablet();
                   // Record tablet metrics
                   recordTabletMetrics(tablet);
-                  releaseTabletMemoryBlock();
                   final boolean isLast = isLastTabletWithoutDeferredException();
                   try {
                     return sourceEvent == null
