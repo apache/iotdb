@@ -233,11 +233,13 @@ void appendPkcs12Bags(STACK_OF(PKCS12_SAFEBAG)* target, PKCS12* source,
       X509* cert = PKCS12_certbag2x509(bag);
       if (cert != nullptr) {
         PKCS12_SAFEBAG* newBag = PKCS12_SAFEBAG_create_cert(cert);
-        if (friendlyName != nullptr) {
-          PKCS12_add_friendlyname_utf8(newBag, friendlyName, -1);
-        }
-        sk_PKCS12_SAFEBAG_push(target, newBag);
         X509_free(cert);
+        if (newBag != nullptr) {
+          if (friendlyName != nullptr) {
+            PKCS12_add_friendlyname_utf8(newBag, friendlyName, -1);
+          }
+          sk_PKCS12_SAFEBAG_push(target, newBag);
+        }
       }
     } else if (bagType == NID_pkcs8ShroudedKeyBag || bagType == NID_keyBag) {
       EVP_PKEY* key = nullptr;
@@ -327,7 +329,6 @@ std::string tlcpFixture(const std::string& name) {
 }
 
 std::string buildTlcpDualKeyStoreP12() {
-  OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG, nullptr);
   const std::string password = kStorePassword;
   const std::string outPath = joinPath(executableDir(), "tlcp-client-dual.p12");
 
@@ -356,18 +357,29 @@ std::string buildTlcpDualKeyStoreP12() {
     }
     return "";
   }
-  for (int i = 0; i < sk_PKCS7_num(encSafes); ++i) {
-    sk_PKCS7_push(safes, sk_PKCS7_value(encSafes, i));
+  while (sk_PKCS7_num(encSafes) > 0) {
+    PKCS7* p7 = sk_PKCS7_pop(encSafes);
+    if (p7 == nullptr || sk_PKCS7_push(safes, p7) == 0) {
+      PKCS7_free(p7);
+      sk_PKCS7_pop_free(safes, PKCS7_free);
+      sk_PKCS7_pop_free(encSafes, PKCS7_free);
+      return "";
+    }
   }
   sk_PKCS7_free(encSafes);
 
   PKCS12* p12 = PKCS12_init(NID_pkcs7_data);
+  if (p12 == nullptr) {
+    sk_PKCS7_pop_free(safes, PKCS7_free);
+    return "";
+  }
   if (PKCS12_pack_authsafes(p12, safes) != 1) {
     sk_PKCS7_pop_free(safes, PKCS7_free);
     PKCS12_free(p12);
     return "";
   }
-  sk_PKCS7_free(safes);
+  // PKCS12_pack_authsafes only encodes safes into p12; it does not take ownership.
+  sk_PKCS7_pop_free(safes, PKCS7_free);
 
   const bool written = writePkcs12File(p12, outPath);
   PKCS12_free(p12);

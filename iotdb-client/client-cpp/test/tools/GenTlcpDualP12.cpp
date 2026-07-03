@@ -134,12 +134,12 @@ int main(int argc, char** argv) {
   STACK_OF(PKCS7)* safes = sk_PKCS7_new_null();
   sk_PKCS7_push(safes, p7);
   if (PKCS12_pack_authsafes(p12, safes) != 1) {
-    sk_PKCS7_free(safes);
+    sk_PKCS7_pop_free(safes, PKCS7_free);
     PKCS12_free(p12);
     std::cerr << "failed to pack PKCS12 authsafes\n";
     return 4;
   }
-  sk_PKCS7_free(safes);
+  sk_PKCS7_pop_free(safes, PKCS7_free);
 
   BIO* bio = BIO_new_file(outPath.c_str(), "wb");
   if (bio == nullptr || i2d_PKCS12_bio(bio, p12) != 1) {

@@ -126,6 +126,36 @@ PKCS12* loadPkcs12(const std::string& path, const std::string& password) {
   return p12;
 }
 
+struct Pkcs12ParsedIdentity {
+  EVP_PKEY* pkey = nullptr;
+  X509* cert = nullptr;
+  STACK_OF(X509)* ca = nullptr;
+
+  ~Pkcs12ParsedIdentity() {
+    if (pkey != nullptr) {
+      EVP_PKEY_free(pkey);
+    }
+    if (cert != nullptr) {
+      X509_free(cert);
+    }
+    if (ca != nullptr) {
+      sk_X509_pop_free(ca, X509_free);
+    }
+  }
+
+  Pkcs12ParsedIdentity() = default;
+  Pkcs12ParsedIdentity(const Pkcs12ParsedIdentity&) = delete;
+  Pkcs12ParsedIdentity& operator=(const Pkcs12ParsedIdentity&) = delete;
+};
+
+void parsePkcs12OrThrow(PKCS12* p12, const std::string& password, Pkcs12ParsedIdentity& parsed,
+                        const std::string& label) {
+  if (PKCS12_parse(p12, password.empty() ? nullptr : password.c_str(), &parsed.pkey, &parsed.cert,
+                   &parsed.ca) != 1) {
+    throwSslError("Failed to parse PKCS12 " + label);
+  }
+}
+
 std::string getBagFriendlyName(PKCS12_SAFEBAG* bag) {
   char* name = PKCS12_get_friendlyname(bag);
   if (name == nullptr) {
@@ -218,34 +248,22 @@ void addCertToStore(X509_STORE* store, X509* cert) {
 
 void loadTrustFromPkcs12(SSL_CTX* ctx, const std::string& path, const std::string& password) {
   PKCS12* p12 = loadPkcs12(path, password);
-  EVP_PKEY* pkey = nullptr;
-  X509* cert = nullptr;
-  STACK_OF(X509)* ca = nullptr;
-  if (PKCS12_parse(p12, password.empty() ? nullptr : password.c_str(), &pkey, &cert, &ca) != 1) {
-    PKCS12_free(p12);
-    throwSslError("Failed to parse PKCS12 trust store " + path);
-  }
+  Pkcs12ParsedIdentity parsed;
+  parsePkcs12OrThrow(p12, password, parsed, "trust store " + path);
 
   X509_STORE* store = SSL_CTX_get_cert_store(ctx);
-  if (cert != nullptr) {
-    validateCertificate(cert);
-    addCertToStore(store, cert);
-    X509_free(cert);
+  if (parsed.cert != nullptr) {
+    validateCertificate(parsed.cert);
+    addCertToStore(store, parsed.cert);
   }
-  if (ca != nullptr) {
-    for (int i = 0; i < sk_X509_num(ca); ++i) {
-      X509* caCert = sk_X509_value(ca, i);
+  if (parsed.ca != nullptr) {
+    for (int i = 0; i < sk_X509_num(parsed.ca); ++i) {
+      X509* caCert = sk_X509_value(parsed.ca, i);
       validateCertificate(caCert);
       addCertToStore(store, caCert);
     }
-    sk_X509_pop_free(ca, X509_free);
-  }
-  if (pkey != nullptr) {
-    EVP_PKEY_free(pkey);
   }
 
-  STACK_OF(PKCS12_SAFEBAG)* unusedBags = nullptr;
-  (void)unusedBags;
   forEachPkcs12Bag(p12, password, [&](PKCS12_SAFEBAG* bag) {
     if (PKCS12_SAFEBAG_get_nid(bag) == NID_certBag) {
       X509* bagCert = PKCS12_certbag2x509(bag);
@@ -277,32 +295,19 @@ void loadTrustStore(SSL_CTX* ctx, const std::string& path, const std::string& pa
 
 void loadTlsIdentityFromPkcs12(SSL_CTX* ctx, const std::string& path, const std::string& password) {
   PKCS12* p12 = loadPkcs12(path, password);
-  EVP_PKEY* pkey = nullptr;
-  X509* cert = nullptr;
-  STACK_OF(X509)* ca = nullptr;
-  if (PKCS12_parse(p12, password.empty() ? nullptr : password.c_str(), &pkey, &cert, &ca) != 1) {
-    PKCS12_free(p12);
-    throwSslError("Failed to parse PKCS12 key store " + path);
-  }
-  if (SSL_CTX_use_certificate(ctx, cert) != 1) {
+  Pkcs12ParsedIdentity parsed;
+  parsePkcs12OrThrow(p12, password, parsed, "key store " + path);
+  PKCS12_free(p12);
+
+  if (SSL_CTX_use_certificate(ctx, parsed.cert) != 1) {
     throwSslError("Failed to load client certificate from " + path);
   }
-  if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+  if (SSL_CTX_use_PrivateKey(ctx, parsed.pkey) != 1) {
     throwSslError("Failed to load client private key from " + path);
   }
   if (SSL_CTX_check_private_key(ctx) != 1) {
     throwSslError("Client certificate and private key do not match in " + path);
   }
-  if (ca != nullptr) {
-    sk_X509_pop_free(ca, X509_free);
-  }
-  if (cert != nullptr) {
-    X509_free(cert);
-  }
-  if (pkey != nullptr) {
-    EVP_PKEY_free(pkey);
-  }
-  PKCS12_free(p12);
 }
 
 void loadTlsIdentityFromPem(SSL_CTX* ctx, const std::string& path) {
@@ -389,21 +394,14 @@ void loadTlcpKeyStoreFromPkcs12(SSL_CTX* ctx, const std::string& path, const std
   PKCS12* p12 = loadPkcs12(path, password);
   TlcpIdentity identity;
 
-  EVP_PKEY* parsedKey = nullptr;
-  X509* parsedCert = nullptr;
-  STACK_OF(X509)* ca = nullptr;
-  if (PKCS12_parse(p12, password.empty() ? nullptr : password.c_str(), &parsedKey, &parsedCert,
-                   &ca) == 1) {
-    assignTlcpMaterial(identity, "sign", parsedCert, parsedKey);
-    parsedCert = nullptr;
-    parsedKey = nullptr;
-  }
-  if (ca != nullptr) {
-    sk_X509_pop_free(ca, X509_free);
+  Pkcs12ParsedIdentity parsed;
+  if (PKCS12_parse(p12, password.empty() ? nullptr : password.c_str(), &parsed.pkey, &parsed.cert,
+                   &parsed.ca) == 1) {
+    assignTlcpMaterial(identity, "sign", parsed.cert, parsed.pkey);
+    parsed.cert = nullptr;
+    parsed.pkey = nullptr;
   }
 
-  STACK_OF(PKCS12_SAFEBAG)* unusedBags = nullptr;
-  (void)unusedBags;
   forEachPkcs12Bag(p12, password, [&](PKCS12_SAFEBAG* bag) {
     const std::string friendlyName = getBagFriendlyName(bag);
     const int bagType = PKCS12_SAFEBAG_get_nid(bag);
@@ -534,25 +532,19 @@ SSL_CTX* createTlcpClientContext(const SslConfig& config) {
 
 void validatePkcs12Store(const std::string& path, const std::string& password) {
   PKCS12* p12 = loadPkcs12(path, password);
-  EVP_PKEY* pkey = nullptr;
-  X509* cert = nullptr;
-  STACK_OF(X509)* ca = nullptr;
-  if (PKCS12_parse(p12, password.empty() ? nullptr : password.c_str(), &pkey, &cert, &ca) != 1) {
+  Pkcs12ParsedIdentity parsed;
+  if (PKCS12_parse(p12, password.empty() ? nullptr : password.c_str(), &parsed.pkey, &parsed.cert,
+                   &parsed.ca) != 1) {
     PKCS12_free(p12);
     throw IoTDBException("Failed to parse PKCS12 store: " + path);
   }
-  if (cert != nullptr) {
-    validateCertificate(cert);
-    X509_free(cert);
+  if (parsed.cert != nullptr) {
+    validateCertificate(parsed.cert);
   }
-  if (ca != nullptr) {
-    for (int i = 0; i < sk_X509_num(ca); ++i) {
-      validateCertificate(sk_X509_value(ca, i));
+  if (parsed.ca != nullptr) {
+    for (int i = 0; i < sk_X509_num(parsed.ca); ++i) {
+      validateCertificate(sk_X509_value(parsed.ca, i));
     }
-    sk_X509_pop_free(ca, X509_free);
-  }
-  if (pkey != nullptr) {
-    EVP_PKEY_free(pkey);
   }
 
   forEachPkcs12Bag(p12, password, [&](PKCS12_SAFEBAG* bag) {

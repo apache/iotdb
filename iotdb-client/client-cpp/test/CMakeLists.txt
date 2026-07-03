@@ -100,15 +100,11 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
     set(_iotdb_asan_targets session_tests session_relational_tests session_c_tests
-            session_c_relational_tests)
+            session_c_relational_tests rpc_ssl_utils_tests)
     foreach(_t IN LISTS _iotdb_asan_targets)
         target_compile_options(${_t} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
         target_link_options(${_t} PRIVATE -fsanitize=address)
     endforeach()
-    # OpenSSL/Tongsuo may report benign leaks; avoid failing rpcSslUtilsTest on LeakSanitizer.
-    target_compile_options(rpc_ssl_utils_tests PRIVATE -fsanitize=address -fno-sanitize=leak
-            -fno-omit-frame-pointer)
-    target_link_options(rpc_ssl_utils_tests PRIVATE -fsanitize=address)
 endif()
 
 # Linux: keep iotdb_session in the executable's needed-list even when there
@@ -169,11 +165,3 @@ endif()
 set_tests_properties(
         sessionIT sessionRelationalIT sessionCIT sessionCRelationalIT rpcSslUtilsTest
         PROPERTIES RUN_SERIAL TRUE)
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
-    set_tests_properties(rpcSslUtilsTest PROPERTIES
-            ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
-endif()
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
-    set_tests_properties(rpcSslUtilsTest PROPERTIES
-            ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
-endif()
