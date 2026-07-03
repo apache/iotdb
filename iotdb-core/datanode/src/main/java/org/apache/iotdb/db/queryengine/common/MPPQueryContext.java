@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -666,34 +667,26 @@ public class MPPQueryContext implements IAuditEntity {
     return new MemoryNotEnoughException(
         String.format(
             Locale.ROOT,
-            "Not enough memory while analyzing metadata for query result columns. "
-                + "The result set has too many columns. "
-                + "Before the failure, IoTDB had matched %,d source columns for result-column "
-                + "expansion, expanded %,d source columns, and generated %,d result-set columns. "
-                + "%s"
-                + "Current series pagination is %s. "
-                + "Use SLIMIT/SOFFSET to reduce returned series%s, narrow the path pattern, "
-                + "or increase query memory%s. "
-                + "Memory details: source-column memory for result expansion %s, "
-                + "generated-result-column memory %s, requested this time %s, current free memory %s. "
-                + "Original error: %s",
+            DataNodeQueryMessages.RESULT_SET_COLUMN_METADATA_MEMORY_NOT_ENOUGH,
             matchedSourceColumnsForResultSet,
             expandedSourceColumnsForResultSet,
             generatedResultSetColumns,
             exceededColumns > 0
                 ? String.format(
                     Locale.ROOT,
-                    "The matched source columns exceed the estimated current memory capacity by "
-                        + "at least %,d columns. ",
+                    DataNodeQueryMessages.RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY,
                     exceededColumns)
                 : "",
             formatSeriesPaginationForDiagnostics(),
             alignByDeviceForResultSetColumnTracking
                 ? ""
-                : ", use ALIGN BY DEVICE to reduce cross-device result columns",
+                : DataNodeQueryMessages.USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS,
             shortageBytes > 0
-                ? " by at least " + formatBytes(shortageBytes)
-                : " for the query engine/operator memory pool",
+                ? String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.BY_AT_LEAST_MEMORY_SIZE,
+                    formatBytes(shortageBytes))
+                : DataNodeQueryMessages.FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL,
             formatBytes(sourceColumnMemoryCostForResultSet),
             formatBytes(generatedResultSetColumnMemoryCost),
             formatBytes(requestedBytes),
@@ -715,33 +708,24 @@ public class MPPQueryContext implements IAuditEntity {
     return new MemoryNotEnoughException(
         String.format(
             Locale.ROOT,
-            "Not enough memory while fetching metadata for query analysis. "
-                + "The result set may have too many columns. "
-                + "Before the failure, IoTDB had deserialized %,d time-series columns from schema "
-                + "fetch results. Schema fetch memory may be reserved before safely deserializing "
-                + "the whole fetched metadata, so this count can be lower than the matched schema "
-                + "columns. %s"
-                + "Current series pagination is %s. "
-                + "Use SLIMIT/SOFFSET to reduce returned series%s, narrow the path pattern, "
-                + "or increase query memory%s. "
-                + "Memory details: fetched schema tree estimated memory %s, "
-                + "fetched schema tree reserved memory %s, requested this time %s, "
-                + "current free memory %s. Original error: %s",
+            DataNodeQueryMessages.SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH,
             schemaFetchDeserializedColumnCount,
             exceededColumns > 0
                 ? String.format(
                     Locale.ROOT,
-                    "The fetched schema columns exceed the estimated current memory capacity by "
-                        + "at least %,d columns. ",
+                    DataNodeQueryMessages.SCHEMA_FETCH_COLUMNS_EXCEED_MEMORY_CAPACITY,
                     exceededColumns)
                 : "",
             formatSeriesPaginationForDiagnostics(),
             alignByDeviceForResultSetColumnTracking
                 ? ""
-                : ", use ALIGN BY DEVICE to reduce cross-device result columns",
+                : DataNodeQueryMessages.USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS,
             shortageBytes > 0
-                ? " by at least " + formatBytes(shortageBytes)
-                : " for the query engine/operator memory pool",
+                ? String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.BY_AT_LEAST_MEMORY_SIZE,
+                    formatBytes(shortageBytes))
+                : DataNodeQueryMessages.FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL,
             formatBytes(schemaFetchEstimatedMemoryCost),
             formatBytes(schemaFetchReservedMemoryCost),
             formatBytes(requestedBytes),
@@ -798,10 +782,10 @@ public class MPPQueryContext implements IAuditEntity {
   private String formatSeriesPaginationForDiagnostics() {
     return String.format(
         Locale.ROOT,
-        "SLIMIT=%s, SOFFSET=%,d",
+        DataNodeQueryMessages.SERIES_PAGINATION_FOR_DIAGNOSTICS,
         seriesLimitForResultSetColumnTracking > 0
             ? String.format(Locale.ROOT, "%,d", seriesLimitForResultSetColumnTracking)
-            : "not set",
+            : DataNodeQueryMessages.NOT_SET,
         seriesOffsetForResultSetColumnTracking);
   }
 
@@ -829,7 +813,7 @@ public class MPPQueryContext implements IAuditEntity {
 
   private static String formatBytes(long bytes) {
     if (bytes < 0) {
-      return "unknown";
+      return DataNodeQueryMessages.UNKNOWN;
     }
     if (bytes < 1024) {
       return bytes + " B";
