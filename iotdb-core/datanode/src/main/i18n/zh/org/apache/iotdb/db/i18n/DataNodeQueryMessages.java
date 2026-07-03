@@ -270,7 +270,7 @@ public final class DataNodeQueryMessages {
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "标签谓词的运算符必须为 '='，目标：";
   public static final String THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR =
-      "属性谓词的运算符必须为 =, !=, <, <=, >, >= 或 LIKE，目标：";
+      "属性谓词的运算符必须为 =, !=, <, <=, >, >=, LIKE 或 IN，目标：";
   public static final String
       THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
           "属性谓词的右侧值不能在比较运算符中为 null，请改用 IS NULL 或 IS NOT NULL";

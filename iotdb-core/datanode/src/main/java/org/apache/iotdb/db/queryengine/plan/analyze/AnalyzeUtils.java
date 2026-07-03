@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
@@ -563,6 +565,25 @@ public class AnalyzeUtils {
           }
           deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
         }
+      } else if (currExp instanceof InPredicate) {
+        final PredicateParseResult parseResult =
+            parseIn((InPredicate) currExp, tagPredicate, table);
+        tagPredicate = parseResult.tagPredicate;
+        if (parseResult.shouldQueryDevice()) {
+          if (Objects.isNull(deviceFilterExpressions)) {
+            deviceFilterExpressions = new ArrayList<>();
+          }
+          if (Objects.isNull(attributeColumns)) {
+            attributeColumns = new ArrayList<>();
+          }
+          deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
+          collectAttributeColumn(attributeColumns, parseResult.attributeColumn);
+        } else if (parseResult.shouldFilterDevice()) {
+          if (Objects.isNull(deviceFilterExpressions)) {
+            deviceFilterExpressions = new ArrayList<>();
+          }
+          deviceFilterExpressions.add(toSymbolReferenceExpression(currExp));
+        }
       } else {
         throw new SemanticException(
             DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + currExp + " in " + expression);
@@ -698,6 +719,32 @@ public class AnalyzeUtils {
             + likePredicate.getPattern());
   }
 
+  private static PredicateParseResult parseIn(
+      InPredicate inPredicate, TagPredicate oldPredicate, TsTable table) {
+    Expression leftHandExp = inPredicate.getValue();
+    if (!(leftHandExp instanceof Identifier)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
+    }
+    String columnName = ((Identifier) leftHandExp).getValue();
+    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    if (Objects.nonNull(columnSchema)
+        && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+      validateAttributeComparison(inPredicate);
+      return PredicateParseResult.attribute(columnName, oldPredicate);
+    }
+    int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
+    if (tagColumnOrdinal == -1) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages.THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN,
+              columnName));
+    }
+    throw new SemanticException(
+        DataNodeQueryMessages.THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR
+            + inPredicate.getValueList());
+  }
+
   private static TagPredicate combinePredicates(
       TagPredicate oldPredicate, TagPredicate newPredicate) {
     if (oldPredicate == null) {
@@ -782,6 +829,18 @@ public class AnalyzeUtils {
     validateAttributePredicateStringValue(likePredicate.getPattern());
     if (likePredicate.getEscape().isPresent()) {
       validateAttributePredicateStringValue(likePredicate.getEscape().get());
+    }
+  }
+
+  private static void validateAttributeComparison(final InPredicate inPredicate) {
+    if (!(inPredicate.getValueList() instanceof InListExpression)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_MUST_BE_A_STRING
+              + inPredicate.getValueList());
+    }
+    for (final Expression expression :
+        ((InListExpression) inPredicate.getValueList()).getValues()) {
+      validateAttributePredicateStringValue(expression);
     }
   }
 
