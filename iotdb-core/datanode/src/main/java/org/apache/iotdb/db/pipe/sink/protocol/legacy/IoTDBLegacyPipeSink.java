@@ -162,19 +162,72 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
                 SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
             parameters.getBooleanOrDefault(
                 Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY), false),
-            parameters.hasAnyAttributes(
-                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
-            parameters.hasAnyAttributes(
-                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY))
+            hasCompleteAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+            hasNoHalfAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY))
         .validate(
             args -> (boolean) args[0] == (boolean) args[1],
             String.format(
                 "%s and %s must be specified together",
                 SINK_IOTDB_SSL_KEY_STORE_PATH_KEY, SINK_IOTDB_SSL_KEY_STORE_PWD_KEY),
-            parameters.hasAnyAttributes(
-                CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, SINK_IOTDB_SSL_KEY_STORE_PATH_KEY),
-            parameters.hasAnyAttributes(
-                CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY, SINK_IOTDB_SSL_KEY_STORE_PWD_KEY));
+            true,
+            hasNoHalfAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PWD_KEY));
+  }
+
+  private static boolean hasCompleteAttributePair(
+      final PipeParameters parameters,
+      final String connectorLeftKey,
+      final String connectorRightKey,
+      final String sinkLeftKey,
+      final String sinkRightKey) {
+    return hasExactAttributePair(parameters, connectorLeftKey, connectorRightKey)
+        || hasExactAttributePair(parameters, sinkLeftKey, sinkRightKey)
+        || hasExactAttributePair(
+            parameters,
+            PipeParameters.KeyReducer.reduce(connectorLeftKey),
+            PipeParameters.KeyReducer.reduce(connectorRightKey));
+  }
+
+  private static boolean hasNoHalfAttributePair(
+      final PipeParameters parameters,
+      final String connectorLeftKey,
+      final String connectorRightKey,
+      final String sinkLeftKey,
+      final String sinkRightKey) {
+    return hasBothOrNoneExactAttributes(parameters, connectorLeftKey, connectorRightKey)
+        && hasBothOrNoneExactAttributes(parameters, sinkLeftKey, sinkRightKey)
+        && hasBothOrNoneExactAttributes(
+            parameters,
+            PipeParameters.KeyReducer.reduce(connectorLeftKey),
+            PipeParameters.KeyReducer.reduce(connectorRightKey));
+  }
+
+  private static boolean hasExactAttributePair(
+      final PipeParameters parameters, final String leftKey, final String rightKey) {
+    return hasExactAttribute(parameters, leftKey) && hasExactAttribute(parameters, rightKey);
+  }
+
+  private static boolean hasBothOrNoneExactAttributes(
+      final PipeParameters parameters, final String leftKey, final String rightKey) {
+    return hasExactAttribute(parameters, leftKey) == hasExactAttribute(parameters, rightKey);
+  }
+
+  private static boolean hasExactAttribute(final PipeParameters parameters, final String key) {
+    return parameters.getAttribute().containsKey(key);
   }
 
   private Set<TEndPoint> parseNodeUrls(final PipeParameters parameters) {
