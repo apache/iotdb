@@ -551,7 +551,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       } else {
         PipeLogger.log(LOGGER::warn, e, errorMsg);
       }
-      throw new PipeException(errorMsg);
+      throw new PipeException(errorMsg, e);
     }
   }
 
@@ -630,7 +630,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
       final String errorMsg = String.format("Read TsFile %s error.", tsFile.getPath());
       LOGGER.warn(errorMsg, e);
-      throw new PipeException(errorMsg);
+      throw new PipeException(errorMsg, e);
     }
   }
 
