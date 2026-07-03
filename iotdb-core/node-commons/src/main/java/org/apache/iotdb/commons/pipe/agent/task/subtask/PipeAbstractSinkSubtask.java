@@ -181,7 +181,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
             MAX_RETRY_TIMES,
             e);
         try {
-          sleepIfNoHighPriorityTask(retry * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
+          sleepIfNoHighPriorityTask(getHandshakeRetrySleepInterval(e, retry));
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               PipeMessages.INTERRUPTED_WHILE_SLEEPING_RETRY_HANDSHAKE, interruptedException);
@@ -220,6 +220,13 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
     // For non enriched event, forever retry.
     // For enriched event, retry if connection is set up successfully.
     return false;
+  }
+
+  private long getHandshakeRetrySleepInterval(final Throwable throwable, final int retry) {
+    final long defaultInterval = retry * PipeConfig.getInstance().getPipeSinkRetryIntervalMs();
+    return isAuthenticationFailure(throwable)
+        ? Math.max(defaultInterval, AUTHENTICATION_FAILURE_RETRY_INTERVAL_MS)
+        : defaultInterval;
   }
 
   /**

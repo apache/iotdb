@@ -59,6 +59,9 @@ public class RemoveRegionGroupProcedureTest {
     // A non-zero cursor so the round-trip actually exercises currentReplicaIndex (de)serialization;
     // equals/hashCode include it, so a dropped/garbled cursor would fail the assertion.
     procedure.setCurrentReplicaIndex(1);
+    // Non-default delete-task cursor so the round-trip exercises deleteTaskSeq/deleteTaskSubmitted
+    // too; equals/hashCode include them, so a dropped/garbled value would fail the assertion.
+    procedure.setDeleteTaskState(42L, true);
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       procedure.serialize(outputStream);
@@ -67,6 +70,31 @@ public class RemoveRegionGroupProcedureTest {
       // Exercises ProcedureType.REMOVE_REGION_GROUP_PROCEDURE + ProcedureFactory registration as
       // well as the procedure's own serialize/deserialize.
       Assert.assertEquals(procedure, ProcedureFactory.getInstance().create(buffer));
+    }
+  }
+
+  @Test
+  public void deleteTaskIdIsNegativeAndUnique() {
+    // The DataNode taskResultMap is keyed only by taskId and is shared with add/remove-peer tasks,
+    // which use a procedure's (non-negative) procId directly as the taskId. So a delete taskId must
+    // be strictly negative (disjoint from every procId) and distinct per (procId, deleteTaskSeq),
+    // otherwise a later peer op could be silently deduped against a lingering delete-task entry.
+    final TRegionReplicaSet regionReplicaSet =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+            Arrays.asList(new TDataNodeLocation()));
+    final java.util.Set<Long> seen = new java.util.HashSet<>();
+    for (long procId : new long[] {0L, 1L, 100L, 1L << 20, (1L << 43) - 1}) {
+      for (long seq : new long[] {1L, 2L, 100L, (1L << 20) - 1}) {
+        final RemoveRegionGroupProcedure procedure =
+            new RemoveRegionGroupProcedure(regionReplicaSet);
+        procedure.setProcId(procId);
+        procedure.setDeleteTaskState(seq, true);
+        final long taskId = procedure.deleteTaskIdForTest();
+        Assert.assertTrue("taskId must be negative: " + taskId, taskId < 0);
+        Assert.assertTrue(
+            "taskId must be unique for (" + procId + "," + seq + ")", seen.add(taskId));
+      }
     }
   }
 }

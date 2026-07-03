@@ -1787,6 +1787,8 @@ public class ConfigManager implements IManager {
       int previousSchemaRegionPerDataNode = CONF.getSchemaRegionPerDataNode();
       int previousDataRegionPerDataNode = CONF.getDataRegionPerDataNode();
       boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
+      int previousProcedureCompletedCleanInterval = CONF.getProcedureCompletedCleanInterval();
+      int previousProcedureCompletedEvictTTL = CONF.getProcedureCompletedEvictTTL();
       if (configurationFileFound) {
         File file = new File(url.getFile());
         try {
@@ -1817,6 +1819,8 @@ public class ConfigManager implements IManager {
       handleRegionPerDataNodeHotReload(
           previousSchemaRegionPerDataNode, previousDataRegionPerDataNode);
       handleTopologyProbingHotReload(wasTopologyProbingEnabled);
+      handleProcedureCleanerHotReload(
+          previousProcedureCompletedCleanInterval, previousProcedureCompletedEvictTTL);
       if (currentNodeId == req.getNodeId() || req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
         return tsStatus;
       }
@@ -1882,6 +1886,14 @@ public class ConfigManager implements IManager {
     } else if (!isEnabled) {
       getLoadManager().stopTopologyService();
     }
+  }
+
+  private void handleProcedureCleanerHotReload(int previousCleanInterval, int previousEvictTTL) {
+    if (previousCleanInterval == CONF.getProcedureCompletedCleanInterval()
+        && previousEvictTTL == CONF.getProcedureCompletedEvictTTL()) {
+      return;
+    }
+    getProcedureManager().updateCompletedProcedureCleaner();
   }
 
   @Override

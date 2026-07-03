@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
@@ -38,6 +39,7 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
@@ -48,6 +50,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -56,6 +59,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeTaskBuilder;
+import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtaskManager;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -194,6 +198,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           // For internal source
           || needConstructDataRegionTask
           || needConstructSchemaRegionTask) {
+        calculateMemoryUsage(
+            pipeStaticMeta,
+            Collections.singletonList(new Pair<>(consensusGroupId, pipeTaskMeta)),
+            false);
+
         final PipeDataNodeTask pipeTask =
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
         pipeTask.create();
@@ -799,25 +808,49 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected void calculateMemoryUsage(
-      final PipeStaticMeta staticMeta,
-      final PipeParameters sourceParameters,
-      final PipeParameters processorParameters,
-      final PipeParameters sinkParameters) {
+  protected void calculateMemoryUsage(final PipeMeta pipeMetaFromCoordinator)
+      throws IllegalPathException {
+    final PipeStaticMeta staticMeta = pipeMetaFromCoordinator.getStaticMeta();
     if (!PipeConfig.getInstance().isPipeEnableMemoryCheck()
-        || !isInnerSource(sourceParameters)
+        || !isInnerSource(staticMeta.getSourceParameters())
         || !PipeType.USER.equals(staticMeta.getPipeType())) {
       return;
     }
 
-    calculateInsertNodeQueueMemory(sourceParameters);
+    final PipeMeta pipeMetaInAgent = pipeMetaKeeper.getPipeMeta(staticMeta.getPipeName());
+    final boolean ignoreRegisteredSinkSubtasks =
+        Objects.nonNull(pipeMetaInAgent)
+            && (!pipeMetaInAgent.getStaticMeta().equals(staticMeta)
+                || PipeStatus.DROPPED.equals(pipeMetaInAgent.getRuntimeMeta().getStatus().get()));
+    calculateMemoryUsage(
+        staticMeta,
+        collectPipeTasksToBeCreated(pipeMetaFromCoordinator),
+        ignoreRegisteredSinkSubtasks);
+  }
 
-    long needMemory = 0;
+  private void calculateMemoryUsage(
+      final PipeStaticMeta staticMeta,
+      final List<Pair<Integer, PipeTaskMeta>> pipeTasksToBeCreated,
+      final boolean ignoreRegisteredSinkSubtasks)
+      throws IllegalPathException {
+    if (!PipeConfig.getInstance().isPipeEnableMemoryCheck()
+        || !isInnerSource(staticMeta.getSourceParameters())
+        || !PipeType.USER.equals(staticMeta.getPipeType())) {
+      return;
+    }
 
-    needMemory += calculateTsFileParserMemory(sourceParameters, sinkParameters);
-    needMemory += calculateSinkBatchMemory(sinkParameters);
-    needMemory += calculateSendTsFileReadBufferMemory(sourceParameters, sinkParameters);
-    needMemory += calculateAssignerMemory(sourceParameters);
+    if (pipeTasksToBeCreated.isEmpty()) {
+      calculateInsertNodeQueueMemory(staticMeta.getSourceParameters(), 1);
+      return;
+    }
+
+    final MemoryEstimation memoryEstimation =
+        calculateIncrementalMemoryUsage(
+            staticMeta, pipeTasksToBeCreated, ignoreRegisteredSinkSubtasks);
+    calculateInsertNodeQueueMemory(
+        staticMeta.getSourceParameters(), memoryEstimation.dataRegionTaskCount);
+
+    final long needMemory = memoryEstimation.nonFloatingMemoryInBytes;
 
     PipeMemoryManager pipeMemoryManager = PipeDataNodeResourceManager.memory();
     final long freeMemorySizeInBytes = pipeMemoryManager.getFreeMemorySizeInBytes();
@@ -828,14 +861,116 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (freeMemorySizeInBytes < needMemory + reservedMemorySizeInBytes) {
       final String message =
           String.format(
-              "%s Need memory: %d bytes, free memory: %d bytes, reserved memory: %d bytes, total memory: %d bytes",
-              PipeMessages.NOT_ENOUGH_MEMORY_FOR_PIPE,
+              PipeMessages.NOT_ENOUGH_MEMORY_FOR_PIPE_FORMAT,
               needMemory,
               freeMemorySizeInBytes,
               reservedMemorySizeInBytes,
               PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes());
       LOGGER.warn(message);
       throw new PipeException(message);
+    }
+  }
+
+  private List<Pair<Integer, PipeTaskMeta>> collectPipeTasksToBeCreated(
+      final PipeMeta pipeMetaFromCoordinator) throws IllegalPathException {
+    final PipeStaticMeta pipeStaticMeta = pipeMetaFromCoordinator.getStaticMeta();
+    final PipeParameters sourceParameters = pipeStaticMeta.getSourceParameters();
+    final Set<DataRegionId> dataRegionIds =
+        new HashSet<>(StorageEngine.getInstance().getAllDataRegionIds());
+    final Set<SchemaRegionId> schemaRegionIds =
+        new HashSet<>(SchemaEngine.getInstance().getAllSchemaRegionIds());
+    final List<Pair<Integer, PipeTaskMeta>> pipeTasksToBeCreated = new ArrayList<>();
+
+    for (final Map.Entry<Integer, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
+        pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
+      final int consensusGroupId = consensusGroupIdToPipeTaskMeta.getKey();
+      final PipeTaskMeta pipeTaskMeta = consensusGroupIdToPipeTaskMeta.getValue();
+      if (pipeTaskMeta.getLeaderNodeId() != CONFIG.getDataNodeId()) {
+        continue;
+      }
+
+      final boolean needConstructTask;
+      if (pipeStaticMeta.isSourceExternal()) {
+        needConstructTask = true;
+      } else {
+        final DataRegionId dataRegionId = new DataRegionId(consensusGroupId);
+        final boolean needConstructDataRegionTask =
+            dataRegionIds.contains(dataRegionId)
+                && DataRegionListeningFilter.shouldDataRegionBeListened(
+                    sourceParameters, dataRegionId);
+        final boolean needConstructSchemaRegionTask =
+            schemaRegionIds.contains(new SchemaRegionId(consensusGroupId))
+                && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
+                    consensusGroupId, sourceParameters);
+        needConstructTask = needConstructDataRegionTask || needConstructSchemaRegionTask;
+      }
+
+      if (needConstructTask) {
+        pipeTasksToBeCreated.add(new Pair<>(consensusGroupId, pipeTaskMeta));
+      }
+    }
+    return pipeTasksToBeCreated;
+  }
+
+  private MemoryEstimation calculateIncrementalMemoryUsage(
+      final PipeStaticMeta staticMeta,
+      final List<Pair<Integer, PipeTaskMeta>> pipeTasksToBeCreated,
+      final boolean ignoreRegisteredSinkSubtasks) {
+    long needMemory = 0;
+    int dataRegionTaskCount = 0;
+    final Set<String> sinkSubtasksToBeCreated = new HashSet<>();
+
+    for (final Pair<Integer, PipeTaskMeta> regionIdAndTaskMeta : pipeTasksToBeCreated) {
+      final int regionId = regionIdAndTaskMeta.getLeft();
+      final PipeTaskMeta pipeTaskMeta = regionIdAndTaskMeta.getRight();
+      final PipeParameters sourceParameters =
+          PipeDataNodeTaskBuilder.blendUserAndSystemParameters(
+              staticMeta.getSourceParameters(), pipeTaskMeta);
+      final PipeParameters sinkParameters =
+          PipeDataNodeTaskBuilder.blendUserAndSystemParameters(
+              staticMeta.getSinkParameters(), pipeTaskMeta);
+      PipeDataNodeTaskBuilder.preprocessParameters(sourceParameters, sinkParameters);
+
+      final boolean isDataRegionTask = isDataRegionTask(regionId);
+      if (isDataRegionTask) {
+        dataRegionTaskCount++;
+        needMemory += calculateTsFileParserMemory(sourceParameters, sinkParameters);
+      }
+
+      final String sinkSubtaskId =
+          PipeSinkSubtaskManager.generateAttributeSortedString(sinkParameters, regionId);
+      if (isDataRegionTask
+          && !sinkSubtasksToBeCreated.contains(sinkSubtaskId)
+          && (ignoreRegisteredSinkSubtasks
+              || !PipeSinkSubtaskManager.instance()
+                  .hasRegisteredSubtasks(sinkParameters, regionId))) {
+        sinkSubtasksToBeCreated.add(sinkSubtaskId);
+        final int sinkSubtaskNum =
+            PipeSinkSubtaskManager.calculateSinkSubtaskNum(sinkParameters, regionId);
+        needMemory += calculateSinkBatchMemory(sinkParameters) * sinkSubtaskNum;
+        needMemory +=
+            calculateSendTsFileReadBufferMemory(sourceParameters, sinkParameters) * sinkSubtaskNum;
+      }
+    }
+
+    if (dataRegionTaskCount > 0) {
+      needMemory += calculateAssignerMemory(staticMeta.getSourceParameters());
+    }
+    return new MemoryEstimation(needMemory, dataRegionTaskCount);
+  }
+
+  private boolean isDataRegionTask(final int regionId) {
+    return StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
+        || PipeRuntimeMeta.isSourceExternal(regionId);
+  }
+
+  private static class MemoryEstimation {
+    private final long nonFloatingMemoryInBytes;
+    private final int dataRegionTaskCount;
+
+    private MemoryEstimation(final long nonFloatingMemoryInBytes, final int dataRegionTaskCount) {
+      this.nonFloatingMemoryInBytes = nonFloatingMemoryInBytes;
+      this.dataRegionTaskCount = dataRegionTaskCount;
     }
   }
 
@@ -851,7 +986,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName());
   }
 
-  private void calculateInsertNodeQueueMemory(final PipeParameters sourceParameters) {
+  private void calculateInsertNodeQueueMemory(
+      final PipeParameters sourceParameters, final int dataRegionTaskCount) {
+    if (dataRegionTaskCount <= 0) {
+      return;
+    }
 
     // Realtime source is enabled by default, so we only need to check the source realtime
     if (!sourceParameters.getBooleanOrDefault(
@@ -870,16 +1009,17 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
+    final long needFloatingMemory =
+        PipeConfig.getInstance().getPipeInsertNodeQueueMemory() * dataRegionTaskCount;
     final long allocatedMemorySizeInBytes = this.getAllFloatingMemoryUsageInByte();
     final long remainingMemory =
         PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes()
             - allocatedMemorySizeInBytes;
-    if (remainingMemory < PipeConfig.getInstance().getPipeInsertNodeQueueMemory()) {
+    if (remainingMemory < needFloatingMemory) {
       final String message =
           String.format(
-              "%s Need Floating memory: %d  bytes, free Floating memory: %d bytes",
-              PipeMessages.NOT_ENOUGH_MEMORY_FOR_PIPE,
-              PipeConfig.getInstance().getPipeInsertNodeQueueMemory(),
+              PipeMessages.NOT_ENOUGH_FLOATING_MEMORY_FOR_PIPE_FORMAT,
+              needFloatingMemory,
               remainingMemory);
       LOGGER.warn(message);
       throw new PipeException(message);
@@ -958,36 +1098,112 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return PipeConfig.getInstance().getTsFileParserMemory();
   }
 
-  private long calculateSinkBatchMemory(final PipeParameters sinkParameters) {
+  private static long calculateSinkBatchMemory(final PipeParameters sinkParameters) {
+    final String format =
+        sinkParameters.getStringOrDefault(
+            Arrays.asList(PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
+            PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE);
+    final boolean usingTsFileBatch = PipeSinkConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(format);
 
-    // If the sink format is tsfile , we need to use batch
-    boolean needUseBatch =
-        PipeSinkConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(
-            sinkParameters.getStringOrDefault(
+    // TsFile format always uses a batch. Other formats only use a batch when batch mode is enabled.
+    final boolean needUseBatch =
+        usingTsFileBatch
+            || sinkParameters.getBooleanOrDefault(
                 Arrays.asList(
-                    PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
-                PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE));
-
-    if (needUseBatch) {
-      return PipeConfig.getInstance().getSinkBatchMemoryTsFile();
-    }
-
-    // If the sink is batch mode, we need to use batch
-    needUseBatch =
-        sinkParameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY,
-                PipeSinkConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
-            PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
+                    PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY,
+                    PipeSinkConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
+                PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
 
     if (!needUseBatch) {
       return 0;
     }
 
-    return PipeConfig.getInstance().getSinkBatchMemoryInsertNode();
+    final long batchSizeInBytes =
+        sinkParameters.getLongOrDefault(
+            Arrays.asList(
+                PipeSinkConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY,
+                PipeSinkConstant.SINK_IOTDB_BATCH_SIZE_KEY),
+            usingTsFileBatch
+                ? PipeSinkConstant.CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE
+                : PipeSinkConstant.CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
+
+    return batchSizeInBytes * calculateBatchShardCount(sinkParameters, usingTsFileBatch);
   }
 
-  private long calculateSendTsFileReadBufferMemory(
+  private static long calculateBatchShardCount(
+      final PipeParameters sinkParameters, final boolean usingTsFileBatch) {
+    if (usingTsFileBatch
+        || !sinkParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeSinkConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY,
+                PipeSinkConstant.SINK_LEADER_CACHE_ENABLE_KEY),
+            PipeSinkConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE)) {
+      return 1;
+    }
+
+    // Plain batches always allocate the default batch and may lazily allocate one batch per target
+    // endpoint when leader cache splits events by endpoint.
+    return 1L + calculateTargetEndPointCount(sinkParameters);
+  }
+
+  private static int calculateTargetEndPointCount(final PipeParameters sinkParameters) {
+    final Set<TEndPoint> targetEndPoints = new HashSet<>();
+    try {
+      addTargetEndPoint(
+          targetEndPoints,
+          sinkParameters,
+          PipeSinkConstant.CONNECTOR_IOTDB_IP_KEY,
+          PipeSinkConstant.CONNECTOR_IOTDB_HOST_KEY,
+          PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY);
+      addTargetEndPoint(
+          targetEndPoints,
+          sinkParameters,
+          PipeSinkConstant.SINK_IOTDB_IP_KEY,
+          PipeSinkConstant.SINK_IOTDB_HOST_KEY,
+          PipeSinkConstant.SINK_IOTDB_PORT_KEY);
+      if (sinkParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY)) {
+        targetEndPoints.addAll(
+            NodeUrlUtils.parseTEndPointUrls(
+                Arrays.asList(
+                    sinkParameters
+                        .getStringByKeys(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY)
+                        .replace(" ", "")
+                        .split(","))));
+      }
+      if (sinkParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_NODE_URLS_KEY)) {
+        targetEndPoints.addAll(
+            NodeUrlUtils.parseTEndPointUrls(
+                Arrays.asList(
+                    sinkParameters
+                        .getStringByKeys(PipeSinkConstant.SINK_IOTDB_NODE_URLS_KEY)
+                        .replace(" ", "")
+                        .split(","))));
+      }
+    } catch (final Exception ignored) {
+      return 1;
+    }
+    return Math.max(1, targetEndPoints.size());
+  }
+
+  private static void addTargetEndPoint(
+      final Set<TEndPoint> targetEndPoints,
+      final PipeParameters sinkParameters,
+      final String ipKey,
+      final String hostKey,
+      final String portKey) {
+    if (sinkParameters.hasAttribute(ipKey) && sinkParameters.hasAttribute(portKey)) {
+      targetEndPoints.add(
+          new TEndPoint(
+              sinkParameters.getStringByKeys(ipKey), sinkParameters.getIntByKeys(portKey)));
+    }
+    if (sinkParameters.hasAttribute(hostKey) && sinkParameters.hasAttribute(portKey)) {
+      targetEndPoints.add(
+          new TEndPoint(
+              sinkParameters.getStringByKeys(hostKey), sinkParameters.getIntByKeys(portKey)));
+    }
+  }
+
+  private static long calculateSendTsFileReadBufferMemory(
       final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
     // If the source is history enable, we need to transfer tsfile
     boolean needTransferTsFile =
@@ -1013,7 +1229,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return 0;
     }
 
-    return PipeConfig.getInstance().getSendTsFileReadBuffer();
+    return PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
   }
 
   private long calculateAssignerMemory(final PipeParameters sourceParameters) {

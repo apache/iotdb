@@ -77,6 +77,13 @@ public final class ConfigNodeMessages {
   public static final String CONFIGNODE_EXITING = "ConfigNode 正在退出...";
   public static final String CONFIGNODE_NEED_REDIRECT_TO_RETRY =
       "ConfigNode need redirect to  {}, retry {} ...";
+  public static final String CONFIGNODE_MEMORY_PROPORTION_SHOULD_BE_IN_THE_FORM_OF_PIPE_FREE =
+      "参数 confignode_memory_proportion 应为 Pipe:Free 格式，"
+          + "但当前值为 {}。将使用默认值 1:9。";
+  public static final String INITIAL_CONFIGNODE_ALLOCATE_MEMORY_FOR_PIPE =
+      "初始化 ConfigNode allocateMemoryForPipe = {}";
+  public static final String INITIAL_CONFIGNODE_FREE_MEMORY =
+      "初始化 ConfigNode freeMemory = {}";
   public static final String CONFIGNODE_PORT_CHECK_SUCCESSFUL = "ConfigNode 端口检查成功。";
   public static final String CONFIGNODE_RPC_SERVICE_FINISHED_TO_REMOVE_AINODE_RESULT =
       "ConfigNode RPC Service finished to remove AINode, result: {}";
