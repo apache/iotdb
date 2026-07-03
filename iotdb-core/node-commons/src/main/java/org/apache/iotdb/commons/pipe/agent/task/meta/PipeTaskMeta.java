@@ -134,6 +134,10 @@ public class PipeTaskMeta {
     exceptionMessages.clear();
   }
 
+  public synchronized void clearExceptionMessagesBefore(final long exceptionsClearTime) {
+    exceptionMessages.removeIf(exception -> exception.getTimeStamp() <= exceptionsClearTime);
+  }
+
   public synchronized void serialize(final OutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
 

@@ -151,4 +151,30 @@ public class PipeMetaDeSerTest {
     final PipeMeta pipeMeta1 = PipeMeta.deserialize4Coordinator(byteBuffer);
     Assert.assertEquals(pipeMeta, pipeMeta1);
   }
+
+  @Test
+  public void testClearExceptionMessagesBeforeClearTime() {
+    final PipeTaskMeta staleTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    staleTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("stale", 100L));
+    final PipeTaskMeta freshTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    freshTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("fresh", 300L));
+
+    final ConcurrentHashMap<Integer, PipeTaskMeta> taskMetaMap = new ConcurrentHashMap<>();
+    taskMetaMap.put(1, staleTaskMeta);
+    taskMetaMap.put(2, freshTaskMeta);
+    final PipeRuntimeMeta runtimeMeta = new PipeRuntimeMeta(taskMetaMap);
+    runtimeMeta
+        .getNodeId2PipeRuntimeExceptionMap()
+        .put(1, new PipeRuntimeCriticalException("stale node", 100L));
+    runtimeMeta
+        .getNodeId2PipeRuntimeExceptionMap()
+        .put(2, new PipeRuntimeCriticalException("fresh node", 300L));
+
+    runtimeMeta.clearExceptionMessagesBefore(200L);
+
+    Assert.assertFalse(staleTaskMeta.hasExceptionMessages());
+    Assert.assertTrue(freshTaskMeta.hasExceptionMessages());
+    Assert.assertFalse(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().containsKey(1));
+    Assert.assertTrue(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().containsKey(2));
+  }
 }
