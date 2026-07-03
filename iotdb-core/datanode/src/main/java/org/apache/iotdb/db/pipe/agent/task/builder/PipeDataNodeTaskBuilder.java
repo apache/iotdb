@@ -130,7 +130,7 @@ public class PipeDataNodeTaskBuilder {
         blendUserAndSystemParameters(pipeStaticMeta.getSourceParameters(), pipeTaskMeta);
     final PipeParameters sinkParameters =
         blendUserAndSystemParameters(pipeStaticMeta.getSinkParameters(), pipeTaskMeta);
-    preprocessParameters(sourceParameters, sinkParameters);
+    preprocessParameters(sourceParameters, sinkParameters, regionId);
 
     // We first build the source and sink, then build the processor.
     final PipeTaskSourceStage sourceStage =
@@ -201,8 +201,15 @@ public class PipeDataNodeTaskBuilder {
 
   public static void preprocessParameters(
       final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
+    preprocessParameters(sourceParameters, sinkParameters, -1);
+  }
+
+  public static void preprocessParameters(
+      final PipeParameters sourceParameters,
+      final PipeParameters sinkParameters,
+      final int regionId) {
     checkConflict(sourceParameters, sinkParameters);
-    injectParameters(sourceParameters, sinkParameters);
+    injectParameters(sourceParameters, sinkParameters, regionId);
   }
 
   private static void checkConflict(
@@ -276,7 +283,9 @@ public class PipeDataNodeTaskBuilder {
   }
 
   private static void injectParameters(
-      final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
+      final PipeParameters sourceParameters,
+      final PipeParameters sinkParameters,
+      final int regionId) {
     final boolean isSourceExternal =
         !BuiltinPipePlugin.BUILTIN_SOURCES.contains(
             sourceParameters
@@ -306,17 +315,19 @@ public class PipeDataNodeTaskBuilder {
                 PipeSinkConstant.CONNECTOR_OPC_UA_INITIAL_FETCH_ENABLE_KEY,
                 PipeSinkConstant.SINK_OPC_UA_INITIAL_FETCH_ENABLE_KEY),
             PipeSinkConstant.CONNECTOR_OPC_UA_INITIAL_FETCH_ENABLE_DEFAULT_VALUE)) {
-      injectOpcUaInitialFetchParameters(sourceParameters, sinkParameters);
+      injectOpcUaInitialFetchParameters(sourceParameters, sinkParameters, regionId);
     }
   }
 
-  private boolean isOpcUaSink(final String sinkPluginName) {
+  private static boolean isOpcUaSink(final String sinkPluginName) {
     return BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName().equals(sinkPluginName)
         || BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName().equals(sinkPluginName);
   }
 
-  private void injectOpcUaInitialFetchParameters(
-      final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
+  private static void injectOpcUaInitialFetchParameters(
+      final PipeParameters sourceParameters,
+      final PipeParameters sinkParameters,
+      final int regionId) {
     for (final String[] keys : OPC_UA_INITIAL_FETCH_SOURCE_PARAMETER_KEY_GROUPS) {
       final String value = sourceParameters.getStringByKeys(keys);
       if (value != null) {
@@ -344,7 +355,9 @@ public class PipeDataNodeTaskBuilder {
           PipeSinkConstant.OPC_UA_INITIAL_FETCH_SOURCE_PASSWORD_KEY, sourcePassword);
     }
 
-    sinkParameters.addAttribute(
-        PipeSinkConstant.OPC_UA_INITIAL_FETCH_REGION_ID_KEY, Integer.toString(regionId));
+    if (regionId >= 0) {
+      sinkParameters.addAttribute(
+          PipeSinkConstant.OPC_UA_INITIAL_FETCH_REGION_ID_KEY, Integer.toString(regionId));
+    }
   }
 }

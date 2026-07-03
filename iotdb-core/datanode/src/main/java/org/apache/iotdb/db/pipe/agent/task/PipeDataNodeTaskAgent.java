@@ -929,7 +929,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final PipeParameters sinkParameters =
           PipeDataNodeTaskBuilder.blendUserAndSystemParameters(
               staticMeta.getSinkParameters(), pipeTaskMeta);
-      PipeDataNodeTaskBuilder.preprocessParameters(sourceParameters, sinkParameters);
+      PipeDataNodeTaskBuilder.preprocessParameters(sourceParameters, sinkParameters, regionId);
 
       final boolean isDataRegionTask = isDataRegionTask(regionId);
       if (isDataRegionTask) {
