@@ -149,6 +149,15 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       }
 
       TState state = getCurrentState();
+      if (state == null) {
+        LOG.warn(
+            "StateMachineProcedure pid={} is scheduled with EOF state, skip execution: {}",
+            getProcId(),
+            this);
+        stateFlow = Flow.NO_MORE_STATE;
+        setStateDeserialized(false);
+        return null;
+      }
 
       // init for the first execution
       if (states.isEmpty()) {
