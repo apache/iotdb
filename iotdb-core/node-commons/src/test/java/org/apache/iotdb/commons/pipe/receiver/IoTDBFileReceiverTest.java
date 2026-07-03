@@ -156,6 +156,7 @@ public class IoTDBFileReceiverTest {
       Assert.assertEquals(
           TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
           response.getStatus().getCode());
+      Assert.assertTrue(response.getStatus().getMessage().contains("no memory for file piece"));
       Assert.assertEquals(
           PipeTransferFilePieceResp.ERROR_END_OFFSET, filePieceResp.getEndWritingOffset());
       Assert.assertFalse(receiver.getWritingFileInBaseDir("normal.tsfile").exists());

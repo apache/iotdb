@@ -127,6 +127,12 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     return maxDecompressedLength;
   }
 
+  /** Get the largest additional decompressed body size beyond the current transfer frame. */
+  public static int getMaxAdditionalDecompressedLengthInBytes(final TPipeTransferReq transferReq) {
+    final int transferFrameBodySize = transferReq.body.duplicate().remaining();
+    return Math.max(0, getMaxDecompressedLengthInBytes(transferReq) - transferFrameBodySize);
+  }
+
   /** This method is used to prevent decompression bomb attacks. */
   private static void checkDecompressedLength(final int decompressedLength)
       throws IllegalArgumentException {

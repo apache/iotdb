@@ -460,8 +460,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     return new TSStatus(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
         .setMessage(
             String.format(
-                "Temporarily out of memory when %s. Requested memory: %d bytes. Root cause: %s",
-                action, requestedMemorySizeInBytes, e.getMessage()));
+                PipeMessages.RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT,
+                action,
+                requestedMemorySizeInBytes,
+                e.getMessage()));
   }
 
   private static long getFilePieceSizeInBytes(final PipeTransferFilePieceReq req) {

@@ -43,7 +43,6 @@ import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransf
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
-import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
@@ -447,7 +446,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               long requestedMemorySizeInBytes = 0;
               try {
                 requestedMemorySizeInBytes =
-                    PipeTransferCompressedReq.getMaxDecompressedLengthInBytes(req);
+                    PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req);
                 try (final PipeMemoryBlock ignored =
                     tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
                   return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
@@ -912,12 +911,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected AutoCloseable tryAllocateMemoryForFilePiece(final PipeTransferFilePieceReq req)
-      throws PipeRuntimeOutOfMemoryCriticalException {
-    return tryAllocateReceiverMemory(req.getFilePiece() == null ? 0 : req.getFilePiece().length);
-  }
-
-  @Override
   protected TSStatus getReceiverTemporaryUnavailableStatus(
       final String action,
       final long requestedMemorySizeInBytes,
@@ -925,7 +918,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return new TSStatus(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
         .setMessage(
             String.format(
-                "Temporarily out of memory when %s. Requested memory: %d bytes, used memory: %d bytes, free memory: %d bytes, total non-floating memory: %d bytes",
+                DataNodePipeMessages.RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT,
                 action,
                 requestedMemorySizeInBytes,
                 PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
