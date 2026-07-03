@@ -53,8 +53,7 @@ public class TwoStageAggregateReceiver implements IoTDBReceiver {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return new TPipeTransferResp(
             RpcUtils.getStatus(
-                TSStatusCode.NOT_LOGIN,
-                "Log in failed. Either you are not authorized or the session has timed out."));
+                TSStatusCode.NOT_LOGIN, DataNodePipeMessages.LOGIN_FAILED_OR_SESSION_TIMED_OUT));
       }
 
       final short rawRequestType = req.getType();

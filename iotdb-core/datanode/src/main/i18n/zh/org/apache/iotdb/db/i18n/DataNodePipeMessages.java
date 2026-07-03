@@ -380,6 +380,7 @@ public final class DataNodePipeMessages {
   public static final String ERROR_OCCURRED_WHEN_CLOSING_COMBINEHANDLER_ID =
       "closing CombineHandler(id = {}) 时发生错误";
   public static final String ERROR_OCCURS_WHEN_RECEIVING_REQUEST = "receiving request: {} 时发生错误";
+  public static final String LOGIN_FAILED_OR_SESSION_TIMED_OUT = "登录失败。您未被授权或会话已超时。";
   public static final String FAILED_TO_CLOSE_IOTDBSYNCCLIENT = "关闭 IoTDBSyncClient 失败";
   public static final String FAILED_TO_CLOSE_OLD_IOTDBSYNCCLIENT = "关闭 old IoTDBSyncClient 失败";
   public static final String FAILED_TO_COMBINE_COUNT = "combine count:  失败";
