@@ -228,6 +228,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfiguration;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
@@ -409,6 +412,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitShowDatabasesStatement(
       final RelationalSqlParser.ShowDatabasesStatementContext ctx) {
     return new ShowDB(getLocation(ctx), Objects.nonNull(ctx.DETAILS()));
+  }
+
+  @Override
+  public Node visitShowCreateDatabaseStatement(
+      final RelationalSqlParser.ShowCreateDatabaseStatementContext ctx) {
+    return new ShowCreateDatabase(
+        getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)).getValue());
   }
 
   @Override
@@ -1344,6 +1354,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitShowCreatePipeStatement(RelationalSqlParser.ShowCreatePipeStatementContext ctx) {
+    return new ShowCreatePipe(((Identifier) visit(ctx.pipeName)).getValue());
+  }
+
+  @Override
   public Node visitCreatePipePluginStatement(
       RelationalSqlParser.CreatePipePluginStatementContext ctx) {
     final String pluginName = ((Identifier) visit(ctx.identifier())).getValue();
@@ -1424,6 +1439,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final String topicName =
         getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
     return new ShowTopics(topicName);
+  }
+
+  @Override
+  public Node visitShowCreateTopicStatement(
+      RelationalSqlParser.ShowCreateTopicStatementContext ctx) {
+    return new ShowCreateTopic(((Identifier) visit(ctx.topicName)).getValue());
   }
 
   @Override
@@ -1550,10 +1571,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitMigrateRegionStatement(RelationalSqlParser.MigrateRegionStatementContext ctx) {
+    List<Integer> regionIds =
+        ctx.regionIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
     return new MigrateRegion(
-        Integer.parseInt(ctx.regionId.getText()),
-        Integer.parseInt(ctx.fromId.getText()),
-        Integer.parseInt(ctx.toId.getText()));
+        regionIds, Integer.parseInt(ctx.fromId.getText()), Integer.parseInt(ctx.toId.getText()));
   }
 
   @Override
@@ -1585,7 +1606,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitRemoveDataNodeStatement(RelationalSqlParser.RemoveDataNodeStatementContext ctx) {
     List<Integer> nodeIds =
-        Collections.singletonList(Integer.parseInt(ctx.INTEGER_VALUE().getText()));
+        ctx.dataNodeIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
     return new RemoveDataNode(nodeIds);
   }
 

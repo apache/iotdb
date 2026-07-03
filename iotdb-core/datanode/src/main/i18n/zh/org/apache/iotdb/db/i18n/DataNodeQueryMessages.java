@@ -197,6 +197,20 @@ public final class DataNodeQueryMessages {
       "在 TableDiskUsageSupplier 中关闭 reader 失败";
   public static final String UNSUPPORTED_CATEGORY =
       "不支持的列类别：";
+  public static final String CURRENT_DEVICE_ENTRY_IN_TABLESCANOPERATOR_IS_EMPTY =
+      "TableScanOperator 中当前设备条目为空";
+  public static final String UNEXPECTED_END_OF_EXTERNAL_TSFILE_DEVICE_TASK_READER_AT_DEVICE_INDEX =
+      "外部 TsFile 设备任务读取器在设备索引处意外结束：";
+  public static final String
+      EXTERNAL_TSFILE_DEVICE_TASK_READER_IS_NOT_ALIGNED_WITH_DEVICE_ENTRIES =
+          "外部 TsFile 设备任务读取器与设备条目不匹配，索引 %d：期望 %s，实际 %s";
+  public static final String FAILED_TO_UPDATE_EXTERNAL_TSFILE_DEVICE_RESOURCES =
+      "更新外部 TsFile 设备资源失败";
+  public static final String SCHEMA_FILTER_TYPE_IS_NOT_SUPPORTED =
+      "不支持 SchemaFilter 类型 %s";
+  public static final String
+      ATTRIBUTE_FILTER_IS_NOT_SUPPORTED_FOR_EXTERNAL_TSFILE_DEVICE_FILTERING =
+          "外部 TsFile 设备过滤暂不支持属性过滤";
 
   // --- Execution / Operator / Window ---
 
@@ -285,6 +299,7 @@ public final class DataNodeQueryMessages {
       "SELECT INTO：${i} 中的 i 应为整数。";
   public static final String FAILED_TO_GET_DATABASE_MAP =
       "获取数据库映射失败";
+  public static final String UNKNOWN_DATABASE = "未知数据库 %s";
   public static final String LOAD_ANALYSIS_STAGE_ALL_TSFILES_HAVE_BEEN_ANALYZED =
       "加载 - 分析阶段：所有 TsFile 已分析完毕。";
   public static final String ASYNC_LOAD_HAS_FAILED_AND_IS_NOW_TRYING =
@@ -297,6 +312,12 @@ public final class DataNodeQueryMessages {
       "检测到空文件，将跳过加载此文件：{}";
   public static final String AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR =
       "自动创建或验证 schema 出错。";
+  public static final String LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
+      "设备 %s 在 IoTDB 中不存在且无法被创建。请检查是否启用了 auto-create-schema。";
+  public static final String LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
+      "时间序列 %s 在 IoTDB 中不存在且无法被创建。请检查是否启用了 auto-create-schema。";
+  public static final String PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA =
+      "Pipe 生成的 LoadTsFile 正在等待 schema 元数据传输完成。详情：%s";
   public static final String FAILED_TO_FIND_TAG_COLUMN_MAPPING_FOR_TABLE =
       "未找到表 {} 的标签列映射";
   public static final String AUTO_CREATE_DATABASE_FAILED_BECAUSE =
@@ -762,6 +783,83 @@ public final class DataNodeQueryMessages {
       "标签列仅支持 STRING 数据类型。";
   public static final String ATTRIBUTE_COLUMN_ONLY_SUPPORT_DATA_TYPE_STRING =
       "属性列仅支持 STRING 数据类型。";
+  public static final String UNSUPPORTED_EXTERNAL_TSFILE_DEVICE_FILTER =
+      "不支持的外部 TsFile 设备过滤器：";
+
+  // --- Plan / Relational / Table Function ---
+
+  public static final String NO_TABLE_SCHEMA_FOUND_IN_TSFILES =
+      "TsFile 中未找到表结构";
+  public static final String NO_TABLE_SCHEMA_FOUND_FOR_TABLE_IN_TSFILES =
+      "TsFile 中未找到表 %s 的表结构";
+  public static final String READ_TSFILE_MUST_BE_PLANNED_AS_EXTERNAL_TSFILE_SCAN_NODE =
+      "readTsFile 必须规划为 ExternalTsFileScanNode";
+  public static final String MISSING_SCALAR_ARGUMENT =
+      "缺少标量参数：";
+  public static final String ARGUMENT_SHOULD_NOT_BE_EMPTY =
+      "参数 %s 不应为空";
+  public static final String INVALID_SCALAR_ARGUMENT =
+      "无效的标量参数：";
+  public static final String ARGUMENT_SHOULD_BE_A_STRING =
+      "参数 %s 应为字符串";
+  public static final String ARGUMENT_SHOULD_CONTAIN_AT_LEAST_ONE_PATH =
+      "参数 %s 应至少包含一个路径";
+  public static final String READ_TSFILE_PATH_IS_NOT_ALLOWED =
+      "不允许 readTsFile 路径 %s，因为它可能访问 IoTDB 数据目录 %s";
+  public static final String OUTPUT_COLUMN_NAMES_AND_TYPES_SIZE_MISMATCH =
+      "输出列名和类型数量不匹配";
+  public static final String OUTPUT_COLUMN_NAMES_AND_CATEGORIES_SIZE_MISMATCH =
+      "输出列名和类别数量不匹配";
+  public static final String READ_TSFILE_TABLE_FUNCTION_HANDLE_DOES_NOT_SUPPORT_SERIALIZATION =
+      "ReadTsFileTableFunctionHandle 不支持序列化";
+  public static final String READ_TSFILE_TABLE_FUNCTION_HANDLE_DOES_NOT_SUPPORT_DESERIALIZATION =
+      "ReadTsFileTableFunctionHandle 不支持反序列化";
+  public static final String TSFILE_PATH_DOES_NOT_EXIST =
+      "TsFile 路径不存在：";
+  public static final String TSFILE_PATH_IS_NEITHER_A_FILE_NOR_A_DIRECTORY =
+      "TsFile 路径既不是文件也不是目录：";
+  public static final String NO_VALID_TSFILES_FOUND =
+      "未找到有效的 TsFile";
+  public static final String FAILED_TO_SCAN_TSFILE_PATH =
+      "扫描 TsFile 路径失败：";
+  public static final String CANNOT_INFER_TABLE_NAME_FROM_TSFILES_MULTIPLE_TABLES =
+      "无法从 TsFile 推断表名，因为发现了多个表：%s 和 %s";
+  public static final String CANNOT_INFER_TABLE_NAME_FROM_TSFILE_NO_TABLE_SCHEMA =
+      "无法从 TsFile 推断表名，因为未找到表结构，文件：";
+  public static final String CANNOT_INFER_TABLE_NAME_FROM_TSFILE_MULTIPLE_TABLES =
+      "无法从 TsFile 推断表名，因为发现了多个表，文件：";
+  public static final String FILE_IS_NOT_A_VALID_TSFILE =
+      "文件不是有效的 TsFile：";
+  public static final String FAILED_TO_READ_TABLE_SCHEMA_FROM_TSFILE =
+      "从 TsFile 读取表结构失败：";
+  public static final String MULTIPLE_TIME_COLUMNS_FOUND_WHEN_MERGING_TABLE_SCHEMA =
+      "合并表结构时发现多个时间列，表：";
+  public static final String TIME_COLUMN_CONFLICTS_WHEN_MERGING_TABLE_SCHEMA =
+      "合并表结构时时间列冲突，表：";
+  public static final String TAG_COLUMNS_CONFLICT_WHEN_MERGING_TABLE_SCHEMA =
+      "合并表结构时标签列冲突，表：";
+  public static final String FIELD_COLUMN_HAS_CONFLICTING_DATA_TYPES_WHEN_MERGING_TABLE_SCHEMA =
+      "字段列 %s 在合并表 %s 的结构时存在冲突的数据类型";
+  public static final String COLUMN_HAS_CONFLICTING_CATEGORIES_WHEN_MERGING_TABLE_SCHEMA =
+      "列 %s 在合并表 %s 的结构时存在冲突的类别";
+  public static final String FAILED_TO_CREATE_EXTERNAL_TSFILE_DEVICE_TASK_RUN_READER =
+      "创建外部 TsFile 设备任务运行读取器失败";
+  public static final String UNKNOWN_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION =
+      "未知的外部 TsFile 设备任务分区：";
+  public static final String EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_BEEN_CLOSED =
+      "外部 TsFile 查询资源已关闭：";
+  public static final String EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_ALREADY_BEEN_SET =
+      "当前 FragmentInstance 中已设置外部 TsFile 查询资源";
+  public static final String EXTERNAL_TSFILE_FRAGMENT_INSTANCE_USAGE_COUNT_CANNOT_BE_NEGATIVE =
+      "外部 TsFile FragmentInstance 使用计数不能为负数";
+  public static final String FAILED_TO_DESERIALIZE_EXTERNAL_TSFILE_RESOURCE =
+      "反序列化外部 TsFile 资源失败：%s，%s";
+  public static final String FAILED_TO_FLUSH_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION =
+      "刷写外部 TsFile 设备任务分区失败";
+  public static final String EXTERNAL_TSFILE_DEVICE_TASK_PARTITION_COUNT_MUST_BE_POSITIVE =
+      "外部 TsFile 设备任务分区数量必须为正数";
+  public static final String FAILED_TO_CREATE_EXTERNAL_TSFILE_DEVICE_COLLECTOR =
+      "创建外部 TsFile 设备收集器失败";
 
   // --- Plan / Relational / Planner ---
 
@@ -805,6 +903,8 @@ public final class DataNodeQueryMessages {
       "当前版本不支持 Values。";
   public static final String SUBSCRIPT_IS_NOT_SUPPORTED_IN_CURRENT_VERSION =
       "当前版本不支持下标操作";
+  public static final String READ_TSFILE_TABLE_FUNCTION_HANDLE_IS_INVALID =
+      "readTsFile 表函数句柄无效";
 
   // --- Plan / Relational / Planner / IR ---
 
@@ -834,6 +934,16 @@ public final class DataNodeQueryMessages {
       "暂不支持。";
   public static final String COPYTONODE_SHOULD_NOT_BE_SERIALIZED =
       "CopyToNode 不应被序列化";
+  public static final String
+      EXTERNAL_TSFILE_AGGREGATION_SCAN_NODE_DEVICE_ENTRIES_MUST_BE_SET_BY_DEVICE_ENTRY_INDEXES =
+          "ExternalTsFileAggregationScanNode 的设备条目必须通过设备条目索引设置";
+  public static final String EXTERNAL_TSFILE_AGGREGATION_SCAN_NODE_CANNOT_BE_SERIALIZED =
+      "ExternalTsFileAggregationScanNode 读取本地外部 TsFile，因此不能被序列化";
+  public static final String
+      EXTERNAL_TSFILE_SCAN_NODE_DEVICE_ENTRIES_MUST_BE_SET_BY_DEVICE_ENTRY_INDEXES =
+          "ExternalTsFileScanNode 的设备条目必须通过设备条目索引设置";
+  public static final String EXTERNAL_TSFILE_SCAN_NODE_CANNOT_BE_SERIALIZED =
+      "ExternalTsFileScanNode 读取本地外部 TsFile，因此不能被序列化";
 
   // --- Plan / Relational / Planner / Optimizations ---
 

@@ -76,6 +76,15 @@ public class ProcedureExecutor<Env> {
   private int corePoolSize;
   private int maxPoolSize;
 
+  /**
+   * The internal cleaner that recycles completed procedures. Kept as a reference so that its clean
+   * interval / evict TTL can be reloaded at runtime (see {@link #restartCompletedCleaner}). All
+   * accesses ({@link #startCompletedCleaner} on leader transition, {@link #restartCompletedCleaner}
+   * on hot reload, and the test getter) are performed while holding this instance's monitor, so the
+   * field is guarded by {@code synchronized} for both mutual exclusion and cross-thread visibility.
+   */
+  private CompletedProcedureRecycler<Env> completedProcedureRecycler;
+
   private final ProcedureScheduler scheduler;
 
   private final AtomicLong workId = new AtomicLong(0);
@@ -289,16 +298,34 @@ public class ProcedureExecutor<Env> {
     LOG.info(ProcedureMessages.PROCEDURE_WORKERS_ARE_STARTED, workerThreads.size());
   }
 
-  public void startCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
-    addInternalProcedure(
-        new CompletedProcedureRecycler(store, completed, cleanTimeInterval, cleanEvictTTL));
+  public synchronized void startCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
+    completedProcedureRecycler =
+        new CompletedProcedureRecycler<>(store, completed, cleanTimeInterval, cleanEvictTTL);
+    addInternalProcedure(completedProcedureRecycler);
+  }
+
+  /**
+   * Reload the completed-procedure cleaner with a new clean interval / evict TTL at runtime. The
+   * clean interval and evict TTL are captured by {@link CompletedProcedureRecycler} at
+   * construction, so applying the new values requires removing the current recycler and scheduling
+   * a fresh one.
+   */
+  public synchronized void restartCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
+    if (completedProcedureRecycler != null) {
+      removeInternalProcedure(completedProcedureRecycler);
+    }
+    startCompletedCleaner(cleanTimeInterval, cleanEvictTTL);
+  }
+
+  @TestOnly
+  synchronized CompletedProcedureRecycler<Env> getCompletedProcedureRecycler() {
+    return completedProcedureRecycler;
   }
 
   public void addInternalProcedure(InternalProcedure interalProcedure) {
     if (interalProcedure == null) {
       return;
     }
-    interalProcedure.setState(ProcedureState.WAITING_TIMEOUT);
     timeoutExecutor.add(interalProcedure);
   }
 

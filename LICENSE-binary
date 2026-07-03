@@ -241,7 +241,7 @@ org.eclipse.jetty.ee10:jetty-ee10-servlet:12.0.36
 org.eclipse.jetty:jetty-util:12.0.36
 com.google.code.findbugs:jsr305:3.0.2
 com.librato.metrics:librato-java:2.1.0
-org.apache.thrift:libthrift:0.14.1
+org.apache.thrift:libthrift:0.23.0
 io.dropwizard.metrics:metrics-core:4.2.19
 io.dropwizard.metrics:metrics-jvm:3.2.2
 com.librato.metrics:metrics-librato:5.1.0

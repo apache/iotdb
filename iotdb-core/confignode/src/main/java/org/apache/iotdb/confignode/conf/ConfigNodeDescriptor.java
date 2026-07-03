@@ -60,6 +60,8 @@ public class ConfigNodeDescriptor {
 
   private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
+  private final ConfigNodeMemoryConfig memoryConfig = new ConfigNodeMemoryConfig();
+
   static {
     URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
@@ -81,6 +83,10 @@ public class ConfigNodeDescriptor {
 
   public ConfigNodeConfig getConf() {
     return conf;
+  }
+
+  public ConfigNodeMemoryConfig getMemoryConfig() {
+    return memoryConfig;
   }
 
   /**
@@ -148,11 +154,14 @@ public class ConfigNodeDescriptor {
       LOGGER.warn(
           ConfigNodeMessages.COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN,
           CommonConfig.SYSTEM_CONFIG_NAME);
+      memoryConfig.init(trimProperties);
     }
   }
 
   private void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
     ConfigurationFileUtils.updateAppliedProperties(properties, false);
+    memoryConfig.init(properties);
+
     conf.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
 
     conf.setInternalAddress(
@@ -897,8 +906,40 @@ public class ConfigNodeDescriptor {
     conf.setReadConsistencyLevel(readConsistencyLevel);
     Optional.ofNullable(properties.getProperty("enable_topology_probing"))
         .ifPresent(v -> conf.setEnableTopologyProbing(Boolean.parseBoolean(v)));
+    // Keep the ConfigNode's CommonConfig in sync so that SHOW VARIABLES / cluster-parameter
+    // consistency checks report the hot-reloaded value; the DataNode side additionally refreshes
+    // JVMCommonUtils where the ReadOnly disk guard actually consumes it.
+    commonDescriptor.loadHotModifiedDiskSpaceWarningThreshold(properties);
+    loadHotModifiedProcedureConfig(properties);
     loadPipeHotModifiedProp(properties);
     ConfigurationFileUtils.updateAppliedProperties(properties, true);
+  }
+
+  private void loadHotModifiedProcedureConfig(TrimProperties properties) throws IOException {
+    int procedureCompletedCleanInterval =
+        Integer.parseInt(
+            properties.getProperty(
+                "procedure_completed_clean_interval",
+                String.valueOf(conf.getProcedureCompletedCleanInterval())));
+    if (procedureCompletedCleanInterval <= 0) {
+      throw new IOException(
+          "procedure_completed_clean_interval should be greater than 0, but was "
+              + procedureCompletedCleanInterval
+              + ".");
+    }
+    int procedureCompletedEvictTTL =
+        Integer.parseInt(
+            properties.getProperty(
+                "procedure_completed_evict_ttl",
+                String.valueOf(conf.getProcedureCompletedEvictTTL())));
+    if (procedureCompletedEvictTTL <= 0) {
+      throw new IOException(
+          "procedure_completed_evict_ttl should be greater than 0, but was "
+              + procedureCompletedEvictTTL
+              + ".");
+    }
+    conf.setProcedureCompletedCleanInterval(procedureCompletedCleanInterval);
+    conf.setProcedureCompletedEvictTTL(procedureCompletedEvictTTL);
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {

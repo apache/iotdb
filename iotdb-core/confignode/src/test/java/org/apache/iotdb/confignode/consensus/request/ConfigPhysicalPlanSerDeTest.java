@@ -971,13 +971,61 @@ public class ConfigPhysicalPlanSerDeTest {
     final AlterPipePlanV2 alterPipePlanV21 =
         (AlterPipePlanV2)
             ConfigPhysicalPlan.Factory.create(alterPipePlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterPipePlanV2.getCurrentPipeStaticMeta(), alterPipePlanV21.getCurrentPipeStaticMeta());
     Assert.assertEquals(alterPipePlanV2.getPipeStaticMeta(), alterPipePlanV21.getPipeStaticMeta());
     Assert.assertEquals(
         alterPipePlanV2.getPipeRuntimeMeta(), alterPipePlanV21.getPipeRuntimeMeta());
+    Assert.assertFalse(alterPipePlanV21.isCurrentPipeStaticMetaSet());
+  }
+
+  @Test
+  public void AlterPipePlanV2CurrentStaticMetaTest() throws IOException {
+    final PipeStaticMeta currentPipeStaticMeta =
+        new PipeStaticMeta(
+            "testPipe",
+            120,
+            Collections.singletonMap("pattern", "root.current"),
+            Collections.singletonMap("processor", "do-nothing-processor"),
+            Collections.singletonMap("batch.enable", "false"));
+    final PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "testPipe",
+            121,
+            Collections.singletonMap("pattern", "root.updated"),
+            Collections.singletonMap("processor", "do-nothing-processor"),
+            Collections.singletonMap("batch.enable", "false"));
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    final AlterPipePlanV2 alterPipePlanV2 =
+        new AlterPipePlanV2(currentPipeStaticMeta, pipeStaticMeta, pipeRuntimeMeta);
+    final AlterPipePlanV2 alterPipePlanV21 =
+        (AlterPipePlanV2)
+            ConfigPhysicalPlan.Factory.create(alterPipePlanV2.serializeToByteBuffer());
+    Assert.assertEquals(currentPipeStaticMeta, alterPipePlanV21.getCurrentPipeStaticMeta());
+    Assert.assertEquals(pipeStaticMeta, alterPipePlanV21.getPipeStaticMeta());
+    Assert.assertEquals(pipeRuntimeMeta, alterPipePlanV21.getPipeRuntimeMeta());
+    Assert.assertTrue(alterPipePlanV21.isCurrentPipeStaticMetaSet());
   }
 
   @Test
   public void SetPipeStatusPlanV2Test() throws IOException {
+    final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
+        new SetPipeStatusPlanV2(
+            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING, true);
+    final SetPipeStatusPlanV2 setPipeStatusPlanV21 =
+        (SetPipeStatusPlanV2)
+            ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());
+    Assert.assertEquals(setPipeStatusPlanV2.getPipeName(), setPipeStatusPlanV21.getPipeName());
+    Assert.assertEquals(setPipeStatusPlanV2.getPipeStatus(), setPipeStatusPlanV21.getPipeStatus());
+    Assert.assertEquals(setPipeStatusPlanV2.isTableModel(), setPipeStatusPlanV21.isTableModel());
+    Assert.assertTrue(setPipeStatusPlanV21.isTableModelSet());
+  }
+
+  @Test
+  public void SetPipeStatusPlanV2LegacyFormatTest() throws IOException {
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2(
             "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING);
@@ -986,10 +1034,41 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());
     Assert.assertEquals(setPipeStatusPlanV2.getPipeName(), setPipeStatusPlanV21.getPipeName());
     Assert.assertEquals(setPipeStatusPlanV2.getPipeStatus(), setPipeStatusPlanV21.getPipeStatus());
+    Assert.assertFalse(setPipeStatusPlanV21.isTableModelSet());
   }
 
   @Test
   public void SetPipeStatusWithStoppedByRuntimeExceptionPlanV2Test() throws IOException {
+    final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2 =
+            new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                "pipe",
+                org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.STOPPED,
+                true,
+                true);
+    final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21 =
+            (SetPipeStatusWithStoppedByRuntimeExceptionPlanV2)
+                ConfigPhysicalPlan.Factory.create(
+                    setPipeStatusWithStoppedByRuntimeExceptionPlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeName(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeName());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeStatus(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeStatus());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.isStoppedByRuntimeException(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isStoppedByRuntimeException());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.isTableModel(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isTableModel());
+    Assert.assertTrue(setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isTableModelSet());
+  }
+
+  @Test
+  public void SetPipeStatusWithStoppedByRuntimeExceptionPlanV2LegacyFormatTest()
+      throws IOException {
     final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
         setPipeStatusWithStoppedByRuntimeExceptionPlanV2 =
             new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
@@ -1008,14 +1087,26 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         setPipeStatusWithStoppedByRuntimeExceptionPlanV2.isStoppedByRuntimeException(),
         setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isStoppedByRuntimeException());
+    Assert.assertFalse(setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isTableModelSet());
   }
 
   @Test
   public void DropPipePlanV2Test() throws IOException {
+    final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("demo", true);
+    final DropPipePlanV2 dropPipePlanV21 =
+        (DropPipePlanV2) ConfigPhysicalPlan.Factory.create(dropPipePlanV2.serializeToByteBuffer());
+    Assert.assertEquals(dropPipePlanV2.getPipeName(), dropPipePlanV21.getPipeName());
+    Assert.assertEquals(dropPipePlanV2.isTableModel(), dropPipePlanV21.isTableModel());
+    Assert.assertTrue(dropPipePlanV21.isTableModelSet());
+  }
+
+  @Test
+  public void DropPipePlanV2LegacyFormatTest() throws IOException {
     final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("demo");
     final DropPipePlanV2 dropPipePlanV21 =
         (DropPipePlanV2) ConfigPhysicalPlan.Factory.create(dropPipePlanV2.serializeToByteBuffer());
     Assert.assertEquals(dropPipePlanV2.getPipeName(), dropPipePlanV21.getPipeName());
+    Assert.assertFalse(dropPipePlanV21.isTableModelSet());
   }
 
   @Test
@@ -1056,6 +1147,46 @@ public class ConfigPhysicalPlanSerDeTest {
     subPlans.add(alterPipePlanV2);
     subPlans.add(dropPipePlanV2);
     subPlans.add(setPipeStatusPlanV2);
+
+    final OperateMultiplePipesPlanV2 operateMultiplePipesPlanV2 =
+        new OperateMultiplePipesPlanV2(subPlans);
+    final OperateMultiplePipesPlanV2 operateMultiplePipesPlanV21 =
+        (OperateMultiplePipesPlanV2)
+            ConfigPhysicalPlan.Factory.create(operateMultiplePipesPlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        operateMultiplePipesPlanV2.getSubPlans(), operateMultiplePipesPlanV21.getSubPlans());
+  }
+
+  @Test
+  public void OperateMultiplePipesPlanV2ExplicitTailFieldsTest() throws IOException {
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    final PipeStaticMeta currentPipeStaticMeta =
+        new PipeStaticMeta(
+            "testAlterWithCurrent",
+            5,
+            Collections.singletonMap("k1", "v1"),
+            Collections.singletonMap("k2", "v2"),
+            Collections.singletonMap("k3", "v3"));
+    final PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "testAlterWithCurrent",
+            6,
+            Collections.singletonMap("k4", "v4"),
+            Collections.singletonMap("k5", "v5"),
+            Collections.singletonMap("k6", "v6"));
+
+    final List<ConfigPhysicalPlan> subPlans = new ArrayList<>();
+    subPlans.add(new DropPipePlanV2("testDropTable", true));
+    subPlans.add(
+        new SetPipeStatusPlanV2(
+            "testSetTree",
+            org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING,
+            false));
+    subPlans.add(new AlterPipePlanV2(currentPipeStaticMeta, pipeStaticMeta, pipeRuntimeMeta));
+    subPlans.add(new DropPipePlanV2("testDropTree", false));
 
     final OperateMultiplePipesPlanV2 operateMultiplePipesPlanV2 =
         new OperateMultiplePipesPlanV2(subPlans);

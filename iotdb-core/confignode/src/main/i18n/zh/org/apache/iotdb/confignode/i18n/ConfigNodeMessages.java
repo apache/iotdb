@@ -77,6 +77,13 @@ public final class ConfigNodeMessages {
   public static final String CONFIGNODE_EXITING = "ConfigNode 正在退出...";
   public static final String CONFIGNODE_NEED_REDIRECT_TO_RETRY =
       "ConfigNode need redirect to  {}, retry {} ...";
+  public static final String CONFIGNODE_MEMORY_PROPORTION_SHOULD_BE_IN_THE_FORM_OF_PIPE_FREE =
+      "参数 confignode_memory_proportion 应为 Pipe:Free 格式，"
+          + "但当前值为 {}。将使用默认值 1:9。";
+  public static final String INITIAL_CONFIGNODE_ALLOCATE_MEMORY_FOR_PIPE =
+      "初始化 ConfigNode allocateMemoryForPipe = {}";
+  public static final String INITIAL_CONFIGNODE_FREE_MEMORY =
+      "初始化 ConfigNode freeMemory = {}";
   public static final String CONFIGNODE_PORT_CHECK_SUCCESSFUL = "ConfigNode 端口检查成功。";
   public static final String CONFIGNODE_RPC_SERVICE_FINISHED_TO_REMOVE_AINODE_RESULT =
       "ConfigNode RPC Service finished to remove AINode, result: {}";
@@ -212,6 +219,9 @@ public final class ConfigNodeMessages {
       "Failed to drop trigger [%s], this trigger has not been created";
   public static final String FAILED_TO_DROP_UDF_THIS_UDF_HAS_NOT_BEEN_CREATED =
       "Failed to drop UDF [%s], this UDF has not been created";
+  public static final String
+      FAILED_TO_ENRICH_PIPE_WITH_ROOT_USER_FOR_COMPATIBILITY_BECAUSE_ROOT_USER_DOES_NOT_EXIST =
+          "Failed to enrich pipe %s with root user for compatibility because root user %s does not exist.";
   public static final String FAILED_TO_FETCH_SCHEMAENGINE_BLACK_LIST_ON_DATANODE =
       "Failed to fetch schemaengine black list on DataNode {}, {}";
   public static final String FAILED_TO_GET_FIELD = "Failed to get field {}";
@@ -499,6 +509,14 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_DROP_PIPE_BECAUSE = "删除 pipe 失败，原因：";
   public static final String FAILED_TO_ALTER_PIPE_BECAUSE = "修改 pipe 失败，原因：";
   public static final String FAILED_TO_CREATE_MULTIPLE_PIPES_BECAUSE = "批量创建 pipe 失败，原因：";
+  public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
+      "启动 pipe %s 失败，pipe 不存在";
+  public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
+      "启动 pipe %s 失败，pipe 已被删除";
+  public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
+      "停止 pipe %s 失败，pipe 不存在";
+  public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
+      "停止 pipe %s 失败，pipe 已被删除";
   public static final String FAILED_TO_HANDLE_LEADER_CHANGE_BECAUSE = "处理 leader 变更失败，原因：";
   public static final String FAILED_TO_HANDLE_META_CHANGES_BECAUSE = "处理元数据变更失败，原因：";
   public static final String GET_PIPEPLUGIN_JAR_FAILED_BECAUSE = "获取 PipePlugin Jar 失败，原因：";

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -69,6 +70,41 @@ public class PipeSleepIntervalTest {
     }
   }
 
+  @Test
+  public void testAuthenticationFailureRetryInterval() {
+    try (final TestSinkSubtask subtask = new TestSinkSubtask()) {
+      Assert.assertTrue(
+          subtask.isAuthenticationFailureException(
+              new PipeConnectionException(
+                  "Handshake error with receiver 127.0.0.1:6667, code: 801, message: Authentication failed.")));
+      Assert.assertTrue(
+          subtask.isAuthenticationFailureException(
+              new PipeConnectionException("801: Failed to check password for pipe a2b.")));
+      Assert.assertTrue(
+          subtask.isAuthenticationFailureException(
+              new PipeConnectionException("status code: 822, message: Account is blocked.")));
+      Assert.assertFalse(
+          subtask.isAuthenticationFailureException(
+              new PipeConnectionException("Network error 801 bytes sent.")));
+
+      final long authenticationFailureRetryInterval =
+          subtask.getSleepInterval(new PipeConnectionException("code: 801"));
+      Assert.assertTrue(authenticationFailureRetryInterval > TimeUnit.MINUTES.toMillis(3));
+      Assert.assertTrue(authenticationFailureRetryInterval * 3 > TimeUnit.MINUTES.toMillis(10));
+      Assert.assertTrue(
+          subtask.getSleepInterval(new PipeConnectionException("network error")) <= 10000);
+    }
+  }
+
+  @Test
+  public void testSleepIfNoHighPriorityTaskWaits() throws Exception {
+    try (final TestSinkSubtask subtask = new TestSinkSubtask()) {
+      final long startTime = System.currentTimeMillis();
+      subtask.sleepWithoutHighPriorityTask(20L);
+      Assert.assertTrue(System.currentTimeMillis() - startTime >= 15L);
+    }
+  }
+
   private static void assertSleepAtLeast(
       final PipeAbstractSinkSubtask subtask, final long expectedSleepMs) {
     final long startTime = System.nanoTime();
@@ -87,6 +123,18 @@ public class PipeSleepIntervalTest {
 
     private long getSleepInterval() {
       return sleepInterval;
+    }
+
+    private long getSleepInterval(final Throwable throwable) {
+      return getSleepIntervalBasedOnThrowable(throwable);
+    }
+
+    private boolean isAuthenticationFailureException(final Throwable throwable) {
+      return isAuthenticationFailure(throwable);
+    }
+
+    private void sleepWithoutHighPriorityTask(final long sleepMillis) throws InterruptedException {
+      sleepIfNoHighPriorityTask(sleepMillis);
     }
 
     @Override

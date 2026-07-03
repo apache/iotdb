@@ -24,11 +24,20 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +47,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class PipeTableRespTest {
+
+  private ConfigNode oldInstance;
+
+  @Before
+  public void setUp() {
+    oldInstance = ConfigNode.getInstance();
+    final ConfigNode configNode = Mockito.mock(ConfigNode.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final NodeManager nodeManager = Mockito.mock(NodeManager.class);
+
+    Mockito.when(configNode.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getNodeManager()).thenReturn(nodeManager);
+    Mockito.when(nodeManager.getRegisteredDataNodeCount()).thenReturn(2);
+    ConfigNode.setInstance(configNode);
+  }
+
+  @After
+  public void tearDown() {
+    ConfigNode.setInstance(oldInstance);
+  }
 
   public PipeTableResp constructPipeTableResp() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -117,5 +146,101 @@ public class PipeTableRespTest {
 
     PipeTableResp allPipeTableResp = pipeTableResp.filter(true, null);
     Assert.assertEquals(3, allPipeTableResp.getAllPipeMeta().size());
+  }
+
+  @Test
+  public void testConvertToTShowPipeRespIncludesDegradedStatus() {
+    final PipeTableResp pipeTableResp = constructPipeTableResp();
+    ((PipeTemporaryMetaInCoordinator) pipeTableResp.getAllPipeMeta().get(0).getTemporaryMeta())
+        .setDegraded(1, true);
+    ((PipeTemporaryMetaInCoordinator) pipeTableResp.getAllPipeMeta().get(1).getTemporaryMeta())
+        .setDegraded(1, false);
+
+    final List<TShowPipeInfo> showPipeResult =
+        pipeTableResp.convertToTShowPipeResp().getPipeInfoList();
+
+    Assert.assertEquals(3, showPipeResult.size());
+    Assert.assertEquals("testPipe", showPipeResult.get(0).getId());
+    Assert.assertTrue(showPipeResult.get(0).isSetIsDegraded());
+    Assert.assertTrue(showPipeResult.get(0).isIsDegraded());
+    Assert.assertTrue(showPipeResult.get(1).isSetIsDegraded());
+    Assert.assertFalse(showPipeResult.get(1).isIsDegraded());
+    Assert.assertFalse(showPipeResult.get(2).isSetIsDegraded());
+  }
+
+  @Test
+  public void testFilterByModelBeforeWhereClause() {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<PipeMeta> pipeMetaList = new ArrayList<>();
+
+    pipeMetaList.add(constructPipeMeta("sameNamePipe", 121, new HashMap<>(), "127.0.0.1"));
+
+    Map<String, String> tableExtractorAttributes = new HashMap<>();
+    tableExtractorAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    pipeMetaList.add(
+        constructPipeMeta("sameNamePipe", 122, tableExtractorAttributes, "172.30.30.30"));
+    pipeMetaList.add(
+        constructPipeMeta("tablePeerPipe", 123, tableExtractorAttributes, "172.30.30.30"));
+
+    PipeTableResp pipeTableResp = new PipeTableResp(status, pipeMetaList);
+
+    PipeTableResp filteredTablePipeTableResp =
+        pipeTableResp.filter(true, "sameNamePipe", true, null);
+    Assert.assertEquals(2, filteredTablePipeTableResp.getAllPipeMeta().size());
+    Assert.assertTrue(
+        filteredTablePipeTableResp.getAllPipeMeta().stream()
+            .allMatch(pipeMeta -> pipeMeta.getStaticMeta().visibleUnderTableModel()));
+
+    PipeTableResp filteredTreePipeTableResp =
+        pipeTableResp.filter(true, "sameNamePipe", false, null);
+    Assert.assertEquals(1, filteredTreePipeTableResp.getAllPipeMeta().size());
+    Assert.assertFalse(
+        filteredTreePipeTableResp.getAllPipeMeta().get(0).getStaticMeta().visibleUnderTableModel());
+  }
+
+  @Test
+  public void testFilterWithoutModelKeepsLegacyVisibility() {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<PipeMeta> pipeMetaList = new ArrayList<>();
+
+    pipeMetaList.add(constructPipeMeta("sameNamePipe", 121, new HashMap<>(), "127.0.0.1"));
+
+    Map<String, String> tableExtractorAttributes = new HashMap<>();
+    tableExtractorAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    pipeMetaList.add(
+        constructPipeMeta("sameNamePipe", 122, tableExtractorAttributes, "172.30.30.30"));
+    pipeMetaList.add(
+        constructPipeMeta("tablePeerPipe", 123, tableExtractorAttributes, "172.30.30.30"));
+
+    PipeTableResp pipeTableResp = new PipeTableResp(status, pipeMetaList);
+
+    Assert.assertEquals(
+        2, pipeTableResp.filter(false, "sameNamePipe", null).getAllPipeMeta().size());
+    Assert.assertEquals(3, pipeTableResp.filter(null, null, null).getAllPipeMeta().size());
+  }
+
+  private PipeMeta constructPipeMeta(
+      final String pipeName,
+      final long creationTime,
+      final Map<String, String> extractorAttributes,
+      final String host) {
+    Map<String, String> processorAttributes = new HashMap<>();
+    Map<String, String> connectorAttributes = new HashMap<>();
+
+    processorAttributes.put("processor", "do-nothing-processor");
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("host", host);
+    connectorAttributes.put("port", "6667");
+
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
+    PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            pipeName, creationTime, extractorAttributes, processorAttributes, connectorAttributes);
+    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    return new PipeMeta(pipeStaticMeta, pipeRuntimeMeta);
   }
 }

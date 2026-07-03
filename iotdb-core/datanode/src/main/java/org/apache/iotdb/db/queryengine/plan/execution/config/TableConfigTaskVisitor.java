@@ -111,6 +111,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.RelationalAuthorizerTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowConfigNodesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateDatabaseTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreatePipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
@@ -144,6 +146,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Al
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowCreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
@@ -213,6 +216,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfiguration;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
@@ -285,8 +291,8 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSign
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_DATA_REGION_GROUP_NUM_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_SCHEMA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -351,8 +357,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       if (property.isSetToDefault()) {
         switch (key) {
           case TIME_PARTITION_INTERVAL_KEY:
-          case SCHEMA_REGION_GROUP_NUM_KEY:
-          case DATA_REGION_GROUP_NUM_KEY:
+          case MAX_SCHEMA_REGION_GROUP_NUM_KEY:
+          case MAX_DATA_REGION_GROUP_NUM_KEY:
             break;
           case TTL_KEY:
             if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
@@ -386,12 +392,13 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         case TIME_PARTITION_INTERVAL_KEY:
           schema.setTimePartitionInterval(parseLongFromLiteral(value, TIME_PARTITION_INTERVAL_KEY));
           break;
-        case SCHEMA_REGION_GROUP_NUM_KEY:
-          schema.setMinSchemaRegionGroupNum(
-              parseIntFromLiteral(value, SCHEMA_REGION_GROUP_NUM_KEY));
+        case MAX_SCHEMA_REGION_GROUP_NUM_KEY:
+          schema.setMaxSchemaRegionGroupNum(
+              parseIntFromLiteral(value, MAX_SCHEMA_REGION_GROUP_NUM_KEY));
           break;
-        case DATA_REGION_GROUP_NUM_KEY:
-          schema.setMinDataRegionGroupNum(parseIntFromLiteral(value, DATA_REGION_GROUP_NUM_KEY));
+        case MAX_DATA_REGION_GROUP_NUM_KEY:
+          schema.setMaxDataRegionGroupNum(
+              parseIntFromLiteral(value, MAX_DATA_REGION_GROUP_NUM_KEY));
           break;
         default:
           throw new SemanticException(
@@ -426,6 +433,15 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         node,
         databaseName ->
             canShowDB(accessControl, context.getSession().getUserName(), databaseName, context));
+  }
+
+  @Override
+  public IConfigTask visitShowCreateDatabase(
+      final ShowCreateDatabase node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    accessControl.checkCanShowOrUseDatabase(
+        context.getSession().getUserName(), node.getDatabase(), context);
+    return new ShowCreateDatabaseTask(node.getDatabase());
   }
 
   @Override
@@ -1202,6 +1218,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, userEntity.getUsername());
       replacedSourceAttributes.put(
           PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME, userEntity.getCliHostname());
+      replacedSourceAttributes.put(
+          SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY, Boolean.TRUE.toString());
     } else if (!sourceParameters.hasAnyAttributes(
         PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
         PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
@@ -1271,6 +1289,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       connectorAttributes.put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, userEntity.getUsername());
       connectorAttributes.put(
           PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME, userEntity.getCliHostname());
+      connectorAttributes.put(
+          SystemConstant.SINK_AUTHENTICATION_INJECTED_KEY, Boolean.TRUE.toString());
     } else if (!connectorParameters.hasAnyAttributes(
         PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY, PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
@@ -1313,6 +1333,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           extractorAttributes,
           new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
           true);
+    } else {
+      markSourceAuthenticationAsExplicitIfNecessary(extractorAttributes);
     }
     mayChangeSourcePattern(extractorAttributes);
 
@@ -1322,9 +1344,40 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           node.getConnectorAttributes(),
           new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
           true);
+    } else {
+      markSinkAuthenticationAsExplicitIfNecessary(node.getConnectorAttributes());
     }
 
     return new AlterPipeTask(node, userName);
+  }
+
+  public static void markSourceAuthenticationAsExplicitIfNecessary(
+      final Map<String, String> sourceAttributes) {
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+    if (sourceParameters.hasAnyAttributes(
+        PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+        PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY,
+        PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
+      sourceAttributes.put(
+          SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY, Boolean.FALSE.toString());
+    }
+  }
+
+  public static void markSinkAuthenticationAsExplicitIfNecessary(
+      final Map<String, String> sinkAttributes) {
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+    if (sinkParameters.hasAnyAttributes(
+        PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+        PipeSinkConstant.SINK_IOTDB_USER_KEY,
+        PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+        PipeSinkConstant.SINK_IOTDB_USERNAME_KEY,
+        PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+        PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
+      sinkAttributes.put(SystemConstant.SINK_AUTHENTICATION_INJECTED_KEY, Boolean.FALSE.toString());
+    }
   }
 
   @Override
@@ -1352,6 +1405,19 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   public IConfigTask visitShowPipes(ShowPipes node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowPipeTask(node, context.getSession().getUserName());
+  }
+
+  @Override
+  public IConfigTask visitShowCreatePipe(ShowCreatePipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowCreatePipeTask(node.getPipeName(), context.getSession().getUserName());
+  }
+
+  @Override
+  public IConfigTask visitShowCreateTopic(ShowCreateTopic node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    accessControl.checkUserGlobalSysPrivilege(context);
+    return new ShowCreateTopicTask(node);
   }
 
   @Override

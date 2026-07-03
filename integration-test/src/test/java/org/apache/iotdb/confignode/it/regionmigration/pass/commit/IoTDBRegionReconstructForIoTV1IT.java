@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 import java.util.Map;
@@ -217,6 +218,60 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
           Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());
           break;
         }
+      }
+    }
+  }
+
+  /**
+   * Regression test for TIMECHODB-0689 (reconstruct path): targeting "reconstruct region" at an id
+   * that is not a registered DataNode (a ConfigNode id or a non-existent id) used to trigger a
+   * NullPointerException in {@code checkReconstructRegion}. After the fix a clear, correct error
+   * message must be returned instead of crashing the ConfigNode RPC.
+   */
+  @Test
+  public void reconstructRegionToInvalidDataNodeTest() throws Exception {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1);
+
+    EnvFactory.getEnv().initClusterEnvironment(1, 3);
+
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      // prepare data so that at least one region exists
+      statement.execute(INSERTION1);
+      statement.execute(FLUSH_COMMAND);
+
+      Map<Integer, Set<Integer>> regionMap = getAllRegionMap(statement);
+      Set<Integer> allDataNodeId = getAllDataNodes(statement);
+      Assert.assertFalse(regionMap.isEmpty());
+
+      int selectedRegion = regionMap.keySet().iterator().next();
+      // an id that is guaranteed not to belong to any registered DataNode; a ConfigNode id triggers
+      // the exact same code path (getRegisteredDataNode returns an empty configuration whose
+      // location is null)
+      int invalidDataNodeId = 9999;
+      Assert.assertFalse(allDataNodeId.contains(invalidDataNodeId));
+
+      try {
+        statement.execute(String.format(RECONSTRUCT_FORMAT, selectedRegion, invalidDataNodeId));
+        Assert.fail("reconstruct region on a non-existent DataNode is expected to fail");
+      } catch (SQLException e) {
+        String message = e.getMessage();
+        LOGGER.info("reconstruct region on invalid DataNode failed as expected: {}", message);
+        Assert.assertNotNull(message);
+        // the ConfigNode must not crash with an NPE any more ...
+        Assert.assertFalse(
+            "ConfigNode should not throw NullPointerException, but got: " + message,
+            message.contains("NullPointerException"));
+        // ... and the client should receive a clear, correct error message
+        Assert.assertTrue(
+            "Expected a 'does not exist in the cluster' error but got: " + message,
+            message.contains("does not exist in the cluster"));
       }
     }
   }

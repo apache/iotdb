@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -92,7 +93,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   public CreatePipeProcedureV2(final TCreatePipeReq createPipeRequest) throws PipeException {
     super();
-    this.createPipeRequest = createPipeRequest;
+    this.createPipeRequest = normalizeCreatePipeRequest(createPipeRequest);
   }
 
   /** This is only used when the pipe task info lock is held by another procedure. */
@@ -101,7 +102,24 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException {
     super();
     this.pipeTaskInfo = pipeTaskInfo;
-    this.createPipeRequest = createPipeRequest;
+    this.createPipeRequest = normalizeCreatePipeRequest(createPipeRequest);
+  }
+
+  private TCreatePipeReq normalizeCreatePipeRequest(final TCreatePipeReq createPipeRequest) {
+    if (createPipeRequest.getExtractorAttributes() == null) {
+      createPipeRequest.setExtractorAttributes(new HashMap<>());
+    }
+    createPipeRequest.setExtractorAttributes(
+        SystemConstant.addStrictPipeVisibilityIfNecessary(
+                new PipeParameters(createPipeRequest.getExtractorAttributes()))
+            .getAttribute());
+    if (createPipeRequest.getProcessorAttributes() == null) {
+      createPipeRequest.setProcessorAttributes(new HashMap<>());
+    }
+    if (createPipeRequest.getConnectorAttributes() == null) {
+      createPipeRequest.setConnectorAttributes(new HashMap<>());
+    }
+    return createPipeRequest;
   }
 
   /**
@@ -110,6 +128,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
    */
   public String getPipeName() {
     return createPipeRequest.getPipeName();
+  }
+
+  /**
+   * This should be called after {@link #executeFromValidateTask} and {@link
+   * #executeFromCalculateInfoForTask}.
+   */
+  public PipeStaticMeta getPipeStaticMeta() {
+    return pipeStaticMeta;
   }
 
   /**
@@ -268,7 +294,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     pipeStaticMeta =
         new PipeStaticMeta(
             createPipeRequest.getPipeName(),
-            System.currentTimeMillis(),
+            pipeTaskInfo.get().generateUniqueCreationTime(createPipeRequest.getPipeName()),
             createPipeRequest.getExtractorAttributes(),
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
@@ -386,7 +412,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info(ProcedureMessages.CREATEPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
     final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
+        parsePushPipeMetaExceptionForPipe(
+            pipeName, pushSinglePipeMetaToDataNodes(pipeStaticMeta, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_CREATE_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
@@ -421,7 +448,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new DropPipePlanV2(createPipeRequest.getPipeName()));
+              .write(
+                  new DropPipePlanV2(
+                      createPipeRequest.getPipeName(), pipeStaticMeta.visibleUnderTableModel()));
     } catch (final ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -523,18 +552,15 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     final CreatePipeProcedureV2 that = (CreatePipeProcedureV2) o;
     return this.createPipeRequest.getPipeName().equals(that.createPipeRequest.getPipeName())
-        && this.createPipeRequest
-            .getExtractorAttributes()
-            .toString()
-            .equals(that.createPipeRequest.getExtractorAttributes().toString())
-        && this.createPipeRequest
-            .getProcessorAttributes()
-            .toString()
-            .equals(that.createPipeRequest.getProcessorAttributes().toString())
-        && this.createPipeRequest
-            .getConnectorAttributes()
-            .toString()
-            .equals(that.createPipeRequest.getConnectorAttributes().toString());
+        && Objects.equals(
+            this.createPipeRequest.getExtractorAttributes(),
+            that.createPipeRequest.getExtractorAttributes())
+        && Objects.equals(
+            this.createPipeRequest.getProcessorAttributes(),
+            that.createPipeRequest.getProcessorAttributes())
+        && Objects.equals(
+            this.createPipeRequest.getConnectorAttributes(),
+            that.createPipeRequest.getConnectorAttributes());
   }
 
   @Override

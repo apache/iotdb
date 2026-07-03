@@ -251,6 +251,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -2998,12 +2999,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } else if (attributeKey.TIME_PARTITION_INTERVAL() != null) {
         final long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
-      } else if (attributeKey.SCHEMA_REGION_GROUP_NUM() != null) {
-        final int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
-      } else if (attributeKey.DATA_REGION_GROUP_NUM() != null) {
-        final int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
+      } else if (attributeKey.MAX_SCHEMA_REGION_GROUP_NUM() != null) {
+        final int maxSchemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        databaseSchemaStatement.setMaxSchemaRegionGroupNum(maxSchemaRegionGroupNum);
+      } else if (attributeKey.MAX_DATA_REGION_GROUP_NUM() != null) {
+        final int maxDataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        databaseSchemaStatement.setMaxDataRegionGroupNum(maxDataRegionGroupNum);
       }
     }
   }
@@ -3798,6 +3799,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitRepairDataPartitionTable(
       IoTDBSqlParser.RepairDataPartitionTableContext ctx) {
     return new RepairDataPartitionTable();
+  }
+
+  @Override
+  public Statement visitShowRepairDataPartitionTableProgress(
+      IoTDBSqlParser.ShowRepairDataPartitionTableProgressContext ctx) {
+    return new ShowRepairDataPartitionTableProgressStatement();
   }
 
   // Stop Repair Data
@@ -4632,10 +4639,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitMigrateRegion(IoTDBSqlParser.MigrateRegionContext ctx) {
+    List<Integer> regionIds =
+        ctx.regionIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
     return new MigrateRegionStatement(
-        Integer.parseInt(ctx.regionId.getText()),
-        Integer.parseInt(ctx.fromId.getText()),
-        Integer.parseInt(ctx.toId.getText()));
+        regionIds, Integer.parseInt(ctx.fromId.getText()), Integer.parseInt(ctx.toId.getText()));
   }
 
   @Override
@@ -4666,7 +4673,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitRemoveDataNode(IoTDBSqlParser.RemoveDataNodeContext ctx) {
     List<Integer> nodeIds =
-        Collections.singletonList(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
+        ctx.dataNodeIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
     return new RemoveDataNodeStatement(nodeIds);
   }
 

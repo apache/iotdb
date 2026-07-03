@@ -26,11 +26,12 @@
 #include "SessionDataSet.h"
 
 #include <cstring>
-#include <string>
-#include <vector>
 #include <map>
-#include <unordered_map>
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 /* ============================================================
  *  Internal wrapper structs — the opaque handles point to these
@@ -86,6 +87,10 @@ static TsStatus handleException(const std::exception& e) {
       dynamic_cast<const StatementExecutionException*>(&e) ||
       dynamic_cast<const BatchExecutionException*>(&e)) {
     return setError(TS_ERR_EXECUTION, e);
+  }
+  if (dynamic_cast<const std::out_of_range*>(&e) ||
+      dynamic_cast<const std::invalid_argument*>(&e)) {
+    return setError(TS_ERR_INVALID_PARAM, e);
   }
 #endif
   return setError(TS_ERR_UNKNOWN, e);
@@ -678,7 +683,10 @@ TsStatus ts_tablet_set_row_count(CTablet* tablet, int rowCount) {
   clearError();
   if (!tablet)
     return setError(TS_ERR_NULL_PTR, "tablet is null");
-  tablet->cpp.rowSize = rowCount;
+  if (rowCount < 0 || static_cast<size_t>(rowCount) > tablet->cpp.maxRowNumber) {
+    return setError(TS_ERR_INVALID_PARAM, "rowCount out of range [0, maxRowNumber]");
+  }
+  tablet->cpp.rowSize = static_cast<size_t>(rowCount);
   return TS_OK;
 }
 
@@ -1487,8 +1495,10 @@ int32_t ts_row_record_get_date_int32(CRowRecord* record, int index) {
   if (index < 0 || index >= (int)record->cpp->fields.size())
     return 0;
   const Field& f = record->cpp->fields[index];
-  if (f.dataType != TSDataType::DATE || !f.dateV.is_initialized())
+  if (f.dataType != TSDataType::DATE || !f.dateV.is_initialized() ||
+      f.dateV.value().is_not_a_date()) {
     return 0;
+  }
   return parseDateExpressionToInt(f.dateV.value());
 }
 

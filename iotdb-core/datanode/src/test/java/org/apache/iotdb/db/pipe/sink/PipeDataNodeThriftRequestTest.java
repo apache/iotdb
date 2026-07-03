@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
@@ -393,6 +394,43 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(req.getType(), deserializeReq.getType());
 
     Assert.assertEquals(req.getPlanNode(), deserializeReq.getPlanNode());
+  }
+
+  @Test
+  public void testPipeTransferPlanNodeReqBytesWithPartialDirectByteBuffer() throws IOException {
+    final CreateAlignedTimeSeriesNode node =
+        new CreateAlignedTimeSeriesNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            Collections.singletonList("s"),
+            Collections.singletonList(TSDataType.INT32),
+            Collections.singletonList(TSEncoding.PLAIN),
+            Collections.singletonList(CompressionType.UNCOMPRESSED),
+            null,
+            null,
+            null);
+    final byte[] serializedPlanNodeBytes = byteBufferToByteArray(node.serializeToByteBuffer());
+    final ByteBuffer serializedPlanNode =
+        ByteBuffer.allocateDirect(serializedPlanNodeBytes.length + 2);
+    serializedPlanNode.put((byte) 0);
+    serializedPlanNode.put(serializedPlanNodeBytes);
+    serializedPlanNode.put((byte) 1);
+    serializedPlanNode.flip();
+    serializedPlanNode.position(1);
+    serializedPlanNode.limit(1 + serializedPlanNodeBytes.length);
+
+    final byte[] transferBytes = PipeTransferPlanNodeReq.toTPipeTransferBytes(serializedPlanNode);
+
+    Assert.assertEquals(1, serializedPlanNode.position());
+    Assert.assertEquals(1 + serializedPlanNodeBytes.length, serializedPlanNode.limit());
+    final ByteBuffer transferBuffer = ByteBuffer.wrap(transferBytes);
+    Assert.assertEquals(
+        IoTDBSinkRequestVersion.VERSION_1.getVersion(), ReadWriteIOUtils.readByte(transferBuffer));
+    Assert.assertEquals(
+        PipeRequestType.TRANSFER_PLAN_NODE.getType(), ReadWriteIOUtils.readShort(transferBuffer));
+    Assert.assertEquals(node, PlanNodeType.deserialize(transferBuffer));
+    Assert.assertEquals(0, ReadWriteIOUtils.readInt(transferBuffer));
+    Assert.assertFalse(transferBuffer.hasRemaining());
   }
 
   @Test

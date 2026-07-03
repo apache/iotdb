@@ -230,6 +230,31 @@ public class CommonDescriptor {
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
 
+    long minFolderOccupiedSpaceCacheRefreshIntervalMs =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "min_folder_occupied_space_cache_refresh_interval_ms",
+                    String.valueOf(config.getMinFolderOccupiedSpaceCacheRefreshIntervalMs()))
+                .trim());
+    if (minFolderOccupiedSpaceCacheRefreshIntervalMs > 0) {
+      config.setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
+          minFolderOccupiedSpaceCacheRefreshIntervalMs);
+    }
+
+    int minFolderOccupiedSpaceCacheRefreshSelectionThreshold =
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "min_folder_occupied_space_cache_refresh_selection_threshold",
+                    String.valueOf(
+                        config.getMinFolderOccupiedSpaceCacheRefreshSelectionThreshold()))
+                .trim());
+    if (minFolderOccupiedSpaceCacheRefreshSelectionThreshold > 0) {
+      config.setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
+          minFolderOccupiedSpaceCacheRefreshSelectionThreshold);
+    }
+
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 
@@ -310,7 +335,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
-
     config.setPathLogMaxSize(
         Integer.parseInt(
             properties.getProperty(
@@ -560,6 +584,29 @@ public class CommonDescriptor {
   }
 
   /**
+   * Parse, validate and apply {@code disk_space_warning_threshold} for a runtime hot reload, then
+   * return the applied value. Shared by the ConfigNode and DataNode hot-reload paths so both use
+   * the same parsing / bounds rules. Callers on the DataNode must additionally refresh the {@code
+   * JVMCommonUtils} static copy that the ReadOnly disk guard actually consumes.
+   */
+  public double loadHotModifiedDiskSpaceWarningThreshold(final TrimProperties properties)
+      throws IOException {
+    double diskSpaceWarningThreshold =
+        Double.parseDouble(
+            properties.getProperty(
+                "disk_space_warning_threshold",
+                String.valueOf(config.getDiskSpaceWarningThreshold())));
+    if (diskSpaceWarningThreshold < 0 || diskSpaceWarningThreshold >= 1) {
+      throw new IOException(
+          "disk_space_warning_threshold must be in [0, 1), but was "
+              + diskSpaceWarningThreshold
+              + ".");
+    }
+    config.setDiskSpaceWarningThreshold(diskSpaceWarningThreshold);
+    return diskSpaceWarningThreshold;
+  }
+
+  /**
    * Reload only the subscription consensus properties that are intended to take effect on hot
    * configuration reload.
    *
@@ -654,6 +701,10 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_thrift_ssl", Boolean.toString(config.isEnableThriftClientSSL()))));
+    config.setThriftSSLClientAuth(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "thrift_ssl_client_auth", Boolean.toString(config.isThriftSSLClientAuth()))));
     config.setKeyStorePath(properties.getProperty("key_store_path", config.getKeyStorePath()));
     config.setKeyStorePwd(properties.getProperty("key_store_pwd", config.getKeyStorePwd()));
     config.setTrustStorePath(

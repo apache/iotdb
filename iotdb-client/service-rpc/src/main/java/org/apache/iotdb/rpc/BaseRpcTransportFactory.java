@@ -19,18 +19,12 @@
 
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.rpc.i18n.RpcMessages;
-
 import org.apache.thrift.transport.TMemoryInputTransport;
 import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class BaseRpcTransportFactory extends TTransportFactory {
@@ -91,7 +85,9 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
         RpcSslUtils.createTSSLTransportParameters(sslProtocol);
-    RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd);
+    if (hasText(trustStore)) {
+      RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd, sslProtocol);
+    }
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);
   }
@@ -120,11 +116,11 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
         RpcSslUtils.createTSSLTransportParameters(sslProtocol);
-    if (Files.exists(Paths.get(trustStore)) && Files.exists(Paths.get(keyStore))) {
-      RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd);
-      RpcSslUtils.setKeyStore(params, keyStore, keyStorePwd);
-    } else {
-      throw new TTransportException(new IOException(RpcMessages.COULD_NOT_LOAD_KEYSTORE));
+    if (hasText(trustStore)) {
+      RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd, sslProtocol);
+    }
+    if (hasText(keyStore)) {
+      RpcSslUtils.setKeyStore(params, keyStore, keyStorePwd, sslProtocol);
     }
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);
@@ -149,5 +145,9 @@ public class BaseRpcTransportFactory extends TTransportFactory {
 
   public static void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     BaseRpcTransportFactory.thriftMaxFrameSize = thriftMaxFrameSize;
+  }
+
+  private static boolean hasText(String value) {
+    return value != null && !value.trim().isEmpty();
   }
 }

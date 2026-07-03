@@ -547,6 +547,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
       "enable =  true",
       "true",
       "false",
+      "2024-06-28 08:00:00",
       "12345678910",
       "123231232132131233213123123123123123131312",
       "123231232132131233213123123123123123131312.212312321312312",

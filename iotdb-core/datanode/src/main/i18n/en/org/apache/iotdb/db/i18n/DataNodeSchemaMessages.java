@@ -396,6 +396,8 @@ public final class DataNodeSchemaMessages {
 
   public static final String SYSTEM_VIEW_NOT_SUPPORT_SHOW_CREATE =
       "The system view does not support show create.";
+  public static final String SYSTEM_DATABASE_NOT_SUPPORT_SHOW_CREATE =
+      "The system database does not support show create.";
 
   // ======================== Traverser ========================
 

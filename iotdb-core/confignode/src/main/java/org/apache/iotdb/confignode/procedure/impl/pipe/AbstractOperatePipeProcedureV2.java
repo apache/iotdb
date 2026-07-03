@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMetrics;
@@ -52,7 +53,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -98,6 +98,10 @@ public abstract class AbstractOperatePipeProcedureV2
   // This variable should not be serialized into procedure store,
   // putting it here is just for convenience
   protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
+
+  // Only used to release global locks before retrying the same state. Do not serialize it because a
+  // recovered procedure is already re-scheduled by the procedure framework.
+  private transient boolean shouldYieldAfterExecution;
 
   private static final String SKIP_PIPE_PROCEDURE_MESSAGE =
       "Try to start a RUNNING pipe or stop a STOPPED pipe, do nothing.";
@@ -176,15 +180,17 @@ public abstract class AbstractOperatePipeProcedureV2
     } else {
       LOGGER.debug(
           ProcedureMessages.PROCEDUREID_RELEASE_LOCK_PIPE_LOCK_WILL_BE_RELEASED, getProcId());
-      if (this instanceof PipeMetaSyncProcedure) {
+      if (isSuccess() && this instanceof PipeMetaSyncProcedure) {
         configNodeProcedureEnv
             .getConfigManager()
             .getPipeManager()
             .getPipeTaskCoordinator()
             .updateLastSyncedVersion();
       }
-      PipeProcedureMetrics.getInstance()
-          .updateTimer(this.getOperation().getName(), this.elapsedTime());
+      if (isFinished()) {
+        PipeProcedureMetrics.getInstance()
+            .updateTimer(this.getOperation().getName(), this.elapsedTime());
+      }
       releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
     }
   }
@@ -210,7 +216,7 @@ public abstract class AbstractOperatePipeProcedureV2
   public abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
   /**
-   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.‘
+   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.
    *
    * @throws PipeException if configNode consensus write failed
    */
@@ -229,6 +235,7 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws InterruptedException {
+    shouldYieldAfterExecution = false;
     if (pipeTaskInfo == null) {
       LOGGER.warn(
           ProcedureMessages.PROCEDUREID_PIPE_LOCK_IS_NOT_ACQUIRED_EXECUTEFROMSTATE_S_EXECUTION_WILL,
@@ -277,8 +284,7 @@ public abstract class AbstractOperatePipeProcedureV2
             RETRY_THRESHOLD,
             e);
         setNextState(getCurrentState());
-        // Wait 3s for next retry
-        TimeUnit.MILLISECONDS.sleep(3000L);
+        shouldYieldAfterExecution = true;
       } else {
         LOGGER.warn(
             ProcedureMessages.PROCEDUREID_ALL_RETRIES_FAILED_WHEN_TRYING_TO_AT_STATE_WILL,
@@ -298,6 +304,11 @@ public abstract class AbstractOperatePipeProcedureV2
       }
     }
     return Flow.HAS_MORE_STATE;
+  }
+
+  @Override
+  protected boolean isYieldAfterExecution(final ConfigNodeProcedureEnv env) {
+    return shouldYieldAfterExecution;
   }
 
   @Override
@@ -567,9 +578,61 @@ public abstract class AbstractOperatePipeProcedureV2
             .serialize());
   }
 
+  protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(
+      String pipeName, boolean isTableModel, ConfigNodeProcedureEnv env) throws IOException {
+    return env.pushSinglePipeMetaToDataNodes(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(
+                pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel))
+            .serialize());
+  }
+
+  protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(
+      PipeStaticMeta pipeStaticMeta, ConfigNodeProcedureEnv env) throws IOException {
+    return env.pushSinglePipeMetaToDataNodes(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(
+                pipeTaskInfo.get().getPipeMetaByPipeStaticMeta(pipeStaticMeta))
+            .serialize());
+  }
+
   protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes4Realtime(
       String pipeName, ConfigNodeProcedureEnv env) throws IOException {
     final PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    // Note that although the altered pipe has progress in it,
+    // if we alter it to realtime we should ignore the previous data
+    if (!pipeMeta.getStaticMeta().isSourceExternal()) {
+      pipeMeta
+          .getStaticMeta()
+          .getSourceParameters()
+          .addOrReplaceEquivalentAttributes(
+              new PipeParameters(
+                  Collections.singletonMap(
+                      SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.FALSE.toString())));
+    }
+    return env.pushSinglePipeMetaToDataNodes(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
+  }
+
+  protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes4Realtime(
+      String pipeName, boolean isTableModel, ConfigNodeProcedureEnv env) throws IOException {
+    final PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel);
+    // Note that although the altered pipe has progress in it,
+    // if we alter it to realtime we should ignore the previous data
+    if (!pipeMeta.getStaticMeta().isSourceExternal()) {
+      pipeMeta
+          .getStaticMeta()
+          .getSourceParameters()
+          .addOrReplaceEquivalentAttributes(
+              new PipeParameters(
+                  Collections.singletonMap(
+                      SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.FALSE.toString())));
+    }
+    return env.pushSinglePipeMetaToDataNodes(
+        copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
+  }
+
+  protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes4Realtime(
+      PipeStaticMeta pipeStaticMeta, ConfigNodeProcedureEnv env) throws IOException {
+    final PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeStaticMeta(pipeStaticMeta);
     // Note that although the altered pipe has progress in it,
     // if we alter it to realtime we should ignore the previous data
     if (!pipeMeta.getStaticMeta().isSourceExternal()) {

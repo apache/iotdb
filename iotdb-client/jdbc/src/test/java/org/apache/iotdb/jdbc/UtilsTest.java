@@ -163,11 +163,39 @@ public class UtilsTest {
   @Test
   public void testParseSslConfig() throws IoTDBURLException {
     Properties properties = new Properties();
+    properties.setProperty(Config.TRUST_STORE, "/tmp/truststore.p12");
+    properties.setProperty(Config.TRUST_STORE_PWD, "trust_pass");
+    properties.setProperty(Config.KEY_STORE, "/tmp/keystore.p12");
+    properties.setProperty(Config.KEY_STORE_PWD, "key_pass");
     IoTDBConnectionParams params =
         Utils.parseUrl(
             "jdbc:iotdb://127.0.0.1:6667?use_ssl=true&ssl_protocol=ProviderProtocol", properties);
 
     assertTrue(params.isUseSSL());
     assertEquals("ProviderProtocol", params.getSslProtocol());
+    assertEquals("/tmp/truststore.p12", params.getTrustStore());
+    assertEquals("trust_pass", params.getTrustStorePwd());
+    assertEquals("/tmp/keystore.p12", params.getKeyStore());
+    assertEquals("key_pass", params.getKeyStorePwd());
+  }
+
+  @Test
+  public void testParseSslConfigFromUrl() throws IoTDBURLException {
+    IoTDBConnectionParams params =
+        Utils.parseUrl(
+            "jdbc:iotdb://127.0.0.1:6667?use_ssl=true"
+                + "&trust_store=/tmp/url-truststore.p12"
+                + "&trust_store_pwd=url_trust_pass"
+                + "&key_store=/tmp/url-keystore.p12"
+                + "&key_store_pwd=url_key_pass"
+                + "&ssl_protocol=ProviderProtocol",
+            new Properties());
+
+    assertTrue(params.isUseSSL());
+    assertEquals("ProviderProtocol", params.getSslProtocol());
+    assertEquals("/tmp/url-truststore.p12", params.getTrustStore());
+    assertEquals("url_trust_pass", params.getTrustStorePwd());
+    assertEquals("/tmp/url-keystore.p12", params.getKeyStore());
+    assertEquals("url_key_pass", params.getKeyStorePwd());
   }
 }
