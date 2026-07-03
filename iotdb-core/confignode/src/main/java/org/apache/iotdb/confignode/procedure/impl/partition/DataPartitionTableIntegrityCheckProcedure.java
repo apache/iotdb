@@ -687,24 +687,23 @@ public class DataPartitionTableIntegrityCheckProcedure
         LOG.warn(
             "[DataPartitionIntegrity] No data partition table related to database {} was found from the ConfigNode, use data partition table of DataNode directly",
             database);
-        continue;
+      } else {
+        localDataPartitionTableMap
+            .values()
+            .forEach(
+                map ->
+                    map.forEach(
+                        (tSeriesPartitionSlot, seriesPartitionTableMap) -> {
+                          if (tSeriesPartitionSlot == null
+                              || seriesPartitionTableMap == null
+                              || seriesPartitionTableMap.isEmpty()) {
+                            return;
+                          }
+                          finalDataPartitionMap.computeIfAbsent(
+                              tSeriesPartitionSlot,
+                              k -> new SeriesPartitionTable(seriesPartitionTableMap));
+                        }));
       }
-
-      localDataPartitionTableMap
-          .values()
-          .forEach(
-              map ->
-                  map.forEach(
-                      (tSeriesPartitionSlot, seriesPartitionTableMap) -> {
-                        if (tSeriesPartitionSlot == null
-                            || seriesPartitionTableMap == null
-                            || seriesPartitionTableMap.isEmpty()) {
-                          return;
-                        }
-                        finalDataPartitionMap.computeIfAbsent(
-                            tSeriesPartitionSlot,
-                            k -> new SeriesPartitionTable(seriesPartitionTableMap));
-                      }));
 
       dataPartitionTables.forEach(
           (k, v) ->
