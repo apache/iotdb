@@ -68,7 +68,7 @@ public class STMProcedureTest extends TestProcedureBase {
 
     forceEofStateWithHasMoreFlow(procedure);
 
-    Assert.assertNull(procedure.doExecute(env));
+    Assert.assertEquals(0, procedure.doExecute(env).length);
     Assert.assertEquals(0, procedure.executeCount);
   }
 
