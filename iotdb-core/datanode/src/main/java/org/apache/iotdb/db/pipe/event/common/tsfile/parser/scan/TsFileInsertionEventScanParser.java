@@ -262,6 +262,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                             sourceEvent,
                             isLast);
                   } finally {
+                    // The raw event owns the generated tablet; only release the parser-side memory
+                    // accounting.
+                    releaseTabletMemoryBlock();
                     if (isLast) {
                       recordParseEndTimeIfNecessary();
                       close();
