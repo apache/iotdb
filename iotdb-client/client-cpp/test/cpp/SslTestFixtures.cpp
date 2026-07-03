@@ -287,6 +287,7 @@ std::string opensslExecutable() {
 #endif
 }
 
+#if !defined(_WIN32)
 void prependOpenSslRuntimeToLdLibraryPath() {
 #ifdef IOTDB_OPENSSL_ROOT_DIR
   const std::string root = IOTDB_OPENSSL_ROOT_DIR;
@@ -302,6 +303,7 @@ void prependOpenSslRuntimeToLdLibraryPath() {
   setenv("LD_LIBRARY_PATH", libPath.c_str(), 1);
 #endif
 }
+#endif
 
 std::string quoteArg(const std::string& arg) {
 #if defined(_WIN32)
