@@ -915,6 +915,8 @@ public final class ProcedureMessages {
       "Start rollback Renaming table {}.{} on configNode";
   public static final String START_ROLLBACK_SET_PROPERTIES_TO_TABLE =
       "Start rollback set properties to table {}.{}";
+  public static final String STATE_MACHINE_PROCEDURE_EOF_STATE_SKIP_EXECUTION =
+      "StateMachineProcedure pid={} is scheduled with EOF state, skip execution: {}";
   public static final String STATE_STUCK_AT = "State stuck at ";
   public static final String STOPPIPEPROCEDUREV2_EXECUTEFROMCALCULATEINFOFORTASK =
       "StopPipeProcedureV2: executeFromCalculateInfoForTask({})";

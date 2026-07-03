@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 
@@ -151,7 +152,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       TState state = getCurrentState();
       if (state == null) {
         LOG.warn(
-            "StateMachineProcedure pid={} is scheduled with EOF state, skip execution: {}",
+            ProcedureMessages.STATE_MACHINE_PROCEDURE_EOF_STATE_SKIP_EXECUTION,
             getProcId(),
             this);
         stateFlow = Flow.NO_MORE_STATE;
