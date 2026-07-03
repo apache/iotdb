@@ -278,8 +278,11 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     if (openSessionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       final String errorMsg =
           String.format(
-              "Failed to login to receiver %s:%s for legacy pipe transfer because %s",
-              ipAddress, port, openSessionResp.getStatus().getMessage());
+              DataNodePipeMessages.FAILED_TO_LOGIN_TO_RECEIVER_FOR_LEGACY_PIPE_TRANSFER,
+              ipAddress,
+              port,
+              openSessionResp.getStatus().getCode(),
+              openSessionResp.getStatus().getMessage());
       LOGGER.warn(errorMsg);
       throw new PipeRuntimeCriticalException(errorMsg);
     }
