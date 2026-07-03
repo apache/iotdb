@@ -302,6 +302,8 @@ public abstract class PipeTaskAgent {
       }
     }
 
+    syncRuntimeExceptionClearTime(runtimeMetaFromCoordinator, runtimeMetaInAgent);
+
     // 2. Handle pipe runtime meta status changes
     final PipeStatus statusFromCoordinator = runtimeMetaFromCoordinator.getStatus().get();
     final PipeStatus statusInAgent = runtimeMetaInAgent.getStatus().get();
@@ -340,6 +342,12 @@ public abstract class PipeTaskAgent {
             String.format(
                 MESSAGE_UNKNOWN_PIPE_STATUS, statusFromCoordinator, pipeStaticMeta.getPipeName()));
     }
+  }
+
+  private void syncRuntimeExceptionClearTime(
+      final PipeRuntimeMeta runtimeMetaFromCoordinator, final PipeRuntimeMeta runtimeMetaInAgent) {
+    runtimeMetaInAgent.setExceptionsClearTime(runtimeMetaFromCoordinator.getExceptionsClearTime());
+    runtimeMetaInAgent.clearExceptionMessagesBefore(runtimeMetaInAgent.getExceptionsClearTime());
   }
 
   protected abstract void thawRate(final String pipeName, final long creationTime);
@@ -543,6 +551,11 @@ public abstract class PipeTaskAgent {
     pipeStatusFromCoordinator.set(PipeStatus.STOPPED);
 
     pipeMetaKeeper.addPipeMeta(pipeName, pipeMetaFromCoordinator);
+
+    pipeMetaFromCoordinator
+        .getRuntimeMeta()
+        .clearExceptionMessagesBefore(
+            pipeMetaFromCoordinator.getRuntimeMeta().getExceptionsClearTime());
 
     // If the pipe status from coordinator is RUNNING, we will start the pipe later.
     return needToStartPipe;

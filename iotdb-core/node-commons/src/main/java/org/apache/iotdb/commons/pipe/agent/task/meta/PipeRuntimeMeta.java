@@ -128,6 +128,15 @@ public class PipeRuntimeMeta {
     }
   }
 
+  public void clearExceptionMessagesBefore(final long exceptionsClearTime) {
+    nodeId2PipeRuntimeExceptionMap
+        .entrySet()
+        .removeIf(entry -> entry.getValue().getTimeStamp() <= exceptionsClearTime);
+    consensusGroupId2TaskMetaMap
+        .values()
+        .forEach(pipeTaskMeta -> pipeTaskMeta.clearExceptionMessagesBefore(exceptionsClearTime));
+  }
+
   public boolean getIsStoppedByRuntimeException() {
     return isStoppedByRuntimeException.get();
   }
