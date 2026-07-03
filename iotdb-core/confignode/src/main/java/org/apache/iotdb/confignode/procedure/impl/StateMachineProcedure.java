@@ -152,9 +152,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       TState state = getCurrentState();
       if (state == null) {
         LOG.warn(
-            ProcedureMessages.STATE_MACHINE_PROCEDURE_EOF_STATE_SKIP_EXECUTION,
-            getProcId(),
-            this);
+            ProcedureMessages.STATE_MACHINE_PROCEDURE_EOF_STATE_SKIP_EXECUTION, getProcId(), this);
         stateFlow = Flow.NO_MORE_STATE;
         setStateDeserialized(false);
         return null;
