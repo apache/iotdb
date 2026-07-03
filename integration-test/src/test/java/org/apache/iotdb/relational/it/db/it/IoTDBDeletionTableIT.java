@@ -579,6 +579,150 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testDeleteDataByAttributeFilterWithMixedOperators() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_mixed_ops("
+              + "deviceId STRING TAG, site STRING TAG, "
+              + "attr1 ATTRIBUTE, attr2 ATTRIBUTE, attr3 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_mixed_ops(time, deviceId, site, attr1, attr2, attr3, s1) "
+              + "VALUES "
+              + "(1, 'd1', 'north', 'red-a', 'small', 'enabled', 11),"
+              + "(2, 'd1', 'north', 'red-a', 'small', 'enabled', 12),"
+              + "(3, 'd1', 'north', 'red-a', 'small', 'enabled', 13),"
+              + "(4, 'd1', 'north', 'red-a', 'small', 'enabled', 14),"
+              + "(5, 'd1', 'north', 'red-a', 'small', 'enabled', 15),"
+              + "(2, 'd2', 'north', 'blue-a', 'small', 'enabled', 22),"
+              + "(3, 'd3', 'south', 'red-b', 'medium', 'enabled', 33),"
+              + "(3, 'd4', 'north', 'red-c', 'large', 'enabled', 43)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_mixed_ops(time, deviceId, site, attr1, attr2, s1) "
+              + "VALUES (3, 'd5', 'north', 'red-d', 'medium', 53)");
+
+      statement.execute(
+          "DELETE FROM delete_by_attr_mixed_ops "
+              + "WHERE time >= 2 AND time <= 4 "
+              + "AND site = 'north' "
+              + "AND attr1 != 'blue-a' "
+              + "AND attr1 LIKE 'red%' "
+              + "AND attr2 IN ('small', 'medium') "
+              + "AND attr3 IS NOT NULL");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, site, time, s1 FROM delete_by_attr_mixed_ops "
+                  + "ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1)
+                  + ","
+                  + resultSet.getString(2)
+                  + ","
+                  + resultSet.getLong(3)
+                  + ","
+                  + resultSet.getInt(4));
+        }
+      }
+      assertEquals(
+          List.of(
+              "d1,north,1,11",
+              "d1,north,5,15",
+              "d2,north,2,22",
+              "d3,south,3,33",
+              "d4,north,3,43",
+              "d5,north,3,53"),
+          actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithoutTagColumns() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_no_tag(attr1 ATTRIBUTE, attr2 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_no_tag(time, attr1, attr2, s1) VALUES "
+              + "(1, 'red', 'small', 11),"
+              + "(2, 'blue', 'large', 12),"
+              + "(3, 'blue', 'large', 13),"
+              + "(4, 'red', 'small', 14)");
+
+      statement.execute(
+          "DELETE FROM delete_by_attr_no_tag "
+              + "WHERE time >= 2 AND time <= 4 AND attr1 = 'red' AND attr2 = 'small'");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT time, s1 FROM delete_by_attr_no_tag ORDER BY time")) {
+        while (resultSet.next()) {
+          actual.add(resultSet.getLong(1) + "," + resultSet.getInt(2));
+        }
+      }
+      assertEquals(List.of("1,11"), actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithNullTagDevice() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_null_tag("
+              + "deviceId STRING TAG, site STRING TAG, attr1 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_null_tag(time, deviceId, site, attr1, s1) VALUES "
+              + "(1, 'd1', 'north', 'red', 11),"
+              + "(2, 'd1', 'north', 'red', 12),"
+              + "(1, 'd2', 'south', 'blue', 21),"
+              + "(2, 'd2', 'south', 'blue', 22)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_null_tag(time, deviceId, attr1, s1) VALUES "
+              + "(1, 'd3', 'red', 31),"
+              + "(2, 'd3', 'red', 32),"
+              + "(1, 'd4', 'blue', 41),"
+              + "(2, 'd4', 'blue', 42)");
+
+      statement.execute(
+          "DELETE FROM delete_by_attr_null_tag "
+              + "WHERE attr1 = 'red' AND site IS NULL AND time = 2");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, site, time, s1 FROM delete_by_attr_null_tag "
+                  + "ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1)
+                  + ","
+                  + resultSet.getString(2)
+                  + ","
+                  + resultSet.getLong(3)
+                  + ","
+                  + resultSet.getInt(4));
+        }
+      }
+      assertEquals(
+          List.of(
+              "d1,north,1,11",
+              "d1,north,2,12",
+              "d2,south,1,21",
+              "d2,south,2,22",
+              "d3,null,1,31",
+              "d4,null,1,41",
+              "d4,null,2,42"),
+          actual);
+    }
+  }
+
+  @Test
   public void testDeleteDataByAttributeFilterWithInvalidComparison() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
