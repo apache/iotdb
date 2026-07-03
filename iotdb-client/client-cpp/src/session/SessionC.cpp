@@ -1495,8 +1495,10 @@ int32_t ts_row_record_get_date_int32(CRowRecord* record, int index) {
   if (index < 0 || index >= (int)record->cpp->fields.size())
     return 0;
   const Field& f = record->cpp->fields[index];
-  if (f.dataType != TSDataType::DATE || !f.dateV.is_initialized())
+  if (f.dataType != TSDataType::DATE || !f.dateV.is_initialized() ||
+      f.dateV.value().is_not_a_date()) {
     return 0;
+  }
   return parseDateExpressionToInt(f.dateV.value());
 }
 
