@@ -24,11 +24,20 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.LongUnaryOperator;
 
 public class PipePeriodicalLogReducer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipePeriodicalLogReducer.class);
+
+  private static final LongUnaryOperator DEFAULT_MEMORY_RESIZE_FUNCTION =
+      sizeInBytes -> sizeInBytes;
+
+  private static volatile LongUnaryOperator memoryResizeFunction = DEFAULT_MEMORY_RESIZE_FUNCTION;
 
   protected static final Cache<String, String> LOGGER_CACHE =
       Caffeine.newBuilder()
@@ -54,11 +63,22 @@ public class PipePeriodicalLogReducer {
     return false;
   }
 
-  public static void update() {
-    update(PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
+  public static synchronized void setMemoryResizeFunction(
+      final LongUnaryOperator memoryResizeFunction) {
+    PipePeriodicalLogReducer.memoryResizeFunction =
+        memoryResizeFunction == null ? DEFAULT_MEMORY_RESIZE_FUNCTION : memoryResizeFunction;
+    update();
   }
 
-  public static void update(final long maxWeight) {
+  public static synchronized void update() {
+    final long maxWeight =
+        memoryResizeFunction.applyAsLong(
+            PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
+    LOGGER.info("PipePeriodicalLogReducer is allocated to {} bytes.", maxWeight);
+    update(maxWeight);
+  }
+
+  public static synchronized void update(final long maxWeight) {
     LOGGER_CACHE
         .policy()
         .expireAfterWrite()

@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
@@ -2251,6 +2252,12 @@ public class IoTDBDescriptor {
       } else {
         BinaryAllocator.getInstance().close(true);
       }
+
+      // update disk_space_warning_threshold; also refresh the static copy in JVMCommonUtils that
+      // the ReadOnly disk guard reads, otherwise the new threshold would not take effect until
+      // restart. Parsing / validation is shared with the ConfigNode hot-reload path.
+      JVMCommonUtils.setDiskSpaceWarningThreshold(
+          commonDescriptor.loadHotModifiedDiskSpaceWarningThreshold(properties));
 
       commonDescriptor
           .getConfig()

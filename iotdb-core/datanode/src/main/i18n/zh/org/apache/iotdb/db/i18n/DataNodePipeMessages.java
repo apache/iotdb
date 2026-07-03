@@ -213,6 +213,8 @@ public final class DataNodePipeMessages {
   public static final String PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED =
       "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and "
           + "callbackExecutor {}.";
+  public static final String PIPE_SINK_SUBTASK_DELAYED_TO_AVOID_FREQUENT_HANDSHAKES =
+      "Pipe sink 子任务 {} 在拉取事件前延迟 {} ms，以避免客户端借用失败后频繁握手。";
   public static final String PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T =
       "Pipe 跳过不应传输的临时 TsFile：{}";
   public static final String PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING =
@@ -582,8 +584,6 @@ public final class DataNodePipeMessages {
       "The pipe cannot extract table model data when sql dialect is set to tree.";
   public static final String THE_PIPE_CANNOT_EXTRACT_TREE_MODEL_DATA =
       "The pipe cannot extract tree model data when sql dialect is set to table.";
-  public static final String THE_PIPE_CANNOT_TRANSFER_DATA_WHEN_DATA =
-      "The pipe cannot transfer data when data region is using ratis consensus.";
   public static final String THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT =
       "The reference count of the event {} cannot be increased, skipping it.";
   public static final String THE_REFERENCE_COUNT_OF_THE_REALTIME_EVENT =
@@ -791,6 +791,8 @@ public final class DataNodePipeMessages {
           + "PipeRawTabletInsertionEvent. Ignore {}.";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_IGNORE =
       "IoTDBDataRegionAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.";
+  public static final String FAILED_TO_LOGIN_TO_RECEIVER_FOR_LEGACY_PIPE_TRANSFER =
+      "登录 receiver %s:%s for legacy pipe transfer 失败，原因：code: %d, message: %s";
   public static final String IOTDBLEGACYPIPECONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBLegacyPipeConnector 不支持 transferring generic event: {}.";
   public static final String IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPEINSERTNODEINSERTIONEVENT_AND_PIPETABLE =
@@ -1393,6 +1395,18 @@ public final class DataNodePipeMessages {
   // pipe – PipeDataNodePluginAgent
   // ---------------------------------------------------------------------------
   public static final String PLUGIN_NOT_REGISTERED_FMT = "插件 %s 未注册。";
+
+  // ---------------------------------------------------------------------------
+  // pipe - WriteBackSink
+  // ---------------------------------------------------------------------------
+  public static final String TABLE_MODEL_DATABASE_INVALID_FMT =
+      "表模型数据库 %s 非法：不应包含 '%s'，应匹配 %s，且长度不应超过 %d";
+  public static final String TREE_MODEL_DATABASE_INVALID_FMT =
+      "树模型数据库 %s 非法：应为合法的树模型数据库路径，应匹配 %s，且长度不应超过 %d";
+  public static final String TARGET_TREE_MODEL_DATABASE_CANNOT_BE_USED_FOR_TABLE_MODEL_EVENTS_FMT =
+      "目标树模型数据库 %s 不能用于表模型事件，因为对应的表模型数据库 %s 非法。";
+  public static final String FAILED_TO_REWRITE_TREE_MODEL_DATABASE_FMT =
+      "将树模型数据库从 %s 重写为 %s 失败，设备为 %s。";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeTransferTrackableHandler

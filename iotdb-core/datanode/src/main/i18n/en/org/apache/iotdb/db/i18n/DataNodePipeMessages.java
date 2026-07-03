@@ -222,6 +222,9 @@ public final class DataNodePipeMessages {
   public static final String PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED =
       "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and "
           + "callbackExecutor {}.";
+  public static final String PIPE_SINK_SUBTASK_DELAYED_TO_AVOID_FREQUENT_HANDSHAKES =
+      "Pipe sink subtask {} is delayed for {} ms before polling events to avoid frequent "
+          + "handshakes after client borrow failures.";
   public static final String PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T =
       "Pipe skipping temporary TsFile which shouldn't be transferred: {}";
   public static final String PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING =
@@ -608,8 +611,6 @@ public final class DataNodePipeMessages {
       "The pipe cannot extract table model data when sql dialect is set to tree.";
   public static final String THE_PIPE_CANNOT_EXTRACT_TREE_MODEL_DATA =
       "The pipe cannot extract tree model data when sql dialect is set to table.";
-  public static final String THE_PIPE_CANNOT_TRANSFER_DATA_WHEN_DATA =
-      "The pipe cannot transfer data when data region is using ratis consensus.";
   public static final String THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT =
       "The reference count of the event {} cannot be increased, skipping it.";
   public static final String THE_REFERENCE_COUNT_OF_THE_REALTIME_EVENT =
@@ -825,6 +826,8 @@ public final class DataNodePipeMessages {
           + "PipeRawTabletInsertionEvent. Ignore {}.";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_IGNORE =
       "IoTDBDataRegionAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.";
+  public static final String FAILED_TO_LOGIN_TO_RECEIVER_FOR_LEGACY_PIPE_TRANSFER =
+      "Failed to login to receiver %s:%s for legacy pipe transfer because code: %d, message: %s";
   public static final String IOTDBLEGACYPIPECONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBLegacyPipeConnector does not support transferring generic event: {}.";
   public static final String IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPEINSERTNODEINSERTIONEVENT_AND_PIPETABLE =
@@ -1445,6 +1448,21 @@ public final class DataNodePipeMessages {
   // pipe – PipeDataNodePluginAgent
   // ---------------------------------------------------------------------------
   public static final String PLUGIN_NOT_REGISTERED_FMT = "plugin %s is not registered.";
+
+  // ---------------------------------------------------------------------------
+  // pipe - WriteBackSink
+  // ---------------------------------------------------------------------------
+  public static final String TABLE_MODEL_DATABASE_INVALID_FMT =
+      "The table-model database %s is invalid. It should not contain '%s', should match the "
+          + "pattern %s, and the length should not exceed %d";
+  public static final String TREE_MODEL_DATABASE_INVALID_FMT =
+      "The tree-model database %s is invalid. It should be a legal tree-model database path, "
+          + "should match the pattern %s, and the length should not exceed %d";
+  public static final String TARGET_TREE_MODEL_DATABASE_CANNOT_BE_USED_FOR_TABLE_MODEL_EVENTS_FMT =
+      "The target tree-model database %s cannot be used for table-model events because the "
+          + "corresponding table-model database %s is invalid.";
+  public static final String FAILED_TO_REWRITE_TREE_MODEL_DATABASE_FMT =
+      "Failed to rewrite tree-model database from %s to %s for device %s.";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeTransferTrackableHandler

@@ -41,6 +41,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
@@ -209,7 +211,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getPipeMeta(pipeStaticMeta)
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
@@ -422,6 +424,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Boolean> pipeCompletedList = new ArrayList<>();
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
+    final List<Integer> pipeDegradedStatusList = new ArrayList<>();
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
@@ -457,6 +460,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         pipeCompletedList.add(isCompleted);
         pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
         pipeRemainingTimeList.add(remainingEventAndTime.getRight());
+        pipeDegradedStatusList.add(
+            PipeTemporaryMeta.encodeTsFileEpochDegradedStatus(
+                ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+                    .getGlobalTsFileEpochDegraded()));
 
         logger.ifPresent(
             l ->
@@ -476,6 +483,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeCompletedList(pipeCompletedList);
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
+    resp.setPipeDegradedStatusList(pipeDegradedStatusList);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 
@@ -506,6 +514,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Boolean> pipeCompletedList = new ArrayList<>();
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
+    final List<Integer> pipeDegradedStatusList = new ArrayList<>();
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
@@ -532,6 +541,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         pipeCompletedList.add(isCompleted);
         pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
         pipeRemainingTimeList.add(remainingEventAndTime.getRight());
+        pipeDegradedStatusList.add(
+            PipeTemporaryMeta.encodeTsFileEpochDegradedStatus(
+                ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+                    .getGlobalTsFileEpochDegraded()));
 
         logger.ifPresent(
             l ->
@@ -551,19 +564,26 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeCompletedList(pipeCompletedList);
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
+    resp.setPipeDegradedStatusList(pipeDegradedStatusList);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 
   ///////////////////////// Terminate Logic /////////////////////////
 
   public void markCompleted(final String pipeName, final int regionId) {
+    markCompleted(pipeName, 0, regionId);
+  }
+
+  public void markCompleted(final String pipeName, final long creationTime, final int regionId) {
     acquireWriteLock();
     try {
-      if (pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      final PipeMeta pipeMeta =
+          creationTime == 0
+              ? pipeMetaKeeper.getPipeMeta(pipeName)
+              : pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+      if (pipeMeta != null) {
         final PipeDataNodeTask pipeDataNodeTask =
-            ((PipeDataNodeTask)
-                pipeTaskManager.getPipeTask(
-                    pipeMetaKeeper.getPipeMeta(pipeName).getStaticMeta(), regionId));
+            ((PipeDataNodeTask) pipeTaskManager.getPipeTask(pipeMeta.getStaticMeta(), regionId));
         if (Objects.nonNull(pipeDataNodeTask)) {
           pipeDataNodeTask.markCompleted();
         }
@@ -576,8 +596,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Utils /////////////////////////
 
   public Set<Integer> getPipeTaskRegionIdSet(final String pipeName, final long creationTime) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    return pipeMeta == null || pipeMeta.getStaticMeta().getCreationTime() != creationTime
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+    return pipeMeta == null
         ? Collections.emptySet()
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
   }

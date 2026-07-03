@@ -19,29 +19,21 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionGroupProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDatabaseState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -51,10 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public class DeleteDatabaseProcedure
@@ -114,86 +103,40 @@ public class DeleteDatabaseProcedure
               "[DeleteDatabaseProcedure] Delete DatabaseSchema: {}",
               deleteDatabaseSchema.getName());
 
-          // Submit RegionDeleteTasks
-          final OfferRegionMaintainTasksPlan dataRegionDeleteTaskOfferPlan =
-              new OfferRegionMaintainTasksPlan();
+          // Enqueue deletion of every region group (both schema and data regions) of this database.
+          // Each is submitted as an INDEPENDENT root RemoveRegionGroupProcedure rather than a
+          // child:
+          // this procedure only submits the deletions and then returns, so it can neither wait for
+          // nor be failed/rolled-back by a slow or failing region deletion. Each carries its own
+          // copy of the replica set, so the deletion still completes (and survives leader change /
+          // restart) even after the next state drops the partition table.
+          //
+          // Submission is intentionally NOT guarded by isStateDeserialized(): the executor persists
+          // a procedure at a state BEFORE that state's body has run (it advances the state on the
+          // previous cycle, then may stop at the inter-state boundary on a leader switch — see
+          // ProcedureExecutor#executeProcedure). So a recovery that lands on this state means the
+          // submission has NOT happened yet; skipping it would drop every region group's cleanup
+          // while the next state still drops the partition table, orphaning the region peers/data
+          // on
+          // disk with no record of where they live. Re-submitting on recovery is safe instead:
+          // every RemoveRegionGroupProcedure gets a fresh procId and performs an idempotent delete,
+          // so a duplicate is harmless whereas a skip leaks data.
           final List<TRegionReplicaSet> regionReplicaSets =
               env.getAllReplicaSets(deleteDatabaseSchema.getName());
-          final List<TRegionReplicaSet> schemaRegionReplicaSets = new ArrayList<>();
           regionReplicaSets.forEach(
               regionReplicaSet -> {
                 // Clear heartbeat cache along the way
                 env.getConfigManager()
                     .getLoadManager()
                     .removeRegionGroupRelatedCache(regionReplicaSet.getRegionId());
-
-                if (regionReplicaSet
-                    .getRegionId()
-                    .getType()
-                    .equals(TConsensusGroupType.SchemaRegion)) {
-                  schemaRegionReplicaSets.add(regionReplicaSet);
-                } else {
-                  regionReplicaSet
-                      .getDataNodeLocations()
-                      .forEach(
-                          targetDataNode ->
-                              dataRegionDeleteTaskOfferPlan.appendRegionMaintainTask(
-                                  new RegionDeleteTask(
-                                      targetDataNode, regionReplicaSet.getRegionId())));
-                }
+                env.getConfigManager()
+                    .getProcedureManager()
+                    .getExecutor()
+                    .submitProcedure(new RemoveRegionGroupProcedure(regionReplicaSet));
               });
-
-          if (!dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList().isEmpty()) {
-            // submit async data region delete task
-            env.getConfigManager().getConsensusManager().write(dataRegionDeleteTaskOfferPlan);
-          }
-
-          // try sync delete schemaengine region
-          final DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> asyncClientHandler =
-              new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.DELETE_REGION);
-          final Map<Integer, RegionDeleteTask> schemaRegionDeleteTaskMap = new HashMap<>();
-          int requestIndex = 0;
-          for (final TRegionReplicaSet schemaRegionReplicaSet : schemaRegionReplicaSets) {
-            for (final TDataNodeLocation dataNodeLocation :
-                schemaRegionReplicaSet.getDataNodeLocations()) {
-              asyncClientHandler.putRequest(requestIndex, schemaRegionReplicaSet.getRegionId());
-              asyncClientHandler.putNodeLocation(requestIndex, dataNodeLocation);
-              schemaRegionDeleteTaskMap.put(
-                  requestIndex,
-                  new RegionDeleteTask(dataNodeLocation, schemaRegionReplicaSet.getRegionId()));
-              requestIndex++;
-            }
-          }
-          if (!schemaRegionDeleteTaskMap.isEmpty()) {
-            CnToDnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithRetry(asyncClientHandler);
-            for (final Map.Entry<Integer, TSStatus> entry :
-                asyncClientHandler.getResponseMap().entrySet()) {
-              if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                LOG.info(
-                    "[DeleteDatabaseProcedure] Successfully delete SchemaRegion[{}] on {}",
-                    asyncClientHandler.getRequest(entry.getKey()),
-                    schemaRegionDeleteTaskMap.get(entry.getKey()).getTargetDataNode());
-                schemaRegionDeleteTaskMap.remove(entry.getKey());
-              } else {
-                LOG.warn(
-                    "[DeleteDatabaseProcedure] Failed to delete SchemaRegion[{}] on {}. Submit to async deletion.",
-                    asyncClientHandler.getRequest(entry.getKey()),
-                    schemaRegionDeleteTaskMap.get(entry.getKey()).getTargetDataNode());
-              }
-            }
-
-            if (!schemaRegionDeleteTaskMap.isEmpty()) {
-              // submit async schemaengine region delete task for failed sync execution
-              final OfferRegionMaintainTasksPlan schemaRegionDeleteTaskOfferPlan =
-                  new OfferRegionMaintainTasksPlan();
-              schemaRegionDeleteTaskMap
-                  .values()
-                  .forEach(schemaRegionDeleteTaskOfferPlan::appendRegionMaintainTask);
-              env.getConfigManager().getConsensusManager().write(schemaRegionDeleteTaskOfferPlan);
-            }
-          }
-
+          setNextState(DeleteDatabaseState.DELETE_DATABASE_CONFIG);
+          break;
+        case DELETE_DATABASE_CONFIG:
           env.getConfigManager()
               .getLoadManager()
               .clearDataPartitionPolicyTable(deleteDatabaseSchema.getName());
@@ -220,7 +163,7 @@ public class DeleteDatabaseProcedure
                     ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_FAILED));
           }
       }
-    } catch (final ConsensusException | TException | IOException e) {
+    } catch (final TException | IOException e) {
       if (isRollbackSupported(state)) {
         setFailure(
             new ProcedureException(

@@ -40,12 +40,20 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSource {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridSource.class);
+
+  private final Set<TsFileEpoch> activeTsFileEpochs =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<TsFileEpoch> degradedTsFileEpochs =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
@@ -79,6 +87,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   }
 
   private void extractTabletInsertion(final PipeRealtimeEvent event) {
+    markTsFileEpochActive(event.getTsFileEpoch());
+
     TsFileEpoch.State state;
 
     if (canNotUseTabletAnymore(event)) {
@@ -105,6 +115,9 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     }
 
     state = event.getTsFileEpoch().getState(this);
+    if (state == TsFileEpoch.State.USING_TSFILE || state == TsFileEpoch.State.USING_BOTH) {
+      markTsFileEpochDegraded(event.getTsFileEpoch());
+    }
     switch (state) {
       case USING_TSFILE:
         // Ignore the tablet event.
@@ -129,6 +142,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   }
 
   private void extractTsFileInsertion(final PipeRealtimeEvent event) {
+    markTsFileEpochActive(event.getTsFileEpoch());
+
     // Notice that, if the tsFile is partially extracted because the pipe is not opened before, the
     // former data won't be extracted
     event
@@ -154,6 +169,9 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
             });
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    if (state == TsFileEpoch.State.USING_BOTH) {
+      markTsFileEpochDegraded(event.getTsFileEpoch());
+    }
     switch (state) {
       case USING_TABLET:
         // If the state is USING_TABLET, discard the event
@@ -161,6 +179,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
             .eliminateProgressIndex(
                 dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getFilePath());
         event.decreaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName(), false);
+        clearTsFileEpoch(event.getTsFileEpoch());
         return;
       case EMPTY:
       case USING_TSFILE:
@@ -175,11 +194,49 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     }
   }
 
+  private void markTsFileEpochActive(final TsFileEpoch tsFileEpoch) {
+    activeTsFileEpochs.add(tsFileEpoch);
+    reportTsFileEpochDegradedStatus();
+  }
+
+  private void markTsFileEpochDegraded(final TsFileEpoch tsFileEpoch) {
+    activeTsFileEpochs.add(tsFileEpoch);
+    degradedTsFileEpochs.add(tsFileEpoch);
+    reportTsFileEpochDegradedStatus();
+  }
+
+  private void clearTsFileEpoch(final TsFileEpoch tsFileEpoch) {
+    activeTsFileEpochs.remove(tsFileEpoch);
+    degradedTsFileEpochs.remove(tsFileEpoch);
+    reportTsFileEpochDegradedStatus();
+  }
+
+  private void reportTsFileEpochDegradedStatus() {
+    if (activeTsFileEpochs.isEmpty()) {
+      PipeDataNodeAgent.task().clearPipeTsFileEpochDegraded(pipeName, creationTime, dataRegionId);
+    } else {
+      PipeDataNodeAgent.task()
+          .setPipeTsFileEpochDegraded(
+              pipeName, creationTime, dataRegionId, !degradedTsFileEpochs.isEmpty());
+    }
+  }
+
+  @Override
+  public void close() throws Exception {
+    try {
+      super.close();
+    } finally {
+      activeTsFileEpochs.clear();
+      degradedTsFileEpochs.clear();
+      PipeDataNodeAgent.task().clearPipeTsFileEpochDegraded(pipeName, creationTime, dataRegionId);
+    }
+  }
+
   // If the insertNode's memory has reached the dangerous threshold, we should not extract any
   // tablets.
   private boolean canNotUseTabletAnymore(final PipeRealtimeEvent event) {
     final long floatingMemoryUsageInByte =
-        PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
+        PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName, creationTime);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
     long totalFloatingMemorySizeInBytes =
         PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
@@ -262,6 +319,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       // this event is not reliable anymore. but the data represented by this event
       // has been carried by the following tsfile event, so we can just discard this event.
       event.getTsFileEpoch().migrateState(this, s -> TsFileEpoch.State.USING_BOTH);
+      markTsFileEpochDegraded(event.getTsFileEpoch());
       LOGGER.warn(
           "Discard tablet event {} because it is not reliable anymore. "
               + "Change the state of TsFileEpoch to USING_BOTH.",
@@ -271,23 +329,27 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   }
 
   private Event supplyTsFileInsertion(final PipeRealtimeEvent event) {
-    if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName())) {
-      return event.getEvent();
-    } else {
-      // If the event's reference count can not be increased, it means the data represented by
-      // this event is not reliable anymore. the data has been lost. we simply discard this
-      // event and report the exception to PipeRuntimeAgent.
-      final String errorMessage =
-          String.format(
-              DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
-              event.getEvent());
-      LOGGER.error(errorMessage);
-      PipeDataNodeAgent.runtime()
-          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-      PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .eliminateProgressIndex(
-              dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getFilePath());
-      return null;
+    try {
+      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName())) {
+        return event.getEvent();
+      } else {
+        // If the event's reference count can not be increased, it means the data represented by
+        // this event is not reliable anymore. the data has been lost. we simply discard this
+        // event and report the exception to PipeRuntimeAgent.
+        final String errorMessage =
+            String.format(
+                DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
+                event.getEvent());
+        LOGGER.error(errorMessage);
+        PipeDataNodeAgent.runtime()
+            .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+        PipeTsFileEpochProgressIndexKeeper.getInstance()
+            .eliminateProgressIndex(
+                dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getFilePath());
+        return null;
+      }
+    } finally {
+      clearTsFileEpoch(event.getTsFileEpoch());
     }
   }
 }

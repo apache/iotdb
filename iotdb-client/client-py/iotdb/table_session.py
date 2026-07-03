@@ -38,6 +38,8 @@ class TableSessionConfig(object):
         use_ssl: bool = False,
         ca_certs: str = None,
         connection_timeout_in_ms: int = None,
+        client_cert: str = None,
+        client_key: str = None,
     ):
         """
         Initialize a TableSessionConfig object with the provided parameters.
@@ -71,6 +73,8 @@ class TableSessionConfig(object):
         self.enable_compression = enable_compression
         self.use_ssl = use_ssl
         self.ca_certs = ca_certs
+        self.client_cert = client_cert
+        self.client_key = client_key
         self.connection_timeout_in_ms = connection_timeout_in_ms
 
 
@@ -91,6 +95,8 @@ class TableSession(object):
                 table_session_config.use_ssl,
                 table_session_config.ca_certs,
                 table_session_config.connection_timeout_in_ms,
+                client_cert=table_session_config.client_cert,
+                client_key=table_session_config.client_key,
             )
             self.__session.sql_dialect = "table"
             self.__session.database = table_session_config.database

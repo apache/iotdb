@@ -444,6 +444,13 @@ dn_metric_internal_reporter_type=MEMORY
 # Privilege: SECURITY
 enable_thrift_ssl=false
 
+# Whether client authentication is required for Thrift SSL connections.
+# This only takes effect when enable_thrift_ssl=true.
+# effectiveMode: restart
+# Datatype: boolean
+# Privilege: SECURITY
+thrift_ssl_client_auth=false
+
 # Whether enable SSL for Rest Service
 # effectiveMode: restart
 # Datatype: boolean
@@ -761,7 +768,7 @@ topology_probing_base_interval_in_ms=5000
 topology_probing_timeout_ratio=0.5
 
 # Disk remaining threshold at which DataNode is set to ReadOnly status
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: double(percentage)
 disk_space_warning_threshold=0.05
 
@@ -799,6 +806,11 @@ partition_table_recover_max_read_megabytes_per_second=10
 # 50% of Free Memory is used by AutoResizingBuffer memory control.
 # effectiveMode: restart
 datanode_memory_proportion=3:3:1:1:1:1
+
+# ConfigNode Memory Allocation Ratio: Pipe and Free Memory.
+# The parameter form is a:b, where a and b are integers. Currently, only PipePeriodicalLogReducer is connected to Pipe memory on ConfigNode.
+# effectiveMode: restart
+confignode_memory_proportion=1:9
 
 # Schema Memory Allocation Ratio: SchemaRegion, SchemaCache, and PartitionCache.
 # The parameter form is a:b:c, where a, b and c are integers. for example: 1:1:1 , 6:2:1
@@ -2178,12 +2190,12 @@ zombie_tsfile_writer_threshold=600000
 procedure_core_worker_thread_count=4
 
 # Default time interval of completed procedure cleaner work in, time unit is second
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int
 procedure_completed_clean_interval=30
 
 # Default ttl of completed procedure, time unit is second
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int
 procedure_completed_evict_ttl=60
 

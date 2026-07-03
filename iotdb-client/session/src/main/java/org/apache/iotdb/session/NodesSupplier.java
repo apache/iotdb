@@ -61,6 +61,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   private final boolean useSSL;
   private final String trustStore;
   private final String trustStorePwd;
+  private final String keyStore;
+  private final String keyStorePwd;
   private final String sslProtocol;
   private final boolean enableRPCCompression;
   private final String userName;
@@ -96,6 +98,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
       String sslProtocol,
       boolean enableRPCCompression,
       String version) {
@@ -112,6 +116,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
             useSSL,
             trustStore,
             trustStorePwd,
+            keyStore,
+            keyStorePwd,
             sslProtocol,
             enableRPCCompression,
             version);
@@ -135,6 +141,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
       String sslProtocol,
       boolean enableRPCCompression,
       String version) {
@@ -144,6 +152,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
+    this.keyStore = keyStore;
+    this.keyStorePwd = keyStorePwd;
     this.sslProtocol = sslProtocol;
     this.enableRPCCompression = enableRPCCompression;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
@@ -193,6 +203,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           useSSL,
           trustStore,
           trustStorePwd,
+          keyStore,
+          keyStorePwd,
           sslProtocol,
           userName,
           password,
