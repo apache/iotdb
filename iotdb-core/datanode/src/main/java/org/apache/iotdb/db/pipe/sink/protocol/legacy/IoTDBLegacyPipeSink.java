@@ -156,10 +156,16 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
         .validate(
             args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
             String.format(
-                "When %s is specified to true, %s and %s must be specified",
+                "When %s or %s is true, specify a complete trust-store pair under the same "
+                    + "alias: %s and %s, %s and %s, or %s and %s",
+                CONNECTOR_IOTDB_SSL_ENABLE_KEY,
                 SINK_IOTDB_SSL_ENABLE_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
                 SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
-                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY)),
             parameters.getBooleanOrDefault(
                 Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY), false),
             hasCompleteAttributePair(
@@ -177,8 +183,14 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
         .validate(
             args -> (boolean) args[0] == (boolean) args[1],
             String.format(
-                "%s and %s must be specified together",
-                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY, SINK_IOTDB_SSL_KEY_STORE_PWD_KEY),
+                "SSL key-store path and password must be specified together under the same "
+                    + "alias: %s and %s, %s and %s, or %s and %s",
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY),
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY)),
             true,
             hasNoHalfAttributePair(
                 parameters,

@@ -101,8 +101,14 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
         .validate(
             args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
             String.format(
-                "When ssl transport is enabled, %s and %s must be specified",
-                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+                "When ssl transport is enabled, specify a complete trust-store pair under the "
+                    + "same alias: %s and %s, %s and %s, or %s and %s",
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY)),
             IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
                 || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
                 || parameters.getBooleanOrDefault(
@@ -123,8 +129,14 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
         .validate(
             args -> (boolean) args[0] == (boolean) args[1],
             String.format(
-                "%s and %s must be specified together",
-                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY, SINK_IOTDB_SSL_KEY_STORE_PWD_KEY),
+                "SSL key-store path and password must be specified together under the same "
+                    + "alias: %s and %s, %s and %s, or %s and %s",
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY),
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY)),
             true,
             hasNoHalfAttributePair(
                 parameters,
