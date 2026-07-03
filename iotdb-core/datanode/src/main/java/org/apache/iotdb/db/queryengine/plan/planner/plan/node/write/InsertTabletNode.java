@@ -1191,18 +1191,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public void updateLastCache(final String databaseName, final TSStatus[] results) {
-    final String[] rawMeasurements = getRawMeasurements();
-    final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
-    for (int i = 0; i < rawMeasurements.length; i++) {
+    final TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
       timeValuePairs[i] = composeLastTimeValuePair(i, results, 0, rowCount);
     }
     DataNodeSchemaCache.getInstance()
         .updateLastCacheIfExists(
-            databaseName,
-            devicePath,
-            rawMeasurements,
-            timeValuePairs,
-            isAligned,
-            measurementSchemas);
+            databaseName, devicePath, measurements, timeValuePairs, isAligned, measurementSchemas);
   }
 }

@@ -1512,6 +1512,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
+      if (path.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
       // Step 1: transfer from DeleteStorageGroupsReq to Statement
       DeleteTimeSeriesStatement statement =
           StatementGenerator.createDeleteTimeSeriesStatement(path);

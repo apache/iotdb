@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -34,7 +35,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -2426,6 +2426,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_tablet_conversion_batch_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileTabletConversionBatchMemorySizeInBytes()))));
+    conf.setLoadTsFileTabletConversionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_tablet_conversion_thread_count",
+                String.valueOf(conf.getLoadTsFileTabletConversionThreadCount()))));
     conf.setLoadChunkMetadataMemorySizeInBytes(
         Long.parseLong(
             Optional.ofNullable(
@@ -2484,6 +2489,9 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
@@ -2614,6 +2622,9 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(

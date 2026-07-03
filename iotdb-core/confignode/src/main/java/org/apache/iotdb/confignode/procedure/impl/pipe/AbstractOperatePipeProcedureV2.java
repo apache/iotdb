@@ -133,12 +133,7 @@ public abstract class AbstractOperatePipeProcedureV2
           LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
         } else {
           LOGGER.debug("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .unlock();
-          pipeTaskInfo = null;
+          releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
         }
         break;
       default:
@@ -152,12 +147,7 @@ public abstract class AbstractOperatePipeProcedureV2
               "ProcedureId {}: {}. Invalid lock state. Pipe lock will be released.",
               getProcId(),
               procedureLockState);
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .unlock();
-          pipeTaskInfo = null;
+          releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
         }
         break;
     }
@@ -181,9 +171,14 @@ public abstract class AbstractOperatePipeProcedureV2
       }
       PipeProcedureMetrics.getInstance()
           .updateTimer(this.getOperation().getName(), this.elapsedTime());
-      configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-      pipeTaskInfo = null;
+      releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
     }
+  }
+
+  private void releasePipeTaskCoordinatorLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    // Clear before releasing the semaphore to avoid clobbering a re-scheduled execution's marker.
+    pipeTaskInfo = null;
+    configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
   }
 
   protected abstract PipeTaskOperation getOperation();
@@ -464,10 +459,11 @@ public abstract class AbstractOperatePipeProcedureV2
 
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         if (!resp.isSetExceptionMessages()) {
+          final String statusMessage = resp.getStatus().getMessage();
           exceptionMessageBuilder.append(
               String.format(
-                  "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.",
-                  dataNodeId));
+                  "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.%s",
+                  dataNodeId, statusMessage == null ? "" : " " + statusMessage));
           continue;
         }
 
@@ -510,6 +506,23 @@ public abstract class AbstractOperatePipeProcedureV2
     try {
       // Ignore the exceptions reported
       pushPipeMetaToDataNodes(env);
+    } catch (Exception e) {
+      LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", e);
+    }
+  }
+
+  protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodesBestEffortAndGetResponse(
+      ConfigNodeProcedureEnv env) throws IOException {
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+      pipeMetaBinaryList.add(pipeMeta.serialize());
+    }
+    return env.pushAllPipeMetaToDataNodesBestEffort(pipeMetaBinaryList);
+  }
+
+  protected void pushPipeMetaToDataNodesBestEffort(ConfigNodeProcedureEnv env) {
+    try {
+      pushPipeMetaToDataNodesBestEffortAndGetResponse(env);
     } catch (Exception e) {
       LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", e);
     }

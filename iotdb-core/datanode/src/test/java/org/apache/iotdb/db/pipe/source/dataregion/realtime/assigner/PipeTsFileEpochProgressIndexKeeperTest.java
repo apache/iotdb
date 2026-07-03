@@ -35,9 +35,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class PipeTsFileEpochProgressIndexKeeperTest {
@@ -50,7 +48,6 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
       PipeTsFileEpochProgressIndexKeeper.getInstance();
 
   private File tempDir;
-  private final List<String> registeredTsFilePaths = new ArrayList<>();
 
   @Before
   public void setUp() throws IOException {
@@ -59,12 +56,21 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
 
   @After
   public void tearDown() {
-    registeredTsFilePaths.forEach(
-        tsFilePath -> {
-          keeper.eliminateProgressIndex(DATA_REGION_ID, TASK_SCOPE_A, tsFilePath);
-          keeper.eliminateProgressIndex(DATA_REGION_ID, TASK_SCOPE_B, tsFilePath);
-        });
+    keeper.clearProgressIndex(DATA_REGION_ID, TASK_SCOPE_A);
+    keeper.clearProgressIndex(DATA_REGION_ID, TASK_SCOPE_B);
     FileUtils.deleteFileOrDirectory(tempDir);
+  }
+
+  @Test
+  public void testDuplicateTsFileLookupIsScopedByTaskInstance() throws IOException {
+    final TsFileResource resource = createTsFileResource("shared.tsfile", 1L);
+
+    keeper.registerProgressIndex(DATA_REGION_ID, TASK_SCOPE_A, resource);
+
+    Assert.assertTrue(
+        keeper.containsTsFile(DATA_REGION_ID, TASK_SCOPE_A, resource.getTsFilePath()));
+    Assert.assertFalse(
+        keeper.containsTsFile(DATA_REGION_ID, TASK_SCOPE_B, resource.getTsFilePath()));
   }
 
   @Test
@@ -113,6 +119,22 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
                 new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10)))));
   }
 
+  @Test
+  public void testClearProgressIndexOnlyRemovesTargetTaskScope() throws IOException {
+    final TsFileResource scopeAResource = createTsFileResource("scope-a.tsfile", 1L);
+    final TsFileResource scopeBResource = createTsFileResource("scope-b.tsfile", 1L);
+
+    keeper.registerProgressIndex(DATA_REGION_ID, TASK_SCOPE_A, scopeAResource);
+    keeper.registerProgressIndex(DATA_REGION_ID, TASK_SCOPE_B, scopeBResource);
+
+    keeper.clearProgressIndex(DATA_REGION_ID, TASK_SCOPE_A);
+
+    Assert.assertFalse(
+        keeper.containsTsFile(DATA_REGION_ID, TASK_SCOPE_A, scopeAResource.getTsFilePath()));
+    Assert.assertTrue(
+        keeper.containsTsFile(DATA_REGION_ID, TASK_SCOPE_B, scopeBResource.getTsFilePath()));
+  }
+
   private TsFileResource createTsFileResource(final String fileName, final long flushOrderId)
       throws IOException {
     return createTsFileResource(fileName, new SimpleProgressIndex(1, flushOrderId));
@@ -122,7 +144,6 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
       final String fileName, final ProgressIndex progressIndex) throws IOException {
     final File file = new File(tempDir, fileName);
     Assert.assertTrue(file.createNewFile());
-    registeredTsFilePaths.add(file.getAbsolutePath());
 
     final TsFileResource resource = new TsFileResource(file);
     resource.updateProgressIndex(progressIndex);

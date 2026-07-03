@@ -45,6 +45,30 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
     super(pipeTaskMeta, sourceEvent);
   }
 
+  public PipeRowCollector(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel) {
+    super(pipeTaskMeta, sourceEvent, sourceEventDataBase, isTableModel);
+  }
+
+  public PipeRowCollector(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel,
+      String rawTableModelDataBaseName,
+      String rawTreeModelDataBaseName) {
+    super(
+        pipeTaskMeta,
+        sourceEvent,
+        sourceEventDataBase,
+        isTableModel,
+        rawTableModelDataBaseName,
+        rawTreeModelDataBaseName);
+  }
+
   @Override
   public void collectRow(Row row) {
     if (!(row instanceof PipeRow)) {
@@ -98,6 +122,10 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
       PipeTabletUtils.compactBitMaps(tablet);
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
+              isTableModel,
+              sourceEventDataBaseName,
+              rawTableModelDataBaseName,
+              rawTreeModelDataBaseName,
               tablet,
               isAligned,
               sourceEvent == null ? null : sourceEvent.getPipeName(),

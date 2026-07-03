@@ -730,6 +730,11 @@ disk_space_warning_threshold=0.05
 # effectiveMode: restart
 datanode_memory_proportion=3:3:1:1:1:1
 
+# ConfigNode Memory Allocation Ratio: Pipe and Free Memory.
+# The parameter form is a:b, where a and b are integers. Currently, only PipePeriodicalLogReducer is connected to Pipe memory on ConfigNode.
+# effectiveMode: restart
+confignode_memory_proportion=1:9
+
 # Schema Memory Allocation Ratio: SchemaRegion, SchemaCache, and PartitionCache.
 # The parameter form is a:b:c, where a, b and c are integers. for example: 1:1:1 , 6:2:1
 # effectiveMode: restart
@@ -2061,6 +2066,18 @@ load_active_listening_enable=true
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 load_active_listening_dirs=ext/load/pending
+
+# The directory to be actively listened for tsfile loading from Pipe.
+# Only one directory can be configured.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_pipe_dir=ext\\load\\pipe
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_pipe_dir=ext/load/pipe
 
 # The directory where tsfile are moved if the active listening mode fails to load them.
 # Only one directory can be configured.

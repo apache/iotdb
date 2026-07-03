@@ -26,10 +26,13 @@ import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenc
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeCopiedFileDirStartupCleaner;
+import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningQueue;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -55,6 +58,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
   @Override
   public synchronized void start() {
     PipeConfig.getInstance().printAllConfigs();
+    initPipePeriodicalLogReducer();
 
     // PipeTasks will not be started here and will be started by "HandleLeaderChange"
     // procedure when the consensus layer notify leader ready
@@ -89,6 +93,12 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     PipeConfigNodeAgent.task().dropAllPipeTasks();
 
     LOGGER.info("PipeRuntimeConfigNodeAgent stopped");
+  }
+
+  private void initPipePeriodicalLogReducer() {
+    PipePeriodicalLogReducer.setMemoryResizeFunction(
+        PipeConfigNodeResourceManager::resizeLogReducerMemory);
+    PipeLogger.setLogger(PipePeriodicalLogReducer::log);
   }
 
   public boolean isShutdown() {

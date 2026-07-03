@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
@@ -197,6 +198,43 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferPlanNodeReqBytesWithPartialDirectByteBuffer() throws IOException {
+    final CreateAlignedTimeSeriesNode node =
+        new CreateAlignedTimeSeriesNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            Collections.singletonList("s"),
+            Collections.singletonList(TSDataType.INT32),
+            Collections.singletonList(TSEncoding.PLAIN),
+            Collections.singletonList(CompressionType.UNCOMPRESSED),
+            null,
+            null,
+            null);
+    final byte[] serializedPlanNodeBytes = byteBufferToByteArray(node.serializeToByteBuffer());
+    final ByteBuffer serializedPlanNode =
+        ByteBuffer.allocateDirect(serializedPlanNodeBytes.length + 2);
+    serializedPlanNode.put((byte) 0);
+    serializedPlanNode.put(serializedPlanNodeBytes);
+    serializedPlanNode.put((byte) 1);
+    serializedPlanNode.flip();
+    serializedPlanNode.position(1);
+    serializedPlanNode.limit(1 + serializedPlanNodeBytes.length);
+
+    final byte[] transferBytes = PipeTransferPlanNodeReq.toTPipeTransferBytes(serializedPlanNode);
+
+    Assert.assertEquals(1, serializedPlanNode.position());
+    Assert.assertEquals(1 + serializedPlanNodeBytes.length, serializedPlanNode.limit());
+
+    final ByteBuffer transferBuffer = ByteBuffer.wrap(transferBytes);
+    Assert.assertEquals((byte) 1, transferBuffer.get());
+    Assert.assertEquals(
+        PipeRequestType.TRANSFER_SCHEMA_PLAN.getType(), ReadWriteIOUtils.readShort(transferBuffer));
+    final byte[] actualPlanNodeBytes = new byte[transferBuffer.remaining()];
+    transferBuffer.get(actualPlanNodeBytes);
+    Assert.assertArrayEquals(serializedPlanNodeBytes, actualPlanNodeBytes);
+  }
+
+  @Test
   public void testPipeTransferTabletReq() {
     try {
       final List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -359,6 +397,13 @@ public class PipeDataNodeThriftRequestTest {
       ReadWriteIOUtils.write(isAligned, outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
+  }
+
+  private static byte[] byteBufferToByteArray(final ByteBuffer byteBuffer) {
+    final ByteBuffer duplicatedBuffer = byteBuffer.duplicate();
+    final byte[] bytes = new byte[duplicatedBuffer.remaining()];
+    duplicatedBuffer.get(bytes);
+    return bytes;
   }
 
   @Test

@@ -295,7 +295,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     }
     CreateCQProcedure that = (CreateCQProcedure) o;
     return getProcId() == that.getProcId()
-        && getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
         && isGeneratedByPipe == that.isGeneratedByPipe
         && firstExecutionTime == that.firstExecutionTime

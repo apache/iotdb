@@ -51,9 +51,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -72,6 +72,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
   private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
   private final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
+  private RuntimeException deferredException;
 
   @TestOnly
   public TsFileInsertionQueryDataContainer(
@@ -101,6 +102,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
         pipeTaskMeta,
         sourceEvent,
         null,
+        null,
         isWithMod);
   }
 
@@ -114,6 +116,33 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap,
+      final boolean isWithMod)
+      throws IOException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        deviceIsAlignedMap,
+        null,
+        isWithMod);
+  }
+
+  public TsFileInsertionQueryDataContainer(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap,
+      final Map<IDeviceID, List<String>> deviceMeasurementsMapOverride,
       final boolean isWithMod)
       throws IOException {
     super(
@@ -145,7 +174,25 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
       tsFileReader = new TsFileReader(tsFileSequenceReader);
 
-      if (tsFileResourceManager.cacheObjectsIfAbsent(tsFile)) {
+      if (Objects.nonNull(deviceMeasurementsMapOverride)) {
+        this.deviceIsAlignedMap =
+            Objects.nonNull(deviceIsAlignedMap)
+                ? new LinkedHashMap<>(deviceIsAlignedMap)
+                : readDeviceIsAlignedMap();
+        memoryRequiredInBytes +=
+            Objects.nonNull(deviceIsAlignedMap)
+                ? 0
+                : PipeMemoryWeightUtil.memoryOfIDeviceId2Bool(this.deviceIsAlignedMap);
+
+        measurementDataTypeMap =
+            readFilteredFullPathDataTypeMap(deviceMeasurementsMapOverride.keySet());
+        memoryRequiredInBytes +=
+            PipeMemoryWeightUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
+
+        deviceMeasurementsMap = new LinkedHashMap<>(deviceMeasurementsMapOverride);
+        memoryRequiredInBytes +=
+            PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
+      } else if (tsFileResourceManager.cacheObjectsIfAbsent(tsFile)) {
         // These read-only objects can be found in cache.
         this.deviceIsAlignedMap =
             Objects.nonNull(deviceIsAlignedMap)
@@ -246,9 +293,31 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
     }
   }
 
+  public TsFileInsertionQueryDataContainer(
+      final File tsFile,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime,
+      final Map<IDeviceID, List<String>> deviceMeasurementsMapOverride,
+      final boolean isWithMod)
+      throws IOException {
+    this(
+        null,
+        0,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        null,
+        null,
+        null,
+        deviceMeasurementsMapOverride,
+        isWithMod);
+  }
+
   private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
       final Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
-    final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
+    final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new LinkedHashMap<>();
     for (final Map.Entry<IDeviceID, List<String>> entry :
         originalDeviceMeasurementsMap.entrySet()) {
       final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
@@ -282,7 +351,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
   }
 
   private Map<IDeviceID, Boolean> readDeviceIsAlignedMap() throws IOException {
-    final Map<IDeviceID, Boolean> deviceIsAlignedResultMap = new HashMap<>();
+    final Map<IDeviceID, Boolean> deviceIsAlignedResultMap = new LinkedHashMap<>();
     final TsFileDeviceIterator deviceIsAlignedIterator =
         tsFileSequenceReader.getAllDevicesIteratorWithIsAligned();
     while (deviceIsAlignedIterator.hasNext()) {
@@ -313,7 +382,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
    */
   private Map<String, TSDataType> readFilteredFullPathDataTypeMap(final Set<IDeviceID> devices)
       throws IOException {
-    final Map<String, TSDataType> result = new HashMap<>();
+    final Map<String, TSDataType> result = new LinkedHashMap<>();
 
     for (final IDeviceID device : devices) {
       tsFileSequenceReader
@@ -337,7 +406,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
    */
   private Map<IDeviceID, List<String>> readFilteredDeviceMeasurementsMap(
       final Set<IDeviceID> devices) throws IOException {
-    final Map<IDeviceID, List<String>> result = new HashMap<>();
+    final Map<IDeviceID, List<String>> result = new LinkedHashMap<>();
 
     for (final IDeviceID device : devices) {
       tsFileSequenceReader
@@ -364,6 +433,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
 
                 @Override
                 public boolean hasNext() {
+                  throwIfDeferredException();
                   boolean hasNext = false;
                   while (tabletIterator == null || !tabletIterator.hasNext()) {
                     if (!deviceMeasurementsMapIterator.hasNext()) {
@@ -416,9 +486,16 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
                   recordTabletMetrics(tablet);
                   final boolean isAligned =
                       deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.deviceId), false);
+                  boolean isLast;
+                  try {
+                    isLast = !hasNext();
+                  } catch (final RuntimeException e) {
+                    deferredException = e;
+                    isLast = false;
+                  }
 
                   final TabletInsertionEvent next;
-                  if (!hasNext()) {
+                  if (isLast) {
                     next =
                         new PipeRawTabletInsertionEvent(
                             tablet,
@@ -448,8 +525,19 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
     return tabletInsertionIterable;
   }
 
+  private void throwIfDeferredException() {
+    if (Objects.isNull(deferredException)) {
+      return;
+    }
+
+    final RuntimeException exception = deferredException;
+    deferredException = null;
+    throw exception;
+  }
+
   @Override
   public void close() {
+    deferredException = null;
     try {
       if (tsFileReader != null) {
         tsFileReader.close();
