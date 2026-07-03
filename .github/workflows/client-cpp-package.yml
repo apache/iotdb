@@ -447,6 +447,12 @@ jobs:
           PACKAGE_CLASSIFIER: ${{ matrix.package_classifier }}
         run: |
           set -euxo pipefail
+          # Git Bash perl lacks modules for Tongsuo Configure; Strawberry is installed above.
+          if [ -d /c/Strawberry/perl/bin ]; then
+            export PATH="/c/Strawberry/perl/bin:${PATH}"
+          fi
+          which perl
+          perl -MLocale::Maketext::Simple -e1
           MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
             -Dspotless.skip=true \
             "-Dclient.cpp.package.classifier=${PACKAGE_CLASSIFIER}")

@@ -77,7 +77,16 @@ if(NOT EXISTS "${_tongsuo_stamp}")
     endif()
 
     if(WIN32)
-        find_program(PERL_EXECUTABLE perl REQUIRED)
+        # Git Bash ships a minimal MSYS perl that lacks modules required by
+        # Tongsuo/OpenSSL Configure (e.g. Locale::Maketext::Simple). Prefer
+        # Strawberry Perl installed by CI (choco) or local dev machines.
+        set(_strawberry_perl "C:/Strawberry/perl/bin/perl.exe")
+        if(EXISTS "${_strawberry_perl}")
+            set(PERL_EXECUTABLE "${_strawberry_perl}")
+        else()
+            find_program(PERL_EXECUTABLE NAMES perl.exe perl REQUIRED)
+        endif()
+        message(STATUS "[Tongsuo] using Perl: ${PERL_EXECUTABLE}")
         set(_tongsuo_target "VC-WIN64A")
         message(STATUS "[Tongsuo] configuring (${_tongsuo_target}) -> ${_tongsuo_inst}")
         execute_process(

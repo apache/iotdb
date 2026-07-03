@@ -187,6 +187,9 @@ jobs:
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: |
+          if [ "${{ runner.os }}" = "Windows" ] && [ -d /c/Strawberry/perl/bin ]; then
+            export PATH="/c/Strawberry/perl/bin:${PATH}"
+          fi
           if [[ "${{ matrix.os }}" == "windows-2025-vs2026" ]]; then
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am \
               -Dcmake.generator="Visual Studio 18 2026"
