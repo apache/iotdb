@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
+import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -238,6 +239,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
@@ -1180,6 +1182,18 @@ public class ConfigManager implements IManager {
     return partitionManager.dataPartitionTableIntegrityCheck();
   }
 
+  @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TShowRepairDataPartitionTableProgressResp(
+              status, RepairDataPartitionTableProgressState.UNKNOWN.name(), 0.0)
+          .setMessage(status.getMessage());
+    }
+
+    return partitionManager.showRepairDataPartitionTableProgress();
+  }
+
   private void printNewCreatedDataPartition(
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan, TDataPartitionTableResp resp) {
     final String lineSeparator = System.lineSeparator();
@@ -1773,6 +1787,8 @@ public class ConfigManager implements IManager {
       int previousSchemaRegionPerDataNode = CONF.getSchemaRegionPerDataNode();
       int previousDataRegionPerDataNode = CONF.getDataRegionPerDataNode();
       boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
+      int previousProcedureCompletedCleanInterval = CONF.getProcedureCompletedCleanInterval();
+      int previousProcedureCompletedEvictTTL = CONF.getProcedureCompletedEvictTTL();
       if (configurationFileFound) {
         File file = new File(url.getFile());
         try {
@@ -1803,6 +1819,8 @@ public class ConfigManager implements IManager {
       handleRegionPerDataNodeHotReload(
           previousSchemaRegionPerDataNode, previousDataRegionPerDataNode);
       handleTopologyProbingHotReload(wasTopologyProbingEnabled);
+      handleProcedureCleanerHotReload(
+          previousProcedureCompletedCleanInterval, previousProcedureCompletedEvictTTL);
       if (currentNodeId == req.getNodeId() || req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
         return tsStatus;
       }
@@ -1868,6 +1886,14 @@ public class ConfigManager implements IManager {
     } else if (!isEnabled) {
       getLoadManager().stopTopologyService();
     }
+  }
+
+  private void handleProcedureCleanerHotReload(int previousCleanInterval, int previousEvictTTL) {
+    if (previousCleanInterval == CONF.getProcedureCompletedCleanInterval()
+        && previousEvictTTL == CONF.getProcedureCompletedEvictTTL()) {
+      return;
+    }
+    getProcedureManager().updateCompletedProcedureCleaner();
   }
 
   @Override
@@ -3178,7 +3204,8 @@ public class ConfigManager implements IManager {
             resp.getPipeMetaList(),
             resp.getPipeCompletedList(),
             resp.getPipeRemainingEventCountList(),
-            resp.getPipeRemainingTimeList());
+            resp.getPipeRemainingTimeList(),
+            resp.getPipeDegradedStatusList());
     return StatusUtils.OK;
   }
 

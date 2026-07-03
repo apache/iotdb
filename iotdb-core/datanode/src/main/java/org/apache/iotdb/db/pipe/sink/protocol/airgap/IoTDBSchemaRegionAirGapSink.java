@@ -21,15 +21,20 @@ package org.apache.iotdb.db.pipe.sink.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeSchemaRegionWritePlanEventBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -42,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 @TreeModel
@@ -49,6 +55,19 @@ import java.util.Objects;
 public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaRegionAirGapSink.class);
+
+  private PipeSchemaRegionWritePlanEventBatch schemaRegionWritePlanEventBatch;
+
+  @Override
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
+      throws Exception {
+    super.customize(parameters, configuration);
+
+    if (isTabletBatchModeEnabled) {
+      schemaRegionWritePlanEventBatch = new PipeSchemaRegionWritePlanEventBatch(parameters);
+    }
+  }
 
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
@@ -69,14 +88,22 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
+        if (isTabletBatchModeEnabled && Objects.nonNull(schemaRegionWritePlanEventBatch)) {
+          doTransferWithBatch(socket, (PipeSchemaRegionWritePlanEvent) event);
+        } else {
+          doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
+        }
       } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
+        flushBatchedEventsIfNecessary(socket);
         doTransferWrapper(socket, (PipeSchemaRegionSnapshotEvent) event);
-      } else if (!(event instanceof PipeHeartbeatEvent)) {
-        LOGGER.warn(
-            DataNodePipeMessages
-                .IOTDBSCHEMAREGIONAIRGAPSINK_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
-            event);
+      } else {
+        flushBatchedEventsIfNecessary(socket);
+        if (!(event instanceof PipeHeartbeatEvent)) {
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .IOTDBSCHEMAREGIONAIRGAPSINK_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
+              event);
+        }
       }
     } catch (final IOException e) {
       isSocketAlive.set(socketIndex, false);
@@ -87,6 +114,58 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
           e);
     }
+  }
+
+  private void doTransferWithBatch(
+      final AirGapSocket socket, final PipeSchemaRegionWritePlanEvent event)
+      throws PipeException, IOException {
+    if (tryTransferInBatch(socket, event)) {
+      return;
+    }
+
+    doTransferWrapper(socket, event);
+  }
+
+  private boolean tryTransferInBatch(
+      final AirGapSocket socket, final PipeSchemaRegionWritePlanEvent event)
+      throws PipeException, IOException {
+    if (tryAppendToBatchAndFlushIfNecessary(socket, event)) {
+      return true;
+    }
+
+    if (schemaRegionWritePlanEventBatch.isEmpty()) {
+      return false;
+    }
+
+    flushBatchedEventsIfNecessary(socket);
+    return tryAppendToBatchAndFlushIfNecessary(socket, event);
+  }
+
+  private boolean tryAppendToBatchAndFlushIfNecessary(
+      final AirGapSocket socket, final PipeSchemaRegionWritePlanEvent event)
+      throws PipeException, IOException {
+    if (!schemaRegionWritePlanEventBatch.onEvent(event)) {
+      return false;
+    }
+
+    if (schemaRegionWritePlanEventBatch.shouldEmit()) {
+      flushBatchedEventsIfNecessary(socket);
+    }
+    return true;
+  }
+
+  private void flushBatchedEventsIfNecessary(final AirGapSocket socket)
+      throws PipeException, IOException {
+    if (Objects.isNull(schemaRegionWritePlanEventBatch)
+        || schemaRegionWritePlanEventBatch.isEmpty()) {
+      return;
+    }
+
+    schemaRegionWritePlanEventBatch.recordBatchMetrics();
+    doTransfer(socket, schemaRegionWritePlanEventBatch);
+    schemaRegionWritePlanEventBatch.decreaseEventsReferenceCount(
+        IoTDBSchemaRegionAirGapSink.class.getName(), true);
+    schemaRegionWritePlanEventBatch.onSuccess();
   }
 
   private void doTransferWrapper(
@@ -110,21 +189,60 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final AirGapSocket socket,
       final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
-    if (!send(
+    doTransfer(
+        socket,
+        pipeSchemaRegionWritePlanEvent.getPlanNode(),
         pipeSchemaRegionWritePlanEvent.getPipeName(),
         pipeSchemaRegionWritePlanEvent.getCreationTime(),
+        pipeSchemaRegionWritePlanEvent.toString());
+  }
+
+  private void doTransfer(
+      final AirGapSocket socket, final PipeSchemaRegionWritePlanEventBatch batch)
+      throws PipeException, IOException {
+    final PlanNode planNode = batch.toPlanNode();
+    doTransfer(
         socket,
-        PipeTransferPlanNodeReq.toTPipeTransferBytes(
-            pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
+        planNode,
+        batch.toPlanNodeByteBuffer(),
+        batch.getPipeName(),
+        batch.getCreationTime(),
+        planNode.toString());
+  }
+
+  private void doTransfer(
+      final AirGapSocket socket,
+      final PlanNode planNode,
+      final String pipeName,
+      final long creationTime,
+      final String eventDescription)
+      throws PipeException, IOException {
+    doTransfer(socket, planNode, null, pipeName, creationTime, eventDescription);
+  }
+
+  private void doTransfer(
+      final AirGapSocket socket,
+      final PlanNode planNode,
+      final ByteBuffer serializedPlanNode,
+      final String pipeName,
+      final long creationTime,
+      final String eventDescription)
+      throws PipeException, IOException {
+    if (!send(
+        pipeName,
+        creationTime,
+        socket,
+        Objects.nonNull(serializedPlanNode)
+            ? PipeTransferPlanNodeReq.toTPipeTransferBytes(serializedPlanNode)
+            : PipeTransferPlanNodeReq.toTPipeTransferBytes(planNode))) {
       final String errorMessage =
           String.format(
-              "Transfer data node write plan %s error. Socket: %s.",
-              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), socket);
+              "Transfer data node write plan %s error. Socket: %s.", planNode.getType(), socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
           errorMessage,
-          pipeSchemaRegionWritePlanEvent.toString(),
+          eventDescription,
           true);
     }
   }
@@ -217,5 +335,45 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   protected byte[] getTransferMultiFilePieceBytes(
       final String fileName, final long position, final byte[] payLoad) throws IOException {
     return PipeTransferSchemaSnapshotPieceReq.toTPipeTransferBytes(fileName, position, payLoad);
+  }
+
+  @Override
+  public synchronized void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    if (Objects.nonNull(schemaRegionWritePlanEventBatch)) {
+      schemaRegionWritePlanEventBatch.discardEventsOfPipe(
+          pipeNameToDrop, creationTimeToDrop, regionId);
+    }
+  }
+
+  @Override
+  public void close() {
+    if (Objects.nonNull(schemaRegionWritePlanEventBatch)) {
+      schemaRegionWritePlanEventBatch.close();
+    }
+    super.close();
+  }
+
+  @Override
+  public void setSchemaBatchSizeHistogram(final Histogram schemaBatchSizeHistogram) {
+    if (Objects.nonNull(schemaRegionWritePlanEventBatch)) {
+      schemaRegionWritePlanEventBatch.setBatchSizeHistogram(schemaBatchSizeHistogram);
+    }
+  }
+
+  @Override
+  public void setSchemaBatchTimeIntervalHistogram(
+      final Histogram schemaBatchTimeIntervalHistogram) {
+    if (Objects.nonNull(schemaRegionWritePlanEventBatch)) {
+      schemaRegionWritePlanEventBatch.setBatchTimeIntervalHistogram(
+          schemaBatchTimeIntervalHistogram);
+    }
+  }
+
+  @Override
+  public void setBatchEventSizeHistogram(final Histogram eventSizeHistogram) {
+    if (Objects.nonNull(schemaRegionWritePlanEventBatch)) {
+      schemaRegionWritePlanEventBatch.setEventSizeHistogram(eventSizeHistogram);
+    }
   }
 }

@@ -109,6 +109,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     // Enable mods transfer
     extractorAttributes.put("mods", "true");
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");
@@ -153,6 +154,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
     extractorAttributes.put("user", "root");
 
@@ -237,6 +239,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
     extractorAttributes.put("user", "root");
 
@@ -318,6 +321,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
     extractorAttributes.put("user", "root");
 
@@ -391,6 +395,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
     extractorAttributes.put("user", "root");
 
@@ -440,6 +445,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
     extractorAttributes.put("user", "root");
 

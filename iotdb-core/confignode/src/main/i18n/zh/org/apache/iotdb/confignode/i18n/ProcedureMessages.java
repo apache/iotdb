@@ -614,6 +614,16 @@ public final class ProcedureMessages {
   public static final String PID_ADDREGION_STATE_FAILED = "[pid{}][AddRegion] state {} failed";
   public static final String PID_ADDREGION_SUCCESS_HAS_BEEN_ADDED_TO_DATANODE_PROCEDURE_TOOK =
       "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).";
+  public static final String PID_REMOVEREGIONGROUP_STARTED_WILL_BE_DELETED =
+      "[pid{}][RemoveRegionGroup] 开始，region group {} 将从 DataNode {} 上删除。";
+  public static final String PID_REMOVEREGIONGROUP_STARTED_REPLICA_WILL_BE_DELETED_FROM_DATANODE =
+      "[pid{}][RemoveRegionGroup] region {} 将从 DataNode {} 上删除。";
+  public static final String PID_REMOVEREGIONGROUP_STATE_FAILED =
+      "[pid{}][RemoveRegionGroup] 状态 {} 失败";
+  public static final String PID_REMOVEREGIONGROUP_DELETE_REPLICA_FAILED =
+      "[pid{}][RemoveRegionGroup] 删除 region {} 的一个副本失败（第 {} 次尝试），将持续重试直到删除成功。原因：{}";
+  public static final String PID_REMOVEREGIONGROUP_SUCCESS_PROCEDURE_TOOK =
+      "[pid{}][RemoveRegionGroup] 成功，region group {} 已删除。过程耗时 {}（开始于 {}）。";
   public static final String PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO =
       "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.";
   public static final String PID_MIGRATEREGION_STATE_COMPLETE =

@@ -124,26 +124,6 @@ public abstract class IoTDBSource implements PipeExtractor {
       return;
     }
 
-    // check 'capture.tree'
-    final Boolean isCaptureTree =
-        parameters.getBooleanByKeys(
-            PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-            PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY);
-    if (Objects.nonNull(isCaptureTree) && !isCaptureTree) {
-      throw new PipeParameterNotValidException(
-          "capture.tree can not be specified to false when double living is enabled");
-    }
-
-    // check 'capture.table'
-    final Boolean isCaptureTable =
-        parameters.getBooleanByKeys(
-            PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-            PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY);
-    if (Objects.nonNull(isCaptureTable) && !isCaptureTable) {
-      throw new PipeParameterNotValidException(
-          "capture.table can not be specified to false when double living is enabled");
-    }
-
     // check 'forwarding-pipe-requests'
     final Boolean isForwardingPipeRequests =
         parameters.getBooleanByKeys(

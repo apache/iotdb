@@ -172,7 +172,7 @@ public class PipeTerminateEvent extends EnrichedEvent {
     // To avoid deadlock
     if (shouldMark) {
       terminateExecutor.submit(
-          () -> PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId));
+          () -> PipeDataNodeAgent.task().markCompleted(pipeName, creationTime, dataRegionId));
     }
   }
 

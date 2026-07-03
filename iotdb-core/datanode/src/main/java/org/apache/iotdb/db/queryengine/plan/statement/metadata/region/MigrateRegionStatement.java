@@ -33,26 +33,26 @@ import java.util.List;
  *
  * <p>Here is the syntax definition:
  *
- * <p>MIGRATE REGION regionid=INTEGER_LITERAL FROM fromid=INTEGER_LITERAL TO toid=INTEGERLITERAL
+ * <p>MIGRATE REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* FROM
+ * fromid=INTEGER_LITERAL TO toid=INTEGER_LITERAL
  */
-// TODO: Whether to support more complex migration, such as, migrate all region from 1, 2 to 5, 6
 public class MigrateRegionStatement extends Statement implements IConfigStatement {
 
-  private final int regionId;
+  private final List<Integer> regionIds;
 
   private final int fromId;
 
   private final int toId;
 
-  public MigrateRegionStatement(int regionId, int fromId, int toId) {
+  public MigrateRegionStatement(List<Integer> regionIds, int fromId, int toId) {
     super();
-    this.regionId = regionId;
+    this.regionIds = regionIds;
     this.fromId = fromId;
     this.toId = toId;
   }
 
-  public int getRegionId() {
-    return regionId;
+  public List<Integer> getRegionIds() {
+    return regionIds;
   }
 
   public int getFromId() {
