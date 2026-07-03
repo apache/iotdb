@@ -41,8 +41,8 @@ echo [fixtures] generating TLS RSA fixtures...
 "%OPENSSL%" genrsa -out "%TLS_DIR%\ca.key" 2048
 "%OPENSSL%" req -new -x509 -days 3650 -key "%TLS_DIR%\ca.key" -out "%TLS_DIR%\ca.crt" -subj "/CN=IoTDB Test CA"
 "%OPENSSL%" genrsa -out "%TLS_DIR%\server.key" 2048
-"%OPENSSL%" req -new -key "%TLS_DIR%\server.key" -out "%TLS_DIR%\server.csr" -subj "/CN=localhost"
-"%OPENSSL%" x509 -req -days 3650 -in "%TLS_DIR%\server.csr" -CA "%TLS_DIR%\ca.crt" -CAkey "%TLS_DIR%\ca.key" -CAcreateserial -out "%TLS_DIR%\server.crt"
+"%OPENSSL%" req -new -key "%TLS_DIR%\server.key" -out "%TLS_DIR%\server.csr" -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+"%OPENSSL%" x509 -req -days 3650 -in "%TLS_DIR%\server.csr" -CA "%TLS_DIR%\ca.crt" -CAkey "%TLS_DIR%\ca.key" -CAcreateserial -out "%TLS_DIR%\server.crt" -copy_extensions copy
 "%OPENSSL%" genrsa -out "%TLS_DIR%\client.key" 2048
 "%OPENSSL%" req -new -key "%TLS_DIR%\client.key" -out "%TLS_DIR%\client.csr" -subj "/CN=IoTDB Test Client"
 "%OPENSSL%" x509 -req -days 3650 -in "%TLS_DIR%\client.csr" -CA "%TLS_DIR%\ca.crt" -CAkey "%TLS_DIR%\ca.key" -CAcreateserial -out "%TLS_DIR%\client.crt"

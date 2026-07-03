@@ -141,16 +141,42 @@ ADD_EXECUTABLE(SessionExample SessionExample.cpp)
 ADD_EXECUTABLE(AlignedTimeseriesSessionExample AlignedTimeseriesSessionExample.cpp)
 ADD_EXECUTABLE(TableModelSessionExample TableModelSessionExample.cpp)
 ADD_EXECUTABLE(MultiSvrNodeClient MultiSvrNodeClient.cpp)
+ADD_EXECUTABLE(cpp_tree_example cpp_tree_example.cpp)
+ADD_EXECUTABLE(cpp_table_example cpp_table_example.cpp)
+ADD_EXECUTABLE(cpp_tls_example cpp_tls_example.cpp ExampleTlsConfig.cpp)
+ADD_EXECUTABLE(cpp_ntls_example cpp_ntls_example.cpp ExampleNtlsHandshake.cpp)
 ADD_EXECUTABLE(tree_example tree_example.c)
 ADD_EXECUTABLE(table_example table_example.c)
+ADD_EXECUTABLE(tls_tree_example tls_tree_example.c ExampleTlsConfig.cpp)
+ADD_EXECUTABLE(c_ntls_example c_ntls_example.c ExampleNtlsHandshake.cpp)
 
 set(_example_targets
     SessionExample
     AlignedTimeseriesSessionExample
     TableModelSessionExample
     MultiSvrNodeClient
+    cpp_tree_example
+    cpp_table_example
+    cpp_tls_example
+    cpp_ntls_example
+    tree_example
+    table_example
+    tls_tree_example
+    c_ntls_example)
+
+set(_it_plain_examples
+    cpp_tree_example
+    cpp_table_example
     tree_example
     table_example)
+
+set(_it_ssl_examples
+    cpp_tls_example
+    tls_tree_example)
+
+set(_it_ntls_examples
+    cpp_ntls_example
+    c_ntls_example)
 
 foreach(_t IN LISTS _example_targets)
   if(WITH_SSL AND _iotdb_ssl_link_libs)
@@ -205,6 +231,48 @@ foreach(_t IN LISTS _example_targets)
   endif()
 endforeach()
 
+if(_iotdb_examples_in_tree AND WITH_SSL AND IOTDB_EXAMPLES_REGISTER_TESTS)
+    file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../test/fixtures" _iotdb_example_fixtures_dir)
+    string(REPLACE "\\" "/" _iotdb_example_fixtures_dir_fwd "${_iotdb_example_fixtures_dir}")
+    foreach(_t IN LISTS _it_ssl_examples _it_ntls_examples)
+        target_compile_definitions(${_t} PRIVATE
+                IOTDB_TEST_FIXTURES_DIR="${_iotdb_example_fixtures_dir_fwd}")
+        add_custom_command(TARGET ${_t} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                        "${CMAKE_CURRENT_SOURCE_DIR}/../test/fixtures"
+                        "$<TARGET_FILE_DIR:${_t}>/fixtures"
+                COMMENT "Copy SSL test fixtures next to ${_t}")
+    endforeach()
+    foreach(_t IN LISTS _it_ntls_examples)
+        target_sources(${_t} PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/../test/cpp/SslTestFixtures.cpp")
+        target_include_directories(${_t} PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/../test/cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/../src/rpc"
+                "${THRIFT_GEN_CPP_DIR}"
+                "${THRIFT_INCLUDE_DIR}")
+        if(BOOST_INCLUDE_DIR)
+            target_include_directories(${_t} PRIVATE "${BOOST_INCLUDE_DIR}")
+        endif()
+        if(BOOST_INCLUDE_DIR)
+            target_include_directories(${_t} PRIVATE "${BOOST_INCLUDE_DIR}")
+        endif()
+        if(WIN32)
+            file(TO_CMAKE_PATH "${OPENSSL_ROOT_DIR}/bin/openssl.exe" _iotdb_openssl_executable_cmake)
+            string(REPLACE "\\" "/" _iotdb_openssl_executable_fwd "${_iotdb_openssl_executable_cmake}")
+            target_compile_definitions(${_t} PRIVATE
+                    IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}")
+            target_link_libraries(${_t} PRIVATE ws2_32 "${THRIFT_STATIC_LIB_PATH}")
+        else()
+            file(TO_CMAKE_PATH "${OPENSSL_ROOT_DIR}/bin/openssl" _iotdb_openssl_executable_cmake)
+            string(REPLACE "\\" "/" _iotdb_openssl_executable_fwd "${_iotdb_openssl_executable_cmake}")
+            target_compile_definitions(${_t} PRIVATE
+                    IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}")
+            target_link_libraries(${_t} PRIVATE iotdb_thrift_static)
+        endif()
+    endforeach()
+endif()
+
 # Optional: stage a self-contained folder for copying to another machine (see package README).
 set(_example_dist_dir "${CMAKE_BINARY_DIR}/dist")
 add_custom_target(example-dist DEPENDS ${_example_targets}
@@ -229,20 +297,19 @@ foreach(_ssl_lib IN LISTS _iotdb_bundled_ssl_runtime)
 endforeach()
 
 if(IOTDB_EXAMPLES_REGISTER_TESTS)
-    set(_runnable_example_targets
-        SessionExample
-        AlignedTimeseriesSessionExample
-        TableModelSessionExample
-        tree_example
-        table_example)
-    foreach(_t IN LISTS _runnable_example_targets)
+    foreach(_t IN LISTS _it_plain_examples)
         add_test(NAME example_${_t} COMMAND ${_t})
+        set_tests_properties(example_${_t} PROPERTIES
+                LABELS "plain" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
     endforeach()
-    set_tests_properties(
-        example_SessionExample
-        example_AlignedTimeseriesSessionExample
-        example_TableModelSessionExample
-        example_tree_example
-        example_table_example
-        PROPERTIES RUN_SERIAL TRUE)
+    foreach(_t IN LISTS _it_ssl_examples)
+        add_test(NAME example_${_t} COMMAND ${_t})
+        set_tests_properties(example_${_t} PROPERTIES
+                LABELS "ssl" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
+    endforeach()
+    foreach(_t IN LISTS _it_ntls_examples)
+        add_test(NAME example_${_t} COMMAND ${_t})
+        set_tests_properties(example_${_t} PROPERTIES
+                LABELS "ntls" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
+    endforeach()
 endif()

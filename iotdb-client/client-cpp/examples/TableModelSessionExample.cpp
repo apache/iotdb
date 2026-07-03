@@ -24,6 +24,10 @@ using namespace std;
 
 shared_ptr<TableSession> session;
 
+static void configureTableBuilder(TableSessionBuilder& builder) {
+  builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root");
+}
+
 void insertRelationalTablet() {
 
   vector<pair<string, TSDataType::TSDataType>> schemaList{
@@ -86,12 +90,9 @@ void OutputWithType(unique_ptr<SessionDataSet>& dataSet) {
 
 int main() {
   try {
-    session = (new TableSessionBuilder())
-                  ->host("127.0.0.1")
-                  ->rpcPort(6667)
-                  ->username("root")
-                  ->password("root")
-                  ->build();
+    TableSessionBuilder builder;
+    configureTableBuilder(builder);
+    session = builder.build();
 
     cout << "[Create Database db1,db2]\n" << endl;
     try {
@@ -156,14 +157,10 @@ int main() {
 
     session->close();
 
-    // specify database in constructor
-    session = (new TableSessionBuilder())
-                  ->host("127.0.0.1")
-                  ->rpcPort(6667)
-                  ->username("root")
-                  ->password("root")
-                  ->database("db1")
-                  ->build();
+    TableSessionBuilder builder2;
+    configureTableBuilder(builder2);
+    builder2.database("db1");
+    session = builder2.build();
 
     cout << "[Show tables from current database(db1)]\n" << endl;
     try {

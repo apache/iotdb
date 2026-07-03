@@ -64,6 +64,7 @@
         <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
         <client.cpp.package.name>iotdb-session-cpp-${project.version}-${client.cpp.package.classifier}</client.cpp.package.name>
         <client.cpp.ci.build.id>${env.GITHUB_RUN_ID}</client.cpp.ci.build.id>
+        <iotdb.dist.root>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin</iotdb.dist.root>
     </properties>
     <dependencies>
         <dependency>
@@ -141,16 +142,56 @@
                         </configuration>
                     </execution>
                     <!-- Run ctest against the test binaries built in cmake-compile -->
+                    <!-- CTest is driven by run-cpp-it-phases (plain then TLS IoTDB). -->
                     <execution>
                         <id>cmake-run-test</id>
                         <goals>
                             <goal>test</goal>
                         </goals>
+                        <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>configure-iotdb-plain-it</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <skip>${ctest.skip.tests}</skip>
+                            <executable>python</executable>
+                            <arguments>
+                                <argument>${project.basedir}/test/scripts/configure_iotdb_ssl_it.py</argument>
+                                <argument>${iotdb.dist.root}</argument>
+                                <argument>${project.basedir}/test/fixtures</argument>
+                                <argument>disable</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>run-cpp-it-phases</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
                         <phase>integration-test</phase>
                         <configuration>
-                            <config>${cmake.build.type}</config>
-                            <projectDirectory>${cmake.project.dir}</projectDirectory>
-                            <skipTests>${maven.test.skip}</skipTests>
+                            <skip>${ctest.skip.tests}</skip>
+                            <executable>python</executable>
+                            <arguments>
+                                <argument>${project.basedir}/test/scripts/run_cpp_it_phases.py</argument>
+                                <argument>${cmake.project.dir}</argument>
+                                <argument>${iotdb.dist.root}</argument>
+                                <argument>${project.basedir}/test/fixtures</argument>
+                                <argument>${project.basedir}/test/scripts</argument>
+                                <argument>${iotdb.start.script}</argument>
+                                <argument>--config</argument>
+                                <argument>${cmake.build.type}</argument>
+                            </arguments>
                         </configuration>
                     </execution>
                 </executions>

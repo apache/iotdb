@@ -59,31 +59,6 @@ TEST_CASE("TLS mutual auth creates client SSL_CTX with trust and key stores", "[
 #endif
 }
 
-TEST_CASE("TLCP mutual auth creates client SSL_CTX from dual PKCS12", "[rpc][ssl][mutual]") {
-#if WITH_SSL
-  const std::string trustStore = ssltest::tlcpFixture("tlcp-trust.p12");
-  REQUIRE(fixtureExists(trustStore));
-  const std::string keyStore = ssltest::buildTlcpDualKeyStoreP12();
-  REQUIRE_FALSE(keyStore.empty());
-  REQUIRE(fixtureExists(keyStore));
-
-  SslConfig config;
-  config.useSsl = true;
-  config.sslProtocol = "TLCP";
-  config.trustStore = trustStore;
-  config.trustStorePwd = ssltest::kStorePassword;
-  config.keyStore = keyStore;
-  config.keyStorePwd = ssltest::kStorePassword;
-
-  REQUIRE_NOTHROW(RpcSslUtils::validateTrustStore(trustStore, config.trustStorePwd));
-  REQUIRE_NOTHROW(RpcSslUtils::validateKeyStore(keyStore, config.keyStorePwd));
-
-  SSL_CTX* ctx = RpcSslUtils::createClientSslContext(config);
-  REQUIRE(ctx != nullptr);
-  SSL_CTX_free(ctx);
-#endif
-}
-
 TEST_CASE("TLS mutual auth handshake with openssl s_server", "[rpc][ssl][mutual][e2e]") {
 #if WITH_SSL
   const std::string caFile = ssltest::tlsFixture("ca.crt");
@@ -144,50 +119,6 @@ TEST_CASE("TLS one-way auth fails when server requires client certificate", "[rp
   config.trustStorePwd = ssltest::kStorePassword;
 
   REQUIRE_FALSE(ssltest::tlsHandshakeWithSslConfig(config, "127.0.0.1", server.port()));
-  server.stop();
-#endif
-}
-
-TEST_CASE("TLCP mutual auth handshake with openssl NTLS s_server", "[rpc][ssl][mutual][e2e]") {
-#if WITH_SSL
-  const std::string caFile = ssltest::tlcpFixture("ca.crt");
-  const std::string signCert = ssltest::tlcpFixture("server_sign.crt");
-  const std::string signKey = ssltest::tlcpFixture("server_sign.key");
-  const std::string encCert = ssltest::tlcpFixture("server_enc.crt");
-  const std::string encKey = ssltest::tlcpFixture("server_enc.key");
-  REQUIRE(fixtureExists(caFile));
-  REQUIRE(fixtureExists(signCert));
-  REQUIRE(fixtureExists(signKey));
-  REQUIRE(fixtureExists(encCert));
-  REQUIRE(fixtureExists(encKey));
-
-  ssltest::OpenSslServerProcess server;
-  const bool started = server.start({
-      "-enable_ntls",
-      "-ntls",
-      "-Verify", "1",
-      "-CAfile", caFile,
-      "-sign_cert", signCert,
-      "-sign_key", signKey,
-      "-enc_cert", encCert,
-      "-enc_key", encKey,
-      "-www",
-  });
-  REQUIRE(started);
-  REQUIRE(server.running());
-
-  const std::string keyStore = ssltest::buildTlcpDualKeyStoreP12();
-  REQUIRE_FALSE(keyStore.empty());
-
-  SslConfig config;
-  config.useSsl = true;
-  config.sslProtocol = "TLCP";
-  config.trustStore = ssltest::tlcpFixture("tlcp-trust.p12");
-  config.trustStorePwd = ssltest::kStorePassword;
-  config.keyStore = keyStore;
-  config.keyStorePwd = ssltest::kStorePassword;
-
-  REQUIRE(ssltest::tlsHandshakeWithSslConfig(config, "127.0.0.1", server.port()));
   server.stop();
 #endif
 }

@@ -30,8 +30,8 @@ struct SessionListener : Catch::TestEventListenerBase {
   void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
     if (!session) {
       TableSessionBuilder builder;
-      session =
-          builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
+      builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->useSSL(false);
+      session = builder.build();
     } else {
       session->open();
     }

@@ -32,12 +32,18 @@ user `root` / `root`).
 
 | Example | Description |
 |---------|-------------|
-| `SessionExample` | Tree model: DDL, insert, query, delete |
-| `AlignedTimeseriesSessionExample` | Aligned time series and templates |
-| `TableModelSessionExample` | Table (relational) model |
+| `cpp_tree_example` | C++ tree model smoke test (plain RPC) |
+| `cpp_table_example` | C++ table model smoke test (plain RPC) |
+| `cpp_tls_example` | C++ tree model over one-way TLS |
+| `cpp_ntls_example` | C++ TLCP handshake against local openssl NTLS `s_server` |
+| `tree_example` | C Session API tree model (plain RPC) |
+| `table_example` | C Session API table model (plain RPC) |
+| `tls_tree_example` | C Session API tree model over one-way TLS |
+| `c_ntls_example` | C TLCP handshake against local openssl NTLS `s_server` |
+| `SessionExample` | Full tree-model walkthrough (not run in CI) |
+| `AlignedTimeseriesSessionExample` | Aligned time series demo (not run in CI) |
+| `TableModelSessionExample` | Full table-model walkthrough (not run in CI) |
 | `MultiSvrNodeClient` | Multi-node insert/query loop |
-| `tree_example` | C Session API (tree model) |
-| `table_example` | C Session API (table model) |
 
 ## Which SDK zip to use
 

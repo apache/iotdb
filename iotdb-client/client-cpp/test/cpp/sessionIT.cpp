@@ -91,7 +91,7 @@ TEST_CASE("Test Session constructor with nodeUrls", "[SessionInitAndOperate]") {
 
   std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
   std::shared_ptr<Session> localSession = std::make_shared<Session>(nodeUrls, "root", "root");
-  localSession->open();
+  localSession->open(false);
   if (!localSession->checkTimeseriesExists("root.test.d1.s1")) {
     localSession->createTimeseries("root.test.d1.s1", TSDataType::INT64, TSEncoding::RLE,
                                    CompressionType::SNAPPY);
@@ -106,9 +106,9 @@ TEST_CASE("Test Session builder with nodeUrls", "[SessionBuilderInit]") {
 
   std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
   auto builder = std::unique_ptr<SessionBuilder>(new SessionBuilder());
-  std::shared_ptr<Session> session = std::shared_ptr<Session>(
-      builder->username("root")->password("root")->nodeUrls(nodeUrls)->build());
-  session->open();
+  builder->username("root")->password("root")->nodeUrls(nodeUrls);
+  std::shared_ptr<Session> session = builder->build();
+  session->open(false);
   if (!session->checkTimeseriesExists("root.test.d1.s1")) {
     session->createTimeseries("root.test.d1.s1", TSDataType::INT64, TSEncoding::RLE,
                               CompressionType::SNAPPY);
@@ -386,9 +386,9 @@ TEST_CASE("Tablet index bounds", "[tabletBounds]") {
 TEST_CASE("Session rejects SQL after close", "[sessionClose]") {
   CaseReporter cr("sessionClose");
   SessionBuilder builder;
-  auto localSession =
-      builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
-  localSession->open();
+  builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root");
+  auto localSession = builder.build();
+  localSession->open(false);
   localSession->close();
   REQUIRE_THROWS_AS(localSession->executeNonQueryStatement("show databases"),
                     IoTDBConnectionException);
@@ -933,13 +933,13 @@ TEST_CASE("Numeric column widening getters align with Java TsFile", "[column]") 
 }
 TEST_CASE("SessionPool basic borrow/insert/query via RAII lease", "[sessionPool]") {
   CaseReporter cr("SessionPool basic");
-  auto pool = SessionPoolBuilder()
-                  .host("127.0.0.1")
-                  ->rpcPort(6667)
-                  ->username("root")
-                  ->password("root")
-                  ->maxSize(3)
-                  ->build();
+  SessionPoolBuilder poolBuilder;
+  poolBuilder.host("127.0.0.1")
+      ->rpcPort(6667)
+      ->username("root")
+      ->password("root")
+      ->maxSize(3);
+  auto pool = poolBuilder.build();
 
   {
     PooledSession s = pool->getSession();
@@ -975,13 +975,13 @@ TEST_CASE("SessionPool basic borrow/insert/query via RAII lease", "[sessionPool]
 
 TEST_CASE("SessionPool is safe under concurrent writers", "[sessionPool]") {
   CaseReporter cr("SessionPool concurrency");
-  auto pool = SessionPoolBuilder()
-                  .host("127.0.0.1")
-                  ->rpcPort(6667)
-                  ->username("root")
-                  ->password("root")
-                  ->maxSize(4)
-                  ->build();
+  SessionPoolBuilder poolBuilder;
+  poolBuilder.host("127.0.0.1")
+      ->rpcPort(6667)
+      ->username("root")
+      ->password("root")
+      ->maxSize(4);
+  auto pool = poolBuilder.build();
 
   {
     PooledSession s = pool->getSession();
@@ -1040,14 +1040,14 @@ TEST_CASE("SessionPool is safe under concurrent writers", "[sessionPool]") {
 
 TEST_CASE("SessionPool getSession times out when exhausted", "[sessionPool]") {
   CaseReporter cr("SessionPool exhaustion timeout");
-  auto pool = SessionPoolBuilder()
-                  .host("127.0.0.1")
-                  ->rpcPort(6667)
-                  ->username("root")
-                  ->password("root")
-                  ->maxSize(1)
-                  ->waitToGetSessionTimeoutMs(200)
-                  ->build();
+  SessionPoolBuilder poolBuilder;
+  poolBuilder.host("127.0.0.1")
+      ->rpcPort(6667)
+      ->username("root")
+      ->password("root")
+      ->maxSize(1)
+      ->waitToGetSessionTimeoutMs(200);
+  auto pool = poolBuilder.build();
 
   PooledSession held = pool->getSession();
   REQUIRE(static_cast<bool>(held));

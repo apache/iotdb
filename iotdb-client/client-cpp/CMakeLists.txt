@@ -309,7 +309,6 @@ install(FILES
         "${CMAKE_BINARY_DIR}/package-metadata/VERSION"
         "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         DESTINATION .)
-
 if(BUILD_TESTING)
     enable_testing()
     add_subdirectory(test)

@@ -19,6 +19,7 @@
 
 #include "catch.hpp"
 #include "SessionC.h"
+#include "SessionC.h"
 #include <cstring>
 #include <iostream>
 #include <string>

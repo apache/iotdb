@@ -74,8 +74,8 @@ TEST_CASE("Test TableSession builder with nodeUrls", "[SessionBuilderInit]") {
 
   std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
   auto builder = std::unique_ptr<TableSessionBuilder>(new TableSessionBuilder());
-  std::shared_ptr<TableSession> session = std::shared_ptr<TableSession>(
-      builder->username("root")->password("root")->nodeUrls(nodeUrls)->build());
+  builder->username("root")->password("root")->nodeUrls(nodeUrls);
+  std::shared_ptr<TableSession> session = builder->build();
   session->open();
 
   session->executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
@@ -90,8 +90,8 @@ TEST_CASE("TableSession rejects SQL after close", "[tableSessionClose]") {
   CaseReporter cr("tableSessionClose");
 
   TableSessionBuilder builder;
-  auto localSession =
-      builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
+  builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root");
+  auto localSession = builder.build();
   localSession->open();
   localSession->close();
 

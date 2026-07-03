@@ -38,12 +38,15 @@ if(NOT EXISTS "${_catch2_header}")
     file(DOWNLOAD "${CATCH2_URL}" "${_catch2_header}" SHOW_PROGRESS TLS_VERIFY ON)
 endif()
 
-set(_test_targets
+set(_plain_test_targets
         session_tests
         session_relational_tests
         session_c_tests
-        session_c_relational_tests
-        rpc_ssl_utils_tests)
+        session_c_relational_tests)
+
+set(_rpc_ssl_test_targets rpc_ssl_utils_tests rpc_ntls_utils_tests)
+
+set(_test_targets ${_plain_test_targets} ${_rpc_ssl_test_targets})
 
 add_executable(session_tests              main.cpp              cpp/sessionIT.cpp)
 add_executable(session_relational_tests   main_Relational.cpp   cpp/sessionRelationalIT.cpp)
@@ -52,12 +55,20 @@ add_executable(session_c_relational_tests main_c_Relational.cpp cpp/sessionCRela
 add_executable(rpc_ssl_utils_tests
         main_rpc_ssl.cpp
         cpp/RpcSslUtilsTest.cpp
-        cpp/RpcSslMutualAuthTest.cpp
+        cpp/RpcSslTlsMutualAuthTest.cpp
+        cpp/RpcSslIotdbE2eTest.cpp
+        cpp/SslTestFixtures.cpp
+        cpp/ItSslConnection.cpp)
+add_executable(rpc_ntls_utils_tests
+        main_rpc_ntls.cpp
+        cpp/RpcSslTlcpMutualAuthTest.cpp
+        cpp/RpcNtlsE2eTest.cpp
         cpp/SslTestFixtures.cpp)
 
 foreach(_t IN LISTS _test_targets)
     target_include_directories(${_t} PRIVATE
             "${_catch2_include_dir}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/../src/rpc"
             "${THRIFT_GEN_CPP_DIR}"
             "${THRIFT_INCLUDE_DIR}")
@@ -71,6 +82,8 @@ foreach(_t IN LISTS _test_targets)
 endforeach()
 
 if(WITH_SSL)
+    target_compile_definitions(rpc_ssl_utils_tests PRIVATE IOTDB_RPC_SSL_IT=1)
+
     if(WIN32)
         set(_iotdb_openssl_executable "${OPENSSL_ROOT_DIR}/bin/openssl.exe")
     else()
@@ -82,25 +95,35 @@ if(WITH_SSL)
     string(REPLACE "\\" "/" _iotdb_test_fixtures_dir_fwd "${_iotdb_test_fixtures_dir}")
     string(REPLACE "\\" "/" _iotdb_openssl_executable_fwd "${_iotdb_openssl_executable_cmake}")
     string(REPLACE "\\" "/" _iotdb_openssl_root_dir_fwd "${_iotdb_openssl_root_dir}")
+    foreach(_t IN LISTS _rpc_ssl_test_targets)
+        target_compile_definitions(${_t} PRIVATE
+                IOTDB_TEST_FIXTURES_DIR="${_iotdb_test_fixtures_dir_fwd}")
+        add_custom_command(TARGET ${_t} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                        "${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+                        "$<TARGET_FILE_DIR:${_t}>/fixtures"
+                COMMENT "Copy SSL test fixtures next to ${_t}")
+    endforeach()
     target_compile_definitions(rpc_ssl_utils_tests PRIVATE
-            IOTDB_TEST_FIXTURES_DIR="${_iotdb_test_fixtures_dir_fwd}"
             IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}"
             IOTDB_OPENSSL_ROOT_DIR="${_iotdb_openssl_root_dir_fwd}")
-    add_custom_command(TARGET rpc_ssl_utils_tests POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    "${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
-                    "$<TARGET_FILE_DIR:rpc_ssl_utils_tests>/fixtures"
-            COMMENT "Copy SSL test fixtures next to rpc_ssl_utils_tests")
+    target_compile_definitions(rpc_ntls_utils_tests PRIVATE
+            IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}"
+            IOTDB_OPENSSL_ROOT_DIR="${_iotdb_openssl_root_dir_fwd}")
     if(WIN32)
-        target_link_libraries(rpc_ssl_utils_tests PRIVATE ws2_32 "${THRIFT_STATIC_LIB_PATH}")
+        foreach(_t IN LISTS _rpc_ssl_test_targets)
+            target_link_libraries(${_t} PRIVATE ws2_32 "${THRIFT_STATIC_LIB_PATH}")
+        endforeach()
     else()
-        target_link_libraries(rpc_ssl_utils_tests PRIVATE iotdb_thrift_static)
+        foreach(_t IN LISTS _rpc_ssl_test_targets)
+            target_link_libraries(${_t} PRIVATE iotdb_thrift_static)
+        endforeach()
     endif()
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
     set(_iotdb_asan_targets session_tests session_relational_tests session_c_tests
-            session_c_relational_tests rpc_ssl_utils_tests)
+            session_c_relational_tests rpc_ssl_utils_tests rpc_ntls_utils_tests)
     foreach(_t IN LISTS _iotdb_asan_targets)
         target_compile_options(${_t} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
         target_link_options(${_t} PRIVATE -fsanitize=address)
@@ -123,11 +146,12 @@ if(MSVC)
     add_test(NAME sessionCIT             CONFIGURATIONS Release COMMAND session_c_tests)
     add_test(NAME sessionCRelationalIT   CONFIGURATIONS Release COMMAND session_c_relational_tests)
     add_test(NAME rpcSslUtilsTest      CONFIGURATIONS Release COMMAND rpc_ssl_utils_tests)
+    add_test(NAME rpcNtlsUtilsTest     CONFIGURATIONS Release COMMAND rpc_ntls_utils_tests)
     foreach(_t IN LISTS _test_targets)
         add_custom_command(TARGET ${_t} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                         $<TARGET_FILE:iotdb_session> $<TARGET_FILE_DIR:${_t}>)
-        if(WITH_SSL)
+        if(WITH_SSL AND ${_t} IN_LIST _rpc_ssl_test_targets)
             _iotdb_collect_openssl_windows_dlls(_iotdb_ssl_runtime_dlls)
             foreach(_ssl_dll IN LISTS _iotdb_ssl_runtime_dlls)
                 add_custom_command(TARGET ${_t} POST_BUILD
@@ -143,12 +167,13 @@ else()
     add_test(NAME sessionCIT             COMMAND session_c_tests)
     add_test(NAME sessionCRelationalIT   COMMAND session_c_relational_tests)
     add_test(NAME rpcSslUtilsTest      COMMAND rpc_ssl_utils_tests)
+    add_test(NAME rpcNtlsUtilsTest     COMMAND rpc_ntls_utils_tests)
     foreach(_t IN LISTS _test_targets)
         add_custom_command(TARGET ${_t} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                         $<TARGET_FILE:iotdb_session> $<TARGET_FILE_DIR:${_t}>
                 COMMENT "Copy IoTDB runtime library next to ${_t}")
-        if(WITH_SSL)
+        if(WITH_SSL AND ${_t} IN_LIST _rpc_ssl_test_targets)
             foreach(_ssl_lib IN LISTS OPENSSL_SSL_LIBRARY OPENSSL_CRYPTO_LIBRARY)
                 if(_ssl_lib AND EXISTS "${_ssl_lib}")
                     add_custom_command(TARGET ${_t} POST_BUILD
@@ -161,7 +186,12 @@ else()
     endforeach()
 endif()
 
-# Run sequentially: parallel ctest overloads the single local IoTDB instance.
 set_tests_properties(
-        sessionIT sessionRelationalIT sessionCIT sessionCRelationalIT rpcSslUtilsTest
-        PROPERTIES RUN_SERIAL TRUE)
+        sessionIT sessionRelationalIT sessionCIT sessionCRelationalIT
+        PROPERTIES LABELS "plain" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
+set_tests_properties(
+        rpcSslUtilsTest
+        PROPERTIES LABELS "ssl" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
+set_tests_properties(
+        rpcNtlsUtilsTest
+        PROPERTIES LABELS "ntls" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
