@@ -1020,7 +1020,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             event);
       }
 
-      if (sloppyPattern || isDbNameCoveredByPattern) {
+      if (sloppyPattern
+          || isDbNameCoveredByPattern
+          || isTsFileResourceCoveredByTablePattern(
+              resource, filteredTsFileResources2TableNames.get(resource))) {
         event.skipParsingPattern();
       }
       if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
@@ -1065,6 +1068,21 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         && DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
         && PipeTsFileEpochProgressIndexKeeper.getInstance()
             .containsTsFile(dataRegionId, tsFileDedupScopeID, resource.getTsFilePath());
+  }
+
+  private boolean isTsFileResourceCoveredByTablePattern(
+      final TsFileResource resource, final Set<String> tableNames) {
+    return isModelDetected
+        && isTableModel
+        && tablePattern.isTableModelDataAllowedToBeCaptured()
+        && Objects.nonNull(resource)
+        && Objects.nonNull(tableNames)
+        && !tableNames.isEmpty()
+        && tableNames.stream()
+            .allMatch(
+                tableName ->
+                    tablePattern.matchesDatabase(resource.getDatabaseName())
+                        && tablePattern.matchesTable(tableName));
   }
 
   private Event supplyDeletionEvent(final DeletionResource deletionResource) {
