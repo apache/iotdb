@@ -140,6 +140,20 @@ public class TestProcedureExecutor extends TestProcedureBase {
     Assert.assertTrue(procExecutor.removeInternalProcedure(internalProcedure));
   }
 
+  @Test
+  public void testRestartCompletedCleanerAppliesNewEvictTtl() {
+    procExecutor.startCompletedCleaner(30, 60);
+    CompletedProcedureRecycler<TestProcEnv> first = procExecutor.getCompletedProcedureRecycler();
+    Assert.assertNotNull(first);
+    Assert.assertEquals(TimeUnit.SECONDS.toMillis(60), first.getEvictTTLInMs());
+
+    // Hot reload with a different interval / TTL replaces the recycler with a fresh instance.
+    procExecutor.restartCompletedCleaner(15, 120);
+    CompletedProcedureRecycler<TestProcEnv> second = procExecutor.getCompletedProcedureRecycler();
+    Assert.assertNotSame(first, second);
+    Assert.assertEquals(TimeUnit.SECONDS.toMillis(120), second.getEvictTTLInMs());
+  }
+
   private int waitThreadCount(final int expectedThreads) {
     long startTime = System.currentTimeMillis();
     while (procExecutor.isRunning()
