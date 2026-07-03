@@ -117,6 +117,10 @@ public class SessionPool implements ISessionPool {
 
   private String trustStorePwd;
 
+  private String keyStore;
+
+  private String keyStorePwd;
+
   private String sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
 
   private ZoneId zoneId;
@@ -540,6 +544,8 @@ public class SessionPool implements ISessionPool {
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
+    this.keyStore = builder.keyStore;
+    this.keyStorePwd = builder.keyStorePwd;
     this.sslProtocol = builder.sslProtocol;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
@@ -598,6 +604,8 @@ public class SessionPool implements ISessionPool {
               .useSSL(useSSL)
               .trustStore(trustStore)
               .trustStorePwd(trustStorePwd)
+              .keyStore(keyStore)
+              .keyStorePwd(keyStorePwd)
               .sslProtocol(sslProtocol)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
@@ -624,6 +632,8 @@ public class SessionPool implements ISessionPool {
               .useSSL(useSSL)
               .trustStore(trustStore)
               .trustStorePwd(trustStorePwd)
+              .keyStore(keyStore)
+              .keyStorePwd(keyStorePwd)
               .sslProtocol(sslProtocol)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
@@ -669,6 +679,8 @@ public class SessionPool implements ISessionPool {
             useSSL,
             trustStore,
             trustStorePwd,
+            keyStore,
+            keyStorePwd,
             sslProtocol,
             enableThriftCompression,
             version.toString());
@@ -2013,6 +2025,9 @@ public class SessionPool implements ISessionPool {
   @Override
   public void deleteTimeseries(List<String> paths)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (paths.isEmpty()) {
+      return;
+    }
     ISession session = getSession();
     try {
       session.deleteTimeseries(paths);
@@ -3642,6 +3657,16 @@ public class SessionPool implements ISessionPool {
 
     public Builder trustStorePwd(String trustStorePwd) {
       this.trustStorePwd = trustStorePwd;
+      return this;
+    }
+
+    public Builder keyStore(String keyStore) {
+      this.keyStore = keyStore;
+      return this;
+    }
+
+    public Builder keyStorePwd(String keyStorePwd) {
+      this.keyStorePwd = keyStorePwd;
       return this;
     }
 

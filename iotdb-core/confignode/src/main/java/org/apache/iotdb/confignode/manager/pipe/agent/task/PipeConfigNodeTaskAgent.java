@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
@@ -108,7 +109,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     }
 
     pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getPipeMeta(pipeStaticMeta)
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
@@ -122,10 +123,13 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
           ? super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator.deepCopy4TaskAgent())
           : null;
     } catch (final Exception e) {
-      return new TPushPipeMetaRespExceptionMessage(
-          pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
-          e.getMessage(),
-          System.currentTimeMillis());
+      final TPushPipeMetaRespExceptionMessage exceptionMessage =
+          new TPushPipeMetaRespExceptionMessage(
+              pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
+              e.getMessage(),
+              System.currentTimeMillis());
+      exceptionMessage.setCreationTime(pipeMetaFromCoordinator.getStaticMeta().getCreationTime());
+      return exceptionMessage;
     }
   }
 
@@ -216,6 +220,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
+    final List<Integer> pipeDegradedStatusList = new ArrayList<>();
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
@@ -230,6 +235,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
         pipeRemainingEventCountList.add(remainingEventCount);
         pipeRemainingTimeList.add(estimatedRemainingTime);
+        pipeDegradedStatusList.add(PipeTemporaryMeta.TS_FILE_EPOCH_DEGRADED_STATUS_UNKNOWN);
 
         logger.ifPresent(
             l ->
@@ -246,6 +252,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeMetaList(pipeMetaBinaryList);
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
+    resp.setPipeDegradedStatusList(pipeDegradedStatusList);
   }
 
   @Override

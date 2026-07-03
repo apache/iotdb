@@ -425,7 +425,14 @@ public class IoTDBStatement implements Statement {
     execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp =
         callWithRetryAndReconnect(
-            () -> client.executeStatementV2(execReq), TSExecuteStatementResp::getStatus);
+            () -> {
+              // reConnect() may have replaced the session/statement id, so refresh them on every
+              // attempt; otherwise the server reports "StatementId doesn't exist in this session".
+              execReq.setSessionId(sessionId);
+              execReq.setStatementId(stmtId);
+              return client.executeStatementV2(execReq);
+            },
+            TSExecuteStatementResp::getStatus);
 
     if (execResp.isSetOperationType() && execResp.getOperationType().equals("dropDB")) {
       connection.changeDefaultDatabase(null);
@@ -501,7 +508,13 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionId, batchSQLList);
     TSStatus execResp =
-        callWithRetryAndReconnect(() -> client.executeBatchStatement(execReq), status -> status);
+        callWithRetryAndReconnect(
+            () -> {
+              // reConnect() may have replaced the session id, so refresh it on every attempt.
+              execReq.setSessionId(sessionId);
+              return client.executeBatchStatement(execReq);
+            },
+            status -> status);
     int[] result = new int[batchSQLList.size()];
     boolean allSuccess = true;
     StringBuilder message = new StringBuilder(System.lineSeparator());
@@ -571,7 +584,14 @@ public class IoTDBStatement implements Statement {
     execReq.setJdbcQuery(true);
     TSExecuteStatementResp execResp =
         callWithRetryAndReconnect(
-            () -> client.executeQueryStatementV2(execReq), TSExecuteStatementResp::getStatus);
+            () -> {
+              // reConnect() may have replaced the session/statement id, so refresh them on every
+              // attempt; otherwise the server reports "StatementId doesn't exist in this session".
+              execReq.setSessionId(sessionId);
+              execReq.setStatementId(stmtId);
+              return client.executeQueryStatementV2(execReq);
+            },
+            TSExecuteStatementResp::getStatus);
     queryId = execResp.isSetQueryId() ? execResp.getQueryId() : -1;
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -651,7 +671,17 @@ public class IoTDBStatement implements Statement {
     final TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     final TSExecuteStatementResp execResp =
         callWithRetryAndReconnect(
-            () -> client.executeUpdateStatement(execReq), TSExecuteStatementResp::getStatus);
+            () -> {
+              // reConnect() may have replaced the session/statement id, so refresh them on every
+              // attempt; otherwise the server reports "StatementId doesn't exist in this session".
+              execReq.setSessionId(sessionId);
+              execReq.setStatementId(stmtId);
+              return client.executeUpdateStatement(execReq);
+            },
+            TSExecuteStatementResp::getStatus);
+    if (execResp.isSetQueryId()) {
+      queryId = execResp.getQueryId();
+    }
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (final StatementExecutionException e) {

@@ -143,6 +143,12 @@ public class Utils {
     if (properties.containsKey(RPC_COMPRESS)) {
       params.setRpcThriftCompressionEnabled(parseBooleanProperty(properties, RPC_COMPRESS));
     }
+    if (properties.containsKey(Config.KEY_STORE)) {
+      params.setKeyStore(properties.getProperty(Config.KEY_STORE));
+    }
+    if (properties.containsKey(Config.KEY_STORE_PWD)) {
+      params.setKeyStorePwd(properties.getProperty(Config.KEY_STORE_PWD));
+    }
     if (properties.containsKey(Config.SSL_PROTOCOL)) {
       params.setSslProtocol(
           RpcSslUtils.normalizeProtocol(properties.getProperty(Config.SSL_PROTOCOL)));
@@ -200,6 +206,8 @@ public class Utils {
           break;
         case Config.TRUST_STORE:
         case Config.TRUST_STORE_PWD:
+        case Config.KEY_STORE:
+        case Config.KEY_STORE_PWD:
           info.put(key, value);
           break;
         case Config.USE_SSL:

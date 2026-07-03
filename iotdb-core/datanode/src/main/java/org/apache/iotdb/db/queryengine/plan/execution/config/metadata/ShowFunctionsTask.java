@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.udf.TreeUDFUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -156,6 +157,11 @@ public class ShowFunctionsTask implements IConfigTask {
     appendFunctions(
         builder,
         TableBuiltinTableFunction.getBuiltInTableFunctionName(),
+        BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC),
+        BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
+    appendFunctions(
+        builder,
+        DataNodeTableBuiltinTableFunction.getBuiltInTableFunctionName(),
         BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC),
         BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowFunctionsHeader();

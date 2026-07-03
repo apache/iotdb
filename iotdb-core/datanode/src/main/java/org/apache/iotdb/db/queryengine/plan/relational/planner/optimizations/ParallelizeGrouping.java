@@ -38,6 +38,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 
 import java.util.List;
 import java.util.Map;
@@ -227,8 +229,20 @@ public class ParallelizeGrouping implements PlanOptimizer {
     public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
       if (!context.canSkip()) {
         OrderingScheme sortKey = context.sortKey;
-        Map<Symbol, ColumnSchema> tableColumnSchema =
-            analysis.getTableColumnSchema(node.getQualifiedObjectName());
+        Map<Symbol, ColumnSchema> tableColumnSchema;
+        if (node instanceof ExternalTsFileScanNode) {
+          tableColumnSchema =
+              ((ExternalTsFileScanNode) node)
+                  .getExternalTsFileQueryResource()
+                  .getTableColumnSchema();
+        } else if (node instanceof ExternalTsFileAggregationScanNode) {
+          tableColumnSchema =
+              ((ExternalTsFileAggregationScanNode) node)
+                  .getExternalTsFileQueryResource()
+                  .getTableColumnSchema();
+        } else {
+          tableColumnSchema = analysis.getTableColumnSchema(node.getQualifiedObjectName());
+        }
         //  check there are no field in sortKey and all tags in sortKey
         Set<Symbol> tagSymbols =
             tableColumnSchema.entrySet().stream()

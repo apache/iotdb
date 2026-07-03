@@ -76,10 +76,7 @@ public class SingleFileLogReader implements ILogReader {
       }
       buffer = new byte[logSize];
 
-      int readLen = logStream.read(buffer, 0, logSize);
-      if (readLen < logSize) {
-        throw new IOException(ConfigNodeMessages.REACH_EOF);
-      }
+      logStream.readFully(buffer, 0, logSize);
 
       final long checkSum = logStream.readLong();
       checkSummer.reset();

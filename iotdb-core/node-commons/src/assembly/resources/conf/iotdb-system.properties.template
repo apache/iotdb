@@ -444,6 +444,13 @@ dn_metric_internal_reporter_type=MEMORY
 # Privilege: SECURITY
 enable_thrift_ssl=false
 
+# Whether client authentication is required for Thrift SSL connections.
+# This only takes effect when enable_thrift_ssl=true.
+# effectiveMode: restart
+# Datatype: boolean
+# Privilege: SECURITY
+thrift_ssl_client_auth=false
+
 # Whether enable SSL for Rest Service
 # effectiveMode: restart
 # Datatype: boolean
@@ -761,9 +768,21 @@ topology_probing_base_interval_in_ms=5000
 topology_probing_timeout_ratio=0.5
 
 # Disk remaining threshold at which DataNode is set to ReadOnly status
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: double(percentage)
 disk_space_warning_threshold=0.05
+
+# The refresh interval in milliseconds for the occupied-space cache used by
+# MinFolderOccupiedSpaceFirstStrategy. The default is 60000 (60 seconds).
+# effectiveMode: restart
+# Datatype: long
+min_folder_occupied_space_cache_refresh_interval_ms=60000
+
+# The number of folder selections after which MinFolderOccupiedSpaceFirstStrategy refreshes its
+# occupied-space cache. The default is 1000.
+# effectiveMode: restart
+# Datatype: int
+min_folder_occupied_space_cache_refresh_selection_threshold=1000
 
 # Purpose: for data partition repair
 # The number of threads used for parallel scanning in the partition table recovery
@@ -784,8 +803,14 @@ partition_table_recover_max_read_megabytes_per_second=10
 # Memory Allocation Ratio: StorageEngine, QueryEngine, SchemaEngine, Consensus, StreamingEngine and Free Memory.
 # The parameter form is a:b:c:d:e:f, where a, b, c, d, e and f are integers. for example: 1:1:1:1:1:1 , 6:2:1:1:1:1
 # If you have high level of writing pressure and low level of reading pressure, please adjust it to for example 6:1:1:1:1:1
+# 50% of Free Memory is used by AutoResizingBuffer memory control.
 # effectiveMode: restart
 datanode_memory_proportion=3:3:1:1:1:1
+
+# ConfigNode Memory Allocation Ratio: Pipe and Free Memory.
+# The parameter form is a:b, where a and b are integers. Currently, only PipePeriodicalLogReducer is connected to Pipe memory on ConfigNode.
+# effectiveMode: restart
+confignode_memory_proportion=1:9
 
 # Schema Memory Allocation Ratio: SchemaRegion, SchemaCache, and PartitionCache.
 # The parameter form is a:b:c, where a, b and c are integers. for example: 1:1:1 , 6:2:1
@@ -1711,6 +1736,13 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
 
+# The minimum interval (in ms) between two per-file progress logs while transmitting a snapshot in
+# IoTConsensus. A snapshot may contain a huge number of files, so logging one line per file is
+# costly; this throttles it to at most once per interval. A value <= 0 logs every file.
+# effectiveMode: hot_reload
+# Datatype: long
+data_region_iot_snapshot_transmission_progress_log_interval_ms = 5000
+
 # When loading snapshot, try keeping TsFiles in the same disk as the snapshot dir.
 # This may reduce file copies but may also result in a worse disk load-balance
 # effectiveMode: hot_reload
@@ -2158,12 +2190,12 @@ zombie_tsfile_writer_threshold=600000
 procedure_core_worker_thread_count=4
 
 # Default time interval of completed procedure cleaner work in, time unit is second
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int
 procedure_completed_clean_interval=30
 
 # Default ttl of completed procedure, time unit is second
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int
 procedure_completed_evict_ttl=60
 

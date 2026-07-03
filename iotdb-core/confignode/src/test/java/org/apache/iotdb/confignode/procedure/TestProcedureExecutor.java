@@ -127,7 +127,31 @@ public class TestProcedureExecutor extends TestProcedureBase {
     Assert.assertFalse(internalProcedure.awaitExecution(300, TimeUnit.MILLISECONDS));
     Assert.assertEquals(1, internalProcedure.getExecutionCount());
 
+    procExecutor.addInternalProcedure(internalProcedure);
+    Assert.assertFalse(internalProcedure.awaitExecution(300, TimeUnit.MILLISECONDS));
+    Assert.assertEquals(1, internalProcedure.getExecutionCount());
+
     Assert.assertTrue(procExecutor.removeInternalProcedure(internalProcedure));
+
+    procExecutor.addInternalProcedure(internalProcedure);
+    Assert.assertTrue(internalProcedure.awaitExecution(30, TimeUnit.SECONDS));
+    Assert.assertEquals(2, internalProcedure.getExecutionCount());
+
+    Assert.assertTrue(procExecutor.removeInternalProcedure(internalProcedure));
+  }
+
+  @Test
+  public void testRestartCompletedCleanerAppliesNewEvictTtl() {
+    procExecutor.startCompletedCleaner(30, 60);
+    CompletedProcedureRecycler<TestProcEnv> first = procExecutor.getCompletedProcedureRecycler();
+    Assert.assertNotNull(first);
+    Assert.assertEquals(TimeUnit.SECONDS.toMillis(60), first.getEvictTTLInMs());
+
+    // Hot reload with a different interval / TTL replaces the recycler with a fresh instance.
+    procExecutor.restartCompletedCleaner(15, 120);
+    CompletedProcedureRecycler<TestProcEnv> second = procExecutor.getCompletedProcedureRecycler();
+    Assert.assertNotSame(first, second);
+    Assert.assertEquals(TimeUnit.SECONDS.toMillis(120), second.getEvictTTLInMs());
   }
 
   private int waitThreadCount(final int expectedThreads) {

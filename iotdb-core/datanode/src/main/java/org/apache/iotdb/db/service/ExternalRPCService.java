@@ -65,34 +65,60 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
   @Override
   public void initThriftServiceThread() throws IllegalAccessException {
     try {
-      thriftServiceThread =
-          commonConfig.isEnableThriftClientSSL()
-              ? new ThriftServiceThread(
-                  processor,
-                  getID().getName(),
-                  ThreadName.CLIENT_RPC_PROCESSOR.getName(),
-                  getBindIP(),
-                  getBindPort(),
-                  config.getRpcMaxConcurrentClientNum(),
-                  config.getThriftServerAwaitTimeForStopService(),
-                  new RPCServiceThriftHandler(impl),
-                  config.isRpcThriftCompressionEnable(),
-                  commonConfig.getKeyStorePath(),
-                  commonConfig.getKeyStorePwd(),
-                  ZeroCopyRpcTransportFactory.INSTANCE)
-              : new ThriftServiceThread(
-                  processor,
-                  getID().getName(),
-                  ThreadName.CLIENT_RPC_PROCESSOR.getName(),
-                  getBindIP(),
-                  getBindPort(),
-                  config.getRpcMaxConcurrentClientNum(),
-                  config.getThriftServerAwaitTimeForStopService(),
-                  new RPCServiceThriftHandler(impl),
-                  config.isRpcThriftCompressionEnable(),
-                  ZeroCopyRpcTransportFactory.INSTANCE);
+      if (!commonConfig.isEnableThriftClientSSL()) {
+        thriftServiceThread =
+            new ThriftServiceThread(
+                processor,
+                getID().getName(),
+                ThreadName.CLIENT_RPC_PROCESSOR.getName(),
+                getBindIP(),
+                getBindPort(),
+                config.getRpcMaxConcurrentClientNum(),
+                config.getThriftServerAwaitTimeForStopService(),
+                new RPCServiceThriftHandler(impl),
+                config.isRpcThriftCompressionEnable(),
+                ZeroCopyRpcTransportFactory.INSTANCE);
+      } else if (commonConfig.isThriftSSLClientAuth()) {
+        if (!hasText(commonConfig.getTrustStorePath())) {
+          throw new IllegalAccessException(
+              "trust_store_path must be set when thrift_ssl_client_auth is true");
+        }
+        thriftServiceThread =
+            new ThriftServiceThread(
+                processor,
+                getID().getName(),
+                ThreadName.CLIENT_RPC_PROCESSOR.getName(),
+                getBindIP(),
+                getBindPort(),
+                config.getRpcMaxConcurrentClientNum(),
+                config.getThriftServerAwaitTimeForStopService(),
+                new RPCServiceThriftHandler(impl),
+                config.isRpcThriftCompressionEnable(),
+                commonConfig.getKeyStorePath(),
+                commonConfig.getKeyStorePwd(),
+                commonConfig.getTrustStorePath(),
+                commonConfig.getTrustStorePwd(),
+                ZeroCopyRpcTransportFactory.INSTANCE);
+      } else {
+        thriftServiceThread =
+            new ThriftServiceThread(
+                processor,
+                getID().getName(),
+                ThreadName.CLIENT_RPC_PROCESSOR.getName(),
+                getBindIP(),
+                getBindPort(),
+                config.getRpcMaxConcurrentClientNum(),
+                config.getThriftServerAwaitTimeForStopService(),
+                new RPCServiceThriftHandler(impl),
+                config.isRpcThriftCompressionEnable(),
+                commonConfig.getKeyStorePath(),
+                commonConfig.getKeyStorePwd(),
+                ZeroCopyRpcTransportFactory.INSTANCE);
+      }
     } catch (RPCServiceException e) {
-      throw new IllegalAccessException(e.getMessage());
+      IllegalAccessException exception = new IllegalAccessException(e.getMessage());
+      exception.initCause(e);
+      throw exception;
     }
     thriftServiceThread.setName(ThreadName.CLIENT_RPC_SERVICE.getName());
     MetricService.getInstance().addMetricSet(new RPCServiceMetrics(thriftServiceThread));
@@ -116,6 +142,10 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
   @Override
   public int getRPCPort() {
     return getBindPort();
+  }
+
+  private boolean hasText(String value) {
+    return value != null && !value.trim().isEmpty();
   }
 
   private static class RPCServiceHolder {

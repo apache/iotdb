@@ -56,6 +56,11 @@ public class PipeTsFileResourceManager {
       hardlinkOrCopiedFileToPipeTsFileResourceMap = new ConcurrentHashMap<>();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
 
+  public static String getPipeTsFileResourcePipeName(
+      final @Nullable String pipeName, final long creationTime) {
+    return Objects.isNull(pipeName) ? null : pipeName + "_" + creationTime;
+  }
+
   public File increaseFileReference(
       final File file, final boolean isTsFile, final @Nullable String pipeName) throws IOException {
     return increaseFileReference(file, isTsFile, pipeName, null);

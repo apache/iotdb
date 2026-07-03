@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
@@ -109,7 +110,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
   public void autoCreateAndVerify(
       TsFileSequenceReader reader,
       Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
-      throws IOException, AuthException, LoadAnalyzeTypeMismatchException {
+      throws IOException, AuthException, LoadAnalyzeException {
     for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         device2TimeseriesMetadataList.entrySet()) {
       final IDeviceID device = entry.getKey();
@@ -198,14 +199,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
     schemaCache.clearDeviceIsAlignedCacheIfNecessary();
   }
 
-  public void flush() throws AuthException, LoadAnalyzeTypeMismatchException {
+  public void flush() throws AuthException, LoadAnalyzeException {
     doAutoCreateAndVerify();
 
     schemaCache.clearTimeSeries();
   }
 
   private void doAutoCreateAndVerify()
-      throws SemanticException, AuthException, LoadAnalyzeTypeMismatchException {
+      throws SemanticException, AuthException, LoadAnalyzeException {
     if (schemaCache.getDevice2TimeSeries().isEmpty()) {
       return;
     }
@@ -235,6 +236,11 @@ public class TreeSchemaAutoCreatorAndVerifier {
       } else {
         handleException(e, loadTsFileAnalyzer.getStatementString());
       }
+    } catch (LoadAnalyzeMissingSchemaException e) {
+      if (loadTsFileAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
+        throw e;
+      }
+      handleException(e, loadTsFileAnalyzer.getStatementString());
     } catch (Exception e) {
       if (e.getCause() instanceof LoadAnalyzeTypeMismatchException
           && loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
@@ -449,10 +455,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
                   .collect(Collectors.toList()));
 
       if (iotdbDeviceSchemaInfo == null) {
-        throw new LoadAnalyzeException(
+        throw new LoadAnalyzeMissingSchemaException(
             String.format(
-                "Device %s does not exist in IoTDB and can not be created. "
-                    + "Please check weather auto-create-schema is enabled.",
+                DataNodeQueryMessages.LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED,
                 device));
       }
 
@@ -475,10 +480,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
         final IMeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
         final IMeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
         if (iotdbSchema == null) {
-          throw new LoadAnalyzeException(
+          throw new LoadAnalyzeMissingSchemaException(
               String.format(
-                  "Measurement %s does not exist in IoTDB and can not be created. "
-                      + "Please check weather auto-create-schema is enabled.",
+                  DataNodeQueryMessages.LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED,
                   device + TsFileConstant.PATH_SEPARATOR + tsfileTimeseriesSchemas.get(i)));
         }
 

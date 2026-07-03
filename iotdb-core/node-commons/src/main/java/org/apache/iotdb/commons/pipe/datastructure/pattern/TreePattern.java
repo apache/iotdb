@@ -23,8 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
-import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -44,6 +43,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
@@ -52,6 +52,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY;
@@ -164,49 +165,9 @@ public abstract class TreePattern {
     final boolean isTreeModelDataAllowedToBeCaptured =
         isTreeModelDataAllowToBeCaptured(sourceParameters);
 
-    final boolean hasPatternInclusionKey =
-        sourceParameters.hasAnyAttributes(
-            EXTRACTOR_PATTERN_INCLUSION_KEY, SOURCE_PATTERN_INCLUSION_KEY);
-    final boolean hasPatternExclusionKey =
-        sourceParameters.hasAnyAttributes(
-            EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY);
-    final boolean hasLegacyPathKey =
-        sourceParameters.hasAnyAttributes(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
-    final boolean hasLegacyPatternKey =
-        sourceParameters.hasAnyAttributes(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
-    final boolean usePatternSyntax =
-        hasPatternInclusionKey
-            || (hasPatternExclusionKey && !hasLegacyPathKey && !hasLegacyPatternKey);
-
-    if (hasPatternInclusionKey && (hasLegacyPathKey || hasLegacyPatternKey)) {
-      final String msg =
-          String.format(
-              PipeMessages.PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATTERN_OR_PATH,
-              SOURCE_PATTERN_INCLUSION_KEY,
-              SOURCE_PATTERN_KEY,
-              SOURCE_PATH_KEY);
-      LOGGER.warn(msg);
-      throw new PipeException(msg);
-    }
-
     // 1. Parse INCLUSION patterns into a list
     List<TreePattern> inclusionPatterns =
-        usePatternSyntax
-            ? parseIoTDBPatternList(
-                sourceParameters.getStringByKeys(
-                    EXTRACTOR_PATTERN_INCLUSION_KEY, SOURCE_PATTERN_INCLUSION_KEY),
-                isTreeModelDataAllowedToBeCaptured,
-                true,
-                SOURCE_PATTERN_INCLUSION_KEY)
-            : parseLegacyPatternList(
-                sourceParameters,
-                isTreeModelDataAllowedToBeCaptured,
-                EXTRACTOR_PATH_KEY,
-                SOURCE_PATH_KEY,
-                EXTRACTOR_PATTERN_KEY,
-                SOURCE_PATTERN_KEY,
-                SOURCE_PATH_KEY,
-                SOURCE_PATTERN_KEY);
+        parseInclusionPatternList(sourceParameters, isTreeModelDataAllowedToBeCaptured);
 
     // If no inclusion patterns are specified, use default "root.**"
     if (inclusionPatterns.isEmpty()) {
@@ -217,35 +178,8 @@ public abstract class TreePattern {
     }
 
     // 2. Parse EXCLUSION patterns into a list
-    if (usePatternSyntax
-        && sourceParameters.hasAnyAttributes(
-            EXTRACTOR_PATH_EXCLUSION_KEY, SOURCE_PATH_EXCLUSION_KEY)) {
-      final String msg =
-          String.format(
-              PipeMessages.PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATH_EXCLUSION,
-              SOURCE_PATTERN_INCLUSION_KEY,
-              SOURCE_PATH_EXCLUSION_KEY);
-      LOGGER.warn(msg);
-      throw new PipeException(msg);
-    }
-
     List<TreePattern> exclusionPatterns =
-        usePatternSyntax
-            ? parseIoTDBPatternList(
-                sourceParameters.getStringByKeys(
-                    EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY),
-                isTreeModelDataAllowedToBeCaptured,
-                true,
-                SOURCE_PATTERN_EXCLUSION_KEY)
-            : parseLegacyPatternList(
-                sourceParameters,
-                isTreeModelDataAllowedToBeCaptured,
-                EXTRACTOR_PATH_EXCLUSION_KEY,
-                SOURCE_PATH_EXCLUSION_KEY,
-                EXTRACTOR_PATTERN_EXCLUSION_KEY,
-                SOURCE_PATTERN_EXCLUSION_KEY,
-                SOURCE_PATH_EXCLUSION_KEY,
-                SOURCE_PATTERN_EXCLUSION_KEY);
+        parseExclusionPatternList(sourceParameters, isTreeModelDataAllowedToBeCaptured);
 
     // 3. Optimize the lists: remove redundant patterns (e.g., if "root.**" exists, "root.db" is
     // redundant)
@@ -264,6 +198,8 @@ public abstract class TreePattern {
               sourceParameters.getStringByKeys(
                   EXTRACTOR_PATTERN_INCLUSION_KEY,
                   SOURCE_PATTERN_INCLUSION_KEY,
+                  EXTRACTOR_PATH_INCLUSION_KEY,
+                  SOURCE_PATH_INCLUSION_KEY,
                   EXTRACTOR_PATH_KEY,
                   SOURCE_PATH_KEY,
                   EXTRACTOR_PATTERN_KEY,
@@ -382,49 +318,91 @@ public abstract class TreePattern {
         parseMultiplePatterns(trimmedPattern, basePatternSupplier));
   }
 
-  /**
-   * Helper method to parse legacy pattern parameters into a list of patterns without creating the
-   * Union object immediately.
-   */
-  private static List<TreePattern> parseLegacyPatternList(
-      final PipeParameters sourceParameters,
-      final boolean isTreeModelDataAllowedToBeCaptured,
-      final String extractorPathKey,
-      final String sourcePathKey,
-      final String extractorPatternKey,
-      final String sourcePatternKey,
-      final String pathKeyName,
-      final String patternKeyName) {
-
-    final String path = sourceParameters.getStringByKeys(extractorPathKey, sourcePathKey);
-    final String pattern = sourceParameters.getStringByKeys(extractorPatternKey, sourcePatternKey);
-
-    if (path != null && pattern != null) {
-      final String msg =
-          String.format(
-              PipeMessages.PATH_AND_PATTERN_CANNOT_BE_USED_TOGETHER, pathKeyName, patternKeyName);
-      LOGGER.warn(msg);
-      throw new PipeException(msg);
-    }
-
+  private static List<TreePattern> parseInclusionPatternList(
+      final PipeParameters sourceParameters, final boolean isTreeModelDataAllowedToBeCaptured) {
     final List<TreePattern> result = new ArrayList<>();
 
-    if (path != null) {
-      result.addAll(
-          parseIoTDBPatternList(path, isTreeModelDataAllowedToBeCaptured, false, pathKeyName));
-    }
+    addPatternsFromPatternParameterIfPresent(
+        result,
+        sourceParameters,
+        isTreeModelDataAllowedToBeCaptured,
+        EXTRACTOR_PATTERN_KEY,
+        SOURCE_PATTERN_KEY,
+        SOURCE_PATTERN_KEY);
+    addIoTDBPatternsIfPresent(
+        result,
+        sourceParameters,
+        isTreeModelDataAllowedToBeCaptured,
+        EXTRACTOR_PATTERN_INCLUSION_KEY,
+        SOURCE_PATTERN_INCLUSION_KEY,
+        SOURCE_PATTERN_INCLUSION_KEY);
+    addIoTDBPatternsIfPresent(
+        result,
+        sourceParameters,
+        isTreeModelDataAllowedToBeCaptured,
+        EXTRACTOR_PATH_KEY,
+        SOURCE_PATH_KEY,
+        SOURCE_PATH_KEY);
+    addIoTDBPatternsIfPresent(
+        result,
+        sourceParameters,
+        isTreeModelDataAllowedToBeCaptured,
+        EXTRACTOR_PATH_INCLUSION_KEY,
+        SOURCE_PATH_INCLUSION_KEY,
+        SOURCE_PATH_INCLUSION_KEY);
 
+    return result;
+  }
+
+  private static List<TreePattern> parseExclusionPatternList(
+      final PipeParameters sourceParameters, final boolean isTreeModelDataAllowedToBeCaptured) {
+    final List<TreePattern> result = new ArrayList<>();
+
+    addIoTDBPatternsIfPresent(
+        result,
+        sourceParameters,
+        isTreeModelDataAllowedToBeCaptured,
+        EXTRACTOR_PATTERN_EXCLUSION_KEY,
+        SOURCE_PATTERN_EXCLUSION_KEY,
+        SOURCE_PATTERN_EXCLUSION_KEY);
+    addIoTDBPatternsIfPresent(
+        result,
+        sourceParameters,
+        isTreeModelDataAllowedToBeCaptured,
+        EXTRACTOR_PATH_EXCLUSION_KEY,
+        SOURCE_PATH_EXCLUSION_KEY,
+        SOURCE_PATH_EXCLUSION_KEY);
+
+    return result;
+  }
+
+  private static void addIoTDBPatternsIfPresent(
+      final List<TreePattern> result,
+      final PipeParameters sourceParameters,
+      final boolean isTreeModelDataAllowedToBeCaptured,
+      final String extractorKey,
+      final String sourceKey,
+      final String parameterKey) {
+    final String pattern = sourceParameters.getStringByKeys(extractorKey, sourceKey);
+    if (pattern != null) {
+      result.addAll(
+          parseIoTDBPatternList(pattern, isTreeModelDataAllowedToBeCaptured, true, parameterKey));
+    }
+  }
+
+  private static void addPatternsFromPatternParameterIfPresent(
+      final List<TreePattern> result,
+      final PipeParameters sourceParameters,
+      final boolean isTreeModelDataAllowedToBeCaptured,
+      final String extractorKey,
+      final String sourceKey,
+      final String parameterKey) {
+    final String pattern = sourceParameters.getStringByKeys(extractorKey, sourceKey);
     if (pattern != null) {
       result.addAll(
           parsePatternsFromPatternParameter(
-              pattern,
-              sourceParameters,
-              isTreeModelDataAllowedToBeCaptured,
-              false,
-              patternKeyName));
+              pattern, sourceParameters, isTreeModelDataAllowedToBeCaptured, true, parameterKey));
     }
-
-    return result;
   }
 
   private static List<TreePattern> parseIoTDBPatternList(
@@ -791,19 +769,7 @@ public abstract class TreePattern {
   }
 
   public static boolean isTreeModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
-    return sourceParameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
-        || sourceParameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-                PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY),
-            sourceParameters
-                .getStringOrDefault(
-                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-                .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
+    return VisibilityUtils.isTreeModelDataAllowToBeCaptured(sourceParameters);
   }
 
   /**

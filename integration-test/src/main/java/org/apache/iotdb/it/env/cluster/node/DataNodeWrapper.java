@@ -44,7 +44,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_PROPERTIES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_CONNECTION_TIMEOUT_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_CONSENSUS_DIR;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_DATA_DIRS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_DATA_REGION_CONSENSUS_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_JOIN_CLUSTER_RETRY_INTERVAL_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_METRIC_INTERNAL_REPORTER_TYPE;
@@ -125,7 +124,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
     immutableNodeProperties.setProperty(IoTDBConstant.DN_SEED_CONFIG_NODE, seedConfigNode);
     immutableNodeProperties.setProperty(DN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
-    immutableNodeProperties.setProperty(DN_DATA_DIRS, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_CONSENSUS_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_WAL_DIRS, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_TRACING_DIR, MppBaseConfig.NULL_VALUE);

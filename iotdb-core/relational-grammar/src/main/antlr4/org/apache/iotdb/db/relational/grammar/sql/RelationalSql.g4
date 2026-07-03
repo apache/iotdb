@@ -49,6 +49,7 @@ statement
     // Database Statement
     | useDatabaseStatement
     | showDatabasesStatement
+    | showCreateDatabaseStatement
     | countDatabasesStatement
     | createDbStatement
     | alterDbStatement
@@ -102,6 +103,7 @@ statement
     | startPipeStatement
     | stopPipeStatement
     | showPipesStatement
+    | showCreatePipeStatement
     | createPipePluginStatement
     | dropPipePluginStatement
     | showPipePluginsStatement
@@ -111,6 +113,7 @@ statement
     | alterTopicStatement
     | dropTopicStatement
     | showTopicsStatement
+    | showCreateTopicStatement
     | showSubscriptionsStatement
     | dropSubscriptionStatement
 
@@ -203,6 +206,10 @@ useDatabaseStatement
 
 showDatabasesStatement
     : SHOW DATABASES (DETAILS)?
+    ;
+
+showCreateDatabaseStatement
+    : SHOW CREATE DATABASE database=identifier
     ;
 
 countDatabasesStatement
@@ -520,6 +527,10 @@ showPipesStatement
     : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
     ;
 
+showCreatePipeStatement
+    : SHOW CREATE PIPE pipeName=identifier
+    ;
+
 createPipePluginStatement
     : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=string uriClause
     ;
@@ -556,6 +567,10 @@ dropTopicStatement
 
 showTopicsStatement
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
+    ;
+
+showCreateTopicStatement
+    : SHOW CREATE TOPIC topicName=identifier
     ;
 
 showSubscriptionsStatement
@@ -629,7 +644,7 @@ showSeriesSlotListStatement
     ;
 
 migrateRegionStatement
-    : MIGRATE REGION regionId=INTEGER_VALUE FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
+    : MIGRATE REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
     ;
 
 reconstructRegionStatement
@@ -645,7 +660,7 @@ removeRegionStatement
     ;
 
 removeDataNodeStatement
-    : REMOVE DATANODE dataNodeId=INTEGER_VALUE
+    : REMOVE DATANODE dataNodeIds+=INTEGER_VALUE (',' dataNodeIds+=INTEGER_VALUE)*
     ;
 
 removeConfigNodeStatement

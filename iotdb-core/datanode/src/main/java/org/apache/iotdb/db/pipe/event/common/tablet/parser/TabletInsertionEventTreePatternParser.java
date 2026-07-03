@@ -185,7 +185,8 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
   @Override
   public List<TabletInsertionEvent> processTabletWithCollect(
       BiConsumer<Tablet, TabletCollector> consumer) {
-    final PipeTabletCollector tabletCollector = new PipeTabletCollector(pipeTaskMeta, sourceEvent);
+    final PipeTabletCollector tabletCollector =
+        new PipeTabletCollector(pipeTaskMeta, sourceEvent, isAligned);
     consumer.accept(convertToTablet(), tabletCollector);
     return tabletCollector.convertToTabletInsertionEvents(shouldReport);
   }

@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
@@ -369,7 +370,8 @@ public class IoTDBDescriptor {
     try {
       conf.checkMultiDirStrategyClassName();
     } catch (Exception e) {
-      conf.setMultiDirStrategyClassName(oldMultiDirStrategyClassName.trim());
+      conf.setMultiDirStrategyClassName(
+          oldMultiDirStrategyClassName == null ? null : oldMultiDirStrategyClassName.trim());
       throw e;
     }
 
@@ -1285,6 +1287,12 @@ public class IoTDBDescriptor {
                 "region_migration_speed_limit_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "region_migration_speed_limit_bytes_per_second"))));
+    conf.setDataRegionIotSnapshotTransmissionProgressLogIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_iot_snapshot_transmission_progress_log_interval_ms",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "data_region_iot_snapshot_transmission_progress_log_interval_ms"))));
     conf.setKeepSameDiskWhenLoadingSnapshot(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -2244,6 +2252,12 @@ public class IoTDBDescriptor {
       } else {
         BinaryAllocator.getInstance().close(true);
       }
+
+      // update disk_space_warning_threshold; also refresh the static copy in JVMCommonUtils that
+      // the ReadOnly disk guard reads, otherwise the new threshold would not take effect until
+      // restart. Parsing / validation is shared with the ConfigNode hot-reload path.
+      JVMCommonUtils.setDiskSpaceWarningThreshold(
+          commonDescriptor.loadHotModifiedDiskSpaceWarningThreshold(properties));
 
       commonDescriptor
           .getConfig()

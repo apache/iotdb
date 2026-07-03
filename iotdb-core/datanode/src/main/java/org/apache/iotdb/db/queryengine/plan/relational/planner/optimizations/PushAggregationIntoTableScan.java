@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
@@ -30,10 +31,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.utils.Pair;
@@ -69,6 +73,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         new Rewriter(),
         new Context(
             context.getQueryContext().getQueryId(),
+            context.getAnalysis(),
             context.getMetadata(),
             context.sessionInfo(),
             context.getSymbolAllocator()));
@@ -162,7 +167,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       }
 
       // calculate DataSet part
-      boolean singleDeviceEntry = tableScanNode.getDeviceEntries().size() < 2;
+      boolean singleDeviceEntry = isSingleDeviceEntry(tableScanNode);
       if (groupingKeys.isEmpty()) {
         // GlobalAggregation
         if (singleDeviceEntry) {
@@ -202,12 +207,38 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       }
     }
 
+    private boolean isSingleDeviceEntry(DeviceTableScanNode tableScanNode) {
+      if (tableScanNode instanceof ExternalTsFileScanNode
+          || tableScanNode instanceof ExternalTsFileAggregationScanNode) {
+        // External scan nodes collect device entries in distributed planning, so the logical
+        // optimizer cannot safely use the single-device shortcut here.
+        return false;
+      }
+      return tableScanNode.getDeviceEntries().size() < 2;
+    }
+
     private List<Symbol> getTagColumnsInTableStore(
         DeviceTableScanNode tableScanNode, Metadata metadata, SessionInfo session) {
-      return Objects.requireNonNull(
-              metadata.getTableSchema(session, tableScanNode.getQualifiedObjectName()).orElse(null))
-          .getColumns()
-          .stream()
+      Collection<ColumnSchema> columnSchemas;
+      if (tableScanNode instanceof ExternalTsFileScanNode externalTsFileScanNode) {
+        columnSchemas =
+            externalTsFileScanNode.getExternalTsFileQueryResource().getTableColumnSchema().values();
+      } else if (tableScanNode
+          instanceof ExternalTsFileAggregationScanNode externalTsFileAggregationScanNode) {
+        columnSchemas =
+            externalTsFileAggregationScanNode
+                .getExternalTsFileQueryResource()
+                .getTableColumnSchema()
+                .values();
+      } else {
+        columnSchemas =
+            Objects.requireNonNull(
+                    metadata
+                        .getTableSchema(session, tableScanNode.getQualifiedObjectName())
+                        .orElse(null))
+                .getColumns();
+      }
+      return columnSchemas.stream()
           .filter(columnSchema -> columnSchema.getColumnCategory() == TAG)
           .map(columnSchema -> Symbol.of(columnSchema.getName()))
           .collect(Collectors.toList());
@@ -240,13 +271,19 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
 
   private static class Context {
     private final QueryId queryId;
+    private final Analysis analysis;
     private final Metadata metadata;
     private final SessionInfo session;
     private final SymbolAllocator symbolAllocator;
 
     public Context(
-        QueryId queryId, Metadata metadata, SessionInfo session, SymbolAllocator symbolAllocator) {
+        QueryId queryId,
+        Analysis analysis,
+        Metadata metadata,
+        SessionInfo session,
+        SymbolAllocator symbolAllocator) {
       this.queryId = queryId;
+      this.analysis = analysis;
       this.metadata = metadata;
       this.session = session;
       this.symbolAllocator = symbolAllocator;

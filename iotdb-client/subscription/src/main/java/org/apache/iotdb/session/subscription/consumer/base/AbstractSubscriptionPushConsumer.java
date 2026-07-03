@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -61,6 +62,8 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
   // avoid interval less than or equal to zero
   private final long autoPollIntervalMs;
   private final long autoPollTimeoutMs;
+
+  private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -128,6 +131,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
 
     // set isClosed to false before submitting workers
     isClosed.set(false);
+    emptyPollLogThrottler.reset();
 
     // submit auto poll worker
     submitAutoPollWorker();
@@ -198,14 +202,20 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
               return type == SubscriptionMessageType.WATERMARK.getType();
             });
         if (messages.isEmpty()) {
-          LOGGER.info(
-              "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
-              this,
-              CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
-              autoPollTimeoutMs);
+          final OptionalLong consecutiveEmptyPollCount =
+              emptyPollLogThrottler.markEmptyPollAndMaybeGetCount();
+          if (consecutiveEmptyPollCount.isPresent()) {
+            LOGGER.info(
+                SubscriptionMessages.PUSH_CONSUMER_POLL_EMPTY_MESSAGE,
+                AbstractSubscriptionPushConsumer.this,
+                CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
+                autoPollTimeoutMs,
+                consecutiveEmptyPollCount.getAsLong());
+          }
           return;
         }
 
+        emptyPollLogThrottler.reset();
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);
         }

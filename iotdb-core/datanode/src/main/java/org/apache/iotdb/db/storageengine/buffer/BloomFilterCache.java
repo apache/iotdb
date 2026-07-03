@@ -101,9 +101,20 @@ public class BloomFilterCache {
       LongConsumer cacheHitAdder,
       LongConsumer cacheMissAdder)
       throws IOException {
-    BloomFilterLoader loader = new BloomFilterLoader(ioSizeRecorder);
+    return get(key, debug, ioSizeRecorder, cacheHitAdder, cacheMissAdder, false);
+  }
+
+  public BloomFilter get(
+      BloomFilterCacheKey key,
+      boolean debug,
+      LongConsumer ioSizeRecorder,
+      LongConsumer cacheHitAdder,
+      LongConsumer cacheMissAdder,
+      boolean externalTsFile)
+      throws IOException {
+    BloomFilterLoader loader = new BloomFilterLoader(ioSizeRecorder, externalTsFile);
     try {
-      if (!CACHE_ENABLE) {
+      if (!CACHE_ENABLE || externalTsFile) {
         return loader.apply(key);
       }
 
@@ -203,9 +214,15 @@ public class BloomFilterCache {
 
     private boolean cacheMiss = false;
     private final LongConsumer ioSizeRecorder;
+    private final boolean externalTsFile;
 
     private BloomFilterLoader(LongConsumer ioSizeRecorder) {
+      this(ioSizeRecorder, false);
+    }
+
+    private BloomFilterLoader(LongConsumer ioSizeRecorder, boolean externalTsFile) {
       this.ioSizeRecorder = ioSizeRecorder;
+      this.externalTsFile = externalTsFile;
     }
 
     @Override
@@ -218,7 +235,8 @@ public class BloomFilterCache {
                     bloomFilterCacheKey.filePath,
                     bloomFilterCacheKey.tsFileID,
                     true,
-                    ioSizeRecorder);
+                    ioSizeRecorder,
+                    externalTsFile);
         return reader.readBloomFilter(ioSizeRecorder);
       } catch (IOException e) {
         throw new IoTDBIORuntimeException(e);

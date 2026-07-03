@@ -86,6 +86,19 @@ TEST_CASE("Test TableSession builder with nodeUrls", "[SessionBuilderInit]") {
   session->close();
 }
 
+TEST_CASE("TableSession rejects SQL after close", "[tableSessionClose]") {
+  CaseReporter cr("tableSessionClose");
+
+  TableSessionBuilder builder;
+  auto localSession =
+      builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
+  localSession->open();
+  localSession->close();
+
+  REQUIRE_THROWS_AS(localSession->executeNonQueryStatement("SHOW DATABASES"),
+                    IoTDBConnectionException);
+}
+
 TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {
   CaseReporter cr("testInsertRelationalTablet");
   session->executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");

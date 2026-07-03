@@ -36,11 +36,13 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
@@ -72,9 +74,11 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   @Override
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      final ListeningScheduledExecutorService subtaskWorkerScheduledExecutor,
       final ExecutorService subtaskCallbackListeningExecutor,
       final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
+    this.subtaskWorkerScheduledExecutor = subtaskWorkerScheduledExecutor;
     this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
     this.subtaskScheduler = subtaskScheduler;
   }
@@ -177,7 +181,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
             MAX_RETRY_TIMES,
             e);
         try {
-          sleepIfNoHighPriorityTask(retry * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
+          sleepIfNoHighPriorityTask(getHandshakeRetrySleepInterval(e, retry));
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               PipeMessages.INTERRUPTED_WHILE_SLEEPING_RETRY_HANDSHAKE, interruptedException);
@@ -218,6 +222,13 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
     return false;
   }
 
+  private long getHandshakeRetrySleepInterval(final Throwable throwable, final int retry) {
+    final long defaultInterval = retry * PipeConfig.getInstance().getPipeSinkRetryIntervalMs();
+    return isAuthenticationFailure(throwable)
+        ? Math.max(defaultInterval, AUTHENTICATION_FAILURE_RETRY_INTERVAL_MS)
+        : defaultInterval;
+  }
+
   /**
    * Submit a {@link PipeSubtask} to the executor to keep it running. Note that the function will be
    * called when connector starts or the subTask finishes the last round, Thus the {@link
@@ -230,9 +241,47 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       return;
     }
 
+    final long schedulingDelayInMs = getNextSchedulingDelayInMs();
+    if (schedulingDelayInMs > 0) {
+      isSubmitted = true;
+      subtaskWorkerScheduledExecutor.schedule(
+          // Keep the isSubmitted placeholder set before the delayed submission to avoid duplicate
+          // schedules, so the delayed task should not mark it again.
+          () -> submitSelfToWorker(false), schedulingDelayInMs, TimeUnit.MILLISECONDS);
+      return;
+    }
+
+    submitSelfToWorker(true);
+  }
+
+  @Override
+  protected boolean shouldStopSubmittingSelfInCurrentCall() {
+    return peekSchedulingDelayInMs() > 0;
+  }
+
+  private synchronized void submitSelfToWorker(final boolean shouldMarkSubmitted) {
+    if (shouldStopSubmittingSelf.get()) {
+      isSubmitted = false;
+      return;
+    }
+
     final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
     registerCallbackHookAfterSubmit(nextFuture);
-    isSubmitted = true;
+    if (shouldMarkSubmitted) {
+      isSubmitted = true;
+    }
+  }
+
+  private long getNextSchedulingDelayInMs() {
+    return consumeSchedulingDelayInMs();
+  }
+
+  protected long peekSchedulingDelayInMs() {
+    return 0;
+  }
+
+  protected long consumeSchedulingDelayInMs() {
+    return 0;
   }
 
   protected void registerCallbackHookAfterSubmit(final ListenableFuture<Boolean> future) {

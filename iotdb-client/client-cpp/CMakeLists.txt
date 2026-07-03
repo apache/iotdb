@@ -78,7 +78,7 @@ if(NOT MSVC)
     file(WRITE "${_iotdb_cxx11_abi_stamp}" "${_iotdb_cxx11_abi_stamp_value}")
 endif()
 
-option(WITH_SSL "Build with OpenSSL support" OFF)
+option(WITH_SSL "Build with OpenSSL support" ON)
 option(BUILD_TESTING "Build IT test executables" OFF)
 option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
 set(IOTDB_SESSION_VERSION "0.0.0"
@@ -97,7 +97,7 @@ else()
 endif()
 set(BOOST_VERSION "${_iotdb_default_boost_version}"
     CACHE STRING "Boost version used when downloading / unpacking (Thrift build only)")
-set(THRIFT_VERSION "0.21.0"
+set(THRIFT_VERSION "0.23.0"
     CACHE STRING "Apache Thrift version used when downloading / building")
 
 if(WIN32)
@@ -120,6 +120,7 @@ include(FetchBoost)        # -> BOOST_INCLUDE_DIR (Thrift build only)
 include(FetchBuildTools)
 if(WITH_SSL)
     include(FetchOpenSSL)
+    include(InstallOpenSSLRuntime)
 endif()
 include(FetchThrift)
 include(GenerateThriftSources)
@@ -142,6 +143,22 @@ if(UNIX AND NOT APPLE)
     set_target_properties(iotdb_session PROPERTIES
             VERSION "${IOTDB_SESSION_VERSION}"
             SOVERSION "${IOTDB_SESSION_SOVERSION}")
+endif()
+
+# When SSL is on we bundle the OpenSSL shared libraries next to libiotdb_session
+# in the package lib/ directory. Give the library an $ORIGIN-relative runtime
+# search path so the loader finds them without LD_LIBRARY_PATH / install_name
+# tweaks, keeping the SDK self-contained.
+if(WITH_SSL)
+    if(APPLE)
+        set_target_properties(iotdb_session PROPERTIES
+                BUILD_RPATH "@loader_path"
+                INSTALL_RPATH "@loader_path")
+    elseif(UNIX)
+        set_target_properties(iotdb_session PROPERTIES
+                BUILD_RPATH "$ORIGIN"
+                INSTALL_RPATH "$ORIGIN")
+    endif()
 endif()
 
 add_dependencies(iotdb_session iotdb_thrift_external iotdb_thrift_codegen)
@@ -222,6 +239,12 @@ install(TARGETS iotdb_session
         RUNTIME DESTINATION lib
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
+
+# Ship the OpenSSL shared libraries we link against next to iotdb_session so the
+# packaged SDK is self-contained on machines without a system OpenSSL.
+if(WITH_SSL)
+    iotdb_install_openssl_runtime()
+endif()
 
 foreach(_hdr IN LISTS IOTDB_PUBLIC_HEADERS)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/include/${_hdr}"
