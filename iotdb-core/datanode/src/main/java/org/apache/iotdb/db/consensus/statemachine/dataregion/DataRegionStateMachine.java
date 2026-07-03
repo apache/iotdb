@@ -248,7 +248,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
     int retryTime = 0;
     while (retryTime < MAX_WRITE_RETRY_TIMES) {
       result = planNode.accept(new DataExecutionVisitor(), region);
-      if (needRetry(result.getCode())) {
+      // Let pipe retry with the original event instead of retrying a possibly mutated node here.
+      if (needRetry(result.getCode()) && !planNode.isGeneratedByPipe()) {
         retryTime++;
         logger.debug(
             "write operation failed because {}, retryTime: {}.", result.getCode(), retryTime);
