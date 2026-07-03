@@ -267,8 +267,19 @@ public final class DataNodeQueryMessages {
       "左侧值必须是标识符：";
   public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
       "表 '%s' 不包含时间列";
+  public static final String START_TIME_IS_GREATER_THAN_END_TIME =
+      "开始时间 %d 大于结束时间 %d";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
+      "时间谓词的右值必须是 long 类型：";
+  public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_FOR =
+      "时间谓词的操作符必须是 <、<=、> 或 >=：";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "标签谓词的运算符必须为 '='，目标：";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "标签谓词在使用 '=' 操作符时右值不能为 null，请改用 'IS NULL'";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
+      "标签谓词的右值必须是字符串：";
   public static final String THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR =
       "属性谓词的运算符必须为 =, !=, <, <=, >, >=, LIKE 或 IN，目标：";
   public static final String

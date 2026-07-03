@@ -269,8 +269,20 @@ public final class DataNodeQueryMessages {
       "The left hand value must be an identifier: ";
   public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
       "The table '%s' does not contain a time column";
+  public static final String START_TIME_IS_GREATER_THAN_END_TIME =
+      "Start time %d is greater than end time %d";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
+      "The right hand value of time predicate must be a long: ";
+  public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_FOR =
+      "The operator of time predicate must be <, <=, >, or >=: ";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "The operator of tag predicate must be '=' for ";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "The right hand value of tag predicate cannot be null with '=' operator, "
+              + "please use 'IS NULL' instead";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
+      "The right hand value of tag predicate must be a string: ";
   public static final String THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR =
       "The operator of attribute predicate must be =, !=, <, <=, >, >=, LIKE, or IN for ";
   public static final String

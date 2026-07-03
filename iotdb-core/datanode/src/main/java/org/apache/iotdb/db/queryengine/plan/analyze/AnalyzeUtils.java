@@ -572,7 +572,7 @@ public class AnalyzeUtils {
         > predicateParseContext.timeRange.getEndTime()) {
       throw new SemanticException(
           String.format(
-              "Start time %d is greater than end time %d",
+              DataNodeQueryMessages.START_TIME_IS_GREATER_THAN_END_TIME,
               predicateParseContext.timeRange.getStartTime(),
               predicateParseContext.timeRange.getEndTime()));
     }
@@ -754,7 +754,7 @@ public class AnalyzeUtils {
         rightHandValue = ((LongLiteral) right).getParsedValue();
       } else {
         throw new SemanticException(
-            "The right hand value of time predicate must be a long: " + right);
+            DataNodeQueryMessages.THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG + right);
       }
 
       switch (comparisonExpression.getOperator()) {
@@ -778,7 +778,7 @@ public class AnalyzeUtils {
         case IS_DISTINCT_FROM:
         default:
           throw new SemanticException(
-              "The operator of time predicate must be <, <=, >, or >=: " + right);
+              DataNodeQueryMessages.THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_FOR + right);
       }
 
       return PredicateParseResult.time(oldPredicate);
@@ -877,10 +877,11 @@ public class AnalyzeUtils {
       rightHandValue = ((StringLiteral) right).getValue();
     } else if (right instanceof NullLiteral) {
       throw new SemanticException(
-          "The right hand value of tag predicate cannot be null with '=' operator, please use 'IS NULL' instead");
+          DataNodeQueryMessages
+              .THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR);
     } else {
       throw new SemanticException(
-          "The right hand value of tag predicate must be a string: " + right);
+          DataNodeQueryMessages.THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING + right);
     }
     // the first segment is the table name, so + 1
     return new SegmentExactMatch(rightHandValue, tagColumnOrdinal + 1);
