@@ -309,6 +309,16 @@ public class ClusterNodeStartUtils {
           }
         }
         break;
+      case AINode:
+        if (nodeLocation instanceof TAINodeLocation) {
+          updatedTEndPoints =
+              checkUpdatedTEndPointOfAINode(
+                  (TAINodeLocation) nodeLocation, (TAINodeLocation) matchedNodeLocation);
+          if (!updatedTEndPoints.isEmpty()) {
+            acceptRestart = false;
+          }
+        }
+        break;
       case DataNode:
       default:
         if (nodeLocation instanceof TDataNodeLocation) {
@@ -525,6 +535,15 @@ public class ClusterNodeStartUtils {
         .getDataRegionConsensusEndPoint()
         .equals(restartLocation.getDataRegionConsensusEndPoint())) {
       updatedTEndPoints.add(4);
+    }
+    return updatedTEndPoints;
+  }
+
+  public static Set<Integer> checkUpdatedTEndPointOfAINode(
+      TAINodeLocation restartLocation, TAINodeLocation recordLocation) {
+    Set<Integer> updatedTEndPoints = new HashSet<>();
+    if (!recordLocation.getInternalEndPoint().equals(restartLocation.getInternalEndPoint())) {
+      updatedTEndPoints.add(0);
     }
     return updatedTEndPoints;
   }

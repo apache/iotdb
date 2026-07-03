@@ -101,9 +101,11 @@ public class ConsensusManager {
 
   public void start() throws IOException {
     consensusImpl.start();
-    if (SystemPropertiesUtils.isRestarted()) {
+    SystemPropertiesUtils.StartupState startupState = SystemPropertiesUtils.getStartupState();
+    if (startupState == SystemPropertiesUtils.StartupState.RESTART) {
       LOGGER.info(ManagerMessages.INIT_CONSENSUSMANAGER_SUCCESSFULLY_WHEN_RESTARTED);
-    } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
+    } else if (startupState == SystemPropertiesUtils.StartupState.FIRST_START
+        && ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
       // Create ConsensusGroup that contains only itself
       // if the current ConfigNode is Seed-ConfigNode
       try {
@@ -112,13 +114,17 @@ public class ConsensusManager {
                 new TConfigNodeLocation(
                     SEED_CONFIG_NODE_ID,
                     new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))),
+            false);
       } catch (ConsensusException e) {
         LOGGER.error(
             ManagerMessages
                 .SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_CREATELOCALPEER_API,
             e);
+        throw new IOException("Failed to create local ConfigNode consensus peer.", e);
       }
+    } else if (startupState != SystemPropertiesUtils.StartupState.FIRST_START) {
+      throw new IOException("Cannot start ConfigNode consensus from " + startupState + " state.");
     }
     isInitialized = true;
   }
@@ -294,6 +300,12 @@ public class ConsensusManager {
    */
   public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations)
       throws ConsensusException {
+    createPeerForConsensusGroup(configNodeLocations, true);
+  }
+
+  private void createPeerForConsensusGroup(
+      List<TConfigNodeLocation> configNodeLocations, boolean ignoreAlreadyCreated)
+      throws ConsensusException {
     LOGGER.info(ManagerMessages.CREATEPEERFORCONSENSUSGROUP, configNodeLocations);
 
     List<Peer> peerList = new ArrayList<>();
@@ -307,6 +319,9 @@ public class ConsensusManager {
     try {
       consensusImpl.createLocalPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
     } catch (ConsensusGroupAlreadyExistException e) {
+      if (!ignoreAlreadyCreated) {
+        throw e;
+      }
       LOGGER.info("ConfigNode local peer has already been created: {}", e.getMessage());
     }
   }
