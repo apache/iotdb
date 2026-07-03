@@ -257,17 +257,21 @@ if(_iotdb_examples_in_tree AND WITH_SSL AND IOTDB_EXAMPLES_REGISTER_TESTS)
         if(BOOST_INCLUDE_DIR)
             target_include_directories(${_t} PRIVATE "${BOOST_INCLUDE_DIR}")
         endif()
+        file(TO_CMAKE_PATH "${OPENSSL_ROOT_DIR}" _iotdb_openssl_root_dir_cmake)
+        string(REPLACE "\\" "/" _iotdb_openssl_root_dir_fwd "${_iotdb_openssl_root_dir_cmake}")
         if(WIN32)
             file(TO_CMAKE_PATH "${OPENSSL_ROOT_DIR}/bin/openssl.exe" _iotdb_openssl_executable_cmake)
             string(REPLACE "\\" "/" _iotdb_openssl_executable_fwd "${_iotdb_openssl_executable_cmake}")
             target_compile_definitions(${_t} PRIVATE
-                    IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}")
+                    IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}"
+                    IOTDB_OPENSSL_ROOT_DIR="${_iotdb_openssl_root_dir_fwd}")
             target_link_libraries(${_t} PRIVATE ws2_32 "${THRIFT_STATIC_LIB_PATH}")
         else()
             file(TO_CMAKE_PATH "${OPENSSL_ROOT_DIR}/bin/openssl" _iotdb_openssl_executable_cmake)
             string(REPLACE "\\" "/" _iotdb_openssl_executable_fwd "${_iotdb_openssl_executable_cmake}")
             target_compile_definitions(${_t} PRIVATE
-                    IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}")
+                    IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}"
+                    IOTDB_OPENSSL_ROOT_DIR="${_iotdb_openssl_root_dir_fwd}")
             target_link_libraries(${_t} PRIVATE iotdb_thrift_static)
         endif()
     endforeach()
