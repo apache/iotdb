@@ -319,6 +319,18 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
+      double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+      double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     return this;
   }
