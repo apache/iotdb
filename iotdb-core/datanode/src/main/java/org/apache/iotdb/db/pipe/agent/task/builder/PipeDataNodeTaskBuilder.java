@@ -21,11 +21,13 @@ package org.apache.iotdb.db.pipe.agent.task.builder;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeProcessorSubtaskExecutor;
@@ -64,14 +66,11 @@ public class PipeDataNodeTaskBuilder {
   private static final PipeProcessorSubtaskExecutor PROCESSOR_EXECUTOR =
       PipeSubtaskExecutorManager.getInstance().getProcessorExecutor();
 
-  protected final Map<String, String> systemParameters = new HashMap<>();
-
   public PipeDataNodeTaskBuilder(
       final PipeStaticMeta pipeStaticMeta, final int regionId, final PipeTaskMeta pipeTaskMeta) {
     this.pipeStaticMeta = pipeStaticMeta;
     this.regionId = regionId;
     this.pipeTaskMeta = pipeTaskMeta;
-    generateSystemParameters();
   }
 
   public PipeDataNodeTask build() {
@@ -79,10 +78,10 @@ public class PipeDataNodeTaskBuilder {
 
     // Analyzes the PipeParameters to identify potential conflicts.
     final PipeParameters sourceParameters =
-        blendUserAndSystemParameters(pipeStaticMeta.getExtractorParameters());
+        blendUserAndSystemParameters(pipeStaticMeta.getExtractorParameters(), pipeTaskMeta);
     final PipeParameters sinkParameters =
-        blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters());
-    checkConflict(sourceParameters, sinkParameters);
+        blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters(), pipeTaskMeta);
+    preprocessParameters(sourceParameters, sinkParameters);
 
     // We first build the source and sink, then build the processor.
     final PipeTaskSourceStage sourceStage =
@@ -121,7 +120,7 @@ public class PipeDataNodeTaskBuilder {
         new PipeTaskProcessorStage(
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
-            blendUserAndSystemParameters(pipeStaticMeta.getProcessorParameters()),
+            blendUserAndSystemParameters(pipeStaticMeta.getProcessorParameters(), pipeTaskMeta),
             regionId,
             sourceStage.getEventSupplier(),
             sinkStage.getPipeSinkPendingQueue(),
@@ -139,22 +138,25 @@ public class PipeDataNodeTaskBuilder {
         pipeStaticMeta.getPipeName(), regionId, sourceStage, processorStage, sinkStage);
   }
 
-  private void generateSystemParameters() {
-    if (!(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
-        || pipeTaskMeta.isNewlyAdded()) {
-      systemParameters.put(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.TRUE.toString());
-    }
-  }
-
-  private PipeParameters blendUserAndSystemParameters(final PipeParameters userParameters) {
+  public static PipeParameters blendUserAndSystemParameters(
+      final PipeParameters userParameters, final PipeTaskMeta pipeTaskMeta) {
     // Deep copy the user parameters to avoid modification of the original parameters.
     // If the original parameters are modified, progress index report will be affected.
     final Map<String, String> blendedParameters = new HashMap<>(userParameters.getAttribute());
-    blendedParameters.putAll(systemParameters);
+    if (!(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
+        || pipeTaskMeta.isNewlyAdded()) {
+      blendedParameters.put(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.TRUE.toString());
+    }
     return new PipeParameters(blendedParameters);
   }
 
-  private void checkConflict(
+  public static void preprocessParameters(
+      final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
+    checkConflict(sourceParameters, sinkParameters);
+    injectParameters(sourceParameters, sinkParameters);
+  }
+
+  private static void checkConflict(
       final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair;
     final boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
@@ -218,6 +220,32 @@ public class PipeDataNodeTaskBuilder {
         LOGGER.warn(
             "PipeDataNodeTaskBuilder: When the realtime sync is enabled, not enabling the rate limiter in sending tsfile may introduce delay for realtime sending.");
       }
+    }
+  }
+
+  private static void injectParameters(
+      final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
+    final boolean isSourceExternal =
+        !BuiltinPipePlugin.BUILTIN_SOURCES.contains(
+            sourceParameters
+                .getStringOrDefault(
+                    Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                .toLowerCase());
+
+    final String sinkPluginName =
+        sinkParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+    final boolean isWriteBackSink =
+        BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName().equals(sinkPluginName)
+            || BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName().equals(sinkPluginName);
+
+    if (isSourceExternal && isWriteBackSink) {
+      sinkParameters.addAttribute(
+          PipeSinkConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY, Boolean.TRUE.toString());
     }
   }
 }
