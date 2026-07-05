@@ -1206,7 +1206,7 @@ public class Analysis implements IAnalysis {
           ImmutableMap.copyOf(
               requireNonNull(
                   lateralColumnAliasReferences,
-                  DataNodeQueryMessages.EXCEPTION_LATERALCOLUMNALIYREFERENCES_IS_NULL_0CC58C78));
+                  DataNodeQueryMessages.EXCEPTION_LATERALCOLUMNALIASREFERENCES_IS_NULL_0CC58C78));
     }
 
     public Expression getExpression() {
