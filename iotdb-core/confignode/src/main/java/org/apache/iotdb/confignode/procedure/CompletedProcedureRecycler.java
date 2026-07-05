@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 
@@ -33,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(CompletedProcedureRecycler.class);
   private static final int DEFAULT_BATCH_SIZE = 8;
-  private final long evictTTL;
+  private final long evictTTLInMs;
   private final Map<Long, CompletedProcedureContainer<Env>> completed;
   private final IProcedureStore<Env> store;
 
@@ -45,7 +46,14 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
     super(TimeUnit.SECONDS.toMillis(cleanTimeInterval));
     this.completed = completedMap;
     this.store = store;
-    this.evictTTL = evictTTL;
+    // evictTTL is configured in seconds, but isExpired compares it against a
+    // System.currentTimeMillis() delta, so it must be converted to milliseconds here.
+    this.evictTTLInMs = TimeUnit.SECONDS.toMillis(evictTTL);
+  }
+
+  @TestOnly
+  long getEvictTTLInMs() {
+    return evictTTLInMs;
   }
 
   @Override
@@ -67,7 +75,7 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
       final Map.Entry<Long, CompletedProcedureContainer<Env>> entry = it.next();
       final CompletedProcedureContainer<Env> retainer = entry.getValue();
       final Procedure<?> proc = retainer.getProcedure();
-      if (retainer.isExpired(now, evictTTL)) {
+      if (retainer.isExpired(now, evictTTLInMs)) {
         // Failed procedures aren't persisted in WAL.
         batchIds[batchCount++] = entry.getKey();
         if (batchCount == batchIds.length) {

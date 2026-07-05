@@ -553,7 +553,10 @@ public class IoTDBConnection implements Connection {
               params.getPort(),
               getNetworkTimeout(),
               params.getTrustStore(),
-              params.getTrustStorePwd());
+              params.getTrustStorePwd(),
+              params.getKeyStore(),
+              params.getKeyStorePwd(),
+              params.getSslProtocol());
     } else {
       transport =
           DeepCopyRpcTransportFactory.INSTANCE.getTransport(

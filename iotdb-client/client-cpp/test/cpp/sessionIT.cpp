@@ -28,6 +28,7 @@
 #include "common_types.h"
 
 #include <atomic>
+#include <stdexcept>
 #include <thread>
 
 using namespace std;
@@ -367,6 +368,30 @@ TEST_CASE("Test insertRecordsOfOneDevice", "[testInsertRecordsOfOneDevice]") {
     count++;
   }
   REQUIRE(count == 100);
+}
+
+TEST_CASE("Tablet index bounds", "[tabletBounds]") {
+  CaseReporter cr("tabletBounds");
+  vector<pair<string, TSDataType::TSDataType>> schemaList;
+  schemaList.emplace_back("s1", TSDataType::INT64);
+  Tablet tablet("root.test.d1", schemaList, 10);
+  tablet.addTimestamp(0, 1);
+  tablet.addValue(0, 0, static_cast<int64_t>(100));
+
+  REQUIRE_THROWS_AS(tablet.addTimestamp(10, 11), out_of_range);
+  REQUIRE_THROWS_AS(tablet.addValue(1, 0, static_cast<int64_t>(1)), out_of_range);
+  REQUIRE_THROWS_AS(tablet.addValue(0, 100, static_cast<int64_t>(1)), out_of_range);
+}
+
+TEST_CASE("Session rejects SQL after close", "[sessionClose]") {
+  CaseReporter cr("sessionClose");
+  SessionBuilder builder;
+  auto localSession =
+      builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
+  localSession->open();
+  localSession->close();
+  REQUIRE_THROWS_AS(localSession->executeNonQueryStatement("show databases"),
+                    IoTDBConnectionException);
 }
 
 TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
@@ -1036,4 +1061,32 @@ TEST_CASE("SessionPool getSession times out when exhausted", "[sessionPool]") {
   REQUIRE(static_cast<bool>(reused));
   reused.release();
   pool->close();
+}
+
+TEST_CASE("Query DATE 1000-01-01", "[dateMinYear]") {
+  CaseReporter cr("dateMinYear");
+  const string timeseries = "root.test.d1.s_date_min";
+  if (session->checkTimeseriesExists(timeseries)) {
+    session->deleteTimeseries(timeseries);
+  }
+  session->createTimeseries(timeseries, TSDataType::DATE, TSEncoding::PLAIN,
+                            CompressionType::SNAPPY);
+
+  const string deviceId = "root.test.d1";
+  const vector<string> measurements = {"s_date_min"};
+  const vector<TSDataType::TSDataType> types = {TSDataType::DATE};
+  const IoTDBDate dateValue(1000, 1, 1);
+  vector<char*> values = {const_cast<char*>(reinterpret_cast<const char*>(&dateValue))};
+  session->insertRecord(deviceId, 1000LL, measurements, types, values);
+
+  unique_ptr<SessionDataSet> sessionDataSet =
+      session->executeQueryStatement("select s_date_min from root.test.d1 where time=1000");
+  REQUIRE(sessionDataSet->hasNext());
+  auto record = sessionDataSet->next();
+  REQUIRE(record->fields.size() == 1);
+  REQUIRE_FALSE(record->fields[0].isNull());
+  REQUIRE(record->fields[0].dateV.value() == dateValue);
+  REQUIRE(record->fields[0].dateV.value().toIsoExtendedString() == "1000-01-01");
+
+  session->deleteTimeseries(timeseries);
 }

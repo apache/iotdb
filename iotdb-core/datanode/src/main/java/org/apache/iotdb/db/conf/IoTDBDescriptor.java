@@ -28,8 +28,10 @@ import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
@@ -37,7 +39,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
-import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -372,7 +373,8 @@ public class IoTDBDescriptor {
     try {
       conf.checkMultiDirStrategyClassName();
     } catch (Exception e) {
-      conf.setMultiDirStrategyClassName(oldMultiDirStrategyClassName.trim());
+      conf.setMultiDirStrategyClassName(
+          oldMultiDirStrategyClassName == null ? null : oldMultiDirStrategyClassName.trim());
       throw e;
     }
 
@@ -1288,6 +1290,12 @@ public class IoTDBDescriptor {
                 "region_migration_speed_limit_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "region_migration_speed_limit_bytes_per_second"))));
+    conf.setDataRegionIotSnapshotTransmissionProgressLogIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_iot_snapshot_transmission_progress_log_interval_ms",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "data_region_iot_snapshot_transmission_progress_log_interval_ms"))));
     conf.setKeepSameDiskWhenLoadingSnapshot(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -2110,7 +2118,6 @@ public class IoTDBDescriptor {
 
   public synchronized void loadHotModifiedProps(TrimProperties properties)
       throws QueryProcessException, IOException {
-    ConfigurationFileUtils.updateAppliedProperties(properties, true);
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
@@ -2200,6 +2207,12 @@ public class IoTDBDescriptor {
       // update load config
       loadLoadTsFileHotModifiedProp(properties);
 
+      // update CQ semantic-check config pushed from ConfigNode
+      loadCqMinEveryIntervalInMs(properties);
+
+      // update query routing consistency config pushed from ConfigNode
+      loadReadConsistencyLevel(properties);
+
       // update pipe config
       loadPipeHotModifiedProp(properties);
 
@@ -2243,6 +2256,12 @@ public class IoTDBDescriptor {
       } else {
         BinaryAllocator.getInstance().close(true);
       }
+
+      // update disk_space_warning_threshold; also refresh the static copy in JVMCommonUtils that
+      // the ReadOnly disk guard reads, otherwise the new threshold would not take effect until
+      // restart. Parsing / validation is shared with the ConfigNode hot-reload path.
+      JVMCommonUtils.setDiskSpaceWarningThreshold(
+          commonDescriptor.loadHotModifiedDiskSpaceWarningThreshold(properties));
 
       commonDescriptor
           .getConfig()
@@ -2324,6 +2343,7 @@ public class IoTDBDescriptor {
         conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
       }
 
+      ConfigurationFileUtils.updateAppliedProperties(properties, true);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2511,6 +2531,9 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
@@ -2645,6 +2668,9 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(
@@ -2823,6 +2849,34 @@ public class IoTDBDescriptor {
             false));
   }
 
+  private void loadCqMinEveryIntervalInMs(TrimProperties properties) throws IOException {
+    long cqMinEveryIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "continuous_query_min_every_interval_in_ms",
+                String.valueOf(conf.getCqMinEveryIntervalInMs())));
+    if (cqMinEveryIntervalInMs <= 0) {
+      throw new IOException(
+          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is "
+              + cqMinEveryIntervalInMs
+              + ".");
+    }
+    conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
+  }
+
+  private void loadReadConsistencyLevel(TrimProperties properties) throws IOException {
+    String readConsistencyLevel =
+        properties.getProperty(
+            "read_consistency_level", conf.getReadConsistencyLevel().name().toLowerCase());
+    if (!"strong".equals(readConsistencyLevel) && !"weak".equals(readConsistencyLevel)) {
+      throw new IOException(
+          String.format(
+              "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+              readConsistencyLevel));
+    }
+    conf.setReadConsistencyLevel(readConsistencyLevel);
+  }
+
   public void loadClusterProps(TrimProperties properties) throws IOException {
     String configNodeUrls = properties.getProperty(IoTDBConstant.DN_SEED_CONFIG_NODE);
     if (configNodeUrls == null) {
@@ -2979,6 +3033,17 @@ public class IoTDBDescriptor {
     conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
     conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
     conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
+
+    // Optional fields: an old ConfigNode (rolling upgrade) will not set them, in which case the
+    // DataNode keeps its local default instead of overwriting it with 0.
+    if (ratisConfig.isSetDataReconfigurationMaxRetryAttempts()) {
+      conf.setDataRatisConsensusReconfigurationMaxRetryAttempts(
+          ratisConfig.getDataReconfigurationMaxRetryAttempts());
+    }
+    if (ratisConfig.isSetSchemaReconfigurationMaxRetryAttempts()) {
+      conf.setSchemaRatisConsensusReconfigurationMaxRetryAttempts(
+          ratisConfig.getSchemaReconfigurationMaxRetryAttempts());
+    }
 
     conf.setDataRatisConsensusPreserveWhenPurge(ratisConfig.getDataPreserveWhenPurge());
     conf.setSchemaRatisConsensusPreserveWhenPurge(ratisConfig.getSchemaPreserveWhenPurge());

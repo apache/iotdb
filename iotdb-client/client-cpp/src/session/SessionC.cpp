@@ -18,6 +18,7 @@
  */
 
 #include "SessionC.h"
+#include "Date.h"
 #include "Session.h"
 #include "TableSession.h"
 #include "TableSessionBuilder.h"
@@ -25,11 +26,12 @@
 #include "SessionDataSet.h"
 
 #include <cstring>
-#include <string>
-#include <vector>
 #include <map>
-#include <unordered_map>
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 /* ============================================================
  *  Internal wrapper structs — the opaque handles point to these
@@ -85,6 +87,10 @@ static TsStatus handleException(const std::exception& e) {
       dynamic_cast<const StatementExecutionException*>(&e) ||
       dynamic_cast<const BatchExecutionException*>(&e)) {
     return setError(TS_ERR_EXECUTION, e);
+  }
+  if (dynamic_cast<const std::out_of_range*>(&e) ||
+      dynamic_cast<const std::invalid_argument*>(&e)) {
+    return setError(TS_ERR_INVALID_PARAM, e);
   }
 #endif
   return setError(TS_ERR_UNKNOWN, e);
@@ -184,6 +190,12 @@ static std::vector<char*> toCharPtrVec(const TSDataType_C* types, const void* co
       result[i] = reinterpret_cast<char*>(p);
       break;
     }
+    case TS_TYPE_DATE: {
+      const TSDate_C* src = static_cast<const TSDate_C*>(values[i]);
+      IoTDBDate* p = new IoTDBDate(src->year, src->month, src->day);
+      result[i] = reinterpret_cast<char*>(p);
+      break;
+    }
     case TS_TYPE_TEXT:
     case TS_TYPE_STRING:
     case TS_TYPE_BLOB:
@@ -218,6 +230,9 @@ static void freeCharPtrVec(std::vector<char*>& vec, const TSDataType_C* types, i
       break;
     case TS_TYPE_DOUBLE:
       delete reinterpret_cast<double*>(vec[i]);
+      break;
+    case TS_TYPE_DATE:
+      delete reinterpret_cast<IoTDBDate*>(vec[i]);
       break;
     default:
       delete[] vec[i];
@@ -668,7 +683,10 @@ TsStatus ts_tablet_set_row_count(CTablet* tablet, int rowCount) {
   clearError();
   if (!tablet)
     return setError(TS_ERR_NULL_PTR, "tablet is null");
-  tablet->cpp.rowSize = rowCount;
+  if (rowCount < 0 || static_cast<size_t>(rowCount) > tablet->cpp.maxRowNumber) {
+    return setError(TS_ERR_INVALID_PARAM, "rowCount out of range [0, maxRowNumber]");
+  }
+  tablet->cpp.rowSize = static_cast<size_t>(rowCount);
   return TS_OK;
 }
 
@@ -1469,6 +1487,31 @@ const char* ts_row_record_get_string(CRowRecord* record, int index) {
     return g_stringBuf.c_str();
   }
   return "";
+}
+
+int32_t ts_row_record_get_date_int32(CRowRecord* record, int index) {
+  if (!record || !record->cpp)
+    return 0;
+  if (index < 0 || index >= (int)record->cpp->fields.size())
+    return 0;
+  const Field& f = record->cpp->fields[index];
+  if (f.dataType != TSDataType::DATE || !f.dateV.is_initialized() ||
+      f.dateV.value().is_not_a_date()) {
+    return 0;
+  }
+  return parseDateExpressionToInt(f.dateV.value());
+}
+
+size_t ts_row_record_get_string_byte_length(CRowRecord* record, int index) {
+  if (!record || !record->cpp)
+    return 0;
+  if (index < 0 || index >= (int)record->cpp->fields.size())
+    return 0;
+  const Field& f = record->cpp->fields[index];
+  if (f.stringV.is_initialized()) {
+    return f.stringV.value().size();
+  }
+  return 0;
 }
 
 TSDataType_C ts_row_record_get_data_type(CRowRecord* record, int index) {

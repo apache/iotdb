@@ -34,6 +34,9 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.TableSessionBuilder;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.common.ImportTsFileOperation;
 
@@ -94,6 +97,9 @@ public abstract class AbstractDataTool {
   protected static Boolean useSsl;
   protected static String trustStore;
   protected static String trustStorePwd;
+  protected static String keyStore;
+  protected static String keyStorePwd;
+  protected static String sslProtocol;
   protected static Boolean aligned;
   protected static String database;
   protected static String startTime;
@@ -134,6 +140,50 @@ public abstract class AbstractDataTool {
 
   protected AbstractDataTool() {}
 
+  protected static Session.Builder configureSsl(Session.Builder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
+  protected static SessionPool.Builder configureSsl(SessionPool.Builder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
+  protected static TableSessionBuilder configureSsl(TableSessionBuilder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
+  protected static TableSessionPoolBuilder configureSsl(TableSessionPoolBuilder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
   protected static String checkRequiredArg(
       String arg, String name, CommandLine commandLine, String defaultValue)
       throws ArgsErrorException {
@@ -170,6 +220,7 @@ public abstract class AbstractDataTool {
     String useSslStr = commandLine.getOptionValue(Constants.USE_SSL_ARGS);
     useSsl = Boolean.parseBoolean(useSslStr);
     if (useSsl) {
+      sslProtocol = commandLine.getOptionValue(Constants.SSL_PROTOCOL_ARGS);
       String givenTS = commandLine.getOptionValue(Constants.TRUST_STORE_ARGS);
       if (givenTS != null) {
         trustStore = givenTS;
@@ -181,6 +232,13 @@ public abstract class AbstractDataTool {
         trustStorePwd = givenTPW;
       } else {
         trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+      }
+      keyStore = commandLine.getOptionValue(Constants.KEY_STORE_ARGS);
+      keyStorePwd = commandLine.getOptionValue(Constants.KEY_STORE_PWD_ARGS);
+      if (keyStore != null && keyStorePwd == null) {
+        keyStorePwd = cliCtx.getLineReader().readLine("please input your key_store_pwd:", '\0');
+      } else if (keyStore == null && keyStorePwd != null) {
+        keyStore = cliCtx.getLineReader().readLine("please input your key_store:", '\0');
       }
     }
     boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);

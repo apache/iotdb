@@ -175,8 +175,7 @@ public class IoTDBLegacyPipeReceiverAgent {
                   false,
                   false);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
+          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         LOGGER.error(
             DataNodePipeMessages.CREATE_DATABASE_ERROR_STATEMENT_RESULT_STATUS,
             statement,

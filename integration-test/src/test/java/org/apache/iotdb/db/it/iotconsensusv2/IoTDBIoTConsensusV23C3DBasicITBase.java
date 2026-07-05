@@ -342,11 +342,12 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
           // Restart the stopped node before moving to the next iteration
           LOGGER.info("Restarting {}", stoppedDesc);
           stoppedNode.start();
-          // Wait for the restarted node to rejoin
-          Awaitility.await()
-              .atMost(120, TimeUnit.SECONDS)
-              .pollInterval(2, TimeUnit.SECONDS)
-              .until(stoppedNode::isAlive);
+          // Wait for the restarted node to actually be able to serve queries again, not just for
+          // its process to be up. The next loop iteration will treat this node as a surviving node
+          // and connect to it, so if we only waited for isAlive() (process started) the node might
+          // still be in startup (RPC port not yet open / not registered), causing a spurious
+          // "Connection refused" failure.
+          waitUntilDataNodeQueryable(stoppedNode, stoppedDesc);
         }
       }
 
@@ -354,6 +355,43 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
           "DELETE TIMESERIES replica consistency test passed for mode: {}",
           getIoTConsensusV2Mode());
     }
+  }
+
+  /**
+   * Wait until the given DataNode can actually serve queries again after a restart. A node's
+   * process being alive ({@link DataNodeWrapper#isAlive()}) does not mean its client RPC service is
+   * open and it has rejoined the cluster, so we poll a real connection plus a trivial query until
+   * it succeeds.
+   */
+  private void waitUntilDataNodeQueryable(DataNodeWrapper node, String nodeDesc) {
+    Awaitility.await()
+        .atMost(120, TimeUnit.SECONDS)
+        .pollDelay(1, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              if (!node.isAlive()) {
+                return false;
+              }
+              try (Connection conn =
+                      EnvFactory.getEnv()
+                          .getConnection(
+                              node,
+                              SessionConfig.DEFAULT_USER,
+                              SessionConfig.DEFAULT_PASSWORD,
+                              BaseEnv.TREE_SQL_DIALECT);
+                  Statement stmt = conn.createStatement();
+                  ResultSet rs = stmt.executeQuery(SHOW_TIMESERIES_D1)) {
+                // Drain the result set to make sure the query fully executes.
+                while (rs.next()) {
+                  // no-op
+                }
+                return true;
+              } catch (Exception e) {
+                LOGGER.info("{} not queryable yet, retrying: {}", nodeDesc, e.getMessage());
+                return false;
+              }
+            });
   }
 
   /**

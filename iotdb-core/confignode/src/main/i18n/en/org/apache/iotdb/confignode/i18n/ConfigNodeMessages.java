@@ -79,6 +79,13 @@ public final class ConfigNodeMessages {
   public static final String CONFIGNODE_EXITING = "ConfigNode exiting...";
   public static final String CONFIGNODE_NEED_REDIRECT_TO_RETRY =
       "ConfigNode need redirect to  {}, retry {} ...";
+  public static final String CONFIGNODE_MEMORY_PROPORTION_SHOULD_BE_IN_THE_FORM_OF_PIPE_FREE =
+      "The parameter confignode_memory_proportion should be in the form of Pipe:Free, "
+          + "but got {}. Use default value 1:9.";
+  public static final String INITIAL_CONFIGNODE_ALLOCATE_MEMORY_FOR_PIPE =
+      "initial ConfigNode allocateMemoryForPipe = {}";
+  public static final String INITIAL_CONFIGNODE_FREE_MEMORY =
+      "initial ConfigNode freeMemory = {}";
   public static final String CONFIGNODE_PORT_CHECK_SUCCESSFUL = "configNode port check successful.";
   public static final String CONFIGNODE_RPC_SERVICE_FINISHED_TO_REMOVE_AINODE_RESULT =
       "ConfigNode RPC Service finished to remove AINode, result: {}";
@@ -216,6 +223,9 @@ public final class ConfigNodeMessages {
       "Failed to drop trigger [%s], this trigger has not been created";
   public static final String FAILED_TO_DROP_UDF_THIS_UDF_HAS_NOT_BEEN_CREATED =
       "Failed to drop UDF [%s], this UDF has not been created";
+  public static final String
+      FAILED_TO_ENRICH_PIPE_WITH_ROOT_USER_FOR_COMPATIBILITY_BECAUSE_ROOT_USER_DOES_NOT_EXIST =
+          "Failed to enrich pipe %s with root user for compatibility because root user %s does not exist.";
   public static final String FAILED_TO_FETCH_SCHEMAENGINE_BLACK_LIST_ON_DATANODE =
       "Failed to fetch schemaengine black list on DataNode {}, {}";
   public static final String FAILED_TO_GET_FIELD = "Failed to get field {}";
@@ -503,6 +513,14 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_DROP_PIPE_BECAUSE = "Failed to drop pipe, because ";
   public static final String FAILED_TO_ALTER_PIPE_BECAUSE = "Failed to alter pipe, because ";
   public static final String FAILED_TO_CREATE_MULTIPLE_PIPES_BECAUSE = "Failed to create multiple pipes, because ";
+  public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
+      "Failed to start pipe %s, the pipe does not exist";
+  public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
+      "Failed to start pipe %s, the pipe is already dropped";
+  public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
+      "Failed to stop pipe %s, the pipe does not exist";
+  public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
+      "Failed to stop pipe %s, the pipe is already dropped";
   public static final String FAILED_TO_HANDLE_LEADER_CHANGE_BECAUSE = "Failed to handle leader change, because ";
   public static final String FAILED_TO_HANDLE_META_CHANGES_BECAUSE = "Failed to handle meta changes, because ";
   public static final String GET_PIPEPLUGIN_JAR_FAILED_BECAUSE = "Get PipePlugin_Jar failed, because ";

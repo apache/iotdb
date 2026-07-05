@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.Singl
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -40,6 +41,7 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
   private final long timeout;
   private final Symbol outputSymbol;
   private final List<Symbol> childPermittedOutputs;
+  private final ExplainOutputFormat outputFormat;
 
   public ExplainAnalyzeNode(
       PlanNodeId id,
@@ -49,18 +51,46 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
       long timeout,
       Symbol outputSymbol,
       List<Symbol> childPermittedOutputs) {
+    this(
+        id,
+        child,
+        verbose,
+        queryId,
+        timeout,
+        outputSymbol,
+        childPermittedOutputs,
+        ExplainOutputFormat.TEXT);
+  }
+
+  public ExplainAnalyzeNode(
+      PlanNodeId id,
+      PlanNode child,
+      boolean verbose,
+      long queryId,
+      long timeout,
+      Symbol outputSymbol,
+      List<Symbol> childPermittedOutputs,
+      ExplainOutputFormat outputFormat) {
     super(id, child);
     this.verbose = verbose;
     this.timeout = timeout;
     this.queryId = queryId;
     this.outputSymbol = outputSymbol;
     this.childPermittedOutputs = childPermittedOutputs;
+    this.outputFormat = outputFormat;
   }
 
   @Override
   public PlanNode clone() {
     return new ExplainAnalyzeNode(
-        getPlanNodeId(), child, verbose, queryId, timeout, outputSymbol, childPermittedOutputs);
+        getPlanNodeId(),
+        child,
+        verbose,
+        queryId,
+        timeout,
+        outputSymbol,
+        childPermittedOutputs,
+        outputFormat);
   }
 
   @Override
@@ -91,7 +121,8 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
         queryId,
         timeout,
         outputSymbol,
-        childPermittedOutputs);
+        childPermittedOutputs,
+        outputFormat);
   }
 
   // ExplainAnalyze should be at the same region as Coordinator all the time. Therefore, there will
@@ -118,6 +149,10 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
 
   public long getTimeout() {
     return timeout;
+  }
+
+  public ExplainOutputFormat getOutputFormat() {
+    return outputFormat;
   }
 
   @Override

@@ -19,13 +19,10 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.constructor;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-
-import java.util.Arrays;
 
 public abstract class PipeSinkConstructor extends PipePluginConstructor {
 
@@ -41,10 +38,7 @@ public abstract class PipeSinkConstructor extends PipePluginConstructor {
   public final PipeConnector reflectPlugin(PipeParameters connectorParameters) {
     return (PipeConnector)
         reflectPluginByKey(
-            connectorParameters
-                .getStringOrDefault(
-                    Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
-                    BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+            PipeSinkConstant.getConnectorOrSinkNameWithDefault(connectorParameters)
                 // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
                 // `PLUGIN_CONSTRUCTORS`
                 .toLowerCase());

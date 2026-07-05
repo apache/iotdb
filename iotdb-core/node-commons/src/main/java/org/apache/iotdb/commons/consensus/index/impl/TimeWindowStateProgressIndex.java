@@ -30,6 +30,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -281,16 +282,7 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
         continue;
       }
       final byte[] body = new byte[length];
-      final int readLen = stream.read(body);
-      if (readLen != length) {
-        throw new IOException(
-            String.format(
-                CommonMessages
-                    .EXCEPTION_INTENDED_READ_LENGTH_ARG_BUT_ARG_ACTUALLY_READ_DESERIALIZING_TIMEPROGRESSINDEX_63CD54E4,
-                length,
-                readLen,
-                timeWindowStateProgressIndex));
-      }
+      new DataInputStream(stream).readFully(body);
       final ByteBuffer dstBuffer = ByteBuffer.wrap(body);
       timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(
           timeSeries, new Pair<>(timestamp, dstBuffer));

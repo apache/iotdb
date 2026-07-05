@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphJsonPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -107,11 +109,15 @@ public class TableDistributedPlanner {
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
     List<String> planText = null;
     if (mppQueryContext.isExplain() && mppQueryContext.isInnerTriggeredQuery()) {
-      planText =
-          outputNodeWithExchange.accept(
-              new PlanGraphPrinter(),
-              new PlanGraphPrinter.GraphContext(
-                  mppQueryContext.getTypeProvider().getTemplatedInfo()));
+      if (mppQueryContext.getExplainOutputFormat() == ExplainOutputFormat.JSON) {
+        planText = PlanGraphJsonPrinter.getJsonLines(outputNodeWithExchange);
+      } else {
+        planText =
+            outputNodeWithExchange.accept(
+                new PlanGraphPrinter(),
+                new PlanGraphPrinter.GraphContext(
+                    mppQueryContext.getTypeProvider().getTemplatedInfo()));
+      }
     }
 
     if (analysis.isQuery()) {

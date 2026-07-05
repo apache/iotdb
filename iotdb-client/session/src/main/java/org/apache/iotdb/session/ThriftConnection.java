@@ -78,6 +78,9 @@ public class ThriftConnection {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol,
       String username,
       String password,
       boolean enableRPCCompression,
@@ -94,7 +97,10 @@ public class ThriftConnection {
                 endPoint.getPort(),
                 connectionTimeoutInMs,
                 trustStore,
-                trustStorePwd);
+                trustStorePwd,
+                keyStore,
+                keyStorePwd,
+                sslProtocol);
       } else {
         transport =
             DeepCopyRpcTransportFactory.INSTANCE.getTransport(

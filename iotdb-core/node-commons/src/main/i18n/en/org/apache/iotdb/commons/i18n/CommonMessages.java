@@ -69,6 +69,14 @@ public final class CommonMessages {
   // --- subscription ---
   public static final String CONFIG_PRINT = "{}: {}";
 
+  // --- partition ---
+  public static final String DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED =
+      "Database %s not exists and failed to create automatically because enable_auto_create_schema is FALSE.";
+  public static final String DATA_PARTITION_EMPTY =
+      "Data partition is empty. device: %s, seriesSlot: %s, database: %s";
+  public static final String TARGET_REGION_LIST_EMPTY =
+      "targetRegionList is empty. device: %s, timeSlot: %s";
+
   // --- concurrent ---
   public static final String EXCEPTION_IN_THREAD = "Exception in thread {}-{}";
   public static final String INTERRUPTED_WHILE_AWAITING = "Interrupted while awaiting condition";

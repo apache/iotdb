@@ -445,6 +445,11 @@ public final class ProcedureMessages {
       "Failed to push topic meta to dataNodes, details: %s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =
       "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication";
+
+  public static final String FAILED_TO_REMOVE_DATA_NODE_WOULD_LEAVE_TOO_FEW =
+      "Cannot remove %d DataNode(s): the cluster has %d available DataNode(s) and must retain at least %d of them (max(schema_replication_factor=%d, data_replication_factor=%d)) so that every region keeps enough replicas, but this request would leave only %d.";
+  public static final String FAILED_TO_REMOVE_DATA_NODE_SINGLE_REPLICA_HINT =
+      " With a single replica there is nowhere to migrate regions to, so at least one DataNode must always remain.";
   public static final String FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
       "Failed to rollback alter pipe {}, details: {}, metadata will be synchronized later.";
   public static final String FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =
@@ -611,6 +616,16 @@ public final class ProcedureMessages {
   public static final String PID_ADDREGION_STATE_FAILED = "[pid{}][AddRegion] state {} failed";
   public static final String PID_ADDREGION_SUCCESS_HAS_BEEN_ADDED_TO_DATANODE_PROCEDURE_TOOK =
       "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).";
+  public static final String PID_REMOVEREGIONGROUP_STARTED_WILL_BE_DELETED =
+      "[pid{}][RemoveRegionGroup] started, region group {} will be deleted from DataNodes {}.";
+  public static final String PID_REMOVEREGIONGROUP_STARTED_REPLICA_WILL_BE_DELETED_FROM_DATANODE =
+      "[pid{}][RemoveRegionGroup] region {} will be deleted from DataNode {}.";
+  public static final String PID_REMOVEREGIONGROUP_STATE_FAILED =
+      "[pid{}][RemoveRegionGroup] state {} failed";
+  public static final String PID_REMOVEREGIONGROUP_DELETE_REPLICA_FAILED =
+      "[pid{}][RemoveRegionGroup] failed to delete a replica of region {} (attempt {}), will keep retrying until it is deleted. reason: {}";
+  public static final String PID_REMOVEREGIONGROUP_SUCCESS_PROCEDURE_TOOK =
+      "[pid{}][RemoveRegionGroup] success, region group {} has been deleted. Procedure took {} (started at {}).";
   public static final String PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO =
       "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.";
   public static final String PID_MIGRATEREGION_STATE_COMPLETE =
@@ -996,7 +1011,7 @@ public final class ProcedureMessages {
   public static final String VALIDATE_TABLE_FOR_TABLE_WHEN_SETTING_PROPERTIES =
       "Validate table for table {}.{} when setting properties";
   public static final String WAITTASKFINISH_RETURNS_PROCESSING_WHICH_MEANS_THE_WAITING_HAS_BEEN_INTERRUPTED =
-      "waitTaskFinish() returns PROCESSING, which means the waiting has been interrupted, this procedure will end without rollback";
+      "waitTaskFinish() returns PROCESSING, which means the waiting has been interrupted (ConfigNode shutdown or leader change); the AddRegionPeer task is still running on the coordinator, this procedure will stay at DO_ADD_REGION_PEER and resume polling after recovery";
 
     public static final String FAILED_TO_CREATE_DATABASE_THE_TTL_SHOULD_BE_NON_NEGATIVE = "Failed to create database. The TTL should be non-negative.";
   public static final String FAILED_TO_CREATE_DATABASE_THE_DATAREGIONGROUPNUM_SHOULD_BE_POSITIVE = "Failed to create database. The dataRegionGroupNum should be positive.";

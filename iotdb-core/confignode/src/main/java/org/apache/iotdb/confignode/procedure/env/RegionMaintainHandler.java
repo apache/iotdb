@@ -36,7 +36,9 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -80,8 +82,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
@@ -89,6 +89,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY;
+import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
@@ -360,10 +361,26 @@ public class RegionMaintainHandler {
 
   // TODO: will use 'procedure yield' to refactor later
   public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
+    return waitTaskFinish(taskId, dataNodeLocation, null);
+  }
+
+  /**
+   * Poll the coordinator DataNode until the region-maintain task identified by {@code taskId}
+   * reaches a terminal state.
+   *
+   * @param killPoint if non-null, fired once right after the first poll confirms the task is still
+   *     PROCESSING. At that point the worker thread is provably blocked inside this method, so
+   *     tests can use the kill point to deterministically interrupt the wait (e.g. by gracefully
+   *     stopping the ConfigNode leader) and exercise the interrupted-PROCESSING path. It is a no-op
+   *     outside integration tests.
+   */
+  public <T extends Enum<T>> TRegionMigrateResult waitTaskFinish(
+      long taskId, TDataNodeLocation dataNodeLocation, T killPoint) {
     final long MAX_DISCONNECTION_TOLERATE_MS = 600_000;
     final long INITIAL_DISCONNECTION_TOLERATE_MS = 60_000;
     long startTime = System.nanoTime();
     long lastReportTime = System.nanoTime();
+    boolean killPointTriggered = false;
     while (true) {
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
@@ -371,6 +388,12 @@ public class RegionMaintainHandler {
         lastReportTime = System.nanoTime();
         if (report.getTaskStatus() != TRegionMaintainTaskStatus.PROCESSING) {
           return report;
+        }
+        // The task is confirmed still running and this thread is blocked here, so it is now safe to
+        // fire the kill point that tests use to interrupt waitTaskFinish() deterministically.
+        if (killPoint != null && !killPointTriggered) {
+          setKillPoint(killPoint);
+          killPointTriggered = true;
         }
       } catch (Exception ignore) {
 
@@ -644,6 +667,11 @@ public class RegionMaintainHandler {
     ConsensusPipeName pipeName = new ConsensusPipeName(dataRegionId, senderNodeId, receiverNodeId);
 
     String replicateMode = CONF.getIotConsensusV2Mode();
+    String database = configManager.getPartitionManager().getRegionDatabase(regionId);
+    String sqlDialect =
+        database != null && PathUtils.isTableModelDatabase(database)
+            ? SystemConstant.SQL_DIALECT_TABLE_VALUE
+            : SystemConstant.SQL_DIALECT_TREE_VALUE;
 
     Map<String, String> extractorAttributes = new HashMap<>();
     extractorAttributes.put(EXTRACTOR_KEY, BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
@@ -654,8 +682,7 @@ public class RegionMaintainHandler {
     extractorAttributes.put(
         EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY, String.valueOf(receiverNodeId));
     extractorAttributes.put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode);
-    extractorAttributes.put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true));
-    extractorAttributes.put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true));
+    extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, sqlDialect);
     extractorAttributes.put(
         EXTRACTOR_IOTDB_USER_KEY, CommonDescriptor.getInstance().getConfig().getDefaultAdminName());
 

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -70,7 +71,8 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
 
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMVALIDATETASK);
+    PipeLogger.log(
+        LOGGER::info, ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMVALIDATETASK);
 
     // Nothing needs to be checked
     return true;
@@ -78,14 +80,18 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
 
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMCALCULATEINFOFORTASK);
+    PipeLogger.log(
+        LOGGER::info,
+        ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMCALCULATEINFOFORTASK);
 
     // Nothing needs to be calculated
   }
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMHANDLEONCONFIGNODES);
+    PipeLogger.log(
+        LOGGER::info,
+        ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMHANDLEONCONFIGNODES);
 
     final Map<TConsensusGroupId, Integer> newConsensusGroupIdToLeaderConsensusIdMap =
         new HashMap<>();
@@ -100,7 +106,10 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
     try {
       response = env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -111,35 +120,44 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
 
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMHANDLEONDATANODES);
+    PipeLogger.log(
+        LOGGER::info,
+        ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMHANDLEONDATANODES);
 
-    pushPipeMetaToDataNodesIgnoreException(env);
+    pushPipeMetaToDataNodesBestEffort(env);
   }
 
   @Override
   public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMVALIDATETASK);
+    PipeLogger.log(
+        LOGGER::info, ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMVALIDATETASK);
 
     // Nothing to do
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMCALCULATEINFOFORTASK);
+    PipeLogger.log(
+        LOGGER::info,
+        ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMCALCULATEINFOFORTASK);
 
     // Nothing to do
   }
 
   @Override
   public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMHANDLEONCONFIGNODES);
+    PipeLogger.log(
+        LOGGER::info,
+        ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMHANDLEONCONFIGNODES);
 
     // Nothing to do
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMCREATEONDATANODES);
+    PipeLogger.log(
+        LOGGER::info,
+        ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMCREATEONDATANODES);
 
     // Nothing to do
   }
@@ -185,7 +203,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
     }
     PipeHandleLeaderChangeProcedure that = (PipeHandleLeaderChangeProcedure) o;
     return getProcId() == that.getProcId()
-        && getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
         && this.regionGroupToOldAndNewLeaderPairMap.equals(
             that.regionGroupToOldAndNewLeaderPairMap);

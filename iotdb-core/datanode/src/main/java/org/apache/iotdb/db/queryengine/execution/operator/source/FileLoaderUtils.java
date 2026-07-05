@@ -199,7 +199,8 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean isSeq,
-      boolean ignoreAllNullRows)
+      boolean ignoreAllNullRows,
+      long[] rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -213,7 +214,12 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
             loadAlignedTimeSeriesMetadataFromDisk(
-                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows);
+                resource,
+                alignedPath,
+                context,
+                globalTimeFilter,
+                ignoreAllNullRows,
+                rootMeasurementMetadataIndexNodeOffset);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
@@ -286,7 +292,8 @@ public class FileLoaderUtils {
       AlignedFullPath alignedPath,
       FragmentInstanceContext context,
       Filter globalTimeFilter,
-      boolean ignoreAllNullRows)
+      boolean ignoreAllNullRows,
+      long[] rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
     AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -309,7 +316,8 @@ public class FileLoaderUtils {
             context.ignoreNotExistsDevice()
                 || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
             isDebug,
-            context);
+            context,
+            rootMeasurementMetadataIndexNodeOffset);
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
       if (valueMeasurementList.isEmpty()) {
@@ -338,7 +346,8 @@ public class FileLoaderUtils {
                   context.ignoreNotExistsDevice()
                       || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                   isDebug,
-                  context);
+                  context,
+                  rootMeasurementMetadataIndexNodeOffset);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);
         }

@@ -28,23 +28,33 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,6 +65,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongConsumer;
 
 /**
@@ -62,6 +73,8 @@ import java.util.function.LongConsumer;
  * info and so on.
  */
 public class MPPQueryContext implements IAuditEntity {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MPPQueryContext.class);
+
   private String sql;
   private final QueryId queryId;
 
@@ -109,6 +122,7 @@ public class MPPQueryContext implements IAuditEntity {
   // - EXPLAIN: Show the logical and physical query plan without execution
   // - EXPLAIN_ANALYZE: Execute the query and collect detailed execution statistics
   private ExplainType explainType = ExplainType.NONE;
+  private ExplainOutputFormat explainOutputFormat = ExplainOutputFormat.TEXT;
   private boolean verbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
@@ -157,6 +171,10 @@ public class MPPQueryContext implements IAuditEntity {
 
   // Tables in the subquery
   private final Map<NodeRef<Query>, List<Identifier>> subQueryTables = new HashMap<>();
+
+  private final Set<ExternalTsFileQueryResource> externalTsFileQueryResources =
+      ConcurrentHashMap.newKeySet();
+  private final AtomicInteger externalTsFileQueryResourceIndex = new AtomicInteger();
 
   @TestOnly
   public MPPQueryContext(QueryId queryId) {
@@ -243,6 +261,54 @@ public class MPPQueryContext implements IAuditEntity {
     return queryId;
   }
 
+  public ExternalTsFileQueryResource createExternalTsFileQueryResource(
+      String tableName, List<String> tsFilePaths, Map<Symbol, ColumnSchema> tableColumnSchema) {
+    int resourceIndex = externalTsFileQueryResourceIndex.getAndIncrement();
+    ExternalTsFileQueryResource externalTsFileQueryResource =
+        new ExternalTsFileQueryResource(
+            this,
+            Paths.get(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir())
+                .resolve(ExternalTsFileQueryResource.EXTERNAL_TSFILE_TMP_DIR)
+                .resolve(queryId.getId())
+                .resolve(String.valueOf(resourceIndex)),
+            tableName,
+            tsFilePaths,
+            tableColumnSchema);
+    externalTsFileQueryResources.add(externalTsFileQueryResource);
+    return externalTsFileQueryResource;
+  }
+
+  public void releaseExternalTsFileQueryResources() {
+    if (externalTsFileQueryResources.isEmpty()) {
+      return;
+    }
+    for (ExternalTsFileQueryResource externalTsFileQueryResource : externalTsFileQueryResources) {
+      try {
+        // QueryExecution may finish before all FragmentInstances stop. Close only resources that
+        // have not been retained by runtime FragmentInstances.
+        externalTsFileQueryResource.closeByQueryExecution();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to release external TsFile query resource", e);
+      }
+    }
+  }
+
+  public void removeExternalTsFileQueryResource(ExternalTsFileQueryResource resource) {
+    externalTsFileQueryResources.remove(resource);
+    deleteExternalTsFileQueryTmpRootIfEmpty();
+  }
+
+  private void deleteExternalTsFileQueryTmpRootIfEmpty() {
+    if (externalTsFileQueryResources.isEmpty()) {
+      FileUtils.deleteFileOrDirectory(
+          Paths.get(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir())
+              .resolve(ExternalTsFileQueryResource.EXTERNAL_TSFILE_TMP_DIR)
+              .resolve(queryId.getId())
+              .toFile(),
+          true);
+    }
+  }
+
   public long getLocalQueryId() {
     return localQueryId;
   }
@@ -259,6 +325,13 @@ public class MPPQueryContext implements IAuditEntity {
   /** the max executing time of query in ms. Unit: millisecond */
   public void setTimeOut(long timeOut) {
     this.timeOut = timeOut;
+  }
+
+  public void checkTimeOut() {
+    long currentTime = System.currentTimeMillis();
+    if (currentTime - startTime >= timeOut) {
+      throw new QueryTimeoutRuntimeException(startTime, currentTime, timeOut);
+    }
   }
 
   public void setQueryType(QueryType queryType) {
@@ -351,6 +424,14 @@ public class MPPQueryContext implements IAuditEntity {
 
   public ExplainType getExplainType() {
     return explainType;
+  }
+
+  public void setExplainOutputFormat(ExplainOutputFormat explainOutputFormat) {
+    this.explainOutputFormat = explainOutputFormat;
+  }
+
+  public ExplainOutputFormat getExplainOutputFormat() {
+    return explainOutputFormat;
   }
 
   public boolean isExplainAnalyze() {

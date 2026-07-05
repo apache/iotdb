@@ -427,4 +427,13 @@ public final class CalcMessages {
   public static final String EXCEPTION_NEW_CHILD_SHOULDN_QUOTE_T_EXIST_YET_1EB3B129 = "New child shouldn't exist yet";
   public static final String EXCEPTION_ROWID_AND_UNIQUEVALUE_MASK_OVERLAPS_9A092E09 = "RowId and uniqueValue mask overlaps";
 
+  // --- Execution ---
+
+  public static final String ERROR_SETTING_FUTURE_STATE_FOR =
+      "Error setting future state for {}";
+  public static final String ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR =
+      "Error notifying state change listener for {}";
+  public static final String SERVER_IS_SHUTTING_DOWN =
+      "Server is shutting down";
+
 }

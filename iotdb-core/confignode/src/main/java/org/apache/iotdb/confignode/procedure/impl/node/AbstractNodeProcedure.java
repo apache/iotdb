@@ -59,6 +59,18 @@ public abstract class AbstractNodeProcedure<TState>
   }
 
   @Override
+  protected void waitForLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      configNodeProcedureEnv
+          .getNodeLock()
+          .waitProcedure(this, configNodeProcedureEnv.getScheduler());
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
+  }
+
+  @Override
   protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {

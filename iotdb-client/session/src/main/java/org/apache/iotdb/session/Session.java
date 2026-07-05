@@ -134,6 +134,9 @@ public class Session implements ISession {
   protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
+  protected String keyStore;
+  protected String keyStorePwd;
+  protected String sslProtocol;
 
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
@@ -474,6 +477,9 @@ public class Session implements ISession {
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
+    this.keyStore = builder.keyStore;
+    this.keyStorePwd = builder.keyStorePwd;
+    this.sslProtocol = builder.sslProtocol;
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
@@ -543,6 +549,9 @@ public class Session implements ISession {
               useSSL,
               trustStore,
               trustStorePwd,
+              keyStore,
+              keyStorePwd,
+              sslProtocol,
               enableRPCCompaction,
               version.toString());
     } else {
@@ -4438,6 +4447,21 @@ public class Session implements ISession {
 
     public Builder trustStorePwd(String trustStorePwd) {
       this.trustStorePwd = trustStorePwd;
+      return this;
+    }
+
+    public Builder keyStore(String keyStore) {
+      this.keyStore = keyStore;
+      return this;
+    }
+
+    public Builder keyStorePwd(String keyStorePwd) {
+      this.keyStorePwd = keyStorePwd;
+      return this;
+    }
+
+    public Builder sslProtocol(String sslProtocol) {
+      this.sslProtocol = sslProtocol;
       return this;
     }
 

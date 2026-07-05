@@ -104,6 +104,12 @@ struct TRatisConfig {
   34: required i64 dataRegionPeriodicSnapshotInterval
 
   35: required i32 ratisTransferLeaderTimeoutMs;
+
+  // Bound the retry attempts of a Ratis configuration change (add/remove peer) so a killed ADDING
+  // peer cannot block the reconfiguration forever. Optional for rolling-upgrade compatibility: an
+  // old ConfigNode will not set them and the DataNode falls back to its local default.
+  36: optional i32 schemaReconfigurationMaxRetryAttempts
+  37: optional i32 dataReconfigurationMaxRetryAttempts
 }
 
 struct TCQConfig {
@@ -274,6 +280,13 @@ struct TDataPartitionTableResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
+struct TShowRepairDataPartitionTableProgressResp {
+  1: required common.TSStatus status
+  2: required string state
+  3: required double progress
+  4: optional string message
+}
+
 struct TGetRegionIdReq {
     1: required common.TConsensusGroupType type
     2: optional string database
@@ -335,7 +348,7 @@ struct TGetSeriesSlotListResp {
 }
 
 struct TMigrateRegionReq {
-    1: required i32 regionId
+    1: required list<i32> regionIds
     2: required i32 fromId
     3: required i32 toId
     4: required common.Model model
@@ -730,10 +743,8 @@ struct TDatabaseInfo {
   4: required i32 dataReplicationFactor
   5: required i64 timePartitionInterval
   6: required i32 schemaRegionNum
-  7: required i32 minSchemaRegionNum
   8: required i32 maxSchemaRegionNum
   9: required i32 dataRegionNum
-  10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
 }
@@ -865,6 +876,7 @@ struct TShowPipeInfo {
   7: required string exceptionMessage
   8: optional i64 remainingEventCount
   9: optional double EstimatedRemainingTime
+  10: optional bool isDegraded
 }
 
 struct TGetAllPipeInfoResp {
@@ -1512,6 +1524,8 @@ service IConfigNodeRPCService {
 
   common.TSStatus dataPartitionTableIntegrityCheck()
 
+  TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress()
+
   // ======================================================
   // Authorize
   // ======================================================
@@ -1941,6 +1955,9 @@ service IConfigNodeRPCService {
   // ======================================================
   /** Create Topic */
   common.TSStatus createTopic(TCreateTopicReq req)
+
+  /** Alter Topic */
+  common.TSStatus alterTopic(TAlterTopicReq req)
 
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)

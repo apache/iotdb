@@ -49,6 +49,7 @@ statement
     // Database Statement
     | useDatabaseStatement
     | showDatabasesStatement
+    | showCreateDatabaseStatement
     | countDatabasesStatement
     | createDbStatement
     | alterDbStatement
@@ -102,14 +103,17 @@ statement
     | startPipeStatement
     | stopPipeStatement
     | showPipesStatement
+    | showCreatePipeStatement
     | createPipePluginStatement
     | dropPipePluginStatement
     | showPipePluginsStatement
 
     // Subscription Statement
     | createTopicStatement
+    | alterTopicStatement
     | dropTopicStatement
     | showTopicsStatement
+    | showCreateTopicStatement
     | showSubscriptionsStatement
     | dropSubscriptionStatement
 
@@ -202,6 +206,10 @@ useDatabaseStatement
 
 showDatabasesStatement
     : SHOW DATABASES (DETAILS)?
+    ;
+
+showCreateDatabaseStatement
+    : SHOW CREATE DATABASE database=identifier
     ;
 
 countDatabasesStatement
@@ -519,6 +527,10 @@ showPipesStatement
     : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
     ;
 
+showCreatePipeStatement
+    : SHOW CREATE PIPE pipeName=identifier
+    ;
+
 createPipePluginStatement
     : CREATE PIPEPLUGIN (IF NOT EXISTS)? pluginName=identifier AS className=string uriClause
     ;
@@ -537,6 +549,10 @@ createTopicStatement
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
     ;
 
+alterTopicStatement
+    : ALTER TOPIC topicName=identifier topicAttributesClause
+    ;
+
 topicAttributesClause
     : WITH '(' topicAttributeClause (',' topicAttributeClause)* ')'
     ;
@@ -551,6 +567,10 @@ dropTopicStatement
 
 showTopicsStatement
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
+    ;
+
+showCreateTopicStatement
+    : SHOW CREATE TOPIC topicName=identifier
     ;
 
 showSubscriptionsStatement
@@ -624,7 +644,7 @@ showSeriesSlotListStatement
     ;
 
 migrateRegionStatement
-    : MIGRATE REGION regionId=INTEGER_VALUE FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
+    : MIGRATE REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
     ;
 
 reconstructRegionStatement
@@ -640,7 +660,7 @@ removeRegionStatement
     ;
 
 removeDataNodeStatement
-    : REMOVE DATANODE dataNodeId=INTEGER_VALUE
+    : REMOVE DATANODE dataNodeIds+=INTEGER_VALUE (',' dataNodeIds+=INTEGER_VALUE)*
     ;
 
 removeConfigNodeStatement
@@ -938,8 +958,8 @@ copyToStatementOption
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
-    | EXPLAIN (query | executeStatement | executeImmediateStatement) #explain
-    | EXPLAIN ANALYZE VERBOSE? (query | executeStatement | executeImmediateStatement) #explainAnalyze
+    | EXPLAIN ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explain
+    | EXPLAIN ANALYZE VERBOSE? ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explainAnalyze
     ;
 
 query
@@ -1050,7 +1070,8 @@ fromFirstQuerySpecification
     ;
 
 groupBy
-    : setQuantifier? groupingElement (',' groupingElement)*
+    : ALL                                                                                         #allGroupBy
+    | setQuantifier? groupingElement (',' groupingElement)*                                       #explicitGroupBy
     ;
 
 groupingElement

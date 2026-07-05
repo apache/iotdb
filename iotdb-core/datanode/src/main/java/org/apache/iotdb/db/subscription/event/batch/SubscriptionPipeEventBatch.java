@@ -72,14 +72,7 @@ public abstract class SubscriptionPipeEventBatch {
   protected synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer)
       throws Exception {
     if (shouldEmit() && !enrichedEvents.isEmpty()) {
-      if (Objects.isNull(events)) {
-        events = generateSubscriptionEvents();
-      }
-      if (Objects.nonNull(events)) {
-        events.forEach(consumer);
-        return true;
-      }
-      return false;
+      return emit(consumer);
     }
     return false;
   }
@@ -103,6 +96,20 @@ public abstract class SubscriptionPipeEventBatch {
           event);
     }
     return onEvent(consumer);
+  }
+
+  protected synchronized boolean emit(final Consumer<SubscriptionEvent> consumer) throws Exception {
+    if (enrichedEvents.isEmpty()) {
+      return false;
+    }
+    if (Objects.isNull(events)) {
+      events = generateSubscriptionEvents();
+    }
+    if (Objects.nonNull(events)) {
+      events.forEach(consumer);
+      return true;
+    }
+    return false;
   }
 
   /////////////////////////////// utility ///////////////////////////////

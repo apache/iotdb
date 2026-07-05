@@ -43,6 +43,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RelationalInsertRowNode extends InsertRowNode {
 
@@ -91,17 +93,37 @@ public class RelationalInsertRowNode extends InsertRowNode {
   @Override
   public IDeviceID getDeviceID() {
     if (deviceID == null) {
-      String[] deviceIdSegments = new String[tagColumnIndices.size() + 1];
+      final List<Integer> presentTagColumnIndices = getPresentTagColumnIndices();
+      String[] deviceIdSegments = new String[presentTagColumnIndices.size() + 1];
       deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < tagColumnIndices.size(); i++) {
-        final Integer columnIndex = tagColumnIndices.get(i);
-        deviceIdSegments[i + 1] =
-            getValues()[columnIndex] != null ? getValues()[columnIndex].toString() : null;
+      for (int i = 0; i < presentTagColumnIndices.size(); i++) {
+        final Integer columnIndex = presentTagColumnIndices.get(i);
+        final Object value =
+            getValues() != null && columnIndex < getValues().length
+                ? getValues()[columnIndex]
+                : null;
+        deviceIdSegments[i + 1] = value != null ? value.toString() : null;
       }
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
 
     return deviceID;
+  }
+
+  private List<Integer> getPresentTagColumnIndices() {
+    final List<Integer> presentTagColumnIndices = new ArrayList<>();
+    final Object[] values = getValues();
+    for (int i = 0; columnCategories != null && i < columnCategories.length; i++) {
+      if (columnCategories[i] == TsTableColumnCategory.TAG
+          && measurements != null
+          && i < measurements.length
+          && measurements[i] != null
+          && values != null
+          && i < values.length) {
+        presentTagColumnIndices.add(i);
+      }
+    }
+    return presentTagColumnIndices;
   }
 
   @Override
@@ -179,10 +201,27 @@ public class RelationalInsertRowNode extends InsertRowNode {
   }
 
   @Override
+  protected boolean shouldSerializeMeasurement(final int index) {
+    return super.shouldSerializeMeasurement(index) && hasColumnCategory(index);
+  }
+
+  @Override
+  protected boolean shouldSerializeMeasurementToWAL(final int index) {
+    return super.shouldSerializeMeasurementToWAL(index) && hasColumnCategory(index);
+  }
+
+  private boolean hasColumnCategory(final int index) {
+    return columnCategories != null
+        && index >= 0
+        && index < columnCategories.length
+        && columnCategories[index] != null;
+  }
+
+  @Override
   void subSerialize(ByteBuffer buffer) {
     super.subSerialize(buffer);
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(buffer);
       }
     }
@@ -191,8 +230,8 @@ public class RelationalInsertRowNode extends InsertRowNode {
   @Override
   void subSerialize(DataOutputStream stream) throws IOException {
     super.subSerialize(stream);
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(stream);
       }
     }
@@ -201,8 +240,8 @@ public class RelationalInsertRowNode extends InsertRowNode {
   @Override
   protected void subSerialize(IWALByteBufferView buffer) {
     super.subSerialize(buffer);
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurementToWAL(i)) {
         buffer.put(columnCategories[i].getCategory());
       }
     }
@@ -219,7 +258,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   protected int subSerializeSize() {
-    return super.subSerializeSize() + getValidMeasurementNumber() * Byte.BYTES;
+    return super.subSerializeSize() + getValidMeasurementNumberForWAL() * Byte.BYTES;
   }
 
   @Override
@@ -242,13 +281,13 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   public void updateLastCache(String databaseName) {
-    String[] rawMeasurements = getRawMeasurements();
-    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
-    for (int i = 0; i < rawMeasurements.length; i++) {
+    TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
       timeValuePairs[i] = composeTimeValuePair(i);
     }
     TableDeviceSchemaCache.getInstance()
-        .updateLastCacheIfExists(databaseName, getDeviceID(), rawMeasurements, timeValuePairs);
+        .updateLastCacheIfExists(
+            databaseName, getDeviceID(), measurements, measurementSchemas, timeValuePairs);
   }
 
   @Override

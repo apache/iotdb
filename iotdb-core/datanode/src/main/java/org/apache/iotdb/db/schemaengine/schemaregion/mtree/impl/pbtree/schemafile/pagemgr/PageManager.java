@@ -293,8 +293,6 @@ public abstract class PageManager implements IPageManager {
             .entrySet()) {
       child = entry.getValue();
       actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey(), cxt);
-      childBuffer = RecordUtils.node2Buffer(child);
-
       curPage = getPageInstance(SchemaFile.getPageIndex(actualAddress), cxt);
       if (curPage.getAsSegmentedPage().read(SchemaFile.getSegIndex(actualAddress), entry.getKey())
           == null) {
@@ -304,6 +302,13 @@ public abstract class PageManager implements IPageManager {
                 node.getName(),
                 entry.getKey()));
       }
+
+      if (!child.isMeasurement() && getNodeAddress(child) < 0) {
+        short estSegSize = estimateSegmentSize(child);
+        long glbIndex = preAllocateSegment(estSegSize, cxt);
+        SchemaFile.setNodeAddress(child, glbIndex);
+      }
+      childBuffer = RecordUtils.node2Buffer(child);
 
       // prepare alias comparison
       if (child.isMeasurement() && child.getAsMeasurementMNode().getAlias() != null) {

@@ -142,6 +142,10 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
   }
 
+  public long getSubscriptionOwnerLeaseDurationMsMin() {
+    return COMMON_CONFIG.getSubscriptionOwnerLeaseDurationMsMin();
+  }
+
   // Consensus subscription batching parameters
   public int getSubscriptionConsensusBatchMaxDelayInMs() {
     return COMMON_CONFIG.getSubscriptionConsensusBatchMaxDelayInMs();

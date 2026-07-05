@@ -62,11 +62,16 @@ public final class ManagerMessages {
       "DataRegionGroupExtensionPolicy %s doesn't exist.";
   public static final String DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR =
       "Decrease reference count for snapshot {} error.";
-  public static final String DELETING_REGIONS_COSTS_MS = "Deleting regions costs {}ms";
+  public static final String DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE =
+      "检测到来自 DataNode {} 的历史 pipe 完成上报，pipe {}。remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
-      "Detected completion of pipe {}, static meta: {}, remove it.";
+      "检测到 pipe {} 已完成，static meta: {}，将其移除。";
+  public static final String ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED =
+      "所有 DataNode 均已上报历史 pipe {} 完成。globalRemainingEventCount: {}, globalRemainingTime: {}, staticMeta: {}";
   public static final String DETECT_PIPERUNTIMECRITICALEXCEPTION_FROM_AGENT_STOP_PIPE =
-      "Detect PipeRuntimeCriticalException {} from agent, stop pipe {}.";
+      "检测到 agent 上报 PipeRuntimeCriticalException {}，停止 pipe {}。";
+  public static final String DETECT_PIPERUNTIMESINKCRITICALEXCEPTION_FROM_AGENT_STOP_PIPE =
+      "检测到 agent 上报 PipeRuntimeSinkCriticalException {}，停止 pipe {}。";
   public static final String ENABLE_SEPARATION_OF_POWERS_IS_NOT_SUPPORTED = "不支持启用权力分离";
   public static final String ENDEXECUTECQ_TIME_RANGE_IS_CURRENT_TIME_IS =
       "[EndExecuteCQ] {}, time range is [{}, {}), current time is {}";
@@ -112,9 +117,9 @@ public final class ManagerMessages {
   public static final String FAILED_TO_CLOSE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
       "Failed to close consumer {} in consumer group {}. Result status: {}.";
   public static final String FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR =
-      "Failed to close extractor after failed to initialize extractor. ";
+      "初始化 extractor 失败后关闭 extractor 失败，忽略此异常。";
   public static final String FAILED_TO_CLOSE_SINK_AFTER_FAILED_TO_INITIALIZE_IT_IGNORE =
-      "Failed to close sink after failed to initialize it. Ignore this exception.";
+      "初始化 sink 失败后关闭 sink 失败，忽略此异常。";
   public static final String FAILED_TO_COLLECT_COMMITCREATETABLEPLAN =
       "Failed to collect CommitCreateTablePlan";
   public static final String FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK =
@@ -133,6 +138,12 @@ public final class ManagerMessages {
       "Failed to create subtask for pipe %s, creation time %d";
   public static final String FAILED_TO_CREATE_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS =
       "Failed to create topic {} with attributes {}. Result status: {}.";
+  public static final String FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED =
+      "修改 topic %s 失败，该 topic 不存在";
+  public static final String FAILED_TO_ALTER_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS =
+      "修改 topic {} 失败，属性：{}。结果状态：{}。";
+  public static final String OWNER_LEASE_DURATION_BELOW_MIN =
+      "创建或修改 topic 失败，owner-lease-duration-ms %s 小于允许的最小值 %s ms。";
   public static final String FAILED_TO_DEEP_COPY_PIPEMETA = "深拷贝 pipeMeta 失败";
   public static final String FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_CONNECTOR =
       "Failed to deregister pipe config region connector metrics, PipeConfigNodeSubtask({}) does not exist";
@@ -407,8 +418,6 @@ public final class ManagerMessages {
       "Start to create Region: {} on DataNode: {}";
   public static final String START_TO_CREATE_UDF_ON_DATA_NODES_NEEDTOSAVEJAR =
       "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]";
-  public static final String START_TO_DELETE_REGION_ON_DATANODE =
-      "Start to delete Region: {} on DataNode: {}";
   public static final String START_TRANSFER_OF = "Start transfer of {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE = "Stop submitting CQ {} because {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR =
@@ -491,6 +500,8 @@ public final class ManagerMessages {
       "Unexpected interruption during waiting for configNode leader ready.";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID =
       "Unexpected interruption during waiting for get cluster id.";
+  public static final String UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED =
+      "Unexpected non-create task in the RegionMaintainer queue; skipping it (the queue only recreates region replicas now, and region deletion is handled by RemoveRegionGroupProcedure).";
   public static final String UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED =
       "Unexpected null procedure parameters for waitingProcedureFinished";
   public static final String UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT =

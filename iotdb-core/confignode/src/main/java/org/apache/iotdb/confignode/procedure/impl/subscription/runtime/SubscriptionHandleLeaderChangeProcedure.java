@@ -108,7 +108,8 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
         ProcedureMessages
             .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_D4E8BD37);
 
-    final Map<Integer, TPullCommitProgressResp> respMap = env.pullCommitProgressFromDataNodes();
+    final Map<Integer, TPullCommitProgressResp> respMap =
+        env.pullCommitProgressFromDataNodesBestEffort();
     final Map<String, RegionProgress> mergedRegionProgress =
         deserializeRegionProgressMap(
             subscriptionInfo.get().getCommitProgressKeeper().getAllRegionProgress());
@@ -166,7 +167,7 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
         ProcedureMessages
             .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMOPERATEONDATANODES_0D9F7C98);
 
-    final Map<Integer, TPushTopicMetaResp> topicRespMap = pushTopicMetaToDataNodes(env);
+    final Map<Integer, TPushTopicMetaResp> topicRespMap = pushTopicMetaToDataNodesBestEffort(env);
     topicRespMap.forEach(
         (dataNodeId, resp) -> {
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -179,7 +180,7 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
         });
 
     final Map<Integer, TPushConsumerGroupMetaResp> consumerGroupRespMap =
-        pushConsumerGroupMetaToDataNodes(env);
+        pushConsumerGroupMetaToDataNodesBestEffort(env);
     consumerGroupRespMap.forEach(
         (dataNodeId, resp) -> {
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -283,7 +284,7 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
     final SubscriptionHandleLeaderChangeProcedure that =
         (SubscriptionHandleLeaderChangeProcedure) o;
     return getProcId() == that.getProcId()
-        && getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
         && runtimeVersion == that.runtimeVersion
         && regionGroupToOldAndNewLeaderPairMap.equals(that.regionGroupToOldAndNewLeaderPairMap);

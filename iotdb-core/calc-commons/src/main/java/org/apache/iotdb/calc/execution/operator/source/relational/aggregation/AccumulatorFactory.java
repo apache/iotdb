@@ -49,6 +49,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedMinAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedMinByAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedModeAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedPercentileAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedRegressionAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedUserDefinedAggregateAccumulator;
@@ -56,6 +57,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.IntGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.LongGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
@@ -63,6 +65,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 
@@ -76,6 +79,8 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import javax.annotation.Nullable;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +89,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isMeasurementColumn;
@@ -106,14 +112,43 @@ public class AccumulatorFactory {
       boolean isAggTableScan,
       String timeColumnName,
       Set<String> measurementColumnNames,
-      boolean distinct) {
+      boolean distinct,
+      MemoryReservationManager memoryReservationManager) {
+    return createAccumulator(
+        functionName,
+        aggregationType,
+        inputDataTypes,
+        inputExpressions,
+        inputAttributes,
+        ascending,
+        isAggTableScan,
+        timeColumnName,
+        measurementColumnNames,
+        distinct,
+        memoryReservationManager,
+        null);
+  }
+
+  public static TableAccumulator createAccumulator(
+      String functionName,
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending,
+      boolean isAggTableScan,
+      String timeColumnName,
+      Set<String> measurementColumnNames,
+      boolean distinct,
+      MemoryReservationManager memoryReservationManager,
+      @Nullable IoTDBLocal ioTDBLocal) {
     TableAccumulator result;
 
     // Input expression size of 1 indicates aggregation split has occurred and this is a final
     // aggregation
     if (aggregationType == TAggregationType.UDAF) {
       // If UDAF accumulator receives raw input, it needs to check input's attribute
-      result = createUDAFAccumulator(functionName, inputDataTypes, inputAttributes);
+      result = createUDAFAccumulator(functionName, inputDataTypes, inputAttributes, ioTDBLocal);
     } else if ((LAST_BY.getFunctionName().equals(functionName)
             || FIRST_BY.getFunctionName().equals(functionName))
         && inputExpressions.size() > 1) {
@@ -166,7 +201,7 @@ public class AccumulatorFactory {
               ? new FirstAccumulator(inputDataTypes.get(0), isAggTableScan)
               : new FirstDescAccumulator(inputDataTypes.get(0));
     } else {
-      result = createBuiltinAccumulator(aggregationType, inputDataTypes);
+      result = createBuiltinAccumulator(aggregationType, inputDataTypes, memoryReservationManager);
     }
 
     if (distinct) {
@@ -188,16 +223,45 @@ public class AccumulatorFactory {
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
       boolean ascending,
-      boolean distinct) {
+      boolean distinct,
+      MemoryReservationManager memoryReservationManager) {
+    return createGroupedAccumulator(
+        functionName,
+        aggregationType,
+        inputDataTypes,
+        inputExpressions,
+        inputAttributes,
+        ascending,
+        distinct,
+        memoryReservationManager,
+        null);
+  }
+
+  public static GroupedAccumulator createGroupedAccumulator(
+      String functionName,
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending,
+      boolean distinct,
+      MemoryReservationManager memoryReservationManager,
+      @Nullable IoTDBLocal ioTDBLocal) {
     GroupedAccumulator result;
 
     if (aggregationType == TAggregationType.UDAF) {
       // If UDAF accumulator receives raw input, it needs to check input's attribute
-      result = createGroupedUDAFAccumulator(functionName, inputDataTypes, inputAttributes);
+      result =
+          createGroupedUDAFAccumulator(functionName, inputDataTypes, inputAttributes, ioTDBLocal);
     } else {
       result =
           createBuiltinGroupedAccumulator(
-              aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
+              aggregationType,
+              inputDataTypes,
+              inputExpressions,
+              inputAttributes,
+              ascending,
+              memoryReservationManager);
     }
 
     if (distinct) {
@@ -213,28 +277,38 @@ public class AccumulatorFactory {
   }
 
   private static TableAccumulator createUDAFAccumulator(
-      String functionName, List<TSDataType> inputDataTypes, Map<String, String> inputAttributes) {
+      String functionName,
+      List<TSDataType> inputDataTypes,
+      Map<String, String> inputAttributes,
+      IoTDBLocal ioTDBLocal) {
+    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for UDAF");
     AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
     FunctionArguments functionArguments =
         new FunctionArguments(
             UDFDataTypeTransformer.transformToUDFDataTypeList(inputDataTypes), inputAttributes);
-    aggregateFunction.beforeStart(functionArguments);
     return new UserDefinedAggregateFunctionAccumulator(
         aggregateFunction.analyze(functionArguments),
         aggregateFunction,
-        inputDataTypes.stream().map(TypeFactory::getType).collect(Collectors.toList()));
+        functionArguments,
+        inputDataTypes.stream().map(TypeFactory::getType).collect(Collectors.toList()),
+        ioTDBLocal);
   }
 
   private static GroupedAccumulator createGroupedUDAFAccumulator(
-      String functionName, List<TSDataType> inputDataTypes, Map<String, String> inputAttributes) {
+      String functionName,
+      List<TSDataType> inputDataTypes,
+      Map<String, String> inputAttributes,
+      IoTDBLocal ioTDBLocal) {
+    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for UDAF");
     AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
     FunctionArguments functionArguments =
         new FunctionArguments(
             UDFDataTypeTransformer.transformToUDFDataTypeList(inputDataTypes), inputAttributes);
-    aggregateFunction.beforeStart(functionArguments);
     return new GroupedUserDefinedAggregateAccumulator(
         aggregateFunction,
-        inputDataTypes.stream().map(TypeFactory::getType).collect(Collectors.toList()));
+        functionArguments,
+        inputDataTypes.stream().map(TypeFactory::getType).collect(Collectors.toList()),
+        ioTDBLocal);
   }
 
   private static GroupedAccumulator createBuiltinGroupedAccumulator(
@@ -242,7 +316,8 @@ public class AccumulatorFactory {
       List<TSDataType> inputDataTypes,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
-      boolean ascending) {
+      boolean ascending,
+      MemoryReservationManager memoryReservationManager) {
     switch (aggregationType) {
       case COUNT:
         return new GroupedCountAccumulator();
@@ -326,6 +401,8 @@ public class AccumulatorFactory {
       case KURTOSIS:
         return new GroupedCentralMomentAccumulator(
             inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
+      case PERCENTILE:
+        return new GroupedPercentileAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
@@ -333,7 +410,9 @@ public class AccumulatorFactory {
   }
 
   public static TableAccumulator createBuiltinAccumulator(
-      TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      MemoryReservationManager memoryReservationManager) {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
@@ -418,6 +497,8 @@ public class AccumulatorFactory {
       case KURTOSIS:
         return new TableCentralMomentAccumulator(
             inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
+      case PERCENTILE:
+        return new PercentileAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);

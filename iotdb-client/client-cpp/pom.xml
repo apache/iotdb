@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-client</artifactId>
-        <version>2.0.7-SNAPSHOT</version>
+        <version>2.0.11-SNAPSHOT</version>
     </parent>
     <artifactId>client-cpp</artifactId>
     <packaging>pom</packaging>
@@ -49,7 +49,8 @@
         <cmake.install.prefix>${project.build.directory}/install</cmake.install.prefix>
         <iotdb.deps.dir>${project.basedir}/third-party</iotdb.deps.dir>
         <iotdb.offline>OFF</iotdb.offline>
-        <with.ssl>OFF</with.ssl>
+        <with.ssl>ON</with.ssl>
+        <iotdb.openssl.from.source>OFF</iotdb.openssl.from.source>
         <iotdb.cxx11.abi/>
         <!-- Switched to OFF by the .skipTests profile below. -->
         <build.tests>ON</build.tests>
@@ -67,7 +68,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
-            <version>2.0.7-SNAPSHOT</version>
+            <version>2.0.11-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -112,6 +113,7 @@
                                 <option>-DCMAKE_INSTALL_PREFIX=${cmake.install.prefix}</option>
                                 <option>-DBUILD_TESTING=${build.tests}</option>
                                 <option>-DWITH_SSL=${with.ssl}</option>
+                                <option>-DIOTDB_OPENSSL_FROM_SOURCE=${iotdb.openssl.from.source}</option>
                                 <option>-DIOTDB_OFFLINE=${iotdb.offline}</option>
                                 <option>-DIOTDB_DEPS_DIR=${iotdb.deps.dir}</option>
                                 <option>-DIOTDB_USE_CXX11_ABI=${iotdb.cxx11.abi}</option>
@@ -377,15 +379,11 @@
                 <build.tests>OFF</build.tests>
             </properties>
         </profile>
-        <!--
-          Spotless <clangFormat> needs Spotless 2.44+; root POM downgrades to
-          2.27.1 on JDK8 and cannot parse cpp config. Only register C++ rules
-          when JDK 11+.
-        -->
+        <!-- Spotless <clangFormat> needs Spotless 2.44+; only register C++ rules on the repository baseline, JDK 17+. -->
         <profile>
             <id>spotless-cpp</id>
             <activation>
-                <jdk>[11,)</jdk>
+                <jdk>[17,)</jdk>
             </activation>
             <build>
                 <plugins>

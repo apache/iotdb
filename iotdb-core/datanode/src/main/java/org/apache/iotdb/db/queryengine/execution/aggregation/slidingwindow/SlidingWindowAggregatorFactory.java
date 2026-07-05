@@ -77,26 +77,14 @@ public class SlidingWindowAggregatorFactory {
         (o1, o2) -> {
           int value1 = o1.getInt(0);
           int value2 = o2.getInt(0);
-          if (Math.abs(value1) > Math.abs(value2)
-              || (Math.abs(value1) == Math.abs(value2) && value1 > value2)) {
-            return 1;
-          } else if (value1 == value2) {
-            return 0;
-          }
-          return -1;
+          return compareExtreme(value1, value2);
         });
     extremeComparators.put(
         TSDataType.INT64,
         (o1, o2) -> {
           long value1 = o1.getLong(0);
           long value2 = o2.getLong(0);
-          if (Math.abs(value1) > Math.abs(value2)
-              || (Math.abs(value1) == Math.abs(value2) && value1 > value2)) {
-            return 1;
-          } else if (value1 == value2) {
-            return 0;
-          }
-          return -1;
+          return compareExtreme(value1, value2);
         });
     extremeComparators.put(
         TSDataType.FLOAT,
@@ -248,5 +236,25 @@ public class SlidingWindowAggregatorFactory {
         throw new IllegalArgumentException(
             DataNodeQueryMessages.INVALID_AGGREGATION_TYPE + aggregationType);
     }
+  }
+
+  static int compareExtreme(int left, int right) {
+    int absComparison = Long.compare(Math.abs((long) left), Math.abs((long) right));
+    return absComparison == 0 ? Integer.compare(left, right) : absComparison;
+  }
+
+  static int compareExtreme(long left, long right) {
+    int absComparison = compareAbs(left, right);
+    return absComparison == 0 ? Long.compare(left, right) : absComparison;
+  }
+
+  private static int compareAbs(long left, long right) {
+    if (left == Long.MIN_VALUE) {
+      return right == Long.MIN_VALUE ? 0 : 1;
+    }
+    if (right == Long.MIN_VALUE) {
+      return -1;
+    }
+    return Long.compare(Math.abs(left), Math.abs(right));
   }
 }

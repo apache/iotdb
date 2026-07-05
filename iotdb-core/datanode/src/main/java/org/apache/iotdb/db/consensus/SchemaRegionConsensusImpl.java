@@ -155,6 +155,9 @@ public class SchemaRegionConsensusImpl {
                                       .setClientRetryMaxSleepTimeMs(
                                           CONF.getDataRatisConsensusMaxSleepTimeMs())
                                       .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                                      .setReconfigurationMaxRetryAttempts(
+                                          CONF
+                                              .getSchemaRatisConsensusReconfigurationMaxRetryAttempts())
                                       .build())
                               .setImpl(
                                   RatisConfig.Impl.newBuilder()

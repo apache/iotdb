@@ -35,23 +35,35 @@ public class GroupBy extends Node {
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(GroupBy.class);
 
   private final boolean isDistinct;
+  private final boolean isAll;
   private final List<GroupingElement> groupingElements;
 
   public GroupBy(boolean isDistinct, List<GroupingElement> groupingElements) {
-    super(null);
-    this.isDistinct = isDistinct;
-    this.groupingElements = ImmutableList.copyOf(requireNonNull(groupingElements));
+    this(null, isDistinct, false, groupingElements);
   }
 
   public GroupBy(
       NodeLocation location, boolean isDistinct, List<GroupingElement> groupingElements) {
+    this(location, isDistinct, false, groupingElements);
+  }
+
+  public GroupBy(
+      NodeLocation location,
+      boolean isDistinct,
+      boolean isAll,
+      List<GroupingElement> groupingElements) {
     super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.isDistinct = isDistinct;
+    this.isAll = isAll;
     this.groupingElements = ImmutableList.copyOf(requireNonNull(groupingElements));
   }
 
   public boolean isDistinct() {
     return isDistinct;
+  }
+
+  public boolean isAll() {
+    return isAll;
   }
 
   public List<GroupingElement> getGroupingElements() {
@@ -78,18 +90,20 @@ public class GroupBy extends Node {
     }
     GroupBy groupBy = (GroupBy) o;
     return isDistinct == groupBy.isDistinct
+        && isAll == groupBy.isAll
         && Objects.equals(groupingElements, groupBy.groupingElements);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(isDistinct, groupingElements);
+    return Objects.hash(isDistinct, isAll, groupingElements);
   }
 
   @Override
   public String toString() {
     return toStringHelper(this)
         .add("isDistinct", isDistinct)
+        .add("isAll", isAll)
         .add("groupingElements", groupingElements)
         .toString();
   }
@@ -100,7 +114,7 @@ public class GroupBy extends Node {
       return false;
     }
 
-    return isDistinct == ((GroupBy) other).isDistinct;
+    return isDistinct == ((GroupBy) other).isDistinct && isAll == ((GroupBy) other).isAll;
   }
 
   @Override

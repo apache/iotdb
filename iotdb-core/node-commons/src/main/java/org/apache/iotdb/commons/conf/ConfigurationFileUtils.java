@@ -40,6 +40,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -58,6 +59,19 @@ public class ConfigurationFileUtils {
   private static final long maxTimeMillsToAcquireLock = TimeUnit.SECONDS.toMillis(20);
   private static final long waitTimeMillsPerCheck = TimeUnit.MILLISECONDS.toMillis(100);
   private static final Logger logger = LoggerFactory.getLogger(ConfigurationFileUtils.class);
+  private static final Set<String> PARAMETERS_NEED_KEEP_CONSISTENT_IN_CLUSTER =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  "heartbeat_interval_in_ms",
+                  "continuous_query_min_every_interval_in_ms",
+                  "schema_region_group_extension_policy",
+                  "data_region_group_extension_policy",
+                  "default_schema_region_group_num_per_database",
+                  "default_data_region_group_num_per_database",
+                  "schema_region_per_data_node",
+                  "data_region_per_data_node",
+                  "read_consistency_level")));
   private static final String lineSeparator = "\n";
   private static final String license =
       new StringJoiner(lineSeparator)
@@ -267,7 +281,7 @@ public class ConfigurationFileUtils {
   }
 
   public static boolean parameterNeedKeepConsistentInCluster(String key) {
-    return false;
+    return key != null && PARAMETERS_NEED_KEEP_CONSISTENT_IN_CLUSTER.contains(key.trim());
   }
 
   public static void releaseDefault() {

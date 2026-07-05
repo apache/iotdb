@@ -222,16 +222,22 @@ public class DataPartition extends Partition {
     final List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
     final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         dataBasePartitionMap = dataPartitionMap.get(databaseName);
+    if (dataBasePartitionMap == null) {
+      throw new RuntimeException(
+          String.format(CommonMessages.DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED, databaseName));
+    }
     final Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
+    if (slotReplicaSetMap == null) {
+      throw new RuntimeException(
+          String.format(
+              CommonMessages.DATA_PARTITION_EMPTY, deviceID, seriesPartitionSlot, databaseName));
+    }
     for (final TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
       final List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
       if (targetRegionList == null || targetRegionList.isEmpty()) {
         throw new RuntimeException(
-            String.format(
-                CommonMessages.EXCEPTION_TARGETREGIONLIST_EMPTY_DEVICE_ARG_TIMESLOT_ARG_E7E5818C,
-                deviceID,
-                timePartitionSlot));
+            String.format(CommonMessages.TARGET_REGION_LIST_EMPTY, deviceID, timePartitionSlot));
       } else {
         dataRegionReplicaSets.add(targetRegionList.get(targetRegionList.size() - 1));
       }
@@ -252,10 +258,7 @@ public class DataPartition extends Partition {
         databasePartitionMap = dataPartitionMap.get(databaseName);
     if (databasePartitionMap == null) {
       throw new RuntimeException(
-          CommonMessages.EXCEPTION_DATABASE_18F8303F
-              + databaseName
-              + CommonMessages
-                  .EXCEPTION_NOT_EXISTS_FAILED_CREATE_AUTOMATICALLY_BECAUSE_ENABLE_AUTO_CREATE_SCHEMA_80DE1A4B);
+          String.format(CommonMessages.DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED, databaseName));
     }
     final List<TRegionReplicaSet> regions =
         databasePartitionMap.get(seriesPartitionSlot).get(timePartitionSlot);

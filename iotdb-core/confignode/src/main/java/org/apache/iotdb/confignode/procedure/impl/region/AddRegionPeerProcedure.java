@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.KillPoint.RegionMaintainKillPoints;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -104,8 +105,15 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
           break;
         case DO_ADD_REGION_PEER:
           handler.forceUpdateRegionCache(regionId, targetDataNode, RegionStatus.Adding);
-          // We don't want to re-submit AddRegionPeerTask when leader change or ConfigNode reboot
-          if (!this.isStateDeserialized()) {
+          // Only submit the AddRegionPeerTask on the very first entry of this state. We must NOT
+          // re-submit when:
+          //   - the state was restored from disk after a leader change / ConfigNode reboot
+          //     (isStateDeserialized()), or
+          //   - this state is being re-entered in place because a previous attempt parked here on
+          //     PROCESSING (getCycles() > 0, see the PROCESSING branch below).
+          // The coordinator DataNode also dedups by taskId, so a duplicate submit would be a no-op,
+          // but skipping it here avoids the useless RPC and keeps the re-poll cheap.
+          if (!this.isStateDeserialized() && getCycles() == 0) {
             TSStatus tsStatus =
                 handler.submitAddRegionPeerTask(
                     this.getProcId(), targetDataNode, regionId, coordinator);
@@ -115,7 +123,9 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
                   env, handler, "submit DO_ADD_REGION_PEER task fail");
             }
           }
-          TRegionMigrateResult result = handler.waitTaskFinish(this.getProcId(), coordinator);
+          TRegionMigrateResult result =
+              handler.waitTaskFinish(
+                  this.getProcId(), coordinator, RegionMaintainKillPoints.WAIT_TASK_FINISH_POLLING);
           switch (result.getTaskStatus()) {
             case TASK_NOT_EXIST:
             // coordinator crashed and lost its task table
@@ -124,10 +134,22 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
               return warnAndRollBackAndNoMoreState(
                   env, handler, String.format("%s result is %s", state, result.getTaskStatus()));
             case PROCESSING:
+              // waitTaskFinish() only returns PROCESSING when its polling loop was interrupted by
+              // an InterruptedException, i.e. this ConfigNode is shutting down / losing leadership
+              // (a user CANCEL or a coordinator disconnection both go through the FAIL branch
+              // above). The AddRegionPeerTask is still running on the coordinator DataNode, so we
+              // must NOT silently end here: doing so would let the parent RegionMigrateProcedure
+              // proceed to CHECK_ADD_REGION_PEER / REMOVE_REGION_PEER and remove the source replica
+              // before the destination replica has actually finished receiving the snapshot.
+              // Instead, stay in DO_ADD_REGION_PEER and persist it; after recovery the new leader
+              // re-enters this state and re-polls the still-running coordinator task (the
+              // isStateDeserialized() guard above prevents re-submitting the task) until it really
+              // reaches SUCCESS or FAIL.
               LOGGER.info(
                   ProcedureMessages
                       .WAITTASKFINISH_RETURNS_PROCESSING_WHICH_MEANS_THE_WAITING_HAS_BEEN_INTERRUPTED);
-              return Flow.NO_MORE_STATE;
+              setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
+              break outerSwitch;
             case SUCCESS:
               setNextState(UPDATE_REGION_LOCATION_CACHE);
               break outerSwitch;

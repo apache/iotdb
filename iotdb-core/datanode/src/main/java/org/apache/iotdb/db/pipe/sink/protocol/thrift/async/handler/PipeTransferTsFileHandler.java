@@ -437,7 +437,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
             PipeLogger.log(
                 ignored ->
                     LOGGER.info(DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO),
-                "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+                DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO);
             return true;
           }
           return false;

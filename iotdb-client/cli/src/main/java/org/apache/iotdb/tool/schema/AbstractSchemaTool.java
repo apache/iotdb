@@ -25,6 +25,8 @@ import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.commons.cli.CommandLine;
@@ -53,6 +55,9 @@ public abstract class AbstractSchemaTool {
   protected static Boolean useSsl;
   protected static String trustStore;
   protected static String trustStorePwd;
+  protected static String keyStore;
+  protected static String keyStorePwd;
+  protected static String sslProtocol;
   protected static Session session;
   protected static String queryPath;
   protected static int threadNum = 8;
@@ -72,6 +77,39 @@ public abstract class AbstractSchemaTool {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSchemaTool.class);
 
   protected AbstractSchemaTool() {}
+
+  protected static Session.Builder configureSsl(Session.Builder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
+  protected static SessionPool.Builder configureSsl(SessionPool.Builder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
+
+  protected static TableSessionPoolBuilder configureSsl(TableSessionPoolBuilder builder) {
+    builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
+    if (sslProtocol != null) {
+      builder.sslProtocol(sslProtocol);
+    }
+    return builder;
+  }
 
   protected static String checkRequiredArg(
       String arg, String name, CommandLine commandLine, String defaultValue)
@@ -107,6 +145,7 @@ public abstract class AbstractSchemaTool {
     String useSslStr = commandLine.getOptionValue(Constants.USE_SSL_ARGS);
     useSsl = Boolean.parseBoolean(useSslStr);
     if (useSsl) {
+      sslProtocol = commandLine.getOptionValue(Constants.SSL_PROTOCOL_ARGS);
       String givenTS = commandLine.getOptionValue(Constants.TRUST_STORE_ARGS);
       if (givenTS != null) {
         trustStore = givenTS;
@@ -118,6 +157,13 @@ public abstract class AbstractSchemaTool {
         trustStorePwd = givenTPW;
       } else {
         trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+      }
+      keyStore = commandLine.getOptionValue(Constants.KEY_STORE_ARGS);
+      keyStorePwd = commandLine.getOptionValue(Constants.KEY_STORE_PWD_ARGS);
+      if (keyStore != null && keyStorePwd == null) {
+        keyStorePwd = cliCtx.getLineReader().readLine("please input your key_store_pwd:", '\0');
+      } else if (keyStore == null && keyStorePwd != null) {
+        keyStore = cliCtx.getLineReader().readLine("please input your key_store:", '\0');
       }
     }
     boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);

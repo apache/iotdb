@@ -111,6 +111,15 @@ public class Cli extends AbstractCli {
       info.setProperty("use_ssl", useSsl);
       info.setProperty("trust_store", trustStore);
       info.setProperty("trust_store_pwd", trustStorePwd);
+      if (keyStore != null) {
+        info.setProperty(Config.KEY_STORE, keyStore);
+      }
+      if (keyStorePwd != null) {
+        info.setProperty(Config.KEY_STORE_PWD, keyStorePwd);
+      }
+      if (sslProtocol != null) {
+        info.setProperty(Config.SSL_PROTOCOL, sslProtocol);
+      }
     }
     info.setProperty("user", username);
     info.setProperty("password", password);
@@ -159,9 +168,23 @@ public class Cli extends AbstractCli {
   private static void serve(CliContext ctx) {
     try {
       useSsl = commandLine.getOptionValue(USE_SSL_ARGS);
+      sslProtocol = commandLine.getOptionValue(SSL_PROTOCOL_ARGS);
       if (Boolean.parseBoolean(useSsl)) {
-        trustStore = ctx.getLineReader().readLine("please input your trust_store:", '\0');
-        trustStorePwd = ctx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+        trustStore = commandLine.getOptionValue(TRUST_STORE_ARGS);
+        if (trustStore == null) {
+          trustStore = ctx.getLineReader().readLine("please input your trust_store:", '\0');
+        }
+        trustStorePwd = commandLine.getOptionValue(TRUST_STORE_PWD_ARGS);
+        if (trustStorePwd == null) {
+          trustStorePwd = ctx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+        }
+        keyStore = commandLine.getOptionValue(KEY_STORE_ARGS);
+        keyStorePwd = commandLine.getOptionValue(KEY_STORE_PWD_ARGS);
+        if (keyStore != null && keyStorePwd == null) {
+          keyStorePwd = ctx.getLineReader().readLine("please input your key_store_pwd:", '\0');
+        } else if (keyStore == null && keyStorePwd != null) {
+          keyStore = ctx.getLineReader().readLine("please input your key_store:", '\0');
+        }
       }
       password = commandLine.getOptionValue(PW_ARGS);
       if (password == null) {

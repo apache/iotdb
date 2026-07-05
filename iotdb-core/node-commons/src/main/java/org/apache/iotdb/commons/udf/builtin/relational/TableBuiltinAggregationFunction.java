@@ -66,7 +66,8 @@ public enum TableBuiltinAggregationFunction {
   REGR_SLOPE("regr_slope"),
   REGR_INTERCEPT("regr_intercept"),
   SKEWNESS("skewness"),
-  KURTOSIS("kurtosis");
+  KURTOSIS("kurtosis"),
+  PERCENTILE("percentile");
 
   private final String functionName;
 
@@ -120,6 +121,7 @@ public enum TableBuiltinAggregationFunction {
       case "kurtosis":
       case "approx_count_distinct":
       case "approx_percentile":
+      case "percentile":
         return RowType.anonymous(Collections.emptyList());
       case "extreme":
       case "max":

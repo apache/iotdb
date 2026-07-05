@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -60,7 +61,9 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
   private static final Logger LOGGER = LoggerFactory.getLogger(CommitProgressSyncProcedure.class);
 
   private static final long MIN_EXECUTION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 / 2;
+      TimeUnit.MINUTES.toMillis(
+              SubscriptionConfig.getInstance().getSubscriptionMetaSyncerSyncIntervalMinutes())
+          / 2;
   private static final AtomicLong LAST_EXECUTION_TIME = new AtomicLong(0);
 
   public CommitProgressSyncProcedure() {
@@ -109,7 +112,8 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
         ProcedureMessages.LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_0DC818CA);
 
     // 1. Pull commit progress from all DataNodes
-    final Map<Integer, TPullCommitProgressResp> respMap = env.pullCommitProgressFromDataNodes();
+    final Map<Integer, TPullCommitProgressResp> respMap =
+        env.pullCommitProgressFromDataNodesBestEffort();
 
     // 2. Merge all DataNode responses with existing progress using Math::max
     final Map<String, RegionProgress> mergedRegionProgress =

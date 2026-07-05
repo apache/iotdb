@@ -121,6 +121,7 @@ import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -137,6 +138,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ar
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ReadTsFileTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
@@ -147,6 +149,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseD
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
@@ -184,6 +187,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
@@ -514,6 +520,11 @@ public class StatementAnalyzer {
     public Scope visitShowDB(ShowDB node, Optional<Scope> context) {
       throw new SemanticException(
           DataNodeQueryMessages.SHOW_DATABASE_STATEMENT_IS_NOT_SUPPORTED_YET);
+    }
+
+    @Override
+    public Scope visitShowCreateDatabase(ShowCreateDatabase node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
     }
 
     @Override
@@ -938,6 +949,7 @@ public class StatementAnalyzer {
     @Override
     public Scope visitExplain(Explain node, Optional<Scope> context) {
       queryContext.setExplainType(ExplainType.EXPLAIN);
+      queryContext.setExplainOutputFormat(node.getOutputFormat());
       analysis.setFinishQueryAfterAnalyze();
       return visitQuery((Query) node.getStatement(), context);
     }
@@ -954,6 +966,7 @@ public class StatementAnalyzer {
     public Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
       queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
       queryContext.setVerbose(node.isVerbose());
+      queryContext.setExplainOutputFormat(node.getOutputFormat());
       return visitQuery((Query) node.getStatement(), context);
     }
 
@@ -2820,12 +2833,23 @@ public class StatementAnalyzer {
         FunctionCall gapFillColumn = null;
         ImmutableList.Builder<Expression> gapFillGroupingExpressions = ImmutableList.builder();
 
-        checkGroupingSetsCount(node.getGroupBy().get());
-        for (GroupingElement groupingElement : node.getGroupBy().get().getGroupingElements()) {
+        GroupBy groupBy = node.getGroupBy().get();
+        List<Expression> allGroupByExpressions = ImmutableList.of();
+        List<GroupingElement> groupingElements;
+
+        if (groupBy.isAll()) {
+          allGroupByExpressions = inferAllGroupByExpressions(outputExpressions);
+          groupingElements = ImmutableList.of(new SimpleGroupBy(allGroupByExpressions));
+        } else {
+          checkGroupingSetsCount(groupBy);
+          groupingElements = groupBy.getGroupingElements();
+        }
+
+        for (GroupingElement groupingElement : groupingElements) {
           if (groupingElement instanceof SimpleGroupBy) {
             for (Expression column : groupingElement.getExpressions()) {
               // simple GROUP BY expressions allow ordinals or arbitrary expressions
-              if (column instanceof LongLiteral) {
+              if (!groupBy.isAll() && column instanceof LongLiteral) {
                 long ordinal = ((LongLiteral) column).getParsedValue();
                 if (ordinal < 1 || ordinal > outputExpressions.size()) {
                   throw new SemanticException(
@@ -2970,6 +2994,17 @@ public class StatementAnalyzer {
       return resolveSelectAlias(identifier, selectAliases)
           .map(alias -> outputExpressions.get(alias.getPosition() - 1))
           .orElse(expression);
+    }
+
+    private List<Expression> inferAllGroupByExpressions(List<Expression> outputExpressions) {
+      ImmutableList.Builder<Expression> groupingExpressions = ImmutableList.builder();
+      for (Expression expression : outputExpressions) {
+        if (extractAggregateFunctions(ImmutableList.of(expression)).isEmpty()
+            && extractWindowFunctions(ImmutableList.of(expression)).isEmpty()) {
+          groupingExpressions.add(expression);
+        }
+      }
+      return groupingExpressions.build();
     }
 
     private boolean isDateBinGapFill(Expression column) {
@@ -5108,6 +5143,11 @@ public class StatementAnalyzer {
     }
 
     @Override
+    public Scope visitShowCreatePipe(ShowCreatePipe node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
     public Scope visitCreatePipePlugin(CreatePipePlugin node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
@@ -5128,12 +5168,22 @@ public class StatementAnalyzer {
     }
 
     @Override
+    public Scope visitAlterTopic(AlterTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
     public Scope visitDropTopic(DropTopic node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
     public Scope visitShowTopics(ShowTopics node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    public Scope visitShowCreateTopic(ShowCreateTopic node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
@@ -5167,6 +5217,9 @@ public class StatementAnalyzer {
 
       TableFunctionAnalysis functionAnalysis;
       try {
+        if (function instanceof ReadTsFileTableFunction) {
+          ((ReadTsFileTableFunction) function).setMPPQueryContext(queryContext);
+        }
         functionAnalysis = function.analyze(argumentsAnalysis.getPassedArguments());
       } catch (UDFException e) {
         throw new SemanticException(e.getMessage());
@@ -5290,7 +5343,8 @@ public class StatementAnalyzer {
         Scope argumentScope = analysis.getScope(argument.getRelation());
         if (argument.isPassThroughColumns()) {
           argumentScope.getRelationType().getAllFields().forEach(fields::add);
-        } else if (argument.getPartitionBy().isPresent()) {
+        } else if (!TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)
+            && argument.getPartitionBy().isPresent()) {
           argument.getPartitionBy().get().stream()
               .map(expression -> validateAndGetInputField(expression, argumentScope))
               .forEach(fields::add);
@@ -5428,7 +5482,147 @@ public class StatementAnalyzer {
               analyzeDefault(parameterSpecification, errorLocation));
         }
       }
+      tryAppendM4ModeArgument(functionName, arguments, parameterSpecifications, passedArguments);
       return new ArgumentsAnalysis(passedArguments.buildOrThrow(), tableArgumentAnalyses.build());
+    }
+
+    private void tryAppendM4ModeArgument(
+        String functionName,
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        ImmutableMap.Builder<String, Argument> passedArguments) {
+      if (!TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)) {
+        return;
+      }
+
+      TableFunctionArgument sizeArgument =
+          findTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.SIZE_PARAMETER_NAME);
+      if (!(sizeArgument.getValue() instanceof Expression)) {
+        throw new SemanticException(
+            String.format(
+                "Invalid argument %s. Expected scalar argument",
+                M4TableFunction.SIZE_PARAMETER_NAME));
+      }
+
+      boolean isTimeWindow = sizeArgument.getValue() instanceof TimeDurationLiteral;
+      Optional<TableFunctionArgument> slideArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.SLIDE_PARAMETER_NAME);
+      if (slideArgument.isPresent()) {
+        if (!(slideArgument.get().getValue() instanceof Expression)) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid argument %s. Expected scalar argument",
+                  M4TableFunction.SLIDE_PARAMETER_NAME));
+        }
+        boolean isTimeSlide = slideArgument.get().getValue() instanceof TimeDurationLiteral;
+        if (isTimeWindow != isTimeSlide) {
+          throw new SemanticException(
+              "The SLIDE argument must have the same window mode as the SIZE argument.");
+        }
+      }
+      if (!isTimeWindow
+          && containsTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.ORIGIN_PARAMETER_NAME)) {
+        throw new SemanticException("The ORIGIN argument is only supported in time window mode.");
+      }
+      validateM4OrderBySortOrder(arguments, parameterSpecifications);
+      passedArguments.put(
+          M4TableFunction.WINDOW_MODE_PARAMETER_NAME,
+          new ScalarArgument(org.apache.iotdb.udf.api.type.Type.BOOLEAN, isTimeWindow));
+    }
+
+    private void validateM4OrderBySortOrder(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications) {
+      Optional<TableFunctionArgument> dataArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.DATA_PARAMETER_NAME);
+      if (!dataArgument.isPresent()
+          || !(dataArgument.get().getValue() instanceof TableFunctionTableArgument)) {
+        return;
+      }
+
+      Optional<OrderBy> orderBy =
+          ((TableFunctionTableArgument) dataArgument.get().getValue()).getOrderBy();
+      if (!orderBy.isPresent()) {
+        return;
+      }
+
+      for (SortItem sortItem : orderBy.get().getSortItems()) {
+        if (sortItem.getOrdering() != SortItem.Ordering.ASCENDING) {
+          throw new SemanticException(
+              "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+        }
+      }
+    }
+
+    private boolean containsTableFunctionArgument(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        String argumentName) {
+      return findOptionalTableFunctionArgument(arguments, parameterSpecifications, argumentName)
+          .isPresent();
+    }
+
+    private Optional<TableFunctionArgument> findOptionalTableFunctionArgument(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        String argumentName) {
+      boolean argumentsPassedByName =
+          arguments.stream().allMatch(argument -> argument.getName().isPresent());
+      if (argumentsPassedByName) {
+        return arguments.stream()
+            .filter(
+                argument ->
+                    argumentName.equalsIgnoreCase(argument.getName().get().getCanonicalValue()))
+            .findFirst();
+      }
+
+      for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
+        if (argumentName.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
+          if (i >= arguments.size()) {
+            return Optional.empty();
+          }
+          return Optional.of(arguments.get(i));
+        }
+      }
+      return Optional.empty();
+    }
+
+    private TableFunctionArgument findTableFunctionArgument(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        String argumentName) {
+      if (arguments.isEmpty()) {
+        throw new IllegalStateException("Arguments should never be empty when resolving M4 mode");
+      }
+
+      boolean argumentsPassedByName =
+          arguments.stream().allMatch(argument -> argument.getName().isPresent());
+      if (argumentsPassedByName) {
+        return arguments.stream()
+            .filter(
+                argument ->
+                    argumentName.equalsIgnoreCase(argument.getName().get().getCanonicalValue()))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        String.format("Missing required argument: %s", argumentName)));
+      }
+
+      for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
+        if (argumentName.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
+          if (i >= arguments.size()) {
+            throw new IllegalStateException(
+                String.format("Missing required argument: %s", argumentName));
+          }
+          return arguments.get(i);
+        }
+      }
+      throw new IllegalStateException(String.format("Unknown argument: %s", argumentName));
     }
 
     // append order by time asc for built-in forecast tvf if user doesn't specify order by clause

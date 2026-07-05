@@ -352,15 +352,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    setProperty(
-        "enable_auto_leader_balance_for_iot_consensus",
-        String.valueOf(enableAutoLeaderBalanceForIoTConsensus));
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     if (queryThreadCount <= 0) {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
@@ -384,6 +375,27 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
     setProperty("data_region_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "config_node_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "schema_region_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "data_region_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
     return this;
   }
 
@@ -454,13 +466,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode) {
     setProperty("data_region_per_data_node", String.valueOf(dataRegionPerDataNode));
     return this;
   }
 
   @Override
-  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  public CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     setProperty("schema_region_per_data_node", String.valueOf(schemaRegionPerDataNode));
     return this;
   }
@@ -474,6 +486,21 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     setProperty("pipe_enable_memory_checked", String.valueOf(isPipeEnableMemoryCheck));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
+      long subscriptionOwnerLeaseDurationMsMin) {
+    setProperty(
+        "subscription_owner_lease_duration_ms_min",
+        String.valueOf(subscriptionOwnerLeaseDurationMsMin));
     return this;
   }
 
@@ -499,6 +526,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
     setProperty("tag_attribute_total_size", String.valueOf(tagAttributeTotalSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    setProperty(
+        "single_measurement_check_cache_size", String.valueOf(singleMeasurementCheckCacheSize));
     return this;
   }
 
@@ -593,6 +627,18 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    setProperty("enable_thrift_ssl", String.valueOf(enableThriftClientSSL));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setThriftSSLClientAuth(boolean thriftSSLClientAuth) {
+    setProperty("thrift_ssl_client_auth", String.valueOf(thriftSSLClientAuth));
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
     setProperty("enable_internal_ssl", String.valueOf(enableInternalSSL));
     return this;
@@ -619,6 +665,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setTrustStorePwd(String trustStorePwd) {
     setProperty("trust_store_pwd", trustStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    setProperty("ssl_protocol", sslProtocol);
     return this;
   }
 

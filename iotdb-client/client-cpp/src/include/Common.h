@@ -185,7 +185,7 @@ public:
     case TSDataType::BLOB:
       return !stringV.is_initialized();
     case TSDataType::DATE:
-      return !dateV.is_initialized();
+      return !dateV.is_initialized() || dateV.value().is_not_a_date();
     default:
       return true;
     }

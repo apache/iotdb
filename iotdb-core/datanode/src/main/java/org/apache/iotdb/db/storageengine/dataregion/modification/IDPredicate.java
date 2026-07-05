@@ -29,6 +29,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -63,7 +64,11 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
 
     public static IDPredicateType deserialize(InputStream stream) throws IOException {
-      return values()[stream.read()];
+      int typeNum = stream.read();
+      if (typeNum == -1) {
+        throw new EOFException();
+      }
+      return values()[typeNum];
     }
 
     public static IDPredicateType deserialize(ByteBuffer buffer) {

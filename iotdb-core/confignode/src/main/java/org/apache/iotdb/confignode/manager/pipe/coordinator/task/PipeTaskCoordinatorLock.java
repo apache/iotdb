@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
 import org.slf4j.Logger;
@@ -46,17 +47,10 @@ public class PipeTaskCoordinatorLock {
     LOGGER.debug(
         ManagerMessages.PIPETASKCOORDINATOR_LOCK_WAITING_FOR_THREAD,
         Thread.currentThread().getName());
-    try {
-      semaphore.acquire();
-      LOGGER.debug(
-          ManagerMessages.PIPETASKCOORDINATOR_LOCK_ACQUIRED_BY_THREAD,
-          Thread.currentThread().getName());
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.error(
-          ManagerMessages.INTERRUPTED_WHILE_WAITING_FOR_PIPETASKCOORDINATOR_LOCK_CURRENT_THREAD,
-          Thread.currentThread().getName());
-    }
+    semaphore.acquireUninterruptibly();
+    LOGGER.debug(
+        ManagerMessages.PIPETASKCOORDINATOR_LOCK_ACQUIRED_BY_THREAD,
+        Thread.currentThread().getName());
   }
 
   public boolean tryLock() {
@@ -70,14 +64,16 @@ public class PipeTaskCoordinatorLock {
             Thread.currentThread().getName());
         return true;
       } else {
-        LOGGER.info(
+        PipeLogger.log(
+            LOGGER::info,
             ManagerMessages.PIPETASKCOORDINATOR_LOCK_FAILED_TO_ACQUIRE_BY_THREAD_BECAUSE_OF_TIMEOUT,
             Thread.currentThread().getName());
         return false;
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.error(
+      PipeLogger.log(
+          LOGGER::error,
           ManagerMessages.INTERRUPTED_WHILE_WAITING_FOR_PIPETASKCOORDINATOR_LOCK_CURRENT_THREAD,
           Thread.currentThread().getName());
       return false;

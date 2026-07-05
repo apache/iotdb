@@ -22,6 +22,9 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
@@ -37,6 +40,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -44,7 +48,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -103,6 +109,8 @@ public class PipeTaskCoordinator {
     final TSStatus status;
     if (req.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().createConsensusPipe(req);
+    } else if (isDoubleLivingPipe(req)) {
+      status = createDoubleLivingPipe(req);
     } else {
       status = configManager.getProcedureManager().createPipe(req);
     }
@@ -112,12 +120,102 @@ public class PipeTaskCoordinator {
     return status;
   }
 
+  private boolean isDoubleLivingPipe(final TCreatePipeReq req) {
+    return new PipeParameters(req.getExtractorAttributes())
+        .getBooleanOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+  }
+
+  private TSStatus createDoubleLivingPipe(final TCreatePipeReq req) {
+    final PipeParameters sourceParameters = new PipeParameters(req.getExtractorAttributes());
+    final String currentDialect =
+        sourceParameters.getStringOrDefault(
+            SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    final String firstDialect =
+        SystemConstant.SQL_DIALECT_TREE_VALUE.equals(currentDialect)
+            ? SystemConstant.SQL_DIALECT_TREE_VALUE
+            : SystemConstant.SQL_DIALECT_TABLE_VALUE;
+    final String secondDialect =
+        SystemConstant.SQL_DIALECT_TREE_VALUE.equals(firstDialect)
+            ? SystemConstant.SQL_DIALECT_TABLE_VALUE
+            : SystemConstant.SQL_DIALECT_TREE_VALUE;
+
+    final TCreatePipeReq firstReq =
+        cloneCreatePipeRequestWithDialect(req, sourceParameters, firstDialect);
+    final TCreatePipeReq secondReq =
+        cloneCreatePipeRequestWithDialect(req, sourceParameters, secondDialect);
+    final boolean shouldCreateFirstPipe;
+    final boolean shouldCreateSecondPipe;
+    try {
+      shouldCreateFirstPipe = pipeTaskInfo.checkBeforeCreatePipe(firstReq);
+      shouldCreateSecondPipe = pipeTaskInfo.checkBeforeCreatePipe(secondReq);
+    } catch (final Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
+    }
+
+    TSStatus firstStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    if (shouldCreateFirstPipe) {
+      firstStatus = configManager.getProcedureManager().createPipe(firstReq);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != firstStatus.getCode()) {
+        return firstStatus;
+      }
+    }
+    if (!shouldCreateSecondPipe) {
+      return firstStatus;
+    }
+
+    final TSStatus secondStatus = configManager.getProcedureManager().createPipe(secondReq);
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == secondStatus.getCode()) {
+      return secondStatus;
+    }
+    if (shouldCreateFirstPipe) {
+      configManager
+          .getProcedureManager()
+          .dropPipe(
+              firstReq.getPipeName(), SystemConstant.SQL_DIALECT_TABLE_VALUE.equals(firstDialect));
+    }
+    return secondStatus;
+  }
+
+  private TCreatePipeReq cloneCreatePipeRequestWithDialect(
+      final TCreatePipeReq req, final PipeParameters sourceParameters, final String sqlDialect) {
+    final Map<String, String> sourceAttributes = new HashMap<>(sourceParameters.getAttribute());
+    sourceAttributes.remove(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY);
+    sourceAttributes.remove(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY);
+    sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, sqlDialect);
+    sourceAttributes.put(
+        SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
+
+    final TCreatePipeReq clonedReq =
+        new TCreatePipeReq()
+            .setPipeName(req.getPipeName())
+            .setExtractorAttributes(sourceAttributes)
+            .setProcessorAttributes(cloneAttributes(req.getProcessorAttributes()))
+            .setConnectorAttributes(cloneAttributes(req.getConnectorAttributes()));
+    if (req.isSetIfNotExistsCondition()) {
+      clonedReq.setIfNotExistsCondition(req.isIfNotExistsCondition());
+    }
+    if (req.isSetNeedManuallyStart()) {
+      clonedReq.setNeedManuallyStart(req.isNeedManuallyStart());
+    }
+    return clonedReq;
+  }
+
+  private Map<String, String> cloneAttributes(final Map<String, String> attributes) {
+    return new HashMap<>(attributes == null ? Collections.emptyMap() : attributes);
+  }
+
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus alterPipe(TAlterPipeReq req) {
     final String pipeName = req.getPipeName();
     final boolean isSetIfExistsCondition =
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+    final boolean isTableModel =
+        resolveIsTableModel(pipeName, req.isSetIsTableModel(), req.isTableModel);
+    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
       return isSetIfExistsCondition
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
           : RpcUtils.getStatus(
@@ -125,6 +223,7 @@ public class PipeTaskCoordinator {
               String.format(
                   "Failed to alter pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
+    req.setIsTableModel(isTableModel);
     final TSStatus status = configManager.getProcedureManager().alterPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(ManagerMessages.FAILED_TO_ALTER_PIPE_RESULT_STATUS, req.getPipeName(), status);
@@ -134,11 +233,15 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   private TSStatus startPipe(String pipeName) {
+    return startPipe(pipeName, false);
+  }
+
+  private TSStatus startPipe(String pipeName, boolean isTableModel) {
     final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().startConsensusPipe(pipeName);
     } else {
-      status = configManager.getProcedureManager().startPipe(pipeName);
+      status = configManager.getProcedureManager().startPipe(pipeName, isTableModel);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(ManagerMessages.FAILED_TO_START_PIPE_RESULT_STATUS, pipeName, status);
@@ -149,22 +252,28 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(TStartPipeReq req) {
     final String pipeName = req.getPipeName();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+    final boolean isTableModel =
+        resolveIsTableModel(pipeName, req.isSetIsTableModel(), req.isTableModel);
+    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
               "Failed to start pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
-    return startPipe(pipeName);
+    return startPipe(pipeName, isTableModel);
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   private TSStatus stopPipe(String pipeName) {
+    return stopPipe(pipeName, false);
+  }
+
+  private TSStatus stopPipe(String pipeName, boolean isTableModel) {
     final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().stopConsensusPipe(pipeName);
     } else {
-      status = configManager.getProcedureManager().stopPipe(pipeName);
+      status = configManager.getProcedureManager().stopPipe(pipeName, isTableModel);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(ManagerMessages.FAILED_TO_STOP_PIPE_RESULT_STATUS, pipeName, status);
@@ -175,13 +284,15 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(TStopPipeReq req) {
     final String pipeName = req.getPipeName();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+    final boolean isTableModel =
+        resolveIsTableModel(pipeName, req.isSetIsTableModel(), req.isTableModel);
+    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
               "Failed to stop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
-    return stopPipe(pipeName);
+    return stopPipe(pipeName, isTableModel);
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
@@ -189,7 +300,9 @@ public class PipeTaskCoordinator {
     final String pipeName = req.getPipeName();
     final boolean isSetIfExistsCondition =
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+    final boolean isTableModel =
+        resolveIsTableModel(pipeName, req.isSetIsTableModel(), req.isTableModel);
+    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
       return isSetIfExistsCondition
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
           : RpcUtils.getStatus(
@@ -201,7 +314,7 @@ public class PipeTaskCoordinator {
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().dropConsensusPipe(pipeName);
     } else {
-      status = configManager.getProcedureManager().dropPipe(pipeName);
+      status = configManager.getProcedureManager().dropPipe(pipeName, isTableModel);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(ManagerMessages.FAILED_TO_DROP_PIPE_RESULT_STATUS, pipeName, status);
@@ -209,13 +322,31 @@ public class PipeTaskCoordinator {
     return status;
   }
 
+  private boolean resolveIsTableModel(
+      final String pipeName, final boolean isSetIsTableModel, final boolean isTableModel) {
+    return isSetIsTableModel
+        ? isTableModel
+        : !pipeTaskInfo.isPipeExisted(pipeName, false)
+            && pipeTaskInfo.isPipeExisted(pipeName, true);
+  }
+
+  public boolean resolveIsTableModel(final String pipeName) {
+    return resolveIsTableModel(pipeName, false, false);
+  }
+
   public TShowPipeResp showPipes(final TShowPipeReq req) {
     try {
-      return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
-          .filter(req.whereClause, req.pipeName, req.isTableModel, req.userName)
+      final PipeTableResp pipeTableResp =
+          (PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2());
+      return (req.isSetIsTableModel()
+              ? pipeTableResp.filter(req.whereClause, req.pipeName, req.isTableModel, req.userName)
+              : pipeTableResp.filter(req.whereClause, req.pipeName, req.userName))
           .convertToTShowPipeResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new PipeTableResp(res, Collections.emptyList()).convertToTShowPipeResp();
@@ -227,7 +358,7 @@ public class PipeTaskCoordinator {
       return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
           .convertToTGetAllPipeInfoResp();
     } catch (IOException | ConsensusException e) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_GET_ALL_PIPE_INFO, e);
+      PipeLogger.log(LOGGER::warn, e, ManagerMessages.FAILED_TO_GET_ALL_PIPE_INFO);
       return new TGetAllPipeInfoResp(
           new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage()),
           Collections.emptyList());

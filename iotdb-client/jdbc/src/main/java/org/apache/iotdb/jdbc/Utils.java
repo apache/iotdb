@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.jdbc.i18n.JdbcMessages;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import java.nio.charset.Charset;
 import java.time.DateTimeException;
@@ -139,6 +140,15 @@ public class Utils {
     if (info.containsKey(Config.TRUST_STORE_PWD)) {
       params.setTrustStorePwd(info.getProperty(Config.TRUST_STORE_PWD));
     }
+    if (info.containsKey(Config.KEY_STORE)) {
+      params.setKeyStore(info.getProperty(Config.KEY_STORE));
+    }
+    if (info.containsKey(Config.KEY_STORE_PWD)) {
+      params.setKeyStorePwd(info.getProperty(Config.KEY_STORE_PWD));
+    }
+    if (info.containsKey(Config.SSL_PROTOCOL)) {
+      params.setSslProtocol(RpcSslUtils.normalizeProtocol(info.getProperty(Config.SSL_PROTOCOL)));
+    }
     if (info.containsKey(Config.SQL_DIALECT)) {
       params.setSqlDialect(info.getProperty(Config.SQL_DIALECT));
     }
@@ -178,6 +188,9 @@ public class Utils {
         case Config.USE_SSL:
         case Config.TRUST_STORE:
         case Config.TRUST_STORE_PWD:
+        case Config.KEY_STORE:
+        case Config.KEY_STORE_PWD:
+        case Config.SSL_PROTOCOL:
         case Config.VERSION:
         case Config.NETWORK_TIMEOUT:
         case Config.SQL_DIALECT:

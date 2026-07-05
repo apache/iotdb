@@ -256,6 +256,13 @@ public final class PipeMessages {
   // ===================== PipeTaskAgent =====================
 
   public static final String NOT_ENOUGH_MEMORY_FOR_PIPE = "Not enough memory for pipe.";
+  public static final String NOT_ENOUGH_MEMORY_FOR_PIPE_FORMAT =
+      NOT_ENOUGH_MEMORY_FOR_PIPE
+          + " Need memory: %d bytes, free memory: %d bytes, "
+          + "reserved memory: %d bytes, total memory: %d bytes";
+  public static final String NOT_ENOUGH_FLOATING_MEMORY_FOR_PIPE_FORMAT =
+      NOT_ENOUGH_MEMORY_FOR_PIPE
+          + " Need floating memory: %d bytes, free floating memory: %d bytes";
   public static final String UNKNOWN_PIPE_STATUS = "Unknown pipe status %s for pipe %s";
   public static final String UNEXPECTED_PIPE_STATUS = "Unexpected pipe status %s: ";
   public static final String INTERRUPTED_ACQUIRING_READ_LOCK =

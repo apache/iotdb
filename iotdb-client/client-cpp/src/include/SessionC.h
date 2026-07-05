@@ -105,6 +105,12 @@ typedef enum {
 
 typedef enum { TS_COL_TAG = 0, TS_COL_FIELD = 1, TS_COL_ATTRIBUTE = 2 } TSColumnCategory_C;
 
+typedef struct {
+  int year;
+  int month;
+  int day;
+} TSDate_C;
+
 /* ============================================================
  *  Session Lifecycle  —  Tree Model
  * ============================================================ */
@@ -381,6 +387,12 @@ float ts_row_record_get_float(CRowRecord* record, int index);
 double ts_row_record_get_double(CRowRecord* record, int index);
 
 const char* ts_row_record_get_string(CRowRecord* record, int index);
+
+/** Returns YYYYMMDD for DATE fields; 0 if record is null, index is out of range, field is null, or not DATE. */
+int32_t ts_row_record_get_date_int32(CRowRecord* record, int index);
+
+/** Byte length of the string/binary field (TEXT, BLOB, STRING, OBJECT, ...); 0 if null or out of range. */
+size_t ts_row_record_get_string_byte_length(CRowRecord* record, int index);
 
 /** Returns TS_TYPE_INVALID if record is null or index is out of range. */
 TSDataType_C ts_row_record_get_data_type(CRowRecord* record, int index);

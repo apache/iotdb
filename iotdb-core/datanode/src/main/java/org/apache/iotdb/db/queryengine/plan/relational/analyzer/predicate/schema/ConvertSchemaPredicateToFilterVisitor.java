@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.Predic
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -234,8 +235,20 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  public SchemaFilter visitBetweenPredicate(final BetweenPredicate node, final Context context) {
-    return visitExpression(node, context);
+  public @Nullable SchemaFilter visitBetweenPredicate(
+      final BetweenPredicate node, final Context context) {
+    final SchemaFilter lowerBoundFilter =
+        new ComparisonExpression(
+                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL, node.getMin(), node.getValue())
+            .accept(this, context);
+    final SchemaFilter upperBoundFilter =
+        new ComparisonExpression(
+                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL, node.getValue(), node.getMax())
+            .accept(this, context);
+    if (Objects.isNull(lowerBoundFilter) || Objects.isNull(upperBoundFilter)) {
+      return null;
+    }
+    return new AndFilter(Arrays.asList(lowerBoundFilter, upperBoundFilter));
   }
 
   private SchemaFilter wrapTagOrAttributeFilter(

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
-import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
@@ -42,7 +41,6 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -78,6 +76,15 @@ public class ProcedureExecutor<Env> {
   private int corePoolSize;
   private int maxPoolSize;
 
+  /**
+   * The internal cleaner that recycles completed procedures. Kept as a reference so that its clean
+   * interval / evict TTL can be reloaded at runtime (see {@link #restartCompletedCleaner}). All
+   * accesses ({@link #startCompletedCleaner} on leader transition, {@link #restartCompletedCleaner}
+   * on hot reload, and the test getter) are performed while holding this instance's monitor, so the
+   * field is guarded by {@code synchronized} for both mutual exclusion and cross-thread visibility.
+   */
+  private CompletedProcedureRecycler<Env> completedProcedureRecycler;
+
   private final ProcedureScheduler scheduler;
 
   private final AtomicLong workId = new AtomicLong(0);
@@ -85,6 +92,16 @@ public class ProcedureExecutor<Env> {
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final Env environment;
   private final IProcedureStore<Env> store;
+
+  private static final class LockStateResult<Env> {
+    private final ProcedureLockState lockState;
+    private final Procedure<Env> procedure;
+
+    private LockStateResult(ProcedureLockState lockState, Procedure<Env> procedure) {
+      this.lockState = lockState;
+      this.procedure = procedure;
+    }
+  }
 
   public ProcedureExecutor(
       final Env environment, final IProcedureStore<Env> store, final ProcedureScheduler scheduler) {
@@ -281,16 +298,34 @@ public class ProcedureExecutor<Env> {
     LOG.info(ProcedureMessages.PROCEDURE_WORKERS_ARE_STARTED, workerThreads.size());
   }
 
-  public void startCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
-    addInternalProcedure(
-        new CompletedProcedureRecycler(store, completed, cleanTimeInterval, cleanEvictTTL));
+  public synchronized void startCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
+    completedProcedureRecycler =
+        new CompletedProcedureRecycler<>(store, completed, cleanTimeInterval, cleanEvictTTL);
+    addInternalProcedure(completedProcedureRecycler);
+  }
+
+  /**
+   * Reload the completed-procedure cleaner with a new clean interval / evict TTL at runtime. The
+   * clean interval and evict TTL are captured by {@link CompletedProcedureRecycler} at
+   * construction, so applying the new values requires removing the current recycler and scheduling
+   * a fresh one.
+   */
+  public synchronized void restartCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
+    if (completedProcedureRecycler != null) {
+      removeInternalProcedure(completedProcedureRecycler);
+    }
+    startCompletedCleaner(cleanTimeInterval, cleanEvictTTL);
+  }
+
+  @TestOnly
+  synchronized CompletedProcedureRecycler<Env> getCompletedProcedureRecycler() {
+    return completedProcedureRecycler;
   }
 
   public void addInternalProcedure(InternalProcedure interalProcedure) {
     if (interalProcedure == null) {
       return;
     }
-    interalProcedure.setState(ProcedureState.WAITING_TIMEOUT);
     timeoutExecutor.add(interalProcedure);
   }
 
@@ -329,33 +364,39 @@ public class ProcedureExecutor<Env> {
       return;
     }
     ProcedureLockState lockState = null;
+    Procedure<Env> lockEventWaitProcedure = null;
     try {
       do {
         if (!rootProcStack.acquire()) {
           if (rootProcStack.setRollback()) {
-            lockState = executeRootStackRollback(rootProcId, rootProcStack);
+            LockStateResult<Env> lockStateResult =
+                executeRootStackRollback(rootProcId, rootProcStack);
+            lockState = lockStateResult.lockState;
             switch (lockState) {
               case LOCK_ACQUIRED:
                 break;
               case LOCK_EVENT_WAIT:
-                LOG.info(ProcedureMessages.LOCK_EVENT_WAIT_ROLLBACK, proc);
+                LOG.info(ProcedureMessages.LOCK_EVENT_WAIT_ROLLBACK, lockStateResult.procedure);
                 rootProcStack.unsetRollback();
+                lockEventWaitProcedure = lockStateResult.procedure;
                 break;
               case LOCK_YIELD_WAIT:
                 rootProcStack.unsetRollback();
-                scheduler.yield(proc);
+                scheduler.yield(lockStateResult.procedure);
                 break;
               default:
                 throw new UnsupportedOperationException();
             }
           } else {
             if (!proc.wasExecuted()) {
-              switch (executeRollback(proc)) {
+              lockState = executeRollback(proc);
+              switch (lockState) {
                 case LOCK_ACQUIRED:
                   break;
                 case LOCK_EVENT_WAIT:
                   LOG.info(
                       ProcedureMessages.LOCK_EVENT_WAIT_CAN_T_ROLLBACK_CHILD_RUNNING_FOR, proc);
+                  lockEventWaitProcedure = proc;
                   break;
                 case LOCK_YIELD_WAIT:
                   scheduler.yield(proc);
@@ -367,19 +408,25 @@ public class ProcedureExecutor<Env> {
           }
           break;
         }
-        lockState = acquireLock(proc);
-        switch (lockState) {
-          case LOCK_ACQUIRED:
-            executeProcedure(rootProcStack, proc);
-            break;
-          case LOCK_YIELD_WAIT:
-          case LOCK_EVENT_WAIT:
-            LOG.info(ProcedureMessages.LOCKSTATE_IS, proc, lockState);
-            break;
-          default:
-            throw new UnsupportedOperationException();
+        try {
+          lockState = acquireLock(proc);
+          switch (lockState) {
+            case LOCK_ACQUIRED:
+              executeProcedure(rootProcStack, proc);
+              break;
+            case LOCK_YIELD_WAIT:
+            case LOCK_EVENT_WAIT:
+              LOG.info(ProcedureMessages.LOCKSTATE_IS, proc, lockState);
+              if (lockState == ProcedureLockState.LOCK_EVENT_WAIT) {
+                lockEventWaitProcedure = proc;
+              }
+              break;
+            default:
+              throw new UnsupportedOperationException();
+          }
+        } finally {
+          rootProcStack.release();
         }
-        rootProcStack.release();
 
         if (proc.isSuccess()) {
           // update metrics on finishing the procedure
@@ -397,9 +444,9 @@ public class ProcedureExecutor<Env> {
     } finally {
       // Only after procedure has completed execution can it be allowed to be rescheduled to prevent
       // data races
-      if (Objects.equals(lockState, ProcedureLockState.LOCK_EVENT_WAIT)) {
-        LOG.info(ProcedureMessages.PROCEDUREID_WAIT_FOR_LOCK, proc.getProcId());
-        ((ConfigNodeProcedureEnv) this.environment).getNodeLock().waitProcedure(proc);
+      if (lockEventWaitProcedure != null) {
+        LOG.info(ProcedureMessages.PROCEDUREID_WAIT_FOR_LOCK, lockEventWaitProcedure.getProcId());
+        lockEventWaitProcedure.waitForLock(this.environment);
       }
     }
   }
@@ -416,6 +463,7 @@ public class ProcedureExecutor<Env> {
           ProcedureMessages
               .LOG_EXECUTING_PROCEDURE_SHOULD_RUNNABLE_STATE_BUT_IT_S_NOT_PROCEDURE_7CF42CE8,
           proc);
+      releaseLock(proc, false);
       return;
     }
     boolean reExecute;
@@ -456,7 +504,15 @@ public class ProcedureExecutor<Env> {
 
       updateStoreOnExecution(rootProcStack, proc, subprocs);
 
-      if (!store.isRunning()) {
+      // Stop the in-place re-execution loop once this executor is shutting down (e.g. ConfigNode
+      // leader switch / restart). Checking store.isRunning() alone is not enough: stopExecutor()
+      // calls executor.stop() and executor.join() before store.stop(), so the store is still
+      // running while join() waits for this very worker to finish. Without also checking the
+      // executor's own running flag, a procedure that keeps returning HAS_MORE_STATE for the same
+      // state (e.g. AddRegionPeerProcedure parking at DO_ADD_REGION_PEER after waitTaskFinish() is
+      // interrupted) would re-execute forever here and join() would hang. The persisted state lets
+      // the next leader resume from where it stopped.
+      if (!isRunning() || !store.isRunning()) {
         return;
       }
 
@@ -609,8 +665,8 @@ public class ProcedureExecutor<Env> {
    * @param procedureStack root procedure stack
    * @return lock state
    */
-  private ProcedureLockState executeRootStackRollback(
-      Long rootProcId, RootProcedureStack procedureStack) {
+  private LockStateResult<Env> executeRootStackRollback(
+      Long rootProcId, RootProcedureStack<Env> procedureStack) {
     Procedure<Env> rootProcedure = procedures.get(rootProcId);
     ProcedureException exception = rootProcedure.getException();
     if (exception == null) {
@@ -631,7 +687,7 @@ public class ProcedureExecutor<Env> {
       }
       ProcedureLockState lockState = acquireLock(procedure);
       if (lockState != ProcedureLockState.LOCK_ACQUIRED) {
-        return lockState;
+        return new LockStateResult<>(lockState, procedure);
       }
       lockState = executeRollback(procedure);
       releaseLock(procedure, false);
@@ -639,11 +695,11 @@ public class ProcedureExecutor<Env> {
       boolean abortRollback = lockState != ProcedureLockState.LOCK_ACQUIRED;
       abortRollback |= !isRunning() || !store.isRunning();
       if (abortRollback) {
-        return lockState;
+        return new LockStateResult<>(lockState, procedure);
       }
 
       if (!procedure.isFinished() && procedure.isYieldAfterExecution(this.environment)) {
-        return ProcedureLockState.LOCK_YIELD_WAIT;
+        return new LockStateResult<>(ProcedureLockState.LOCK_YIELD_WAIT, procedure);
       }
 
       if (procedure != rootProcedure) {
@@ -654,7 +710,7 @@ public class ProcedureExecutor<Env> {
     LOG.info(
         ProcedureMessages.ROLLED_BACK_TIME_DURATION_IS, rootProcedure, rootProcedure.elapsedTime());
     rootProcedureCleanup(rootProcedure);
-    return ProcedureLockState.LOCK_ACQUIRED;
+    return new LockStateResult<>(ProcedureLockState.LOCK_ACQUIRED, rootProcedure);
   }
 
   private ProcedureLockState acquireLock(Procedure<Env> proc) {
@@ -789,23 +845,38 @@ public class ProcedureExecutor<Env> {
             Thread.sleep(1000);
             continue;
           }
-          this.activeProcedure.set(procedure);
-          activeExecutorCount.incrementAndGet();
-          startTime.set(System.currentTimeMillis());
-          PROCEDURE_EXECUTION_CONTEXT.set(true);
-          try {
-            executeProcedure(procedure);
-          } finally {
-            PROCEDURE_EXECUTION_CONTEXT.remove();
+          boolean executionAcquired = false;
+          while (isRunning() && !(executionAcquired = procedure.tryAcquireExecution())) {
+            Thread.sleep(10);
           }
-          activeExecutorCount.decrementAndGet();
-          LOG.trace(
-              ProcedureMessages.LOG_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF,
-              procedure.getProcId(),
-              activeExecutorCount.get());
-          this.activeProcedure.set(null);
-          lastUpdated = System.currentTimeMillis();
-          startTime.set(lastUpdated);
+          if (!executionAcquired) {
+            continue;
+          }
+          try {
+            this.activeProcedure.set(procedure);
+            activeExecutorCount.incrementAndGet();
+            startTime.set(System.currentTimeMillis());
+            try {
+              PROCEDURE_EXECUTION_CONTEXT.set(true);
+              try {
+                executeProcedure(procedure);
+              } finally {
+                PROCEDURE_EXECUTION_CONTEXT.remove();
+              }
+            } finally {
+              procedure.releaseExecution();
+              activeExecutorCount.decrementAndGet();
+              LOG.trace(
+                  "Halt pid={}, activeCount={}", procedure.getProcId(), activeExecutorCount.get());
+              this.activeProcedure.set(null);
+              lastUpdated = System.currentTimeMillis();
+              startTime.set(lastUpdated);
+            }
+          } catch (Exception e) {
+            LOG.warn(
+                "Exception happened when worker {} execute procedure {}", getName(), procedure, e);
+            throw e;
+          }
         }
 
       } catch (Exception e) {
@@ -816,6 +887,7 @@ public class ProcedureExecutor<Env> {
               this.activeProcedure.get(),
               e);
         }
+        this.activeProcedure.set(null);
       } finally {
         LOG.info(ProcedureMessages.PROCEDURE_WORKER_TERMINATED, getName());
       }

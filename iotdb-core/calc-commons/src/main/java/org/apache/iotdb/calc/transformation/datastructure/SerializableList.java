@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.transformation.datastructure;
 import org.apache.iotdb.calc.service.AbstractTemporaryQueryDataFileService;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.IOUtils;
 
 import org.apache.tsfile.utils.PublicBAOS;
 
@@ -60,7 +61,7 @@ public interface SerializableList {
     }
     init();
     ByteBuffer byteBuffer = ByteBuffer.allocate(recorder.getSerializedByteLength());
-    recorder.getFileChannel().read(byteBuffer);
+    IOUtils.readFully(recorder.getFileChannel(), byteBuffer);
     byteBuffer.flip();
     deserialize(byteBuffer);
     recorder.closeFile();

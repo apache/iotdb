@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -169,6 +170,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -745,6 +747,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress()
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showRepairDataPartitionTableProgress(),
+        resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TSStatus operatePermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.operatePermission(req), status -> !updateConfigNodeLeader(status));
@@ -1241,6 +1251,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus createTopic(TCreateTopicReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTopic(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus alterTopic(TAlterTopicReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterTopic(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
