@@ -56,8 +56,6 @@ public final class IoTConsensusMessages {
   public static final String THROTTLE_DOWN = "[限流] index:{}, safeIndex:{}";
   public static final String DATA_REGION_INDEX_AFTER_BUILD =
       "DataRegion[{}]：构建后的 index：safeIndex:{}，searchIndex: {}，lastConsensusRequest: {}";
-  public static final String WRITE_OPERATION_FAILED =
-      "{}：写入操作失败。searchIndex: {}。Code: {}";
   public static final String FAILED_TO_THROTTLE_DOWN = "限流失败，原因 ";
 
   // ===================== 快照 =====================
@@ -304,7 +302,6 @@ public final class IoTConsensusMessages {
   public static final String EXCEPTION_UNSUPPORTED_WRITER_META_VERSION_ARG_ARG_7D14E679 = "不支持 writer meta 版本 %d，位置 %s";
   public static final String LOG_WRITE_NO_SUBSCRIPTION_QUEUES_REGISTERED_0F4E697B = "write() 没有已注册的订阅队列，";
   public static final String LOG_GROUP_ARG_SEARCHINDEX_ARG_ARG_D5E034E6 = "group={}, searchIndex={}, 当前对象={}";
-  public static final String LOG_SUBSCRIPTIONQUEUES_ARG_ARG_6C4FE107 = "，订阅队列：{}，当前对象：{}";
   public static final String LOG_CANNOT_NOTIFY_ARG_BUILD_SYNC_LOG_CHANNEL_490770FB = "无法通知 {} 构建同步日志通道。";
   public static final String LOG_PLEASE_CHECK_STATUS_NODE_MANUALLY_40FBC9B3 = "请手动检查该节点状态";
   public static final String LOG_FAILED_SYNC_WRITER_SAFE_TIME_BARRIER_PEER_ARG_GROUP_ARG_05A13E6A = "无法将 writer safe-time barrier 同步到 peer {}，group {}，";
@@ -327,5 +324,6 @@ public final class IoTConsensusMessages {
   public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ENTRY_SEARCHINDEX_ARG_DROPPEDCOUNT_ARG_61F126B8 = "订阅队列已满，丢弃 entry，searchIndex={}，droppedCount={}";
   public static final String LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2 = "预留 {} 字节给批次 {}-{}，当前总使用量 {}";
   public static final String LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD = "{}：无法向 {} 发送 idle writer safe-time barrier。状态={}";
+  public static final String LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576 = "{}：写入操作失败。searchIndex: {}。Code: {}，订阅队列：{}，当前对象：{}";
 
 }

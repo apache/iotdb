@@ -548,7 +548,7 @@ public final class StorageEngineMessages {
 
   public static final String WRONG_LOAD_COMMAND_S = "错误的 load 命令 %s。";
 
-  public static final String FAILED_TO_FIND_DATA_REGION = "共识组 %s 底层状态机创建失败, 因为 DataRegion 没找到。";
+  public static final String FAILED_TO_FIND_DATA_REGION = "共识组 %s 底层状态机创建失败，因为 DataRegion 没找到。";
 
   public static final String DATA_REGION_IS_NULL = "DataRegion 为 null";
   // ---------------------------------------------------------------------------
@@ -965,7 +965,7 @@ public final class StorageEngineMessages {
   public static final String STORAGE_LOG_COMPACTION_RECOVER_INCOMPLETE_LOG_FILE_ABORT_RECOVER_46472E7C =
       "{} [Compaction][Recover] 日志文件不完整，中止恢复";
   public static final String STORAGE_LOG_COMPACTION_RECOVER_RECOVER_COMPACTION_SUCCESSFULLY_DELETE_8451AEFB =
-      "{} [Compaction][Recover] 恢复 compaction 成功, 删除 log 文件 {}";
+      "{} [Compaction][Recover] 恢复 compaction 成功，删除 log 文件 {}";
   public static final String STORAGE_LOG_COMPACTION_RECOVER_ALL_SOURCE_FILES_EXISTS_DELETE_ALL_TARGET_79954E60 =
       "{} [Compaction][Recover] 所有源文件均存在，删除所有目标文件。";
   public static final String STORAGE_LOG_COMPACTION_RECOVER_EXCEPTION_OCCURS_WHILE_DELETING_LOG_FILE_49A24E1D =

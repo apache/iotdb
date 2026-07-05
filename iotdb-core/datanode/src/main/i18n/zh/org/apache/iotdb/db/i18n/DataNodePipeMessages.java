@@ -125,7 +125,7 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
       "从 CN 处获取 pipe 信息失败，状态是 %s。";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
-      "获取 pipe metas 失败, 稍后会从 CN 处再次同步。";
+      "获取 pipe metas 失败，稍后会从 CN 处再次同步。";
   public static final String FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM =
       "从 CN 处获取 pipe 插件 jar 包失败。";
   public static final String FAILED_TO_GET_PIPE_TASK_META_FROM =
@@ -272,15 +272,14 @@ public final class DataNodePipeMessages {
   public static final String DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR =
       "Decrease reference count for TsFile {} 出错。";
   public static final String DO_NOT_HAS_A_COMPLETE_PAGE_BODY =
-      "do not has a complete page body. Expected:";
+      "没有完整的 page body。期望：";
   public static final String ERROR_WHILE_PARSING_TSFILE_INSERTION_EVENT =
       "解析 tsfile insertion event 时出错";
   public static final String EXCEPTION_OCCURRED_WHEN_DETERMINING_THE_EVENT_TIME =
       "判断 PipeInsertNodeTabletInsertionEvent({}) 的事件时间是否与时间范围 [{}, {}] 重叠时"
           + "发生异常。为保证数据完整性返回 true。";
   public static final String FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE =
-      "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count "
-          + "is {}, will keep retrying.";
+      "{}：为解析 TsFile {} 分配内存失败，tablet event 序号 {}，重试次数 {}，将持续重试。";
   public static final String FAILED_TO_BUILD_TABLET = "构建 tablet 失败";
   public static final String FAILED_TO_CHECK_NEXT = "check next 失败";
   public static final String FAILED_TO_CLOSE_TSFILEREADER = "关闭 TsFileReader 失败";
@@ -310,11 +309,11 @@ public final class DataNodePipeMessages {
   public static final String INVALID_EVENT_TYPE = "无效的 event type: ";
   public static final String INVALID_INPUT = "无效的 input: ";
   public static final String ISGENERATEDBYPIPE_IS_NOT_SUPPORTED =
-      "isGeneratedByPipe() is not supported!";
+      "isGeneratedByPipe() 不支持！";
   public static final String MAYEVENTPATHSOVERLAPPEDWITHPATTERN_IS_NOT_SUPPORTED =
-      "mayEventPathsOverlappedWithPattern() is not supported!";
+      "mayEventPathsOverlappedWithPattern() 不支持！";
   public static final String MAYEVENTTIMEOVERLAPPEDWITHTIMERANGE_IS_NOT_SUPPORTED =
-      "mayEventTimeOverlappedWithTimeRange() is not supported!";
+      "mayEventTimeOverlappedWithTimeRange() 不支持！";
   public static final String NO_COMMIT_IDS_FOUND_IN_PIPECOMPACTEDTSFILEINSERTIONEVENT =
       "在 PipeCompactedTsFileInsertionEvent 中未找到 commit ID。";
   public static final String PIPECOMPACTEDTSFILEINSERTIONEVENT_DOES_NOT_SUPPORT_EQUALSINIOTCONSENSUSV2 =
@@ -325,9 +324,9 @@ public final class DataNodePipeMessages {
       "Pipe {}：获取 devices from TsFile {}, extract it anyway 失败";
   public static final String PIPE_SKIPPING_TEMPORARY_TSFILE_S_PARSING_WHICH =
       "Pipe 跳过不应传输的临时 TsFile 的解析：{}";
-  public static final String ROW_CAN_NOT_BE_CUSTOMIZED = "Row can not be customized";
+  public static final String ROW_CAN_NOT_BE_CUSTOMIZED = "Row 无法自定义";
   public static final String SHALLOWCOPYSELFANDBINDPIPETASKMETAFORPROGRESSREPORT_IS_NOT_SUPPORTED =
-      "shallowCopySelfAndBindPipeTaskMetaForProgressReport() is not supported!";
+      "shallowCopySelfAndBindPipeTaskMetaForProgressReport() 不支持！";
   public static final String SKIPPING_TEMPORARY_TSFILE_S_PROGRESSINDEX_WILL_REPORT =
       "跳过 temporary TsFile {}'s progressIndex, will report MinimumProgressIndex";
   public static final String TABLEPATTERNPARSER_DOES_NOT_SUPPORT_ROW_BY_ROW =
@@ -457,9 +456,9 @@ public final class DataNodePipeMessages {
 
   public static final String ALL_DATA_IN_TSFILEEPOCH_WAS_EXTRACTED =
       "TsFileEpoch {} 中的所有数据已提取";
-  public static final String BUFFERSIZE_MUST_BE_A_POWER_OF_2 = "bufferSize must be a power of 2";
+  public static final String BUFFERSIZE_MUST_BE_A_POWER_OF_2 = "bufferSize 必须是 2 的幂";
   public static final String BUFFERSIZE_MUST_NOT_BE_LESS_THAN_1 =
-      "bufferSize must not be less than 1";
+      "bufferSize 不能小于 1";
   public static final String CAPTURE_TREE_AND_CAPTURE_TABLE_CAN_NOT =
       "capture.tree 和 capture.table 不能同时设为 false";
   public static final String DATABASE_NAME_IS_NULL_WHEN_MATCHING_SOURCES =
@@ -468,7 +467,7 @@ public final class DataNodePipeMessages {
       "Data region {}：注入 watermark 事件，timestamp：{}";
   public static final String DISCARD_TABLET_EVENT_BECAUSE_IT_IS_NOT =
       "丢弃 tablet 事件 {}，因为它不再可靠。将 TsFileEpoch 的状态改为 USING_BOTH。";
-  public static final String DISRUPTOR_ALREADY_STARTED = "Disruptor already started";
+  public static final String DISRUPTOR_ALREADY_STARTED = "Disruptor 已启动";
   public static final String DISRUPTOR_SHUTDOWN_COMPLETED = "Disruptor 关闭完成";
   public static final String DISRUPTOR_STARTED_WITH_BUFFER_SIZE = "Disruptor 已启动，缓冲区大小：{}";
   public static final String EXCEPTION_DURING_ONSHUTDOWN = "onShutdown() 期间发生异常";
@@ -496,7 +495,7 @@ public final class DataNodePipeMessages {
   public static final String NOT_HAS_PRIVILEGE_TO_TRANSFER_EVENT = "没有权限传输 event：";
   public static final String NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN = "没有权限传输 plan：";
   public static final String NO_EVENT_HANDLER_CONFIGURED = "未配置 event handler";
-  public static final String N_MUST_BE_0 = "n must be > 0";
+  public static final String N_MUST_BE_0 = "n 必须 > 0";
   public static final String PIPEREALTIMEDATAREGIONEXTRACTOR_OBSERVED_DATA_REGION_TIME_PARTITION_GROWT =
       "PipeRealtimeDataRegionExtractor({}) 观察到 data region {} 的 time partition 增长，"
           + "记录 time partition id 边界：{}。";
@@ -563,8 +562,7 @@ public final class DataNodePipeMessages {
   public static final String PIPE_START_TO_SORT_ALL_EXTRACTED_RESOURCES =
       "Pipe {}@{}：开始排序 all extracted resources";
   public static final String PIPE_TASK_CANNOTUSETABLETANYMORE_FOR_TSFILE_THE_MEMORY =
-      "Pipe task {}@{} canNotUseTabletAnyMore for tsFile {}: The memory usage of the insert "
-          + "node {} has reached the dangerous threshold of single pipe {}, event count: {}";
+      "Pipe task {}@{} 对 tsFile {} 触发 canNotUseTabletAnyMore：insert node {} 的内存使用已达单条 pipe {} 的危险阈值，event count：{}";
   public static final String PIPE_UNEXPECTED_PROGRESSINDEX_TYPE_FALLBACK_TO_ORIGIN =
       "Pipe {}@{}：unexpected ProgressIndex type {}, fallback to origin {}.";
   public static final String PIPE_UNSUPPORTED_SOURCE_REALTIME_MODE_CREATE_A =
@@ -573,9 +571,9 @@ public final class DataNodePipeMessages {
   public static final String PROCESSOR_INTERRUPTED_UNEXPECTEDLY = "处理器意外中断，继续运行";
   public static final String PROCESSOR_STOPPED = "处理器已停止";
   public static final String SET_FOR_HISTORICAL_DELETION_EVENT =
-      "[{}]Set {} for historical deletion event {}";
-  public static final String SET_FOR_HISTORICAL_EVENT = "[{}]Set {} for historical event {}";
-  public static final String SET_FOR_REALTIME_EVENT = "[{}]Set {} for realtime event {}";
+      "[{}]为 historical deletion event {} 设置 {}";
+  public static final String SET_FOR_HISTORICAL_EVENT = "[{}]为 historical event {} 设置 {}";
+  public static final String SET_FOR_REALTIME_EVENT = "[{}]为 realtime event {} 设置 {}";
   public static final String SOURCES_FILTERED_BY_DATABASE_AND_TABLE_IS =
       "为 table model 事件匹配 source 时，按 database 和 table 过滤后的结果为空。";
   public static final String SOURCES_FILTERED_BY_DEVICE_IS_NULL_WHEN =
@@ -746,8 +744,7 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2CONNECTOR_TRANSFERBUFFER_QUEUE_OFFER_IS_INTERRUPTED =
       "IoTConsensusV2Connector transferBuffer 队列入队被中断。";
   public static final String IOTCONSENSUSV2TRANSFERBATCHREQBUILDER_THE_MAX_BATCH_SIZE_IS_ADJUSTED =
-      "IoTConsensusV2TransferBatchReqBuilder: the max batch size is adjusted from {} to {} due "
-          + "to the memory restriction";
+      "IoTConsensusV2TransferBatchReqBuilder：因内存限制，最大 batch 大小已从 {} 调整为 {}";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_NOT_FOUND_IN_TRANSFERBUFFER =
       "IoTConsensusV2-ConsensusGroup-{}：在 transferBuffer 中未找到 event-{}，跳过移除。"
           + "queue size = {}";
@@ -784,36 +781,33 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_REDIRECT_FILE_POSITION_TO =
       "IoTConsensusV2-{}：Redirect file position to {}.";
   public static final String IOTCONSENSUSV2_SUCCESSFULLY_TRANSFERRED_FILE_COMMITTER_KEY_REPLICATE =
-      "IoTConsensusV2-{}：成功 transferred file {} (committer key={}, replicate index={})。";
+      "IoTConsensusV2-{}：成功传输 file {}（committer key={}, replicate index={}）。";
   public static final String IOTDBCDCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTAB =
-      "IoTDBCDCConnector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent.";
+      "IoTDBCDCConnector 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBDataRegionAirGapConnector 不支持 transferring generic event: {}.";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_A =
-      "IoTDBDataRegionAirGapConnector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "IoTDBDataRegionAirGapConnector 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。忽略 {}。";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_IGNORE =
-      "IoTDBDataRegionAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.";
+      "IoTDBDataRegionAirGapConnector 仅支持 PipeTsFileInsertionEvent。忽略 {}。";
   public static final String FAILED_TO_LOGIN_TO_RECEIVER_FOR_LEGACY_PIPE_TRANSFER =
       "登录 receiver %s:%s for legacy pipe transfer 失败，原因：code: %d, message: %s";
   public static final String IOTDBLEGACYPIPECONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBLegacyPipeConnector 不支持 transferring generic event: {}.";
   public static final String IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPEINSERTNODEINSERTIONEVENT_AND_PIPETABLE =
-      "IoTDBLegacyPipeConnector only support PipeInsertNodeInsertionEvent and "
-          + "PipeTabletInsertionEvent.";
+      "IoTDBLegacyPipeConnector 仅支持 PipeInsertNodeInsertionEvent 和 PipeTabletInsertionEvent。";
   public static final String IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT =
-      "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.";
+      "IoTDBLegacyPipeConnector 仅支持 PipeTsFileInsertionEvent。";
   public static final String IOTDBSCHEMAREGIONAIRGAPSINK_CAN_T_TRANSFER_TABLETINSERTIONEVENT =
-      "IoTDBSchemaRegionAirGapSink can't transfer TabletInsertionEvent.";
+      "IoTDBSchemaRegionAirGapSink 无法传输 TabletInsertionEvent。";
   public static final String IOTDBSCHEMAREGIONAIRGAPSINK_CAN_T_TRANSFER_TSFILEINSERTIONEVENT =
-      "IoTDBSchemaRegionAirGapSink can't transfer TsFileInsertionEvent.";
+      "IoTDBSchemaRegionAirGapSink 无法传输 TsFileInsertionEvent。";
   public static final String IOTDBSCHEMAREGIONAIRGAPSINK_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBSchemaRegionAirGapSink 不支持 transferring generic event: {}.";
   public static final String IOTDBSCHEMAREGIONCONNECTOR_CAN_T_TRANSFER_TABLETINSERTIONEVENT =
-      "IoTDBSchemaRegionConnector can't transfer TabletInsertionEvent.";
+      "IoTDBSchemaRegionConnector 无法传输 TabletInsertionEvent。";
   public static final String IOTDBSCHEMAREGIONCONNECTOR_CAN_T_TRANSFER_TSFILEINSERTIONEVENT =
-      "IoTDBSchemaRegionConnector can't transfer TsFileInsertionEvent.";
+      "IoTDBSchemaRegionConnector 无法传输 TsFileInsertionEvent。";
   public static final String IOTDBSCHEMAREGIONCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBSchemaRegionConnector 不支持 transferring generic event: {}.";
   public static final String IOTDBTHRIFTASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
@@ -821,27 +815,25 @@ public final class DataNodePipeMessages {
   public static final String IOTDBTHRIFTASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFER_GENERIC_EVENT =
       "IoTDBThriftAsyncConnector 不支持 transfer generic event: {}.";
   public static final String IOTDBTHRIFTASYNCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PI =
-      "IoTDBThriftAsyncConnector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Current event: {}.";
+      "IoTDBThriftAsyncConnector 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。当前事件：{}。";
   public static final String IOTDBTHRIFTASYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVENT =
-      "IoTDBThriftAsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.";
+      "IoTDBThriftAsyncConnector 仅支持 PipeTsFileInsertionEvent。当前事件：{}。";
   public static final String IOTDBTHRIFTSYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBThriftSyncConnector 不支持 transferring generic event: {}.";
   public static final String IOTDBTHRIFTSYNCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIP =
-      "IoTDBThriftSyncConnector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "IoTDBThriftSyncConnector 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。忽略 {}。";
   public static final String IOTDBTHRIFTSYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_IGNORE =
-      "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.";
+      "IoTDBThriftSyncConnector 仅支持 PipeTsFileInsertionEvent。忽略 {}。";
   public static final String LEADERCACHEMANAGER_ALLOCATEDMEMORYBLOCK_HAS_EXPANDED_FROM_TO =
-      "LeaderCacheManager.allocatedMemoryBlock has expanded from {} to {}.";
+      "LeaderCacheManager.allocatedMemoryBlock 已从 {} 扩展到 {}。";
   public static final String LEADERCACHEMANAGER_ALLOCATEDMEMORYBLOCK_HAS_SHRUNK_FROM_TO =
-      "LeaderCacheManager.allocatedMemoryBlock has shrunk from {} to {}.";
+      "LeaderCacheManager.allocatedMemoryBlock 已从 {} 缩小到 {}。";
   public static final String LOADING_KEYSTORE_AT = "正在从 {} 加载 KeyStore";
   public static final String LOADING_KEYSTORE_AT_1 = "正在从 {}. 加载 KeyStore";
   public static final String LOAD_KEYSTORE_FAILED_THE_EXISTING_KEYSTORE_MAY =
-      "Load keyStore failed, the existing keyStore may be stale, re-constructing...";
+      "加载 keyStore 失败，现有 keyStore 可能已过期，正在重新构造...";
   public static final String NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED =
-      "No OPC client or server is specified when transferring tablet";
+      "传输 tablet 时未指定 OPC client 或 server";
   public static final String OPC_DA_SINK_MUST_RUN_ON_WINDOWS = "opc-da-sink 必须在 Windows 系统上运行。";
   public static final String PIPETABLEMODETSFILEBUILDERV2_DOES_NOT_SUPPORT_TREE_MODEL_TABLET =
       "PipeTableModeTsFileBuilderV2 不支持 tree model tablet to build TSFile";
@@ -851,61 +843,60 @@ public final class DataNodePipeMessages {
       "PipeTreeModelTsFileBuilderV2 不支持 table model tablet to build TSFile";
   public static final String PIPETREEMODELTSFILEBUILDER_DOES_NOT_SUPPORT_TABLE_MODEL_TABLET =
       "PipeTreeModelTsFileBuilder 不支持 table model tablet to build TSFile";
-  public static final String POLLED_EVENT_FROM_RETRY_QUEUE = "Polled event {} from retry queue.";
+  public static final String POLLED_EVENT_FROM_RETRY_QUEUE = "从 retry queue 取出 event {}。";
   public static final String RECEIVED_AN_ERROR_MESSAGE_FROM =
-      "Received an error message {} from {}:{}";
+      "从 {}:{} 收到错误消息 {}";
   public static final String RECEIVED_AN_UNKNOWN_MESSAGE_FROM =
-      "Received an unknown message {} from {}:{}";
-  public static final String RECEIVED_A_ACK_MESSAGE_FROM = "Received a ack message from {}:{}";
-  public static final String RECEIVED_A_BIND_MESSAGE_FROM = "Received a bind message from {}:{}";
-  public static final String REDIRECT_FILE_POSITION_TO = "Redirect file position to {}.";
+      "从 {}:{} 收到未知消息 {}";
+  public static final String RECEIVED_A_ACK_MESSAGE_FROM = "从 {}:{} 收到 ack 消息";
+  public static final String RECEIVED_A_BIND_MESSAGE_FROM = "从 {}:{} 收到 bind 消息";
+  public static final String REDIRECT_FILE_POSITION_TO = "重定向 file position 到 {}。";
   public static final String REDIRECT_TO_POSITION_IN_TRANSFERRING_TSFILE =
-      "Redirect to position {} in transferring tsFile {}.";
+      "正在传输的 tsFile {} 中重定向到 position {}。";
   public static final String NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS =
       "网络接收 TsFile %s 失败，状态：%s";
-  public static final String SECURITY_DIR = "security dir: {}";
-  public static final String SECURITY_PKI_DIR = "security pki dir: {}";
-  public static final String SUCCESSFULLY_ADDED_ITEM = "成功 added item {}。";
+  public static final String SECURITY_DIR = "security 目录：{}";
+  public static final String SECURITY_PKI_DIR = "security pki 目录：{}";
+  public static final String SUCCESSFULLY_ADDED_ITEM = "成功添加 item {}。";
   public static final String SUCCESSFULLY_CONVERTED_PROGID_TO_CLSID =
-      "成功 converted progID {} to CLSID: {{}}";
-  public static final String SUCCESSFULLY_SHUTDOWN_EXECUTOR = "成功 shutdown executor {}。";
+      "成功将 progID {} 转换为 CLSID: {{}}";
+  public static final String SUCCESSFULLY_SHUTDOWN_EXECUTOR = "成功关闭 executor {}。";
   public static final String SUCCESSFULLY_TRANSFERRED_DELETION_EVENT =
-      "成功 transferred deletion event {}。";
-  public static final String SUCCESSFULLY_TRANSFERRED_FILE = "成功 transferred file {}。";
+      "成功传输 deletion event {}。";
+  public static final String SUCCESSFULLY_TRANSFERRED_FILE = "成功传输 file {}。";
   public static final String SUCCESSFULLY_TRANSFERRED_FILE_AND =
-      "成功 transferred file {}, {} and {}。";
+      "成功传输 file {}、{} 和 {}。";
   public static final String SUCCESSFULLY_TRANSFERRED_FILE_BATCHED_TABLEINSERTIONEVENTS_REFERENCE_COUNT =
-      "成功 transferred file {} (batched TableInsertionEvents, reference count={})。";
+      "成功传输 file {}（批量 TableInsertionEvents，引用计数={}）。";
   public static final String SUCCESSFULLY_TRANSFERRED_FILE_COMMITTER_KEY_COMMIT_ID =
-      "成功 transferred file {} (committer key={}, commit id={}, reference count={})。";
+      "成功传输 file {}（committer key={}, commit id={}, 引用计数={}）。";
   public static final String SUCCESSFULLY_TRANSFERRED_SCHEMA_EVENT =
-      "成功 transferred schema event {}。";
+      "成功传输 schema event {}。";
   public static final String SUCCESSFULLY_TRANSFERRED_SCHEMA_REGION_SNAPSHOT_AND =
-      "成功 transferred schema region snapshot {}, {} and {}。";
+      "成功传输 schema region 快照 {}、{} 和 {}。";
   public static final String THE_BATCH_SIZE_LIMIT_HAS_EXPANDED_FROM =
-      "The batch size limit has expanded from {} to {}.";
+      "batch 大小上限已从 {} 扩展到 {}。";
   public static final String THE_BATCH_SIZE_LIMIT_HAS_SHRUNK_FROM =
-      "The batch size limit has shrunk from {} to {}.";
+      "batch 大小上限已从 {} 缩小到 {}。";
   public static final String THE_DEFAULT_QUALITY_CAN_ONLY_BE_GOOD =
-      "The default quality can only be 'GOOD', 'BAD' or 'UNCERTAIN'.";
-  public static final String THE_EVENT_ACK_IS_NOT_FOUND = "The event ack {} is not found.";
+      "默认 quality 只能为 'GOOD'、'BAD' 或 'UNCERTAIN'。";
+  public static final String THE_EVENT_ACK_IS_NOT_FOUND = "未找到 event ack {}。";
   public static final String THE_EVENT_CAN_T_BE_TRANSFERRED_TO =
-      "The event {} can't be transferred to client, it will be retried later.";
+      "事件 {} 无法传输给 client，将稍后重试。";
   public static final String THE_EVENT_IN_ERROR_IS_NOT_FOUND =
-      "The event in error {} is not found.";
+      "未找到出错的 event {}。";
   public static final String THE_EVENT_POLLED_FROM_THE_QUEUE_IS =
-      "The event polled from the queue is not the same as the event peeked from the queue. "
-          + "Peeked event: {}, polled event: {}.";
+      "从队列 poll 到的 event 与 peek 到的不一致。Peeked event：{}，polled event：{}。";
   public static final String THE_FILE_IS_NOT_FOUND_MAY_ALREADY =
-      "The file {} is not found, may already be deleted.";
+      "未找到 file {}，可能已被删除。";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT =
-      "The pipe {} was dropped so the event ack {} will be ignored.";
+      "pipe {} 已被 drop，event ack {} 将被忽略。";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT_1 =
-      "The pipe {} was dropped so the event in error {} will be ignored.";
+      "pipe {} 已被 drop，出错的 event {} 将被忽略。";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT_2 =
-      "The pipe {} was dropped so the event {} will be dropped.";
+      "pipe {} 已被 drop，event {} 将被丢弃。";
   public static final String THE_QUALITY_VALUE_ONLY_SUPPORTS_BOOLEAN_TYPE =
-      "The quality value only supports boolean type, while true == GOOD and false == BAD.";
+      "quality 值仅支持 boolean 类型，其中 true == GOOD，false == BAD。";
   public static final String THE_SCHEMA_REGION_AIR_GAP_CONNECTOR_DOES =
       "The schema region air gap connector 不支持 transferring single file piece bytes.";
   public static final String THE_SCHEMA_REGION_CONNECTOR_DOES_NOT_SUPPORT =
@@ -913,8 +904,7 @@ public final class DataNodePipeMessages {
   public static final String THE_SECURITY_POLICY_CANNOT_BE_EMPTY =
       "安全策略不能为空。";
   public static final String THE_SECURITY_POLICY_CAN_ONLY_BE_NONE =
-      "The security policy can only be 'None', 'Basic128Rsa15', 'Basic256', 'Basic256Sha256', "
-          + "'Aes128_Sha256_RsaOaep' or 'Aes256_Sha256_RsaPss'.";
+      "安全策略只能是 'None'、'Basic128Rsa15'、'Basic256'、'Basic256Sha256'、'Aes128_Sha256_RsaOaep' 或 'Aes256_Sha256_RsaPss'。";
   public static final String THE_SEGMENTS_OF_TABLETS_MUST_EXIST =
       "tablet 的 segment 必须存在";
   public static final String THE_TABLET_OF_COMMITID_CAN_T_BE =
@@ -933,18 +923,17 @@ public final class DataNodePipeMessages {
   public static final String THE_WEBSOCKET_SERVER_HAS_BEEN_STARTED =
       "websocket server {}:{} 已启动！";
   public static final String THE_WRITTEN_TABLET_TIME_MAY_OVERLAP_OR =
-      "The written Tablet time may overlap or the Schema may be incorrect";
+      "写入的 Tablet 时间可能重叠，或 Schema 可能不正确";
   public static final String THIS_CONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLET =
-      "This Connector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "此 Connector 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。忽略 {}。";
   public static final String TIMED_OUT_WHEN_WAITING_FOR_CLIENT_HANDSHAKE =
-      "Timed out when waiting for client handshake finish.";
+      "等待 client 握手完成超时。";
   public static final String TIOTCONSENSUSV2BATCHTRANSFERRESP_IS_NULL =
       "TIoTConsensusV2BatchTransferResp 为空";
   public static final String TIOTCONSENSUSV2TRANSFERRESP_IS_NULL = "TIoTConsensusV2TransferResp 为空";
   public static final String TPIPETRANSFERRESP_IS_NULL = "TPipeTransferResp 为空";
   public static final String TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY_WAS_INTERRUPTED =
-      "Transfer tsfile event {} asynchronously was interrupted.";
+      "异步传输 tsfile event {} 被中断。";
   public static final String UNABLE_TO_CREATE_SECURITY_DIR = "无法创建 security dir: ";
   public static final String UNKNOWN_LOAD_BALANCE_STRATEGY_USE_ROUND_ROBIN =
       "未知的 load balance strategy: {}, use round-robin strategy instead。";
@@ -957,39 +946,35 @@ public final class DataNodePipeMessages {
   public static final String WAIT_FOR_RESOURCE_ENOUGH_FOR_SLICING_TSFILE =
       "等待 resource enough，已等待 slicing tsfile {} for {} 秒。";
   public static final String WEBSOCKETCONNECTOR_FAILED_TO_INCREASE_THE_REFERENCE_COUNT =
-      "WebsocketConnector failed to increase the reference count of the event. Ignore it. "
-          + "Current event: {}.";
+      "WebsocketConnector 增加事件的引用计数失败。忽略该事件。当前事件：{}。";
   public static final String WEBSOCKETCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTA =
-      "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Current event: {}.";
+      "WebsocketConnector 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。当前事件：{}。";
   public static final String WEBSOCKETCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVENT =
-      "WebsocketConnector only support PipeTsFileInsertionEvent. Current event: {}.";
+      "WebsocketConnector 仅支持 PipeTsFileInsertionEvent。当前事件：{}。";
   public static final String WHEN_THE_OPC_UA_SINK_POINTS_TO =
-      "When the OPC UA sink points to an outer server, the table model data is not supported.";
+      "当 OPC UA sink 指向外部 server 时，不支持 table model 数据。";
   public static final String WHEN_THE_OPC_UA_SINK_SETS_WITH =
-      "When the OPC UA sink sets 'with-quality' to true, the table model data is not supported.";
+      "当 OPC UA sink 将 'with-quality' 设置为 true 时，不支持 table model 数据。";
   public static final String WRITEBACKSINK_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLETI =
-      "WriteBackSink only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "WriteBackSink 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。忽略 {}。";
 
   // ===================== RECEIVER =====================
 
   public static final String ALL_RECEIVERS_RELATED_TO_ARE_RELEASED =
-      "All Receivers related to {} are released.";
+      "与 {} 相关的所有 Receiver 已释放。";
   public static final String AUTO_CREATE_DATABASE_FAILED_BECAUSE = "自动创建 database failed because: ";
   public static final String CREATE_DATABASE_ERROR_STATEMENT_RESULT_STATUS =
       "创建 Database error, statement: {}, result status : {}.";
   public static final String DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_LOADTSFILESTATEMENT =
-      "Database name is unexpectedly null for LoadTsFileStatement: {}. Skip data type conversion.";
+      "LoadTsFileStatement：{} 的数据库名称为空，跳过数据类型转换。";
   public static final String DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_STATEMENT =
-      "Database name is unexpectedly null for statement: {}. Skip data type conversion.";
+      "statement：{} 的数据库名称为空，跳过数据类型转换。";
   public static final String DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL =
-      "Data type conversion for LoadTsFileStatement {} is successful.";
+      "LoadTsFileStatement {} 的数据类型转换成功。";
   public static final String DATA_TYPE_MISMATCH_DETECTED_TSSTATUS_FOR_LOADTSFILESTATEMENT =
-      "Data type mismatch detected (TSStatus: {}) for LoadTsFileStatement: {}. Start data type "
-          + "conversion.";
-  public static final String DELETE_ERROR_STATEMENT = "Delete {} error, statement: {}.";
-  public static final String DELETE_RESULT_STATUS = "Delete result status : {}.";
+      "LoadTsFileStatement：{} 检测到数据类型不匹配（TSStatus：{}）。开始数据类型转换。";
+  public static final String DELETE_ERROR_STATEMENT = "删除 {} 出错，statement：{}。";
+  public static final String DELETE_RESULT_STATUS = "删除结果状态：{}。";
   public static final String FAILED_TO_CLOSE_IOTDBAIRGAPRECEIVERAGENT_S_SERVER_SOCKET =
       "关闭 IoTDBAirGapReceiverAgent's server socket 失败";
   public static final String FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT =
@@ -1008,14 +993,13 @@ public final class DataNodePipeMessages {
   public static final String FAIL_TO_LOAD_PIPEDATA_BECAUSE = "加载 pipeData 失败，原因：{}.";
   public static final String FAIL_TO_RENAME_FILE_TO = "rename file {} to {} 失败";
   public static final String INVOKE_HANDSHAKE_METHOD_FROM_CLIENT_IP =
-      "Invoke handshake method from client ip = {}";
+      "从 client ip = {} 调用 handshake 方法";
   public static final String INVOKE_TRANSPORTDATA_METHOD_FROM_CLIENT_IP =
-      "Invoke transportData method from client ip = {}";
+      "从 client ip = {} 调用 transportData 方法";
   public static final String INVOKE_TRANSPORTPIPEDATA_METHOD_FROM_CLIENT_IP =
-      "Invoke transportPipeData method from client ip = {}";
+      "从 client ip = {} 调用 transportPipeData 方法";
   public static final String IOTCONSENSUSV2RECEIVER_THREAD_IS_INTERRUPTED_WHEN_WAITING_FOR =
-      "IoTConsensusV2Receiver thread is interrupted when waiting for receiver get initiated, "
-          + "may because system exit.";
+      "IoTConsensusV2Receiver 线程在等待 receiver 初始化时被中断，可能因为系统退出。";
   public static final String IOTCONSENSUSV2_PIPENAME = "IoTConsensusV2-PipeName-{}：{}";
   public static final String IOTCONSENSUSV2_PIPENAME_CURRENT_WAITING_IS_INTERRUPTED_ONSYNCEDCOMMITINDEX =
       "IoTConsensusV2-PipeName-{}：current waiting is interrupted. onSyncedCommitIndex: {}. "
@@ -1284,22 +1268,15 @@ public final class DataNodePipeMessages {
   public static final String THE_MULTIPLE_N_MUST_BE_GREATER_THAN =
       "倍数 n 必须大于 0";
   public static final String TRYALLOCATE_ALLOCATED_MEMORY_TOTAL_MEMORY_SIZE_BYTES =
-      "tryAllocate: allocated memory, total memory size {} bytes, used memory size {} bytes, "
-          + "original requested memory size {} bytes, actual requested memory size {} bytes";
+      "tryAllocate：已分配内存，总内存大小 {} 字节，已用内存大小 {} 字节，原始请求内存大小 {} 字节，实际请求内存大小 {} 字节";
   public static final String TRYALLOCATE_FAILED_TO_ALLOCATE_MEMORY_TOTAL_MEMORY =
-      "tryAllocate: failed to allocate memory, total memory size {} bytes, used memory size {} "
-          + "bytes, requested memory size {} bytes";
+      "tryAllocate：分配内存失败，总内存大小 {} 字节，已用内存大小 {} 字节，请求内存大小 {} 字节";
   public static final String TRYEXPANDALLANDCHECKCONSISTENCY_MEMORY_USAGE_IS_NOT_CONSISTENT_WITH =
-      "tryExpandAllAndCheckConsistency: memory usage is not consistent with allocated blocks, "
-          + "usedMemorySizeInBytes is {} but sum of all blocks is {}";
+      "tryExpandAllAndCheckConsistency：内存使用与已分配 block 不一致，usedMemorySizeInBytes 为 {}，但所有 block 的总和为 {}";
   public static final String TRYEXPANDALLANDCHECKCONSISTENCY_MEMORY_USAGE_OF_TABLETS_IS_NOT =
-      "tryExpandAllAndCheckConsistency: memory usage of tablets is not consistent with "
-          + "allocated blocks, usedMemorySizeInBytesOfTablets is {} but sum of all tablet blocks is "
-          + "{}";
+      "tryExpandAllAndCheckConsistency：tablet 的内存使用与已分配 block 不一致，usedMemorySizeInBytesOfTablets 为 {}，但所有 tablet block 的总和为 {}";
   public static final String TRYEXPANDALLANDCHECKCONSISTENCY_MEMORY_USAGE_OF_TSFILES_IS_NOT =
-      "tryExpandAllAndCheckConsistency: memory usage of tsfiles is not consistent with "
-          + "allocated blocks, usedMemorySizeInBytesOfTsFiles is {} but sum of all tsfile blocks is "
-          + "{}";
+      "tryExpandAllAndCheckConsistency：tsfile 的内存使用与已分配 block 不一致，usedMemorySizeInBytesOfTsFiles 为 {}，但所有 tsfile block 的总和为 {}";
 
   // ===================== METRIC =====================
 

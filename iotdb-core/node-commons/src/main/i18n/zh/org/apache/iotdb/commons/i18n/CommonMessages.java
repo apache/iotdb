@@ -148,7 +148,7 @@ public final class CommonMessages {
   public static final String LOG_ACTUAL_REQUESTED_MEMORY_SIZE_ARG_BYTES_62760058 = "实际请求内存大小 {} 字节";
   public static final String LOG_TRYALLOCATE_FAILED_ALLOCATE_MEMORY_838FA6FB = "tryAllocate: 无法分配内存, ";
   public static final String LOG_REQUESTED_MEMORY_SIZE_ARG_BYTES_BF9CEF81 = "请求内存大小 {} 字节";
-  public static final String LOG_GETORREGISTERMEMORYBLOCK_FAILED_MEMORY_BLOCK_ARG_ALREADY_EXISTS_42CA8914 = "getOrRegisterMemoryBlock 失败: 内存块 {} 已存在, ";
+  public static final String LOG_GETORREGISTERMEMORYBLOCK_FAILED_MEMORY_BLOCK_ARG_ALREADY_EXISTS_42CA8914 = "getOrRegisterMemoryBlock 失败：内存块 {} 已存在，";
   public static final String LOG_IT_S_SIZE_ARG_REQUESTED_SIZE_ARG_AF8F04B2 = "其大小为 {}，请求大小为 {}";
   public static final String LOG_GETMEMORYMANAGER_MEMORY_MANAGER_ARG_ALREADY_EXISTS_IT_S_SIZE_ARG_0102560A = "getMemoryManager：内存管理器 {} 已存在，其大小为 {}，enabled 为 {}";
   public static final String LOG_GETORCREATEMEMORYMANAGER_FAILED_TOTAL_MEMORY_SIZE_ARG_BYTES_LESS_THAN_ALLOCATED_3D110256 =

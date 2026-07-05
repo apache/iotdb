@@ -337,8 +337,8 @@ public class IoTConsensusServerImpl {
             System.nanoTime() - writeToStateMachineEndTime);
       } else if (logger.isDebugEnabled()) {
         logger.debug(
-            IoTConsensusMessages.WRITE_OPERATION_FAILED
-                + IoTConsensusMessages.LOG_SUBSCRIPTIONQUEUES_ARG_ARG_6C4FE107,
+            IoTConsensusMessages
+                .LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576,
             thisNode.getGroupId(),
             indexedConsensusRequest.getSearchIndex(),
             result.getCode(),

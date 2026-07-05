@@ -2649,7 +2649,7 @@ public final class DataNodeQueryMessages {
   public static final String ILLEGAL_DEVICEID_ARG_FOUND_IN_CACHE_WHEN_INVALIDATING_BY_PATH_ARG_INVALIDATE_IT_ANYWAY =
       "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway";
   public static final String RULE_S_BEFORE_S_AFTER_S =
-      "Rule: %s\nBefore:\n%s\nAfter:\n%s";
+      "Rule: {}\nBefore:\n{}\nAfter:\n{}";
 
   private DataNodeQueryMessages() {}
   // ---------------------------------------------------------------------------

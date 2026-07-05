@@ -599,24 +599,24 @@ public final class ManagerMessages {
   public static final String MESSAGE_ACCEPT_NODE_RESTART_1BC1A8DD = "接受节点重启。";
   public static final String MESSAGE_REJECT_ARG_START_BECAUSE_CLUSTERNAME_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_B9E197DB = "拒绝启动 %s。原因：当前 %s 的 ClusterName 与目标集群不一致。";
   public static final String MESSAGE_CLUSTERNAME_CURRENT_NODE_ARG_CLUSTERNAME_TARGET_CLUSTER_ARG_5C34BE8D = "当前节点的 ClusterName：%s，目标集群的 ClusterName：%s。";
-  public static final String MESSAGE_1_CHANGE_SEED_CONFIG_NODE_PARAMETER_ARG_JOIN_CORRECT_CLUSTER_5E9D753C = "\\t1. 修改 %s 中的 seed_config_node 参数以加入正确的集群。";
-  public static final String MESSAGE_2_CHANGE_CLUSTER_NAME_PARAMETER_ARG_MATCH_TARGET_CLUSTER_0A0DB235 = "\\n\\t2. 修改 %s 中的 cluster_name 参数以匹配目标集群";
+  public static final String MESSAGE_1_CHANGE_SEED_CONFIG_NODE_PARAMETER_ARG_JOIN_CORRECT_CLUSTER_5E9D753C = "\t1. 修改 %s 中的 seed_config_node 参数以加入正确的集群。";
+  public static final String MESSAGE_2_CHANGE_CLUSTER_NAME_PARAMETER_ARG_MATCH_TARGET_CLUSTER_0A0DB235 = "\n\t2. 修改 %s 中的 cluster_name 参数以匹配目标集群";
   public static final String MESSAGE_REJECT_ARG_REGISTRATION_BECAUSE_FOLLOWING_IP_PORT_ARG_CURRENT_ARG_CB78CC3B =
       "拒绝注册 %s。原因：以下 ip:port：%s（属于当前 %s）与集群中其他已注册节点冲突。";
-  public static final String MESSAGE_1_USE_SQL_SHOW_CLUSTER_DETAILS_FIND_OUT_CONFLICT_NODES_A1195AEA = "\\t1. 使用 SQL：\\\"show cluster details\\\" 找出冲突节点。移除它们后重试启动。";
-  public static final String MESSAGE_2_CHANGE_CONFLICT_IP_PORT_CONFIGURATIONS_ARG_FILE_RETRY_START_CF3F08F6 = "\\n\\t2. 修改 %s 文件中的冲突 ip:port 配置，然后重试启动。";
+  public static final String MESSAGE_1_USE_SQL_SHOW_CLUSTER_DETAILS_FIND_OUT_CONFLICT_NODES_A1195AEA = "\t1. 使用 SQL：\"show cluster details\" 找出冲突节点。移除它们后重试启动。";
+  public static final String MESSAGE_2_CHANGE_CONFLICT_IP_PORT_CONFIGURATIONS_ARG_FILE_RETRY_START_CF3F08F6 = "\n\t2. 修改 %s 文件中的冲突 ip:port 配置，然后重试启动。";
   public static final String MESSAGE_CLUSTER_ID_HAS_NOT_GENERATED_PLEASE_TRY_AGAIN_LATER_58A1C3F2 = "cluster id 尚未生成，请稍后重试";
   public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_CLUSTERNAME_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_2075F29D = "拒绝重启 %s。原因：当前 %s 的 ClusterName 与目标集群不一致。";
   public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_NODEID_CURRENT_ARG_ARG_AC13EDD5 = "拒绝重启 %s。原因：当前 %s 的 nodeId 为 %d。";
-  public static final String MESSAGE_1_DELETE_DATA_DIR_RETRY_86A23473 = "\\t1. 删除 \\\"data\\\" 目录后重试。";
+  public static final String MESSAGE_1_DELETE_DATA_DIR_RETRY_86A23473 = "\t1. 删除 \"data\" 目录后重试。";
   public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_THERE_NO_CORRESPONDING_ARG_WHOSE_NODEID_455578E9 = "拒绝重启 %s。原因：集群中没有对应的 %s（nodeId=%d）。";
   public static final String MESSAGE_1_MAYBE_YOU_VE_ALREADY_REMOVED_CURRENT_ARG_WHOSE_NODEID_92165504 =
-      "\\t1. 可能你已经移除了当前 %s（nodeId=%d）。请删除无用的 'data' 目录并重试启动。";
+      "\t1. 可能你已经移除了当前 %s（nodeId=%d）。请删除无用的 'data' 目录并重试启动。";
   public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_CLUSTERID_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_0398A6CE = "拒绝重启 %s。原因：当前 %s 的 clusterId 与目标集群不一致。";
   public static final String MESSAGE_CLUSTERID_CURRENT_NODE_ARG_CLUSTERID_TARGET_CLUSTER_ARG_23C42434 = "当前节点的 ClusterId：%s，目标集群的 ClusterId：%s。";
-  public static final String MESSAGE_1_PLEASE_CHECK_IF_NODE_CONFIGURATION_PATH_CORRECT_7FB5D559 = "\\t1. 请检查节点配置或路径是否正确。";
+  public static final String MESSAGE_1_PLEASE_CHECK_IF_NODE_CONFIGURATION_PATH_CORRECT_7FB5D559 = "\t1. 请检查节点配置或路径是否正确。";
   public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_INTERNAL_TENDPOINTS_ARG_CAN_T_MODIFIED_A58B99F0 = "拒绝重启 %s。原因：此 %s 的 internal TEndPoints 不能被修改。";
-  public static final String MESSAGE_1_PLEASE_KEEP_INTERNAL_TENDPOINTS_NODE_SAME_AS_BEFORE_2FDB2034 = "\\t1. 请保持此节点的 internal TEndPoints 与之前一致。";
+  public static final String MESSAGE_1_PLEASE_KEEP_INTERNAL_TENDPOINTS_NODE_SAME_AS_BEFORE_2FDB2034 = "\t1. 请保持此节点的 internal TEndPoints 与之前一致。";
   public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_ONLY_ONE_CONFIGNODE_CURRENT_CLUSTER_D1273758 = "移除 ConfigNode 失败，原因：当前集群中只有一个 ConfigNode。";
   public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_NO_OTHER_CONFIGNODE_RUNNING_STATUS_C9C43315 = "移除 ConfigNode 失败，原因：当前集群中没有其他处于 Running 状态的 ConfigNode。";
   public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CONFIGNODEGROUP_LEADER_ELECTION_PLEASE_RETRY_3EE602F6 = "移除 ConfigNode 失败，原因：ConfigNodeGroup 正在进行 leader 选举，请重试。";

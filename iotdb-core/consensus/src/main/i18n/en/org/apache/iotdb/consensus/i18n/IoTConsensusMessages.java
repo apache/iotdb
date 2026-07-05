@@ -57,8 +57,6 @@ public final class IoTConsensusMessages {
   public static final String THROTTLE_DOWN = "[Throttle Down] index:{}, safeIndex:{}";
   public static final String DATA_REGION_INDEX_AFTER_BUILD =
       "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}, lastConsensusRequest: {}";
-  public static final String WRITE_OPERATION_FAILED =
-      "{}: write operation failed. searchIndex: {}. Code: {}";
   public static final String FAILED_TO_THROTTLE_DOWN = "Failed to throttle down because ";
 
   // ===================== Snapshot =====================
@@ -306,7 +304,6 @@ public final class IoTConsensusMessages {
   public static final String EXCEPTION_UNSUPPORTED_WRITER_META_VERSION_ARG_ARG_7D14E679 = "Unsupported writer meta version %d in %s";
   public static final String LOG_WRITE_NO_SUBSCRIPTION_QUEUES_REGISTERED_0F4E697B = "write() no subscription queues registered, ";
   public static final String LOG_GROUP_ARG_SEARCHINDEX_ARG_ARG_D5E034E6 = "group={}, searchIndex={}, this={}";
-  public static final String LOG_SUBSCRIPTIONQUEUES_ARG_ARG_6C4FE107 = ", subscriptionQueues: {}, this: {}";
   public static final String LOG_CANNOT_NOTIFY_ARG_BUILD_SYNC_LOG_CHANNEL_490770FB = "cannot notify {} to build sync log channel. ";
   public static final String LOG_PLEASE_CHECK_STATUS_NODE_MANUALLY_40FBC9B3 = "Please check the status of this node manually";
   public static final String LOG_FAILED_SYNC_WRITER_SAFE_TIME_BARRIER_PEER_ARG_GROUP_ARG_05A13E6A = "Failed to sync writer safe-time barrier to peer {} for group {}, ";
@@ -329,5 +326,6 @@ public final class IoTConsensusMessages {
   public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ENTRY_SEARCHINDEX_ARG_DROPPEDCOUNT_ARG_61F126B8 = "Subscription queue full, dropped entry searchIndex={}, droppedCount={}";
   public static final String LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2 = "Reserved {} bytes for batch {}-{}, current total usage {}";
   public static final String LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD = "{}: Failed to send idle writer safe-time barrier to {}. status={}";
+  public static final String LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576 = "{}: write operation failed. searchIndex: {}. Code: {}, subscriptionQueues: {}, this: {}";
 
 }

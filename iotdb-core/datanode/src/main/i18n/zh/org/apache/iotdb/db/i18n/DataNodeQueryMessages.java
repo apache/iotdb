@@ -3173,7 +3173,7 @@ public final class DataNodeQueryMessages {
       "发现非法 deviceID {}，按路径 {} 失效 cache 时仍将使其失效";
   public static final String RULE_S_BEFORE_S_AFTER_S =
 
-      "规则：%s\n之前：\n%s\n之后：\n%s";
+      "规则：{}\n之前：\n{}\n之后：\n{}";
 
   private DataNodeQueryMessages() {}
   // ---------------------------------------------------------------------------

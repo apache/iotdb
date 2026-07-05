@@ -546,7 +546,7 @@ public final class DataNodeMiscMessages {
   public static final String RESETTING_PROGRESS_INDEX_TO_MINIMUM = "正在将 TsFileResource:{} 的 progressIndex 重置为最小值，原始 progressIndex: {}";
   public static final String MARKED_TSFILE_RESOURCE_AS = "已将 TsFileResource 标记为 {} ，资源: {}";
   public static final String RESET_PROGRESS_INDEX_TO_MINIMUM = "已将 TsFileResource:{} 的 progressIndex 重置为最小值。";
-  public static final String FAILED_TO_REPAIR_TSFILE_RESOURCE = "错误: 修复 TsFileResource 失败: {}";
+  public static final String FAILED_TO_REPAIR_TSFILE_RESOURCE = "错误：修复 TsFileResource 失败：{}";
   public static final String TOTAL_TIME_TAKEN = "总耗时: {} 毫秒，TsFile 资源总数: {}，设置 isGeneratedByPipe 的资源数: {}，重置 progressIndex 的资源数: {}，已更改的资源数: {}";
 
   // ---------------------------------------------------------------------------
