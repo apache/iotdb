@@ -1474,5 +1474,21 @@ public final class StorageEngineMessages {
   // ---------------------------------------------------------------------------
   public static final String MESSAGE_NO_LOAD_TSFILE_UUID_ARG_RECORDED_EXECUTE_LOAD_COMMAND_ARG_66722D80 = "No load TsFile uuid %s recorded for execute load command %s.";
   public static final String EXCEPTION_NON_MINUS_ALIGNED_CHUNK_ONLY_HAS_ONE_MEASUREMENT_COMMA_BUT_MEASUREMENTINDEX_IS_E1A87F80 = "Non-aligned chunk only has one measurement, but measurementIndex is ";
+  public static final String MESSAGE_LOAD_QUERY_FALLBACK_FAILED_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_50771955 = "Load: Query fallback failed for device {} measurements {} in TsFile {}. ";
+  public static final String MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_TSFILE_ARG_AFTER_SCAN_PARSER_FAILURE_143B6037 = "Load: Failed to initialize query fallback for TsFile {} after scan parser failure.";
+  public static final String MESSAGE_LOAD_SCAN_PARSER_DETECTED_A_CORRUPTED_SECTION_IN_TSFILE_ARG_AT_DEVICE_ARG_E2632421 = "Load: Scan parser detected a corrupted section in TsFile {} at device {}. ";
+  public static final String EXCEPTION_EXPECTED_PIPERAWTABLETINSERTIONEVENT_BUT_GOT_D1D1DD05 = "Expected PipeRawTabletInsertionEvent but got ";
+  public static final String MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_0BF15119 = "Load: Failed to initialize query fallback for device {} measurements {} in TsFile {}. ";
+  public static final String MESSAGE_LOAD_QUERY_FALLBACK_FAILED_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_SPLIT_OR_SKIP_THIS_QUERY_TASK_AND_CONTINUE_3A4EA407 =
+      "Load: Query fallback failed for device {} measurements {} in TsFile {}. Split or skip this "
+          + "query task and continue.";
+  public static final String MESSAGE_LOAD_SCAN_PARSER_DETECTED_A_CORRUPTED_SECTION_IN_TSFILE_ARG_AT_DEVICE_ARG_SWITCH_TO_QUERY_PARSING_FOR_REMAINING_DEVICES_EFA07985 =
+      "Load: Scan parser detected a corrupted section in TsFile {} at device {}. Switch to query "
+          + "parsing for remaining devices.";
+  public static final String MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_SPLIT_OR_SKIP_THIS_QUERY_TASK_AND_CONTINUE_C6F69685 =
+      "Load: Failed to initialize query fallback for device {} measurements {} in TsFile {}. Split "
+          + "or skip this query task and continue.";
+  public static final String MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5 = "The associated resource file of {} is not found in the snapshot";
+  public static final String MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD = "Evicted non-existing/existing series count: {}/{}({}), total request: {}";
 
 }

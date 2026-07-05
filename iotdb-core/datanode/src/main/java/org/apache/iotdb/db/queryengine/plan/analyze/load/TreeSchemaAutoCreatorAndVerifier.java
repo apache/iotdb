@@ -510,7 +510,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
         if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
           throw new LoadAnalyzeTypeMismatchException(
               String.format(
-                  "Data type mismatch for measurement %s%s%s, type in TsFile: %s, type in IoTDB: %s",
+                  DataNodeQueryMessages
+                      .EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD,
                   device,
                   TsFileConstant.PATH_SEPARATOR,
                   iotdbSchema.getMeasurementName(),

@@ -171,7 +171,7 @@ public class PipeReceiverStatusHandler {
               PipeMessages.USER_CONFLICT_WILL_RETRY,
               retryMaxMillisWhenConflictOccurs == Long.MAX_VALUE
                   ? "forever"
-                  : "for at least "
+                  : PipeMessages.MESSAGE_FOR_AT_LEAST_ADE37405
                       + (retryMaxMillisWhenConflictOccurs
                               + exceptionFirstEncounteredTime.get()
                               - System.currentTimeMillis())

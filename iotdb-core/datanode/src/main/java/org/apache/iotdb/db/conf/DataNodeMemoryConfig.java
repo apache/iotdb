@@ -234,7 +234,9 @@ public class DataNodeMemoryConfig {
     LOGGER.info(
         DataNodeMiscMessages.MISC_LOG_INITIAL_ALLOCATEMEMORYFORPIPE_616F9713,
         pipeMemoryManager.getTotalMemorySizeInBytes());
-    LOGGER.info("initial allocateMemoryForAutoResizingBuffer = {}", autoResizingBufferMemorySize);
+    LOGGER.info(
+        DataNodeMiscMessages.MESSAGE_INITIAL_ALLOCATEMEMORYFORAUTORESIZINGBUFFER_ARG_A0DB6DA0,
+        autoResizingBufferMemorySize);
 
     initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
     initStorageEngineAllocate(storageEngineMemoryManager, properties);

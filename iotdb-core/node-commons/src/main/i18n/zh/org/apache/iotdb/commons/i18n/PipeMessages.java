@@ -715,6 +715,7 @@ public final class PipeMessages {
       "用户冲突异常：重试超时。将被忽略。事件：{}。状态：{}";
   public static final String USER_CONFLICT_WILL_RETRY =
       "用户冲突异常：将重试 {}。状态：{}";
+  public static final String MESSAGE_FOR_AT_LEAST_ADE37405 = "至少 ";
   public static final String USER_CONFLICT_NOT_ALLOWED =
       "用户冲突异常：因不允许重试而被忽略。事件：{}。状态：{}";
   public static final String OTHER_EXCEPTION_RETRY_TIMEOUT =
@@ -862,7 +863,7 @@ public final class PipeMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String EXCEPTION_UNSUPPORTED_PIPERUNTIMEEXCEPTION_TYPE_ARG_C5D5D84C = "不支持的 PipeRuntime 异常类型 %s.";
+  public static final String EXCEPTION_UNSUPPORTED_PIPERUNTIMEEXCEPTION_TYPE_ARG_C5D5D84C = "不支持的 PipeRuntimeException 类型 %s.";
   public static final String LOG_SUBSCRIPTIONENABLED_ARG_6F9EC0F9 = "SubscriptionEnabled: {}";
   public static final String LOG_SUBSCRIPTIONCONSENSUSPREFETCHEXECUTORMAXTHREADNUM_ARG_94D0BD76 = "SubscriptionConsensusPrefetchExecutorMaxThreadNum: {}";
   public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXDELAYINMS_ARG_38C2CB8B = "SubscriptionConsensusBatchMaxDelayInMs: {}";
@@ -907,5 +908,11 @@ public final class PipeMessages {
   public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "无效的 slice index：期望 {}，实际 {}";
   public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "解压后长度应介于 0 和 %d 之间，但实际为 %d。";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
+  public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 = "未找到 DataPartitionTable 生成任务";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_IN_PROGRESS_ARGPCTPCT_F433CBA8 = "DataPartitionTable 生成进行中：%.1f%%";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable 生成已成功完成";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable 生成失败：";
+  public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "未知任务状态：";
+  public static final String MESSAGE_PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_54E0E369 = "PipePeriodicalLogReducer 已分配 {} 字节。";
 
 }

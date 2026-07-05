@@ -3537,7 +3537,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (generator == null) {
       resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
       resp.setProgress(0.0);
-      resp.setMessage("No DataPartitionTable generation task found");
+      resp.setMessage(PipeMessages.MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55);
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       return resp;
     }
@@ -3548,26 +3548,29 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         resp.setProgress(generator.getProgress());
         resp.setMessage(
             String.format(
-                "DataPartitionTable generation in progress: %.1f%%",
+                PipeMessages.MESSAGE_DATAPARTITIONTABLE_GENERATION_IN_PROGRESS_ARGPCTPCT_F433CBA8,
                 generator.getProgress() * 100));
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         break;
       case COMPLETED:
         resp.setErrorCode(DataPartitionTableGeneratorState.SUCCESS.getCode());
         resp.setProgress(1.0);
-        resp.setMessage("DataPartitionTable generation completed successfully");
+        resp.setMessage(
+            PipeMessages.MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2);
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         break;
       case FAILED:
         resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
         resp.setProgress(generator.getProgress());
-        resp.setMessage("DataPartitionTable generation failed: " + generator.getErrorMessage());
+        resp.setMessage(
+            PipeMessages.MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A
+                + generator.getErrorMessage());
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         break;
       default:
         resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
         resp.setProgress(generator.getProgress());
-        resp.setMessage("Unknown task status: " + generator.getStatus());
+        resp.setMessage(PipeMessages.MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 + generator.getStatus());
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         break;
     }

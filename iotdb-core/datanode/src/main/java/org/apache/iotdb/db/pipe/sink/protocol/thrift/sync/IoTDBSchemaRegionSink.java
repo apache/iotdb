@@ -190,7 +190,10 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
         batch.getPipeName(),
         batch.getCreationTime(),
         planNode.toString());
-    LOGGER.info("Successfully transferred batched schema events, batch size {}.", batch.size());
+    LOGGER.info(
+        DataNodePipeMessages
+            .MESSAGE_SUCCESSFULLY_TRANSFERRED_BATCHED_SCHEMA_EVENTS_BATCH_SIZE_ARG_CF2E881C,
+        batch.size());
   }
 
   private void doTransfer(

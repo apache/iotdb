@@ -77,8 +77,6 @@ public final class ConfigMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String LOG_THERE_MAY_HAVE_BEEN_UNEXPECTED_INTERRUPTION_LAST_E784B008 = " 上次";
-  public static final String LOG_CONFIGURATION_FILE_UPDATE_IGNORE_TEMPORARY_FILE_ARG_3DE7B218 = "配置文件更新期间可能发生意外中断。忽略临时文件 {}";
   public static final String LOG_PIPEDATASTRUCTURETABLETSIZEINBYTES_SET_ARG_243363B3 = "pipeDataStructureTabletSizeInBytes 已设置为 {}。";
   public static final String LOG_PIPEDATASTRUCTURETABLETMEMORYBLOCKALLOCATIONREJECTTHRESHOLD_SET_ARG_EF34614A = "pipeDataStructureTabletMemoryBlockAllocationRejectThreshold 已设置为 {}。";
   public static final String LOG_PIPEDATASTRUCTURETSFILEMEMORYBLOCKALLOCATIONREJECTTHRESHOLD_SET_ARG_309A7E12 = "pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold 已设置为 {}。";

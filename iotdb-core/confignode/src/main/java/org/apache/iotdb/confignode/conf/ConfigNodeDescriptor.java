@@ -760,7 +760,8 @@ public class ConfigNodeDescriptor {
     long heartbeatIntervalInMs = loadHeartbeatIntervalInMs(properties);
     if (heartbeatIntervalInMs <= 0) {
       throw new IOException(
-          "heartbeat_interval_in_ms should be greater than 0, but was "
+          ConfigNodeMessages
+                  .EXCEPTION_HEARTBEAT_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_WAS_2269997B
               + heartbeatIntervalInMs
               + ".");
     }
@@ -792,7 +793,8 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getCqMinEveryIntervalInMs())));
     if (cqMinEveryIntervalInMs <= 0) {
       throw new IOException(
-          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is "
+          ConfigNodeMessages
+                  .EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4
               + cqMinEveryIntervalInMs
               + ".");
     }
@@ -829,16 +831,22 @@ public class ConfigNodeDescriptor {
             properties, "data_region_per_data_node", conf.getDataRegionPerDataNode());
 
     if (defaultSchemaRegionGroupNumPerDatabase <= 0) {
-      throw new IOException("default_schema_region_group_num_per_database should be positive.");
+      throw new IOException(
+          ConfigNodeMessages
+              .EXCEPTION_DEFAULT_SCHEMA_REGION_GROUP_NUM_PER_DATABASE_SHOULD_BE_POSITIVE_C8F77774);
     }
     if (schemaRegionPerDataNode <= 0) {
-      throw new IOException("schema_region_per_data_node should be positive.");
+      throw new IOException(
+          ConfigNodeMessages.EXCEPTION_SCHEMA_REGION_PER_DATA_NODE_SHOULD_BE_POSITIVE_CDEB9FC1);
     }
     if (defaultDataRegionGroupNumPerDatabase <= 0) {
-      throw new IOException("default_data_region_group_num_per_database should be positive.");
+      throw new IOException(
+          ConfigNodeMessages
+              .EXCEPTION_DEFAULT_DATA_REGION_GROUP_NUM_PER_DATABASE_SHOULD_BE_POSITIVE_8E68B5A0);
     }
     if (dataRegionPerDataNode < 0) {
-      throw new IOException("data_region_per_data_node should be non-negative.");
+      throw new IOException(
+          ConfigNodeMessages.EXCEPTION_DATA_REGION_PER_DATA_NODE_SHOULD_BE_NON_NEGATIVE_D2960368);
     }
 
     conf.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
@@ -856,7 +864,11 @@ public class ConfigNodeDescriptor {
       return new BigDecimal(propertyValue).stripTrailingZeros().intValueExact();
     } catch (ArithmeticException | NumberFormatException e) {
       throw new IOException(
-          propertyName + " should be an integer, but was " + propertyValue + ".", e);
+          String.format(
+              ConfigNodeMessages.EXCEPTION_ARG_SHOULD_BE_AN_INTEGER_BUT_WAS_ARG_56B5D91B,
+              propertyName,
+              propertyValue),
+          e);
     }
   }
 
@@ -924,7 +936,8 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getProcedureCompletedCleanInterval())));
     if (procedureCompletedCleanInterval <= 0) {
       throw new IOException(
-          "procedure_completed_clean_interval should be greater than 0, but was "
+          ConfigNodeMessages
+                  .EXCEPTION_PROCEDURE_COMPLETED_CLEAN_INTERVAL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_8781558E
               + procedureCompletedCleanInterval
               + ".");
     }
@@ -935,7 +948,8 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getProcedureCompletedEvictTTL())));
     if (procedureCompletedEvictTTL <= 0) {
       throw new IOException(
-          "procedure_completed_evict_ttl should be greater than 0, but was "
+          ConfigNodeMessages
+                  .EXCEPTION_PROCEDURE_COMPLETED_EVICT_TTL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_5A4D0CF6
               + procedureCompletedEvictTTL
               + ".");
     }

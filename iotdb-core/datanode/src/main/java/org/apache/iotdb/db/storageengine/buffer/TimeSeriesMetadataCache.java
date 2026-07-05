@@ -343,7 +343,8 @@ public class TimeSeriesMetadataCache {
   /** clear LRUCache. */
   public void clear() {
     logger.info(
-        "Evicted non-existing/existing series count: {}/{}({}), total request: {}",
+        StorageEngineMessages
+            .MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD,
         evictedNonExistingEntryCount.get(),
         evictedExistingEntryCount.get(),
         ((double) evictedNonExistingEntryCount.get()) / evictedExistingEntryCount.get(),

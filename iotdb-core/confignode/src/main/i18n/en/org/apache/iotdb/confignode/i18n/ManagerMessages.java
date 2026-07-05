@@ -669,5 +669,10 @@ public final class ManagerMessages {
   public static final String LOG_AGENT_STOP_PIPE_ARG_42212C21 = "from agent, stop pipe %s.";
   public static final String LOG_CREATEREGIONGROUPS_REGIONGROUP_ARG_BELONGED_DATABASE_ARG_DATANODES_ARG_5270AB6B = "[CreateRegionGroups] RegionGroup: {}, belonged database: {}, on DataNodes: {}";
   public static final String EXCEPTION_DATANODEID_SHOULD_NOT_BE_MINUS_1_HERE_5CB27796 = "dataNodeId should not be -1 here";
+  public static final String MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STARTED_SUCCESSFULLY_09CA6848 = "SubscriptionOwnerLeaseSyncer is started successfully.";
+  public static final String MESSAGE_FAILED_TO_PUSH_SUBSCRIPTION_TOPIC_OWNER_LEASES_TO_DATANODES_EBFBA668 = "Failed to push subscription topic owner leases to DataNodes.";
+  public static final String MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STOPPED_SUCCESSFULLY_11442F29 = "SubscriptionOwnerLeaseSyncer is stopped successfully.";
+  public static final String MESSAGE_NO_AVAILABLE_ARG_REGIONGROUP_FOR_DATABASE_ARG_REGIONGROUPS_VISIBLE_IN_PARTITIONINFO_AND_THEIR_LOADCACHE_STATUS_ARG_615F5D49 =
+      "No available {} RegionGroup for Database: {}. RegionGroups visible in PartitionInfo and their LoadCache status: {}";
 
 }

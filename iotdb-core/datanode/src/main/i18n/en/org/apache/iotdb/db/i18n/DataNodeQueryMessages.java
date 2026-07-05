@@ -3682,5 +3682,30 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_EXPRESSION_INTERPRETER_RETURNED_AN_UNRESOLVED_EXPRESSION_5BCE9A51 = "Expression interpreter returned an unresolved expression";
   public static final String EXCEPTION_NULL_OPERAND_SHOULD_HAVE_BEEN_REMOVED_BY_RECURSIVE_COALESCE_PROCESSING_B6D4D443 = "Null operand should have been removed by recursive coalesce processing";
   public static final String EXCEPTION_NULL_VALUE_IS_EXPECTED_TO_BE_REPRESENTED_AS_NULL_COMMA_NOT_NULLLITERAL_9B96D25A = "Null value is expected to be represented as null, not NullLiteral";
+  public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_ONLY_HAVE_TWO_ARGUMENTS_3D12DCFD = "Aggregation functions [%s] should only have two arguments";
+  public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP_97A6CA87 = "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]";
+  public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE_57033ADF = "Aggregation functions [%s] should have percentage as decimal type";
+  public static final String EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4 = "Cannot nest aggregations inside aggregation '%s': %s";
+  public static final String EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897 = "Cannot nest window functions inside aggregation '%s': %s";
+  public static final String EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6 = "PARTITION BY expression '%s' must be an aggregate expression or appear in GROUP BY clause";
+  public static final String EXCEPTION_ORDER_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_7FF8267B = "ORDER BY expression '%s' must be an aggregate expression or appear in GROUP BY clause";
+  public static final String EXCEPTION_WINDOW_FRAME_START_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_74E30A63 = "Window frame start must be an aggregate expression or appear in GROUP BY clause";
+  public static final String EXCEPTION_WINDOW_FRAME_END_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_31784B55 = "Window frame end must be an aggregate expression or appear in GROUP BY clause";
+  public static final String EXCEPTION_INVALID_EXPLAIN_FORMAT_3FD91910 = "Invalid EXPLAIN format: ";
+  public static final String EXCEPTION_INVALID_EXPLAIN_ANALYZE_FORMAT_0879A025 = "Invalid EXPLAIN ANALYZE format: ";
+  public static final String EXCEPTION_INVALID_EXPLAIN_FORMAT_ARG_SUPPORTED_FORMATS_GRAPHVIZ_JSON_441A1D48 =
+      "Invalid EXPLAIN format: %s. Supported formats: GRAPHVIZ, JSON";
+  public static final String EXCEPTION_INVALID_EXPLAIN_ANALYZE_FORMAT_ARG_SUPPORTED_FORMATS_TEXT_JSON_77FA30EB =
+      "Invalid EXPLAIN ANALYZE format: %s. Supported formats: TEXT, JSON";
+  public static final String EXCEPTION_GROUP_BY_ALL_CANNOT_BE_COMBINED_WITH_EXPLICIT_GROUPING_ELEMENTS_4CFE411D = "GROUP BY ALL cannot be combined with explicit grouping elements";
+  public static final String EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46 = "The second argument of 'percentile' function percentage must be a double literal";
+  public static final String EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD = "Data type mismatch for measurement %s%s%s, type in TsFile: %s, type in IoTDB: %s";
+  public static final String MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978 = "Failed to release external TsFile query resource";
+  public static final String EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63 = "Outer query timeout exceeded before IoTDBLocal query starts";
+  public static final String MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC = "Failed to close UDF result set at index {}";
+  public static final String EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542 = "Internal query execution not found";
+  public static final String EXCEPTION_ONLY_QUERY_IS_SUPPORTED_FOR_IOTDBLOCAL_QUERY_INTERFACE_09195570 = "Only query is supported for IoTDBLocal query interface";
+  public static final String EXCEPTION_FAILED_TO_CLOSE_INTERNAL_QUERY_RESULT_ED86BF5E = "Failed to close internal query result";
+  public static final String EXCEPTION_UDFRESULTSET_IS_ALREADY_CLOSED_E1ACABE3 = "UDFResultSet is already closed";
 
 }

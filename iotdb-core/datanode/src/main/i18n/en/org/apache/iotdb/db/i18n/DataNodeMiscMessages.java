@@ -1443,5 +1443,12 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_RUNTIMESTATE_D4D018BA = "runtimeState";
   public static final String EXCEPTION_STATEMENTNAME_IS_NULL_C03BB8D4 = "statementName is null";
   public static final String EXCEPTION_SQL_IS_NULL_BEDB2B7A = "sql is null";
+  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_AAB5F962 = "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry.";
+  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
+      "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry. Reason: {}";
+  public static final String EXCEPTION_TRUST_STORE_PATH_MUST_BE_SET_WHEN_THRIFT_SSL_CLIENT_AUTH_IS_TRUE_36016171 = "trust_store_path must be set when thrift_ssl_client_auth is true";
+  public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 = "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is ";
+  public static final String EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949 = "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"";
+  public static final String MESSAGE_INITIAL_ALLOCATEMEMORYFORAUTORESIZINGBUFFER_ARG_A0DB6DA0 = "initial allocateMemoryForAutoResizingBuffer = {}";
 
 }

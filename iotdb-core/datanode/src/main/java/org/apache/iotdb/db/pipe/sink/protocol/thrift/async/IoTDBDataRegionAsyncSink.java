@@ -840,7 +840,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
               .markTemporarilyUnavailable();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Receiver {} is temporarily unavailable, throttle requests for {} ms. Status: {}",
+            DataNodePipeMessages
+                .MESSAGE_RECEIVER_ARG_IS_TEMPORARILY_UNAVAILABLE_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_F37192D9,
             endPointKey,
             backoffTimeInMs,
             status);

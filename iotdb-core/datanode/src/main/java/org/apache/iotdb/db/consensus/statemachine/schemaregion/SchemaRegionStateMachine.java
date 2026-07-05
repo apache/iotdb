@@ -153,7 +153,10 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       listen2Snapshot4PipeListener(false);
       return loadSucceeded;
     } catch (Exception e) {
-      logger.error("Failed to load snapshot from {}", latestSnapshotRootDir, e);
+      logger.error(
+          DataNodePipeMessages.MESSAGE_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_9391AA27,
+          latestSnapshotRootDir,
+          e);
       return false;
     }
   }

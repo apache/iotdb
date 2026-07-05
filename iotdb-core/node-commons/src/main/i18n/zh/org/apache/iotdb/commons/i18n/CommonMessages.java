@@ -167,7 +167,7 @@ public final class CommonMessages {
   public static final String EXCEPTION_TYPE_ARG_NOT_SUPPORTED_PIPE_RATE_AVERAGE_F74694AD = "pipe rate average 不支持类型 %s。";
   public static final String EXCEPTION_UNKNOWN_UDFTYPE_9A8D1B23 = "未知的 UDFType:";
   public static final String EXCEPTION_8S_5F5F831F = "%8s";
-  public static final String EXCEPTION_CAN_NOT_RECOGNIZE_PIPETYPE_ARG_8850A249 = "无法识别 PipeType %s.";
+  public static final String EXCEPTION_CAN_NOT_RECOGNIZE_PIPETYPE_ARG_8850A249 = "无法识别 PipeType %s。";
   public static final String EXCEPTION_TARGETREGIONLIST_EMPTY_DEVICE_ARG_TIMESLOT_ARG_E7E5818C = "targetRegionList 为空。device：%s，timeSlot：%s";
   public static final String EXCEPTION_DATABASE_18F8303F = "数据库 ";
   public static final String EXCEPTION_NOT_EXISTS_FAILED_CREATE_AUTOMATICALLY_BECAUSE_ENABLE_AUTO_CREATE_SCHEMA_80DE1A4B = " 不存在，且无法自动创建，原因：enable_auto_create_schema 为 FALSE。";
@@ -197,12 +197,19 @@ public final class CommonMessages {
   public static final String EXCEPTION_COLUMN_TYPE_MUST_NUMERIC_IF_DELTA_NOT_0_F7864D4E = "DELTA 不为 0 时，列类型必须为数值类型。";
   public static final String EXCEPTION_TYPE_COLUMN_ARG_NOT_AS_EXPECTED_7A81636E = "列 [%s] 的类型不符合预期。";
   public static final String EXCEPTION_REQUIRED_COLUMN_ARG_NOT_FOUND_SOURCE_TABLE_ARGUMENT_993E1C08 = "未在源表参数中找到必需列 [%s]。";
-  public static final String EXCEPTION_UNSUPPORTED_PROGRESS_INDEX_TYPE_ARG_A84CDFF9 = "不支持的进度索引类型 %s.";
+  public static final String EXCEPTION_UNSUPPORTED_PROGRESS_INDEX_TYPE_ARG_A84CDFF9 = "不支持的进度索引类型 %s。";
   public static final String EXCEPTION_TIMEWINDOWSTATEPROGRESSINDEX_DOES_NOT_SUPPORT_TOPOLOGICAL_SORTING_897C8976 = "TimeWindowStateProgressIndex 不支持拓扑排序";
   public static final String EXCEPTION_INTENDED_READ_LENGTH_ARG_BUT_ARG_ACTUALLY_READ_DESERIALIZING_TIMEPROGRESSINDEX_63CD54E4 =
       "反序列化 TimeProgressIndex 时预期读取长度为 %s，但实际读取了 %s，ProgressIndex：%s";
   public static final String EXCEPTION_COLON_3A291246 = " : ";
   public static final String EXCEPTION_DATAPARTITIONMAP_IS_NULL_B764418A = "dataPartitionMap 不能为空";
   public static final String EXCEPTION_ARG_634FCEDB = "%s";
+  public static final String EXCEPTION_TABLE_ARGUMENT_WITH_SET_SEMANTICS_REQUIRES_AN_ORDER_BY_CLAUSE_10C986D9 = "具有 set 语义的 table 参数需要 ORDER BY 子句。";
+  public static final String EXCEPTION_THE_TYPE_OF_THE_COLUMN_ARG_IS_NOT_COMPARABLE_E3098096 = "列 [%s] 的类型不可比较。";
+  public static final String EXCEPTION_NO_COMPARABLE_COLUMNS_FOUND_FOR_M4_CALCULATION_4E5A3092 = "未找到可用于 M4 计算的可比较列。";
+  public static final String EXCEPTION_INVALID_SCALAR_ARGUMENT_SLIDE_SHOULD_BE_A_POSITIVE_VALUE_F019E091 = "无效的标量参数 SLIDE，应为正数";
+  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9 = "DATA 参数的 ORDER BY 子句必须仅包含 TIMECOL 参数指定的时间列。";
+  public static final String EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 = "不支持的 M4 值类型：";
+  public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold 必须在 [0, 1) 范围内，但实际为 ";
 
 }

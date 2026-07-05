@@ -1182,7 +1182,10 @@ public class DataPartitionTableIntegrityCheckProcedure
           .setMessage(
               String.format("DataPartitionTable integrity check progress: %.1f%%", progress));
     } catch (Exception e) {
-      LOG.warn("Failed to show DataPartitionTable integrity check progress", e);
+      LOG.warn(
+          ProcedureMessages
+              .MESSAGE_FAILED_TO_SHOW_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_5EE98694,
+          e);
       return new TShowRepairDataPartitionTableProgressResp(
               RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
               RepairDataPartitionTableProgressState.UNKNOWN.name(),
@@ -1208,7 +1211,8 @@ public class DataPartitionTableIntegrityCheckProcedure
         return 0.99;
       default:
         LOG.warn(
-            "Encountered unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress",
+            ProcedureMessages
+                .MESSAGE_ENCOUNTERED_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_5FA2739F,
             currentState);
         return 0.0;
     }
@@ -1223,7 +1227,8 @@ public class DataPartitionTableIntegrityCheckProcedure
       return RepairDataPartitionTableProgressState.valueOf(currentState.name()).name();
     } catch (IllegalArgumentException e) {
       LOG.warn(
-          "Unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress",
+          ProcedureMessages
+              .MESSAGE_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_D3C07BA1,
           currentState);
       return RepairDataPartitionTableProgressState.UNKNOWN.name();
     }

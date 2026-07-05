@@ -725,5 +725,7 @@ public final class DataNodeSchemaMessages {
   public static final String EXCEPTION_DOT_9D9B854A = ".";
   public static final String EMPTY_MESSAGE = "";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
+  public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "Skip rollback renaming old table {}.{} because it has been handled.";
+  public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "Skip commit-update table {}.{} because it has been handled.";
 
 }

@@ -2857,7 +2857,8 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getCqMinEveryIntervalInMs())));
     if (cqMinEveryIntervalInMs <= 0) {
       throw new IOException(
-          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is "
+          DataNodeMiscMessages
+                  .EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4
               + cqMinEveryIntervalInMs
               + ".");
     }
@@ -2871,7 +2872,8 @@ public class IoTDBDescriptor {
     if (!"strong".equals(readConsistencyLevel) && !"weak".equals(readConsistencyLevel)) {
       throw new IOException(
           String.format(
-              "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+              DataNodeMiscMessages
+                  .EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949,
               readConsistencyLevel));
     }
     conf.setReadConsistencyLevel(readConsistencyLevel);

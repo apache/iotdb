@@ -127,5 +127,7 @@ public final class RatisMessages {
   public static final String LOG_ARG_INTERRUPTED_WAITING_RETRY_38D69BCC = "{}：等待重试时被中断";
   public static final String EXCEPTION_SUPPLIER_EQUALS_EQUALS_NULL_13BACC3E = "supplier == null";
   public static final String EXCEPTION_CONDITION_EQUALS_EQUALS_NULL_E3A6C947 = "condition == null";
+  public static final String EXCEPTION_ARG_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_A12E23D7 =
+      "%s：从 %s 加载快照失败";
 
 }

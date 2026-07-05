@@ -121,6 +121,9 @@ public final class ConfigNodeMessages {
       "Current node [nodeId: {}, ip:port: {}] becomes config region leader";
   public static final String CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER =
       "Current node [nodeId:{}, ip:port: {}] is no longer the leader, ";
+  public static final String MESSAGE_CURRENT_NODE_NODEID_ARG_IP_PORT_ARG_IS_NO_LONGER_THE_LEADER_SKIP_STARTING_LEADER_SERVICES_BECAUSE_THE_LEADER_EPOCH_IS_STALE_CCF39435 =
+      "Current node [nodeId:{}, ip:port: {}] is no longer the leader, skip starting leader "
+          + "services because the leader epoch is stale";
   public static final String DATABASE_INCONSISTENCY_DETECTED_WHEN_ADJUSTING_MAX_REGION_GROUP_COUNT_MESSAGE =
       "Database inconsistency detected when adjusting max region group count, message: {}, will be corrected by the following adjusting plans";
   public static final String DATABASE_NOT_EXIST = "Database not exist";
@@ -615,5 +618,47 @@ public final class ConfigNodeMessages {
   public static final String EMPTY_MESSAGE = "";
   public static final String EXCEPTION_PROCEDURE_TYPE_IS_NULL_93147BD3 = "Procedure type is null";
   public static final String EXCEPTION_DOT_9D9B854A = ".";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FAILED_TO_START_LEADER_SERVICE_ARG_THE_1754011A =
+      "Current ConfigNode(nodeId: {}, ip: {}) failed to start leader service [{}], the";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FAILED_TO_START_LEADER_SERVICE_ARG_THE_NODE_WILL_STILL_FINISH_WARMING_UP_THIS_SERVICE_STAYS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_E89A98E7 =
+      "Current ConfigNode(nodeId: {}, ip: {}) failed to start leader service [{}], the node will "
+          + "still finish warming up; this service stays unavailable until the next leadership "
+          + "transition.";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FINISHED_STARTING_LEADER_SERVICES_WHILE_LOAD_0C57A408 =
+      "Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FINISHED_STARTING_LEADER_SERVICES_WHILE_LOAD_WARM_UP_IS_STILL_IN_PROGRESS_ARG_17C09A31 =
+      "Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load warm-up "
+          + "is still in progress: {}";
+  public static final String MESSAGE_UNEXPECTED_INTERRUPTION_WHILE_WAITING_FOR_CONFIGNODE_LEADER_LOAD_WARM_UP_BB5AA4F7 =
+      "Unexpected interruption while waiting for ConfigNode leader load warm-up.";
+  public static final String EXCEPTION_PROCEDURE_FILE_ARG_EXCEEDS_THE_LOAD_BUFFER_LIMIT_ARG_ACTUAL_SIZE_ARG_62375B4C =
+      "Procedure file %s exceeds the load buffer limit %s, actual size %s";
+  public static final String MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_REPLAYING_OFFER_PLAN_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_2A81A649 =
+      "Dropping legacy region-delete task for {} while replaying offer plan; region deletion is now handled by RemoveRegionGroupProcedure.";
+  public static final String MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_LOADING_SNAPSHOT_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_A9D409A0 =
+      "Dropping legacy region-delete task for {} while loading snapshot; region deletion is now handled by RemoveRegionGroupProcedure.";
+  public static final String MESSAGE_CONFIGNODE_LEADER_IS_WARMING_UP_BEFORE_SERVING_THE_REGISTERING_CONFIGNODE_WILL_WAIT_2E051639 =
+      "ConfigNode leader is warming up before serving the registering ConfigNode, will wait";
+  public static final String MESSAGE_CONFIGNODE_LEADER_IS_WARMING_UP_BEFORE_SERVING_THE_REGISTERING_CONFIGNODE_WILL_WAIT_AND_RETRY_STATUS_ARG_RETRY_ARG_3C924873 =
+      "ConfigNode leader is warming up before serving the registering ConfigNode, will wait and "
+          + "retry. Status: {}, retry: {}";
+  public static final String EXCEPTION_ARG_SHOULD_BE_AN_INTEGER_BUT_WAS_ARG_56B5D91B =
+      "%s should be an integer, but was %s.";
+  public static final String EXCEPTION_HEARTBEAT_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_WAS_2269997B =
+      "heartbeat_interval_in_ms should be greater than 0, but was ";
+  public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 =
+      "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is ";
+  public static final String EXCEPTION_DEFAULT_SCHEMA_REGION_GROUP_NUM_PER_DATABASE_SHOULD_BE_POSITIVE_C8F77774 =
+      "default_schema_region_group_num_per_database should be positive.";
+  public static final String EXCEPTION_SCHEMA_REGION_PER_DATA_NODE_SHOULD_BE_POSITIVE_CDEB9FC1 =
+      "schema_region_per_data_node should be positive.";
+  public static final String EXCEPTION_DEFAULT_DATA_REGION_GROUP_NUM_PER_DATABASE_SHOULD_BE_POSITIVE_8E68B5A0 =
+      "default_data_region_group_num_per_database should be positive.";
+  public static final String EXCEPTION_DATA_REGION_PER_DATA_NODE_SHOULD_BE_NON_NEGATIVE_D2960368 =
+      "data_region_per_data_node should be non-negative.";
+  public static final String EXCEPTION_PROCEDURE_COMPLETED_CLEAN_INTERVAL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_8781558E =
+      "procedure_completed_clean_interval should be greater than 0, but was ";
+  public static final String EXCEPTION_PROCEDURE_COMPLETED_EVICT_TTL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_5A4D0CF6 =
+      "procedure_completed_evict_ttl should be greater than 0, but was ";
 
 }

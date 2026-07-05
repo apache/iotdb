@@ -406,7 +406,7 @@ public final class StorageEngineMessages {
   public static final String CLEAR_SNAPSHOT_DIR_FAIL = "清理快照目录失败，请在再次执行 Region 迁移前手动删除此目录: {}";
   public static final String HARD_LINK_SOURCE_FILE_RETRY = "硬链接源文件 {} 不存在，将重试 {} 次...";
   public static final String TRY_SHOW_FILES_IN_PARENT_DIR = "尝试显示父目录中的所有文件...";
-  public static final String CANNOT_SHOW_FILES_PARENT_DIR_NULL = "无法显示文件，因为父目录为空";
+  public static final String CANNOT_SHOW_FILES_PARENT_DIR_NULL = "无法显示文件，因为父目录为 null";
   public static final String FAILED_DELETE_FOLDER_CLEANING_UP = "清理时删除目录 {} 失败";
 
   // ======================== TsFile Resource ========================
@@ -550,7 +550,7 @@ public final class StorageEngineMessages {
 
   public static final String FAILED_TO_FIND_DATA_REGION = "共识组 %s 底层状态机创建失败, 因为 DataRegion 没找到。";
 
-  public static final String DATA_REGION_IS_NULL = "Data region 是空";
+  public static final String DATA_REGION_IS_NULL = "DataRegion 为 null";
   // ---------------------------------------------------------------------------
   // 补充日志消息
   // ---------------------------------------------------------------------------
@@ -569,7 +569,7 @@ public final class StorageEngineMessages {
   public static final String STORAGE_LOG_EXCEPTION_OCCURRED_WHEN_WRITING_PIECE_NODE_OF_TSFILE_TO_9EDD09BD =
       "将 TsFile {} 的片段节点写入 DataRegion {} 时发生异常。";
   public static final String STORAGE_LOG_FAILED_TO_RECOVER_DATA_REGION_804B162D =
-      "无法恢复 data Region {}[{}]";
+      "无法恢复 DataRegion {}[{}]";
   public static final String STORAGE_LOG_ERROR_OCCURS_WHEN_DELETING_DATA_REGION_8C07B7A0 =
       "删除 DataRegion {}-{} 时发生错误";
   public static final String STORAGE_LOG_NEXT_LOAD_CLEANUP_TASK_IS_NOT_READY_TO_RUN_WAIT_FOR_AT_LEAST_CBE0023F =
@@ -830,7 +830,7 @@ public final class StorageEngineMessages {
   public static final String STORAGE_LOG_FAILED_TO_READ_TABLE_TSFILE_SIZE_INDEX_AFTER_POSITION_AND_74251AF3 =
       "无法读取 table TsFile size index {} 在 position：{} 之后的数据，以及 {} 在 position：{} 之后的数据";
   public static final String STORAGE_LOG_COMPACTIONSCHEDULETASKWORKER_COMPACTION_SCHEDULE_IS_INTERRUPTED_9EF702D1 =
-      "[CompactionScheduleTaskWorker-{}] compaction schedule 是被中断, isStopByUser：{}";
+      "[CompactionScheduleTaskWorker-{}] compaction schedule 被中断，isStopByUser：{}";
   public static final String STORAGE_LOG_COMPACTIONSCHEDULETASKWORKER_FAILED_TO_EXECUTE_COMPACTION_4F302761 =
       "[CompactionScheduleTaskWorker-{}] 无法执行 compaction schedule 任务";
   public static final String STORAGE_LOG_COMPACTIONSCHEDULETASKWORKER_FAILED_TO_EXECUTE_COMPACTION_E571F6E3 =
@@ -912,29 +912,29 @@ public final class StorageEngineMessages {
   public static final String STORAGE_LOG_COMPACTION_COMPACTION_WITH_SELECTED_FILES_SKIPPED_FILES_ACC66872 =
       "{}-{} [Compaction] 对选中文件 {}、跳过文件 {} 执行 compaction";
   public static final String STORAGE_LOG_COMPACTION_INNERSPACECOMPACTION_TASK_FINISHES_SUCCESSFULLY_08475DE4 =
-      "{}-{} [Compaction] {} InnerSpaceCompaction 任务 finishes 成功, target 文件 是{},time cost 是{} s, "
-          + "compaction speed 是{} MB/s, {}";
+      "{}-{} [Compaction] {} InnerSpaceCompaction 任务成功完成，target 文件为 {}，耗时 {} s，"
+          + "compaction 速度为 {} MB/s，{}";
   public static final String STORAGE_LOG_COMPACTION_INSERTIONCROSSSPACECOMPACTION_TASK_STARTS_WITH_A315B8C6 =
       "{}-{} [Compaction] InsertionCrossSpaceCompaction 任务启动，unseq 文件 {}，nearest seq 文件为 {}，target 文件名 timestamp 为 {}，文件大小为 {} MB。";
   public static final String STORAGE_LOG_COMPACTION_INSERTIONCROSSSPACECOMPACTION_TASK_FINISHES_SUCCESSFULLY_69360DD0 =
-      "{}-{} [Compaction] InsertionCrossSpaceCompaction 任务 finishes 成功, target 文件 是{},time cost "
-          + "是{} s.";
+      "{}-{} [Compaction] InsertionCrossSpaceCompaction 任务成功完成，target 文件为 {}，耗时 "
+          + "{} s。";
   public static final String STORAGE_LOG_INSERTIONCROSSSPACECOMPACTIONTASK_FAILED_TO_GENERATE_TARGET_B03E4C67 =
-      "{}-{} [InsertionCrossSpaceCompactionTask] 无法生成 target 文件 name, source unseq 文件 是{}";
+      "{}-{} [InsertionCrossSpaceCompactionTask] 无法生成 target 文件名，source unseq 文件为 {}";
   public static final String STORAGE_LOG_SETTLE_TASK_DELETES_FULLY_DIRTY_TSFILE_SUCCESSFULLY_18D81225 =
-      "Settle 任务 deletes fully_dirty TsFile {} 成功.";
+      "Settle 任务成功删除 fully_dirty TsFile {}。";
   public static final String STORAGE_LOG_COMPACTION_SETTLE_COMPACTION_FILE_LIST_IS_EMPTY_END_IT_56CF079D =
-      "{}-{} [Compaction] Settle compaction 文件 list 为空, end it";
+      "{}-{} [Compaction] Settle compaction 文件列表为空，结束处理";
   public static final String STORAGE_LOG_COMPACTION_SETTLECOMPACTION_TASK_STARTS_WITH_FULLY_DIRTY_0962C95A =
       "{}-{} [Compaction] SettleCompaction 任务启动，fully_dirty 文件 {} 个，partially_dirty 文件 {} 个。Fully_dirty 文件：{}，partially_dirty 文件：{}。Fully_dirty 文件大小为 {} MB，partially_dirty 文件大小为 {} MB。内存开销为 {} MB。";
   public static final String STORAGE_LOG_COMPACTION_SETTLECOMPACTION_TASK_FINISHES_SUCCESSFULLY_TIME_2BD3839A =
-      "{}-{} [Compaction] SettleCompaction 任务 finishes 成功, time cost 是{} s.Fully_dirty 文件 num 是{}.";
+      "{}-{} [Compaction] SettleCompaction 任务成功完成，耗时 {} s。Fully_dirty 文件数为 {}。";
   public static final String STORAGE_LOG_COMPACTION_SETTLECOMPACTION_TASK_FINISHES_SUCCESSFULLY_TIME_4FEB0F56 =
       "{}-{} [Compaction] SettleCompaction 任务成功结束，time cost 为 {} s，compaction speed 为 {} MB/s。Fully_dirty 文件数为 {}，partially_dirty 文件数为 {}。";
   public static final String STORAGE_LOG_COMPACTION_SETTLECOMPACTION_TASK_FINISHES_WITH_SOME_ERROR_A8A15439 =
       "{}-{} [Compaction] SettleCompaction 任务结束但存在错误，time cost 为 {} s。Fully_dirty 文件数为 {}，有 {} 个文件删除失败。";
   public static final String STORAGE_LOG_COMPACTION_START_TO_SETTLE_PARTIALLY_DIRTY_FILES_TOTAL_FILE_BAC113C4 =
-      "{}-{} [Compaction] 开始 settle {} {} partially_dirty 文件, total 文件 size 是{} MB";
+      "{}-{} [Compaction] 开始 settle {} {} 个 partially_dirty 文件，总文件大小为 {} MB";
   public static final String STORAGE_LOG_COMPACTION_FINISH_TO_SETTLE_PARTIALLY_DIRTY_FILES_SUCCESSFULLY_9ACFD5C0 =
       "{}-{} [Compaction] 成功 settle {} {} 个 partially_dirty 文件，target 文件为 {}，time cost 为 {} s，compaction speed 为 {} MB/s，{}";
   public static final String STORAGE_LOG_COMPACTION_RECOVER_START_TO_RECOVER_SETTLE_COMPACTION_C342241D =
@@ -946,12 +946,12 @@ public final class StorageEngineMessages {
   public static final String STORAGE_LOG_SETTLE_TASK_FAIL_TO_DELETE_FULLY_DIRTY_TSFILE_B7DAEA8D =
       "Settle 任务 无法删除 fully_dirty TsFile {}.";
   public static final String STORAGE_LOG_COMPACTION_CROSS_SPACE_COMPACTION_FILE_LIST_IS_EMPTY_END_B8044743 =
-      "{}-{} [Compaction] Cross space compaction 文件 list 为空, end it";
+      "{}-{} [Compaction] Cross space compaction 文件列表为空，结束处理";
   public static final String STORAGE_LOG_COMPACTION_CROSSSPACECOMPACTION_TASK_STARTS_WITH_SEQ_FILES_8CDCBE0F =
       "{}-{} [Compaction] CrossSpaceCompaction 任务启动，seq 文件 {} 个、unsequence 文件 {} 个。Sequence 文件：{}，unsequence 文件：{}。Sequence 文件大小为 {} MB，unsequence 文件大小为 {} MB，总大小为 {} MB";
   public static final String STORAGE_LOG_COMPACTION_CROSSSPACECOMPACTION_TASK_FINISHES_SUCCESSFULLY_D7F1B1FD =
-      "{}-{} [Compaction] CrossSpaceCompaction 任务 finishes 成功, time cost 是{} s, compaction speed "
-          + "是{} MB/s, {}";
+      "{}-{} [Compaction] CrossSpaceCompaction 任务成功完成，耗时 {} s，compaction 速度 "
+          + "为 {} MB/s，{}";
   public static final String STORAGE_LOG_COMPACTION_RECOVER_RECOVER_COMPACTION_IN_DATA_REGION_DIR_ABD144CC =
       "{} [Compaction][Recover] 在 data region dir {} 中恢复 compaction";
   public static final String STORAGE_LOG_COMPACTION_RECOVER_RECOVER_COMPACTION_IN_TIME_PARTITION_FA2FC44D =
@@ -1403,5 +1403,18 @@ public final class StorageEngineMessages {
   // ---------------------------------------------------------------------------
   public static final String MESSAGE_NO_LOAD_TSFILE_UUID_ARG_RECORDED_EXECUTE_LOAD_COMMAND_ARG_66722D80 = "未记录 Load TsFile uuid %s，执行 Load 命令为 %s。";
   public static final String EXCEPTION_NON_MINUS_ALIGNED_CHUNK_ONLY_HAS_ONE_MEASUREMENT_COMMA_BUT_MEASUREMENTINDEX_IS_E1A87F80 = "非对齐 chunk 只有一个 measurement，但 measurementIndex 为 ";
+  public static final String MESSAGE_LOAD_QUERY_FALLBACK_FAILED_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_50771955 = "Load：设备 {} 测点 {} 在 TsFile {} 中的查询回退失败。";
+  public static final String MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_TSFILE_ARG_AFTER_SCAN_PARSER_FAILURE_143B6037 = "Load：scan parser 失败后，TsFile {} 的查询回退初始化失败。";
+  public static final String MESSAGE_LOAD_SCAN_PARSER_DETECTED_A_CORRUPTED_SECTION_IN_TSFILE_ARG_AT_DEVICE_ARG_E2632421 = "Load：scan parser 在 TsFile {} 的设备 {} 处检测到损坏的数据段。";
+  public static final String EXCEPTION_EXPECTED_PIPERAWTABLETINSERTIONEVENT_BUT_GOT_D1D1DD05 = "期望 PipeRawTabletInsertionEvent，但得到 ";
+  public static final String MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_0BF15119 = "Load：设备 {} 测点 {} 在 TsFile {} 中的查询回退初始化失败。";
+  public static final String MESSAGE_LOAD_QUERY_FALLBACK_FAILED_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_SPLIT_OR_SKIP_THIS_QUERY_TASK_AND_CONTINUE_3A4EA407 =
+      "Load：设备 {} 测点 {} 在 TsFile {} 中的查询回退失败。拆分或跳过该查询任务并继续。";
+  public static final String MESSAGE_LOAD_SCAN_PARSER_DETECTED_A_CORRUPTED_SECTION_IN_TSFILE_ARG_AT_DEVICE_ARG_SWITCH_TO_QUERY_PARSING_FOR_REMAINING_DEVICES_EFA07985 =
+      "Load：scan parser 在 TsFile {} 的设备 {} 处检测到损坏的数据段。切换到查询解析来处理剩余设备。";
+  public static final String MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_SPLIT_OR_SKIP_THIS_QUERY_TASK_AND_CONTINUE_C6F69685 =
+      "Load：设备 {} 测点 {} 在 TsFile {} 中的查询回退初始化失败。拆分或跳过该查询任务并继续。";
+  public static final String MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5 = "在快照中未找到 {} 关联的资源文件";
+  public static final String MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD = "淘汰的不存在/已存在时间序列数量：{}/{}({})，总请求数：{}";
 
 }

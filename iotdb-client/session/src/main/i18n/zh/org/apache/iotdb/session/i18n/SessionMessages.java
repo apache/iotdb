@@ -33,7 +33,7 @@ public final class SessionMessages {
   public static final String SOME_VALUES_NULL =
       "{} 的部分值为 null，null 值为 {}";
   public static final String MEET_ERROR_WHEN_ASYNC_INSERT = "异步写入时遇到错误！";
-  public static final String MEASUREMENT_NON_NULL = "测量值名称不能为 null";
+  public static final String MEASUREMENT_NON_NULL = "测点名称不能为 null";
   public static final String NO_TABLET_INSERTING = "没有可写入的 Tablet！";
   public static final String SESSION_NOT_OPEN =
       "Session 尚未打开，请先调用 Session.open()";

@@ -1022,7 +1022,8 @@ public class PartitionManager {
                   slotsCounter.getRight(),
                   getLoadManager().getRegionGroupStatus(slotsCounter.getRight())));
       LOGGER.warn(
-          "No available {} RegionGroup for Database: {}. RegionGroups visible in PartitionInfo and their LoadCache status: {}",
+          ManagerMessages
+              .MESSAGE_NO_AVAILABLE_ARG_REGIONGROUP_FOR_DATABASE_ARG_REGIONGROUPS_VISIBLE_IN_PARTITIONINFO_AND_THEIR_LOADCACHE_STATUS_ARG_615F5D49,
           type,
           database,
           visibleRegionGroupStatusMap);

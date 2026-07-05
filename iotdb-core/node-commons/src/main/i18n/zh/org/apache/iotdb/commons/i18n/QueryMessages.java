@@ -409,7 +409,7 @@ public final class QueryMessages {
   public static final String EXCEPTION_MUST_HAVE_AT_LEAST_TWO_OPERANDS_CE7B0DCB = "必须至少有两个 operands";
   public static final String EXCEPTION_LINE_MUST_BE_AT_LEAST_ONE_COMMA_GOT_COLON_ARG_6BA7A99C = "line 必须至少为 1，实际为: %s";
   public static final String EXCEPTION_COLUMN_MUST_BE_AT_LEAST_ONE_COMMA_GOT_COLON_ARG_4A529240 = "column 必须至少为 1，实际为: %s";
-  public static final String EXCEPTION_QUERY_IS_NULL_689B7978 = "查询不能为空";
+  public static final String EXCEPTION_QUERY_IS_NULL_689B7978 = "query 不能为空";
   public static final String EXCEPTION_OPERATOR_IS_NULL_F5BB9F59 = "operator 不能为空";
   public static final String EXCEPTION_EXPECTED_AT_LEAST_2_TERMS_87CD9010 = "期望至少 2 个 terms";
   public static final String EXCEPTION_SPECIFICATION_IS_NULL_BB4AA029 = "specification 不能为空";
@@ -419,13 +419,13 @@ public final class QueryMessages {
   public static final String EXCEPTION_IDENTIFIER_IS_NULL_8F8171C8 = "identifier 不能为空";
   public static final String EXCEPTION_MISSING_IDENTIFIER_IN_SKIP_TO_ARG_33E1A7C3 = "SKIP TO %s 中缺少标识符";
   public static final String EXCEPTION_UNEXPECTED_IDENTIFIER_IN_SKIP_TO_ARG_58438AFC = "SKIP TO %s 中出现意外的标识符";
-  public static final String EXCEPTION_FIRST_IS_NULL_DC679129 = "第一个值不能为空";
+  public static final String EXCEPTION_FIRST_IS_NULL_DC679129 = "first 不能为空";
   public static final String EXCEPTION_ORIGINALPARTS_IS_NULL_EA9B01F3 = "originalParts 不能为空";
   public static final String EXCEPTION_ORIGINALPARTS_IS_EMPTY_0D1EFAC4 = "originalParts 为空";
   public static final String EXCEPTION_MIN_IS_NULL_B80144C1 = "min 不能为空";
   public static final String EXCEPTION_MAX_IS_NULL_CCABB3BF = "max 不能为空";
   public static final String EXCEPTION_TABLE_IS_NULL_8DDD9098 = "table 不能为空";
-  public static final String EXCEPTION_WITH_IS_NULL_20C2A1AE = "公共表表达式子句不能为空";
+  public static final String EXCEPTION_WITH_IS_NULL_20C2A1AE = "with 不能为空";
   public static final String EXCEPTION_QUERYBODY_IS_NULL_E3EB26CA = "queryBody 不能为空";
   public static final String EXCEPTION_FILL_IS_NULL_3548C13D = "fill 不能为空";
   public static final String EXCEPTION_OFFSET_IS_NULL_82BA6093 = "offset 不能为空";
@@ -545,5 +545,13 @@ public final class QueryMessages {
   public static final String EXCEPTION_FILTERING_SOURCE_DOES_NOT_CONTAIN_FILTERING_JOIN_SYMBOL_0C7B1BE3 = "Filtering source 不包含 filtering join symbol";
   public static final String EXCEPTION_REHASHMEMORYRESERVATION_IS_NEGATIVE_7EFEFCC2 = "rehashMemoryReservation 不能为负数";
   public static final String EXCEPTION_IDENTIFIER_CANNOT_BE_EMPTY_OR_NULL_9C70B87D = "Identifier 不能为空或 null";
+  public static final String EXCEPTION_COLUMN_ALIAS_ARG_IS_AMBIGUOUS_AT_POSITIONS_ARG_F6FF2E93 = "列别名 '%s' 在位置 %s 处存在歧义";
+  public static final String EXCEPTION_INVALID_ARGUMENT_ARG_EXPECTED_SCALAR_ARGUMENT_4AD4E32F = "无效的参数 %s。期望标量参数";
+  public static final String EXCEPTION_THE_SLIDE_ARGUMENT_MUST_HAVE_THE_SAME_WINDOW_MODE_AS_THE_SIZE_ARGUMENT_419C9844 = "SLIDE 参数必须与 SIZE 参数具有相同的窗口模式。";
+  public static final String EXCEPTION_THE_ORIGIN_ARGUMENT_IS_ONLY_SUPPORTED_IN_TIME_WINDOW_MODE_B3F358B9 = "ORIGIN 参数仅在时间窗口模式下受支持。";
+  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_SORT_THE_TIME_COLUMN_IN_ASCENDING_ORDER_C3FD0F6A = "DATA 参数的 ORDER BY 子句必须按时间列升序排序。";
+  public static final String EXCEPTION_ARGUMENTS_SHOULD_NEVER_BE_EMPTY_WHEN_RESOLVING_M4_MODE_F982EA1C = "解析 M4 模式时参数不应为空";
+  public static final String EXCEPTION_MISSING_REQUIRED_ARGUMENT_ARG_1308D0DC = "缺少必要参数：%s";
+  public static final String EXCEPTION_UNKNOWN_ARGUMENT_ARG_F40E9394 = "未知参数：%s";
 
 }

@@ -867,14 +867,20 @@ public class ProcedureExecutor<Env> {
               procedure.releaseExecution();
               activeExecutorCount.decrementAndGet();
               LOG.trace(
-                  "Halt pid={}, activeCount={}", procedure.getProcId(), activeExecutorCount.get());
+                  ProcedureMessages.MESSAGE_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF,
+                  procedure.getProcId(),
+                  activeExecutorCount.get());
               this.activeProcedure.set(null);
               lastUpdated = System.currentTimeMillis();
               startTime.set(lastUpdated);
             }
           } catch (Exception e) {
             LOG.warn(
-                "Exception happened when worker {} execute procedure {}", getName(), procedure, e);
+                ProcedureMessages
+                    .MESSAGE_EXCEPTION_HAPPENED_WHEN_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D,
+                getName(),
+                procedure,
+                e);
             throw e;
           }
         }

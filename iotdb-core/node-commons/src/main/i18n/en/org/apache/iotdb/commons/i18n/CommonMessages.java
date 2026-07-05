@@ -211,5 +211,12 @@ public final class CommonMessages {
   public static final String EXCEPTION_COLON_3A291246 = " : ";
   public static final String EXCEPTION_DATAPARTITIONMAP_IS_NULL_B764418A = "dataPartitionMap is null";
   public static final String EXCEPTION_ARG_634FCEDB = "%s";
+  public static final String EXCEPTION_TABLE_ARGUMENT_WITH_SET_SEMANTICS_REQUIRES_AN_ORDER_BY_CLAUSE_10C986D9 = "Table argument with set semantics requires an ORDER BY clause.";
+  public static final String EXCEPTION_THE_TYPE_OF_THE_COLUMN_ARG_IS_NOT_COMPARABLE_E3098096 = "The type of the column [%s] is not comparable.";
+  public static final String EXCEPTION_NO_COMPARABLE_COLUMNS_FOUND_FOR_M4_CALCULATION_4E5A3092 = "No comparable columns found for M4 calculation.";
+  public static final String EXCEPTION_INVALID_SCALAR_ARGUMENT_SLIDE_SHOULD_BE_A_POSITIVE_VALUE_F019E091 = "Invalid scalar argument SLIDE, should be a positive value";
+  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9 = "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.";
+  public static final String EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 = "Unsupported M4 value type: ";
+  public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold must be in [0, 1), but was ";
 
 }

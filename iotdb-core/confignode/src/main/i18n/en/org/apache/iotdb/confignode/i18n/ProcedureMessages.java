@@ -1300,5 +1300,16 @@ public final class ProcedureMessages {
   public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_FAILED_DESERIALIZE_REGION_PROGRESS_KEY_ARG_SUMMARY_ARG_0202F658 = "CommitProgressSyncProcedure: failed to deserialize region progress, key={}, summary={}";
   public static final String EXCEPTION_UNEXPECTED_PARENT_444B4289 = "Unexpected parent";
   public static final String LOG_ARG_8393DD4A = "{}";
+  public static final String MESSAGE_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF = "Halt pid={}, activeCount={}";
+  public static final String MESSAGE_EXCEPTION_HAPPENED_WHEN_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D = "Exception happened when worker {} execute procedure {}";
+  public static final String EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_71B7046A =
+      "cannot derive a collision-free delete taskId: procId=%d, deleteTaskSeq=%d exceed the ";
+  public static final String EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_ARG_ARG_BIT_BUDGET_015C598D =
+      "cannot derive a collision-free delete taskId: procId=%d, deleteTaskSeq=%d exceed the %d/%d-bit budget";
+  public static final String MESSAGE_FAILED_TO_SHOW_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_5EE98694 = "Failed to show DataPartitionTable integrity check progress";
+  public static final String MESSAGE_ENCOUNTERED_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_5FA2739F =
+      "Encountered unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress";
+  public static final String MESSAGE_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_D3C07BA1 =
+      "Unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress";
 
 }

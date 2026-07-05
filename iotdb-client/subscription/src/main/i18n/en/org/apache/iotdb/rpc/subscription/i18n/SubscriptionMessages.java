@@ -273,5 +273,11 @@ public final class SubscriptionMessages {
   public static final String OUTDATED_SUBSCRIPTION_EVENT = "outdated subscription event";
   public static final String FIELD_SEPARATOR = ", ";
   public static final String DIALECT_NOT_NULL = "dialect";
+  public static final String EXCEPTION_TOPIC_ATTRIBUTES_SHOULD_NOT_BE_EMPTY_IN_ALTER_TOPIC_573B2F09 =
+      "Topic attributes should not be empty in ALTER TOPIC.";
+  public static final String EXCEPTION_TOPIC_OWNER_ATTRIBUTES_SHOULD_BE_MODIFIED_BY_ALTERTOPICOWNER_ONLY_FBD794F4 =
+      "Topic owner attributes should be modified by alterTopicOwner only.";
+  public static final String EXCEPTION_TOPIC_OWNER_ID_SHOULD_NOT_BE_EMPTY_94976B6D =
+      "Topic owner id should not be empty.";
 
 }

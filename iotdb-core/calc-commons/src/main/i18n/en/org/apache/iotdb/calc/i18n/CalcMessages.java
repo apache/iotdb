@@ -436,4 +436,15 @@ public final class CalcMessages {
   public static final String SERVER_IS_SHUTTING_DOWN =
       "Server is shutting down";
 
+  public static final String EXCEPTION_PERCENTAGE_SHOULD_BE_IN_0_1_GOT_7A2C2F83 =
+      "percentage should be in [0,1], got ";
+  public static final String EXCEPTION_PERCENTILE_REQUIRES_2_ARGUMENTS_BUT_GOT_ARG_F3F1882F =
+      "PERCENTILE requires 2 arguments, but got %d";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION_ARG_E0C2513D =
+      "Unsupported data type in Percentile Aggregation: %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION_ARG_8ACED24D =
+      "Unsupported data type in PERCENTILE Aggregation: %s";
+  public static final String EXCEPTION_PERCENTILEACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_66308C79 =
+      "PercentileAccumulator does not support statistics";
+
 }

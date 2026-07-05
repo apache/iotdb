@@ -549,7 +549,7 @@ public final class DataNodeSchemaMessages {
   public static final String ALIAS_DUPLICATED_DETAIL =
       "，完整路径：";
   public static final String ALIAS_DUPLICATED_OTHER_MEASUREMENT =
-      "，其他测量：";
+      "，其他测点：";
   public static final String START_CREATE_TABLE_DEVICE =
       "开始创建表设备 {}.{}";
   public static final String TABLE_DEVICE_ALREADY_EXISTS =
@@ -713,5 +713,7 @@ public final class DataNodeSchemaMessages {
   public static final String EXCEPTION_DOT_9D9B854A = ".";
   public static final String EMPTY_MESSAGE = "";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
+  public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "跳过回滚重命名旧表 {}.{}，因为该操作已被处理。";
+  public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "跳过提交更新表 {}.{}，因为该操作已被处理。";
 
 }

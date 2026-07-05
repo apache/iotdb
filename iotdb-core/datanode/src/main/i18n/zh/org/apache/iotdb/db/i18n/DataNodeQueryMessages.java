@@ -523,7 +523,7 @@ public final class DataNodeQueryMessages {
   public static final String ONE_ROW_SHOULD_ONLY_HAVE_ONE_TIME_VALUE =
       "一行数据应只有一个时间值";
   public static final String INSERTSTATEMENT_SHOULD_CONTAIN_AT_LEAST_ONE_MEASUREMENT =
-      "InsertStatement 应至少包含一个测量值";
+      "InsertStatement 应至少包含一个测点";
   public static final String NEED_TIMESTAMPS_WHEN_INSERT_MULTI_ROWS =
       "插入多行时需要时间戳";
   public static final String CAN_NOT_PARSE_TO_TIME =
@@ -1072,7 +1072,7 @@ public final class DataNodeQueryMessages {
   public static final String METHOD_NOT_IMPLEMENTED_YET =
       "方法尚未实现";
   public static final String INSERTION_CONTAINS_DUPLICATED_MEASUREMENT =
-      "插入操作包含重复的测量值：";
+      "插入操作包含重复的测点：";
   public static final String UNSUPPORTED_DATA_TYPE =
       "不支持的数据类型：";
   public static final String FAILED_TO_CONVERT_INSERTTABLETSTATEMENT_TO_TABLET =
@@ -1541,9 +1541,9 @@ public final class DataNodeQueryMessages {
 
       "CALL INFERENCE 函数不能包含超过一列输入，实际发现 [%d] 列输入。";
   public static final String DATA_TYPE_OF_TAG_COLUMN =
-      "数据类型 的 tag 列 ";
+      "tag 列的数据类型 ";
   public static final String IS_NOT_STRING =
-      " 为 不 STRING";
+      " 不是 STRING";
   public static final String THE_SOURCE_PATHS_S_OF_VIEW_S_ARE_MULTIPLE =
 
 
@@ -2585,7 +2585,7 @@ public final class DataNodeQueryMessages {
 
       "函数调用 %s() 的参数过多";
   public static final String S_IS_NOT_A_PRIMARY_PATTERN_VARIABLE_OR_SUBSET_NAME =
-      "%s 为 不 主模式变量或子集名称";
+      "%s 不是主模式变量或子集名称";
   public static final String MISSING_VALID_TIME_COLUMN_THE_TABLE_MUST_CONTAIN_EITHER_A_COLUMN_WITH_THE_TIME_CATEGORY =
 
       "缺少有效时间列。表必须包含一个 TIME 类别列，或至少一个 TIMESTAMP 列。";
@@ -3968,10 +3968,10 @@ public final class DataNodeQueryMessages {
       "Count 的输入应为 1";
   public static final String EXCEPTION_PARTIALRESULT_OF_MAXTIME_SHOULD_BE_1_877F7EAC =
       "MaxTime 的 partialResult 应为 1";
-  public static final String EXCEPTION_LOCALMEMORYMANAGER_IS_NULL_DOT_69FE497A = "localMemoryManager 不能为空.";
-  public static final String EXCEPTION_TSBLOCKSERDEFACTORY_IS_NULL_DOT_32EB5BD2 = "tsBlockSerdeFactory 不能为空.";
-  public static final String EXCEPTION_EXECUTORSERVICE_IS_NULL_DOT_7B057909 = "executorService 不能为空.";
-  public static final String EXCEPTION_MPPDATAEXCHANGESERVICECLIENTMANAGER_IS_NULL_DOT_F31E746C = "mppDataExchangeServiceClientManager 不能为空.";
+  public static final String EXCEPTION_LOCALMEMORYMANAGER_IS_NULL_DOT_69FE497A = "localMemoryManager 不能为空。";
+  public static final String EXCEPTION_TSBLOCKSERDEFACTORY_IS_NULL_DOT_32EB5BD2 = "tsBlockSerdeFactory 不能为空。";
+  public static final String EXCEPTION_EXECUTORSERVICE_IS_NULL_DOT_7B057909 = "executorService 不能为空。";
+  public static final String EXCEPTION_MPPDATAEXCHANGESERVICECLIENTMANAGER_IS_NULL_DOT_F31E746C = "mppDataExchangeServiceClientManager 不能为空。";
   public static final String EXCEPTION_SHAREDTSBLOCKQUEUE_IS_FULL_87493E26 = "SharedTsBlockQueue 已满";
   public static final String EXCEPTION_FRAGMENT_INSTANCE_ID_CANNOT_BE_NULL_4BE84F40 = "FragmentInstance ID 不能为空";
   public static final String EXCEPTION_PLANNODE_ID_CANNOT_BE_NULL_F91303CD = "PlanNode ID 不能为空";
@@ -4191,7 +4191,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_TYPE_CANNOT_BE_NULL_97A0A8D3 = "类型不能为空";
   public static final String EXCEPTION_NO_TYPE_FOR_COLON_ARG_9E34AD76 = "没有对应类型：%s";
   public static final String EXCEPTION_CONDITION_MUST_BE_BOOLEAN_COLON_ARG_806C2960 = "条件必须为 boolean：%s";
-  public static final String EXCEPTION_TYPES_MUST_BE_EQUAL_COLON_ARG_VS_ARG_098424AD = "Types 必须为 equal: %s vs %s";
+  public static final String EXCEPTION_TYPES_MUST_BE_EQUAL_COLON_ARG_VS_ARG_098424AD = "类型必须相同：%s vs %s";
   public static final String EXCEPTION_ELEMENTS_IS_NULL_3451C1DA = "elements 不能为空";
   public static final String EXCEPTION_PREDICATE_IS_NULL_22E687A9 = "predicate 不能为空";
   public static final String EXCEPTION_MAPPER_IS_NULL_1D7789D1 = "mapper 不能为空";
@@ -4407,7 +4407,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_THE_SIZE_OF_RIGHT_CHILDREN_NODE_OF_JOINNODE_SHOULD_BE_1_6BA167CF = "JoinNode 的右子节点数量应为 1";
   public static final String EXCEPTION_THE_SIZE_OF_LEFT_CHILDREN_NODE_OF_SEMIJOINNODE_SHOULD_BE_1_FFEE3F41 = "SemiJoinNode 的左子节点数量应为 1";
   public static final String EXCEPTION_THE_SIZE_OF_RIGHT_CHILDREN_NODE_OF_SEMIJOINNODE_SHOULD_BE_1_AE90C4B8 = "SemiJoinNode 的右子节点数量应为 1";
-  public static final String EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_NULL_DOT_0C93B063 = "childrenNodes 不能为空.";
+  public static final String EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_NULL_DOT_0C93B063 = "childrenNodes 不能为空。";
   public static final String EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_EMPTY_DOT_E5555FD9 = "childrenNodes 不能为空。";
   public static final String EXCEPTION_SIZE_OF_TOPKRANKINGNODE_CAN_ONLY_BE_1_IN_LOGICAL_PLAN_DOT_20D6A513 = "逻辑计划中的 TopKRankingNode 大小只能为 1。";
   public static final String EXCEPTION_STATS_IS_NULL_D3627E6A = "stats 不能为空";
@@ -4460,5 +4460,30 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_EXPRESSION_INTERPRETER_RETURNED_AN_UNRESOLVED_EXPRESSION_5BCE9A51 = "表达式解释器返回了未解析的表达式";
   public static final String EXCEPTION_NULL_OPERAND_SHOULD_HAVE_BEEN_REMOVED_BY_RECURSIVE_COALESCE_PROCESSING_B6D4D443 = "空操作数应已在递归 coalesce 处理中移除";
   public static final String EXCEPTION_NULL_VALUE_IS_EXPECTED_TO_BE_REPRESENTED_AS_NULL_COMMA_NOT_NULLLITERAL_9B96D25A = "空值应表示为 null，而不是 NullLiteral";
+  public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_ONLY_HAVE_TWO_ARGUMENTS_3D12DCFD = "聚合函数 [%s] 应当只有两个参数";
+  public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP_97A6CA87 = "聚合函数 [%s] 的值列应为数值类型 [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]";
+  public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE_57033ADF = "聚合函数 [%s] 的百分比参数应为 decimal 类型";
+  public static final String EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4 = "不能在聚合 '%s' 中嵌套聚合：%s";
+  public static final String EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897 = "不能在聚合 '%s' 中嵌套窗口函数：%s";
+  public static final String EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6 = "PARTITION BY 表达式 '%s' 必须是聚合表达式或出现在 GROUP BY 子句中";
+  public static final String EXCEPTION_ORDER_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_7FF8267B = "ORDER BY 表达式 '%s' 必须是聚合表达式或出现在 GROUP BY 子句中";
+  public static final String EXCEPTION_WINDOW_FRAME_START_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_74E30A63 = "窗口帧起始位置必须是聚合表达式或出现在 GROUP BY 子句中";
+  public static final String EXCEPTION_WINDOW_FRAME_END_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_31784B55 = "窗口帧结束位置必须是聚合表达式或出现在 GROUP BY 子句中";
+  public static final String EXCEPTION_INVALID_EXPLAIN_FORMAT_3FD91910 = "无效的 EXPLAIN 格式：";
+  public static final String EXCEPTION_INVALID_EXPLAIN_ANALYZE_FORMAT_0879A025 = "无效的 EXPLAIN ANALYZE 格式：";
+  public static final String EXCEPTION_INVALID_EXPLAIN_FORMAT_ARG_SUPPORTED_FORMATS_GRAPHVIZ_JSON_441A1D48 =
+      "无效的 EXPLAIN 格式：%s。支持的格式：GRAPHVIZ、JSON";
+  public static final String EXCEPTION_INVALID_EXPLAIN_ANALYZE_FORMAT_ARG_SUPPORTED_FORMATS_TEXT_JSON_77FA30EB =
+      "无效的 EXPLAIN ANALYZE 格式：%s。支持的格式：TEXT、JSON";
+  public static final String EXCEPTION_GROUP_BY_ALL_CANNOT_BE_COMBINED_WITH_EXPLICIT_GROUPING_ELEMENTS_4CFE411D = "GROUP BY ALL 不能与显式分组元素组合使用";
+  public static final String EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46 = "'percentile' 函数的第二个参数 percentage 必须是 double 字面量";
+  public static final String EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD = "测点 %s%s%s 的数据类型不匹配，TsFile 中类型：%s，IoTDB 中类型：%s";
+  public static final String MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978 = "释放外部 TsFile 查询资源失败";
+  public static final String EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63 = "在 IoTDBLocal 查询开始前，外层查询已超时";
+  public static final String MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC = "关闭索引 {} 处的 UDF 结果集失败";
+  public static final String EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542 = "未找到内部查询执行";
+  public static final String EXCEPTION_ONLY_QUERY_IS_SUPPORTED_FOR_IOTDBLOCAL_QUERY_INTERFACE_09195570 = "IoTDBLocal 查询接口仅支持 query 操作";
+  public static final String EXCEPTION_FAILED_TO_CLOSE_INTERNAL_QUERY_RESULT_ED86BF5E = "关闭内部查询结果失败";
+  public static final String EXCEPTION_UDFRESULTSET_IS_ALREADY_CLOSED_E1ACABE3 = "UDFResultSet 已经关闭";
 
 }

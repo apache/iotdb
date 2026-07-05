@@ -2546,7 +2546,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 .setIsTableModel(isTableModel));
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != rollbackStatus.getCode()) {
       LOGGER.warn(
-          "Failed to rollback created realtime pipe {}. Status: {}", pipeName, rollbackStatus);
+          DataNodePipeMessages
+              .MESSAGE_FAILED_TO_ROLLBACK_CREATED_REALTIME_PIPE_ARG_STATUS_ARG_CE14334A,
+          pipeName,
+          rollbackStatus);
     }
   }
 

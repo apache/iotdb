@@ -96,5 +96,11 @@ public final class RpcMessages {
   public static final String EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326 = "Cannot fetch result from server, because of network connection: {} ";
   public static final String EXCEPTION_ARG_ARG_046AFB8B = "%d: %s";
   public static final String EXCEPTION_LATER_REQUEST_SAME_GROUP_WILL_REDIRECTED_0A61CB0B = "later request in same group will be redirected to ";
+  public static final String EXCEPTION_NO_SUPPORTED_KEYSTORE_OR_TRUSTSTORE_TYPE_IS_AVAILABLE_B6EA1528 =
+      "No supported keystore or truststore type is available";
+  public static final String EXCEPTION_FAILED_TO_LOAD_KEYSTORE_OR_TRUSTSTORE_FILE_F3306313 =
+      "Failed to load keystore or truststore file";
+  public static final String EXCEPTION_KEYSTORE_OR_TRUSTSTORE_FILE_NOT_FOUND_5A6845B2 =
+      "keystore or truststore file not found: ";
 
 }

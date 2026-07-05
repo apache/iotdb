@@ -217,7 +217,9 @@ public class WriteBackSink implements PipeConnector {
       final String[] nodes = databasePath.getNodes();
       if (nodes.length <= 1 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
         throw new IllegalPathException(
-            databaseName, "the database name in tree model must start with 'root.'.");
+            databaseName,
+            DataNodePipeMessages
+                .EXCEPTION_THE_DATABASE_NAME_IN_TREE_MODEL_MUST_START_WITH_ROOT_7BFA4609);
       }
 
       final String normalizedDatabaseName = databasePath.getFullPath();
@@ -226,7 +228,8 @@ public class WriteBackSink implements PipeConnector {
       if (normalizedDatabaseName.length() > MAX_DATABASE_NAME_LENGTH) {
         throw new IllegalPathException(
             normalizedDatabaseName,
-            "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+            DataNodePipeMessages.EXCEPTION_THE_LENGTH_OF_DATABASE_NAME_SHALL_NOT_EXCEED_82C7199C
+                + MAX_DATABASE_NAME_LENGTH);
       }
       return normalizedDatabaseName;
     } catch (final Exception e) {

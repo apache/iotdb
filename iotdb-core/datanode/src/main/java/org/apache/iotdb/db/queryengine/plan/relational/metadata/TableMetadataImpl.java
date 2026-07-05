@@ -1418,19 +1418,23 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should only have two arguments", functionName));
+                  DataNodeQueryMessages
+                      .EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_ONLY_HAVE_TWO_ARGUMENTS_3D12DCFD,
+                  functionName));
         }
 
         if (!isNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  DataNodeQueryMessages
+                      .EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP_97A6CA87,
                   functionName));
         }
         if (!isDecimalType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should have percentage as decimal type",
+                  DataNodeQueryMessages
+                      .EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE_57033ADF,
                   functionName));
         }
         break;

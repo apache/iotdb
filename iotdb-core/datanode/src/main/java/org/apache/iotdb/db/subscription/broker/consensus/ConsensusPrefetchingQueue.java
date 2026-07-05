@@ -2616,7 +2616,9 @@ public class ConsensusPrefetchingQueue {
               .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_SCHEDULE_SEEK_BECAUSE_9E407068,
           this,
           request.seekReason,
-          closing ? "the queue is closing" : "prefetch runtime is unavailable",
+          closing
+              ? DataNodePipeMessages.MESSAGE_THE_QUEUE_IS_CLOSING_AC6C2AB4
+              : DataNodePipeMessages.MESSAGE_PREFETCH_RUNTIME_IS_UNAVAILABLE_F1721E89,
           true,
           request.previousPrefetchInitialized,
           request.targetSeekGeneration,

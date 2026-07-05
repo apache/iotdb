@@ -1241,10 +1241,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       }
       throw new PipeException(
           String.format(
-              "Auto create tree database failed: %s, status code: %s",
-              database, result.getStatusCode()));
+              DataNodePipeMessages
+                  .EXCEPTION_AUTO_CREATE_TREE_DATABASE_FAILED_ARG_STATUS_CODE_ARG_C6175C27,
+              database,
+              result.getStatusCode()));
     } catch (final IllegalPathException e) {
-      throw new PipeException(String.format("Illegal tree database %s.", database), e);
+      throw new PipeException(
+          String.format(
+              DataNodePipeMessages.EXCEPTION_ILLEGAL_TREE_DATABASE_ARG_C805A990, database),
+          e);
     } catch (final ExecutionException | InterruptedException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

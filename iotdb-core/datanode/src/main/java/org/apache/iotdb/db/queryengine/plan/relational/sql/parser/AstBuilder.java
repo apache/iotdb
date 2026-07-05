@@ -1868,7 +1868,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           break;
         default:
           throw new SemanticException(
-              "Invalid EXPLAIN format: " + formatStr + ". Supported formats: GRAPHVIZ, JSON");
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_INVALID_EXPLAIN_FORMAT_ARG_SUPPORTED_FORMATS_GRAPHVIZ_JSON_441A1D48,
+                  formatStr));
       }
     }
     return new Explain(getLocation(ctx), innerStatement, format);
@@ -1896,7 +1899,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           break;
         default:
           throw new SemanticException(
-              "Invalid EXPLAIN ANALYZE format: " + formatStr + ". Supported formats: TEXT, JSON");
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_INVALID_EXPLAIN_ANALYZE_FORMAT_ARG_SUPPORTED_FORMATS_TEXT_JSON_77FA30EB,
+                  formatStr));
       }
     }
     return new ExplainAnalyze(getLocation(ctx), ctx.VERBOSE() != null, innerStatement, format);
@@ -2676,7 +2682,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       for (RelationalSqlParser.GroupingElementContext element : ctx.groupingElement()) {
         if (element.getText().equalsIgnoreCase("ALL")) {
           throw new SemanticException(
-              "GROUP BY ALL cannot be combined with explicit grouping elements");
+              DataNodeQueryMessages
+                  .EXCEPTION_GROUP_BY_ALL_CANNOT_BE_COMBINED_WITH_EXPLICIT_GROUPING_ELEMENTS_4CFE411D);
         }
       }
     }
@@ -3750,7 +3757,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else if (name.toString().equalsIgnoreCase(PERCENTILE)) {
       if (arguments.size() == 2 && !(arguments.get(1) instanceof DoubleLiteral)) {
         throw new SemanticException(
-            "The second argument of 'percentile' function percentage must be a double literal");
+            DataNodeQueryMessages
+                .EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46);
       }
     }
 

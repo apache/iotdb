@@ -77,8 +77,6 @@ public final class ConfigMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String LOG_THERE_MAY_HAVE_BEEN_UNEXPECTED_INTERRUPTION_LAST_E784B008 = " There may have been an unexpected interruption in the last";
-  public static final String LOG_CONFIGURATION_FILE_UPDATE_IGNORE_TEMPORARY_FILE_ARG_3DE7B218 = " configuration file update. Ignore temporary file {}";
   public static final String LOG_PIPEDATASTRUCTURETABLETSIZEINBYTES_SET_ARG_243363B3 = "pipeDataStructureTabletSizeInBytes is set to {}.";
   public static final String LOG_PIPEDATASTRUCTURETABLETMEMORYBLOCKALLOCATIONREJECTTHRESHOLD_SET_ARG_EF34614A = "pipeDataStructureTabletMemoryBlockAllocationRejectThreshold is set to {}.";
   public static final String LOG_PIPEDATASTRUCTURETSFILEMEMORYBLOCKALLOCATIONREJECTTHRESHOLD_SET_ARG_309A7E12 = "pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold is set to {}.";

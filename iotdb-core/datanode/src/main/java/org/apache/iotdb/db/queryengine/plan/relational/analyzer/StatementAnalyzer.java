@@ -426,7 +426,7 @@ public class StatementAnalyzer {
     if (matches.size() > 1) {
       throw new SemanticException(
           String.format(
-              "Column alias '%s' is ambiguous at positions %s",
+              QueryMessages.EXCEPTION_COLUMN_ALIAS_ARG_IS_AMBIGUOUS_AT_POSITIONS_ARG_F6FF2E93,
               identifier.getValue(),
               matches.stream()
                   .map(alias -> Integer.toString(alias.getPosition()))
@@ -5501,7 +5501,7 @@ public class StatementAnalyzer {
       if (!(sizeArgument.getValue() instanceof Expression)) {
         throw new SemanticException(
             String.format(
-                "Invalid argument %s. Expected scalar argument",
+                QueryMessages.EXCEPTION_INVALID_ARGUMENT_ARG_EXPECTED_SCALAR_ARGUMENT_4AD4E32F,
                 M4TableFunction.SIZE_PARAMETER_NAME));
       }
 
@@ -5513,19 +5513,22 @@ public class StatementAnalyzer {
         if (!(slideArgument.get().getValue() instanceof Expression)) {
           throw new SemanticException(
               String.format(
-                  "Invalid argument %s. Expected scalar argument",
+                  QueryMessages.EXCEPTION_INVALID_ARGUMENT_ARG_EXPECTED_SCALAR_ARGUMENT_4AD4E32F,
                   M4TableFunction.SLIDE_PARAMETER_NAME));
         }
         boolean isTimeSlide = slideArgument.get().getValue() instanceof TimeDurationLiteral;
         if (isTimeWindow != isTimeSlide) {
           throw new SemanticException(
-              "The SLIDE argument must have the same window mode as the SIZE argument.");
+              QueryMessages
+                  .EXCEPTION_THE_SLIDE_ARGUMENT_MUST_HAVE_THE_SAME_WINDOW_MODE_AS_THE_SIZE_ARGUMENT_419C9844);
         }
       }
       if (!isTimeWindow
           && containsTableFunctionArgument(
               arguments, parameterSpecifications, M4TableFunction.ORIGIN_PARAMETER_NAME)) {
-        throw new SemanticException("The ORIGIN argument is only supported in time window mode.");
+        throw new SemanticException(
+            QueryMessages
+                .EXCEPTION_THE_ORIGIN_ARGUMENT_IS_ONLY_SUPPORTED_IN_TIME_WINDOW_MODE_B3F358B9);
       }
       validateM4OrderBySortOrder(arguments, parameterSpecifications);
       passedArguments.put(
@@ -5553,7 +5556,8 @@ public class StatementAnalyzer {
       for (SortItem sortItem : orderBy.get().getSortItems()) {
         if (sortItem.getOrdering() != SortItem.Ordering.ASCENDING) {
           throw new SemanticException(
-              "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+              QueryMessages
+                  .EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_SORT_THE_TIME_COLUMN_IN_ASCENDING_ORDER_C3FD0F6A);
         }
       }
     }
@@ -5596,7 +5600,9 @@ public class StatementAnalyzer {
         List<ParameterSpecification> parameterSpecifications,
         String argumentName) {
       if (arguments.isEmpty()) {
-        throw new IllegalStateException("Arguments should never be empty when resolving M4 mode");
+        throw new IllegalStateException(
+            QueryMessages
+                .EXCEPTION_ARGUMENTS_SHOULD_NEVER_BE_EMPTY_WHEN_RESOLVING_M4_MODE_F982EA1C);
       }
 
       boolean argumentsPassedByName =
@@ -5617,12 +5623,14 @@ public class StatementAnalyzer {
         if (argumentName.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
           if (i >= arguments.size()) {
             throw new IllegalStateException(
-                String.format("Missing required argument: %s", argumentName));
+                String.format(
+                    QueryMessages.EXCEPTION_MISSING_REQUIRED_ARGUMENT_ARG_1308D0DC, argumentName));
           }
           return arguments.get(i);
         }
       }
-      throw new IllegalStateException(String.format("Unknown argument: %s", argumentName));
+      throw new IllegalStateException(
+          String.format(QueryMessages.EXCEPTION_UNKNOWN_ARGUMENT_ARG_F40E9394, argumentName));
     }
 
     // append order by time asc for built-in forecast tvf if user doesn't specify order by clause

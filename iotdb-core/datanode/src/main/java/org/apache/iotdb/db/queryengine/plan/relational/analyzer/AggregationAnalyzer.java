@@ -307,15 +307,19 @@ class AggregationAnalyzer {
           if (!aggregateFunctions.isEmpty()) {
             throw new SemanticException(
                 String.format(
-                    "Cannot nest aggregations inside aggregation '%s': %s",
-                    node.getName(), aggregateFunctions));
+                    DataNodeQueryMessages
+                        .EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4,
+                    node.getName(),
+                    aggregateFunctions));
           }
 
           if (!windowExpressions.isEmpty()) {
             throw new SemanticException(
                 String.format(
-                    "Cannot nest window functions inside aggregation '%s': %s",
-                    node.getName(), windowExpressions));
+                    DataNodeQueryMessages
+                        .EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897,
+                    node.getName(),
+                    windowExpressions));
           }
 
           return true;
@@ -343,7 +347,8 @@ class AggregationAnalyzer {
         if (!process(expression, context)) {
           throw new SemanticException(
               String.format(
-                  "PARTITION BY expression '%s' must be an aggregate expression or appear in GROUP BY clause",
+                  DataNodeQueryMessages
+                      .EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6,
                   expression));
         }
       }
@@ -353,7 +358,8 @@ class AggregationAnalyzer {
         if (!process(expression, context)) {
           throw new SemanticException(
               String.format(
-                  "ORDER BY expression '%s' must be an aggregate expression or appear in GROUP BY clause",
+                  DataNodeQueryMessages
+                      .EXCEPTION_ORDER_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_7FF8267B,
                   expression));
         }
       }
@@ -370,13 +376,15 @@ class AggregationAnalyzer {
       if (node.getStart().getValue().isPresent()
           && !process(node.getStart().getValue().get(), context)) {
         throw new SemanticException(
-            "Window frame start must be an aggregate expression or appear in GROUP BY clause");
+            DataNodeQueryMessages
+                .EXCEPTION_WINDOW_FRAME_START_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_74E30A63);
       }
       if (node.getEnd().isPresent()
           && node.getEnd().get().getValue().isPresent()
           && !process(node.getEnd().get().getValue().get(), context)) {
         throw new SemanticException(
-            "Window frame end must be an aggregate expression or appear in GROUP BY clause");
+            DataNodeQueryMessages
+                .EXCEPTION_WINDOW_FRAME_END_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_31784B55);
       }
       return true;
     }

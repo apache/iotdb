@@ -125,11 +125,14 @@ abstract class AbstractSubscriptionSession {
       throws IoTDBConnectionException, StatementExecutionException {
     IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     if (Objects.isNull(properties) || properties.isEmpty()) {
-      throw new StatementExecutionException("Topic attributes should not be empty in ALTER TOPIC.");
+      throw new StatementExecutionException(
+          SubscriptionMessages
+              .EXCEPTION_TOPIC_ATTRIBUTES_SHOULD_NOT_BE_EMPTY_IN_ALTER_TOPIC_573B2F09);
     }
     if (!allowOwnerAttributes && containsOwnerAttribute(properties)) {
       throw new StatementExecutionException(
-          "Topic owner attributes should be modified by alterTopicOwner only.");
+          SubscriptionMessages
+              .EXCEPTION_TOPIC_OWNER_ATTRIBUTES_SHOULD_BE_MODIFIED_BY_ALTERTOPICOWNER_ONLY_FBD794F4);
     }
     final String sql =
         String.format("ALTER TOPIC %s WITH %s", topicName, buildTopicAttributesClause(properties));
@@ -149,7 +152,8 @@ abstract class AbstractSubscriptionSession {
       final Long ownerLeaseDurationMs)
       throws IoTDBConnectionException, StatementExecutionException {
     if (Objects.isNull(ownerId) || ownerId.isEmpty()) {
-      throw new StatementExecutionException("Topic owner id should not be empty.");
+      throw new StatementExecutionException(
+          SubscriptionMessages.EXCEPTION_TOPIC_OWNER_ID_SHOULD_NOT_BE_EMPTY_94976B6D);
     }
 
     final Properties properties = new Properties();

@@ -207,7 +207,7 @@ public final class CalcMessages {
   public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_AVG_AGGREGATION_ARG_66BF3128 = "AVG 聚合中不支持的数据类型：%s";
   public static final String EXCEPTION_CAN_T_READ_NEW_TSBLOCK_FILESPILLERREADER_072AF71D = "无法在 FileSpillerReader 中读取新的 tsBlock：";
   public static final String EXCEPTION_CAN_T_CLOSE_FILECHANNEL_FILESPILLERREADER_E46979F0 = "无法关闭 FileSpillerReader 中的 FileChannel：";
-  public static final String EXCEPTION_CREATE_FILE_ERROR_B8B379CF = "创建 文件 错误: ";
+  public static final String EXCEPTION_CREATE_FILE_ERROR_B8B379CF = "创建文件错误：";
   public static final String EXCEPTION_CAN_T_WRITE_INTERMEDIATE_SORTED_DATA_FILE_0027961E = "无法将中间排序数据写入文件：";
   public static final String EXCEPTION_CAN_T_GET_FILE_FILESPILLERREADER_CHECK_IF_FILE_EXISTS_DEED83D9 = "无法获取 FileSpillerReader 的文件，请检查文件是否存在：";
   public static final String EXCEPTION_LONG_VALUE_ARG_OUT_RANGE_INTEGER_VALUE_B3F9016B = "long 值 %d 超出 int 值范围。";
@@ -412,4 +412,15 @@ public final class CalcMessages {
       "通知 {} 的状态变更监听器时出错";
   public static final String SERVER_IS_SHUTTING_DOWN =
       "服务器正在关闭";
+
+  public static final String EXCEPTION_PERCENTAGE_SHOULD_BE_IN_0_1_GOT_7A2C2F83 =
+      "百分比应在 [0,1] 范围内，实际为 ";
+  public static final String EXCEPTION_PERCENTILE_REQUIRES_2_ARGUMENTS_BUT_GOT_ARG_F3F1882F =
+      "PERCENTILE 需要 2 个参数，但传入了 %d 个";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION_ARG_E0C2513D =
+      "Percentile 聚合中不支持的数据类型：%s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION_ARG_8ACED24D =
+      "PERCENTILE 聚合中不支持的数据类型：%s";
+  public static final String EXCEPTION_PERCENTILEACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_66308C79 =
+      "PercentileAccumulator 不支持统计信息";
 }

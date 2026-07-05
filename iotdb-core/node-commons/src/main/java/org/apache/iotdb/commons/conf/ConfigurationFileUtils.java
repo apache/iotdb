@@ -427,11 +427,7 @@ public class ConfigurationFileUtils {
       Thread.sleep(waitTimeMillsPerCheck);
     }
     logger.warn(
-        ConfigMessages.WAITING_TO_ACQUIRE_CONFIG_FILE_LOCK
-            + ConfigMessages.LOG_THERE_MAY_HAVE_BEEN_UNEXPECTED_INTERRUPTION_LAST_E784B008
-            + ConfigMessages.LOG_CONFIGURATION_FILE_UPDATE_IGNORE_TEMPORARY_FILE_ARG_3DE7B218,
-        totalWaitTime / 1000,
-        file.getName());
+        ConfigMessages.WAITING_TO_ACQUIRE_CONFIG_FILE_LOCK, totalWaitTime / 1000, file.getName());
   }
 
   private static void releaseFileLock(File file) throws IOException {

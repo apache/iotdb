@@ -231,7 +231,7 @@ public final class DataNodeMiscMessages {
       "更新模板时遇到不支持的类型 {}";
   public static final String FAILED_GET_MEMORY_FROM_METRIC =
       "从指标获取内存信息失败，原因：";
-  public static final String CHANGE_REGION_LEADER = "[变更 Region Leader] {}";
+  public static final String CHANGE_REGION_LEADER = "[ChangeRegionLeader] {}";
   public static final String REGION_TYPE_ILLEGAL = "Region {} 的类型非法";
   public static final String START_DISABLE_DATA_NODE =
       "开始在请求中禁用 DataNode：{}";
@@ -498,7 +498,7 @@ public final class DataNodeMiscMessages {
   public static final String ERROR_PARSER_TAG_ATTRIBUTES =
       "解析标签和属性文件时发生错误";
   public static final String MEASUREMENT_ATTRIBUTES_NO_SNAPSHOT =
-      "测量值已设置属性或标签，但未找到快照文件";
+      "测点已设置属性或标签，但未找到快照文件";
 
   // ---------------------------------------------------------------------------
   // tools – TsFileAndModSettleTool
@@ -552,7 +552,7 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   // tools – DelayAnalyzer
   // ---------------------------------------------------------------------------
-  public static final String DELAY_ANALYZER_RESET = "[延迟分析器] 延迟分析器已重置";
+  public static final String DELAY_ANALYZER_RESET = "[DelayAnalyzer] DelayAnalyzer 已重置";
 
   // ---------------------------------------------------------------------------
   // utils – DataNodeObjectFileService
@@ -636,7 +636,7 @@ public final class DataNodeMiscMessages {
   public static final String UNEXPECTED_CONSENSUS_GROUP_TYPE =
       "未预期的共识组类型";
   public static final String ENCRYPT_MAGIC_STRING_NOT_MATCHED =
-      "加密魔术字符串不匹配";
+      "encrypt_magic_string 不匹配";
 
   // ---------------------------------------------------------------------------
   // conf – IoTDBDescriptor
@@ -664,7 +664,7 @@ public final class DataNodeMiscMessages {
       "解析 trusted_uri_pattern {} 失败";
   public static final String FAILED_GET_FILE_SIZE = "获取 {} 的文件大小失败，原因：";
   public static final String SET_DELAY_ANALYZER_WINDOW_SIZE =
-      "[延迟分析器] 设置 delay_analyzer_window_size 为 {}";
+      "[DelayAnalyzer] 设置 delay_analyzer_window_size 为 {}";
   public static final String FAIL_RELOAD_CONFIGURATION_FMT =
       "重新加载配置失败，原因：%s";
 
@@ -942,7 +942,7 @@ public final class DataNodeMiscMessages {
   public static final String TASK_ALREADY_STARTED =
       "任务已启动或已完成";
 
-  public static final String FROM_CONFIG_NODE = " 从 ConfigNode 获取失败。";
+  public static final String FROM_CONFIG_NODE = "' 来自 ConfigNode。'";
   public static final String IS_NOT_SUPPORTED = " 不受支持";
   public static final String CANNOT_SSL_HANDSHAKE_WITH_CN_LEADER = "无法与 ConfigNode-leader 进行 SSL 握手。";
   public static final String CANNOT_CONNECT_TO_CN_LEADER = "无法连接到 ConfigNode-leader。";
@@ -1139,11 +1139,11 @@ public final class DataNodeMiscMessages {
   public static final String MISC_LOG_INITIAL_ALLOCATEMEMORYFORPIPE_616F9713 =
       "初始 allocateMemoryForPipe = {}";
   public static final String MISC_LOG_ALLOCATEMEMORYFORSCHEMAREGION_3BE141E8 =
-      "分配 allocateMemoryForSchemaRegion = {}";
+      "allocateMemoryForSchemaRegion = {}";
   public static final String MISC_LOG_ALLOCATEMEMORYFORSCHEMACACHE_61BFCE7D =
-      "分配 allocateMemoryForSchemaCache = {}";
+      "allocateMemoryForSchemaCache = {}";
   public static final String MISC_LOG_ALLOCATEMEMORYFORPARTITIONCACHE_809AA695 =
-      "分配 allocateMemoryForPartitionCache = {}";
+      "allocateMemoryForPartitionCache = {}";
   public static final String MISC_LOG_THE_PARAMETER_STORAGE_QUERY_SCHEMA_CONSENSUS_FREE_MEMORY_51C9A377 =
       "参数 storage_query_schema_consensus_free_memory_proportion 自 v1.2.3 起已废弃，请改用 "
           + "datanode_memory_proportion。";
@@ -1421,5 +1421,12 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_RUNTIMESTATE_D4D018BA = "runtimeState";
   public static final String EXCEPTION_STATEMENTNAME_IS_NULL_C03BB8D4 = "statementName 不能为空";
   public static final String EXCEPTION_SQL_IS_NULL_BEDB2B7A = "sql 不能为空";
+  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_AAB5F962 = "ConfigNode leader {} 正在预热，暂未对 DataNode {} 提供服务，将等待并重试。";
+  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
+      "ConfigNode leader {} 正在预热，暂未对 DataNode {} 提供服务，将等待并重试。原因：{}";
+  public static final String EXCEPTION_TRUST_STORE_PATH_MUST_BE_SET_WHEN_THRIFT_SSL_CLIENT_AUTH_IS_TRUE_36016171 = "当 thrift_ssl_client_auth 为 true 时，必须设置 trust_store_path";
+  public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 = "continuous_query_min_every_interval_in_ms 必须大于 0，但当前值为 ";
+  public static final String EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949 = "未知的 read_consistency_level：%s，请设置为 \"strong\" 或 \"weak\"";
+  public static final String MESSAGE_INITIAL_ALLOCATEMEMORYFORAUTORESIZINGBUFFER_ARG_A0DB6DA0 = "初始 allocateMemoryForAutoResizingBuffer = {}";
 
 }

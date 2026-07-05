@@ -408,8 +408,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       if (status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()) {
         if (!isFirstInitiated) {
           logger.info(
-              "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry."
-                  + " Reason: {}",
+              DataNodeMiscMessages
+                  .MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163,
               configNode,
               config.getAddressAndPort(),
               status.getMessage());

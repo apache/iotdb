@@ -84,5 +84,11 @@ public final class RpcMessages {
   public static final String EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326 = "由于网络连接问题，无法从服务器获取结果：{} ";
   public static final String EXCEPTION_ARG_ARG_046AFB8B = "%d: %s";
   public static final String EXCEPTION_LATER_REQUEST_SAME_GROUP_WILL_REDIRECTED_0A61CB0B = "同一组中的后续请求将被重定向到 ";
+  public static final String EXCEPTION_NO_SUPPORTED_KEYSTORE_OR_TRUSTSTORE_TYPE_IS_AVAILABLE_B6EA1528 =
+      "没有可用的 keystore 或 truststore 类型";
+  public static final String EXCEPTION_FAILED_TO_LOAD_KEYSTORE_OR_TRUSTSTORE_FILE_F3306313 =
+      "加载 keystore 或 truststore 文件失败";
+  public static final String EXCEPTION_KEYSTORE_OR_TRUSTSTORE_FILE_NOT_FOUND_5A6845B2 =
+      "未找到 keystore 或 truststore 文件：";
 
 }

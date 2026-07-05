@@ -735,6 +735,7 @@ public final class PipeMessages {
       "User conflict exception: retry timeout. will be ignored. event: {}. status: {}";
   public static final String USER_CONFLICT_WILL_RETRY =
       "User conflict exception: will retry {}. status: {}";
+  public static final String MESSAGE_FOR_AT_LEAST_ADE37405 = "for at least ";
   public static final String USER_CONFLICT_NOT_ALLOWED =
       "User conflict exception: will be ignored because retry is not allowed. event: {}. status: {}";
   public static final String OTHER_EXCEPTION_RETRY_TIMEOUT =
@@ -939,5 +940,11 @@ public final class PipeMessages {
   public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "Invalid slice index: expected {}, actual {}";
   public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "Decompressed length should be between 0 and %d, but got %d.";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
+  public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 = "No DataPartitionTable generation task found";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_IN_PROGRESS_ARGPCTPCT_F433CBA8 = "DataPartitionTable generation in progress: %.1f%%";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable generation completed successfully";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
+  public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
+  public static final String MESSAGE_PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_54E0E369 = "PipePeriodicalLogReducer is allocated to {} bytes.";
 
 }

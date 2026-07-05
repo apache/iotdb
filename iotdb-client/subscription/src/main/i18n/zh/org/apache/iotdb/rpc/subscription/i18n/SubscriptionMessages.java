@@ -222,5 +222,11 @@ public final class SubscriptionMessages {
   public static final String OUTDATED_SUBSCRIPTION_EVENT = "过期的订阅事件";
   public static final String FIELD_SEPARATOR = "，";
   public static final String DIALECT_NOT_NULL = "dialect 不能为空";
+  public static final String EXCEPTION_TOPIC_ATTRIBUTES_SHOULD_NOT_BE_EMPTY_IN_ALTER_TOPIC_573B2F09 =
+      "ALTER TOPIC 中的 topic attributes 不应为空。";
+  public static final String EXCEPTION_TOPIC_OWNER_ATTRIBUTES_SHOULD_BE_MODIFIED_BY_ALTERTOPICOWNER_ONLY_FBD794F4 =
+      "topic owner attributes 只能通过 alterTopicOwner 修改。";
+  public static final String EXCEPTION_TOPIC_OWNER_ID_SHOULD_NOT_BE_EMPTY_94976B6D =
+      "topic owner id 不应为空。";
 
 }
