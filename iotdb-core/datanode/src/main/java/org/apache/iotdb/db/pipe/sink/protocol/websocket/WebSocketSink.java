@@ -67,9 +67,10 @@ public class WebSocketSink implements PipeConnector, PipeConnectorWithEventDisca
     if (server.getPort() != port) {
       throw new PipeException(
           String.format(
-              "The websocket server has already been created with port = %d. "
-                  + "Please set the option cdc.port = %d.",
-              server.getPort(), server.getPort()));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_WEBSOCKET_SERVER_HAS_ALREADY_BEEN_CREATED_WITH_PORT_FFC420AE,
+              server.getPort(),
+              server.getPort()));
     }
   }
 
@@ -103,8 +104,8 @@ public class WebSocketSink implements PipeConnector, PipeConnectorWithEventDisca
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-              + "Current event: {}.",
+          DataNodePipeMessages
+              .WEBSOCKETCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTA,
           tabletInsertionEvent);
       return;
     }

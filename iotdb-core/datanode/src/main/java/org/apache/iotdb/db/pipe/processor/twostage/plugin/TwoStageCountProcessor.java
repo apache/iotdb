@@ -163,8 +163,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
           Objects.isNull(localCountState) ? 0 : Long.parseLong(localCountState.toString()));
     }
     LOGGER.info(
-        "TwoStageCountProcessor customized by thread {}: pipeName={}, creationTime={}, regionId={}, outputSeries={}, "
-            + "localCommitProgressIndex={}, localCount={}",
+        DataNodePipeMessages.TWOSTAGECOUNTPROCESSOR_CUSTOMIZED_BY_THREAD_PIPENAME_CREATIONTIME_RE,
         Thread.currentThread().getName(),
         pipeName,
         creationTime,

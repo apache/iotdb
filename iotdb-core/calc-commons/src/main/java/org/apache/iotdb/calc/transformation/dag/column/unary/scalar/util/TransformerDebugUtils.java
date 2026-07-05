@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar.util;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -57,6 +58,8 @@ public final class TransformerDebugUtils {
     }
 
     throw new SemanticException(
-        "type " + originalType + " is not supported in generateProblematicValueString()");
+        CalcMessages.EXCEPTION_TYPE_DB38663D
+            + originalType
+            + CalcMessages.EXCEPTION_NOT_SUPPORTED_GENERATEPROBLEMATICVALUESTRING_624BB179);
   }
 }

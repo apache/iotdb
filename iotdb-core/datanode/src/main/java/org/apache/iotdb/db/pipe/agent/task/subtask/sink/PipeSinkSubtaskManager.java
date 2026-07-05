@@ -138,9 +138,7 @@ public class PipeSinkSubtaskManager {
             pipeSink.close();
           } catch (final Exception closeException) {
             LOGGER.warn(
-                "Failed to close connector after failed to initialize connector. "
-                    + "Ignore this exception.",
-                closeException);
+                DataNodePipeMessages.FAILED_TO_CLOSE_CONNECTOR_AFTER_FAILED_TO, closeException);
           }
           throw new PipeException(
               DataNodePipeMessages.FAILED_TO_CONSTRUCT_PIPECONNECTOR_BECAUSE_OF + e.getMessage(),

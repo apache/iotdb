@@ -272,7 +272,10 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
     if (this.deviceEntries.get(this.currentDeviceIndex) == null) {
       throw new IllegalStateException(
-          "Device entries of index " + this.currentDeviceIndex + " in TableScanOperator is empty");
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_DEVICE_ENTRIES_OF_INDEX_S_IN_TABLESCANOPERATOR_IS_EMPTY_FDEB574F,
+              this.currentDeviceIndex));
     }
 
     DeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);

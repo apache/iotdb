@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.lo
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -90,7 +91,10 @@ public class TsFileIdentifier {
       // if the path contains the required information
       // after splitting result should contain more than 5 objects
       throw new RuntimeException(
-          String.format("Path %s cannot be parsed into file info", filepath));
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_PATH_S_CANNOT_BE_PARSED_INTO_FILE_INFO_631C48C8,
+              filepath));
     }
 
     return new TsFileIdentifier(
@@ -111,7 +115,10 @@ public class TsFileIdentifier {
     int length = splittedFileInfo.length;
     if (length != 5) {
       throw new RuntimeException(
-          String.format("String %s is not a legal file info string", infoString));
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_STRING_S_IS_NOT_A_LEGAL_FILE_INFO_STRING_0CBEAB8E,
+              infoString));
     }
     return new TsFileIdentifier(
         splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG],

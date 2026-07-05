@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -186,7 +187,9 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
     }
     if (this.deviceEntries.get(this.currentDeviceIndex) == null) {
       throw new IllegalStateException(
-          "Device entries of index " + this.currentDeviceIndex + " is empty");
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_DEVICE_ENTRIES_OF_INDEX_S_IS_EMPTY_BCFB0644,
+              this.currentDeviceIndex));
     }
     DeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
 

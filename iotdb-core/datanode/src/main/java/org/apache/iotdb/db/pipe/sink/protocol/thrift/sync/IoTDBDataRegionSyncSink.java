@@ -161,8 +161,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     } catch (final Exception e) {
       throw new PipeConnectionException(
           String.format(
-              "Failed to transfer tablet insertion event %s, because %s.",
-              ((EnrichedEvent) tabletInsertionEvent).coreReportMessage(), e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_TRANSFER_TABLET_INSERTION_EVENT_S_BECAUSE_S_9710318F,
+              ((EnrichedEvent) tabletInsertionEvent).coreReportMessage(),
+              e.getMessage()),
           e);
     }
   }
@@ -410,7 +412,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     } catch (final Exception e) {
       throw new PipeConnectionException(
           String.format(
-              "Failed to transfer tsfile insertion event %s, because %s.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_TRANSFER_TSFILE_INSERTION_EVENT_S_BECAUSE_S_21AD3263,
               ((PipeTsFileInsertionEvent) tsFileInsertionEvent).coreReportMessage(),
               e.getMessage()),
           e);
@@ -493,8 +496,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer deletion %s, because %s.",
-              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(), e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_DELETION_S_BECAUSE_S_3B250B4B,
+              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(),
+              e.getMessage()),
           e);
     }
 
@@ -576,7 +581,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
-          String.format("Network error when transfer tablet batch, because %s.", e.getMessage()),
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TABLET_BATCH_BECAUSE_S_6BEC52E7,
+              e.getMessage()),
           e);
     }
 
@@ -729,7 +737,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     } catch (final Exception e) {
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer insert node tablet insertion event, because %s.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_INSERT_NODE_TABLET_INSERTION_D993C7AB,
               e.getMessage()),
           e);
     }
@@ -817,7 +826,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     } catch (final Exception e) {
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer raw tablet insertion event, because %s.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_RAW_TABLET_INSERTION_EVENT_BECAUSE_D8ACEC3C,
               e.getMessage()),
           e);
     }
@@ -914,7 +924,11 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
         clientAndStatus.setRight(false);
         clientManager.adjustTimeoutIfNecessary(e);
         throw new PipeConnectionException(
-            String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_SEAL_FILE_S_BECAUSE_S_DC87F263,
+                tsFile,
+                e.getMessage()),
             e);
       }
     } else {
@@ -940,7 +954,11 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
         clientAndStatus.setRight(false);
         clientManager.adjustTimeoutIfNecessary(e);
         throw new PipeConnectionException(
-            String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_SEAL_FILE_S_BECAUSE_S_DC87F263,
+                tsFile,
+                e.getMessage()),
             e);
       }
     }

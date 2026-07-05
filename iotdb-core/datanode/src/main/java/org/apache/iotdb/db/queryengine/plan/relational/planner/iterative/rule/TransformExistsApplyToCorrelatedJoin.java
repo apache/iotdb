@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanNodeDecorrelator;
@@ -89,7 +90,9 @@ public class TransformExistsApplyToCorrelatedJoin implements Rule<ApplyNode> {
   private final PlannerContext plannerContext;
 
   public TransformExistsApplyToCorrelatedJoin(PlannerContext plannerContext) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
   }
 
   @Override
@@ -132,7 +135,7 @@ public class TransformExistsApplyToCorrelatedJoin implements Rule<ApplyNode> {
   private Optional<PlanNode> rewriteToNonDefaultAggregation(ApplyNode applyNode, Context context) {
     checkState(
         applyNode.getSubquery().getOutputSymbols().isEmpty(),
-        "Expected subquery output symbols to be pruned");
+        DataNodeQueryMessages.EXCEPTION_EXPECTED_SUBQUERY_OUTPUT_SYMBOLS_TO_BE_PRUNED_13B84182);
 
     Symbol subqueryTrue = context.getSymbolAllocator().newSymbol("subqueryTrue", BOOLEAN);
 

@@ -115,7 +115,8 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
       // Unless we have been closed, we need to replace this thread
       if (!closed) {
         logger.warn(
-            "Executor {} exits because it's interrupted. We will produce another thread to replace.",
+            DataNodeQueryMessages
+                .EXECUTOR_ARG_EXITS_BECAUSE_IT_S_INTERRUPTED_WE_WILL_PRODUCE_ANOTHER_THREAD_TO_REPLACE,
             this.getName());
         producer.produce(getName(), getThreadGroup(), queue, producer);
       } else {

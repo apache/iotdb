@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -68,7 +69,10 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
   // Column should be like: | Time | x | y |
   @Override
   public void addInput(Column[] column, BitMap bitMap) {
-    checkArgument(column.length == 3, "Length of input Column[] for MaxBy/MinBy should be 3");
+    checkArgument(
+        column.length == 3,
+        DataNodeQueryMessages
+            .EXCEPTION_LENGTH_OF_INPUT_COLUMN_LEFT_BRACKET_RIGHT_BRACKET_FOR_MAXBY_SLASH_MINBY_SHOULD_B_1F3F2F1C);
     switch (yDataType) {
       case INT32:
       case DATE:
@@ -99,7 +103,9 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
   // partialResult should be like: | partialMaxByBinary |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of MaxBy/MinBy should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXBY_SLASH_MINBY_SHOULD_BE_1_BF0078F4);
     // Return if y is null.
     if (partialResult[0].isNull(0)) {
       return;
@@ -126,7 +132,9 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
   // columnBuilders should be like | TextIntermediateColumnBuilder |
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of MaxValue should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXVALUE_SHOULD_BE_1_659B6D42);
     if (!initResult) {
       columnBuilders[0].appendNull();
       return;
@@ -364,7 +372,9 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
       }
     } catch (IOException e) {
       throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for MaxByAccumulator.", e);
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_FAILED_TO_SERIALIZE_INTERMEDIATE_RESULT_FOR_MAXBYACCUMULATOR_2F18B6E7,
+          e);
     }
     return byteArrayOutputStream.toByteArray();
   }

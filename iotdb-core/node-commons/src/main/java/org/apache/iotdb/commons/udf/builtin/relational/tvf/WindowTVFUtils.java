@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.exception.UDFColumnNotFoundException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
@@ -45,13 +46,16 @@ public class WindowTVFUtils {
       if (fieldName.isPresent() && expectedFieldName.equalsIgnoreCase(fieldName.get())) {
         if (!expectedTypes.contains(tableArgument.getFieldTypes().get(i))) {
           throw new UDFTypeMismatchException(
-              String.format("The type of the column [%s] is not as expected.", expectedFieldName));
+              String.format(
+                  CommonMessages.EXCEPTION_TYPE_COLUMN_ARG_NOT_AS_EXPECTED_7A81636E,
+                  expectedFieldName));
         }
         return i;
       }
     }
     throw new UDFColumnNotFoundException(
         String.format(
-            "Required column [%s] not found in the source table argument.", expectedFieldName));
+            CommonMessages.EXCEPTION_REQUIRED_COLUMN_ARG_NOT_FOUND_SOURCE_TABLE_ARGUMENT_993E1C08,
+            expectedFieldName));
   }
 }

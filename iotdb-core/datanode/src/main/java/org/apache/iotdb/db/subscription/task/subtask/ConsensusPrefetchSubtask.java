@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.task.subtask;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.consensus.PrefetchRoundResult;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutor;
@@ -112,7 +113,11 @@ public class ConsensusPrefetchSubtask {
       result = queue.drivePrefetchOnce();
     } catch (final Throwable t) {
       LOGGER.error(
-          "ConsensusPrefetchSubtask {}: unexpected error while driving queue {}", taskId, queue, t);
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHSUBTASK_UNEXPECTED_ERROR_WHILE_DRIVING_D361F4C2,
+          taskId,
+          queue,
+          t);
       result = PrefetchRoundResult.rescheduleAfter(100L);
     }
 

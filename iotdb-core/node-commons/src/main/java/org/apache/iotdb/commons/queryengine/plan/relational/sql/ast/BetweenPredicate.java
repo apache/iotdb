@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -43,9 +45,9 @@ public final class BetweenPredicate extends Expression {
 
   public BetweenPredicate(Expression value, Expression min, Expression max) {
     super(null);
-    requireNonNull(value, "value is null");
-    requireNonNull(min, "min is null");
-    requireNonNull(max, "max is null");
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    requireNonNull(min, QueryMessages.EXCEPTION_MIN_IS_NULL_B80144C1);
+    requireNonNull(max, QueryMessages.EXCEPTION_MAX_IS_NULL_CCABB3BF);
 
     this.value = value;
     this.min = min;
@@ -54,10 +56,10 @@ public final class BetweenPredicate extends Expression {
 
   public BetweenPredicate(
       @Nonnull NodeLocation location, Expression value, Expression min, Expression max) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(value, "value is null");
-    requireNonNull(min, "min is null");
-    requireNonNull(max, "max is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    requireNonNull(min, QueryMessages.EXCEPTION_MIN_IS_NULL_B80144C1);
+    requireNonNull(max, QueryMessages.EXCEPTION_MAX_IS_NULL_CCABB3BF);
 
     this.value = value;
     this.min = min;

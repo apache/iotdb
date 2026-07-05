@@ -357,7 +357,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error(ERROR_NAME, e);
       result.setStatus(
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-              .setMessage(ERROR_NAME + ": " + e.getMessage()));
+              .setMessage(ERROR_NAME + ConfigNodeMessages.MESSAGE_COLON_CEFF3F4D + e.getMessage()));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -396,7 +396,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error(ERROR_NAME, e);
       result.setStatus(
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-              .setMessage(ERROR_NAME + ": " + e.getMessage()));
+              .setMessage(ERROR_NAME + ConfigNodeMessages.MESSAGE_COLON_CEFF3F4D + e.getMessage()));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -661,7 +661,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .orElse(Long.MAX_VALUE);
     } catch (final MetadataException e) {
       LOGGER.warn(
-          ERROR_NAME + " when trying to get max ttl under one database, use Long.MAX_VALUE.", e);
+          ERROR_NAME
+              + ConfigNodeMessages.LOG_TRYING_GET_MAX_TTL_UNDER_ONE_DATABASE_USE_LONG_MAX_9D70ACB2,
+          e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

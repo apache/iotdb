@@ -98,7 +98,8 @@ public class ErrorHandler extends BaseErrorListener {
               parser.getTokenStream().get(result.getErrorTokenIndex()).getText(), expected);
     } catch (Exception exception) {
       LOGGER.warn(
-          "Unexpected failure when handling parsing error. This is likely a bug in the implementation",
+          DataNodeQueryMessages
+              .UNEXPECTED_FAILURE_WHEN_HANDLING_PARSING_ERROR_THIS_IS_LIKELY_A_BUG_IN_THE,
           exception);
     }
 

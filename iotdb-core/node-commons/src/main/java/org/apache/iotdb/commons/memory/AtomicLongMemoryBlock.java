@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.memory;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,7 +111,8 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
     if (sizeInByte > prev) {
       // print log after compareAndSet was success
       LOGGER.warn(
-          "The memory cost to be released is larger than the memory cost of memory block {}", this);
+          CommonMessages.LOG_MEMORY_COST_RELEASED_LARGER_THAN_MEMORY_COST_MEMORY_BLOCK_ARG_00DD9DA9,
+          this);
     }
     return next;
   }

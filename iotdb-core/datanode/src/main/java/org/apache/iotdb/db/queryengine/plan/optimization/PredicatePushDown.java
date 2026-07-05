@@ -211,7 +211,8 @@ public class PredicatePushDown implements PlanOptimizer {
       // find the push down predicate for each child
       for (PlanNode child : children) {
         checkArgument(
-            child instanceof SeriesScanSourceNode, "Unexpected node type: " + child.getClass());
+            child instanceof SeriesScanSourceNode,
+            DataNodeQueryMessages.EXCEPTION_UNEXPECTED_NODE_TYPE_COLON_41FBCBF3 + child.getClass());
         PartialPath sourcePath = ((SeriesScanSourceNode) child).getPartitionPath();
         if (sourcePath instanceof MeasurementPath) {
           pushDownConjunctsForEachChild.add(
@@ -286,7 +287,9 @@ public class PredicatePushDown implements PlanOptimizer {
         return visitSeriesScanSource(node, context);
       }
       TemplatedInfo templatedInfo = context.getTemplatedInfo();
-      checkState(templatedInfo != null, "TemplatedInfo should not be null");
+      checkState(
+          templatedInfo != null,
+          DataNodeQueryMessages.EXCEPTION_TEMPLATEDINFO_SHOULD_NOT_BE_NULL_B5898568);
 
       Expression inheritedPredicate = context.getInheritedPredicate();
       if (context.enablePushDownUseTemplate()

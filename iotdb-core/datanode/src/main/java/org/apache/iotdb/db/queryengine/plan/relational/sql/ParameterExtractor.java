@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
 
 import com.google.common.collect.ImmutableMap;
@@ -67,7 +68,9 @@ public final class ParameterExtractor {
                     parameter
                         .getLocation()
                         .orElseThrow(
-                            () -> new SemanticException("Parameter node must have a location")),
+                            () ->
+                                new SemanticException(
+                                    DataNodeQueryMessages.PARAMETER_NODE_MUST_HAVE_A_LOCATION)),
                 Comparator.comparing(NodeLocation::getLineNumber)
                     .thenComparing(NodeLocation::getColumnNumber)))
         .collect(toImmutableList());
@@ -90,8 +93,9 @@ public final class ParameterExtractor {
     if (parametersList.size() != values.size()) {
       throw new SemanticException(
           String.format(
-              "Invalid number of parameters: expected %d, got %d",
-              parametersList.size(), values.size()));
+              DataNodeQueryMessages.INVALID_NUMBER_OF_PARAMETERS_EXPECTED_D_GOT_D,
+              parametersList.size(),
+              values.size()));
     }
 
     ImmutableMap.Builder<NodeRef<Parameter>, Expression> builder = ImmutableMap.builder();

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -46,17 +48,17 @@ public class GroupingSets extends GroupingElement {
 
   public GroupingSets(Type type, List<List<Expression>> sets) {
     super(null);
-    this.type = requireNonNull(type, "type is null");
-    requireNonNull(sets, "sets is null");
-    checkArgument(!sets.isEmpty(), "grouping sets cannot be empty");
+    this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    requireNonNull(sets, QueryMessages.EXCEPTION_SETS_IS_NULL_C9A2FA67);
+    checkArgument(!sets.isEmpty(), QueryMessages.EXCEPTION_GROUPING_SETS_CANNOT_BE_EMPTY_8E0BE7DB);
     this.sets = sets.stream().map(ImmutableList::copyOf).collect(toImmutableList());
   }
 
   public GroupingSets(NodeLocation location, Type type, List<List<Expression>> sets) {
-    super(requireNonNull(location, "location is null"));
-    this.type = requireNonNull(type, "type is null");
-    requireNonNull(sets, "sets is null");
-    checkArgument(!sets.isEmpty(), "grouping sets cannot be empty");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    requireNonNull(sets, QueryMessages.EXCEPTION_SETS_IS_NULL_C9A2FA67);
+    checkArgument(!sets.isEmpty(), QueryMessages.EXCEPTION_GROUPING_SETS_CANNOT_BE_EMPTY_8E0BE7DB);
     this.sets = sets.stream().map(ImmutableList::copyOf).collect(toImmutableList());
   }
 

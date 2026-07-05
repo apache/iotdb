@@ -20,17 +20,17 @@
 package org.apache.iotdb.db.exception.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 public class RegionReplicaSetChangedException extends LoadFileException {
 
   public RegionReplicaSetChangedException(TRegionReplicaSet original, TRegionReplicaSet current) {
     super(
         String.format(
-            "Region replica set changed from %s to %s during loading TsFile, maybe due to region migration",
-            original, current));
+            DataNodeQueryMessages.REGION_REPLICA_SET_CHANGED_DURING_LOAD_FMT, original, current));
   }
 
   public RegionReplicaSetChangedException() {
-    super("Region replica set changed during loading TsFile, maybe due to region migration");
+    super(DataNodeQueryMessages.REGION_REPLICA_SET_CHANGED_DURING_LOAD);
   }
 }

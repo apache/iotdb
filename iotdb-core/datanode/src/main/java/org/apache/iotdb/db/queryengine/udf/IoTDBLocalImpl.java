@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.IoTDBLocalFacto
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.UDFResultSet;
@@ -64,7 +65,8 @@ public class IoTDBLocalImpl implements IoTDBLocal {
       long timeoutMs = computeRemainingTimeoutMs();
       if (timeoutMs <= 0) {
         throw new QueryTimeoutException(
-            "Outer query timeout exceeded before IoTDBLocal query starts");
+            DataNodeQueryMessages
+                .EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63);
       }
       InternalQueryResult result =
           InternalQueryExecutor.executeInternalQuery(
@@ -86,7 +88,10 @@ public class IoTDBLocalImpl implements IoTDBLocal {
         try {
           rs.close();
         } catch (UDFException e) {
-          LOGGER.warn("Failed to close UDF result set at index {}", i, e);
+          LOGGER.warn(
+              DataNodeQueryMessages.MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC,
+              i,
+              e);
         }
       }
     }

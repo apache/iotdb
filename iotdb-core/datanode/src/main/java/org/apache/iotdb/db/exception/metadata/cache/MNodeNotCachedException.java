@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.exception.metadata.cache;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 public class MNodeNotCachedException extends MetadataException {
 
   public MNodeNotCachedException() {
-    super("MNode has not been cached or has been evicted.");
+    super(DataNodeSchemaMessages.MNODE_NOT_CACHED);
   }
 }

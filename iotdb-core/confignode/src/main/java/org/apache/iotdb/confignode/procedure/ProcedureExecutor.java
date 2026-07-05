@@ -463,7 +463,9 @@ public class ProcedureExecutor<Env> {
   private void executeProcedure(RootProcedureStack rootProcStack, Procedure<Env> proc) {
     if (proc.getState() != ProcedureState.RUNNABLE) {
       LOG.error(
-          "The executing procedure should in RUNNABLE state, but it's not. Procedure is {}", proc);
+          ProcedureMessages
+              .LOG_EXECUTING_PROCEDURE_SHOULD_RUNNABLE_STATE_BUT_IT_S_NOT_PROCEDURE_7CF42CE8,
+          proc);
       releaseLock(proc, false);
       return;
     }
@@ -553,7 +555,7 @@ public class ProcedureExecutor<Env> {
       // do not add this procedure when exception occurred
       scheduler.addFront(parent);
       LOG.info(
-          "Finished subprocedure pid={}, resume processing ppid={}",
+          ProcedureMessages.LOG_FINISHED_SUBPROCEDURE_PID_ARG_RESUME_PROCESSING_PPID_ARG_93ED990B,
           proc.getProcId(),
           parent.getProcId());
     }
@@ -868,14 +870,20 @@ public class ProcedureExecutor<Env> {
               procedure.releaseExecution();
               activeExecutorCount.decrementAndGet();
               LOG.trace(
-                  "Halt pid={}, activeCount={}", procedure.getProcId(), activeExecutorCount.get());
+                  ProcedureMessages.MESSAGE_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF,
+                  procedure.getProcId(),
+                  activeExecutorCount.get());
               this.activeProcedure.set(null);
               lastUpdated = System.currentTimeMillis();
               startTime.set(lastUpdated);
             }
           } catch (Exception e) {
             LOG.warn(
-                "Exception happened when worker {} execute procedure {}", getName(), procedure, e);
+                ProcedureMessages
+                    .MESSAGE_EXCEPTION_HAPPENED_WHEN_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D,
+                getName(),
+                procedure,
+                e);
             throw e;
           }
         }
@@ -883,7 +891,7 @@ public class ProcedureExecutor<Env> {
       } catch (Exception e) {
         if (this.activeProcedure.get() != null) {
           LOG.warn(
-              "Exception happened when worker {} execute procedure {}",
+              ProcedureMessages.LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D,
               getName(),
               this.activeProcedure.get(),
               e);
@@ -953,13 +961,15 @@ public class ProcedureExecutor<Env> {
         if (worker.getCurrentRunTime() > DEFAULT_WORKER_STUCK_THRESHOLD) {
           stuckCount++;
           LOG.warn(
-              "Worker stuck {}({}), run time {} ms",
+              ProcedureMessages.LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354,
               worker,
               proc.getProcType(),
               worker.getCurrentRunTime());
         }
         LOG.info(
-            "Procedure workers: {} is running, {} is running and stuck", runningCount, stuckCount);
+            ProcedureMessages.LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D,
+            runningCount,
+            stuckCount);
       }
       return stuckCount;
     }
@@ -1021,7 +1031,8 @@ public class ProcedureExecutor<Env> {
       threadGroup.destroy();
     } catch (IllegalThreadStateException e) {
       LOG.warn(
-          "ProcedureExecutor threadGroup {} contains running threads which are used by non-procedure module.",
+          ProcedureMessages
+              .LOG_PROCEDUREEXECUTOR_THREADGROUP_ARG_CONTAINS_RUNNING_THREADS_WHICH_USED_NON_PROCEDURE_BD865211,
           this.threadGroup);
       this.threadGroup.list();
     }
@@ -1052,7 +1063,8 @@ public class ProcedureExecutor<Env> {
    */
   public long submitProcedure(Procedure<Env> procedure) {
     Preconditions.checkArgument(procedure.getState() == ProcedureState.INITIALIZING);
-    Preconditions.checkArgument(!procedure.hasParent(), "Unexpected parent", procedure);
+    Preconditions.checkArgument(
+        !procedure.hasParent(), ProcedureMessages.EXCEPTION_UNEXPECTED_PARENT_444B4289, procedure);
 
     // Check for conflicts with running procedures if this procedure implements
     // MetadataProcedureConflictCheckable
@@ -1074,7 +1086,6 @@ public class ProcedureExecutor<Env> {
         }
       }
     }
-
     // Initialize the procedure
     procedure.setProcId(store.getNextProcId());
     procedure.setProcRunnable();

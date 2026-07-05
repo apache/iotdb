@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ag
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLog;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLogStateFactory;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.HyperLogLogBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -89,7 +90,9 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", seriesDataType));
+                CalcMessages
+                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_COUNT_DISTINCT_AGGREGATION_ARG_58F0391E,
+                seriesDataType));
     }
   }
 

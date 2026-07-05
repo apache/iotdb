@@ -119,4 +119,16 @@ public final class RatisMessages {
       "JMX Reporter is disabled from RatisMetricRegistries";
   public static final String CONSOLE_REPORTER_DISABLED =
       "Console Reporter is disabled from RatisMetricRegistries";
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_RESET_PEER_LIST_CURRENT_PEER_LIST_CORRECT_NOTHING_NEED_RESET_0E009CDA = "[RESET PEER LIST] The current peer list is correct, nothing need to be reset: {}";
+  public static final String EXCEPTION_INTERNAL_GRPC_CONNECTION_ERROR_59404D15 = "internal GRPC connection error:";
+  public static final String LOG_FAILED_ARG_ATTEMPT_ARG_SLEEP_ARG_THEN_RETRY_36A9A0C2 = "Failed {}, attempt #{}, sleep {} and then retry";
+  public static final String LOG_ARG_INTERRUPTED_WAITING_RETRY_38D69BCC = "{}: interrupted when waiting for retry";
+  public static final String EXCEPTION_SUPPLIER_EQUALS_EQUALS_NULL_13BACC3E = "supplier == null";
+  public static final String EXCEPTION_CONDITION_EQUALS_EQUALS_NULL_E3A6C947 = "condition == null";
+  public static final String EXCEPTION_ARG_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_A12E23D7 =
+      "%s: failed to load snapshot from %s";
+
 }

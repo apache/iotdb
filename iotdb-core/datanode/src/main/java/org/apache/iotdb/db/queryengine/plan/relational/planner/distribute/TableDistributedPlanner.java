@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
@@ -92,7 +93,9 @@ public class TableDistributedPlanner {
       List<PlanOptimizer> distributedOptimizers,
       DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this.analysis = analysis;
-    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
+    this.symbolAllocator =
+        requireNonNull(
+            symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = logicalQueryPlan.getContext();
     this.optimizers = distributedOptimizers;
@@ -142,7 +145,9 @@ public class TableDistributedPlanner {
         new TableDistributedPlanGenerator(
                 mppQueryContext, analysis, symbolAllocator, dataNodeLocationSupplier)
             .genResult(logicalQueryPlan.getRootNode(), planContext);
-    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
+    checkArgument(
+        distributedPlanResult.size() == 1,
+        DataNodeQueryMessages.EXCEPTION_ROOT_NODE_MUST_RETURN_ONLY_ONE_FF42061C);
 
     // distribute plan optimize rule
     PlanNode distributedPlan = distributedPlanResult.get(0);

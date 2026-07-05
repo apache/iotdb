@@ -86,7 +86,10 @@ public class TsFileLoader implements ILoader {
         LOGGER.error(DataNodePipeMessages.LOAD_TSFILE_ERROR_STATEMENT, tsFile.getPath(), statement);
         LOGGER.error(DataNodePipeMessages.LOAD_TSFILE_RESULT_STATUS, result.status);
         throw new LoadFileException(
-            String.format("Can not execute load TsFile statement: %s", statement));
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_CAN_NOT_EXECUTE_LOAD_TSFILE_STATEMENT_S_8CC1A096,
+                statement));
       }
     } catch (Exception e) {
       throw new PipeException(e.getMessage());

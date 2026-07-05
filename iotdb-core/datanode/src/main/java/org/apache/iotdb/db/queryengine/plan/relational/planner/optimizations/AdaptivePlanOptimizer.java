@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.Set;
 
@@ -46,8 +47,10 @@ public interface AdaptivePlanOptimizer extends PlanOptimizer {
      *     as the new PlanNodeIds that were added to the optimized plan.
      */
     public Result(PlanNode plan, Set<PlanNodeId> changedPlanNodes) {
-      this.plan = requireNonNull(plan, "plan is null");
-      this.changedPlanNodes = requireNonNull(changedPlanNodes, "changedPlanNodes is null");
+      this.plan = requireNonNull(plan, DataNodeQueryMessages.EXCEPTION_PLAN_IS_NULL_717C9DF7);
+      this.changedPlanNodes =
+          requireNonNull(
+              changedPlanNodes, DataNodeQueryMessages.EXCEPTION_CHANGEDPLANNODES_IS_NULL_5ECBDE28);
     }
 
     public PlanNode plan() {

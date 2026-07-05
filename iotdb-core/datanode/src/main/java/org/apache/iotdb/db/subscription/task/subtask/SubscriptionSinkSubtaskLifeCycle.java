@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.task.subtask;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtaskLifeCycle;
@@ -61,7 +62,7 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
 
     registeredTaskCount++;
     LOGGER.info(
-        "Register subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+        DataNodePipeMessages.REGISTER_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
         subtask,
         runningTaskCount,
         registeredTaskCount);
@@ -86,7 +87,7 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
     } finally {
       registeredTaskCount--;
       LOGGER.info(
-          "Deregister subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+          DataNodePipeMessages.DEREGISTER_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
           subtask,
           runningTaskCount,
           registeredTaskCount);

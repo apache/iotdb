@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -48,16 +50,18 @@ public final class CoalesceExpression extends Expression {
 
   public CoalesceExpression(List<Expression> operands) {
     super(null);
-    requireNonNull(operands, "operands is null");
-    checkArgument(operands.size() >= 2, "must have at least two operands");
+    requireNonNull(operands, QueryMessages.EXCEPTION_OPERANDS_IS_NULL_135465B7);
+    checkArgument(
+        operands.size() >= 2, QueryMessages.EXCEPTION_MUST_HAVE_AT_LEAST_TWO_OPERANDS_CE7B0DCB);
 
     this.operands = ImmutableList.copyOf(operands);
   }
 
   public CoalesceExpression(@Nonnull NodeLocation location, List<Expression> operands) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(operands, "operands is null");
-    checkArgument(operands.size() >= 2, "must have at least two operands");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    requireNonNull(operands, QueryMessages.EXCEPTION_OPERANDS_IS_NULL_135465B7);
+    checkArgument(
+        operands.size() >= 2, QueryMessages.EXCEPTION_MUST_HAVE_AT_LEAST_TWO_OPERANDS_CE7B0DCB);
 
     this.operands = ImmutableList.copyOf(operands);
   }

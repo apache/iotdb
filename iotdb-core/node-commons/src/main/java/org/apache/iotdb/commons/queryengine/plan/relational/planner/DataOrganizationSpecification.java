@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -38,7 +40,8 @@ public class DataOrganizationSpecification {
   public DataOrganizationSpecification(
       List<Symbol> partitionBy, Optional<OrderingScheme> orderingScheme) {
     this.partitionBy = ImmutableList.copyOf(partitionBy);
-    this.orderingScheme = requireNonNull(orderingScheme, "orderingScheme is null");
+    this.orderingScheme =
+        requireNonNull(orderingScheme, QueryMessages.EXCEPTION_ORDERINGSCHEME_IS_NULL_4D4D2F6F);
   }
 
   public List<Symbol> getPartitionBy() {

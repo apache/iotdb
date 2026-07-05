@@ -314,7 +314,8 @@ public class Util {
     if (timestampPrecision.equals("ms")) {
       if (s.endsWith("ns") || s.endsWith("us")) {
         throw new IllegalArgumentException(
-            "The provided time precision is higher than the system's time precision (ms). Please check your input.");
+            LibraryUdfMessages
+                .EXCEPTION_THE_PROVIDED_TIME_PRECISION_IS_HIGHER_THAN_THE_SYSTEM_S_TIME_PRECISION_MS_PLEASE_CHECK_YOUR_INPUT_92667537);
       } else if (s.endsWith("ms")) {
         unit = 1;
         s = s.substring(0, s.length() - 2);
@@ -334,7 +335,8 @@ public class Util {
     } else if (timestampPrecision.equals("us")) {
       if (s.endsWith("ns")) {
         throw new IllegalArgumentException(
-            "The provided time precision is higher than the system's time precision (us). Please check your input.");
+            LibraryUdfMessages
+                .EXCEPTION_THE_PROVIDED_TIME_PRECISION_IS_HIGHER_THAN_THE_SYSTEM_S_TIME_PRECISION_US_PLEASE_CHECK_YOUR_INPUT_07596E70);
       } else if (s.endsWith("us")) {
         unit = 1;
         s = s.substring(0, s.length() - 2);

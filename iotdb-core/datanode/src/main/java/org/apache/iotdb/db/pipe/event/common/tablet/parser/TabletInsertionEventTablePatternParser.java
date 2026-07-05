@@ -66,7 +66,9 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
       parse((RelationalInsertTabletNode) insertNode);
     } else {
       throw new UnSupportedDataTypeException(
-          String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_INSERTNODE_TYPE_S_IS_NOT_SUPPORTED_7DF82B58,
+              insertNode.getClass().getName()));
     }
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -74,15 +75,23 @@ public class PatternRecognitionNode extends SingleChildProcessNode {
       Map<IrLabel, ExpressionAndValuePointers> variableDefinitions) {
     super(id, child);
 
-    this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
-    this.orderingScheme = requireNonNull(orderingScheme, "orderingScheme is null");
-    this.hashSymbol = requireNonNull(hashSymbol, "hashSymbol is null");
-    this.measures = requireNonNull(measures, "measures is null");
-    this.rowsPerMatch = requireNonNull(rowsPerMatch, "rowsPerMatch is null");
-    this.skipToLabels = requireNonNull(skipToLabels, "skipToLabels is null");
-    this.skipToPosition = requireNonNull(skipToPosition, "skipToPosition is null");
-    this.pattern = requireNonNull(pattern, "pattern is null");
-    this.variableDefinitions = requireNonNull(variableDefinitions, "variableDefinitions is null");
+    this.partitionBy =
+        requireNonNull(partitionBy, QueryMessages.EXCEPTION_PARTITIONBY_IS_NULL_84791B6B);
+    this.orderingScheme =
+        requireNonNull(orderingScheme, QueryMessages.EXCEPTION_ORDERINGSCHEME_IS_NULL_4D4D2F6F);
+    this.hashSymbol =
+        requireNonNull(hashSymbol, QueryMessages.EXCEPTION_HASHSYMBOL_IS_NULL_1BD487F2);
+    this.measures = requireNonNull(measures, QueryMessages.EXCEPTION_MEASURES_IS_NULL_EC9D2431);
+    this.rowsPerMatch =
+        requireNonNull(rowsPerMatch, QueryMessages.EXCEPTION_ROWSPERMATCH_IS_NULL_661EA4A9);
+    this.skipToLabels =
+        requireNonNull(skipToLabels, QueryMessages.EXCEPTION_SKIPTOLABELS_IS_NULL_0A543C09);
+    this.skipToPosition =
+        requireNonNull(skipToPosition, QueryMessages.EXCEPTION_SKIPTOPOSITION_IS_NULL_EFBA10CA);
+    this.pattern = requireNonNull(pattern, QueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
+    this.variableDefinitions =
+        requireNonNull(
+            variableDefinitions, QueryMessages.EXCEPTION_VARIABLEDEFINITIONS_IS_NULL_5F7B8ED4);
   }
 
   @Override

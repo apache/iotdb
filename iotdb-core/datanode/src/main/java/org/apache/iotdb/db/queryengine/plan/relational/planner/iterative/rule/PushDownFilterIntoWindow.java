@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonEx
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
@@ -55,7 +56,9 @@ public class PushDownFilterIntoWindow implements Rule<FilterNode> {
   private final PlannerContext plannerContext;
 
   public PushDownFilterIntoWindow(PlannerContext plannerContext) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
     this.pattern =
         filter()
             .with(

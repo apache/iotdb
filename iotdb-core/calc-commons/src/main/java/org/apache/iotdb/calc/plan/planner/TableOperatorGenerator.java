@@ -608,7 +608,10 @@ public abstract class TableOperatorGenerator<
       channel++;
     }
     throw new IllegalStateException(
-        String.format("Found no column %s in %s", symbol, node.getOutputSymbols()));
+        String.format(
+            CalcMessages.EXCEPTION_FOUND_NO_COLUMN_ARG_ARG_8CF632F7,
+            symbol,
+            node.getOutputSymbols()));
   }
 
   @Override
@@ -935,7 +938,9 @@ public abstract class TableOperatorGenerator<
               if (i == null) {
                 throw new IllegalStateException(
                     String.format(
-                        "Sort Item %s is not included in children's output columns", sortItem));
+                        CalcMessages
+                            .EXCEPTION_SORT_ITEM_ARG_NOT_INCLUDED_CHILDREN_S_OUTPUT_COLUMNS_CC911999,
+                        sortItem));
               }
               sortItemIndexList.add(i);
               sortItemDataTypeList.add(getTSDataType(typeProvider.getTableModelType(sortItem)));
@@ -1011,7 +1016,7 @@ public abstract class TableOperatorGenerator<
       Integer index = leftColumnNamesMap.get(node.getLeftOutputSymbols().get(i));
       if (index == null) {
         throw new IllegalStateException(
-            "Left child of JoinNode doesn't contain LeftOutputSymbol "
+            CalcMessages.EXCEPTION_LEFT_CHILD_JOINNODE_DOESN_T_CONTAIN_LEFTOUTPUTSYMBOL_0C8AA216
                 + node.getLeftOutputSymbols().get(i));
       }
       leftOutputSymbolIdx[i] = index;
@@ -1024,7 +1029,7 @@ public abstract class TableOperatorGenerator<
       Integer index = rightColumnNamesMap.get(node.getRightOutputSymbols().get(i));
       if (index == null) {
         throw new IllegalStateException(
-            "Right child of JoinNode doesn't contain RightOutputSymbol "
+            CalcMessages.EXCEPTION_RIGHT_CHILD_JOINNODE_DOESN_T_CONTAIN_RIGHTOUTPUTSYMBOL_10A86F63
                 + node.getLeftOutputSymbols().get(i));
       }
       rightOutputSymbolIdx[i] = index;
@@ -1083,13 +1088,15 @@ public abstract class TableOperatorGenerator<
       Integer leftAsofJoinKeyPosition = leftColumnNamesMap.get(asofJoinClause.getLeft());
       if (leftAsofJoinKeyPosition == null) {
         throw new IllegalStateException(
-            "Left child of JoinNode doesn't contain left ASOF main join key.");
+            CalcMessages
+                .EXCEPTION_LEFT_CHILD_JOINNODE_DOESN_T_CONTAIN_LEFT_ASOF_MAIN_JOIN_2850234A);
       }
       leftJoinKeyPositions[equiSize] = leftAsofJoinKeyPosition;
       Integer rightAsofJoinKeyPosition = rightColumnNamesMap.get(asofJoinClause.getRight());
       if (rightAsofJoinKeyPosition == null) {
         throw new IllegalStateException(
-            "Right child of JoinNode doesn't contain right ASOF main join key.");
+            CalcMessages
+                .EXCEPTION_RIGHT_CHILD_JOINNODE_DOESN_T_CONTAIN_RIGHT_ASOF_MAIN_JOIN_1A9631C9);
       }
       rightJoinKeyPositions[equiSize] = rightAsofJoinKeyPosition;
 
@@ -1200,11 +1207,15 @@ public abstract class TableOperatorGenerator<
       checkArgument(
           !node.getFilter().isPresent() || node.getFilter().get().equals(TRUE_LITERAL),
           String.format(
-              "Filter is not supported in %s. Filter is %s.",
-              node.getJoinType(), node.getFilter().map(Expression::toString).orElse("null")));
+              CalcMessages.EXCEPTION_FILTER_IS_NOT_SUPPORTED_IN_ARG_DOT_FILTER_IS_ARG_DOT_417C4F3C,
+              node.getJoinType(),
+              node.getFilter()
+                  .map(Expression::toString)
+                  .orElse(CalcMessages.EXCEPTION_NULL_9B41EF67)));
       checkArgument(
           !node.getCriteria().isEmpty() || node.getAsofCriteria().isPresent(),
-          String.format("%s must have join keys.", node.getJoinType()));
+          String.format(
+              CalcMessages.EXCEPTION_ARG_MUST_HAVE_JOIN_KEYS_DOT_C24DAB2D, node.getJoinType()));
     } catch (IllegalArgumentException e) {
       throw new SemanticException(e.getMessage());
     }
@@ -1257,7 +1268,10 @@ public abstract class TableOperatorGenerator<
     int[] sourceOutputSymbolIdx = new int[node.getSource().getOutputSymbols().size()];
     for (int i = 0; i < sourceOutputSymbolIdx.length; i++) {
       Integer index = sourceColumnNamesMap.get(sourceOutputSymbols.get(i));
-      checkNotNull(index, "Source of SemiJoinNode doesn't contain sourceOutputSymbol.");
+      checkNotNull(
+          index,
+          CalcMessages
+              .EXCEPTION_SOURCE_OF_SEMIJOINNODE_DOESN_QUOTE_T_CONTAIN_SOURCEOUTPUTSYMBOL_DOT_527996EC);
       sourceOutputSymbolIdx[i] = index;
     }
 
@@ -1265,13 +1279,17 @@ public abstract class TableOperatorGenerator<
         makeLayoutFromOutputSymbols(node.getRightChild().getOutputSymbols());
 
     Integer sourceJoinKeyPosition = sourceColumnNamesMap.get(node.getSourceJoinSymbol());
-    checkNotNull(sourceJoinKeyPosition, "Source of SemiJoinNode doesn't contain sourceJoinSymbol.");
+    checkNotNull(
+        sourceJoinKeyPosition,
+        CalcMessages
+            .EXCEPTION_SOURCE_OF_SEMIJOINNODE_DOESN_QUOTE_T_CONTAIN_SOURCEJOINSYMBOL_DOT_32209273);
 
     Integer filteringSourceJoinKeyPosition =
         filteringSourceColumnNamesMap.get(node.getFilteringSourceJoinSymbol());
     checkNotNull(
         filteringSourceJoinKeyPosition,
-        "FilteringSource of SemiJoinNode doesn't contain filteringSourceJoinSymbol.");
+        CalcMessages
+            .EXCEPTION_FILTERINGSOURCE_OF_SEMIJOINNODE_DOESN_QUOTE_T_CONTAIN_FILTERINGSOURCEJOINSYMBOL__1B75DDE2);
 
     Type sourceJoinKeyType =
         context.getTableTypeProvider().getTableModelType(node.getSourceJoinSymbol());
@@ -1297,9 +1315,9 @@ public abstract class TableOperatorGenerator<
   protected void checkIfJoinKeyTypeMatches(Type leftJoinKeyType, Type rightJoinKeyType) {
     if (leftJoinKeyType != rightJoinKeyType) {
       throw new SemanticException(
-          "Join key type mismatch. Left join key type: "
+          CalcMessages.EXCEPTION_JOIN_KEY_TYPE_MISMATCH_LEFT_JOIN_KEY_TYPE_072E692E
               + leftJoinKeyType
-              + ", right join key type: "
+              + CalcMessages.EXCEPTION_RIGHT_JOIN_KEY_TYPE_56895767
               + rightJoinKeyType);
     }
   }
@@ -2414,7 +2432,7 @@ public abstract class TableOperatorGenerator<
               new Column[0]);
       return new ValuesOperator(operatorContext, ImmutableList.of(oneRowWithoutColumnsBlock));
     } else {
-      throw new IllegalArgumentException("Row count must be 0 or 1");
+      throw new IllegalArgumentException(CalcMessages.EXCEPTION_ROW_COUNT_MUST_0_1_8D44189F);
     }
   }
 

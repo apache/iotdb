@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -56,16 +58,22 @@ public class PatternRecognitionRelation extends Relation {
       List<SubsetDefinition> subsets,
       List<VariableDefinition> variableDefinitions) {
     super(location);
-    this.input = requireNonNull(input, "input is null");
-    this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
-    this.orderBy = requireNonNull(orderBy, "orderBy is null");
-    this.measures = requireNonNull(measures, "measures is null");
-    this.rowsPerMatch = requireNonNull(rowsPerMatch, "rowsPerMatch is null");
-    this.afterMatchSkipTo = requireNonNull(afterMatchSkipTo, "afterMatchSkipTo is null");
-    this.pattern = requireNonNull(pattern, "pattern is null");
-    this.subsets = requireNonNull(subsets, "subsets is null");
-    requireNonNull(variableDefinitions, "variableDefinitions is null");
-    checkArgument(!variableDefinitions.isEmpty(), "variableDefinitions is empty");
+    this.input = requireNonNull(input, QueryMessages.EXCEPTION_INPUT_IS_NULL_EE7EADB0);
+    this.partitionBy =
+        requireNonNull(partitionBy, QueryMessages.EXCEPTION_PARTITIONBY_IS_NULL_84791B6B);
+    this.orderBy = requireNonNull(orderBy, QueryMessages.EXCEPTION_ORDERBY_IS_NULL_AA2494DE);
+    this.measures = requireNonNull(measures, QueryMessages.EXCEPTION_MEASURES_IS_NULL_EC9D2431);
+    this.rowsPerMatch =
+        requireNonNull(rowsPerMatch, QueryMessages.EXCEPTION_ROWSPERMATCH_IS_NULL_661EA4A9);
+    this.afterMatchSkipTo =
+        requireNonNull(afterMatchSkipTo, QueryMessages.EXCEPTION_AFTERMATCHSKIPTO_IS_NULL_7623C3C0);
+    this.pattern = requireNonNull(pattern, QueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
+    this.subsets = requireNonNull(subsets, QueryMessages.EXCEPTION_SUBSETS_IS_NULL_AF77CD01);
+    requireNonNull(
+        variableDefinitions, QueryMessages.EXCEPTION_VARIABLEDEFINITIONS_IS_NULL_5F7B8ED4);
+    checkArgument(
+        !variableDefinitions.isEmpty(),
+        QueryMessages.EXCEPTION_VARIABLEDEFINITIONS_IS_EMPTY_9E324869);
     this.variableDefinitions = variableDefinitions;
   }
 

@@ -107,7 +107,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   public void onConnect(InterceptConnectMessage msg) {
     if (msg.getClientID() == null || msg.getClientID().trim().isEmpty()) {
       LOG.error(
-          "Connection refused: client_id is missing or empty. A valid client_id is required to establish a connection.");
+          MqttMessages
+              .LOG_CONNECTION_REFUSED_CLIENT_ID_MISSING_EMPTY_VALID_CLIENT_ID_REQUIRED_A566DC15);
     }
     if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
       MqttClientSession session = new MqttClientSession(msg.getClientID());
@@ -158,7 +159,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         String username = msg.getUsername();
         MqttQoS qos = msg.getQos();
         LOG.debug(
-            "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
+            MqttMessages
+                .LOG_RECEIVE_PUBLISH_MESSAGE_CLIENTID_ARG_USERNAME_ARG_QOS_ARG_TOPIC_7E60C3A6,
             clientId,
             username,
             qos,

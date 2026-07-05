@@ -48,7 +48,9 @@ public class SettleTask extends WrappedRunnable {
       settleTsFile();
     } catch (Exception e) {
       logger.error(
-          "meet error when settling file:{}", resourceToBeSettled.getTsFile().getAbsolutePath(), e);
+          StorageEngineMessages.STORAGE_LOG_MEET_ERROR_WHEN_SETTLING_FILE_CBA0F9D7,
+          resourceToBeSettled.getTsFile().getAbsolutePath(),
+          e);
     }
   }
 
@@ -56,7 +58,7 @@ public class SettleTask extends WrappedRunnable {
     List<TsFileResource> settledResources = new ArrayList<>();
     if (!resourceToBeSettled.isClosed()) {
       logger.warn(
-          "The tsFile {} should be sealed when settling.",
+          StorageEngineMessages.STORAGE_LOG_THE_TSFILE_SHOULD_BE_SEALED_WHEN_SETTLING_8DBD716A,
           resourceToBeSettled.getTsFile().getAbsolutePath());
       return;
     }
@@ -85,7 +87,8 @@ public class SettleTask extends WrappedRunnable {
       resourceToBeSettled.readUnlock();
       throw new WriteProcessException(
           String.format(
-              "Exception to parse the tsfile: %s in settling",
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_EXCEPTION_TO_PARSE_THE_TSFILE_S_IN_SETTLING_D40564AD,
               resourceToBeSettled.getTsFile().getAbsolutePath()),
           e);
     }
@@ -97,7 +100,8 @@ public class SettleTask extends WrappedRunnable {
             + SettleLog.COMMA_SEPERATOR
             + SettleLog.SettleCheckStatus.SETTLE_SUCCESS);
     logger.info(
-        "Settle completes, file path:{} , the remaining file to be settled num: {}",
+        StorageEngineMessages
+            .STORAGE_LOG_SETTLE_COMPLETES_FILE_PATH_THE_REMAINING_FILE_TO_BE_SETTLED_32DF95A7,
         resourceToBeSettled.getTsFile().getAbsolutePath(),
         SettleService.getINSTANCE().getFilesToBeSettledCount().get());
 

@@ -527,7 +527,10 @@ public class AccumulatorFactory {
       case OBJECT:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", type));
+            String.format(
+                CalcMessages
+                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_COUNT_DISTINCT_AGGREGATION_ARG_58F0391E,
+                type));
     }
   }
 
@@ -553,7 +556,10 @@ public class AccumulatorFactory {
       case OBJECT:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", type));
+            String.format(
+                CalcMessages
+                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_COUNT_DISTINCT_AGGREGATION_ARG_58F0391E,
+                type));
     }
   }
 
@@ -577,10 +583,14 @@ public class AccumulatorFactory {
       TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
     switch (aggregationType) {
       case MAX_BY:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            CalcMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
       // return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case MIN_BY:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            CalcMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
       // return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       default:
         throw new IllegalArgumentException(
@@ -680,7 +690,8 @@ public class AccumulatorFactory {
     private final List<Type> inputTypes;
 
     private DistinctAccumulator(TableAccumulator accumulator, List<Type> inputTypes) {
-      this.accumulator = requireNonNull(accumulator, "accumulator is null");
+      this.accumulator =
+          requireNonNull(accumulator, CalcMessages.EXCEPTION_ACCUMULATOR_IS_NULL_EF0C1DFF);
       this.hash = new MarkDistinctHash(inputTypes, false, UpdateMemory.NOOP);
       this.inputTypes = inputTypes;
     }
@@ -693,7 +704,7 @@ public class AccumulatorFactory {
     @Override
     public TableAccumulator copy() {
       throw new UnsupportedOperationException(
-          "Distinct aggregation function state can not be copied");
+          CalcMessages.EXCEPTION_DISTINCT_AGGREGATION_FUNCTION_STATE_CAN_NOT_COPIED_34D0A276);
     }
 
     @Override
@@ -755,7 +766,8 @@ public class AccumulatorFactory {
     private final List<Type> inputTypes;
 
     private DistinctGroupedAccumulator(GroupedAccumulator accumulator, List<Type> inputTypes) {
-      this.accumulator = requireNonNull(accumulator, "accumulator is null");
+      this.accumulator =
+          requireNonNull(accumulator, CalcMessages.EXCEPTION_ACCUMULATOR_IS_NULL_EF0C1DFF);
       this.inputTypes =
           ImmutableList.<Type>builder()
               .add(INT32) // group id column

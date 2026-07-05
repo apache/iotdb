@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.exception.runtime;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 public class StorageEngineFailureException extends RuntimeException {
 
   private static final long serialVersionUID = -1197701024139022020L;
 
   public StorageEngineFailureException(Throwable e) {
-    super("Create system directory failed! ", e);
+    super(DataNodeMiscMessages.CREATE_SYSTEM_DIRECTORY_FAILED, e);
   }
 
   public StorageEngineFailureException(String message, Throwable e) {

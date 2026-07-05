@@ -21,6 +21,7 @@ package org.apache.iotdb.db.trigger.executor;
 
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
@@ -85,7 +86,7 @@ public class TriggerExecutor {
     } else {
       // !event.equals(triggerInformation.getEvent()) should not happen in normal case
       LOGGER.warn(
-          "Trigger {} was fired with wrong event {}",
+          DataNodeMiscMessages.MISC_LOG_TRIGGER_WAS_FIRED_WITH_WRONG_EVENT_43D89454,
           triggerInformation.getTriggerName(),
           triggerInformation.getEvent());
     }

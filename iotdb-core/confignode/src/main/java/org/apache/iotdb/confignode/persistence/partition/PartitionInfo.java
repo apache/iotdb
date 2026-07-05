@@ -240,7 +240,8 @@ public class PartitionInfo implements SnapshotProcessor {
       for (RegionMaintainTask task : offerRegionMaintainTasksPlan.getRegionMaintainTaskList()) {
         if (RegionMaintainType.DELETE.equals(task.getType())) {
           LOGGER.info(
-              "Dropping legacy region-delete task for {} while replaying offer plan; region deletion is now handled by RemoveRegionGroupProcedure.",
+              ConfigNodeMessages
+                  .MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_REPLAYING_OFFER_PLAN_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_2A81A649,
               task.getRegionId());
           continue;
         }
@@ -1097,7 +1098,8 @@ public class PartitionInfo implements SnapshotProcessor {
         // recreation of that region's other replicas.
         if (RegionMaintainType.DELETE.equals(task.getType())) {
           LOGGER.info(
-              "Dropping legacy region-delete task for {} while loading snapshot; region deletion is now handled by RemoveRegionGroupProcedure.",
+              ConfigNodeMessages
+                  .MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_LOADING_SNAPSHOT_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_A9D409A0,
               task.getRegionId());
           continue;
         }

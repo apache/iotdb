@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -77,7 +78,8 @@ public class SubscriptionConsumerAgent {
     } catch (final Exception e) {
       final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
       LOGGER.warn(
-          "Exception occurred when handling single consumer group meta changes for consumer group {}",
+          DataNodePipeMessages
+              .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_CONSUMER_GROUP_META_10E7688C,
           consumerGroupId,
           e);
       final String exceptionMessage =
@@ -109,7 +111,8 @@ public class SubscriptionConsumerAgent {
     if (metaInAgent.getCreationTime() != metaFromCoordinator.getCreationTime()) {
       if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
         LOGGER.warn(
-            "Subscription: broker bound to consumer group [{}] has already existed when the creation time of consumer group meta on local agent {} is inconsistent with meta from coordinator {}, drop it",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_HAS_ALREADY_0F37997F,
             consumerGroupId,
             metaInAgent,
             metaFromCoordinator);
@@ -154,8 +157,8 @@ public class SubscriptionConsumerAgent {
         ConsumerGroupMeta.getTopicsNewlySubByGroup(metaInAgent, metaFromCoordinator);
 
     LOGGER.info(
-        "Subscription: consumer group [{}] meta change detected, "
-            + "topicsUnsubByGroup={}, newlySubscribedTopics={}",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTION_CONSUMER_GROUP_META_CHANGE_DETECTED_TOPICSUNSUBBYGROUP_F6DAF20A,
         consumerGroupId,
         topicsUnsubByGroup,
         newlySubscribedTopics);
@@ -184,7 +187,8 @@ public class SubscriptionConsumerAgent {
         } catch (final Exception e) {
           final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
           LOGGER.warn(
-              "Exception occurred when handling single consumer group meta changes for consumer group {}",
+              DataNodePipeMessages
+                  .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_CONSUMER_GROUP_META_10E7688C,
               consumerGroupId,
               e);
           final String exceptionMessage =
@@ -229,7 +233,8 @@ public class SubscriptionConsumerAgent {
       }
     } else {
       LOGGER.warn(
-          "Subscription: broker bound to consumer group [{}] does not existed when the corresponding consumer group meta has already existed on local agent, ignore it",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_EXISTED_9F09E4DE,
           consumerGroupId);
     }
 

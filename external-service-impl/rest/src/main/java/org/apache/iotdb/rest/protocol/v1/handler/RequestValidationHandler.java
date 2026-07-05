@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.rest.protocol.v1.handler;
 
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.v1.model.ExpressionRequest;
 import org.apache.iotdb.rest.protocol.v1.model.InsertTabletRequest;
 import org.apache.iotdb.rest.protocol.v1.model.SQL;
@@ -30,24 +31,28 @@ public class RequestValidationHandler {
   private RequestValidationHandler() {}
 
   public static void validateSQL(SQL sql) {
-    Objects.requireNonNull(sql.getSql(), "sql should not be null");
+    Objects.requireNonNull(sql.getSql(), RestMessages.SQL_SHOULD_NOT_BE_NULL);
     if (sql.getRowLimit() != null) {
-      Validate.isTrue(sql.getRowLimit() > 0, "rowLimit should be positive");
+      Validate.isTrue(sql.getRowLimit() > 0, RestMessages.ROW_LIMIT_CAMEL_SHOULD_BE_POSITIVE);
     }
   }
 
   public static void validateInsertTabletRequest(InsertTabletRequest insertTabletRequest) {
-    Objects.requireNonNull(insertTabletRequest.getTimestamps(), "timestamps should not be null");
-    Objects.requireNonNull(insertTabletRequest.getIsAligned(), "isAligned should not be null");
-    Objects.requireNonNull(insertTabletRequest.getDeviceId(), "deviceId should not be null");
-    Objects.requireNonNull(insertTabletRequest.getDataTypes(), "dataTypes should not be null");
-    Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
+    Objects.requireNonNull(insertTabletRequest.getTimestamps(), RestMessages.TIMESTAMPS_NOT_NULL);
+    Objects.requireNonNull(
+        insertTabletRequest.getIsAligned(), RestMessages.IS_ALIGNED_CAMEL_NOT_NULL);
+    Objects.requireNonNull(insertTabletRequest.getDeviceId(), RestMessages.DEVICE_ID_NOT_NULL);
+    Objects.requireNonNull(
+        insertTabletRequest.getDataTypes(), RestMessages.DATA_TYPES_CAMEL_NOT_NULL);
+    Objects.requireNonNull(insertTabletRequest.getValues(), RestMessages.VALUES_NOT_NULL);
   }
 
   public static void validateExpressionRequest(ExpressionRequest expressionRequest) {
-    Objects.requireNonNull(expressionRequest.getExpression(), "expression should not be null");
-    Objects.requireNonNull(expressionRequest.getPrefixPath(), "prefixPath should not be null");
-    Objects.requireNonNull(expressionRequest.getStartTime(), "startTime should not be null");
-    Objects.requireNonNull(expressionRequest.getEndTime(), "endTime should not be null");
+    Objects.requireNonNull(expressionRequest.getExpression(), RestMessages.EXPRESSION_NOT_NULL);
+    Objects.requireNonNull(
+        expressionRequest.getPrefixPath(), RestMessages.PREFIX_PATH_CAMEL_NOT_NULL);
+    Objects.requireNonNull(
+        expressionRequest.getStartTime(), RestMessages.START_TIME_CAMEL_NOT_NULL);
+    Objects.requireNonNull(expressionRequest.getEndTime(), RestMessages.END_TIME_CAMEL_NOT_NULL);
   }
 }

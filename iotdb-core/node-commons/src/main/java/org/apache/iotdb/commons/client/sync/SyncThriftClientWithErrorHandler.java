@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.client.sync;
 
 import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.MethodInterceptor;
@@ -55,7 +56,11 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
     } catch (Throwable t) {
       ThriftClient.resolveException(t, (ThriftClient) o);
       throw new TException(
-          "Error in calling method " + method.getName() + ", because: " + t.getMessage(), t);
+          ClientMessages.EXCEPTION_ERROR_CALLING_METHOD_C04E5A63
+              + method.getName()
+              + ClientMessages.EXCEPTION_BECAUSE_ACD0B1C8
+              + t.getMessage(),
+          t);
     }
   }
 }

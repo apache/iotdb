@@ -106,5 +106,40 @@ public final class LibraryUdfMessages {
   public static final String ILLEGAL_AGGREGATION_ALGORITHM = "错误：非法聚合算法。";
   public static final String ILLEGAL_INTERPOLATION_ALGORITHM = "错误：非法插值算法。";
 
+  // Util
+  public static final String EXCEPTION_THE_PROVIDED_TIME_PRECISION_IS_HIGHER_THAN_THE_SYSTEM_S_TIME_PRECISION_MS_PLEASE_CHECK_YOUR_INPUT_92667537 =
+      "提供的时间精度高于系统时间精度（ms）。请检查输入。";
+  public static final String EXCEPTION_THE_PROVIDED_TIME_PRECISION_IS_HIGHER_THAN_THE_SYSTEM_S_TIME_PRECISION_US_PLEASE_CHECK_YOUR_INPUT_07596E70 =
+      "提供的时间精度高于系统时间精度（us）。请检查输入。";
+
+  // DWTUtil
+  public static final String EXCEPTION_THE_DATA_VECTOR_SIZE_IS_LESS_THAN_WAVELET_COEFFICIENT_SIZE_AC6652FF =
+      "数据向量大小小于 wavelet 系数大小。";
+
+  // UDTFCluster
+  public static final String EXCEPTION_TIME_SERIES_LENGTH_MUST_BE_AT_LEAST_L_GOT_322C35E3 =
+      "时间序列长度必须至少为 l，实际为 ";
+  public static final String EXCEPTION_NOT_ENOUGH_NON_OVERLAPPING_WINDOWS_GOT_192388D0 =
+      "非重叠窗口数量不足，实际为 ";
+  public static final String EXCEPTION_TIME_SERIES_LENGTH_MUST_BE_AT_LEAST_L_GOT_ARG_POINTS_L_ARG_8C796580 =
+      "时间序列长度必须至少为 l，实际为 %d 个点，l=%d。";
+  public static final String EXCEPTION_NOT_ENOUGH_NON_OVERLAPPING_WINDOWS_GOT_ARG_WINDOWS_NEED_AT_LEAST_K_ARG_9E42BA1F =
+      "非重叠窗口数量不足，实际为 %d 个窗口，至少需要 k=%d。";
+
+  // UDAFPatternMatch
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_TIMEPATTERN_MUST_BE_LONG_LONG_B2DEE922 =
+      "非法参数，timePattern 必须为 long,long...";
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_VALUEPATTERN_MUST_BE_DOUBLE_DOUBLE_BAD1419C =
+      "非法参数，valuePattern 必须为 double,double...";
+
+  // OnePassBucketizer
+  public static final String EXCEPTION_CAN_T_PRODUCE_1EF5D1BB = "无法生成 ";
+  public static final String EXCEPTION_CAN_T_PRODUCE_ARG_BUCKETS_FROM_AN_INPUT_SERIES_OF_ARG_ELEMENTS_D17D0135 =
+      "无法生成 %d 个 bucket，输入序列包含 %d 个元素";
+
+  // UDFEnvelopeAnalysis
+  public static final String EXCEPTION_FAIL_TO_GET_DATA_TYPE_IN_ROW_8CD82629 =
+      "获取该行数据类型失败，行时间戳为 ";
+
   private LibraryUdfMessages() {}
 }

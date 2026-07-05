@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -35,7 +37,8 @@ public class FieldReference extends Expression {
 
   public FieldReference(int fieldIndex) {
     super(null);
-    checkArgument(fieldIndex >= 0, "fieldIndex must be >= 0");
+    checkArgument(
+        fieldIndex >= 0, QueryMessages.EXCEPTION_FIELDINDEX_MUST_BE_GREATER_THAN_EQUALS_0_4138C39B);
 
     this.fieldIndex = fieldIndex;
   }

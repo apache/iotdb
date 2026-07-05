@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -44,7 +45,7 @@ public class TableNextFillOperator extends AbstractLinearFillOperator {
     super(operatorContext, fillArray, child);
     checkArgument(
         !hasTimeBound || helperColumnIndex != -1,
-        "helperColumnIndex should be resolved when timeBound exists");
+        CalcMessages.EXCEPTION_HELPERCOLUMNINDEX_SHOULD_BE_RESOLVED_WHEN_TIMEBOUND_EXISTS_01BE233B);
     this.helperColumnIndex = helperColumnIndex;
     this.hasTimeBound = hasTimeBound;
   }

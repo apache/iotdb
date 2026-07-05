@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.expression.multi.FunctionType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
@@ -90,15 +91,17 @@ public class AggregationNode extends SingleChildProcessNode {
       Optional<Symbol> groupIdSymbol) {
     super(id);
     this.child = source;
-    this.aggregations = ImmutableMap.copyOf(requireNonNull(aggregations, "aggregations is null"));
+    this.aggregations =
+        ImmutableMap.copyOf(
+            requireNonNull(aggregations, QueryMessages.EXCEPTION_AGGREGATIONS_IS_NULL_CFE9CD2E));
     aggregations.values().forEach(aggregation -> aggregation.verifyArguments(step));
 
-    requireNonNull(groupingSets, "groupingSets is null");
+    requireNonNull(groupingSets, QueryMessages.EXCEPTION_GROUPINGSETS_IS_NULL_8EE6D9BF);
     groupIdSymbol.ifPresent(
         symbol ->
             checkArgument(
                 groupingSets.getGroupingKeys().contains(symbol),
-                "Grouping columns does not contain groupId column"));
+                QueryMessages.EXCEPTION_GROUPING_COLUMNS_DOES_NOT_CONTAIN_GROUPID_COLUMN_83976C83));
     this.groupingSets = groupingSets;
 
     this.groupIdSymbol = requireNonNull(groupIdSymbol);
@@ -108,16 +111,18 @@ public class AggregationNode extends SingleChildProcessNode {
             .map(Aggregation::getOrderingScheme)
             .noneMatch(Optional::isPresent);
     checkArgument(
-        noOrderBy || step == Step.SINGLE, "ORDER BY does not support distributed aggregation");
+        noOrderBy || step == Step.SINGLE,
+        QueryMessages.EXCEPTION_ORDER_BY_DOES_NOT_SUPPORT_DISTRIBUTED_AGGREGATION_05109B26);
 
     this.step = step;
     this.hashSymbol = hashSymbol;
 
-    requireNonNull(preGroupedSymbols, "preGroupedSymbols is null");
+    requireNonNull(preGroupedSymbols, QueryMessages.EXCEPTION_PREGROUPEDSYMBOLS_IS_NULL_DC24FF7B);
     checkArgument(
         preGroupedSymbols.isEmpty()
             || groupingSets.getGroupingKeys().containsAll(preGroupedSymbols),
-        "Pre-grouped symbols must be a subset of the grouping keys");
+        QueryMessages
+            .EXCEPTION_PRE_MINUS_GROUPED_SYMBOLS_MUST_BE_A_SUBSET_OF_THE_GROUPING_KEYS_AFC6C33D);
     this.preGroupedSymbols = ImmutableList.copyOf(preGroupedSymbols);
 
     ImmutableList.Builder<Symbol> outputs = ImmutableList.builder();
@@ -373,16 +378,21 @@ public class AggregationNode extends SingleChildProcessNode {
 
     public GroupingSetDescriptor(
         List<Symbol> groupingKeys, int groupingSetCount, Set<Integer> globalGroupingSets) {
-      requireNonNull(globalGroupingSets, "globalGroupingSets is null");
-      checkArgument(groupingSetCount > 0, "grouping set count must be larger than 0");
+      requireNonNull(
+          globalGroupingSets, QueryMessages.EXCEPTION_GLOBALGROUPINGSETS_IS_NULL_5B175B47);
+      checkArgument(
+          groupingSetCount > 0,
+          QueryMessages.EXCEPTION_GROUPING_SET_COUNT_MUST_BE_LARGER_THAN_0_06FE609E);
       checkArgument(
           globalGroupingSets.size() <= groupingSetCount,
-          "list of empty global grouping sets must be no larger than grouping set count");
-      requireNonNull(groupingKeys, "groupingKeys is null");
+          QueryMessages
+              .EXCEPTION_LIST_OF_EMPTY_GLOBAL_GROUPING_SETS_MUST_BE_NO_LARGER_THAN_GROUPING_SET_COUNT_12DAD147);
+      requireNonNull(groupingKeys, QueryMessages.EXCEPTION_GROUPINGKEYS_IS_NULL_90D11F0C);
       if (groupingKeys.isEmpty()) {
         checkArgument(
             !globalGroupingSets.isEmpty(),
-            "no grouping keys implies at least one global grouping set, but none provided");
+            QueryMessages
+                .EXCEPTION_NO_GROUPING_KEYS_IMPLIES_AT_LEAST_ONE_GLOBAL_GROUPING_SET_COMMA_BUT_NONE_PROVIDE_F099B6D2);
       }
 
       this.groupingKeys = ImmutableList.copyOf(groupingKeys);
@@ -506,18 +516,23 @@ public class AggregationNode extends SingleChildProcessNode {
         Optional<Symbol> filter,
         Optional<OrderingScheme> orderingScheme,
         Optional<Symbol> mask) {
-      this.resolvedFunction = requireNonNull(resolvedFunction, "resolvedFunction is null");
-      this.arguments = ImmutableList.copyOf(requireNonNull(arguments, "arguments is null"));
+      this.resolvedFunction =
+          requireNonNull(
+              resolvedFunction, QueryMessages.EXCEPTION_RESOLVEDFUNCTION_IS_NULL_81B5B93A);
+      this.arguments =
+          ImmutableList.copyOf(
+              requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2));
       for (Expression argument : arguments) {
         checkArgument(
             argument instanceof SymbolReference,
-            "argument must be symbol: %s",
+            QueryMessages.EXCEPTION_ARGUMENT_MUST_BE_SYMBOL_COLON_ARG_9C176D4D,
             argument.getClass().getSimpleName());
       }
       this.distinct = distinct;
-      this.filter = requireNonNull(filter, "filter is null");
-      this.orderingScheme = requireNonNull(orderingScheme, "orderingScheme is null");
-      this.mask = requireNonNull(mask, "mask is null");
+      this.filter = requireNonNull(filter, QueryMessages.EXCEPTION_FILTER_IS_NULL_8F83BD19);
+      this.orderingScheme =
+          requireNonNull(orderingScheme, QueryMessages.EXCEPTION_ORDERINGSCHEME_IS_NULL_4D4D2F6F);
+      this.mask = requireNonNull(mask, QueryMessages.EXCEPTION_MASK_IS_NULL_5A7CEA49);
     }
 
     public ResolvedFunction getResolvedFunction() {
@@ -586,7 +601,8 @@ public class AggregationNode extends SingleChildProcessNode {
 
       checkArgument(
           expectedArgumentCount == arguments.size(),
-          "%s aggregation function %s has %s arguments, but %s arguments were provided to function call",
+          QueryMessages
+              .EXCEPTION_ARG_AGGREGATION_FUNCTION_ARG_HAS_ARG_ARGUMENTS_COMMA_BUT_ARG_ARGUMENTS_WERE_PROV_53CC06CF,
           step,
           resolvedFunction.getSignature(),
           expectedArgumentCount,
@@ -668,7 +684,7 @@ public class AggregationNode extends SingleChildProcessNode {
     private Optional<Symbol> groupIdSymbol;
 
     public Builder(AggregationNode node) {
-      requireNonNull(node, "node is null");
+      requireNonNull(node, QueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A);
       this.id = node.getPlanNodeId();
       this.source = node.getChild();
       this.aggregations = node.getAggregations();
@@ -680,42 +696,48 @@ public class AggregationNode extends SingleChildProcessNode {
     }
 
     public Builder setId(PlanNodeId id) {
-      this.id = requireNonNull(id, "id is null");
+      this.id = requireNonNull(id, QueryMessages.EXCEPTION_ID_IS_NULL_9D5D27B1);
       return this;
     }
 
     public Builder setSource(PlanNode source) {
-      this.source = requireNonNull(source, "source is null");
+      this.source = requireNonNull(source, QueryMessages.EXCEPTION_SOURCE_IS_NULL_45946547);
       return this;
     }
 
     public Builder setAggregations(Map<Symbol, Aggregation> aggregations) {
-      this.aggregations = requireNonNull(aggregations, "aggregations is null");
+      this.aggregations =
+          requireNonNull(aggregations, QueryMessages.EXCEPTION_AGGREGATIONS_IS_NULL_CFE9CD2E);
       return this;
     }
 
     public Builder setGroupingSets(GroupingSetDescriptor groupingSets) {
-      this.groupingSets = requireNonNull(groupingSets, "groupingSets is null");
+      this.groupingSets =
+          requireNonNull(groupingSets, QueryMessages.EXCEPTION_GROUPINGSETS_IS_NULL_8EE6D9BF);
       return this;
     }
 
     public Builder setPreGroupedSymbols(List<Symbol> preGroupedSymbols) {
-      this.preGroupedSymbols = requireNonNull(preGroupedSymbols, "preGroupedSymbols is null");
+      this.preGroupedSymbols =
+          requireNonNull(
+              preGroupedSymbols, QueryMessages.EXCEPTION_PREGROUPEDSYMBOLS_IS_NULL_DC24FF7B);
       return this;
     }
 
     public Builder setStep(Step step) {
-      this.step = requireNonNull(step, "step is null");
+      this.step = requireNonNull(step, QueryMessages.EXCEPTION_STEP_IS_NULL_F83262DA);
       return this;
     }
 
     public Builder setHashSymbol(Optional<Symbol> hashSymbol) {
-      this.hashSymbol = requireNonNull(hashSymbol, "hashSymbol is null");
+      this.hashSymbol =
+          requireNonNull(hashSymbol, QueryMessages.EXCEPTION_HASHSYMBOL_IS_NULL_1BD487F2);
       return this;
     }
 
     public Builder setGroupIdSymbol(Optional<Symbol> groupIdSymbol) {
-      this.groupIdSymbol = requireNonNull(groupIdSymbol, "groupIdSymbol is null");
+      this.groupIdSymbol =
+          requireNonNull(groupIdSymbol, QueryMessages.EXCEPTION_GROUPIDSYMBOL_IS_NULL_BFD3763D);
       return this;
     }
 

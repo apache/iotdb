@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPartitionRel
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.SubPlanTypeExtractor;
@@ -161,10 +162,13 @@ public class PlanFragment {
           ((InformationSchemaTableScanNode) root).getRegionReplicaSet();
 
       checkArgument(
-          regionReplicaSet != null, "InformationSchemaTableScanNode must have regionReplicaSet");
+          regionReplicaSet != null,
+          DataNodeQueryMessages
+              .EXCEPTION_INFORMATIONSCHEMATABLESCANNODE_MUST_HAVE_REGIONREPLICASET_0411DBCB);
       checkArgument(
           regionReplicaSet.getDataNodeLocations().size() == 1,
-          "each InformationSchemaTableScanNode have only one DataNodeLocation");
+          DataNodeQueryMessages
+              .EXCEPTION_EACH_INFORMATIONSCHEMATABLESCANNODE_HAVE_ONLY_ONE_DATANODELOCATION_FA3E82C4);
 
       return regionReplicaSet.getDataNodeLocations().get(0);
     }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class DatabaseAlreadySetException extends MetadataException {
@@ -28,7 +29,7 @@ public class DatabaseAlreadySetException extends MetadataException {
 
   public DatabaseAlreadySetException(final String path) {
     super(
-        String.format("%s has already been created as database", path),
+        String.format(DataNodeSchemaMessages.DATABASE_ALREADY_CREATED_AS_DATABASE_FMT, path),
         TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
     storageGroupPath = path;
   }

@@ -294,9 +294,12 @@ public class RemoveRegionGroupProcedure extends RegionOperationProcedure<RemoveR
     if (procId < 0 || procId >= (1L << PROC_ID_BITS) || deleteTaskSeq >= (1L << SEQ_BITS)) {
       throw new IllegalStateException(
           String.format(
-              "cannot derive a collision-free delete taskId: procId=%d, deleteTaskSeq=%d exceed the "
-                  + "%d/%d-bit budget",
-              procId, deleteTaskSeq, PROC_ID_BITS, SEQ_BITS));
+              ProcedureMessages
+                  .EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_ARG_ARG_BIT_BUDGET_015C598D,
+              procId,
+              deleteTaskSeq,
+              PROC_ID_BITS,
+              SEQ_BITS));
     }
     return Long.MIN_VALUE | (procId << SEQ_BITS) | deleteTaskSeq;
   }

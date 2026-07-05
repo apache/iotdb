@@ -96,7 +96,8 @@ public class StatementConstructionHandler {
               intValues[rowIndex] = (int) object;
             } else {
               throw new WriteProcessRejectException(
-                  "unsupported data type: " + object.getClass().toString());
+                  RestMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_0521CEDE
+                      + object.getClass().toString());
             }
           }
           columns[columnIndex] = intValues;
@@ -114,7 +115,8 @@ public class StatementConstructionHandler {
               longValues[rowIndex] = (long) object;
             } else {
               throw new WriteProcessRejectException(
-                  "unsupported data type: " + object.getClass().toString());
+                  RestMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_0521CEDE
+                      + object.getClass().toString());
             }
           }
           columns[columnIndex] = longValues;

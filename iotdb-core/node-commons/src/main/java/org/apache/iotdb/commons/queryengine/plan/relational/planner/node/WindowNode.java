@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -83,15 +84,16 @@ public class WindowNode extends SingleChildProcessNode {
     Optional<OrderingScheme> orderingScheme = specification.getOrderingScheme();
     checkArgument(
         partitionBy.containsAll(prePartitionedInputs),
-        "prePartitionedInputs must be contained in partitionBy");
+        QueryMessages.EXCEPTION_PREPARTITIONEDINPUTS_MUST_BE_CONTAINED_IN_PARTITIONBY_CE9DCE6F);
     checkArgument(
         preSortedOrderPrefix == 0
             || (orderingScheme.isPresent()
                 && preSortedOrderPrefix <= orderingScheme.get().getOrderBy().size()),
-        "Cannot have sorted more symbols than those requested");
+        QueryMessages.EXCEPTION_CANNOT_HAVE_SORTED_MORE_SYMBOLS_THAN_THOSE_REQUESTED_52EEB7C9);
     checkArgument(
         preSortedOrderPrefix == 0 || partitionBy.equals(prePartitionedInputs),
-        "preSortedOrderPrefix can only be greater than zero if all partition symbols are pre-partitioned");
+        QueryMessages
+            .EXCEPTION_PRESORTEDORDERPREFIX_CAN_ONLY_BE_GREATER_THAN_ZERO_IF_ALL_PARTITION_SYMBOLS_ARE__76BBC8DD);
 
     this.prePartitionedInputs = prePartitionedInputs;
     this.specification = specification;
@@ -291,40 +293,51 @@ public class WindowNode extends SingleChildProcessNode {
         Optional<Symbol> sortKeyCoercedForFrameEndComparison,
         Optional<Expression> originalStartValue,
         Optional<Expression> originalEndValue) {
-      this.startType = requireNonNull(startType, "startType is null");
-      this.startValue = requireNonNull(startValue, "startValue is null");
+      this.startType =
+          requireNonNull(startType, QueryMessages.EXCEPTION_STARTTYPE_IS_NULL_2EB77A1F);
+      this.startValue =
+          requireNonNull(startValue, QueryMessages.EXCEPTION_STARTVALUE_IS_NULL_4FD58C2B);
       this.sortKeyCoercedForFrameStartComparison =
           requireNonNull(
               sortKeyCoercedForFrameStartComparison,
-              "sortKeyCoercedForFrameStartComparison is null");
-      this.endType = requireNonNull(endType, "endType is null");
-      this.endValue = requireNonNull(endValue, "endValue is null");
+              QueryMessages.EXCEPTION_SORTKEYCOERCEDFORFRAMESTARTCOMPARISON_IS_NULL_4E922E4D);
+      this.endType = requireNonNull(endType, QueryMessages.EXCEPTION_ENDTYPE_IS_NULL_6B9E47D2);
+      this.endValue = requireNonNull(endValue, QueryMessages.EXCEPTION_ENDVALUE_IS_NULL_69BD66CB);
       this.sortKeyCoercedForFrameEndComparison =
           requireNonNull(
-              sortKeyCoercedForFrameEndComparison, "sortKeyCoercedForFrameEndComparison is null");
-      this.type = requireNonNull(type, "type is null");
-      this.originalStartValue = requireNonNull(originalStartValue, "originalStartValue is null");
-      this.originalEndValue = requireNonNull(originalEndValue, "originalEndValue is null");
+              sortKeyCoercedForFrameEndComparison,
+              QueryMessages.EXCEPTION_SORTKEYCOERCEDFORFRAMEENDCOMPARISON_IS_NULL_CB0BAC41);
+      this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+      this.originalStartValue =
+          requireNonNull(
+              originalStartValue, QueryMessages.EXCEPTION_ORIGINALSTARTVALUE_IS_NULL_6BCE78A9);
+      this.originalEndValue =
+          requireNonNull(
+              originalEndValue, QueryMessages.EXCEPTION_ORIGINALENDVALUE_IS_NULL_EBA46FFA);
 
       if (startValue.isPresent()) {
         checkArgument(
             originalStartValue.isPresent(),
-            "originalStartValue must be present if startValue is present");
+            QueryMessages
+                .EXCEPTION_ORIGINALSTARTVALUE_MUST_BE_PRESENT_IF_STARTVALUE_IS_PRESENT_30B6FDFF);
         if (type == RANGE) {
           checkArgument(
               sortKeyCoercedForFrameStartComparison.isPresent(),
-              "for frame of type RANGE, sortKeyCoercedForFrameStartComparison must be present if startValue is present");
+              QueryMessages
+                  .EXCEPTION_FOR_FRAME_OF_TYPE_RANGE_COMMA_SORTKEYCOERCEDFORFRAMESTARTCOMPARISON_MUST_BE_PRES_7533A433);
         }
       }
 
       if (endValue.isPresent()) {
         checkArgument(
             originalEndValue.isPresent(),
-            "originalEndValue must be present if endValue is present");
+            QueryMessages
+                .EXCEPTION_ORIGINALENDVALUE_MUST_BE_PRESENT_IF_ENDVALUE_IS_PRESENT_E79EF3D2);
         if (type == RANGE) {
           checkArgument(
               sortKeyCoercedForFrameEndComparison.isPresent(),
-              "for frame of type RANGE, sortKeyCoercedForFrameEndComparison must be present if endValue is present");
+              QueryMessages
+                  .EXCEPTION_FOR_FRAME_OF_TYPE_RANGE_COMMA_SORTKEYCOERCEDFORFRAMEENDCOMPARISON_MUST_BE_PRESEN_36A665AC);
         }
       }
     }
@@ -533,9 +546,12 @@ public class WindowNode extends SingleChildProcessNode {
         List<Expression> arguments,
         Frame frame,
         boolean ignoreNulls) {
-      this.resolvedFunction = requireNonNull(resolvedFunction, "resolvedFunction is null");
-      this.arguments = requireNonNull(arguments, "arguments is null");
-      this.frame = requireNonNull(frame, "frame is null");
+      this.resolvedFunction =
+          requireNonNull(
+              resolvedFunction, QueryMessages.EXCEPTION_RESOLVEDFUNCTION_IS_NULL_81B5B93A);
+      this.arguments =
+          requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
+      this.frame = requireNonNull(frame, QueryMessages.EXCEPTION_FRAME_IS_NULL_5A92D609);
       this.ignoreNulls = ignoreNulls;
     }
 

@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -271,7 +272,11 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())
-            .setMessage(NO_GRANT_OPT_PERMISSION_PROMOTION + neededPrivilege + " ON DB:" + database);
+            .setMessage(
+                NO_GRANT_OPT_PERMISSION_PROMOTION
+                    + neededPrivilege
+                    + DataNodeMiscMessages.MESSAGE_DB_34B9E556
+                    + database);
   }
 
   public static TSStatus getGrantOptTSStatus(
@@ -282,9 +287,9 @@ public class AuthorityChecker {
             .setMessage(
                 NO_GRANT_OPT_PERMISSION_PROMOTION
                     + neededPrivilege
-                    + " ON "
+                    + DataNodeMiscMessages.MESSAGE_MESSAGE_CECB319D
                     + database
-                    + "."
+                    + DataNodeMiscMessages.MESSAGE_DOT_9D9B854A
                     + table);
   }
 
@@ -293,7 +298,11 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + " ON DB:" + database);
+            .setMessage(
+                NO_PERMISSION_PROMOTION
+                    + neededPrivilege
+                    + DataNodeMiscMessages.MESSAGE_DB_34B9E556
+                    + database);
   }
 
   public static TSStatus getTSStatus(
@@ -302,7 +311,12 @@ public class AuthorityChecker {
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
             .setMessage(
-                NO_PERMISSION_PROMOTION + neededPrivilege + " ON " + database + "." + table);
+                NO_PERMISSION_PROMOTION
+                    + neededPrivilege
+                    + DataNodeMiscMessages.MESSAGE_MESSAGE_CECB319D
+                    + database
+                    + DataNodeMiscMessages.MESSAGE_DOT_9D9B854A
+                    + table);
   }
 
   public static TSStatus getTSStatus(
@@ -319,7 +333,11 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + " on " + path);
+            .setMessage(
+                NO_PERMISSION_PROMOTION
+                    + neededPrivilege
+                    + DataNodeMiscMessages.MESSAGE_MESSAGE_57992626
+                    + path);
   }
 
   public static TSStatus getTSStatus(

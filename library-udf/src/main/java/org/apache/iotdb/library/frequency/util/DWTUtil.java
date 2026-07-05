@@ -156,7 +156,8 @@ public class DWTUtil {
 
     if (n < ncof) {
       throw new IllegalArgumentException(
-          "The data vector size is less than wavelet coefficient size.");
+          LibraryUdfMessages
+              .EXCEPTION_THE_DATA_VECTOR_SIZE_IS_LESS_THAN_WAVELET_COEFFICIENT_SIZE_AC6652FF);
     }
     int nn = n;
     for (int i = 0; i < layer; i++) {
@@ -213,7 +214,8 @@ public class DWTUtil {
 
     if (n < ncof) {
       throw new IllegalArgumentException(
-          "The data vector size is less than wavelet coefficient size.");
+          LibraryUdfMessages
+              .EXCEPTION_THE_DATA_VECTOR_SIZE_IS_LESS_THAN_WAVELET_COEFFICIENT_SIZE_AC6652FF);
     }
     int nn = n;
     for (int i = 0; i < layer - 1; i++) {

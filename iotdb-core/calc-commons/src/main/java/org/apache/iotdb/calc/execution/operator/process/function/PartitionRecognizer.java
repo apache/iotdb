@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process.function;
 
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.type.Type;
@@ -74,7 +75,7 @@ public class PartitionRecognizer {
   public void addTsBlock(TsBlock tsBlock) {
     if (noMoreData) {
       throw new IllegalArgumentException(
-          "The partition handler is finished, cannot add more data.");
+          CalcMessages.EXCEPTION_PARTITION_HANDLER_FINISHED_CANNOT_ADD_MORE_DATA_D8E31A3E);
     }
     currentTsBlock = tsBlock;
   }

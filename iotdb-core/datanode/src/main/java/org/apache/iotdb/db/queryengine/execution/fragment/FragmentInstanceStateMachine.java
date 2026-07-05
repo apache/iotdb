@@ -72,8 +72,12 @@ public class FragmentInstanceStateMachine {
       new ArrayList<>();
 
   public FragmentInstanceStateMachine(FragmentInstanceId fragmentInstanceId, Executor executor) {
-    this.instanceId = requireNonNull(fragmentInstanceId, "fragmentInstanceId is null");
-    this.executor = requireNonNull(executor, "executor is null");
+    this.instanceId =
+        requireNonNull(
+            fragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_FRAGMENTINSTANCEID_IS_NULL_4D371DB4);
+    this.executor =
+        requireNonNull(executor, DataNodeQueryMessages.EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4);
     instanceState =
         new StateMachine<>(
             "FragmentInstance " + fragmentInstanceId, executor, RUNNING, TERMINAL_INSTANCE_STATES);
@@ -101,8 +105,10 @@ public class FragmentInstanceStateMachine {
 
   public ListenableFuture<FragmentInstanceState> getStateChange(
       FragmentInstanceState currentState) {
-    requireNonNull(currentState, "currentState is null");
-    checkArgument(!currentState.isDone(), "Current state is already done");
+    requireNonNull(currentState, DataNodeQueryMessages.EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB);
+    checkArgument(
+        !currentState.isDone(),
+        DataNodeQueryMessages.EXCEPTION_CURRENT_STATE_IS_ALREADY_DONE_19FC56DC);
 
     ListenableFuture<FragmentInstanceState> future = instanceState.getStateChange(currentState);
     FragmentInstanceState state = instanceState.get();
@@ -138,8 +144,11 @@ public class FragmentInstanceStateMachine {
   }
 
   private void transitionToDoneState(FragmentInstanceState doneState) {
-    requireNonNull(doneState, "doneState is null");
-    checkArgument(doneState.isDone(), "doneState %s is not a done state", doneState);
+    requireNonNull(doneState, DataNodeQueryMessages.EXCEPTION_DONESTATE_IS_NULL_D88F77E5);
+    checkArgument(
+        doneState.isDone(),
+        DataNodeQueryMessages.EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618,
+        doneState);
 
     instanceState.setIf(doneState, currentState -> !currentState.isDone());
   }

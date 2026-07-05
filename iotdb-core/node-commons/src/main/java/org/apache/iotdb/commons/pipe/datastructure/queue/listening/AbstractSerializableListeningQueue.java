@@ -110,7 +110,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.warn(
-          "Failed to serialize to file, because file {} is already exist.",
+          PipeMessages.LOG_FAILED_SERIALIZE_FILE_BECAUSE_FILE_ARG_ALREADY_EXIST_FACC5C4C,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -134,7 +134,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.warn(
-          "Failed to deserialize from file, file {} does not exist.",
+          PipeMessages.LOG_FAILED_DESERIALIZE_FILE_FILE_ARG_DOES_NOT_EXIST_2356708C,
           snapshotFile.getAbsolutePath());
       return;
     }

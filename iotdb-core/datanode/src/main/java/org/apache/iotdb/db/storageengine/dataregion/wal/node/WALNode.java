@@ -140,7 +140,7 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
     logger.debug(
-        "WAL node-{} logs insertRowNode, the search index is {}.",
+        StorageEngineMessages.STORAGE_LOG_WAL_NODE_LOGS_INSERTROWNODE_THE_SEARCH_INDEX_IS_027450AC,
         identifier,
         insertRowNode.getSearchIndex());
     WALEntry walEntry = new WALInfoEntry(memTableId, insertRowNode);
@@ -150,7 +150,7 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(long memTableId, InsertRowsNode insertRowsNode) {
     logger.debug(
-        "WAL node-{} logs insertRowsNode, the search index is {}.",
+        StorageEngineMessages.STORAGE_LOG_WAL_NODE_LOGS_INSERTROWSNODE_THE_SEARCH_INDEX_IS_1AF72E25,
         identifier,
         insertRowsNode.getSearchIndex());
     WALEntry walEntry = new WALInfoEntry(memTableId, insertRowsNode);
@@ -161,7 +161,8 @@ public class WALNode implements IWALNode {
   public WALFlushListener log(
       long memTableId, InsertTabletNode insertTabletNode, List<int[]> rangeList) {
     logger.debug(
-        "WAL node-{} logs insertTabletNode, the search index is {}.",
+        StorageEngineMessages
+            .STORAGE_LOG_WAL_NODE_LOGS_INSERTTABLETNODE_THE_SEARCH_INDEX_IS_CF9A3600,
         identifier,
         insertTabletNode.getSearchIndex());
     WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, rangeList);
@@ -171,7 +172,7 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode) {
     logger.debug(
-        "WAL node-{} logs deleteDataNode, the search index is {}.",
+        StorageEngineMessages.STORAGE_LOG_WAL_NODE_LOGS_DELETEDATANODE_THE_SEARCH_INDEX_IS_6E49BC54,
         identifier,
         deleteDataNode.getSearchIndex());
     WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);
@@ -182,7 +183,8 @@ public class WALNode implements IWALNode {
   public WALFlushListener log(long memTableId, RelationalDeleteDataNode deleteDataNode) {
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "WAL node-{} logs relationalDeleteDataNode, the search index is {}.",
+          StorageEngineMessages
+              .STORAGE_LOG_WAL_NODE_LOGS_RELATIONALDELETEDATANODE_THE_SEARCH_INDEX_33258B30,
           identifier,
           deleteDataNode.getSearchIndex());
     }
@@ -290,7 +292,8 @@ public class WALNode implements IWALNode {
       if (allWalFilesOfOneNode == null || allWalFilesOfOneNode.length <= 1) {
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "wal node-{}:no wal file or wal file number less than or equal to one was found",
+              StorageEngineMessages
+                  .STORAGE_LOG_WAL_NODE_NO_WAL_FILE_OR_WAL_FILE_NUMBER_LESS_THAN_OR_EQUAL_3C65641C,
               identifier);
         }
         return false;
@@ -368,7 +371,8 @@ public class WALNode implements IWALNode {
       }
       effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;
       logger.debug(
-          "Effective information ratio is {}, active memTables cost is {}, total cost is {}",
+          StorageEngineMessages
+              .STORAGE_LOG_EFFECTIVE_INFORMATION_RATIO_IS_ACTIVE_MEMTABLES_COST_IS_D9A13DD2,
           effectiveInfoRatio,
           costOfActiveMemTables,
           totalCost);
@@ -377,7 +381,8 @@ public class WALNode implements IWALNode {
 
     private void summarizeExecuteResult() {
       logger.debug(
-          "Successfully delete {} outdated wal files for wal node-{}",
+          StorageEngineMessages
+              .STORAGE_LOG_SUCCESSFULLY_DELETE_OUTDATED_WAL_FILES_FOR_WAL_NODE_C141C741,
           successfullyDeleted.size(),
           identifier);
     }
@@ -396,7 +401,10 @@ public class WALNode implements IWALNode {
             successfullyDeleted.add(versionId);
           } else {
             logger.info(
-                "Fail to delete outdated wal file {} of wal node-{}.", currentWal, identifier);
+                StorageEngineMessages
+                    .STORAGE_LOG_FAIL_TO_DELETE_OUTDATED_WAL_FILE_OF_WAL_NODE_1B1F2AF2,
+                currentWal,
+                identifier);
           }
         }
       }
@@ -475,7 +483,8 @@ public class WALNode implements IWALNode {
             dataRegion.submitAFlushTask(
                 TsFileUtils.getTimePartition(tsFile), TsFileUtils.isSequence(tsFile), memTable);
         logger.info(
-            "WAL node-{} flushes memTable-{} to TsFile {} because Effective information ratio {} is below wal min effective info ratio {}, memTable size is {}.",
+            StorageEngineMessages
+                .STORAGE_LOG_WAL_NODE_FLUSHES_MEMTABLE_TO_TSFILE_BECAUSE_EFFECTIVE_INFORMATION_8CC86239,
             identifier,
             memTable.getMemTableId(),
             tsFile,
@@ -546,7 +555,8 @@ public class WALNode implements IWALNode {
             return;
           }
           logger.info(
-              "WAL node-{} snapshots memTable-{} to wal files because Effective information ratio {} is below wal min effective info ratio {}, memTable size is {}.",
+              StorageEngineMessages
+                  .STORAGE_LOG_WAL_NODE_SNAPSHOTS_MEMTABLE_TO_WAL_FILES_BECAUSE_EFFECTIVE_0A1304ED,
               identifier,
               memTable.getMemTableId(),
               String.format("%.4f", effectiveInfoRatio),
@@ -646,7 +656,9 @@ public class WALNode implements IWALNode {
         updateFilesToSearch();
         if (needUpdatingFilesToSearch) {
           logger.debug(
-              "update file to search failed, the next search index is {}", nextSearchIndex);
+              StorageEngineMessages
+                  .STORAGE_LOG_UPDATE_FILE_TO_SEARCH_FAILED_THE_NEXT_SEARCH_INDEX_IS_F3DC95F3,
+              nextSearchIndex);
           return false;
         }
       }
@@ -745,7 +757,8 @@ public class WALNode implements IWALNode {
                 tryToCollectInsertNodeAndBumpIndex.run();
                 if (currentWalEntryIndex != nextSearchIndex) {
                   logger.warn(
-                      "The search index of next WAL entry should be {}, but actually it's {}",
+                      StorageEngineMessages
+                          .STORAGE_LOG_THE_SEARCH_INDEX_OF_NEXT_WAL_ENTRY_SHOULD_BE_BUT_ACTUALLY_177BF8AF,
                       nextSearchIndex,
                       currentWalEntryIndex);
                   nextSearchIndex = currentWalEntryIndex;
@@ -785,7 +798,8 @@ public class WALNode implements IWALNode {
         } catch (Exception e) {
           brokenFileId = WALFileUtils.parseVersionId(filesToSearch[currentFileIndex].getName());
           logger.error(
-              "Fail to read wal from wal file {}, skip this file.",
+              StorageEngineMessages
+                  .STORAGE_LOG_FAIL_TO_READ_WAL_FROM_WAL_FILE_SKIP_THIS_FILE_06A3B079,
               filesToSearch[currentFileIndex],
               e);
         }
@@ -836,7 +850,8 @@ public class WALNode implements IWALNode {
           if (timeout) {
             bufferLastSearchIndex = buffer.getCurrentSearchIndex();
             logger.info(
-                "timeout when waiting for next WAL entry ready, execute rollWALFile. Current search index in wal buffer is {}, and next target index is {}",
+                StorageEngineMessages
+                    .STORAGE_LOG_TIMEOUT_WHEN_WAITING_FOR_NEXT_WAL_ENTRY_READY_EXECUTE_ROLLWALFILE_FEE9700E,
                 bufferLastSearchIndex,
                 nextSearchIndex);
             rollWALFile();
@@ -865,7 +880,8 @@ public class WALNode implements IWALNode {
     public void skipTo(long targetIndex) {
       if (targetIndex < nextSearchIndex) {
         logger.warn(
-            "Skip from {} to {}, it's a dangerous operation because insert plan {} may have been lost.",
+            StorageEngineMessages
+                .STORAGE_LOG_SKIP_FROM_TO_IT_S_A_DANGEROUS_OPERATION_BECAUSE_INSERT_PLAN_9283DC91,
             nextSearchIndex,
             targetIndex,
             targetIndex);
@@ -904,7 +920,10 @@ public class WALNode implements IWALNode {
       WALFileUtils.ascSortByVersionId(filesToSearch);
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
       logger.debug(
-          "searchIndex: {}, result: {}, files: {}, ", nextSearchIndex, fileIndex, filesToSearch);
+          StorageEngineMessages.STORAGE_LOG_SEARCHINDEX_RESULT_FILES_6151DCEB,
+          nextSearchIndex,
+          fileIndex,
+          filesToSearch);
       // (xingtanzjr) When the target entry does not exist, the reader will return minimum one whose
       // searchIndex is larger than target searchIndex
       if (fileIndex == -1) {
@@ -1064,7 +1083,8 @@ public class WALNode implements IWALNode {
     WALFlushListener walFlushListener = log(rollWALFileSignal);
     if (!deleted && walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
       logger.error(
-          "Fail to trigger rolling wal node-{}'s wal file log writer.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAIL_TO_TRIGGER_ROLLING_WAL_NODE_S_WAL_FILE_LOG_WRITER_D1E595DC,
           identifier,
           walFlushListener.getCause());
     }

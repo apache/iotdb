@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.metricsets.logback;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.SystemMetric;
@@ -105,7 +106,7 @@ public class LogbackMetrics implements IMetricSet {
             MetricType.COUNTER, SystemMetric.LOGBACK_EVENTS.toString(), LEVEL, "trace");
       }
     } catch (Exception e) {
-      logger.warn("Failed to remove logBackMetrics, because ", e);
+      logger.warn(MetricsMessages.LOG_FAILED_REMOVE_LOGBACKMETRICS_BECAUSE_9BE74246, e);
     }
   }
 }

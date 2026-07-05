@@ -47,7 +47,8 @@ public class AlterTimeSeriesTask implements IConfigTask {
       if (alterTimeSeriesStatement.getDataType() == null) {
         throw new IllegalArgumentException(
             String.format(
-                "Data type cannot be null executing the statement that alter timeseries %s set data type",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DATA_TYPE_CANNOT_BE_NULL_EXECUTING_THE_STATEMENT_THAT_ALTER_4C959B2F,
                 alterTimeSeriesStatement.getPath().getFullPath()));
       }
       return configTaskExecutor.alterTimeSeriesDataType(queryId, alterTimeSeriesStatement);

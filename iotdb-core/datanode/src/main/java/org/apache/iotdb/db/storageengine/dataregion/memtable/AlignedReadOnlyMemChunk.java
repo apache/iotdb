@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -257,7 +258,9 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataTypes.get(column)));
+                String.format(
+                    StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    dataTypes.get(column)));
         }
         pageValueStatistics[column] = pageValueStats.isEmpty() ? null : pageValueStats;
       }

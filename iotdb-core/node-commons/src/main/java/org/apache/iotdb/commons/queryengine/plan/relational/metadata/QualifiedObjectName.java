@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.errorprone.annotations.Immutable;
 
 import java.util.Objects;
@@ -37,9 +39,9 @@ public class QualifiedObjectName {
       Pattern.compile("(?<database>" + COMPONENT + ")\\.(?<table>" + COMPONENT + ")");
 
   public static QualifiedObjectName valueOf(String name) {
-    requireNonNull(name, "name is null");
+    requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     Matcher matcher = PATTERN.matcher(name);
-    checkArgument(matcher.matches(), "Invalid name %s", name);
+    checkArgument(matcher.matches(), QueryMessages.EXCEPTION_INVALID_NAME_ARG_AD3FA0BF, name);
     return new QualifiedObjectName(
         unquoteIfNeeded(matcher.group("database")), unquoteIfNeeded(matcher.group("table")));
   }
@@ -89,7 +91,10 @@ public class QualifiedObjectName {
     if (name.isEmpty() || name.charAt(0) != '"') {
       return name;
     }
-    checkArgument(name.charAt(name.length() - 1) == '"', "Invalid name: [%s]", name);
+    checkArgument(
+        name.charAt(name.length() - 1) == '"',
+        QueryMessages.EXCEPTION_INVALID_NAME_COLON_LEFT_BRACKET_ARG_RIGHT_BRACKET_C46F15A4,
+        name);
     return name.substring(1, name.length() - 1).replace("\"\"", "\"");
   }
 

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -56,10 +57,10 @@ public final class RenameColumn extends Statement {
       final boolean tableIfExists,
       final boolean columnIfNotExists,
       final boolean view) {
-    super(requireNonNull(location, "location is null"));
-    this.table = requireNonNull(table, "table is null");
-    this.source = requireNonNull(source, "source is null");
-    this.target = requireNonNull(target, "target is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.table = requireNonNull(table, DataNodeQueryMessages.EXCEPTION_TABLE_IS_NULL_8DDD9098);
+    this.source = requireNonNull(source, DataNodeQueryMessages.EXCEPTION_SOURCE_IS_NULL_45946547);
+    this.target = requireNonNull(target, DataNodeQueryMessages.EXCEPTION_TARGET_IS_NULL_240F0372);
     this.tableIfExists = tableIfExists;
     this.columnIfNotExists = columnIfNotExists;
     this.view = view;

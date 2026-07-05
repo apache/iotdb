@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -43,8 +44,9 @@ public class DropDB extends Statement {
   private final boolean exists;
 
   public DropDB(NodeLocation location, Identifier catalogName, boolean exists) {
-    super(requireNonNull(location, "location is null"));
-    this.dbName = requireNonNull(catalogName, "catalogName is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.dbName =
+        requireNonNull(catalogName, DataNodeQueryMessages.EXCEPTION_CATALOGNAME_IS_NULL_2E3C3C6B);
     this.exists = exists;
   }
 

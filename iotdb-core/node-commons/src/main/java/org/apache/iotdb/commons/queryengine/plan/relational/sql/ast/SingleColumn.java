@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -45,26 +47,30 @@ public class SingleColumn extends SelectItem {
 
   public SingleColumn(Expression expression) {
     super(null);
-    this.expression = requireNonNull(expression, "expression is null");
+    this.expression =
+        requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
     this.alias = null;
   }
 
   public SingleColumn(NodeLocation location, Expression expression) {
-    super(requireNonNull(location, "location is null"));
-    this.expression = requireNonNull(expression, "expression is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.expression =
+        requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
     this.alias = null;
   }
 
   public SingleColumn(Expression expression, Identifier alias) {
     super(null);
-    this.expression = requireNonNull(expression, "expression is null");
-    this.alias = requireNonNull(alias, "alias is null");
+    this.expression =
+        requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
+    this.alias = requireNonNull(alias, QueryMessages.EXCEPTION_ALIAS_IS_NULL_B2ED729A);
   }
 
   public SingleColumn(NodeLocation location, Expression expression, Identifier alias) {
-    super(requireNonNull(location, "location is null"));
-    this.expression = requireNonNull(expression, "expression is null");
-    this.alias = requireNonNull(alias, "alias is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.expression =
+        requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
+    this.alias = requireNonNull(alias, QueryMessages.EXCEPTION_ALIAS_IS_NULL_B2ED729A);
   }
 
   public Optional<Identifier> getAlias() {

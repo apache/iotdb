@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 
 import org.apache.tsfile.block.column.Column;
@@ -62,14 +63,16 @@ public class TreeAggregator {
   public void processTsBlock(TsBlock tsBlock, BitMap bitMap) {
     checkArgument(
         step.isInputRaw(),
-        "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
+        DataNodeQueryMessages
+            .EXCEPTION_STEP_IN_SERIESAGGREGATESCANOPERATOR_AND_RAWDATAAGGREGATEOPERATOR_CAN_ONLY_PROCES_5575BD95);
     for (InputLocation[] inputLocations : inputLocationList) {
       Column[] timeAndValueColumn = new Column[1 + inputLocations.length];
       timeAndValueColumn[0] = tsBlock.getTimeColumn();
       for (int i = 0; i < inputLocations.length; i++) {
         checkArgument(
             inputLocations[i].getTsBlockIndex() == 0,
-            "RawDataAggregateOperator can only process one tsBlock input.");
+            DataNodeQueryMessages
+                .EXCEPTION_RAWDATAAGGREGATEOPERATOR_CAN_ONLY_PROCESS_ONE_TSBLOCK_INPUT_DOT_5ABCB8C0);
         int index = inputLocations[i].getValueColumnIndex();
         // for count_time, time column is also its value column
         // for max_by, the input column can also be time column.
@@ -81,9 +84,14 @@ public class TreeAggregator {
 
   // Used for AggregateOperator
   public void processTsBlocks(TsBlock[] tsBlock) {
-    checkArgument(!step.isInputRaw(), "Step in AggregateOperator cannot process raw input");
+    checkArgument(
+        !step.isInputRaw(),
+        DataNodeQueryMessages
+            .EXCEPTION_STEP_IN_AGGREGATEOPERATOR_CANNOT_PROCESS_RAW_INPUT_22620F61);
     if (step.isInputFinal()) {
-      checkArgument(inputLocationList.size() == 1, "Final output can only be single column");
+      checkArgument(
+          inputLocationList.size() == 1,
+          DataNodeQueryMessages.EXCEPTION_FINAL_OUTPUT_CAN_ONLY_BE_SINGLE_COLUMN_6D82F9E0);
       Column finalResult =
           tsBlock[inputLocationList.get(0)[0].getTsBlockIndex()].getColumn(
               inputLocationList.get(0)[0].getValueColumnIndex());

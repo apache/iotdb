@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.utils;
 
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
+
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +54,8 @@ public class MetricInfo {
       }
     } else {
       logger.error(
-          "The size of metric tags should be even, but was odd, tags: {}.", String.join(",", tags));
+          MetricsMessages.LOG_SIZE_METRIC_TAGS_SHOULD_EVEN_BUT_WAS_ODD_TAGS_ARG_201E6A2A,
+          String.join(",", tags));
     }
     this.metaInfo = new MetaInfo(type, this.tags.keySet());
   }

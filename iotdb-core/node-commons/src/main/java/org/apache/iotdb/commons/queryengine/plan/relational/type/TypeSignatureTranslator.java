@@ -75,7 +75,7 @@ public class TypeSignatureTranslator {
 
     checkArgument(
         !typeVariables.contains(type.getName().getValue()),
-        "Base type name cannot be a type variable");
+        QueryMessages.EXCEPTION_BASE_TYPE_NAME_CANNOT_BE_A_TYPE_VARIABLE_71E810A9);
 
     for (DataTypeParameter parameter : type.getArguments()) {
       if (parameter instanceof NumericParameter) {

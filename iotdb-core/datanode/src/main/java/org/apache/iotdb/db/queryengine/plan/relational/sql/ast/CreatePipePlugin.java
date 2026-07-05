@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -43,10 +44,15 @@ public class CreatePipePlugin extends PipeStatement {
       final boolean ifNotExistsCondition,
       final String className,
       final String uriString) {
-    this.pluginName = requireNonNull(pluginName, "plugin name can not be null");
+    this.pluginName =
+        requireNonNull(
+            pluginName, DataNodeQueryMessages.EXCEPTION_PLUGIN_NAME_CAN_NOT_BE_NULL_92F0F4D6);
     this.ifNotExistsCondition = ifNotExistsCondition;
-    this.className = requireNonNull(className, "class name can not be null");
-    this.uriString = requireNonNull(uriString, "uri can not be null");
+    this.className =
+        requireNonNull(
+            className, DataNodeQueryMessages.EXCEPTION_CLASS_NAME_CAN_NOT_BE_NULL_1D276677);
+    this.uriString =
+        requireNonNull(uriString, DataNodeQueryMessages.EXCEPTION_URI_CAN_NOT_BE_NULL_B3535EDC);
   }
 
   public String getPluginName() {

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
 
@@ -74,7 +75,8 @@ public class DeviceMergeNode extends MultiChildProcessNode {
   @Override
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
     throw new UnsupportedOperationException(
-        "DeviceMergeNode should have only one local child in single data region.");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_DEVICEMERGENODE_SHOULD_HAVE_ONLY_ONE_LOCAL_CHILD_IN_SINGLE_D1A2E6CF);
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.base.MoreObjects;
@@ -52,7 +53,7 @@ public class Fill extends Node {
 
   // used for constant fill
   public Fill(NodeLocation location, Literal fillValue) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.fillValue = fillValue;
     this.timeBound = null;
     this.timeColumnIndex = null;
@@ -76,10 +77,11 @@ public class Fill extends Node {
       TimeDuration timeBound,
       LongLiteral timeColumnIndex,
       List<LongLiteral> fillGroupingElements) {
-    super(requireNonNull(location, "location is null"));
-    fillMethod = requireNonNull(fillMethod, "fillMethod is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    fillMethod = requireNonNull(fillMethod, QueryMessages.EXCEPTION_FILLMETHOD_IS_NULL_2E5A83E6);
     if (fillMethod != FillPolicy.PREVIOUS && fillMethod != FillPolicy.NEXT) {
-      throw new IllegalArgumentException("Unsupported fill method: " + fillMethod);
+      throw new IllegalArgumentException(
+          QueryMessages.EXCEPTION_UNSUPPORTED_FILL_METHOD_0809912A + fillMethod);
     }
     this.fillValue = null;
     this.timeBound = timeBound;
@@ -91,7 +93,7 @@ public class Fill extends Node {
   // used for linear fill
   public Fill(
       NodeLocation location, LongLiteral timeColumnIndex, List<LongLiteral> fillGroupingElements) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.fillValue = null;
     this.timeBound = null;
     this.timeColumnIndex = timeColumnIndex;

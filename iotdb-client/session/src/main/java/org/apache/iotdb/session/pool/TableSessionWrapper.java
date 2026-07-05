@@ -24,6 +24,7 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -113,7 +114,8 @@ public class TableSessionWrapper implements ITableSession {
         session.executeNonQueryStatement("set sql_dialect=" + sessionPool.sqlDialect);
       } catch (StatementExecutionException e) {
         LOGGER.warn(
-            "Failed to change back sql_dialect by executing: set sql_dialect={}",
+            SessionMessages
+                .LOG_FAILED_CHANGE_BACK_SQL_DIALECT_EXECUTING_SET_SQL_DIALECT_ARG_947F35E7,
             sessionPool.sqlDialect,
             e);
         session.close();
@@ -129,7 +131,9 @@ public class TableSessionWrapper implements ITableSession {
           session.executeNonQueryStatement("use " + sessionPool.database);
         } catch (StatementExecutionException e) {
           LOGGER.warn(
-              "Failed to change back database by executing: use {}", sessionPool.database, e);
+              SessionMessages.LOG_FAILED_CHANGE_BACK_DATABASE_EXECUTING_USE_ARG_274541CA,
+              sessionPool.database,
+              e);
           session.close();
           session = null;
           return;

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -51,7 +53,9 @@ public class SumAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of SUM should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_SUM_SHOULD_BE_ONE_COLUMN_D6E636D1);
     switch (argumentDataType) {
       case INT32:
         addIntInput(arguments[0], mask);
@@ -74,13 +78,17 @@ public class SumAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in SUM Aggregation: %s", argumentDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_SUM_AGGREGATION_ARG_92F5A18D,
+                argumentDataType));
     }
   }
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 1, "argument of SUM should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_SUM_SHOULD_BE_ONE_COLUMN_D6E636D1);
     switch (argumentDataType) {
       case INT32:
         removeIntInput(arguments[0]);
@@ -103,7 +111,9 @@ public class SumAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in SUM Aggregation: %s", argumentDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_SUM_AGGREGATION_ARG_92F5A18D,
+                argumentDataType));
     }
   }
 

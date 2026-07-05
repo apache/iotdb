@@ -69,7 +69,8 @@ public class ObjectWriter implements AutoCloseable {
       } else {
         throw new IOException(
             String.format(
-                DataNodeMiscMessages.OBJECT_FILE_LENGTH_NOT_EQUAL_TO_OFFSET,
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_THE_FILE_LENGTH_S_IS_NOT_EQUAL_TO_THE_OFFSET_S_73905F07,
                 file.length(),
                 offset));
       }

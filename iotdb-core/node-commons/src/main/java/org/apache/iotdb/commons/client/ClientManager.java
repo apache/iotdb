@@ -75,8 +75,8 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
     } else if (client instanceof ThriftClient) {
       ((ThriftClient) client).invalidateAll();
       LOGGER.warn(
-          "Return client {} to pool failed because the node is null. "
-              + "This may cause resource leak, please check your code.",
+          ClientMessages.LOG_RETURN_CLIENT_ARG_POOL_FAILED_BECAUSE_NODE_NULL_81511014
+              + ClientMessages.LOG_MAY_CAUSE_RESOURCE_LEAK_PLEASE_CHECK_YOUR_CODE_DD730191,
           client);
     }
   }
@@ -99,8 +99,8 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
     } else if (client instanceof ThriftClient) {
       ((ThriftClient) client).invalidateAll();
       LOGGER.warn(
-          "Return client {} to pool failed because the node is null. "
-              + "This may cause resource leak, please check your code.",
+          ClientMessages.LOG_RETURN_CLIENT_ARG_POOL_FAILED_BECAUSE_NODE_NULL_81511014
+              + ClientMessages.LOG_MAY_CAUSE_RESOURCE_LEAK_PLEASE_CHECK_YOUR_CODE_DD730191,
           client);
     }
   }

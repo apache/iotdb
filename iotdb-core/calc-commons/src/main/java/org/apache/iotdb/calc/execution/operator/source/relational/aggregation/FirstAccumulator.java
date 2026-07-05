@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -94,7 +96,8 @@ public class FirstAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_ARG_D5B6C6F9, seriesDataType));
     }
   }
 
@@ -104,7 +107,8 @@ public class FirstAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of FIRST should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_FIRST_SHOULD_BE_BINARYCOLUMN_57CE212C);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -174,7 +178,9 @@ public class FirstAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
+              String.format(
+                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_B2D27BB9,
+                  seriesDataType));
       }
     }
   }
@@ -183,7 +189,8 @@ public class FirstAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of FIRST should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_FIRST_SHOULD_BE_BINARYCOLUMN_57CE212C);
 
     // Case 1: Found a valid result with a valid timestamp (Highest Priority)
     if (initResult || initNullTimeValue) {
@@ -233,7 +240,9 @@ public class FirstAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_2652C363,
+                seriesDataType));
     }
   }
 
@@ -293,7 +302,9 @@ public class FirstAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_B2D27BB9,
+                seriesDataType));
     }
   }
 

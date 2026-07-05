@@ -122,8 +122,9 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         // skip pipe creation
         consensusTopicNames.add(topicName);
         LOGGER.info(
-            "CreateSubscriptionProcedure: topic [{}] uses consensus subscription mode "
-                + "(mode={}), skipping pipe creation",
+            ProcedureMessages
+                    .LOG_CREATESUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_031CF049
+                + ProcedureMessages.LOG_MODE_ARG_SKIPPING_PIPE_CREATION_5F4D1026,
             topicName,
             topicMode);
         continue;
@@ -203,8 +204,9 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
 
     if (!consensusTopicNames.isEmpty()) {
       LOGGER.info(
-          "CreateSubscriptionProcedure: consensus-based topics {} will be handled by DataNode "
-              + "via consumer group meta push (no pipe creation needed)",
+          ProcedureMessages
+                  .LOG_CREATESUBSCRIPTIONPROCEDURE_CONSENSUS_BASED_TOPICS_ARG_WILL_HANDLED_DATANODE_90A9C2FD
+              + ProcedureMessages.LOG_VIA_CONSUMER_GROUP_META_PUSH_NO_PIPE_CREATION_NEEDED_D56CFE31,
           consensusTopicNames);
     }
 

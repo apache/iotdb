@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,14 +39,14 @@ public class NullIfExpression extends Expression {
 
   public NullIfExpression(Expression first, Expression second) {
     super(null);
-    this.first = requireNonNull(first, "first is null");
-    this.second = requireNonNull(first, "second is null");
+    this.first = requireNonNull(first, QueryMessages.EXCEPTION_FIRST_IS_NULL_DC679129);
+    this.second = requireNonNull(first, QueryMessages.EXCEPTION_SECOND_IS_NULL_989FAA15);
   }
 
   public NullIfExpression(NodeLocation location, Expression first, Expression second) {
-    super(requireNonNull(location, "location is null"));
-    this.first = requireNonNull(first, "first is null");
-    this.second = requireNonNull(first, "second is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.first = requireNonNull(first, QueryMessages.EXCEPTION_FIRST_IS_NULL_DC679129);
+    this.second = requireNonNull(first, QueryMessages.EXCEPTION_SECOND_IS_NULL_989FAA15);
   }
 
   public Expression getFirst() {

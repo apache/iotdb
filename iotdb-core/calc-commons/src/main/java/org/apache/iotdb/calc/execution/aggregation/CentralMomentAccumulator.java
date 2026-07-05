@@ -14,6 +14,8 @@
 
 package org.apache.iotdb.calc.execution.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -78,7 +80,8 @@ public class CentralMomentAccumulator implements Accumulator {
         return column.getDouble(position);
       default:
         throw new UnsupportedOperationException(
-            "Unsupported data type in CentralMoment Aggregation: " + seriesDataType);
+            CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_CENTRALMOMENT_AGGREGATION_0A19C2A8
+                + seriesDataType);
     }
   }
 
@@ -102,7 +105,9 @@ public class CentralMomentAccumulator implements Accumulator {
 
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of CentralMoment should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        CalcMessages.EXCEPTION_PARTIALRESULT_OF_CENTRALMOMENT_SHOULD_BE_1_B7C0B4B9);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -156,7 +161,8 @@ public class CentralMomentAccumulator implements Accumulator {
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult should be 1");
+    checkArgument(
+        columnBuilders.length == 1, CalcMessages.EXCEPTION_PARTIALRESULT_SHOULD_BE_1_399D5DC3);
     if (count == 0) {
       columnBuilders[0].appendNull();
     } else {
@@ -202,7 +208,8 @@ public class CentralMomentAccumulator implements Accumulator {
 
   @Override
   public void removeIntermediate(Column[] input) {
-    checkArgument(input.length == 1, "Input of CentralMoment should be 1");
+    checkArgument(
+        input.length == 1, CalcMessages.EXCEPTION_INPUT_OF_CENTRALMOMENT_SHOULD_BE_1_FD23B170);
     if (input[0].isNull(0)) {
       return;
     }
@@ -214,7 +221,10 @@ public class CentralMomentAccumulator implements Accumulator {
     if (nB == 0) {
       return;
     }
-    checkArgument(count >= nB, "CentralMoment state count is smaller than removed state count");
+    checkArgument(
+        count >= nB,
+        CalcMessages
+            .EXCEPTION_CENTRALMOMENT_STATE_COUNT_IS_SMALLER_THAN_REMOVED_STATE_COUNT_B87864BA);
 
     if (count == nB) {
       reset();

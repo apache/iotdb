@@ -178,7 +178,7 @@ public class ConcatDeviceAndBindSchemaForExpressionVisitor
         final MPPQueryContext queryContext) {
       this.devicePath = devicePath;
       this.schemaTree = schemaTree;
-      Validate.notNull(queryContext, "QueryContext is null");
+      Validate.notNull(queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_IS_NULL_C2344379);
       this.queryContext = queryContext;
     }
 

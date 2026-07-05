@@ -72,7 +72,8 @@ public class FlatGroupByHash implements GroupByHash {
     this.groupByChannelCount = hashTypes.size();
     this.hasPrecomputedHash = hasPrecomputedHash;
 
-    checkArgument(expectedSize > 0, "expectedSize must be greater than zero");
+    checkArgument(
+        expectedSize > 0, QueryMessages.EXCEPTION_EXPECTEDSIZE_MUST_BE_GREATER_THAN_ZERO_DA2E0345);
 
     int totalChannels = hashTypes.size() + (hasPrecomputedHash ? 1 : 0);
     this.currentColumns = new Column[totalChannels];
@@ -159,7 +160,9 @@ public class FlatGroupByHash implements GroupByHash {
     int lastPosition = 0;
 
     int positionCount = columns[0].getPositionCount();
-    checkState(lastPosition <= positionCount, "position count out of bound");
+    checkState(
+        lastPosition <= positionCount,
+        QueryMessages.EXCEPTION_POSITION_COUNT_OUT_OF_BOUND_5513847E);
 
     int remainingPositions = positionCount - lastPosition;
 
@@ -186,7 +189,9 @@ public class FlatGroupByHash implements GroupByHash {
 
     int positionCount = columns[0].getPositionCount();
     int[] groupIds = new int[positionCount];
-    checkState(lastPosition <= positionCount, "position count out of bound");
+    checkState(
+        lastPosition <= positionCount,
+        QueryMessages.EXCEPTION_POSITION_COUNT_OUT_OF_BOUND_5513847E);
 
     int remainingPositions = positionCount - lastPosition;
 

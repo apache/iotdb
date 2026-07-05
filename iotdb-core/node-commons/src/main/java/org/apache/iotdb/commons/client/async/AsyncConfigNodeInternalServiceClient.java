@@ -125,10 +125,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
    */
   public synchronized void setTimeoutTemporarily(long timeout) {
     if (originalTimeout != -1) {
-      logger.warn(
-          "This client's timeout has been set to {}. If you need to set it to {}, please call the recoverTimeout() first.",
-          originalTimeout,
-          timeout);
+      logger.warn(ClientMessages.TIMEOUT_ALREADY_SET, originalTimeout, timeout);
     }
     originalTimeout = getTimeout();
     setTimeout(timeout);

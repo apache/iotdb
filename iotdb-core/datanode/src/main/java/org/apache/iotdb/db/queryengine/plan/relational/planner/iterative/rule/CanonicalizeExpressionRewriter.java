@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpressio
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
@@ -65,8 +66,8 @@ public class CanonicalizeExpressionRewriter {
       PlannerContext plannerContext,
       IrTypeAnalyzer typeAnalyzer,
       TypeProvider types) {
-    requireNonNull(plannerContext, "plannerContext is null");
-    requireNonNull(typeAnalyzer, "typeAnalyzer is null");
+    requireNonNull(plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
+    requireNonNull(typeAnalyzer, DataNodeQueryMessages.EXCEPTION_TYPEANALYZER_IS_NULL_3106B188);
 
     if (expression instanceof SymbolReference) {
       return expression;

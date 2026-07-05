@@ -35,6 +35,8 @@ public final class DataNodeSchemaMessages {
       "SchemaRegion(id = {}) 已被删除，已跳过";
   public static final String FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT =
       "计算时间序列数量时获取表 {}.{} 失败，可能是集群正在重启或表正在被删除。";
+  public static final String TREE_VIEW_TABLE_CANNOT_BE_WRITTEN_OR_DELETED =
+      "表 %s.%s 是树模型视图，不能写入或删除";
   public static final String PEER_IS_SHUTTING_DOWN = "节点正在关闭中。";
   public static final String SCHEMA_REGION_DUPLICATED =
       "SchemaRegion [%s] 在 [%s] 和 [%s] 之间重复，前者已被恢复。";
@@ -416,7 +418,7 @@ public final class DataNodeSchemaMessages {
   public static final String TIMESERIES_TYPE_NOT_COMPATIBLE =
       "时间序列 %s 使用的新类型 %s 与已有类型 %s 不兼容";
   public static final String ALIAS_DUPLICATED =
-      "别名与其他测量的名称或别名重复，别名：";
+      "别名与其他测点的名称或别名重复，别名：";
   public static final String LOGICAL_VIEW_NODE_TYPE_ERROR =
       "newMNode 的类型不是 LogicalViewMNode！实际类型为 ";
   public static final String TEMPLATE_SHOULD_MOUNTED_ON_ANCESTOR =
@@ -547,7 +549,7 @@ public final class DataNodeSchemaMessages {
   public static final String ALIAS_DUPLICATED_DETAIL =
       "，完整路径：";
   public static final String ALIAS_DUPLICATED_OTHER_MEASUREMENT =
-      "，其他测量：";
+      "，其他测点：";
   public static final String START_CREATE_TABLE_DEVICE =
       "开始创建表设备 {}.{}";
   public static final String TABLE_DEVICE_ALREADY_EXISTS =
@@ -598,4 +600,120 @@ public final class DataNodeSchemaMessages {
   public static final String ILLEGAL_PATH_LOG = "非法路径 {}";
 
   private DataNodeSchemaMessages() {}
+  // ---------------------------------------------------------------------------
+  // 补充日志消息
+  // ---------------------------------------------------------------------------
+  public static final String SCHEMA_LOG_FLUSHING_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_IMMUTABLE_7B7CD373 =
+      "Flushing/Working MemTable - 将当前查询上下文添加到 immutable TVList 的查询列表";
+  public static final String SCHEMA_LOG_FLUSHING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_BEB0D766 =
+      "Flushing MemTable - 将当前查询上下文添加到 mutable TVList 的查询列表";
+  public static final String SCHEMA_LOG_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_8C937414 =
+      "Working MemTable - 当其已排序或没有其他查询时，将当前查询上下文添加到 mutable TVList 的查询列表";
+  public static final String SCHEMA_LOG_WORKING_MEMTABLE_CLONE_MUTABLE_TVLIST_AND_REPLACE_OLD_TVLIST_FD1EAE22 =
+      "Working MemTable - 克隆 mutable TVList 并替换 working MemTable 中的旧 TVList";
+  public static final String PATH_DOES_NOT_START_WITH_FMT = "%s 不是以 %s 开头";
+  public static final String ALIAS_DUPLICATED_FULLPATH_OTHER_MEASUREMENT_FMT =
+      "别名与其他测点的名称或别名重复，别名：%s，完整路径：%s，其他测点：%s";
+  public static final String TAG_ACTION_DELETE = "删除";
+  public static final String TAG_ACTION_UPSERT = "更新插入";
+  public static final String TAG_ACTION_DROP = "移除";
+  public static final String TAG_ACTION_SET = "设置";
+  public static final String TAG_ACTION_RENAME = "重命名";
+  public static final String NESTED_LOGICAL_VIEW_UNSUPPORTED_FMT =
+      "视图 [%s] 的源也是一个视图！不支持嵌套视图，请检查。";
+  public static final String GET_SCHEMA_AS_LOGICAL_VIEW_SCHEMA_UNSUPPORTED =
+      "DeviceUsingTemplateSchemaCache 不支持函数 getSchemaAsLogicalViewSchema。";
+  public static final String DEVICE_TEMPLATE_ALREADY_ACTIVATED_ON_PATH_FMT =
+      "路径 %s 上的设备模板已经被激活，无需重复激活。";
+  public static final String SOME_TASK_DELETING_TIMESERIES_FMT =
+      "某个任务正在删除时间序列 [%s]";
+  public static final String PATH_ALREADY_EXIST_FMT = "路径 [%s] 已存在";
+  public static final String MNODE_TYPE_MISMATCH_FMT = "MNode [%s] 不是 %s。";
+  public static final String ALIAS_FOR_PATH_ALREADY_EXIST_FMT =
+      "别名 [%s] 对应路径 [%s] 已存在";
+  public static final String DATABASE_NOT_SET_FOR_SERIES_PATH_FMT =
+      "%s，当前 seriesPath：[%s]";
+  public static final String DATABASE_ALREADY_CREATED_AS_DATABASE_FMT =
+      "%s 已被创建为数据库";
+  public static final String SCHEMA_QUOTA_EXCEEDED_FMT =
+      "当前元数据容量已超过集群配额。请检查 ConfigNode 上的配置，或删除一些已有的 %s 以满足配额限制。";
+  public static final String DATABASE_QUOTA_EXCEEDED_FMT =
+      "当前数据库数量已超过集群配额。集群允许的最大数据库数量为 %d，请检查 ConfigNode 上的 "
+          + "database_limit_threshold 配置，或删除一些已有数据库以满足配额限制。";
+  public static final String SERIES_OVERFLOW_FMT =
+      "未使用设备模板的内存时间序列过多（当前内存：%s，序列数量：%s）。为优化内存，当设备具有相同时间序列时，更推荐使用设备模板。";
+  public static final String ILLEGAL_PARAMETER_FAILED_CREATE_TIMESERIES_FMT =
+      "%s。为路径 %s 创建时间序列失败";
+  public static final String PATH_NOT_EXIST_WRONG_MESSAGE = "路径 [%s] 不存在";
+  public static final String SOURCE_PATH_NOT_EXIST_WRONG_MESSAGE =
+      "源路径 [%s] 对应视图 [%s] 不存在。";
+  public static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
+      "时间序列 [%s] 不存在或由设备模板表示";
+  public static final String TEMPLATE_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
+      "时间序列 [%s] 不存在或不是由设备模板表示";
+  public static final String VIEW_NOT_EXIST_WRONG_MESSAGE = "视图 [%s] 不存在";
+  public static final String PATH_LIST_ELLIPSIS_SEPARATOR = " ... ";
+  public static final String REGISTERED_TYPE_STRING = "注册类型";
+  public static final String NULL_VALUE = "null";
+  public static final String DATA_TYPE_MISMATCH_REGISTERED_TYPE_FMT =
+      "%s.%s 的数据类型不一致，%s %s，插入类型 %s，时间戳 %s，值 %s";
+  public static final String DATA_TYPE_AND_VALUE_MISMATCH_FMT =
+      "%s.%s 的数据类型和值不一致，插入类型 %s，时间戳 %s，值 %s";
+  public static final String SCHEMA_DIR_CREATION_FAILED_FMT =
+      "创建数据库 schema 文件夹 %s 失败。";
+  public static final String MNODE_NOT_PINNED = "MNode 尚未被固定。";
+  public static final String MNODE_NOT_CACHED = "MNode 尚未被缓存或已被淘汰。";
+  public static final String TEMPLATE_IS_IN_USE_ON_FMT = "模板正在 %s 上使用";
+  public static final String CANNOT_CREATE_TIMESERIES_TEMPLATE_SET_FMT =
+      "无法创建时间序列 [%s]，因为设备模板 [%s] 已设置在路径 [%s] 上。";
+  public static final String CANNOT_SET_DEVICE_TEMPLATE_TIMESERIES_UNDER_PATH_FMT =
+      "无法将设备模板 [%s] 设置到路径 [%s]，因为路径 [%s] 下已有时间序列。";
+  public static final String FAILED_CREATE_DUPLICATED_TEMPLATE_FMT =
+      "为路径 %s 创建重复模板失败";
+  public static final String TEMPLATE_ON_PATH_DIFFERENT_FROM_FMT =
+      "%s 上的模板与 %s 不同";
+  public static final String UNDEFINED_TEMPLATE_NAME_FMT = "未定义的模板名：%s";
+  public static final String COLOSSAL_RECORD_FMT =
+      "key [%s] 的记录过大，SchemaFile 无法存储，内容大小：%d";
+  public static final String KEY_TOO_LARGE_FOR_INTERNAL_PAGE_FMT =
+      "Key [%s] 过大，无法作为索引项存储在 InternalPage 中。";
+  public static final String KEY_ALIAS_PAIR_TOO_LARGE_FMT =
+      "Key-Alias 对 (%s, %s) 过大，SchemaFile 无法存储。";
+  public static final String SEGMENT_OVERFLOW_FMT = "Segment 溢出：%d";
+  public static final String SEGMENT_NOT_ENOUGH_SPACE = "Segment 空间不足";
+  public static final String SEGMENT_NOT_ENOUGH_SPACE_AFTER_SPLIT_FMT =
+      "Segment 即使 split 和 compact 后仍没有足够空间插入：%s";
+  public static final String SEGMENT_NOT_FOUND_FMT =
+      "Segment(index:%d) 在 page(index:%d) 中未找到。";
+  public static final String SEGMENT_IS_NOT_LAST_FMT =
+      "Segment(index:%d) 不是 page 中的最后一个 segment";
+  public static final String NO_SPLITTABLE_SEGMENT_FOUND_FMT =
+      "在 page [%s] 中未找到可 split 的 segment";
+  public static final String PBTREE_FILE_LOG_CORRUPTED_FMT =
+      "PBTreeFileLog [%s] 因 [%s] 损坏。";
+  public static final String RECORD_DUPLICATED_FMT = "Segment 存在重复 record key：%s";
+  public static final String PBTREE_FILE_NOT_EXISTS_FMT = "PBTree 文件 [%s] 不存在。";
+  public static final String SCHEMA_PAGE_OVERFLOW_FMT =
+      "pbtree 文件中的 Page [%s] 空间耗尽或包含过多 segment。";
+  public static final String SOURCE_PATH_DELETED_FMT = "源路径 [%s] 已被删除";
+  public static final String BROKEN_VIEW_UNMATCHED_FMT =
+      "视图已损坏！源路径 [%s] 映射到不匹配的 %s 个路径：%s。";
+  public static final String INSERT_NON_WRITABLE_VIEW_FMT =
+      "无法向不是别名序列的视图插入数据。（视图路径：%s）";
+  public static final String INSERT_NON_WRITABLE_VIEW =
+      "无法向不是别名序列的视图插入数据。";
+  public static final String DATABASE_NOT_SET = "未设置数据库";
+  public static final String DUPLICATE_INSERTION_WRONG_MESSAGE =
+      "插入非法，因为设备 [%s] 下的测点 [%s] 重复。";
+  public static final String VIEW_IS_UNSUPPORTED_FMT = "视图不受支持，原因：%s";
+  public static final String VIEW_CONTAINS_AGGREGATION_FUNCTION_FMT =
+      "该视图包含名为 [%s] 的聚合函数";
+  public static final String EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB = "operatorContext 不能为空";
+  public static final String EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C = "child operator 不能为空";
+  public static final String EXCEPTION_DOT_9D9B854A = ".";
+  public static final String EMPTY_MESSAGE = "";
+  public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
+  public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "跳过回滚重命名旧表 {}.{}，因为该操作已被处理。";
+  public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "跳过提交更新表 {}.{}，因为该操作已被处理。";
+
 }

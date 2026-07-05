@@ -284,7 +284,8 @@ public class QueryExecution implements IQueryExecution {
     this.logicalPlan = planner.doLogicalPlan(analysis, context);
     if (isQuery() && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
+          DataNodeQueryMessages.LOGICAL_PLAN_IS_ARG,
+          PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
     }
     // check timeout after building logical plan because it could be time-consuming in some cases.
     checkTimeOutForQuery();
@@ -302,7 +303,8 @@ public class QueryExecution implements IQueryExecution {
 
     if (LOGGER.isDebugEnabled() && isQuery()) {
       LOGGER.debug(
-          "distribution plan done. Fragment instance count is {}, details is: \n {}",
+          DataNodeQueryMessages
+              .DISTRIBUTION_PLAN_DONE_FRAGMENT_INSTANCE_COUNT_IS_ARG_DETAILS_IS_ARG,
           distributedPlan.getInstances().size(),
           printFragmentInstances(distributedPlan.getInstances()));
     }
@@ -424,7 +426,10 @@ public class QueryExecution implements IQueryExecution {
    * implemented with DataStreamManager)
    */
   private <T> Optional<T> getResult(ISourceHandleSupplier<T> dataSupplier) throws IoTDBException {
-    checkArgument(resultHandle != null, "ResultHandle in Coordinator should be init firstly.");
+    checkArgument(
+        resultHandle != null,
+        DataNodeQueryMessages
+            .EXCEPTION_RESULTHANDLE_IN_COORDINATOR_SHOULD_BE_INIT_FIRSTLY_DOT_0F44159B);
     // iterate until we get a non-nullable TsBlock or result is finished
     while (true) {
       try {

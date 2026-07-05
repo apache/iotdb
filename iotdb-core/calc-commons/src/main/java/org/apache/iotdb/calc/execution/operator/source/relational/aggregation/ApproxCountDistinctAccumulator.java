@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLog;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLogStateFactory;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -92,7 +93,9 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", seriesDataType));
+                CalcMessages
+                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_COUNT_DISTINCT_AGGREGATION_ARG_58F0391E,
+                seriesDataType));
     }
   }
 
@@ -111,7 +114,8 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of APPROX_COUNT_DISTINCT should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_APPROX_COUNT_DISTINCT_SHOULD_BE_BINARYCOLUMN_F444D3BE);
     columnBuilder.writeBinary(new Binary(state.getHyperLogLog().serialize()));
   }
 
@@ -128,7 +132,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   @Override
   public void addStatistics(Statistics[] statistics) {
     throw new UnsupportedOperationException(
-        "ApproxCountDistinctAccumulator does not support statistics");
+        CalcMessages.EXCEPTION_APPROXCOUNTDISTINCTACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_81005A79);
   }
 
   @Override

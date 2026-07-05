@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -58,10 +59,13 @@ public class SetProperties extends Statement {
       final QualifiedName name,
       final List<Property> properties,
       final boolean ifExists) {
-    super(requireNonNull(location, "location is null"));
-    this.type = requireNonNull(type, "type is null");
-    this.name = requireNonNull(name, "name is null");
-    this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.type = requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.properties =
+        ImmutableList.copyOf(
+            requireNonNull(
+                properties, DataNodeQueryMessages.EXCEPTION_PROPERTIES_IS_NULL_57B88B49));
     this.ifExists = ifExists;
   }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.metricsets.jvm;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Timer;
@@ -380,8 +381,8 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   private boolean preCheck() {
     if (ManagementFactory.getMemoryPoolMXBeans().isEmpty()) {
       logger.warn(
-          "GC notifications will not be available because MemoryPoolMXBeans "
-              + "are not provided by the JVM");
+          MetricsMessages.LOG_GC_NOTIFICATIONS_WILL_NOT_AVAILABLE_BECAUSE_MEMORYPOOLMXBEANS_86C3EB6B
+              + MetricsMessages.LOG_NOT_PROVIDED_JVM_948976D1);
       return false;
     }
 
@@ -393,8 +394,9 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
     } catch (Exception e) {
       // We are operating in a JVM without access to this level of detail
       logger.warn(
-          "GC notifications will not be available because "
-              + "com.sun.management.GarbageCollectionNotificationInfo is not present");
+          MetricsMessages.LOG_GC_NOTIFICATIONS_WILL_NOT_AVAILABLE_BECAUSE_22FD13E0
+              + MetricsMessages
+                  .LOG_COM_SUN_MANAGEMENT_GARBAGECOLLECTIONNOTIFICATIONINFO_NOT_PRESENT_FA43486E);
       return false;
     }
     return true;

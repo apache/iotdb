@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -52,9 +53,11 @@ public class RenameTable extends Statement {
       final Identifier target,
       final boolean tableIfExists,
       final boolean view) {
-    super(requireNonNull(location, "location is null"));
-    this.source = requireNonNull(source, "source name is null");
-    this.target = requireNonNull(target, "target name is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.source =
+        requireNonNull(source, DataNodeQueryMessages.EXCEPTION_SOURCE_NAME_IS_NULL_287E475D);
+    this.target =
+        requireNonNull(target, DataNodeQueryMessages.EXCEPTION_TARGET_NAME_IS_NULL_A5F701C6);
     this.tableIfExists = tableIfExists;
     this.view = view;
   }

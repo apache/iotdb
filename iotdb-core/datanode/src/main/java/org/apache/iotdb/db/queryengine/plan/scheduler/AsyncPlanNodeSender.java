@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
@@ -119,7 +120,7 @@ public class AsyncPlanNodeSender {
       if (!entry.getValue().accepted) {
         if (status == null) {
           LOGGER.warn(
-              "dispatch write failed. message: {}, node {}",
+              DataNodeQueryMessages.DISPATCH_WRITE_FAILED_MESSAGE_ARG_NODE_ARG,
               entry.getValue().message,
               instances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
           failureFragmentInstanceWithStatusList.add(
@@ -130,7 +131,8 @@ public class AsyncPlanNodeSender {
         } else {
           if (status.code != TSStatusCode.OUT_OF_TTL.getStatusCode()) {
             LOGGER.warn(
-                "dispatch write failed. status: {}, code: {}, message: {}, node {}",
+                DataNodeQueryMessages
+                    .DISPATCH_WRITE_FAILED_STATUS_ARG_CODE_ARG_MESSAGE_ARG_NODE_ARG_2,
                 entry.getValue().status,
                 TSStatusCode.representOf(status.code),
                 entry.getValue().message,

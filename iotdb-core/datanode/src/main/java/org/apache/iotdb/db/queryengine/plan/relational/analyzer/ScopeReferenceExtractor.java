@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.Map;
 import java.util.Objects;
@@ -51,7 +52,7 @@ final class ScopeReferenceExtractor {
   private static boolean isReferenceToScope(
       Expression node, Scope scope, Map<NodeRef<Expression>, ResolvedField> columnReferences) {
     ResolvedField field = columnReferences.get(NodeRef.of(node));
-    requireNonNull(field, () -> "No Field for " + node);
+    requireNonNull(field, () -> DataNodeQueryMessages.EXCEPTION_NO_FIELD_FOR_97419CB1 + node);
     return isFieldFromScope(field.getFieldId(), scope);
   }
 

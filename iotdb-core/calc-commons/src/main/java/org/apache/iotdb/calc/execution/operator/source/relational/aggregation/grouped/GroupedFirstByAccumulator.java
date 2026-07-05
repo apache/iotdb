@@ -26,6 +26,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.FloatBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -97,7 +98,9 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                xDataType));
     }
   }
 
@@ -130,7 +133,9 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                xDataType));
     }
 
     return INSTANCE_SIZE
@@ -173,7 +178,9 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                xDataType));
     }
   }
 
@@ -212,13 +219,18 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                xDataType));
     }
   }
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 3, "Length of input Column[] for LastBy/FirstBy should be 3");
+    checkArgument(
+        arguments.length == 3,
+        CalcMessages
+            .EXCEPTION_LENGTH_OF_INPUT_COLUMN_LEFT_BRACKET_RIGHT_BRACKET_FOR_LASTBY_SLASH_FIRSTBY_SHOUL_9E836ABA);
 
     // arguments[0] is x column, arguments[1] is y column, arguments[2] is time column
     switch (xDataType) {
@@ -247,7 +259,9 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                xDataType));
     }
   }
 
@@ -257,7 +271,8 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of FIRST_BY should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_FIRST_BY_SHOULD_BE_BINARYCOLUMN_F0D867AB);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -338,7 +353,9 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+              String.format(
+                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                  xDataType));
       }
     }
   }
@@ -347,7 +364,8 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of FIRST_BY should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_FIRST_BY_SHOULD_BE_BINARYCOLUMN_F0D867AB);
 
     if (inits.get(groupId) || initNullTimeValues.get(groupId)) {
       columnBuilder.writeBinary(new Binary(serializeTimeWithValue(groupId)));
@@ -397,7 +415,9 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
           return bytes;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+              String.format(
+                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                  xDataType));
       }
     }
     return bytes;
@@ -424,7 +444,9 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         return 1;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                xDataType));
     }
   }
 
@@ -461,7 +483,9 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                xDataType));
     }
   }
 

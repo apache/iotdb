@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.aggregation.Accumulator;
 import org.apache.iotdb.calc.transformation.dag.udf.UDFParametersFactory;
 import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.UDAF;
@@ -131,7 +132,9 @@ public class UDAFAccumulator implements Accumulator {
 
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of UDAF should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_UDAF_SHOULD_BE_1_E094029D);
 
     State otherState = udaf.createState();
     Binary otherStateBinary = partialResult[0].getBinary(0);
@@ -156,7 +159,9 @@ public class UDAFAccumulator implements Accumulator {
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of UDAF should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_UDAF_SHOULD_BE_1_E094029D);
 
     byte[] bytes = state.serialize();
     columnBuilders[0].writeBinary(new Binary(bytes));
@@ -170,7 +175,9 @@ public class UDAFAccumulator implements Accumulator {
 
   @Override
   public void removeIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of UDAF should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_UDAF_SHOULD_BE_1_E094029D);
 
     State removedState = udaf.createState();
     Binary removedStateBinary = partialResult[0].getBinary(0);
@@ -205,12 +212,15 @@ public class UDAFAccumulator implements Accumulator {
 
   private void onError(String methodName, Exception e) {
     LOGGER.warn(
-        "Error occurred during executing UDAF, please check whether the implementation of UDF is correct according to the udf-api description.",
+        DataNodeQueryMessages
+            .ERROR_OCCURRED_DURING_EXECUTING_UDAF_PLEASE_CHECK_WHETHER_THE_IMPLEMENTATION_OF_UDF_IS,
         e);
     throw new RuntimeException(
         String.format(
-                "Error occurred during executing UDAF#%s: %s, please check whether the implementation of UDF is correct according to the udf-api description.",
-                methodName, System.lineSeparator())
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_ERROR_OCCURRED_DURING_EXECUTING_UDAF_S_S_PLEASE_CHECK_WHETHER_9E9D20C6,
+                methodName,
+                System.lineSeparator())
             + e);
   }
 

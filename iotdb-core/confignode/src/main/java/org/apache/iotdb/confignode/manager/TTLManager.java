@@ -78,7 +78,8 @@ public class TTLManager {
       TSStatus errorStatus = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
       errorStatus.setMessage(
           String.format(
-              "Illegal pattern path: %s, pattern path should end with **, otherwise, it should be a specific database or device path without *",
+              ConfigNodeMessages
+                  .MESSAGE_ILLEGAL_PATTERN_PATH_ARG_PATTERN_PATH_SHOULD_END_OTHERWISE_IT_50E969BB,
               path.getFullPath()));
       return errorStatus;
     }
@@ -100,7 +101,8 @@ public class TTLManager {
       TSStatus errorStatus = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
       errorStatus.setMessage(
           String.format(
-              "Illegal pattern path: %s, pattern path should end with **, otherwise, it should be a specific database or device path without *",
+              ConfigNodeMessages
+                  .MESSAGE_ILLEGAL_PATTERN_PATH_ARG_PATTERN_PATH_SHOULD_END_OTHERWISE_IT_50E969BB,
               path.getFullPath()));
       return errorStatus;
     }

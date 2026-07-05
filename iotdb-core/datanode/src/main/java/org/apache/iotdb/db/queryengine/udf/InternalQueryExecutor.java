@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -102,7 +103,7 @@ public final class InternalQueryExecutor {
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
       if (queryExecution == null) {
         throw new IoTDBException(
-            "Internal query execution not found",
+            DataNodeQueryMessages.EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542,
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
 
@@ -127,7 +128,9 @@ public final class InternalQueryExecutor {
 
   public static void validateReadOnlyQuery(IQueryExecution execution) {
     if (execution.getQueryType() != QueryType.READ) {
-      throw new SemanticException("Only query is supported for IoTDBLocal query interface");
+      throw new SemanticException(
+          DataNodeQueryMessages
+              .EXCEPTION_ONLY_QUERY_IS_SUPPORTED_FOR_IOTDBLOCAL_QUERY_INTERFACE_09195570);
     }
   }
 }

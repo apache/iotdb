@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 
 import org.slf4j.Logger;
@@ -59,7 +60,7 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
   protected void periodicExecute(final Env env) {
     if (completed.isEmpty()) {
       if (LOG.isTraceEnabled()) {
-        LOG.trace("No completed procedures to cleanup.");
+        LOG.trace(ProcedureMessages.LOG_NO_COMPLETED_PROCEDURES_CLEANUP_50434D91);
       }
       return;
     }
@@ -81,7 +82,8 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
           try {
             store.delete(batchIds, 0, batchCount);
           } catch (Exception e) {
-            LOG.error("Error deleting completed procedures {}.", proc, e);
+            LOG.error(
+                ProcedureMessages.LOG_ERROR_DELETING_COMPLETED_PROCEDURES_ARG_1A3A185E, proc, e);
             // Do not remove from the completed map. Even this procedure may be restored
             // unexpectedly in another new CN leader, we do not need to do anything else since
             // procedures are idempotent.
@@ -91,7 +93,7 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
           }
         }
         it.remove();
-        LOG.trace("Evict completed {}", proc);
+        LOG.trace(ProcedureMessages.LOG_EVICT_COMPLETED_ARG_A968A070, proc);
       }
     }
     if (batchCount > 0) {
@@ -100,7 +102,8 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
       } catch (Exception e) {
         // Even this procedure may be restored unexpectedly in another new CN leader, we do not need
         // to do anything else since procedures are idempotent.
-        LOG.error("Error deleting completed procedures {}.", batchIds, e);
+        LOG.error(
+            ProcedureMessages.LOG_ERROR_DELETING_COMPLETED_PROCEDURES_ARG_1A3A185E, batchIds, e);
       }
     }
   }

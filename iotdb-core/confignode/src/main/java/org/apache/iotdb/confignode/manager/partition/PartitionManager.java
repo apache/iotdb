@@ -229,7 +229,8 @@ public class PartitionManager {
             new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                 .setMessage(
                     String.format(
-                        "Create SchemaPartition failed because the database: %s is not exists",
+                        ManagerMessages
+                            .MESSAGE_CREATE_SCHEMAPARTITION_FAILED_BECAUSE_DATABASE_ARG_NOT_EXISTS_D8AE1679,
                         database)),
             false,
             null);
@@ -264,7 +265,8 @@ public class PartitionManager {
               new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                   .setMessage(
                       String.format(
-                          "Create SchemaPartition failed because the database: %s does not exist",
+                          ManagerMessages
+                              .MESSAGE_CREATE_SCHEMAPARTITION_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_2617832C,
                           database)),
               false,
               null);
@@ -374,7 +376,8 @@ public class PartitionManager {
             new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                 .setMessage(
                     String.format(
-                        "Create DataPartition failed because the database: %s is not exists",
+                        ManagerMessages
+                            .MESSAGE_CREATE_DATAPARTITION_FAILED_BECAUSE_DATABASE_ARG_NOT_EXISTS_F223D5C2,
                         database)),
             false,
             null);
@@ -409,7 +412,8 @@ public class PartitionManager {
               new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                   .setMessage(
                       String.format(
-                          "Create DataPartition failed because the database: %s does not exist",
+                          ManagerMessages
+                              .MESSAGE_CREATE_DATAPARTITION_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_D7A8C1FC,
                           database)),
               false,
               null);
@@ -1018,7 +1022,8 @@ public class PartitionManager {
                   slotsCounter.getRight(),
                   getLoadManager().getRegionGroupStatus(slotsCounter.getRight())));
       LOGGER.warn(
-          "No available {} RegionGroup for Database: {}. RegionGroups visible in PartitionInfo and their LoadCache status: {}",
+          ManagerMessages
+              .MESSAGE_NO_AVAILABLE_ARG_REGIONGROUP_FOR_DATABASE_ARG_REGIONGROUPS_VISIBLE_IN_PARTITIONINFO_AND_THEIR_LOADCACHE_STATUS_ARG_615F5D49,
           type,
           database,
           visibleRegionGroupStatusMap);

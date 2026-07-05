@@ -94,7 +94,10 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
         recoverRepairProgress(recoverLogParser);
       } catch (Exception e) {
         LOGGER.error(
-            "[RepairScheduler] Failed to parse repair log file {}", logFile.getAbsolutePath(), e);
+            StorageEngineMessages
+                .STORAGE_LOG_REPAIRSCHEDULER_FAILED_TO_PARSE_REPAIR_LOG_FILE_142D2568,
+            logFile.getAbsolutePath(),
+            e);
         return;
       }
     }
@@ -102,7 +105,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       repairLogger.recordRepairTaskStartTimeIfLogFileEmpty(repairTaskTime);
     } catch (IOException e) {
       LOGGER.error(
-          "[RepairScheduler] Failed to record repair task start time in log file {}",
+          StorageEngineMessages
+              .STORAGE_LOG_REPAIRSCHEDULER_FAILED_TO_RECORD_REPAIR_TASK_START_TIME_95552D7E,
           logFile.getAbsolutePath(),
           e);
       return;
@@ -126,7 +130,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   private void recoverRepairProgress(RepairTaskRecoverLogParser recoverLogParser) {
     LOGGER.info(
-        "[RepairScheduler] recover unfinished repair schedule task from log file: {}",
+        StorageEngineMessages
+            .STORAGE_LOG_REPAIRSCHEDULER_RECOVER_UNFINISHED_REPAIR_SCHEDULE_TASK_7C5B6D5F,
         recoverLogParser.getRepairLogFilePath());
 
     Map<RepairTimePartition, Set<String>> repairedTimePartitionWithCannotRepairFiles =
@@ -200,7 +205,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
         repairLogger.close();
       } catch (Exception e) {
         LOGGER.error(
-            "[RepairScheduler] Failed to close repair logger {}",
+            StorageEngineMessages
+                .STORAGE_LOG_REPAIRSCHEDULER_FAILED_TO_CLOSE_REPAIR_LOGGER_EC191F6B,
             repairLogger.getRepairLogFilePath(),
             e);
       }
@@ -232,7 +238,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       for (RepairTimePartition timePartition : allTimePartitionFiles) {
         if (timePartition.isRepaired()) {
           LOGGER.info(
-              "[RepairScheduler][{}][{}] skip repair time partition {} because it is repaired",
+              StorageEngineMessages
+                  .STORAGE_LOG_REPAIRSCHEDULER_SKIP_REPAIR_TIME_PARTITION_BECAUSE_IT_IS_BDD35739,
               timePartition.getDatabaseName(),
               timePartition.getDataRegionId(),
               timePartition.getTimePartitionId());
@@ -240,7 +247,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
           continue;
         }
         LOGGER.info(
-            "[RepairScheduler] submit a repair time partition scan task {}-{}-{}",
+            StorageEngineMessages
+                .STORAGE_LOG_REPAIRSCHEDULER_SUBMIT_A_REPAIR_TIME_PARTITION_SCAN_TASK_0E98F12C,
             timePartition.getDatabaseName(),
             timePartition.getDataRegionId(),
             timePartition.getTimePartitionId());

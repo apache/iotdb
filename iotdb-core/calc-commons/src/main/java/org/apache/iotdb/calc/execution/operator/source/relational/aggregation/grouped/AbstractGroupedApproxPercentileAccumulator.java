@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.g
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.TDigest;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.TDigestBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -64,7 +65,8 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
     } else {
       throw new IllegalArgumentException(
           String.format(
-              "APPROX_PERCENTILE requires 2 or 3 arguments, but got %d", arguments.length));
+              CalcMessages.EXCEPTION_APPROX_PERCENTILE_REQUIRES_2_3_ARGUMENTS_BUT_GOT_ARG_D78590AA,
+              arguments.length));
     }
 
     switch (seriesDataType) {
@@ -84,7 +86,9 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in APPROX_PERCENTILE Aggregation: %s", seriesDataType));
+                CalcMessages
+                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_PERCENTILE_AGGREGATION_ARG_CFEC0431,
+                seriesDataType));
     }
   }
 
@@ -137,7 +141,9 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in APPROX_PERCENTILE Aggregation: %s", seriesDataType));
+                CalcMessages
+                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_PERCENTILE_AGGREGATION_ARG_CFEC0431,
+                seriesDataType));
     }
   }
 

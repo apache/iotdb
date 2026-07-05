@@ -44,8 +44,10 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
     if (initialLimitedMemorySizeInBytes < MINIMUM_MEMORY_SIZE_IN_BYTES) {
       throw new LoadRuntimeOutOfMemoryException(
           String.format(
-              "The initial limited memory size %d is less than the minimum memory size %d",
-              initialLimitedMemorySizeInBytes, MINIMUM_MEMORY_SIZE_IN_BYTES));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_THE_INITIAL_LIMITED_MEMORY_SIZE_D_IS_LESS_THAN_THE_MINIMUM_FC044302,
+              initialLimitedMemorySizeInBytes,
+              MINIMUM_MEMORY_SIZE_IN_BYTES));
     }
 
     this.limitedMemorySizeInBytes = new AtomicLong(initialLimitedMemorySizeInBytes);
@@ -74,14 +76,17 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   @Override
   public synchronized void forceResize(long newSizeInBytes) {
     throw new UnsupportedOperationException(
-        "setTotalMemorySizeInBytes is not supported for LoadTsFileDataCacheMemoryBlock");
+        StorageEngineMessages
+            .STORAGE_EXCEPTION_SETTOTALMEMORYSIZEINBYTES_IS_NOT_SUPPORTED_FOR_LOADTSFILEDATACACHEMEMORYBLOCK_DFAB2A2A);
   }
 
   @Override
   protected void releaseAllMemory() {
     if (memoryUsageInBytes.get() != 0) {
       LOGGER.warn(
-          "Try to release memory from a memory block {} which has not released all memory", this);
+          StorageEngineMessages
+              .STORAGE_LOG_TRY_TO_RELEASE_MEMORY_FROM_A_MEMORY_BLOCK_WHICH_HAS_NOT_874E7A08,
+          this);
     }
     MEMORY_MANAGER.releaseToQuery(limitedMemorySizeInBytes.get());
   }
@@ -89,7 +94,8 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   public boolean doShrink(long shrinkMemoryInBytes) {
     if (shrinkMemoryInBytes < 0) {
       LOGGER.warn(
-          "Try to shrink a negative memory size {} from memory block {}",
+          StorageEngineMessages
+              .STORAGE_LOG_TRY_TO_SHRINK_A_NEGATIVE_MEMORY_SIZE_FROM_MEMORY_BLOCK_60501B13,
           shrinkMemoryInBytes,
           this);
       return false;

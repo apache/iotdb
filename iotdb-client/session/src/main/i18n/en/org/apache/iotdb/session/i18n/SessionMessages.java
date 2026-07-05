@@ -259,4 +259,29 @@ public final class SessionMessages {
       "unexpected error in createTimeseriesUsingSchemaTemplate";
 
   private SessionMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_9C8EC583 = "Protocol differ, Client version is {}, but Server version is {}";
+  public static final String EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC = "Protocol not supported, Client version is %s, but Server version is %s";
+  public static final String LOG_RETRY_ATTEMPT_ARG_RESULT_ARG_EXCEPTION_ARG_20E5D9DA = "Retry attempt #{}, result {}, exception {}";
+  public static final String LOG_ALL_VALUES_NULL_SUBMISSION_IGNORED_DEVICEID_ARG_TIME_ARG_MEASUREMENTS_07AFDDFE =
+      "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements"
+      + " are [{}]";
+  public static final String EXCEPTION_DEVICEIDS_TIMES_MEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_EC87D88B = "deviceIds, times, measurementsList and valuesList's size should be equal";
+  public static final String EXCEPTION_PREFIXPATHS_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_1465011C = "prefixPaths, times, subMeasurementsList and valuesList's size should be equal";
+  public static final String EXCEPTION_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_002C539A = "times, subMeasurementsList and valuesList's size should be equal";
+  public static final String EXCEPTION_DIFFERENT_LENGTH_MEASUREMENTS_DATATYPES_ENCODINGS_ED354A24 = "Different length of measurements, datatypes, encodings ";
+  public static final String EXCEPTION_COMPRESSORS_CREATE_DEVICE_TEMPLATE_BBDBB28E = "or compressors when create device template.";
+  public static final String EXCEPTION_GIVEN_DEVICE_PATH_LIST_SHOULD_NOT_CONTAINS_NULL_E9132577 = "Given device path list should not be  or contains null.";
+  public static final String EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084 = "You should specify either nodeUrls or (host + rpcPort), but not both";
+  public static final String LOG_CANNOT_PUT_VALUES_MEASUREMENT_ARG_TYPE_ARG_27AFC67B = "Cannot put values for measurement {}, type={}";
+  public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "Data type %s is not supported.";
+  public static final String LOG_FAILED_CHANGE_BACK_SQL_DIALECT_EXECUTING_SET_SQL_DIALECT_ARG_947F35E7 = "Failed to change back sql_dialect by executing: set sql_dialect={}";
+  public static final String LOG_FAILED_CHANGE_BACK_DATABASE_EXECUTING_USE_ARG_274541CA = "Failed to change back database by executing: use {}";
+  public static final String LOG_SESSIONPOOL_HAS_WAIT_ARG_SECONDS_GET_NEW_CONNECTION_ARG_ARG_D053274A = "the SessionPool has wait for {} seconds to get a new connection: {} with {}";
+  public static final String LOG_CURRENT_OCCUPIED_SIZE_ARG_QUEUE_SIZE_ARG_CONSIDERED_SIZE_ARG_DE97C14E = "current occupied size {}, queue size {}, considered size {} ";
+  public static final String EXCEPTION_RETRY_EXECUTE_STATEMENT_ARG_FAILED_ARG_TIMES_ARG_216C6873 = "retry to execute statement on %s failed %d times: %s";
+  public static final String EXCEPTION_SESSIONPOOL_DOESN_T_SUPPORT_EXECUTING_ARG_DIRECTLY_B778F701 = "SessionPool doesn't support executing %s directly";
+
 }

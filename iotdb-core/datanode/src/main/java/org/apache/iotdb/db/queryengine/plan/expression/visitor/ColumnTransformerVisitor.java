@@ -52,6 +52,7 @@ import org.apache.iotdb.calc.transformation.dag.column.unary.RegularColumnTransf
 import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
@@ -99,7 +100,9 @@ public class ColumnTransformerVisitor
   public ColumnTransformer visitExpression(
       Expression expression, ColumnTransformerVisitorContext context) {
     throw new UnsupportedOperationException(
-        "Unsupported statement type: " + expression.getClass().getName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            expression.getClass().getName()));
   }
 
   @Override
@@ -606,7 +609,8 @@ public class ColumnTransformerVisitor
         }
         throw new IllegalStateException(
             String.format(
-                "Unknown expression type: %s, perhaps it has non existent measurement.",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNKNOWN_EXPRESSION_TYPE_S_PERHAPS_IT_HAS_NON_EXISTENT_MEASUREMENT_B6705F86,
                 expression.getOutputSymbol()));
       }
     }

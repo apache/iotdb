@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -36,8 +38,8 @@ public class IrPermutation extends IrRowPattern {
   private final List<IrRowPattern> patterns;
 
   public IrPermutation(List<IrRowPattern> patterns) {
-    this.patterns = requireNonNull(patterns, "patterns is null");
-    checkArgument(!patterns.isEmpty(), "patterns list is empty");
+    this.patterns = requireNonNull(patterns, QueryMessages.EXCEPTION_PATTERNS_IS_NULL_7E0DDDF0);
+    checkArgument(!patterns.isEmpty(), QueryMessages.EXCEPTION_PATTERNS_LIST_IS_EMPTY_D4D1802F);
   }
 
   public List<IrRowPattern> getPatterns() {

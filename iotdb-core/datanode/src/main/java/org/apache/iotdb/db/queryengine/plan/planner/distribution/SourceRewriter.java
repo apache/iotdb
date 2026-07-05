@@ -212,7 +212,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   public List<PlanNode> visitDeviceView(DeviceViewNode node, DistributionPlanContext context) {
     if (node.getDevices().size() != node.getChildren().size()) {
       throw new IllegalArgumentException(
-          "size of devices and its children in DeviceViewNode should be same");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SIZE_OF_DEVICES_AND_ITS_CHILDREN_IN_DEVICEVIEWNODE_SHOULD_10709A84);
     }
 
     // Step 1: constructs DeviceViewSplits
@@ -506,8 +507,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     for (DeviceViewSplit split : deviceViewSplits) {
       if (split.dataPartitions.size() != 1) {
         throw new IllegalStateException(
-            "In non-cross data region device-view situation, "
-                + "each device should only have on data partition.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_IN_NON_CROSS_DATA_REGION_DEVICE_VIEW_SITUATION_EACH_DEVICE_3A76445B);
       }
       TRegionReplicaSet region = split.dataPartitions.iterator().next();
       DeviceViewNode regionDeviceViewNode =
@@ -523,8 +524,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         List<PlanNode> rewriteResult = rewrite(childNode, context);
         if (rewriteResult.size() != 1) {
           throw new IllegalStateException(
-              "In non-cross data region aggregation device-view situation, "
-                  + "each rewrite child node of DeviceView should only be one.");
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_IN_NON_CROSS_DATA_REGION_AGGREGATION_DEVICE_VIEW_SITUATION_557AE5D2);
         }
         childNode = rewriteResult.get(0);
       }
@@ -1162,7 +1163,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     for (PlanNode child : node.getChildren()) {
       if (!(child instanceof SeriesSourceNode)) {
         throw new IllegalStateException(
-            "All child nodes of InnerTimeJoinNode should be SeriesSourceNode");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_ALL_CHILD_NODES_OF_INNERTIMEJOINNODE_SHOULD_BE_SERIESSOURCENODE_B92B181D);
       }
       SeriesSourceNode sourceNode = (SeriesSourceNode) child;
       seriesScanNodes.add(sourceNode);

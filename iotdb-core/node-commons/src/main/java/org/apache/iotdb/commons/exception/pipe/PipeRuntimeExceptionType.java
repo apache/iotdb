@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMetaVersion;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -67,7 +68,8 @@ public enum PipeRuntimeExceptionType {
         return PipeRuntimeOutOfMemoryCriticalException.deserializeFrom(version, byteBuffer);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported PipeRuntimeException type %s.", type));
+            String.format(
+                PipeMessages.EXCEPTION_UNSUPPORTED_PIPERUNTIMEEXCEPTION_TYPE_ARG_C5D5D84C, type));
     }
   }
 
@@ -85,7 +87,8 @@ public enum PipeRuntimeExceptionType {
         return PipeRuntimeOutOfMemoryCriticalException.deserializeFrom(version, stream);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported PipeRuntimeException type %s.", type));
+            String.format(
+                PipeMessages.EXCEPTION_UNSUPPORTED_PIPERUNTIMEEXCEPTION_TYPE_ARG_C5D5D84C, type));
     }
   }
 }

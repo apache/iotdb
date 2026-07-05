@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -132,8 +133,11 @@ public class QueryStateMachine {
   }
 
   private boolean transitionToDoneState(QueryState doneState) {
-    requireNonNull(doneState, "doneState is null");
-    checkArgument(doneState.isDone(), "doneState %s is not a done state", doneState);
+    requireNonNull(doneState, DataNodeQueryMessages.EXCEPTION_DONESTATE_IS_NULL_D88F77E5);
+    checkArgument(
+        doneState.isDone(),
+        DataNodeQueryMessages.EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618,
+        doneState);
 
     return queryState.setIf(doneState, currentState -> !currentState.isDone());
   }

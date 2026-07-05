@@ -67,7 +67,9 @@ public class DataDriver extends Driver {
         }
       } catch (Throwable t) {
         LOGGER.error(
-            "Failed to do the initialization for driver {} ", driverContext.getDriverTaskID(), t);
+            DataNodeQueryMessages.FAILED_TO_DO_THE_INITIALIZATION_FOR_DRIVER_ARG,
+            driverContext.getDriverTaskID(),
+            t);
         driverContext.failed(t);
         blockedFuture.setException(t);
         throwIfUnchecked(t);

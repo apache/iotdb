@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
@@ -244,7 +245,9 @@ public class QueryDataSetUtils {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", type));
+                String.format(
+                    DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    type));
         }
         if (k != columnNum - 1) {
           rowCount -= currentCount;
@@ -325,7 +328,8 @@ public class QueryDataSetUtils {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", type));
+              String.format(
+                  DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4, type));
       }
     }
   }
@@ -673,7 +677,10 @@ public class QueryDataSetUtils {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("data type %s is not supported when convert data at client", types[i]));
+              String.format(
+                  DataNodeMiscMessages
+                      .MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC,
+                  types[i]));
       }
     }
     return values;
@@ -709,7 +716,10 @@ public class QueryDataSetUtils {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("data type %s is not supported when convert data at client", types[i]));
+              String.format(
+                  DataNodeMiscMessages
+                      .MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC,
+                  types[i]));
       }
     }
     return values;

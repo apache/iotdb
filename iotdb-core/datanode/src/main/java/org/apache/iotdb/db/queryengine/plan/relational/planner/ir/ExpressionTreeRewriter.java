@@ -60,6 +60,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 import com.google.common.collect.ImmutableList;
@@ -117,7 +118,9 @@ public final class ExpressionTreeRewriter<C> {
       // visit method,
       // so visitExpression() should never be called.
       throw new UnsupportedOperationException(
-          "visit() not implemented for " + node.getClass().getName());
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_VISIT_NOT_IMPLEMENTED_FOR_S_1A798A4D,
+              node.getClass().getName()));
     }
 
     @Override

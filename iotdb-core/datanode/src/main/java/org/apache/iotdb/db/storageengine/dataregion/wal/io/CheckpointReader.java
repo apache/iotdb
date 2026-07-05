@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 
 import org.slf4j.Logger;
@@ -54,12 +55,16 @@ public class CheckpointReader {
       }
     } catch (EOFException e) {
       logger.debug(
-          "Meet error when reading checkpoint file {}, skip broken checkpoints",
+          StorageEngineMessages
+              .STORAGE_LOG_MEET_ERROR_WHEN_READING_CHECKPOINT_FILE_SKIP_BROKEN_CHECKPOINTS_DADF9E9D,
           logFile,
           e.getMessage());
     } catch (IOException e) {
       logger.warn(
-          "Meet error when reading checkpoint file {}, skip broken checkpoints", logFile, e);
+          StorageEngineMessages
+              .STORAGE_LOG_MEET_ERROR_WHEN_READING_CHECKPOINT_FILE_SKIP_BROKEN_CHECKPOINTS_DADF9E9D,
+          logFile,
+          e);
     }
   }
 

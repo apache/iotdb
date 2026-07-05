@@ -130,7 +130,8 @@ public class PrometheusReporter implements Reporter {
       return false;
     }
     LOGGER.info(
-        "PrometheusReporter started, use port {}", METRIC_CONFIG.getPrometheusReporterPort());
+        MetricsMessages.LOG_PROMETHEUSREPORTER_STARTED_USE_PORT_ARG_A688FFC8,
+        METRIC_CONFIG.getPrometheusReporterPort());
     return true;
   }
 
@@ -227,7 +228,8 @@ public class PrometheusReporter implements Reporter {
           HistogramSnapshot snapshot = timer.takeSnapshot();
           if (Objects.isNull(snapshot)) {
             LOGGER.warn(
-                "Detected an error when taking metric timer snapshot, will discard this metric");
+                MetricsMessages
+                    .LOG_DETECTED_ERROR_TAKING_METRIC_TIMER_SNAPSHOT_WILL_DISCARD_METRIC_B7154169);
             continue;
           }
           name += "_seconds";

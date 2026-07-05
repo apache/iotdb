@@ -171,7 +171,9 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
             .getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipePasswordCheckException(
-          String.format("Failed to check password for pipe %s.", pipeName));
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_FAILED_TO_CHECK_PASSWORD_FOR_PIPE_S_0B1A5C73,
+              pipeName));
     }
   }
 

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -47,26 +49,32 @@ public class AllColumns extends SelectItem {
 
   public AllColumns(Expression target) {
     super(null);
-    this.target = requireNonNull(target, "target is null");
+    this.target = requireNonNull(target, QueryMessages.EXCEPTION_TARGET_IS_NULL_240F0372);
     this.aliases = ImmutableList.of();
   }
 
   public AllColumns(Expression target, List<Identifier> aliases) {
     super(null);
-    this.target = requireNonNull(target, "target is null");
-    this.aliases = ImmutableList.copyOf(requireNonNull(aliases, "aliases is null"));
+    this.target = requireNonNull(target, QueryMessages.EXCEPTION_TARGET_IS_NULL_240F0372);
+    this.aliases =
+        ImmutableList.copyOf(
+            requireNonNull(aliases, QueryMessages.EXCEPTION_ALIASES_IS_NULL_C481EE59));
   }
 
   public AllColumns(NodeLocation location, Expression target, List<Identifier> aliases) {
-    super(requireNonNull(location, "location is null"));
-    this.target = requireNonNull(target, "target is null");
-    this.aliases = ImmutableList.copyOf(requireNonNull(aliases, "aliases is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.target = requireNonNull(target, QueryMessages.EXCEPTION_TARGET_IS_NULL_240F0372);
+    this.aliases =
+        ImmutableList.copyOf(
+            requireNonNull(aliases, QueryMessages.EXCEPTION_ALIASES_IS_NULL_C481EE59));
   }
 
   public AllColumns(NodeLocation location, List<Identifier> aliases) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.target = null;
-    this.aliases = ImmutableList.copyOf(requireNonNull(aliases, "aliases is null"));
+    this.aliases =
+        ImmutableList.copyOf(
+            requireNonNull(aliases, QueryMessages.EXCEPTION_ALIASES_IS_NULL_C481EE59));
   }
 
   public List<Identifier> getAliases() {

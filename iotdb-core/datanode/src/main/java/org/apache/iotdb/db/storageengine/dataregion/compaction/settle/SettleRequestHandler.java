@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
@@ -295,7 +296,8 @@ public class SettleRequestHandler {
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       } catch (InterruptedException e) {
         logger.error(
-            "meet error when adding task-{} to compaction waiting queue: {}",
+            StorageEngineMessages
+                .STORAGE_LOG_MEET_ERROR_WHEN_ADDING_TASK_TO_COMPACTION_WAITING_QUEUE_84AA345D,
             task.getSerialId(),
             e.getMessage());
         Thread.currentThread().interrupt();

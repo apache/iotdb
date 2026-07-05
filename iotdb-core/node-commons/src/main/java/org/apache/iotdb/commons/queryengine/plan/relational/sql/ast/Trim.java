@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -39,22 +41,28 @@ public class Trim extends Expression {
 
   public Trim(Specification specification, Expression trimSource) {
     super(null);
-    this.specification = requireNonNull(specification, "specification is null");
-    this.trimSource = requireNonNull(trimSource, "trimSource is null");
+    this.specification =
+        requireNonNull(specification, QueryMessages.EXCEPTION_SPECIFICATION_IS_NULL_BB4AA029);
+    this.trimSource =
+        requireNonNull(trimSource, QueryMessages.EXCEPTION_TRIMSOURCE_IS_NULL_C7E6B71D);
     this.trimCharacter = null;
   }
 
   public Trim(Specification specification, Expression trimSource, Expression trimCharacter) {
     super(null);
-    this.specification = requireNonNull(specification, "specification is null");
-    this.trimSource = requireNonNull(trimSource, "trimSource is null");
+    this.specification =
+        requireNonNull(specification, QueryMessages.EXCEPTION_SPECIFICATION_IS_NULL_BB4AA029);
+    this.trimSource =
+        requireNonNull(trimSource, QueryMessages.EXCEPTION_TRIMSOURCE_IS_NULL_C7E6B71D);
     this.trimCharacter = trimCharacter;
   }
 
   public Trim(NodeLocation location, Specification specification, Expression trimSource) {
-    super(requireNonNull(location, "location is null"));
-    this.specification = requireNonNull(specification, "specification is null");
-    this.trimSource = requireNonNull(trimSource, "trimSource is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.specification =
+        requireNonNull(specification, QueryMessages.EXCEPTION_SPECIFICATION_IS_NULL_BB4AA029);
+    this.trimSource =
+        requireNonNull(trimSource, QueryMessages.EXCEPTION_TRIMSOURCE_IS_NULL_C7E6B71D);
     this.trimCharacter = null;
   }
 
@@ -63,10 +71,13 @@ public class Trim extends Expression {
       Specification specification,
       Expression trimSource,
       Expression trimCharacter) {
-    super(requireNonNull(location, "location is null"));
-    this.specification = requireNonNull(specification, "specification is null");
-    this.trimSource = requireNonNull(trimSource, "trimSource is null");
-    this.trimCharacter = requireNonNull(trimCharacter, "trimCharacter is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.specification =
+        requireNonNull(specification, QueryMessages.EXCEPTION_SPECIFICATION_IS_NULL_BB4AA029);
+    this.trimSource =
+        requireNonNull(trimSource, QueryMessages.EXCEPTION_TRIMSOURCE_IS_NULL_C7E6B71D);
+    this.trimCharacter =
+        requireNonNull(trimCharacter, QueryMessages.EXCEPTION_TRIMCHARACTER_IS_NULL_4036C3D8);
   }
 
   public Specification getSpecification() {
@@ -134,7 +145,8 @@ public class Trim extends Expression {
     private final String functionName;
 
     Specification(String functionName) {
-      this.functionName = requireNonNull(functionName, "functionName is null");
+      this.functionName =
+          requireNonNull(functionName, QueryMessages.EXCEPTION_FUNCTIONNAME_IS_NULL_0818CBC7);
     }
 
     public String getFunctionName() {

@@ -62,18 +62,20 @@ public class IoTDBDataDirViewer {
         File[] seqAndUnseqDirs = dirFile.listFiles();
         if (seqAndUnseqDirs == null) {
           throw new IOException(
-              "Irregular data dir structure.There should be a sequence and unsequence directory "
-                  + "under the data directory "
-                  + dirFile.getName());
+              String.format(
+                  DataNodeMiscMessages
+                      .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_A_SEQUENCE_95B4D431,
+                  dirFile.getName()));
         }
         List<File> fileList = Arrays.asList(seqAndUnseqDirs);
         fileList.sort((Comparator.comparing(File::getName)));
         if (!"sequence".equals(seqAndUnseqDirs[1].getName())
             || !"unsequence".equals(seqAndUnseqDirs[2].getName())) {
           throw new IOException(
-              "Irregular data dir structure.There should be a sequence and unsequence directory "
-                  + "under the data directory "
-                  + dirFile.getPath());
+              String.format(
+                  DataNodeMiscMessages
+                      .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_A_SEQUENCE_95B4D431,
+                  dirFile.getPath()));
         }
 
         printlnBoth(pw, "|==============================================================");
@@ -92,9 +94,10 @@ public class IoTDBDataDirViewer {
     File[] storageGroupDirs = seqOrUnseqDir.listFiles();
     if (storageGroupDirs == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be database directories under "
-              + "the sequence/unsequence directory "
-              + seqOrUnseqDir.getName());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_DATABASE_DIRECTORIES_10C36DC2,
+              seqOrUnseqDir.getName()));
     }
     List<File> fileList = Arrays.asList(storageGroupDirs);
     fileList.sort((Comparator.comparing(File::getName)));
@@ -109,9 +112,10 @@ public class IoTDBDataDirViewer {
     File[] files = storageGroup.listFiles();
     if (files == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be dataRegion directories under "
-              + "the database directory "
-              + storageGroup.getName());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_DATAREGION_6BCDBFA1,
+              storageGroup.getName()));
     }
     List<File> fileList = Arrays.asList(files);
     fileList.sort((Comparator.comparing(File::getName)));
@@ -126,9 +130,10 @@ public class IoTDBDataDirViewer {
     File[] files = dataRegion.listFiles();
     if (files == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be timeInterval directories under "
-              + "the database directory "
-              + dataRegion.getName());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_TIMEINTERVAL_8D074700,
+              dataRegion.getName()));
     }
     List<File> fileList = Arrays.asList(files);
     fileList.sort((Comparator.comparing(File::getName)));
@@ -143,9 +148,10 @@ public class IoTDBDataDirViewer {
     File[] files = timeInterval.listFiles();
     if (files == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be tsfiles under "
-              + "the timeInterval directories directory "
-              + timeInterval.getName());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_TSFILES_UNDER_6381FDA5,
+              timeInterval.getName()));
     }
     List<File> fileList = Arrays.asList(files);
     fileList.sort((Comparator.comparing(File::getName)));

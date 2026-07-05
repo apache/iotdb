@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.schemachange;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -54,8 +55,8 @@ public class RenameDatabaseProcessor implements PipeProcessor {
     } catch (final Exception e) {
       throw new PipeException(
           String.format(
-              "The new database name %s is invalid, it should not contain '%s', "
-                  + "should match the pattern %s, and the length should not exceed %d",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_NEW_DATABASE_NAME_S_IS_INVALID_IT_SHOULD_NOT_CONTAIN_C3AB555E,
               newDatabaseName,
               PATH_SEPARATOR,
               IoTDBConfig.DATABASE_PATTERN,

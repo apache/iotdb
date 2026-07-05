@@ -235,8 +235,10 @@ public class PipeHeartbeatParser {
               .ifPresent(
                   l ->
                       l.info(
-                          "Updated progress index for (pipe name: {}, consensus group id: {}) ... "
-                              + "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}",
+                          ManagerMessages
+                                  .LOG_UPDATED_PROGRESS_INDEX_PIPE_NAME_ARG_CONSENSUS_GROUP_ID_ARG_DF112F4F
+                              + ManagerMessages
+                                  .LOG_PROGRESS_INDEX_COORDINATOR_ARG_PROGRESS_INDEX_AGENT_ARG_UPDATED_PROGRESSINDEX_1A22ABC5,
                           pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
                           runtimeMetaFromCoordinator.getKey(),
                           runtimeMetaFromCoordinator.getValue().getProgressIndex(),

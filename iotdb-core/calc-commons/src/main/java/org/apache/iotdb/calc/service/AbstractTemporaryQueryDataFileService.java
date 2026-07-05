@@ -94,14 +94,20 @@ public abstract class AbstractTemporaryQueryDataFileService implements IService 
         recorder.closeFile();
       } catch (IOException e) {
         logger.warn(
-            String.format("Failed to close file in method deregister(%s), because %s", queryId, e));
+            String.format(
+                CalcMessages.LOG_FAILED_CLOSE_FILE_METHOD_DEREGISTER_ARG_BECAUSE_ARG_1744AC60,
+                queryId,
+                e));
       }
     }
     try {
       FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(getDirName(queryId)));
     } catch (IOException e) {
       logger.warn(
-          String.format("Failed to clean dir in method deregister(%s), because %s", queryId, e));
+          String.format(
+              CalcMessages.LOG_FAILED_CLEAN_DIR_METHOD_DEREGISTER_ARG_BECAUSE_ARG_F53193E5,
+              queryId,
+              e));
     }
   }
 

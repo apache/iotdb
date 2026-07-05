@@ -59,7 +59,9 @@ public class UDTFInformationInferrer {
     } catch (Exception e) {
       LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_DURING_INFERRING_UDF_DATA_TYPE, e);
       throw new SemanticException(
-          String.format("Error occurred during inferring UDF data type: %s", System.lineSeparator())
+          String.format(
+                  DataNodeQueryMessages.ERROR_OCCURRED_DURING_INFERRING_UDF_DATA_TYPE_S,
+                  System.lineSeparator())
               + e);
     }
   }
@@ -75,7 +77,8 @@ public class UDTFInformationInferrer {
       LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_DURING_GETTING_UDF_ACCESS_STRATEGY, e);
       throw new SemanticException(
           String.format(
-                  "Error occurred during getting UDF access strategy: %s", System.lineSeparator())
+                  DataNodeQueryMessages.ERROR_OCCURRED_DURING_GETTING_UDF_ACCESS_STRATEGY_S,
+                  System.lineSeparator())
               + e);
     }
   }

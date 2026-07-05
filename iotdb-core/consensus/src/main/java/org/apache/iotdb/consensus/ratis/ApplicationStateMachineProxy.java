@@ -274,7 +274,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       // incomplete data (silent data loss). Fail (re)initialization instead so the snapshot install
       // is treated as failed and can be retried.
       throw new IOException(
-          String.format("%s: failed to load snapshot from %s", this, latestSnapshotDir));
+          String.format(
+              RatisMessages.EXCEPTION_ARG_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_A12E23D7,
+              this,
+              latestSnapshotDir));
     }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
     updateLastAppliedTermIndex(snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());

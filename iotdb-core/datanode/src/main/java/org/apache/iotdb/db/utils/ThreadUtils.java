@@ -44,7 +44,11 @@ public class ThreadUtils {
         logger.warn(DataNodeMiscMessages.POOL_NOT_EXIT_AFTER_TIMEOUT, poolName.getName());
         Thread.currentThread().interrupt();
         throw new StorageEngineFailureException(
-            String.format("StorageEngine failed to stop because of %s.", poolName.getName()), e);
+            String.format(
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_STORAGEENGINE_FAILED_TO_STOP_BECAUSE_OF_S_84D26574,
+                poolName.getName()),
+            e);
       }
     }
   }

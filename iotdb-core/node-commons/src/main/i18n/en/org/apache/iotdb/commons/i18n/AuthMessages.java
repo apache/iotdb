@@ -116,4 +116,11 @@ public final class AuthMessages {
 
   public static final String NAME_CANNOT_CONTAIN_SPACES = "The name cannot contain spaces";
   public static final String PASSWORD_CANNOT_CONTAIN_SPACES = "The password cannot contain spaces";
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_ACCESS_DENIED_E128C1A1 = "Access Denied: ";
+  public static final String EXCEPTION_ENCRYPT_DECRYPT_FAILED_163764B5 = "Encrypt or decrypt failed.";
+  public static final String EXCEPTION_BACKSLASH_QUOTE_D4C5D637 = "\"";
+
 }

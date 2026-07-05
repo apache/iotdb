@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -38,16 +40,16 @@ public class AliasedRelation extends Relation {
 
   public AliasedRelation(Relation relation, Identifier alias, List<Identifier> columnNames) {
     super(null);
-    this.relation = requireNonNull(relation, "relation is null");
-    this.alias = requireNonNull(alias, "alias is null");
+    this.relation = requireNonNull(relation, QueryMessages.EXCEPTION_RELATION_IS_NULL_890596ED);
+    this.alias = requireNonNull(alias, QueryMessages.EXCEPTION_ALIAS_IS_NULL_B2ED729A);
     this.columnNames = columnNames;
   }
 
   public AliasedRelation(
       NodeLocation location, Relation relation, Identifier alias, List<Identifier> columnNames) {
-    super(requireNonNull(location, "location is null"));
-    this.relation = requireNonNull(relation, "relation is null");
-    this.alias = requireNonNull(alias, "alias is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.relation = requireNonNull(relation, QueryMessages.EXCEPTION_RELATION_IS_NULL_890596ED);
+    this.alias = requireNonNull(alias, QueryMessages.EXCEPTION_ALIAS_IS_NULL_B2ED729A);
     this.columnNames = columnNames;
   }
 

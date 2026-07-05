@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
@@ -73,8 +74,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void notifyLeaderChanged(final ConsensusGroupId groupId, final int newLeaderId) {
     if (newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
       logger.info(
-          "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
-              + "the new leader is [nodeId:{}]",
+          DataNodePipeMessages
+              .PIPE_LOG_CURRENT_NODE_NODEID_IS_NO_LONGER_THE_SCHEMA_REGION_LEADER_FD783B3C,
           IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
           schemaRegion.getSchemaRegionId(),
           newLeaderId);
@@ -85,8 +86,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void notifyNotLeader() {
     final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
     logger.info(
-        "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
-            + "start cleaning up related services.",
+        DataNodePipeMessages
+            .PIPE_LOG_CURRENT_NODE_NODEID_IS_NO_LONGER_THE_SCHEMA_REGION_LEADER_12E06F99,
         dataNodeId,
         schemaRegion.getSchemaRegionId());
 
@@ -95,8 +96,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     GeneralRegionAttributeSecurityService.getInstance().stopBroadcast(schemaRegion);
 
     logger.info(
-        "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
-            + "all services on old leader are unavailable now.",
+        DataNodePipeMessages
+            .PIPE_LOG_CURRENT_NODE_NODEID_IS_NO_LONGER_THE_SCHEMA_REGION_LEADER_3092822E,
         dataNodeId,
         schemaRegion.getSchemaRegionId());
   }
@@ -104,7 +105,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   public void notifyLeaderReady() {
     logger.info(
-        "Current node [nodeId: {}] becomes schema region leader [regionId: {}]",
+        DataNodePipeMessages
+            .PIPE_LOG_CURRENT_NODE_NODEID_BECOMES_SCHEMA_REGION_LEADER_REGIONID_46C70A32,
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
         schemaRegion.getSchemaRegionId());
 
@@ -113,7 +115,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     GeneralRegionAttributeSecurityService.getInstance().startBroadcast(schemaRegion);
 
     logger.info(
-        "Current node [nodeId: {}] as schema region leader [regionId: {}] is ready to work",
+        DataNodePipeMessages
+            .PIPE_LOG_CURRENT_NODE_NODEID_AS_SCHEMA_REGION_LEADER_REGIONID_IS_F00BFAC5,
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
         schemaRegion.getSchemaRegionId());
   }
@@ -150,7 +153,10 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       listen2Snapshot4PipeListener(false);
       return loadSucceeded;
     } catch (Exception e) {
-      logger.error("Failed to load snapshot from {}", latestSnapshotRootDir, e);
+      logger.error(
+          DataNodePipeMessages.MESSAGE_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_9391AA27,
+          latestSnapshotRootDir,
+          e);
       return false;
     }
   }
@@ -167,7 +173,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.get(0))) {
       if (listener.isOpened()) {
         logger.warn(
-            "Schema Region Listening Queue Listen to snapshot failed, the historical data may not be transferred. snapshotPaths:{}",
+            DataNodePipeMessages
+                .PIPE_LOG_SCHEMA_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_64845A44,
             snapshotPaths);
       }
       return;
@@ -211,7 +218,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       return null;
     }
     logger.debug(
-        "SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}",
+        DataNodePipeMessages
+            .PIPE_LOG_SCHEMAREGIONSTATEMACHINE_EXECUTE_READ_PLAN_FRAGMENTINSTANCE_F85A001F,
         schemaRegion.getSchemaRegionId(),
         fragmentInstance.getId());
     return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);

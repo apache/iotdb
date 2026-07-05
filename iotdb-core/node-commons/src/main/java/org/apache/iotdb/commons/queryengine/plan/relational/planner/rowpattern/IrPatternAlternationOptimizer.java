@@ -79,7 +79,8 @@ public final class IrPatternAlternationOptimizer {
         if (children.get(i) instanceof IrEmpty) {
           checkState(
               emptyChildIndex < 0,
-              "run IrRowPatternFlattener first to remove redundant empty pattern");
+              QueryMessages
+                  .EXCEPTION_RUN_IRROWPATTERNFLATTENER_FIRST_TO_REMOVE_REDUNDANT_EMPTY_PATTERN_D2FB553C);
           emptyChildIndex = i;
         }
       }

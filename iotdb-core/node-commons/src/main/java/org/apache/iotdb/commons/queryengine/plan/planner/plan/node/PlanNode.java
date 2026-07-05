@@ -54,7 +54,7 @@ public abstract class PlanNode implements IConsensusRequest {
   protected PlanNode() {}
 
   protected PlanNode(PlanNodeId id) {
-    requireNonNull(id, "id is null");
+    requireNonNull(id, QueryMessages.EXCEPTION_ID_IS_NULL_9D5D27B1);
     this.id = id;
   }
 

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFun
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -72,7 +73,8 @@ public class Util {
           symbolAllocator.newSymbol(resolvedFunction.getSignature().getName(), intermediateType);
       checkState(
           !originalAggregation.getOrderingScheme().isPresent(),
-          "Aggregate with ORDER BY does not support partial aggregation");
+          DataNodeQueryMessages
+              .EXCEPTION_AGGREGATE_WITH_ORDER_BY_DOES_NOT_SUPPORT_PARTIAL_AGGREGATION_D5BDD21F);
       intermediateAggregation.put(
           intermediateSymbol,
           new AggregationNode.Aggregation(
@@ -144,7 +146,8 @@ public class Util {
 
       checkState(
           !originalAggregation.getOrderingScheme().isPresent(),
-          "Aggregate with ORDER BY does not support partial aggregation");
+          DataNodeQueryMessages
+              .EXCEPTION_AGGREGATE_WITH_ORDER_BY_DOES_NOT_SUPPORT_PARTIAL_AGGREGATION_D5BDD21F);
       intermediateAggregation.put(
           intermediateSymbol,
           new AggregationNode.Aggregation(

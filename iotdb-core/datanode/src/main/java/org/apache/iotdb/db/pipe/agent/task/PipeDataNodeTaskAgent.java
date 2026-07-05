@@ -309,10 +309,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                         schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
               } catch (final ConsensusException e) {
                 throw new PipeException(
-                    DataNodePipeMessages.FAILED_TO_CLOSE_LISTENING_QUEUE_FOR_SCHEMAREGION
-                        + schemaRegionId
-                        + ", because "
-                        + e.getMessage(),
+                    String.format(
+                        DataNodePipeMessages
+                            .FAILED_TO_CLOSE_LISTENING_QUEUE_FOR_SCHEMAREGION_BECAUSE_FMT,
+                        schemaRegionId,
+                        e.getMessage()),
                     e);
               }
             });
@@ -787,8 +788,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (!tryReadLockWithTimeOut(10)) {
       throw new PipeException(
           String.format(
-              "Failed to get pipe task progress index with pipe name: %s, consensus group id %s.",
-              pipeName, consensusGroupId));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_GET_PIPE_TASK_PROGRESS_INDEX_WITH_PIPE_NAME_S_CFE9DE7C,
+              pipeName,
+              consensusGroupId));
     }
 
     try {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -84,7 +85,8 @@ public class Percentile {
       return Double.NaN;
     }
     if (percentile < 0.0 || percentile > 1.0) {
-      throw new SemanticException("percentage should be in [0,1], got " + percentile);
+      throw new SemanticException(
+          CalcMessages.EXCEPTION_PERCENTAGE_SHOULD_BE_IN_0_1_GOT_7A2C2F83 + percentile);
     }
 
     ensureSorted();

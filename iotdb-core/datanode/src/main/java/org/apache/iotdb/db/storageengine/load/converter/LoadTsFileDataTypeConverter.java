@@ -185,7 +185,8 @@ public class LoadTsFileDataTypeConverter {
         return Optional.of(getMemoryPressureStatus(e));
       }
       LOGGER.warn(
-          "Failed to convert data types for table model statement {}.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPES_FOR_TABLE_MODEL_STATEMENT_CB574D44,
           loadTsFileTableStatement,
           e);
       return Optional.of(
@@ -249,7 +250,10 @@ public class LoadTsFileDataTypeConverter {
         return Optional.of(getMemoryPressureStatus(e));
       }
       LOGGER.warn(
-          "Failed to convert data types for tree model statement {}.", loadTsFileTreeStatement, e);
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPES_FOR_TREE_MODEL_STATEMENT_5C2869D6,
+          loadTsFileTreeStatement,
+          e);
       return Optional.of(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
     } finally {

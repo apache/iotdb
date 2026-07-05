@@ -77,7 +77,7 @@ public class DataPartitionPolicyTable {
         regionGroupId, seriesPartitionSlotCounter.get(regionGroupId) + 1);
     LOGGER.info(
         ManagerMessages.ACTIVATEDATAALLOTTABLE_ACTIVATE_SERIESPARTITIONSLOT
-            + "to RegionGroup {}, SeriesPartitionSlot Count: {}",
+            + ManagerMessages.LOG_REGIONGROUP_ARG_SERIESPARTITIONSLOT_COUNT_ARG_30F57B14,
         seriesPartitionSlot,
         regionGroupId,
         seriesPartitionSlotCounter.get(regionGroupId));
@@ -165,7 +165,8 @@ public class DataPartitionPolicyTable {
             regionGroupId ->
                 LOGGER.info(
                     ManagerMessages.REBALANCEDATAALLOTTABLE_DATABASE
-                        + "RegionGroupId: {}, SeriesPartitionSlot Count: {}",
+                        + ManagerMessages
+                            .LOG_REGIONGROUPID_ARG_SERIESPARTITIONSLOT_COUNT_ARG_5DAE4B6A,
                     database,
                     regionGroupId,
                     seriesPartitionSlotCounter.get(regionGroupId)));

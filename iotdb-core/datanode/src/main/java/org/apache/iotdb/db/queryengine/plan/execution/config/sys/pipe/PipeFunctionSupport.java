@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -63,7 +64,8 @@ public class PipeFunctionSupport {
       value = extractorAttributes.get(key);
     } catch (Exception e) {
       LOGGER.warn(
-          "The prefix of sourceKey is not 'source.'. Please check the parameters passed in: {}",
+          DataNodeQueryMessages
+              .THE_PREFIX_OF_SOURCEKEY_IS_NOT_SOURCE_PLEASE_CHECK_THE_PARAMETERS_PASSED_IN_ARG,
           sourceKey,
           e);
     }

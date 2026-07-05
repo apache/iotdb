@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.commons.security.encrypt;
 
+import org.apache.iotdb.commons.i18n.AuthMessages;
+
 public class EncryptDecryptException extends RuntimeException {
 
   public EncryptDecryptException(Throwable e) {
-    super("Encrypt or decrypt failed.", e);
+    super(AuthMessages.EXCEPTION_ENCRYPT_DECRYPT_FAILED_163764B5, e);
   }
 
   public EncryptDecryptException(String message) {

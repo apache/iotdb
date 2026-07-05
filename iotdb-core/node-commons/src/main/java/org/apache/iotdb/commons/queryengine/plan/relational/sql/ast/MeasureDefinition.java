@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,8 +39,9 @@ public class MeasureDefinition extends Node {
 
   public MeasureDefinition(NodeLocation location, Expression expression, Identifier name) {
     super(location);
-    this.expression = requireNonNull(expression, "expression is null");
-    this.name = requireNonNull(name, "name is null");
+    this.expression =
+        requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
   }
 
   public Expression getExpression() {

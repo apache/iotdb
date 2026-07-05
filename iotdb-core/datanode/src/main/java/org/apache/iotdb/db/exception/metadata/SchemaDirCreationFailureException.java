@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 public class SchemaDirCreationFailureException extends MetadataException {
 
   public SchemaDirCreationFailureException(String dirPath) {
-    super(String.format("create database schema folder %s failed.", dirPath));
+    super(String.format(DataNodeSchemaMessages.SCHEMA_DIR_CREATION_FAILED_FMT, dirPath));
   }
 }

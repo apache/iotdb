@@ -36,4 +36,9 @@ public final class MetricsCoreMessages {
   public static final String JMX_UNABLE_TO_REGISTER = "IoTDB Metric: Unable to register {} {}";
 
   private MetricsCoreMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_DETECTED_ERROR_TAKING_SNAPSHOT_MAY_CAUSE_MISS_DURING_RECORDING_2BAE49C4 = "Detected an error while taking snapshot, may cause a miss during this recording.";
+
 }

@@ -333,7 +333,10 @@ public class TriggerManagementService {
         | ClassCastException e) {
       throw new TriggerManagementException(
           String.format(
-              "Failed to reflect trigger instance with className(%s), because %s", className, e));
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_FAILED_TO_REFLECT_TRIGGER_INSTANCE_WITH_CLASSNAME_S_BECAUSE_C0CC44E2,
+              className,
+              e));
     }
   }
 

@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.process.window.function.aggrega
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAccumulator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 
 import com.google.common.primitives.Ints;
@@ -42,9 +43,13 @@ public class WindowAggregator {
 
   public WindowAggregator(
       TableAccumulator accumulator, TSDataType outputType, List<Integer> inputChannels) {
-    this.accumulator = requireNonNull(accumulator, "accumulator is null");
-    this.outputType = requireNonNull(outputType, "intermediateType is null");
-    this.inputChannels = Ints.toArray(requireNonNull(inputChannels, "inputChannels is null"));
+    this.accumulator =
+        requireNonNull(accumulator, CalcMessages.EXCEPTION_ACCUMULATOR_IS_NULL_EF0C1DFF);
+    this.outputType =
+        requireNonNull(outputType, CalcMessages.EXCEPTION_INTERMEDIATETYPE_IS_NULL_D0D9B957);
+    this.inputChannels =
+        Ints.toArray(
+            requireNonNull(inputChannels, CalcMessages.EXCEPTION_INPUTCHANNELS_IS_NULL_647DA393));
   }
 
   public TSDataType getType() {

@@ -120,7 +120,8 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
       throws IOException {
     final File parentDir = pipeHardLinkDir.getParentFile();
     if (parentDir == null) {
-      throw new IOException("Failed to get parent dir of " + pipeHardLinkDir);
+      throw new IOException(
+          DataNodePipeMessages.EXCEPTION_FAILED_TO_GET_PARENT_DIR_OF_8CE21C1D + pipeHardLinkDir);
     }
 
     final long timestamp = System.currentTimeMillis();

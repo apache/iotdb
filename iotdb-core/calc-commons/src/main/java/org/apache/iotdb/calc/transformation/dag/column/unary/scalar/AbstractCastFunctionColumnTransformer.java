@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.util.CastFunctionUtils;
@@ -184,7 +185,9 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
       }
     } catch (DateTimeParseException e) {
       throw new IoTDBRuntimeException(
-          "Year must be between 1000 and 9999.", DATE_OUT_OF_RANGE.getStatusCode(), true);
+          CalcMessages.EXCEPTION_YEAR_MUST_BETWEEN_1000_9999_8FBB94AA,
+          DATE_OUT_OF_RANGE.getStatusCode(),
+          true);
     }
   }
 
@@ -350,7 +353,10 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
       }
     } catch (DateTimeParseException | NumberFormatException e) {
       throw new SemanticException(
-          String.format("Cannot cast %s to %s type", stringValue, returnType.getDisplayName()));
+          String.format(
+              CalcMessages.EXCEPTION_CANNOT_CAST_ARG_ARG_TYPE_8266A2C6,
+              stringValue,
+              returnType.getDisplayName()));
     }
   }
 
@@ -391,7 +397,10 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
       }
     } catch (DateTimeParseException | NumberFormatException e) {
       throw new SemanticException(
-          String.format("Cannot cast %s to %s type", stringValue, returnType.getDisplayName()));
+          String.format(
+              CalcMessages.EXCEPTION_CANNOT_CAST_ARG_ARG_TYPE_8266A2C6,
+              stringValue,
+              returnType.getDisplayName()));
     }
   }
 

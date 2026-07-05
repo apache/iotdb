@@ -114,7 +114,10 @@ public class ExternalServiceManagementService {
       if (serviceInfos.containsKey(serviceName)) {
         TSStatus status = new TSStatus(TSStatusCode.EXTERNAL_SERVICE_ALREADY_EXIST.getStatusCode());
         status.setMessage(
-            String.format("Failed to create External Service %s, it already exists!", serviceName));
+            String.format(
+                DataNodeMiscMessages
+                    .MESSAGE_FAILED_CREATE_EXTERNAL_SERVICE_ARG_IT_ALREADY_EXISTS_50AE69DF,
+                serviceName));
         throw new ExternalServiceManagementException(status);
       }
 
@@ -148,7 +151,9 @@ public class ExternalServiceManagementService {
         TSStatus status = new TSStatus(TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode());
         status.setMessage(
             String.format(
-                "Failed to start External Service %s, because it is not existed!", serviceName));
+                DataNodeMiscMessages
+                    .MESSAGE_FAILED_START_EXTERNAL_SERVICE_ARG_BECAUSE_IT_NOT_EXISTED_29D6D3F2,
+                serviceName));
         throw new ExternalServiceManagementException(status);
       }
 
@@ -199,8 +204,10 @@ public class ExternalServiceManagementService {
           new TSStatus(TSStatusCode.EXTERNAL_SERVICE_INSTANCE_CREATE_ERROR.getStatusCode());
       status.setMessage(
           String.format(
-              "Failed to start External Service %s, because its instance can not be constructed successfully. Exception: %s",
-              serviceName, t));
+              DataNodeMiscMessages
+                  .MESSAGE_FAILED_START_EXTERNAL_SERVICE_ARG_BECAUSE_ITS_INSTANCE_CAN_NOT_F5A6C198,
+              serviceName,
+              t));
       LOGGER.warn(status.getMessage(), t);
       throw new ExternalServiceManagementException(status);
     }
@@ -231,7 +238,9 @@ public class ExternalServiceManagementService {
         TSStatus status = new TSStatus(TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode());
         status.setMessage(
             String.format(
-                "Failed to stop External Service %s, because it is not existed!", serviceName));
+                DataNodeMiscMessages
+                    .MESSAGE_FAILED_STOP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_NOT_EXISTED_3CCCDA42,
+                serviceName));
         throw new ExternalServiceManagementException(status);
       }
 
@@ -281,7 +290,9 @@ public class ExternalServiceManagementService {
         TSStatus status = new TSStatus(TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode());
         status.setMessage(
             String.format(
-                "Failed to drop External Service %s, because it is not existed!", serviceName));
+                DataNodeMiscMessages
+                    .MESSAGE_FAILED_DROP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_NOT_EXISTED_FDD11F17,
+                serviceName));
         throw new ExternalServiceManagementException(status);
       }
       if (serviceInfo.getServiceType() == ServiceInfo.ServiceType.BUILTIN) {
@@ -289,7 +300,9 @@ public class ExternalServiceManagementService {
             new TSStatus(TSStatusCode.CANNOT_DROP_BUILTIN_EXTERNAL_SERVICE.getStatusCode());
         status.setMessage(
             String.format(
-                "Failed to drop External Service %s, because it is BUILT-IN!", serviceName));
+                DataNodeMiscMessages
+                    .MESSAGE_FAILED_DROP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_BUILT_59858F3F,
+                serviceName));
         throw new ExternalServiceManagementException(status);
       }
 
@@ -304,15 +317,19 @@ public class ExternalServiceManagementService {
           } catch (Exception e) {
             // record errMsg if exception occurs during the stop of service
             LOGGER.warn(
-                "Failed to stop External Service %s because %s. It will be drop forcedly",
-                serviceName, e.getMessage());
+                DataNodeMiscMessages
+                    .MISC_LOG_FAILED_TO_STOP_EXTERNAL_SERVICE_S_BECAUSE_S_IT_WILL_BE_DROP_B2909C1E,
+                serviceName,
+                e.getMessage());
           }
         } else {
           TSStatus status =
               new TSStatus(TSStatusCode.CANNOT_DROP_RUNNING_EXTERNAL_SERVICE.getStatusCode());
           status.setMessage(
               String.format(
-                  "Failed to drop External Service %s, because it is RUNNING!", serviceName));
+                  DataNodeMiscMessages
+                      .MESSAGE_FAILED_DROP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_RUNNING_89B38F80,
+                  serviceName));
           throw new ExternalServiceManagementException(status);
         }
       }

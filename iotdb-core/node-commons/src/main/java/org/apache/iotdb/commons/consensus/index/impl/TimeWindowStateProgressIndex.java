@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Pair;
@@ -242,7 +243,8 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
   @Override
   public TotalOrderSumTuple getTotalOrderSumTuple() {
     throw new UnsupportedOperationException(
-        "TimeWindowStateProgressIndex does not support topological sorting");
+        CommonMessages
+            .EXCEPTION_TIMEWINDOWSTATEPROGRESSINDEX_DOES_NOT_SUPPORT_TOPOLOGICAL_SORTING_897C8976);
   }
 
   public static TimeWindowStateProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

@@ -128,10 +128,11 @@ class AggregationAnalyzer {
       Scope sourceScope,
       Optional<Scope> orderByScope,
       Analysis analysis) {
-    requireNonNull(groupByExpressions, "groupByExpressions is null");
-    requireNonNull(sourceScope, "sourceScope is null");
-    requireNonNull(orderByScope, "orderByScope is null");
-    requireNonNull(analysis, "analysis is null");
+    requireNonNull(
+        groupByExpressions, DataNodeQueryMessages.EXCEPTION_GROUPBYEXPRESSIONS_IS_NULL_BFDC07D2);
+    requireNonNull(sourceScope, DataNodeQueryMessages.EXCEPTION_SOURCESCOPE_IS_NULL_4B3626A7);
+    requireNonNull(orderByScope, DataNodeQueryMessages.EXCEPTION_ORDERBYSCOPE_IS_NULL_A6017E73);
+    requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
 
     this.sourceScope = sourceScope;
     this.orderByScope = orderByScope;
@@ -157,7 +158,7 @@ class AggregationAnalyzer {
         fieldId -> {
           checkState(
               isFieldFromScope(fieldId, sourceScope),
-              "Grouping field %s should originate from %s",
+              DataNodeQueryMessages.EXCEPTION_GROUPING_FIELD_ARG_SHOULD_ORIGINATE_FROM_ARG_6DBBCE6B,
               fieldId,
               sourceScope.getRelationType());
         });
@@ -168,7 +169,8 @@ class AggregationAnalyzer {
     if (!visitor.process(expression, null)) {
       throw new SemanticException(
           String.format(
-              "'%s' must be an aggregate expression or appear in GROUP BY clause", expression));
+              DataNodeQueryMessages.S_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE,
+              expression));
     }
   }
 
@@ -177,7 +179,10 @@ class AggregationAnalyzer {
     @Override
     public Boolean visitExpression(Expression node, Void context) {
       throw new UnsupportedOperationException(
-          "aggregation analysis not yet implemented for: " + node.getClass().getName());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_AGGREGATION_ANALYSIS_NOT_YET_IMPLEMENTED_FOR_S_38B64170,
+              node.getClass().getName()));
     }
 
     @Override
@@ -194,7 +199,8 @@ class AggregationAnalyzer {
               expression -> {
                 throw new SemanticException(
                     String.format(
-                        "Subquery uses '%s' which must appear in GROUP BY clause", expression));
+                        DataNodeQueryMessages.SUBQUERY_USES_S_WHICH_MUST_APPEAR_IN_GROUP_BY_CLAUSE,
+                        expression));
               });
 
       return true;
@@ -301,15 +307,19 @@ class AggregationAnalyzer {
           if (!aggregateFunctions.isEmpty()) {
             throw new SemanticException(
                 String.format(
-                    "Cannot nest aggregations inside aggregation '%s': %s",
-                    node.getName(), aggregateFunctions));
+                    DataNodeQueryMessages
+                        .EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4,
+                    node.getName(),
+                    aggregateFunctions));
           }
 
           if (!windowExpressions.isEmpty()) {
             throw new SemanticException(
                 String.format(
-                    "Cannot nest window functions inside aggregation '%s': %s",
-                    node.getName(), windowExpressions));
+                    DataNodeQueryMessages
+                        .EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897,
+                    node.getName(),
+                    windowExpressions));
           }
 
           return true;
@@ -337,7 +347,8 @@ class AggregationAnalyzer {
         if (!process(expression, context)) {
           throw new SemanticException(
               String.format(
-                  "PARTITION BY expression '%s' must be an aggregate expression or appear in GROUP BY clause",
+                  DataNodeQueryMessages
+                      .EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6,
                   expression));
         }
       }
@@ -347,7 +358,8 @@ class AggregationAnalyzer {
         if (!process(expression, context)) {
           throw new SemanticException(
               String.format(
-                  "ORDER BY expression '%s' must be an aggregate expression or appear in GROUP BY clause",
+                  DataNodeQueryMessages
+                      .EXCEPTION_ORDER_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_7FF8267B,
                   expression));
         }
       }
@@ -364,13 +376,15 @@ class AggregationAnalyzer {
       if (node.getStart().getValue().isPresent()
           && !process(node.getStart().getValue().get(), context)) {
         throw new SemanticException(
-            "Window frame start must be an aggregate expression or appear in GROUP BY clause");
+            DataNodeQueryMessages
+                .EXCEPTION_WINDOW_FRAME_START_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_74E30A63);
       }
       if (node.getEnd().isPresent()
           && node.getEnd().get().getValue().isPresent()
           && !process(node.getEnd().get().getValue().get(), context)) {
         throw new SemanticException(
-            "Window frame end must be an aggregate expression or appear in GROUP BY clause");
+            DataNodeQueryMessages
+                .EXCEPTION_WINDOW_FRAME_END_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_31784B55);
       }
       return true;
     }
@@ -407,7 +421,9 @@ class AggregationAnalyzer {
 
     private boolean isGroupingKey(Expression node) {
       FieldId fieldId =
-          requireNonNull(columnReferences.get(NodeRef.of(node)), () -> "No field for " + node)
+          requireNonNull(
+                  columnReferences.get(NodeRef.of(node)),
+                  () -> DataNodeQueryMessages.EXCEPTION_NO_FIELD_FOR_E99DCE9A + node)
               .getFieldId();
 
       if (orderByScope.isPresent() && isFieldFromScope(fieldId, orderByScope.get())) {
@@ -424,7 +440,9 @@ class AggregationAnalyzer {
       }
 
       FieldId fieldId =
-          requireNonNull(columnReferences.get(NodeRef.of(node)), () -> "No field for " + node)
+          requireNonNull(
+                  columnReferences.get(NodeRef.of(node)),
+                  () -> DataNodeQueryMessages.EXCEPTION_NO_FIELD_FOR_E99DCE9A + node)
               .getFieldId();
       boolean inGroup = groupingFields.contains(fieldId);
       if (!inGroup) {
@@ -513,7 +531,8 @@ class AggregationAnalyzer {
       Map<NodeRef<Parameter>, Expression> parameters = analysis.getParameters();
       checkArgument(
           node.getId() < parameters.size(),
-          "Invalid parameter number %s, max values is %s",
+          DataNodeQueryMessages
+              .EXCEPTION_INVALID_PARAMETER_NUMBER_ARG_COMMA_MAX_VALUES_IS_ARG_B3F5C4E8,
           node.getId(),
           parameters.size() - 1);
       return process(parameters.get(NodeRef.of(node)), context);

@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +56,8 @@ public class SyncStatus {
     }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Reserved {} bytes for batch {}-{}, current total usage {}",
+          IoTConsensusMessages
+              .LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2,
           batch.getMemorySize(),
           batch.getStartIndex(),
           batch.getEndIndex(),

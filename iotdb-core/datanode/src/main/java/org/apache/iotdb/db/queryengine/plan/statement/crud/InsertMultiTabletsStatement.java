@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -190,7 +191,8 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
           && database.isPresent()
           && !Objects.equals(childDatabaseName.get(), database.get())) {
         throw new SemanticException(
-            "Cannot insert into multiple databases within one statement, please split them manually");
+            DataNodeQueryMessages
+                .CANNOT_INSERT_INTO_MULTIPLE_DATABASES_WITHIN_ONE_STATEMENT_PLEASE_SPLIT_THEM_MANUALLY);
       }
 
       database = childDatabaseName;

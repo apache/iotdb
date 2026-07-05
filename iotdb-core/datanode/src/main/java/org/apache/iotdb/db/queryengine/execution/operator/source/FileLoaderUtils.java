@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -470,7 +471,9 @@ public class FileLoaderUtils {
   public static List<IPageReader> loadPageReaderList(
       IChunkMetadata chunkMetaData, Filter globalTimeFilter, List<TSDataType> targetDataTypeList)
       throws IOException {
-    checkArgument(chunkMetaData != null, "Can't init null chunkMeta");
+    checkArgument(
+        chunkMetaData != null,
+        DataNodeQueryMessages.EXCEPTION_CAN_QUOTE_T_INIT_NULL_CHUNKMETA_15C12BEE);
 
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     IChunkReader chunkReader;

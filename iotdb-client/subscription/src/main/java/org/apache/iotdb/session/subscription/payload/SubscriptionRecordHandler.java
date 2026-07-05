@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.enums.TSDataType;
@@ -147,7 +148,8 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
                                 return ColumnCategory.ATTRIBUTE;
                               default:
                                 throw new IllegalArgumentException(
-                                    "Unknown column category: " + columnCategory);
+                                    SubscriptionMessages.EXCEPTION_UNKNOWN_COLUMN_CATEGORY_4F49F64B
+                                        + columnCategory);
                             }
                           }))
               .collect(Collectors.toList());
@@ -264,7 +266,9 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
     private void ensureUserDataAvailable() {
       if (userDataRemoved) {
         throw new SubscriptionRuntimeException(
-            String.format("User data has been removed from %s.", getClass().getSimpleName()));
+            String.format(
+                SubscriptionMessages.EXCEPTION_USER_DATA_HAS_BEEN_REMOVED_ARG_7093644B,
+                getClass().getSimpleName()));
       }
     }
 
@@ -374,7 +378,8 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
+                String.format(
+                    SubscriptionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
         }
       }
       return record;
@@ -411,7 +416,8 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataType));
+              String.format(
+                  SubscriptionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
       }
       return field;
     }

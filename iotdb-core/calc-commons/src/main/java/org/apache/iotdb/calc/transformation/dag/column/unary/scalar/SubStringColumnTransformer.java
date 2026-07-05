@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -40,7 +41,8 @@ public class SubStringColumnTransformer extends UnaryColumnTransformer {
     super(returnType, childColumnTransformer);
     if (length < 0) {
       throw new SemanticException(
-          "Argument exception,the scalar function substring length must not be less than 0");
+          CalcMessages
+              .EXCEPTION_ARGUMENT_EXCEPTION_SCALAR_FUNCTION_SUBSTRING_LENGTH_MUST_NOT_LESS_THAN_072B7355);
     }
     // case which is two args or the result of the beginPosition add length is over
     if (length == Integer.MAX_VALUE || beginPosition > Integer.MAX_VALUE - length) {
@@ -77,7 +79,8 @@ public class SubStringColumnTransformer extends UnaryColumnTransformer {
     String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
     if (beginPosition > currentValue.length()) {
       throw new SemanticException(
-          "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
+          CalcMessages
+              .EXCEPTION_ARGUMENT_EXCEPTION_SCALAR_FUNCTION_SUBSTRING_BEGINPOSITION_MUST_NOT_GREATER_THAN_F0BA2A56);
     } else {
       int maxMin = Math.max(1, beginPosition);
       int minMax = Math.min(currentValue.length(), endPosition);

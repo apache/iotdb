@@ -221,7 +221,9 @@ public class WriteBackSink implements PipeConnector {
       final String[] nodes = databasePath.getNodes();
       if (nodes.length <= 1 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
         throw new IllegalPathException(
-            databaseName, "the database name in tree model must start with 'root.'.");
+            databaseName,
+            DataNodePipeMessages
+                .EXCEPTION_THE_DATABASE_NAME_IN_TREE_MODEL_MUST_START_WITH_ROOT_7BFA4609);
       }
 
       final String normalizedDatabaseName = databasePath.getFullPath();
@@ -230,7 +232,8 @@ public class WriteBackSink implements PipeConnector {
       if (normalizedDatabaseName.length() > MAX_DATABASE_NAME_LENGTH) {
         throw new IllegalPathException(
             normalizedDatabaseName,
-            "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+            DataNodePipeMessages.EXCEPTION_THE_LENGTH_OF_DATABASE_NAME_SHALL_NOT_EXCEED_82C7199C
+                + MAX_DATABASE_NAME_LENGTH);
       }
       return normalizedDatabaseName;
     } catch (final Exception e) {
@@ -294,7 +297,10 @@ public class WriteBackSink implements PipeConnector {
     skipIfNoPrivileges = skipIfOptionSet.remove(CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
     if (!skipIfOptionSet.isEmpty()) {
       throw new PipeParameterNotValidException(
-          String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_PARAMETERS_IN_SET_S_ARE_NOT_ALLOWED_IN_SKIPIF_AAF177AD,
+              skipIfOptionSet));
     }
 
     useEventUserName =
@@ -328,7 +334,9 @@ public class WriteBackSink implements PipeConnector {
                 .getCode()
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipePasswordCheckException(
-          String.format("Failed to check password for pipe %s.", environment.getPipeName()));
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_FAILED_TO_CHECK_PASSWORD_FOR_PIPE_S_0B1A5C73,
+              environment.getPipeName()));
     }
   }
 
@@ -377,9 +385,8 @@ public class WriteBackSink implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WriteBackSink only support "
-              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-              + "Ignore {}.",
+          DataNodePipeMessages
+              .WRITEBACKSINK_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLETI,
           tabletInsertionEvent);
       return;
     }
@@ -915,8 +922,10 @@ public class WriteBackSink implements PipeConnector {
           && statusCode != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         throw new PipeException(
             String.format(
-                "Auto create database failed: %s, status code: %s",
-                database, result.getStatusCode()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_AUTO_CREATE_DATABASE_FAILED_S_STATUS_CODE_S_D8EB60FA,
+                database,
+                result.getStatusCode()));
       }
     } catch (final ExecutionException | InterruptedException e) {
       if (e instanceof InterruptedException) {

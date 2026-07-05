@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.utils.TypeUtil;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
@@ -120,10 +121,14 @@ public class TypeProvider implements ITableTypeProvider {
   }
 
   public Type getTableModelType(Symbol symbol) {
-    requireNonNull(symbol, "symbol is null");
+    requireNonNull(symbol, DataNodeQueryMessages.EXCEPTION_SYMBOL_IS_NULL_AE539B31);
 
     Type type = tableModelTypes.get(symbol);
-    checkArgument(type != null, "no type found for symbol '%s' in TypeProvider", symbol);
+    checkArgument(
+        type != null,
+        DataNodeQueryMessages
+            .EXCEPTION_NO_TYPE_FOUND_FOR_SYMBOL_QUOTE_ARG_QUOTE_IN_TYPEPROVIDER_F4DD9DF7,
+        symbol);
 
     return type;
   }
@@ -133,7 +138,7 @@ public class TypeProvider implements ITableTypeProvider {
   }
 
   public void putTableModelType(Symbol symbol, Type type) {
-    requireNonNull(symbol, "symbol is null");
+    requireNonNull(symbol, DataNodeQueryMessages.EXCEPTION_SYMBOL_IS_NULL_AE539B31);
 
     tableModelTypes.put(symbol, type);
   }

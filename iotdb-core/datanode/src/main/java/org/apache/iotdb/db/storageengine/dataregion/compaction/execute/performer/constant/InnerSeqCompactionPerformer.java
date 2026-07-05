@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionPerformerException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -38,7 +39,10 @@ public enum InnerSeqCompactionPerformer {
       return FAST;
     }
     throw new IllegalCompactionPerformerException(
-        "Illegal compaction performer for seq inner compaction " + name);
+        String.format(
+            StorageEngineMessages
+                .STORAGE_EXCEPTION_ILLEGAL_COMPACTION_PERFORMER_FOR_SEQ_INNER_COMPACTION_S_2C2F1F66,
+            name));
   }
 
   @TestOnly
@@ -50,7 +54,10 @@ public enum InnerSeqCompactionPerformer {
         return new FastCompactionPerformer(false);
       default:
         throw new IllegalCompactionPerformerException(
-            "Illegal compaction performer for seq inner compaction " + this);
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_ILLEGAL_COMPACTION_PERFORMER_FOR_SEQ_INNER_COMPACTION_S_2C2F1F66,
+                this));
     }
   }
 
@@ -62,7 +69,10 @@ public enum InnerSeqCompactionPerformer {
         return new FastCompactionPerformer(false, encryptParameter);
       default:
         throw new IllegalCompactionPerformerException(
-            "Illegal compaction performer for seq inner compaction " + this);
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_ILLEGAL_COMPACTION_PERFORMER_FOR_SEQ_INNER_COMPACTION_S_2C2F1F66,
+                this));
     }
   }
 }

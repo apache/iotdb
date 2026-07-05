@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -283,6 +284,7 @@ public class QueryContext {
 
   public void addRowLevelFilteredCount(long count) {
     throw new UnsupportedOperationException(
-        "the QueryContext does not support row level filtering");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_THE_QUERYCONTEXT_DOES_NOT_SUPPORT_ROW_LEVEL_FILTERING_D4CD0678);
   }
 }

@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.utils.MeasurementPropsUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -255,7 +256,7 @@ public class BindSchemaForPredicateVisitor
       this.prefixPaths = prefixPaths;
       this.schemaTree = schemaTree;
       this.isRoot = isRoot;
-      Validate.notNull(queryContext, "QueryContext is null");
+      Validate.notNull(queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_IS_NULL_C2344379);
       this.queryContext = queryContext;
     }
 

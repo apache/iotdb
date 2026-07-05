@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.udf.api.exception;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 public class UDFInputSeriesIndexNotValidException extends UDFParameterNotValidException {
 
   public UDFInputSeriesIndexNotValidException(int providedIndex, int validIndexUpperBound) {
     super(
         String.format(
-            "the index (%d) of the input series is not valid. valid index range: [0, %d).",
-            providedIndex, validIndexUpperBound));
+            UdfApiMessages
+                .EXCEPTION_THE_INDEX_ARG_OF_THE_INPUT_SERIES_IS_NOT_VALID_VALID_INDEX_RANGE_0_ARG_8B8367FE,
+            providedIndex,
+            validIndexUpperBound));
   }
 }

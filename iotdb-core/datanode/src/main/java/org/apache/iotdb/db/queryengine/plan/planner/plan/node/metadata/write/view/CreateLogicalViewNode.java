@@ -182,7 +182,8 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
   public List<String> getOutputColumnNames() {
     // TODO: CRTODO, complete this method
     throw new NotImplementedException(
-        "getOutputColumnNames of CreateMultiTimeSeriesNode is not implemented");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_CREATEMULTITIMESERIESNODE_IS_NOT_9D02257A);
   }
 
   @Override

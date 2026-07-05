@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.SubExpressionExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.DisjointSet;
@@ -417,13 +418,20 @@ public class EqualityInference {
         Iterable<Expression> scopeComplementEqualities,
         Iterable<Expression> scopeStraddlingEqualities) {
       this.scopeEqualities =
-          ImmutableList.copyOf(requireNonNull(scopeEqualities, "scopeEqualities is null"));
+          ImmutableList.copyOf(
+              requireNonNull(
+                  scopeEqualities,
+                  DataNodeQueryMessages.EXCEPTION_SCOPEEQUALITIES_IS_NULL_22388B2C));
       this.scopeComplementEqualities =
           ImmutableList.copyOf(
-              requireNonNull(scopeComplementEqualities, "scopeComplementEqualities is null"));
+              requireNonNull(
+                  scopeComplementEqualities,
+                  DataNodeQueryMessages.EXCEPTION_SCOPECOMPLEMENTEQUALITIES_IS_NULL_B9080FC7));
       this.scopeStraddlingEqualities =
           ImmutableList.copyOf(
-              requireNonNull(scopeStraddlingEqualities, "scopeStraddlingEqualities is null"));
+              requireNonNull(
+                  scopeStraddlingEqualities,
+                  DataNodeQueryMessages.EXCEPTION_SCOPESTRADDLINGEQUALITIES_IS_NULL_F6B979AE));
     }
 
     public List<Expression> getScopeEqualities() {

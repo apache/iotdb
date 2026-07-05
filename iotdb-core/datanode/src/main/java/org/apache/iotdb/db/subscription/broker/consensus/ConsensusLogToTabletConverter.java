@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -122,8 +123,8 @@ public class ConsensusLogToTabletConverter {
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "ConsensusLogToTabletConverter: failed to deserialize IConsensusRequest "
-                + "(type={}) in searchIndex={}: {}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSLOGTOTABLETCONVERTER_FAILED_TO_DESERIALIZE_ICONSENSUSREQUEST_EC1F6BAD,
             req.getClass().getSimpleName(),
             indexedRequest.getSearchIndex(),
             e.getMessage(),
@@ -154,8 +155,8 @@ public class ConsensusLogToTabletConverter {
       if (merged instanceof InsertNode) {
         final InsertNode mergedInsert = (InsertNode) merged;
         LOGGER.debug(
-            "ConsensusLogToTabletConverter: deserialized merged InsertNode for searchIndex={}, "
-                + "type={}, deviceId={}, searchNodeCount={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSLOGTOTABLETCONVERTER_DESERIALIZED_MERGED_INSERTNODE_51FB8295,
             indexedRequest.getSearchIndex(),
             mergedInsert.getType(),
             safeDeviceIdForLog(mergedInsert),
@@ -167,7 +168,8 @@ public class ConsensusLogToTabletConverter {
 
     if (nonSearchNode != null) {
       LOGGER.debug(
-          "ConsensusLogToTabletConverter: searchIndex={} contains non-InsertNode PlanNode: {}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSLOGTOTABLETCONVERTER_SEARCHINDEX_CONTAINS_NON_INSERTNODE_CFA9FA49,
           indexedRequest.getSearchIndex(),
           nonSearchNode.getClass().getSimpleName());
     }
@@ -182,12 +184,14 @@ public class ConsensusLogToTabletConverter {
 
     final PlanNodeType nodeType = insertNode.getType();
     if (nodeType == null) {
-      LOGGER.warn("InsertNode type is null, skipping conversion");
+      LOGGER.warn(
+          DataNodePipeMessages.PIPE_LOG_INSERTNODE_TYPE_IS_NULL_SKIPPING_CONVERSION_A2F1ADF7);
       return Collections.emptyList();
     }
 
     LOGGER.debug(
-        "ConsensusLogToTabletConverter: converting InsertNode type={}, deviceId={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSLOGTOTABLETCONVERTER_CONVERTING_INSERTNODE_TYPE_B80428A0,
         nodeType,
         safeDeviceIdForLog(insertNode));
 
@@ -209,7 +213,9 @@ public class ConsensusLogToTabletConverter {
       case RELATIONAL_INSERT_ROWS:
         return convertRelationalInsertRowsNode((RelationalInsertRowsNode) insertNode);
       default:
-        LOGGER.debug("Unsupported InsertNode type for subscription: {}", nodeType);
+        LOGGER.debug(
+            DataNodePipeMessages.PIPE_LOG_UNSUPPORTED_INSERTNODE_TYPE_FOR_SUBSCRIPTION_E488EF74,
+            nodeType);
         return Collections.emptyList();
     }
   }
@@ -722,7 +728,7 @@ public class ConsensusLogToTabletConverter {
         ((Binary[]) tablet.getValues()[columnIndex])[rowIndex] = (Binary) value;
         break;
       default:
-        LOGGER.warn("Unsupported data type: {}", dataType);
+        LOGGER.warn(DataNodePipeMessages.PIPE_LOG_UNSUPPORTED_DATA_TYPE_C8929F11, dataType);
         return;
     }
     // Unmark the bitmap position to indicate this value is NOT null.
@@ -771,7 +777,8 @@ public class ConsensusLogToTabletConverter {
             ((Binary[]) sourceColumn)[sourceRowIndex];
         break;
       default:
-        LOGGER.warn("Unsupported data type for copy: {}", dataType);
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_LOG_UNSUPPORTED_DATA_TYPE_FOR_COPY_8AD25FE7, dataType);
         return;
     }
     // Unmark the bitmap position to indicate this value is NOT null.

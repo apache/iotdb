@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -39,18 +41,18 @@ public class With extends Node {
   public With(boolean recursive, List<WithQuery> queries) {
     super(null);
 
-    requireNonNull(queries, "queries is null");
-    checkArgument(!queries.isEmpty(), "queries is empty");
+    requireNonNull(queries, QueryMessages.EXCEPTION_QUERIES_IS_NULL_94399651);
+    checkArgument(!queries.isEmpty(), QueryMessages.EXCEPTION_QUERIES_IS_EMPTY_FE480BBC);
 
     this.recursive = recursive;
     this.queries = ImmutableList.copyOf(queries);
   }
 
   public With(NodeLocation location, boolean recursive, List<WithQuery> queries) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
 
-    requireNonNull(queries, "queries is null");
-    checkArgument(!queries.isEmpty(), "queries is empty");
+    requireNonNull(queries, QueryMessages.EXCEPTION_QUERIES_IS_NULL_94399651);
+    checkArgument(!queries.isEmpty(), QueryMessages.EXCEPTION_QUERIES_IS_EMPTY_FE480BBC);
 
     this.recursive = recursive;
     this.queries = ImmutableList.copyOf(queries);

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.schema.table.TableType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -58,7 +59,11 @@ public class ShowTables extends Statement {
   }
 
   public ShowTables(final NodeLocation location, final Identifier dbName, final boolean isDetails) {
-    this(location, isDetails, requireNonNull(dbName, "dbName is null"), null);
+    this(
+        location,
+        isDetails,
+        requireNonNull(dbName, DataNodeQueryMessages.EXCEPTION_DBNAME_IS_NULL_4521C4EE),
+        null);
   }
 
   public ShowTables(
@@ -71,7 +76,11 @@ public class ShowTables extends Statement {
       final Identifier dbName,
       final boolean isDetails,
       final Set<TableType> tableTypeFilter) {
-    this(location, isDetails, requireNonNull(dbName, "dbName is null"), tableTypeFilter);
+    this(
+        location,
+        isDetails,
+        requireNonNull(dbName, DataNodeQueryMessages.EXCEPTION_DBNAME_IS_NULL_4521C4EE),
+        tableTypeFilter);
   }
 
   private ShowTables(
@@ -79,7 +88,7 @@ public class ShowTables extends Statement {
       final boolean isDetails,
       @Nullable final Identifier dbName,
       @Nullable final Set<TableType> tableTypeFilter) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.dbName = dbName;
     this.isDetails = isDetails;
     this.tableTypeFilter =

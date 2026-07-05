@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.binary;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -42,11 +43,13 @@ public class Like2ColumnTransformer extends BinaryColumnTransformer {
   protected void checkType() {
     if (!isCharType(leftTransformer.getType())) {
       throw new UnsupportedOperationException(
-          "Unsupported Type: " + leftTransformer.getType().getTypeEnum());
+          CalcMessages.EXCEPTION_UNSUPPORTED_TYPE_FF7F518D
+              + leftTransformer.getType().getTypeEnum());
     }
     if (!isCharType(rightTransformer.getType())) {
       throw new UnsupportedOperationException(
-          "Unsupported Type: " + rightTransformer.getType().getTypeEnum());
+          CalcMessages.EXCEPTION_UNSUPPORTED_TYPE_FF7F518D
+              + rightTransformer.getType().getTypeEnum());
     }
   }
 

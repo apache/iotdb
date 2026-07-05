@@ -54,7 +54,9 @@ public class TransformUtils {
           CommonUtils.parseValue(constantOperand.getDataType(), constantOperand.getValueString());
       if (value == null) {
         throw new UnsupportedOperationException(
-            "Invalid constant operand: " + constantOperand.getExpressionString());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_INVALID_CONSTANT_OPERAND_S_939F3B8D,
+                constantOperand.getExpressionString()));
       }
 
       switch (constantOperand.getDataType()) {
@@ -157,7 +159,8 @@ public class TransformUtils {
       case STRING:
       default:
         throw new UnsupportedOperationException(
-            "The data type of the state window strategy is not valid.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_DFFBF210);
     }
     return res;
   }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,15 +39,15 @@ public final class Except extends SetOperation {
   public Except(Relation left, Relation right, boolean distinct) {
     super(null, distinct);
 
-    this.left = requireNonNull(left, "left is null");
-    this.right = requireNonNull(right, "right is null");
+    this.left = requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    this.right = requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
   }
 
   public Except(NodeLocation location, Relation left, Relation right, boolean distinct) {
-    super(requireNonNull(location, "location is null"), distinct);
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388), distinct);
 
-    this.left = requireNonNull(left, "left is null");
-    this.right = requireNonNull(right, "right is null");
+    this.left = requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    this.right = requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
   }
 
   public Relation getLeft() {

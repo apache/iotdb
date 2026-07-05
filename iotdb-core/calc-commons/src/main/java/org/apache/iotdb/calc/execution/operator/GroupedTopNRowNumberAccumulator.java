@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArrayFIFOQueue;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.HeapTraversal;
 
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -48,11 +49,12 @@ public class GroupedTopNRowNumberAccumulator {
 
   public GroupedTopNRowNumberAccumulator(
       RowIdComparisonStrategy strategy, int topN, LongConsumer rowIdEvictionListener) {
-    this.strategy = requireNonNull(strategy, "strategy is null");
-    checkArgument(topN > 0, "topN must be greater than zero");
+    this.strategy = requireNonNull(strategy, CalcMessages.EXCEPTION_STRATEGY_IS_NULL_DDA2C67F);
+    checkArgument(topN > 0, CalcMessages.EXCEPTION_TOPN_MUST_BE_GREATER_THAN_ZERO_43866D3E);
     this.topN = topN;
     this.rowIdEvictionListener =
-        requireNonNull(rowIdEvictionListener, "rowIdEvictionListener is null");
+        requireNonNull(
+            rowIdEvictionListener, CalcMessages.EXCEPTION_ROWIDEVICTIONLISTENER_IS_NULL_457EFBEE);
   }
 
   public long sizeOf() {
@@ -139,7 +141,8 @@ public class GroupedTopNRowNumberAccumulator {
 
   private long peekRootRowId(int groupId) {
     long heapRootNodeIndex = groupIdToHeapBuffer.getHeapRootNodeIndex(groupId);
-    checkArgument(heapRootNodeIndex != UNKNOWN_INDEX, "No root to peek");
+    checkArgument(
+        heapRootNodeIndex != UNKNOWN_INDEX, CalcMessages.EXCEPTION_NO_ROOT_TO_PEEK_43C3D8D5);
     return heapNodeBuffer.getRowId(heapRootNodeIndex);
   }
 
@@ -164,7 +167,9 @@ public class GroupedTopNRowNumberAccumulator {
    */
   private void heapPop(int groupId, LongConsumer contextEvictionListener) {
     long heapRootNodeIndex = groupIdToHeapBuffer.getHeapRootNodeIndex(groupId);
-    checkArgument(heapRootNodeIndex != UNKNOWN_INDEX, "Group ID has an empty heap");
+    checkArgument(
+        heapRootNodeIndex != UNKNOWN_INDEX,
+        CalcMessages.EXCEPTION_GROUP_ID_HAS_AN_EMPTY_HEAP_C9EDB841);
 
     long lastNodeIndex = heapDetachLastInsertionLeaf(groupId);
     long lastRowId = heapNodeBuffer.getRowId(lastNodeIndex);
@@ -202,7 +207,9 @@ public class GroupedTopNRowNumberAccumulator {
       previousNodeIndex = currentNodeIndex;
       childPosition = heapTraversal.nextChild();
       currentNodeIndex = getChildIndex(currentNodeIndex, childPosition);
-      verify(currentNodeIndex != UNKNOWN_INDEX, "Target node must exist");
+      verify(
+          currentNodeIndex != UNKNOWN_INDEX,
+          CalcMessages.EXCEPTION_TARGET_NODE_MUST_EXIST_2C8D8F3A);
     }
 
     // Detach the last insertion leaf node, but do not deallocate yet
@@ -258,8 +265,10 @@ public class GroupedTopNRowNumberAccumulator {
 
     verify(
         previousHeapNodeIndex != UNKNOWN_INDEX && childPosition != null,
-        "heap must have at least one node before starting traversal");
-    verify(currentHeapNodeIndex == UNKNOWN_INDEX, "New child shouldn't exist yet");
+        CalcMessages.EXCEPTION_HEAP_MUST_HAVE_AT_LEAST_ONE_NODE_BEFORE_STARTING_TRAVERSAL_A1E65C70);
+    verify(
+        currentHeapNodeIndex == UNKNOWN_INDEX,
+        CalcMessages.EXCEPTION_NEW_CHILD_SHOULDN_QUOTE_T_EXIST_YET_1EB3B129);
 
     long newHeapNodeIndex = heapNodeBuffer.allocateNewNode(newRowId);
 
@@ -280,7 +289,10 @@ public class GroupedTopNRowNumberAccumulator {
    */
   private void heapPopAndInsert(int groupId, long newRowId, LongConsumer contextEvictionListener) {
     long heapRootNodeIndex = groupIdToHeapBuffer.getHeapRootNodeIndex(groupId);
-    checkState(heapRootNodeIndex != UNKNOWN_INDEX, "popAndInsert() requires at least a root node");
+    checkState(
+        heapRootNodeIndex != UNKNOWN_INDEX,
+        CalcMessages
+            .EXCEPTION_POPANDINSERT_LEFT_PAREN_RIGHT_PAREN_REQUIRES_AT_LEAST_A_ROOT_NODE_0CA0DD58);
 
     // Clear contents of the root node to create a vacancy for another row
     long poppedRowId = heapNodeBuffer.getRowId(heapRootNodeIndex);

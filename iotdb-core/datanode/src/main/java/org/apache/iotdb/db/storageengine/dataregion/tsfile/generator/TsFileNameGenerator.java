@@ -112,9 +112,10 @@ public class TsFileNameGenerator {
             if (!targetDir.exists()) {
               if (!targetDir.mkdirs() && !targetDir.exists()) {
                 throw new IOException(
-                    "Directory creation failed: "
-                        + tsFileDir
-                        + " (Permission denied or parent not writable)");
+                    String.format(
+                        StorageEngineMessages
+                            .STORAGE_EXCEPTION_DIRECTORY_CREATION_FAILED_S_PERMISSION_DENIED_OR_PARENT_2855777B,
+                        tsFileDir));
               }
             }
             return tsFileDir

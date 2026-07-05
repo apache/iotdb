@@ -122,9 +122,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBDataRegionAirGapConnector only support "
-              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-              + "Ignore {}.",
+          DataNodePipeMessages
+              .IOTDBDATAREGIONAIRGAPCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_A,
           tabletInsertionEvent);
       return;
     }
@@ -147,8 +146,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tablet insertion event %s, because %s.",
-              ((EnrichedEvent) tabletInsertionEvent).coreReportMessage(), e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TABLET_INSERTION_EVENT_S_BECAUSE_A6F87EF5,
+              ((EnrichedEvent) tabletInsertionEvent).coreReportMessage(),
+              e.getMessage()),
           e);
     } finally {
       socket.setSoTimeout(PIPE_CONFIG.getPipeSinkTransferTimeoutMs());
@@ -205,7 +206,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tsfile insertion event %s, because %s.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TSFILE_INSERTION_EVENT_S_BECAUSE_BDE61690,
               ((PipeTsFileInsertionEvent) tsFileInsertionEvent).coreReportMessage(),
               e.getMessage()),
           e);
@@ -225,8 +227,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
         throw new PipeConnectionException(
             String.format(
-                "Network error when transfer tsfile event %s, because %s.",
-                ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TSFILE_EVENT_S_BECAUSE_S_F36D2A6B,
+                ((EnrichedEvent) event).coreReportMessage(),
+                e.getMessage()),
             e);
       }
       return;
@@ -251,8 +255,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tsfile event %s, because %s.",
-              ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TSFILE_EVENT_S_BECAUSE_S_F36D2A6B,
+              ((EnrichedEvent) event).coreReportMessage(),
+              e.getMessage()),
           e);
     }
   }
@@ -508,10 +514,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               return null;
             });
       } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", dbTsFile);
+        LOGGER.info(DataNodePipeMessages.THE_FILE_IS_NOT_FOUND_MAY_ALREADY, dbTsFile);
       } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to delete batch file {}, this file should be deleted manually later", dbTsFile);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, dbTsFile);
       }
     }
   }

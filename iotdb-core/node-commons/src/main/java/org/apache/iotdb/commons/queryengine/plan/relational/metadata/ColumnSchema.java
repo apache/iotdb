@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.utils.TypeUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -49,7 +50,7 @@ public class ColumnSchema {
       final Type type,
       final boolean hidden,
       final TsTableColumnCategory columnCategory) {
-    requireNonNull(name, "name is null");
+    requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
 
     this.name = name.toLowerCase(ENGLISH);
     this.type = type;
@@ -162,17 +163,18 @@ public class ColumnSchema {
     }
 
     public Builder setName(String name) {
-      this.name = requireNonNull(name, "name is null");
+      this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
       return this;
     }
 
     public Builder setType(Type type) {
-      this.type = requireNonNull(type, "type is null");
+      this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
       return this;
     }
 
     public Builder setColumnCategory(TsTableColumnCategory columnCategory) {
-      this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
+      this.columnCategory =
+          requireNonNull(columnCategory, QueryMessages.EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B);
       return this;
     }
 

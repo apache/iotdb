@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -50,7 +52,7 @@ public class GroupBy extends Node {
       boolean isDistinct,
       boolean isAll,
       List<GroupingElement> groupingElements) {
-    super(location);
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.isDistinct = isDistinct;
     this.isAll = isAll;
     this.groupingElements = ImmutableList.copyOf(requireNonNull(groupingElements));

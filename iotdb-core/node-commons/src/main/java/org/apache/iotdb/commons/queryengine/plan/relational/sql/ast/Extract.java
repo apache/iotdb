@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -65,8 +67,8 @@ public class Extract extends Expression {
 
   public Extract(NodeLocation location, Expression expression, Field field) {
     super(location);
-    requireNonNull(expression, "expression is null");
-    requireNonNull(field, "field is null");
+    requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
+    requireNonNull(field, QueryMessages.EXCEPTION_FIELD_IS_NULL_80E8CE23);
 
     this.expression = expression;
     this.field = field;

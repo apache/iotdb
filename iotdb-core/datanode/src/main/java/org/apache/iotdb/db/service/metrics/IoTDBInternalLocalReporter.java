@@ -178,10 +178,14 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
             }
           } catch (IoTDBConnectionException e1) {
             LOGGER.warn(
-                "Failed to update the value of metric because of connection failure, because ", e1);
+                DataNodeMiscMessages
+                    .MISC_LOG_FAILED_TO_UPDATE_THE_VALUE_OF_METRIC_BECAUSE_OF_CONNECTION_B0FC4929,
+                e1);
           } catch (IllegalPathException | QueryProcessException e2) {
             LOGGER.warn(
-                "Failed to update the value of metric because of internal error, because ", e2);
+                DataNodeMiscMessages
+                    .MISC_LOG_FAILED_TO_UPDATE_THE_VALUE_OF_METRIC_BECAUSE_OF_INTERNAL_E5C64806,
+                e2);
           }
         });
   }

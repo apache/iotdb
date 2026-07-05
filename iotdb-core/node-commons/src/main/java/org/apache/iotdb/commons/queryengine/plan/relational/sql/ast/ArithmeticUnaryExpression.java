@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -48,8 +50,8 @@ public class ArithmeticUnaryExpression extends Expression {
 
   public ArithmeticUnaryExpression(NodeLocation location, Sign sign, Expression value) {
     super(location);
-    requireNonNull(value, "value is null");
-    requireNonNull(sign, "sign is null");
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    requireNonNull(sign, QueryMessages.EXCEPTION_SIGN_IS_NULL_4AF91D16);
 
     this.value = value;
     this.sign = sign;
@@ -57,8 +59,8 @@ public class ArithmeticUnaryExpression extends Expression {
 
   public ArithmeticUnaryExpression(Sign sign, Expression value) {
     super(null);
-    requireNonNull(value, "value is null");
-    requireNonNull(sign, "sign is null");
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    requireNonNull(sign, QueryMessages.EXCEPTION_SIGN_IS_NULL_4AF91D16);
 
     this.value = value;
     this.sign = sign;
@@ -84,13 +86,17 @@ public class ArithmeticUnaryExpression extends Expression {
   public static ArithmeticUnaryExpression positive(
       @Nonnull NodeLocation location, Expression value) {
     return new ArithmeticUnaryExpression(
-        requireNonNull(location, "location is null"), Sign.PLUS, value);
+        requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388),
+        Sign.PLUS,
+        value);
   }
 
   public static ArithmeticUnaryExpression negative(
       @Nonnull NodeLocation location, Expression value) {
     return new ArithmeticUnaryExpression(
-        requireNonNull(location, "location is null"), Sign.MINUS, value);
+        requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388),
+        Sign.MINUS,
+        value);
   }
 
   public static ArithmeticUnaryExpression positive(Expression value) {

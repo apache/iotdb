@@ -103,4 +103,26 @@ public final class MetricsMessages {
       "收集 Windows 磁盘指标时被中断";
 
   private MetricsMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_FAILED_LOAD_ARG_REPORTER_BECAUSE_ALREADY_EXISTED_4BAF2E58 = "无法加载 {} reporter，原因：已存在";
+  public static final String EXCEPTION_FAILED_REMOVE_BECAUSE_MISMATCH_TYPE_044E55F6 = " 无法移除，原因：类型不匹配。";
+  public static final String LOG_SIZE_METRIC_TAGS_SHOULD_EVEN_BUT_WAS_ODD_TAGS_ARG_201E6A2A = "metric tags 的数量应为偶数，但当前为奇数，tags：{}。";
+  public static final String LOG_GC_NOTIFICATIONS_WILL_NOT_AVAILABLE_BECAUSE_MEMORYPOOLMXBEANS_86C3EB6B = "GC notifications 不可用，原因：MemoryPoolMXBeans ";
+  public static final String LOG_NOT_PROVIDED_JVM_948976D1 = "未由 JVM 提供";
+  public static final String LOG_GC_NOTIFICATIONS_WILL_NOT_AVAILABLE_BECAUSE_22FD13E0 = "GC notifications 不可用，原因：";
+  public static final String LOG_COM_SUN_MANAGEMENT_GARBAGECOLLECTIONNOTIFICATIONINFO_NOT_PRESENT_FA43486E = "com.sun.management.GarbageCollectionNotificationInfo 不存在";
+  public static final String LOG_FAILED_GET_MEMORY_BECAUSE_041BE661 = "无法获取 memory，原因：";
+  public static final String LOG_INTERRUPTED_WAITING_MEMORY_COMMAND_CF538E10 = "等待 memory command 时被中断";
+  public static final String LOG_FAILED_REMOVE_LOGBACKMETRICS_BECAUSE_9BE74246 = "无法移除 logBackMetrics，原因：";
+  public static final String LOG_ARG_WINDOWS_DISK_METRICS_WILL_SKIPPED_ARG_MS_BEFORE_RETRYING_1F1EB4C4 = "{}。Windows disk metrics 将跳过 {} ms 后重试。";
+  public static final String LOG_ARG_ARG_WINDOWS_DISK_METRICS_WILL_SKIPPED_ARG_MS_BEFORE_74269D0A = "{}：{}。Windows disk metrics 将跳过 {} ms 后重试。";
+  public static final String LOG_FAILED_WINDOWS_DISK_METRICS_POWERSHELL_COMMAND_ARG_OUTPUT_ARG_16D24C0C = "Windows 磁盘指标 PowerShell 命令失败：{}，输出：{}";
+  public static final String LOG_ARG_WINDOWS_DISK_METRICS_COLLECTION_STILL_RETRY_BACKOFF_C237EE87 = "{}。Windows disk metrics 采集仍处于重试退避中。";
+  public static final String LOG_RECOVERED_WINDOWS_DISK_METRICS_COLLECTION_THROUGH_POWERSHELL_CIM_03B9110E = "已通过 PowerShell/CIM 恢复 Windows disk metrics 采集。";
+  public static final String LOG_IOTDBSESSIONREPORTER_START_WRITE_ARG_ARG_E79CDDAE = "IoTDBSessionReporter 启动，写入 {}:{}";
+  public static final String LOG_PROMETHEUSREPORTER_STARTED_USE_PORT_ARG_A688FFC8 = "PrometheusReporter 已启动，使用端口 {}";
+  public static final String LOG_DETECTED_ERROR_TAKING_METRIC_TIMER_SNAPSHOT_WILL_DISCARD_METRIC_B7154169 = "获取 metric timer 快照时检测到错误，将丢弃该 metric";
+
 }

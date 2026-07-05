@@ -515,7 +515,9 @@ public class MTreeBelowSGCachedImpl {
                       devicePath.concatAsMeasurementPath(measurements.get(i)));
                 } else if (!withMerge || measurementNode.getDataType() != dataTypes.get(i)) {
                   throw new MeasurementAlreadyExistException(
-                      devicePath.getFullPath() + "." + measurements.get(i),
+                      devicePath.getFullPath()
+                          + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                          + measurements.get(i),
                       node.getAsMeasurementMNode().getMeasurementPath());
                 } else {
                   existingMeasurementIndexes.add(i);
@@ -523,7 +525,9 @@ public class MTreeBelowSGCachedImpl {
                 }
               } else {
                 throw new PathAlreadyExistException(
-                    devicePath.getFullPath() + "." + measurements.get(i));
+                    devicePath.getFullPath()
+                        + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                        + measurements.get(i));
               }
             }
 
@@ -531,7 +535,10 @@ public class MTreeBelowSGCachedImpl {
                 && aliasList.get(i) != null
                 && store.hasChild(device, aliasList.get(i))) {
               throw new AliasAlreadyExistException(
-                  devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
+                  devicePath.getFullPath()
+                      + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                      + measurements.get(i),
+                  aliasList.get(i));
             }
           }
 
@@ -594,12 +601,11 @@ public class MTreeBelowSGCachedImpl {
           if (cachedMNode != null) {
             unPinMNode(cachedMNode);
             throw new MetadataException(
-                DataNodeSchemaMessages.ALIAS_DUPLICATED
-                    + alias
-                    + ", fullPath: "
-                    + fullPath
-                    + ", otherMeasurement: "
-                    + cachedMNode.getFullPath());
+                String.format(
+                    DataNodeSchemaMessages.ALIAS_DUPLICATED_FULLPATH_OTHER_MEASUREMENT_FMT,
+                    alias,
+                    fullPath,
+                    cachedMNode.getFullPath()));
           }
           if (measurementMNode.getAlias() != null) {
             device.deleteAliasChild(measurementMNode.getAlias());
@@ -643,14 +649,18 @@ public class MTreeBelowSGCachedImpl {
                 failingMeasurementMap.put(
                     i,
                     new MeasurementAlreadyExistException(
-                        devicePath.getFullPath() + "." + measurementList.get(i),
+                        devicePath.getFullPath()
+                            + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                            + measurementList.get(i),
                         node.getAsMeasurementMNode().getMeasurementPath()));
               }
             } else {
               failingMeasurementMap.put(
                   i,
                   new PathAlreadyExistException(
-                      devicePath.getFullPath() + "." + measurementList.get(i)));
+                      devicePath.getFullPath()
+                          + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                          + measurementList.get(i)));
             }
           }
           if (aliasList != null
@@ -659,7 +669,10 @@ public class MTreeBelowSGCachedImpl {
             failingMeasurementMap.put(
                 i,
                 new AliasAlreadyExistException(
-                    devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
+                    devicePath.getFullPath()
+                        + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                        + measurementList.get(i),
+                    aliasList.get(i)));
           }
         } catch (MetadataException e) {
           failingMeasurementMap.put(i, e);

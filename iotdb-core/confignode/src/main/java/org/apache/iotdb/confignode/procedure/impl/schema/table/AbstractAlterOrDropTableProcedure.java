@@ -165,7 +165,9 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
       setFailure(
           new ProcedureException(
               new MetadataException(
-                  ProcedureMessages.PRE_RELEASE + getActionMessage() + " failed")));
+                  ProcedureMessages.PRE_RELEASE
+                      + getActionMessage()
+                      + ProcedureMessages.EXCEPTION_FAILED_C6FF154E)));
     }
   }
 
@@ -223,7 +225,9 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
       setFailure(
           new ProcedureException(
               new MetadataException(
-                  ProcedureMessages.ROLLBACK_PRE_RELEASE + getActionMessage() + " failed")));
+                  ProcedureMessages.ROLLBACK_PRE_RELEASE
+                      + getActionMessage()
+                      + ProcedureMessages.EXCEPTION_FAILED_C6FF154E)));
     }
   }
 

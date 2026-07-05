@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -121,7 +122,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       } catch (final ClientManagerException | TException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getSchemaPartition():" + e.getMessage());
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETSCHEMAPARTITION_S_A0156043,
+                e.getMessage()));
       }
     }
     if (!needAuditDB) {
@@ -165,7 +169,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       } catch (final ClientManagerException | TException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETORCREATESCHEMAPARTITION_4D22BE9B,
+                e.getMessage()));
       }
     }
     return schemaPartition;
@@ -187,7 +194,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
     } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
-          "An error occurred when executing getSchemaNodeManagementPartition():" + e.getMessage());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETSCHEMANODEMANAGEMENTPARTITION_84AC8509,
+              e.getMessage()));
     }
   }
 
@@ -206,12 +216,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
           throw new StatementAnalyzeException(
-              "An error occurred when executing getDataPartition():"
-                  + dataPartitionTableResp.getStatus().getMessage());
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDATAPARTITION_S_D21A0011,
+                  dataPartitionTableResp.getStatus().getMessage()));
         }
       } catch (final ClientManagerException | TException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getDataPartition():" + e.getMessage());
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDATAPARTITION_S_D21A0011,
+                e.getMessage()));
       }
     }
     return dataPartition;
@@ -232,12 +247,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         return parseDataPartitionResp(dataPartitionTableResp);
       } else {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getDataPartition():"
-                + dataPartitionTableResp.getStatus().getMessage());
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDATAPARTITION_S_D21A0011,
+                dataPartitionTableResp.getStatus().getMessage()));
       }
     } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
-          "An error occurred when executing getDataPartition():" + e.getMessage());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDATAPARTITION_S_D21A0011,
+              e.getMessage()));
     }
   }
 
@@ -257,12 +277,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
           throw new StatementAnalyzeException(
-              "An error occurred when executing getOrCreateDataPartition():"
-                  + dataPartitionTableResp.getStatus().getMessage());
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETORCREATEDATAPARTITION_2EB2EBBE,
+                  dataPartitionTableResp.getStatus().getMessage()));
         }
       } catch (final ClientManagerException | TException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETORCREATEDATAPARTITION_2EB2EBBE,
+                e.getMessage()));
       }
     }
     return dataPartition;
@@ -296,7 +321,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
     } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
-          "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETORCREATEDATAPARTITION_2EB2EBBE,
+              e.getMessage()));
     }
     return dataPartition;
   }
@@ -369,7 +397,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       return schemaPartition;
     } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
-          "An error occurred when executing getSchemaPartition():" + e.getMessage());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETSCHEMAPARTITION_S_A0156043,
+              e.getMessage()));
     }
   }
 

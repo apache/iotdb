@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -90,118 +91,120 @@ public class StatusUtils {
     status.setCode(statusCode.getStatusCode());
     switch (statusCode) {
       case SUCCESS_STATUS:
-        status.setMessage("Executed successfully.");
+        status.setMessage(UtilMessages.MESSAGE_EXECUTED_SUCCESSFULLY_1EAF1169);
         break;
       case INTERNAL_REQUEST_TIME_OUT:
-        status.setMessage("Request timed out.");
+        status.setMessage(UtilMessages.MESSAGE_REQUEST_TIMED_OUT_FD587FC4);
         break;
       case INCOMPATIBLE_VERSION:
-        status.setMessage("Incompatible version.");
+        status.setMessage(UtilMessages.MESSAGE_INCOMPATIBLE_VERSION_0C5CB2AF);
         break;
       case REMOVE_DATANODE_ERROR:
-        status.setMessage("Failed while removing DataNode.");
+        status.setMessage(UtilMessages.MESSAGE_FAILED_REMOVING_DATANODE_B4B7F050);
         break;
       case ALIAS_ALREADY_EXIST:
-        status.setMessage("Alias already exists.");
+        status.setMessage(UtilMessages.MESSAGE_ALIAS_ALREADY_EXISTS_C05A2E5A);
         break;
       case PATH_ALREADY_EXIST:
-        status.setMessage("Path already exist.");
+        status.setMessage(UtilMessages.MESSAGE_PATH_ALREADY_EXIST_56F8BFF9);
         break;
       case PATH_NOT_EXIST:
-        status.setMessage("Path does not exist.");
+        status.setMessage(UtilMessages.MESSAGE_PATH_DOES_NOT_EXIST_93310498);
         break;
       case METADATA_ERROR:
-        status.setMessage("Meet error when dealing with metadata.");
+        status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_DEALING_METADATA_1C4A38B9);
         break;
       case OUT_OF_TTL:
-        status.setMessage("Insertion time is less than TTL time bound.");
+        status.setMessage(UtilMessages.MESSAGE_INSERTION_TIME_LESS_THAN_TTL_TIME_BOUND_0F1BB861);
         break;
       case COMPACTION_ERROR:
-        status.setMessage("Meet error while merging.");
+        status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_MERGING_28424A77);
         break;
       case DISPATCH_ERROR:
-        status.setMessage("Meet error while dispatching.");
+        status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_DISPATCHING_73E4FD5E);
         break;
       case DATAREGION_PROCESS_ERROR:
-        status.setMessage("Database processor related error.");
+        status.setMessage(UtilMessages.MESSAGE_DATABASE_PROCESSOR_RELATED_ERROR_C58690B1);
         break;
       case STORAGE_ENGINE_ERROR:
-        status.setMessage("Storage engine related error.");
+        status.setMessage(UtilMessages.MESSAGE_STORAGE_ENGINE_RELATED_ERROR_94DEBBCF);
         break;
       case TSFILE_PROCESSOR_ERROR:
-        status.setMessage("TsFile processor related error.");
+        status.setMessage(UtilMessages.MESSAGE_TSFILE_PROCESSOR_RELATED_ERROR_B6C57C3E);
         break;
       case ILLEGAL_PATH:
-        status.setMessage("Illegal path.");
+        status.setMessage(UtilMessages.MESSAGE_ILLEGAL_PATH_020B26BC);
         break;
       case LOAD_FILE_ERROR:
-        status.setMessage("Meet error while loading file.");
+        status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_LOADING_FILE_A90EBC21);
         break;
       case EXECUTE_STATEMENT_ERROR:
-        status.setMessage("Execute statement error.");
+        status.setMessage(UtilMessages.MESSAGE_EXECUTE_STATEMENT_ERROR_54E4A395);
         break;
       case SQL_PARSE_ERROR:
-        status.setMessage("Meet error while parsing SQL.");
+        status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_PARSING_SQL_3C5A3B80);
         break;
       case GENERATE_TIME_ZONE_ERROR:
-        status.setMessage("Meet error while generating time zone.");
+        status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_GENERATING_TIME_ZONE_94E03CA3);
         break;
       case SET_TIME_ZONE_ERROR:
-        status.setMessage("Meet error while setting time zone.");
+        status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_SETTING_TIME_ZONE_CBE88DCF);
         break;
       case QUERY_NOT_ALLOWED:
-        status.setMessage("Query statements are not allowed error.");
+        status.setMessage(UtilMessages.MESSAGE_QUERY_STATEMENTS_NOT_ALLOWED_ERROR_58D30C99);
         break;
       case LOGICAL_OPERATOR_ERROR:
-        status.setMessage("Logical operator related error.");
+        status.setMessage(UtilMessages.MESSAGE_LOGICAL_OPERATOR_RELATED_ERROR_D94D5972);
         break;
       case LOGICAL_OPTIMIZE_ERROR:
-        status.setMessage("Logical optimize related error.");
+        status.setMessage(UtilMessages.MESSAGE_LOGICAL_OPTIMIZE_RELATED_ERROR_36D63CB3);
         break;
       case UNSUPPORTED_FILL_TYPE:
-        status.setMessage("Unsupported fill type related error.");
+        status.setMessage(UtilMessages.MESSAGE_UNSUPPORTED_FILL_TYPE_RELATED_ERROR_67BE2CF2);
         break;
       case QUERY_PROCESS_ERROR:
-        status.setMessage("Query process related error.");
+        status.setMessage(UtilMessages.MESSAGE_QUERY_PROCESS_RELATED_ERROR_93FA1016);
         break;
       case WRITE_PROCESS_ERROR:
-        status.setMessage("Writing data related error.");
+        status.setMessage(UtilMessages.MESSAGE_WRITING_DATA_RELATED_ERROR_0CA06C4D);
         break;
       case INTERNAL_SERVER_ERROR:
-        status.setMessage("Internal server error.");
+        status.setMessage(UtilMessages.MESSAGE_INTERNAL_SERVER_ERROR_12F61DF7);
         break;
       case CLOSE_OPERATION_ERROR:
-        status.setMessage("Meet error in close operation.");
+        status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_CLOSE_OPERATION_1C7D0589);
         break;
       case SYSTEM_READ_ONLY:
-        status.setMessage("Fail to do non-query operations because system is read-only.");
+        status.setMessage(
+            UtilMessages.MESSAGE_FAIL_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_READ_ONLY_10CA1ED2);
         break;
       case DISK_SPACE_INSUFFICIENT:
-        status.setMessage("Disk space is insufficient.");
+        status.setMessage(UtilMessages.MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0);
         break;
       case START_UP_ERROR:
-        status.setMessage("Meet error while starting up.");
+        status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_STARTING_UP_22A4CBFE);
         break;
       case WRONG_LOGIN_PASSWORD:
-        status.setMessage("Username or password is wrong.");
+        status.setMessage(UtilMessages.MESSAGE_USERNAME_PASSWORD_WRONG_C44C4AF0);
         break;
       case NOT_LOGIN:
-        status.setMessage("Has not logged in.");
+        status.setMessage(UtilMessages.MESSAGE_HAS_NOT_LOGGED_A2BA0267);
         break;
       case NO_PERMISSION:
-        status.setMessage("No permissions for this operation, please add privilege.");
+        status.setMessage(
+            UtilMessages.MESSAGE_NO_PERMISSIONS_OPERATION_PLEASE_ADD_PRIVILEGE_64047D1E);
         break;
       case INIT_AUTH_ERROR:
-        status.setMessage("Failed to init authorizer.");
+        status.setMessage(UtilMessages.MESSAGE_FAILED_INIT_AUTHORIZER_1E2B017E);
         break;
       case UNSUPPORTED_OPERATION:
-        status.setMessage("Unsupported operation.");
+        status.setMessage(UtilMessages.MESSAGE_UNSUPPORTED_OPERATION_295CDB21);
         break;
       case CAN_NOT_CONNECT_DATANODE:
-        status.setMessage("Node cannot be reached.");
+        status.setMessage(UtilMessages.MESSAGE_NODE_CANNOT_REACHED_D3FD04A8);
         break;
       default:
-        status.setMessage("");
+        status.setMessage(UtilMessages.EMPTY_MESSAGE);
         break;
     }
     return status;

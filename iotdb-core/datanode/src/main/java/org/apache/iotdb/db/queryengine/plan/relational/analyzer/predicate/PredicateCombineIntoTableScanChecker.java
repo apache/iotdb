@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpres
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.List;
 import java.util.Set;
@@ -103,7 +104,8 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
       Boolean result = process(child, context);
       if (result == null) {
         throw new IllegalStateException(
-            "Should never return null in PredicateCombineIntoTableScanChecker.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_SHOULD_NEVER_RETURN_NULL_IN_PREDICATECOMBINEINTOTABLESCANCHECKER_2A687052);
       }
       if (!result) {
         return Boolean.FALSE;

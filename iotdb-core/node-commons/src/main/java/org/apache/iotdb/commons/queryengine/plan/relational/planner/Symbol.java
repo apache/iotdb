@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 
@@ -35,17 +36,20 @@ public class Symbol implements Comparable<Symbol> {
   private final String name;
 
   public static Symbol from(Expression expression) {
-    checkArgument(expression instanceof SymbolReference, "Unexpected expression: %s", expression);
+    checkArgument(
+        expression instanceof SymbolReference,
+        QueryMessages.EXCEPTION_UNEXPECTED_EXPRESSION_COLON_ARG_8E4AC833,
+        expression);
     return new Symbol(((SymbolReference) expression).getName());
   }
 
   public Symbol(String name) {
-    requireNonNull(name, "name is null");
+    requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.name = name;
   }
 
   public static Symbol of(String name) {
-    requireNonNull(name, "name is null");
+    requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     return new Symbol(name);
   }
 

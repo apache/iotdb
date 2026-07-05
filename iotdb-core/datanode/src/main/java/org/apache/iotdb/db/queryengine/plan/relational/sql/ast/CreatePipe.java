@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -46,13 +47,23 @@ public class CreatePipe extends PipeStatement {
       final Map<String, String> sourceAttributes,
       final Map<String, String> processorAttributes,
       final Map<String, String> sinkAttributes) {
-    this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
+    this.pipeName =
+        requireNonNull(
+            pipeName, DataNodeQueryMessages.EXCEPTION_PIPE_NAME_CAN_NOT_BE_NULL_14570979);
     this.ifNotExistsCondition = ifNotExistsCondition;
     this.sourceAttributes =
-        requireNonNull(sourceAttributes, "extractor/source attributes can not be null");
+        requireNonNull(
+            sourceAttributes,
+            DataNodeQueryMessages
+                .EXCEPTION_EXTRACTOR_SLASH_SOURCE_ATTRIBUTES_CAN_NOT_BE_NULL_2B3A656B);
     this.processorAttributes =
-        requireNonNull(processorAttributes, "processor attributes can not be null");
-    this.sinkAttributes = requireNonNull(sinkAttributes, "connector attributes can not be null");
+        requireNonNull(
+            processorAttributes,
+            DataNodeQueryMessages.EXCEPTION_PROCESSOR_ATTRIBUTES_CAN_NOT_BE_NULL_FFF91008);
+    this.sinkAttributes =
+        requireNonNull(
+            sinkAttributes,
+            DataNodeQueryMessages.EXCEPTION_CONNECTOR_ATTRIBUTES_CAN_NOT_BE_NULL_7AF2F613);
   }
 
   public String getPipeName() {

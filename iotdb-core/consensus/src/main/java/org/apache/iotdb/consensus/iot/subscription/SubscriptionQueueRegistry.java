@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.iot.subscription;
 
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 
 import org.slf4j.Logger;
@@ -80,7 +81,8 @@ public class SubscriptionQueueRegistry {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "write() offering to {} subscription queue(s), group={}, searchIndex={}, requestType={}",
+          IoTConsensusMessages
+              .LOG_WRITE_OFFERING_ARG_SUBSCRIPTION_QUEUE_S_GROUP_ARG_SEARCHINDEX_ARG_A8489EDF,
           queueCount,
           consensusGroupId,
           indexedConsensusRequest.getSearchIndex(),
@@ -93,7 +95,7 @@ public class SubscriptionQueueRegistry {
       final boolean offered = queue.offer(indexedConsensusRequest);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "offer result={}, queueSize={}, queueRemaining={}",
+            IoTConsensusMessages.LOG_OFFER_RESULT_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_7ADC84C2,
             offered,
             queue.size(),
             queue.remainingCapacity());
@@ -105,8 +107,10 @@ public class SubscriptionQueueRegistry {
         if (now - lastLogTime >= QUEUE_FULL_LOG_INTERVAL_MS
             && lastDropLogTimeMs.compareAndSet(lastLogTime, now)) {
           LOGGER.warn(
-              "Subscription queue full, dropped {} entry(s) in the last {} ms, latest "
-                  + "searchIndex={}, queueSize={}, queueRemaining={}",
+              IoTConsensusMessages
+                      .LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ARG_ENTRY_S_LAST_ARG_MS_2AD8AB3D
+                  + IoTConsensusMessages
+                      .LOG_SEARCHINDEX_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_2EA619ED,
               droppedEntries.getAndSet(0),
               QUEUE_FULL_LOG_INTERVAL_MS,
               indexedConsensusRequest.getSearchIndex(),
@@ -114,7 +118,8 @@ public class SubscriptionQueueRegistry {
               queue.remainingCapacity());
         } else if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "Subscription queue full, dropped entry searchIndex={}, droppedCount={}",
+              IoTConsensusMessages
+                  .LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ENTRY_SEARCHINDEX_ARG_DROPPEDCOUNT_ARG_61F126B8,
               indexedConsensusRequest.getSearchIndex(),
               droppedCount);
         }

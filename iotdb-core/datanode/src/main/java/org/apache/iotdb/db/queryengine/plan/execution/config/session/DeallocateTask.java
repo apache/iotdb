@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -48,7 +49,9 @@ public class DeallocateTask implements IConfigTask {
     IClientSession session = SessionManager.getInstance().getCurrSession();
     if (session == null) {
       future.setException(
-          new IllegalStateException("No current session available for DEALLOCATE statement"));
+          new IllegalStateException(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_NO_CURRENT_SESSION_AVAILABLE_FOR_DEALLOCATE_STATEMENT_1EA5DE79));
       return future;
     }
 

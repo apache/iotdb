@@ -322,10 +322,10 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
     // doesn't have a complete page body
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(
-          DataNodePipeMessages.DO_NOT_HAS_A_COMPLETE_PAGE_BODY
-              + compressedPageBodyLength
-              + ". Actual:"
-              + chunkBuffer.remaining());
+          String.format(
+              DataNodePipeMessages.COMPLETE_PAGE_BODY_EXPECTED_ACTUAL_FMT,
+              compressedPageBodyLength,
+              chunkBuffer.remaining()));
     }
     chunkBuffer.get(compressedPageBody);
     return ByteBuffer.wrap(compressedPageBody);
@@ -344,13 +344,12 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
           compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData.array(), 0);
     } catch (Exception e) {
       throw new IOException(
-          DataNodePipeMessages.UNCOMPRESS_ERROR_UNCOMPRESS_SIZE
-              + pageHeader.getUncompressedSize()
-              + "compressed size: "
-              + pageHeader.getCompressedSize()
-              + "page header: "
-              + pageHeader
-              + e.getMessage(),
+          String.format(
+              DataNodePipeMessages.UNCOMPRESS_PAGE_DATA_FAILED_FMT,
+              pageHeader.getUncompressedSize(),
+              pageHeader.getCompressedSize(),
+              pageHeader,
+              e.getMessage()),
           e);
     }
 

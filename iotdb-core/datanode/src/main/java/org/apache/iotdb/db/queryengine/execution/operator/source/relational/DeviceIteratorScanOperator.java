@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -110,7 +111,9 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     }
     if (this.deviceEntries.get(this.currentDeviceIndex) == null) {
       throw new IllegalStateException(
-          "Device entries of index " + this.currentDeviceIndex + " is empty");
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_DEVICE_ENTRIES_OF_INDEX_S_IS_EMPTY_BCFB0644,
+              this.currentDeviceIndex));
     }
     DeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
 
@@ -163,7 +166,8 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
   @Override
   protected List<TSDataType> getResultDataTypes() {
     throw new UnsupportedOperationException(
-        "Should not call getResultDataTypes() method in DeviceIteratorScanOperator");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_SHOULD_NOT_CALL_GETRESULTDATATYPES_METHOD_IN_DEVICEITERATORSCANOPERATOR_E915A153);
   }
 
   @Override

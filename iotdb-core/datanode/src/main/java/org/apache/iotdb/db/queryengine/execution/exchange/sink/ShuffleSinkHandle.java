@@ -83,12 +83,21 @@ public class ShuffleSinkHandle implements ISinkHandle {
       ShuffleStrategyEnum shuffleStrategyEnum,
       MPPDataExchangeManager.SinkListener sinkListener) {
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
     this.downStreamChannelList =
-        Validate.notNull(downStreamChannelList, "downStreamChannelList can not be null.");
+        Validate.notNull(
+            downStreamChannelList,
+            DataNodeQueryMessages.EXCEPTION_DOWNSTREAMCHANNELLIST_CAN_NOT_BE_NULL_DOT_417AD5A3);
     this.downStreamChannelIndex =
-        Validate.notNull(downStreamChannelIndex, "downStreamChannelIndex can not be null.");
-    this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
+        Validate.notNull(
+            downStreamChannelIndex,
+            DataNodeQueryMessages.EXCEPTION_DOWNSTREAMCHANNELINDEX_CAN_NOT_BE_NULL_DOT_A1D5A266);
+    this.sinkListener =
+        Validate.notNull(
+            sinkListener,
+            DataNodeQueryMessages.EXCEPTION_SINKLISTENER_CAN_NOT_BE_NULL_DOT_32C9E7C0);
     this.channelNum = downStreamChannelList.size();
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
@@ -328,7 +337,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
       // do nothing
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "PlainShuffleStrategy needs to do nothing, current channel index is {}",
+            DataNodeQueryMessages
+                .PLAINSHUFFLESTRATEGY_NEEDS_TO_DO_NOTHING_CURRENT_CHANNEL_INDEX_IS_ARG,
             downStreamChannelIndex.getCurrentIndex());
       }
     }

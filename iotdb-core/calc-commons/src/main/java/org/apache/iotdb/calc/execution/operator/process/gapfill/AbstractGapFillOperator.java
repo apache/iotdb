@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.process.gapfill;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
@@ -99,7 +100,8 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
     }
     checkArgument(
         outputColumnCount == block.getValueColumnCount(),
-        "outputColumnCount is not equal to value column count of child operator's TsBlock");
+        CalcMessages
+            .EXCEPTION_OUTPUTCOLUMNCOUNT_IS_NOT_EQUAL_TO_VALUE_COLUMN_COUNT_OF_CHILD_OPERATOR_QUOTE_S_T_8E30BAD8);
 
     resultBuilder.reset();
     SortKey previousGroupKey = lastGroupKey;

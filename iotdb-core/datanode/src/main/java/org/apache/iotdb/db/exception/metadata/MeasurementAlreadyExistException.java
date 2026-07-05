@@ -22,6 +22,7 @@ package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class MeasurementAlreadyExistException extends MetadataException {
@@ -30,7 +31,7 @@ public class MeasurementAlreadyExistException extends MetadataException {
 
   public MeasurementAlreadyExistException(String path, MeasurementPath measurementPath) {
     super(
-        String.format("Path [%s] already exist", path),
+        String.format(DataNodeSchemaMessages.PATH_ALREADY_EXIST_FMT, path),
         TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode(),
         true);
     this.measurementPath = measurementPath;

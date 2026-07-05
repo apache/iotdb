@@ -218,7 +218,9 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
               String.format(
-                  "Network error when transfer file %s, because %s.", file, e.getMessage()),
+                  PipeMessages.EXCEPTION_NETWORK_ERROR_TRANSFER_FILE_ARG_BECAUSE_ARG_BC25323C,
+                  file,
+                  e.getMessage()),
               e);
         }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 
@@ -156,7 +157,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         addNextStateAndCalculateCycles();
       }
 
-      LOG.trace("{}", this);
+      LOG.trace(ProcedureMessages.LOG_ARG_8393DD4A, this);
       stateFlow = executeFromState(env, state);
       if (!isFailed()) {
         addNextStateAndCalculateCycles();
@@ -179,7 +180,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     if (Flow.HAS_MORE_STATE == stateFlow) {
       if (nextState == NO_NEXT_STATE) {
         LOG.error(
-            "StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE. It is likely that there is some problem with the code. Please check the code. This procedure is about to be terminated: {}",
+            ProcedureMessages
+                .LOG_STATEMACHINEPROCEDURE_PID_ARG_NOT_SET_NEXT_STATE_BUT_RETURN_HAS_7F93E63F,
             getProcId(),
             this);
         stateFlow = Flow.NO_MORE_STATE;
@@ -190,7 +192,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     if (Flow.NO_MORE_STATE == stateFlow) {
       if (nextState != NO_NEXT_STATE) {
         LOG.warn(
-            "StateMachineProcedure pid={} set next state to {}, but return NO_MORE_STATE",
+            ProcedureMessages
+                .LOG_STATEMACHINEPROCEDURE_PID_ARG_SET_NEXT_STATE_ARG_BUT_RETURN_NO_0CA2D56C,
             getProcId(),
             nextState);
       }

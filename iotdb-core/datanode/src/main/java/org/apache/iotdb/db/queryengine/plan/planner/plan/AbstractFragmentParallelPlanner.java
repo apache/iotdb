@@ -113,7 +113,9 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
         || regionReplicaSet.getDataNodeLocations() == null
         || regionReplicaSet.getDataNodeLocations().isEmpty()) {
       throw new IllegalArgumentException(
-          String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_REGIONREPLICASET_IS_INVALID_S_1C2671AD,
+              regionReplicaSet));
     }
     boolean selectRandomDataNode = ReadConsistencyLevel.WEAK == CONFIG.getReadConsistencyLevel();
 

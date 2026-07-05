@@ -234,7 +234,10 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
             }
           } catch (final Exception e) {
             LOGGER.warn(
-                "Consumer listener raised an exception while consuming message: {}", message, e);
+                SubscriptionMessages
+                    .LOG_CONSUMER_LISTENER_RAISED_EXCEPTION_CONSUMING_MESSAGE_ARG_867EE46D,
+                message,
+                e);
             messagesToNack.add(message);
           }
         }

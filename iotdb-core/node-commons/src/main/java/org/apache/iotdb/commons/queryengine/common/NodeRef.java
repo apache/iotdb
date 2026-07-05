@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.common;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import static java.lang.String.format;
 import static java.lang.System.identityHashCode;
 import static java.util.Objects.requireNonNull;
@@ -28,7 +30,7 @@ public class NodeRef<T> {
   private final T node;
 
   public NodeRef(T node) {
-    this.node = requireNonNull(node, "node is null");
+    this.node = requireNonNull(node, QueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A);
   }
 
   public static <T> NodeRef<T> of(T node) {

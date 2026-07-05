@@ -141,8 +141,9 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       } catch (IOException e) {
         LOGGER.error(
             String.format(
-                "Serialize data of TsFile %s error, skip TsFileData %s",
-                tsFile.getPath(), tsFileData));
+                DataNodeQueryMessages.SERIALIZE_DATA_OF_TSFILE_S_ERROR_SKIP_TSFILEDATA_S,
+                tsFile.getPath(),
+                tsFileData));
       }
     }
   }

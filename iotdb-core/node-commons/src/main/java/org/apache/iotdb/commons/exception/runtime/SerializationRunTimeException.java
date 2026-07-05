@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.commons.exception.runtime;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 public class SerializationRunTimeException extends RuntimeException {
 
   public SerializationRunTimeException(Throwable e) {
-    super("Unexpected error occurs in serialization", e);
+    super(CommonMessages.EXCEPTION_UNEXPECTED_ERROR_OCCURS_SERIALIZATION_A6B2E222, e);
   }
 }

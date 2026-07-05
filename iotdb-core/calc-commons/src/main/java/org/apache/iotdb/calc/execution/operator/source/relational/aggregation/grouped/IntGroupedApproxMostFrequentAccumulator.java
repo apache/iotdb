@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ag
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.IntApproxMostFrequentAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.SpaceSaving;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.SpaceSavingBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
@@ -45,9 +46,9 @@ public class IntGroupedApproxMostFrequentAccumulator
     int capacity = arguments[2].getInt(0);
     if (maxBuckets <= 0 || capacity <= 0) {
       throw new SemanticException(
-          "The second and third argument must be greater than 0, but got k="
+          CalcMessages.EXCEPTION_SECOND_THIRD_ARGUMENT_MUST_GREATER_THAN_0_BUT_GOT_K_0AFFFA6A
               + maxBuckets
-              + ", capacity="
+              + CalcMessages.EXCEPTION_CAPACITY_E92593AD
               + capacity);
     }
     SpaceSavingBigArray<Integer> spaceSavingBigArray = getOrCreateSpaceSaving(state);

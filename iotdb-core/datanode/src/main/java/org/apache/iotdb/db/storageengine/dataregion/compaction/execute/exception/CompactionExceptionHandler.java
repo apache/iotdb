@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -63,9 +64,8 @@ public class CompactionExceptionHandler {
         return;
       }
       LOGGER.info(
-          "{} [Compaction][ExceptionHandler] {} space compaction start handling exception, "
-              + "source seqFiles is {}, "
-              + "source unseqFiles is {}.",
+          StorageEngineMessages
+              .STORAGE_LOG_COMPACTION_EXCEPTIONHANDLER_SPACE_COMPACTION_START_HANDLING_1B55549F,
           fullStorageGroupName,
           compactionType,
           seqResourceList,
@@ -101,8 +101,8 @@ public class CompactionExceptionHandler {
 
       if (!handleSuccess) {
         LOGGER.error(
-            "[Compaction][ExceptionHandler] Fail to handle {} space compaction exception, "
-                + "storage group is {}",
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTION_EXCEPTIONHANDLER_FAIL_TO_HANDLE_SPACE_COMPACTION_B21F170F,
             compactionType,
             fullStorageGroupName);
       } else {
@@ -111,8 +111,8 @@ public class CompactionExceptionHandler {
     } catch (IOException e) {
       // catch throwable when handling exception
       LOGGER.error(
-          "[Compaction][ExceptionHandler] exception occurs when handling exception in {} space compaction. "
-              + "storage group is {}",
+          StorageEngineMessages
+              .STORAGE_LOG_COMPACTION_EXCEPTIONHANDLER_EXCEPTION_OCCURS_WHEN_HANDLING_B6C9751E,
           compactionType,
           fullStorageGroupName);
     }
@@ -165,7 +165,8 @@ public class CompactionExceptionHandler {
         targetTsFile.writeLock();
         if (!targetTsFile.remove()) {
           LOGGER.error(
-              "{} [Compaction][Exception] fail to delete target tsfile {} when handling exception",
+              StorageEngineMessages
+                  .STORAGE_LOG_COMPACTION_EXCEPTION_FAIL_TO_DELETE_TARGET_TSFILE_WHEN_HANDLING_DC19DC8A,
               fullStorageGroupName,
               targetTsFile);
           removeAllTargetFile = false;
@@ -247,8 +248,8 @@ public class CompactionExceptionHandler {
       }
       if (!TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
         LOGGER.error(
-            "{} [Compaction][ExceptionHandler] target file {} is not complete, "
-                + "and some source files {} is lost, do nothing.",
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTION_EXCEPTIONHANDLER_TARGET_FILE_IS_NOT_COMPLETE_91E81106,
             fullStorageGroupName,
             targetResource,
             lostSourceResources);

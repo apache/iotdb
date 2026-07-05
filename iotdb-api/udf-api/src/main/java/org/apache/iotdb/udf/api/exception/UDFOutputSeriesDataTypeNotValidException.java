@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.udf.api.exception;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 public class UDFOutputSeriesDataTypeNotValidException extends UDFParameterNotValidException {
 
   public UDFOutputSeriesDataTypeNotValidException(int index, String types) {
     super(
         String.format(
-            "the data type of the output series (index: %d) is not valid. expected: %s.",
-            index, types));
+            UdfApiMessages
+                .EXCEPTION_THE_DATA_TYPE_OF_THE_OUTPUT_SERIES_INDEX_ARG_IS_NOT_VALID_EXPECTED_ARG_388E46F3,
+            index,
+            types));
   }
 }

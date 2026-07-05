@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -49,10 +50,14 @@ public class CreateIndex extends Statement {
 
   public CreateIndex(QualifiedName tableName, Identifier indexName, List<Identifier> columnList) {
     super(null);
-    this.tableName = requireNonNull(tableName, "tableName is null");
-    this.indexName = requireNonNull(indexName, "indexName is null");
-    requireNonNull(columnList, "columnList is null");
-    checkArgument(!columnList.isEmpty(), "size of columnList should be larger than 1");
+    this.tableName =
+        requireNonNull(tableName, DataNodeQueryMessages.EXCEPTION_TABLENAME_IS_NULL_20708596);
+    this.indexName =
+        requireNonNull(indexName, DataNodeQueryMessages.EXCEPTION_INDEXNAME_IS_NULL_2525299C);
+    requireNonNull(columnList, DataNodeQueryMessages.EXCEPTION_COLUMNLIST_IS_NULL_DADE6825);
+    checkArgument(
+        !columnList.isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_SIZE_OF_COLUMNLIST_SHOULD_BE_LARGER_THAN_1_7EB80E55);
     this.columnList = columnList;
   }
 
@@ -61,11 +66,15 @@ public class CreateIndex extends Statement {
       QualifiedName tableName,
       Identifier indexName,
       List<Identifier> columnList) {
-    super(requireNonNull(location, "location is null"));
-    this.tableName = requireNonNull(tableName, "tableName is null");
-    this.indexName = requireNonNull(indexName, "indexName is null");
-    requireNonNull(columnList, "columnList is null");
-    checkArgument(!columnList.isEmpty(), "size of columnList should be larger than 1");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.tableName =
+        requireNonNull(tableName, DataNodeQueryMessages.EXCEPTION_TABLENAME_IS_NULL_20708596);
+    this.indexName =
+        requireNonNull(indexName, DataNodeQueryMessages.EXCEPTION_INDEXNAME_IS_NULL_2525299C);
+    requireNonNull(columnList, DataNodeQueryMessages.EXCEPTION_COLUMNLIST_IS_NULL_DADE6825);
+    checkArgument(
+        !columnList.isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_SIZE_OF_COLUMNLIST_SHOULD_BE_LARGER_THAN_1_7EB80E55);
     this.columnList = columnList;
   }
 

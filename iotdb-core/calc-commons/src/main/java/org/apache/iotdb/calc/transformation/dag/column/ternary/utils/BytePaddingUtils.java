@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.ternary.utils;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 public class BytePaddingUtils {
@@ -42,15 +43,20 @@ public class BytePaddingUtils {
     if (targetLength < 0 || targetLength > Integer.MAX_VALUE) {
       throw new SemanticException(
           String.format(
-              "Failed to execute function '%s' due to the value %s corresponding to a invalid target size, the allowed range is [0, %d].",
-              functionName, HexToString(originBytes), Integer.MAX_VALUE));
+              CalcMessages
+                  .EXCEPTION_FAILED_EXECUTE_FUNCTION_ARG_VALUE_ARG_CORRESPONDING_INVALID_TARGET_SIZE_5054AE0B,
+              functionName,
+              HexToString(originBytes),
+              Integer.MAX_VALUE));
     }
 
     if (paddingByte.length == 0) {
       throw new SemanticException(
           String.format(
-              "Failed to execute function '%s' due the value %s corresponding to a empty padding string.",
-              functionName, HexToString(originBytes)));
+              CalcMessages
+                  .EXCEPTION_FAILED_EXECUTE_FUNCTION_ARG_VALUE_ARG_CORRESPONDING_EMPTY_PADDING_STRING_F1CE573C,
+              functionName,
+              HexToString(originBytes)));
     }
 
     int inputLength = originBytes.length;

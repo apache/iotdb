@@ -124,8 +124,8 @@ public class ConfigNodeInfo {
       }
       if (onlineConfigNodes.isEmpty()) {
         throw new StartupException(
-            "Removing is only allowed in an environment where the datanode has been successfully started. "
-                + "Please check whether it is removed on the confignode, or if you have deleted the system.properties file by mistake.");
+            DataNodeMiscMessages
+                .MISC_EXCEPTION_REMOVING_IS_ONLY_ALLOWED_IN_AN_ENVIRONMENT_WHERE_THE_DATANODE_5A3E1FEA);
       }
       long endTime = System.currentTimeMillis();
       logger.info(

@@ -105,7 +105,8 @@ public class TimeSeriesMetadataCache {
   private TimeSeriesMetadataCache() {
     if (CACHE_ENABLE) {
       logger.info(
-          "TimeSeriesMetadataCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+          StorageEngineMessages.STORAGE_LOG_TIMESERIESMETADATACACHE_SIZE_E31733D3,
+          CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
@@ -283,7 +284,7 @@ public class TimeSeriesMetadataCache {
       } else {
         if (debug) {
           DEBUG_LOGGER.info(
-              "Get timeseries: {}.{}  metadata in file: {}  from cache: {}.",
+              StorageEngineMessages.STORAGE_LOG_GET_TIMESERIES_METADATA_IN_FILE_FROM_CACHE_36652729,
               key.device,
               key.measurement,
               filePath,
@@ -342,7 +343,8 @@ public class TimeSeriesMetadataCache {
   /** clear LRUCache. */
   public void clear() {
     logger.info(
-        "Evicted non-existing/existing series count: {}/{}({}), total request: {}",
+        StorageEngineMessages
+            .MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD,
         evictedNonExistingEntryCount.get(),
         evictedExistingEntryCount.get(),
         ((double) evictedNonExistingEntryCount.get()) / evictedExistingEntryCount.get(),

@@ -47,10 +47,13 @@ public class OperatorNotFoundException extends IoTDBException {
         formatErrorMessage(operatorType, argumentTypes, Optional.empty()),
         cause,
         OPERATOR_NOT_FOUND.getStatusCode());
-    this.operatorType = requireNonNull(operatorType, "operatorType is null");
+    this.operatorType =
+        requireNonNull(operatorType, DataNodeQueryMessages.EXCEPTION_OPERATORTYPE_IS_NULL_CEA6E3D3);
     this.returnType = null;
     this.argumentTypes =
-        ImmutableList.copyOf(requireNonNull(argumentTypes, "argumentTypes is null"));
+        ImmutableList.copyOf(
+            requireNonNull(
+                argumentTypes, DataNodeQueryMessages.EXCEPTION_ARGUMENTTYPES_IS_NULL_1E377BFD));
   }
 
   public OperatorNotFoundException(
@@ -62,10 +65,14 @@ public class OperatorNotFoundException extends IoTDBException {
         formatErrorMessage(operatorType, argumentTypes, Optional.of(returnType)),
         cause,
         OPERATOR_NOT_FOUND.getStatusCode());
-    this.operatorType = requireNonNull(operatorType, "operatorType is null");
+    this.operatorType =
+        requireNonNull(operatorType, DataNodeQueryMessages.EXCEPTION_OPERATORTYPE_IS_NULL_CEA6E3D3);
     this.argumentTypes =
-        ImmutableList.copyOf(requireNonNull(argumentTypes, "argumentTypes is null"));
-    this.returnType = requireNonNull(returnType, "returnType is null");
+        ImmutableList.copyOf(
+            requireNonNull(
+                argumentTypes, DataNodeQueryMessages.EXCEPTION_ARGUMENTTYPES_IS_NULL_1E377BFD));
+    this.returnType =
+        requireNonNull(returnType, DataNodeQueryMessages.EXCEPTION_RETURNTYPE_IS_NULL_07C7C6A5);
   }
 
   private static String formatErrorMessage(

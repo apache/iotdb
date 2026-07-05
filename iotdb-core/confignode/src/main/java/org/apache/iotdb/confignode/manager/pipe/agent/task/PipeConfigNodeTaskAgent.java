@@ -240,7 +240,8 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
         logger.ifPresent(
             l ->
                 l.info(
-                    "Reporting pipe meta: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
+                    ManagerMessages
+                        .LOG_REPORTING_PIPE_META_ARG_REMAININGEVENTCOUNT_ARG_ESTIMATEDREMAININGTIME_ARG_E2727CB4,
                     pipeMeta.coreReportMessage(),
                     remainingEventCount,
                     estimatedRemainingTime));

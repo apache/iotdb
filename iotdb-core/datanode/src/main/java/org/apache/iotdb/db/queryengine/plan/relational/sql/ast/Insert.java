@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.LongType;
@@ -57,16 +58,17 @@ public final class Insert extends Statement {
 
   public Insert(Table table, Query query) {
     super(null);
-    this.table = requireNonNull(table, "target is null");
+    this.table = requireNonNull(table, DataNodeQueryMessages.EXCEPTION_TARGET_IS_NULL_240F0372);
     this.columns = null;
-    this.query = requireNonNull(query, "query is null");
+    this.query = requireNonNull(query, DataNodeQueryMessages.EXCEPTION_QUERY_IS_NULL_689B7978);
   }
 
   public Insert(Table table, List<Identifier> columns, Query query) {
     super(null);
-    this.table = requireNonNull(table, "target is null");
-    this.columns = requireNonNull(columns, "columns is null");
-    this.query = requireNonNull(query, "query is null");
+    this.table = requireNonNull(table, DataNodeQueryMessages.EXCEPTION_TARGET_IS_NULL_240F0372);
+    this.columns =
+        requireNonNull(columns, DataNodeQueryMessages.EXCEPTION_COLUMNS_IS_NULL_6C8F32B3);
+    this.query = requireNonNull(query, DataNodeQueryMessages.EXCEPTION_QUERY_IS_NULL_689B7978);
   }
 
   public Table getTable() {

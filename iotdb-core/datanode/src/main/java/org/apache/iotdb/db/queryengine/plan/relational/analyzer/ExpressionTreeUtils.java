@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 
 import com.google.common.collect.ImmutableList;
@@ -53,9 +54,9 @@ public final class ExpressionTreeUtils {
 
   private static <T extends Expression> List<T> extractExpressions(
       Iterable<? extends Node> nodes, Class<T> clazz, Predicate<T> predicate) {
-    requireNonNull(nodes, "nodes is null");
-    requireNonNull(clazz, "clazz is null");
-    requireNonNull(predicate, "predicate is null");
+    requireNonNull(nodes, DataNodeQueryMessages.EXCEPTION_NODES_IS_NULL_7AB3C1D7);
+    requireNonNull(clazz, DataNodeQueryMessages.EXCEPTION_CLAZZ_IS_NULL_7F710E3E);
+    requireNonNull(predicate, DataNodeQueryMessages.EXCEPTION_PREDICATE_IS_NULL_22E687A9);
 
     return stream(nodes)
         .flatMap(node -> linearizeNodes(node).stream())

@@ -64,11 +64,16 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
                   logger.info(StorageEngineMessages.ADD_MOUNT_POINT, dataDirPath, mountPoint);
                 } else {
                   logger.info(
-                      "Failed to find mount point {}, skip register it to map", dataDirPath);
+                      StorageEngineMessages
+                          .STORAGE_LOG_FAILED_TO_FIND_MOUNT_POINT_SKIP_REGISTER_IT_TO_MAP_33F38542,
+                      dataDirPath);
                 }
               } catch (Exception e) {
                 logger.warn(
-                    "Exception occurs when reading data dir's mount point {}", dataDirPath, e);
+                    StorageEngineMessages
+                        .STORAGE_LOG_EXCEPTION_OCCURS_WHEN_READING_DATA_DIR_S_MOUNT_POINT_9421E685,
+                    dataDirPath,
+                    e);
               }
             });
   }
@@ -90,7 +95,8 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
       }
     } catch (Exception e) {
       logger.warn(
-          "Exception occurs when reading target file's mount point {}",
+          StorageEngineMessages
+              .STORAGE_LOG_EXCEPTION_OCCURS_WHEN_READING_TARGET_FILE_S_MOUNT_POINT_47567945,
           sourceDirectory.getAbsoluteFile(),
           e);
     }

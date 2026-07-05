@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.commons.queryengine.plan.relational.utils.TypeUtil;
 
@@ -38,8 +39,10 @@ public class Measure {
 
   public Measure(ExpressionAndValuePointers expressionAndValuePointers, Type type) {
     this.expressionAndValuePointers =
-        requireNonNull(expressionAndValuePointers, "expressionAndValuePointers is null");
-    this.type = requireNonNull(type, "type is null");
+        requireNonNull(
+            expressionAndValuePointers,
+            QueryMessages.EXCEPTION_EXPRESSIONANDVALUEPOINTERS_IS_NULL_8A02F345);
+    this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
   }
 
   public ExpressionAndValuePointers getExpressionAndValuePointers() {

@@ -692,7 +692,7 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
       final K key = MapEntry.this.getKey();
       if (parent.reverseMap.containsKey(value) && parent.reverseMap.get(value) != key) {
         throw new IllegalArgumentException(
-            "Cannot use setValue() when the object being set is already in the map");
+            CommonMessages.EXCEPTION_CANNOT_USE_SETVALUE_OBJECT_BEING_SET_ALREADY_MAP_676ED3BF);
       }
       parent.put(key, value);
       return super.setValue(value);
@@ -754,7 +754,8 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
     public K getKey() {
       if (last == null) {
         throw new IllegalStateException(
-            "Iterator getKey() can only be called after next() and before remove()");
+            CommonMessages
+                .EXCEPTION_ITERATOR_GETKEY_CAN_ONLY_CALLED_AFTER_NEXT_BEFORE_REMOVE_009C456B);
       }
       return last.getKey();
     }
@@ -763,7 +764,8 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
     public V getValue() {
       if (last == null) {
         throw new IllegalStateException(
-            "Iterator getValue() can only be called after next() and before remove()");
+            CommonMessages
+                .EXCEPTION_ITERATOR_GETVALUE_CAN_ONLY_CALLED_AFTER_NEXT_BEFORE_REMOVE_927A88A2);
       }
       return last.getValue();
     }
@@ -772,11 +774,12 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
     public V setValue(final V value) {
       if (last == null) {
         throw new IllegalStateException(
-            "Iterator setValue() can only be called after next() and before remove()");
+            CommonMessages
+                .EXCEPTION_ITERATOR_SETVALUE_CAN_ONLY_CALLED_AFTER_NEXT_BEFORE_REMOVE_51505AD1);
       }
       if (parent.reverseMap.containsKey(value) && parent.reverseMap.get(value) != last.getKey()) {
         throw new IllegalArgumentException(
-            "Cannot use setValue() when the object being set is already in the map");
+            CommonMessages.EXCEPTION_CANNOT_USE_SETVALUE_OBJECT_BEING_SET_ALREADY_MAP_676ED3BF);
       }
       return parent.put(last.getKey(), value);
     }

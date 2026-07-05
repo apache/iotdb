@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -49,12 +50,16 @@ public class TableArgumentAnalysis {
       Optional<OrderBy> orderBy,
       boolean rowSemantics,
       boolean passThroughColumns) {
-    this.argumentName = requireNonNull(argumentName, "argumentName is null");
-    this.name = requireNonNull(name, "name is null");
-    this.relation = requireNonNull(relation, "relation is null");
+    this.argumentName =
+        requireNonNull(argumentName, DataNodeQueryMessages.EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F);
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.relation =
+        requireNonNull(relation, DataNodeQueryMessages.EXCEPTION_RELATION_IS_NULL_890596ED);
     this.partitionBy =
-        requireNonNull(partitionBy, "partitionBy is null").map(ImmutableList::copyOf);
-    this.orderBy = requireNonNull(orderBy, "orderBy is null");
+        requireNonNull(partitionBy, DataNodeQueryMessages.EXCEPTION_PARTITIONBY_IS_NULL_84791B6B)
+            .map(ImmutableList::copyOf);
+    this.orderBy =
+        requireNonNull(orderBy, DataNodeQueryMessages.EXCEPTION_ORDERBY_IS_NULL_AA2494DE);
     this.rowSemantics = rowSemantics;
     this.passThroughColumns = passThroughColumns;
   }

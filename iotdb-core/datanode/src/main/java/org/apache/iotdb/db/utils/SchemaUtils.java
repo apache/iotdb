@@ -294,7 +294,11 @@ public class SchemaUtils {
       throws MetadataException {
     if (!encoding.isSupported(dataType)) {
       throw new MetadataException(
-          String.format("encoding %s does not support %s", encoding, dataType), true);
+          String.format(
+              DataNodeMiscMessages.MISC_EXCEPTION_ENCODING_S_DOES_NOT_SUPPORT_S_58301155,
+              encoding,
+              dataType),
+          true);
     }
   }
 

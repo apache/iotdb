@@ -193,7 +193,9 @@ public class StorageEngine implements IService {
         TimeUnit.MILLISECONDS.sleep(CONFIG.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > CONFIG.getMaxWaitingTimeWhenInsertBlocked()) {
           throw new WriteProcessRejectException(
-              "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
+              String.format(
+                  StorageEngineMessages.STORAGE_EXCEPTION_SYSTEM_REJECTED_OVER_SMS_94CEF932,
+                  (System.currentTimeMillis() - startTime)));
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -236,7 +238,7 @@ public class StorageEngine implements IService {
               checkResults(futures, StorageEngineMessages.STORAGE_ENGINE_FAILED_TO_RECOVER);
               isReadyForReadAndWrite.set(true);
               LOGGER.info(
-                  "Storage Engine recover cost: {}s.",
+                  StorageEngineMessages.STORAGE_LOG_STORAGE_ENGINE_RECOVER_COST_S_C8AEE9D9,
                   (System.currentTimeMillis() - startRecoverTime) / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
@@ -260,12 +262,15 @@ public class StorageEngine implements IService {
                 dataRegion = buildNewDataRegion(sgName, dataRegionId);
               } catch (DataRegionException e) {
                 LOGGER.error(
-                    "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
+                    StorageEngineMessages.STORAGE_LOG_FAILED_TO_RECOVER_DATA_REGION_804B162D,
+                    sgName,
+                    dataRegionId.getId(),
+                    e);
                 return null;
               }
               dataRegionMap.put(dataRegionId, dataRegion);
               LOGGER.info(
-                  "Data regions have been recovered {}/{}",
+                  StorageEngineMessages.STORAGE_LOG_DATA_REGIONS_HAVE_BEEN_RECOVERED_D5BD3A80,
                   readyDataRegionNum.incrementAndGet(),
                   recoverDataRegionNum);
               return null;
@@ -415,7 +420,7 @@ public class StorageEngine implements IService {
               recoverRepairData();
               isReadyForNonReadWriteFunctions.set(true);
               LOGGER.info(
-                  "TsFile Resource recover cost: {}s.",
+                  StorageEngineMessages.STORAGE_LOG_TSFILE_RESOURCE_RECOVER_COST_S_41F074E0,
                   (System.currentTimeMillis() - startRecoverTime) / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
@@ -490,7 +495,8 @@ public class StorageEngine implements IService {
       throws DataRegionException {
     DataRegion dataRegion;
     LOGGER.info(
-        "construct a data region instance, the database is {}, Thread is {}",
+        StorageEngineMessages
+            .STORAGE_LOG_CONSTRUCT_A_DATA_REGION_INSTANCE_THE_DATABASE_IS_THREAD_17A16BDF,
         databaseName,
         Thread.currentThread().getId());
     dataRegion =
@@ -887,7 +893,7 @@ public class StorageEngine implements IService {
         LOGGER.info(StorageEngineMessages.REMOVED_DATA_REGION, regionId);
       } catch (Exception e) {
         LOGGER.error(
-            "Error occurs when deleting data region {}-{}",
+            StorageEngineMessages.STORAGE_LOG_ERROR_OCCURS_WHEN_DELETING_DATA_REGION_8C07B7A0,
             region.getDatabaseName(),
             region.getDataRegionIdString(),
             e);
@@ -1038,8 +1044,8 @@ public class StorageEngine implements IService {
     final DataRegion dataRegion = getDataRegion(dataRegionId);
     if (dataRegion == null) {
       LOGGER.warn(
-          "DataRegion {} not found on this DataNode when writing piece node"
-              + "of TsFile {} (maybe due to region migration), will skip.",
+          StorageEngineMessages
+              .STORAGE_LOG_DATAREGION_NOT_FOUND_ON_THIS_DATANODE_WHEN_WRITING_PIECE_E5B5A888,
           dataRegionId,
           pieceNode.getTsFile());
       return RpcUtils.SUCCESS_STATUS;
@@ -1049,7 +1055,8 @@ public class StorageEngine implements IService {
       loadTsFileManager.writeToDataRegion(dataRegion, pieceNode, uuid);
     } catch (IOException | PageException e) {
       LOGGER.warn(
-          "IO error when writing piece node of TsFile {} to DataRegion {}.",
+          StorageEngineMessages
+              .STORAGE_LOG_IO_ERROR_WHEN_WRITING_PIECE_NODE_OF_TSFILE_TO_DATAREGION_946738F2,
           pieceNode.getTsFile(),
           dataRegionId,
           e);
@@ -1058,7 +1065,8 @@ public class StorageEngine implements IService {
       return status;
     } catch (Exception e) {
       LOGGER.warn(
-          "Exception occurred when writing piece node of TsFile {} to DataRegion {}.",
+          StorageEngineMessages
+              .STORAGE_LOG_EXCEPTION_OCCURRED_WHEN_WRITING_PIECE_NODE_OF_TSFILE_TO_9EDD09BD,
           pieceNode.getTsFile(),
           dataRegionId,
           e);
@@ -1137,8 +1145,10 @@ public class StorageEngine implements IService {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
             status.setMessage(
                 String.format(
-                    "No load TsFile uuid %s recorded for execute load command %s.",
-                    uuid, loadCommand));
+                    StorageEngineMessages
+                        .MESSAGE_NO_LOAD_TSFILE_UUID_ARG_RECORDED_EXECUTE_LOAD_COMMAND_ARG_66722D80,
+                    uuid,
+                    loadCommand));
           }
           break;
         case ROLLBACK:
@@ -1148,8 +1158,10 @@ public class StorageEngine implements IService {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
             status.setMessage(
                 String.format(
-                    "No load TsFile uuid %s recorded for execute load command %s.",
-                    uuid, loadCommand));
+                    StorageEngineMessages
+                        .MESSAGE_NO_LOAD_TSFILE_UUID_ARG_RECORDED_EXECUTE_LOAD_COMMAND_ARG_66722D80,
+                    uuid,
+                    loadCommand));
           }
           break;
         default:

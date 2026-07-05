@@ -343,7 +343,10 @@ public class IoTConsensus implements IConsensus {
       try {
         callback.accept(groupId, stateMachineMap.get(groupId));
       } catch (final Exception e) {
-        logger.warn("onNewPeerCreated callback failed for group {}", groupId, e);
+        logger.warn(
+            IoTConsensusMessages.LOG_ONNEWPEERCREATED_CALLBACK_FAILED_GROUP_ARG_2671FCDA,
+            groupId,
+            e);
       }
     }
   }
@@ -359,7 +362,8 @@ public class IoTConsensus implements IConsensus {
       try {
         removeCallback.accept(groupId);
       } catch (final Exception e) {
-        logger.warn("onPeerRemoved callback failed for group {}", groupId, e);
+        logger.warn(
+            IoTConsensusMessages.LOG_ONPEERREMOVED_CALLBACK_FAILED_GROUP_ARG_9B79CBAF, groupId, e);
       }
     }
 

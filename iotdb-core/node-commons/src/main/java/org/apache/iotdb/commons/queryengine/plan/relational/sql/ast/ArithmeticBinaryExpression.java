@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -68,7 +70,7 @@ public class ArithmeticBinaryExpression extends Expression {
 
   public ArithmeticBinaryExpression(
       @Nonnull NodeLocation location, Operator operator, Expression left, Expression right) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.operator = operator;
     this.left = left;
     this.right = right;

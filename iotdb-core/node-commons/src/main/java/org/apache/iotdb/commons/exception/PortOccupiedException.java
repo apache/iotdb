@@ -18,14 +18,18 @@
  */
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import java.util.Arrays;
 
 public class PortOccupiedException extends RuntimeException {
   public PortOccupiedException() {
-    super("Some ports are occupied");
+    super(CommonMessages.EXCEPTION_SOME_PORTS_OCCUPIED_77ED044D);
   }
 
   public PortOccupiedException(int... ports) {
-    super(String.format("Ports %s are occupied", Arrays.toString(ports)));
+    super(
+        String.format(
+            CommonMessages.EXCEPTION_PORTS_ARG_OCCUPIED_B462E9DA, Arrays.toString(ports)));
   }
 }

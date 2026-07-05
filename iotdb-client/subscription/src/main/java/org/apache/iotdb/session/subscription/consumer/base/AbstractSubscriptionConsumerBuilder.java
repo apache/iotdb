@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
 import org.apache.thrift.annotation.Nullable;
@@ -78,7 +79,8 @@ public class AbstractSubscriptionConsumerBuilder {
     if (!Objects.equals(password, SessionConfig.DEFAULT_PASSWORD)
         && Objects.nonNull(this.encryptedPassword)) {
       throw new IllegalStateException(
-          "password and encryptedPassword are mutually exclusive; encryptedPassword is already set");
+          SubscriptionMessages
+              .EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_ENCRYPTEDPASSWORD_ALREADY_SET_E4548A43);
     }
     this.password = password;
     return this;
@@ -90,7 +92,8 @@ public class AbstractSubscriptionConsumerBuilder {
     }
     if (!Objects.equals(this.password, SessionConfig.DEFAULT_PASSWORD)) {
       throw new IllegalStateException(
-          "password and encryptedPassword are mutually exclusive; password is already set");
+          SubscriptionMessages
+              .EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_PASSWORD_ALREADY_SET_BB20AD1E);
     }
     this.encryptedPassword = encryptedPassword;
     return this;
