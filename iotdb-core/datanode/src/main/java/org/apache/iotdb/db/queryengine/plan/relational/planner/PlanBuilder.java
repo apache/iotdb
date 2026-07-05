@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
@@ -79,6 +80,10 @@ public class PlanBuilder {
 
   public PlanBuilder withScope(Scope scope, List<Symbol> fields) {
     return new PlanBuilder(translations.withScope(scope, fields), root);
+  }
+
+  public PlanBuilder withAdditionalIdentityMappings(Map<NodeRef<Expression>, Symbol> mappings) {
+    return new PlanBuilder(translations.withAdditionalIdentityMappings(mappings), root);
   }
 
   public boolean canTranslate(Expression expression) {
