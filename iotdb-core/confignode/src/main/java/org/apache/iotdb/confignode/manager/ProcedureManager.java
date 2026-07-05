@@ -2408,10 +2408,15 @@ public class ProcedureManager {
     }
   }
 
+  // only care about the AbstractAlterOrDropTableProcedure(except the drop table/view)
+  // and the DeleteDatabaseProcedure
   public Map<String, List<String>> getAllExecutingTables() {
     final Map<String, List<String>> result = new HashMap<>();
     for (final Procedure<?> procedure : executor.getProcedures().values()) {
       if (procedure.isFinished()) {
+        continue;
+      }
+      if (procedure instanceof DropTableProcedure) {
         continue;
       }
       // CreateTableOrViewProcedure is covered by the default process, thus we can ignore it here

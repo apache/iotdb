@@ -26,9 +26,11 @@ import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
@@ -76,11 +78,14 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
             + ", exception: "
             + e.getMessage();
     logFailure(errorMsg);
+    // the DN throw Exception -> TApplicationException
+    // the DN crash -> TTransportException or ConnectException
+    int code =
+        e instanceof TTransportException || e instanceof ConnectException
+            ? TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode()
+            : TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode();
 
-    responseMap.put(
-        requestId,
-        new TSStatus(
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+    responseMap.put(requestId, new TSStatus(RpcUtils.getStatus(code, errorMsg)));
 
     countDownLatch.countDown();
   }

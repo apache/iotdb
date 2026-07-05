@@ -435,6 +435,7 @@ public final class ProcedureMessages {
       "Failed to pre-release {} for table {}.{} to DataNode, failure results: {}";
   public static final String FAILED_TO_PRE_SET_TEMPLATE_ON_PATH_DUE_TO =
       "Failed to pre set template {} on path {} due to {}";
+  public static final String FAILED_TO_PROVE_DN_IS_FENCED = "不能证明一个不可达的DN已经处于隔离状态";
   public static final String FAILED_TO_PUSH_CONSUMER_GROUP_META_TO_DATANODES_DETAILS =
       "Failed to push consumer group meta to dataNodes, details: %s";
   public static final String FAILED_TO_PUSH_PIPE_META_LIST_TO_DATA_NODES_WILL =

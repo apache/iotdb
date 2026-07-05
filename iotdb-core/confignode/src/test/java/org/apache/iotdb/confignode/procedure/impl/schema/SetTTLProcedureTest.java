@@ -25,8 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
-import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
@@ -355,30 +353,11 @@ public class SetTTLProcedureTest {
     }
 
     @Override
-    DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> sendTTLRequest(
-        final Map<Integer, TDataNodeLocation> dataNodeLocationMap, final TSetTTLReq req) {
+    boolean broadcastTTLAndDecide(final ConfigNodeProcedureEnv env, final TSetTTLReq req) {
       requests.add(copyRequest(req));
-
-      final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
-          new DataNodeAsyncRequestContext<>(
-              CnToDnAsyncRequestType.SET_TTL, copyRequest(req), dataNodeLocationMap);
-      final List<Integer> requestIds = new ArrayList<>(clientHandler.getNodeLocationMap().keySet());
-      final boolean shouldFail = failFirstDataNodeUpdate && requestCount++ == 0;
-
-      for (Integer requestId : requestIds) {
-        clientHandler
-            .getResponseMap()
-            .put(
-                requestId,
-                new TSStatus(
-                    shouldFail
-                        ? TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
-                        : TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-        if (!shouldFail) {
-          clientHandler.getNodeLocationMap().remove(requestId);
-        }
-      }
-      return clientHandler;
+      // Simulate a live, un-acked DataNode on the first broadcast: the propagator verdict is FAIL
+      // (which triggers rollback). Later broadcasts (the rollback restore) proceed.
+      return !(failFirstDataNodeUpdate && requestCount++ == 0);
     }
 
     private SetTTLPlan copyPlan(final SetTTLPlan plan) {
