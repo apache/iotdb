@@ -1189,11 +1189,22 @@ public class Analysis implements IAnalysis {
     // referencing each field of the row.
     private final Expression expression;
     private final Optional<List<Expression>> unfoldedExpressions;
+    private final Map<NodeRef<Expression>, Expression> lateralColumnAliasReferences;
 
     public SelectExpression(Expression expression, Optional<List<Expression>> unfoldedExpressions) {
+      this(expression, unfoldedExpressions, ImmutableMap.of());
+    }
+
+    public SelectExpression(
+        Expression expression,
+        Optional<List<Expression>> unfoldedExpressions,
+        Map<NodeRef<Expression>, Expression> lateralColumnAliasReferences) {
       this.expression =
           requireNonNull(expression, DataNodeQueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
       this.unfoldedExpressions = requireNonNull(unfoldedExpressions);
+      this.lateralColumnAliasReferences =
+          ImmutableMap.copyOf(
+              requireNonNull(lateralColumnAliasReferences, "lateralColumnAliasReferences is null"));
     }
 
     public Expression getExpression() {
@@ -1202,6 +1213,10 @@ public class Analysis implements IAnalysis {
 
     public Optional<List<Expression>> getUnfoldedExpressions() {
       return unfoldedExpressions;
+    }
+
+    public Map<NodeRef<Expression>, Expression> getLateralColumnAliasReferences() {
+      return lateralColumnAliasReferences;
     }
   }
 
