@@ -386,11 +386,17 @@ public class StatementAnalyzer {
         SelectAliasLookup aliases,
         Map<NodeRef<SingleColumn>, Expression> singleColumnExpressions) {
       this.outputExpressions =
-          ImmutableList.copyOf(requireNonNull(outputExpressions, "outputExpressions is null"));
-      this.aliases = requireNonNull(aliases, "aliases is null");
+          ImmutableList.copyOf(
+              requireNonNull(
+                  outputExpressions,
+                  DataNodeQueryMessages.EXCEPTION_OUTPUTEXPRESSIONS_IS_NULL_7BD39A8F));
+      this.aliases =
+          requireNonNull(aliases, DataNodeQueryMessages.EXCEPTION_ALIASES_IS_NULL_6D98FA6C);
       this.singleColumnExpressions =
           ImmutableMap.copyOf(
-              requireNonNull(singleColumnExpressions, "singleColumnExpressions is null"));
+              requireNonNull(
+                  singleColumnExpressions,
+                  DataNodeQueryMessages.EXCEPTION_SINGLECOLUMNEXPRESSIONS_IS_NULL_EFB296FD));
     }
 
     private List<Expression> getOutputExpressions() {
@@ -413,9 +419,14 @@ public class StatementAnalyzer {
     private final boolean containsWindowFunction;
 
     private SelectAlias(String canonicalName, int position, Expression rewrittenExpression) {
-      this.canonicalName = requireNonNull(canonicalName, "canonicalName is null");
+      this.canonicalName =
+          requireNonNull(
+              canonicalName, DataNodeQueryMessages.EXCEPTION_CANONICALNAME_IS_NULL_DDFE6DB1);
       this.position = position;
-      this.rewrittenExpression = requireNonNull(rewrittenExpression, "rewrittenExpression is null");
+      this.rewrittenExpression =
+          requireNonNull(
+              rewrittenExpression,
+              DataNodeQueryMessages.EXCEPTION_REWRITTENEXPRESSION_IS_NULL_6EE23088);
       this.containsWindowFunction =
           !extractWindowFunctions(ImmutableList.of(rewrittenExpression)).isEmpty();
     }
@@ -448,7 +459,9 @@ public class StatementAnalyzer {
     private final int size;
 
     private SelectAliasLookup(Map<String, List<SelectAlias>> aliasesByCanonicalName) {
-      requireNonNull(aliasesByCanonicalName, "aliasesByCanonicalName is null");
+      requireNonNull(
+          aliasesByCanonicalName,
+          DataNodeQueryMessages.EXCEPTION_ALIASESBYCANONICALNAME_IS_NULL_635C7ED3);
 
       ImmutableMap.Builder<String, List<SelectAlias>> aliasesBuilder = ImmutableMap.builder();
       int aliasCount = 0;
@@ -498,7 +511,7 @@ public class StatementAnalyzer {
       private int size;
 
       private void add(SelectAlias alias) {
-        requireNonNull(alias, "alias is null");
+        requireNonNull(alias, DataNodeQueryMessages.EXCEPTION_ALIAS_IS_NULL_862D23B1);
         aliasesByCanonicalName
             .computeIfAbsent(alias.getCanonicalName(), ignored -> new ArrayList<>())
             .add(alias);
@@ -562,8 +575,12 @@ public class StatementAnalyzer {
 
     private LateralColumnAliasRewrite(
         Expression expression, Map<NodeRef<Expression>, Expression> references) {
-      this.expression = requireNonNull(expression, "expression is null");
-      this.references = ImmutableMap.copyOf(requireNonNull(references, "references is null"));
+      this.expression =
+          requireNonNull(expression, DataNodeQueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
+      this.references =
+          ImmutableMap.copyOf(
+              requireNonNull(
+                  references, DataNodeQueryMessages.EXCEPTION_REFERENCES_IS_NULL_25A7E3AF));
     }
 
     private Expression getExpression() {
@@ -581,8 +598,10 @@ public class StatementAnalyzer {
     private final Map<NodeRef<Expression>, Expression> references = new LinkedHashMap<>();
 
     private LateralColumnAliasRewriter(Scope scope, SelectAliasResolver visibleAliases) {
-      this.scope = requireNonNull(scope, "scope is null");
-      this.visibleAliases = requireNonNull(visibleAliases, "visibleAliases is null");
+      this.scope = requireNonNull(scope, DataNodeQueryMessages.EXCEPTION_SCOPE_IS_NULL_4F364BA2);
+      this.visibleAliases =
+          requireNonNull(
+              visibleAliases, DataNodeQueryMessages.EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1);
     }
 
     private Map<NodeRef<Expression>, Expression> getReferences() {
@@ -6020,7 +6039,8 @@ public class StatementAnalyzer {
             .orElseThrow(
                 () ->
                     new IllegalStateException(
-                        String.format("Missing required argument: %s", argumentName)));
+                        String.format(
+                            DataNodeQueryMessages.MISSING_REQUIRED_ARGUMENT_S, argumentName)));
       }
 
       for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {

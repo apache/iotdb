@@ -3708,4 +3708,15 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_FAILED_TO_CLOSE_INTERNAL_QUERY_RESULT_ED86BF5E = "Failed to close internal query result";
   public static final String EXCEPTION_UDFRESULTSET_IS_ALREADY_CLOSED_E1ACABE3 = "UDFResultSet is already closed";
 
+  public static final String EXCEPTION_LATERALCOLUMNALIASREFERENCES_IS_NULL_0CC58C78 = "lateralColumnAliasReferences is null";
+  public static final String EXCEPTION_OUTPUTEXPRESSIONS_IS_NULL_7BD39A8F = "outputExpressions is null";
+  public static final String EXCEPTION_ALIASES_IS_NULL_6D98FA6C = "aliases is null";
+  public static final String EXCEPTION_SINGLECOLUMNEXPRESSIONS_IS_NULL_EFB296FD = "singleColumnExpressions is null";
+  public static final String EXCEPTION_CANONICALNAME_IS_NULL_DDFE6DB1 = "canonicalName is null";
+  public static final String EXCEPTION_REWRITTENEXPRESSION_IS_NULL_6EE23088 = "rewrittenExpression is null";
+  public static final String EXCEPTION_ALIASESBYCANONICALNAME_IS_NULL_635C7ED3 = "aliasesByCanonicalName is null";
+  public static final String EXCEPTION_ALIAS_IS_NULL_862D23B1 = "alias is null";
+  public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references is null";
+  public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases is null";
+
 }

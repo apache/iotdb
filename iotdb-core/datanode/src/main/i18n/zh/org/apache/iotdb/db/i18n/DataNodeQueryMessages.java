@@ -4486,4 +4486,16 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_FAILED_TO_CLOSE_INTERNAL_QUERY_RESULT_ED86BF5E = "关闭内部查询结果失败";
   public static final String EXCEPTION_UDFRESULTSET_IS_ALREADY_CLOSED_E1ACABE3 = "UDFResultSet 已经关闭";
 
+  public static final String EXCEPTION_LATERALCOLUMNALIASREFERENCES_IS_NULL_0CC58C78 = "lateralColumnAliasReferences 不能为空";
+
+  public static final String EXCEPTION_OUTPUTEXPRESSIONS_IS_NULL_7BD39A8F = "outputExpressions 不能为空";
+  public static final String EXCEPTION_ALIASES_IS_NULL_6D98FA6C = "aliases 不能为空";
+  public static final String EXCEPTION_SINGLECOLUMNEXPRESSIONS_IS_NULL_EFB296FD = "singleColumnExpressions 不能为空";
+  public static final String EXCEPTION_CANONICALNAME_IS_NULL_DDFE6DB1 = "canonicalName 不能为空";
+  public static final String EXCEPTION_REWRITTENEXPRESSION_IS_NULL_6EE23088 = "rewrittenExpression 不能为空";
+  public static final String EXCEPTION_ALIASESBYCANONICALNAME_IS_NULL_635C7ED3 = "aliasesByCanonicalName 不能为空";
+  public static final String EXCEPTION_ALIAS_IS_NULL_862D23B1 = "alias 不能为空";
+  public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references 不能为空";
+  public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases 不能为空";
+
 }

@@ -1204,7 +1204,9 @@ public class Analysis implements IAnalysis {
       this.unfoldedExpressions = requireNonNull(unfoldedExpressions);
       this.lateralColumnAliasReferences =
           ImmutableMap.copyOf(
-              requireNonNull(lateralColumnAliasReferences, "lateralColumnAliasReferences is null"));
+              requireNonNull(
+                  lateralColumnAliasReferences,
+                  DataNodeQueryMessages.EXCEPTION_LATERALCOLUMNALIYREFERENCES_IS_NULL_0CC58C78));
     }
 
     public Expression getExpression() {

@@ -177,6 +177,15 @@ Generated source directories that need to be on the source path:
 
 The project uses compile-time i18n via the `build-helper-maven-plugin`. The property `i18n.locale` (default: `en`) controls which source directory is added: `src/main/i18n/${i18n.locale}`. Activating `-P with-zh-locale` sets `i18n.locale=zh`, swapping English message constant classes for Chinese ones. Each module that participates has both `src/main/i18n/en/` and `src/main/i18n/zh/` directories containing Java classes with identical structure but different string literals.
 
+**Rule — never inline a user-facing English string literal.** Every string a user, operator, or log reader will see MUST be a `public static final String` constant in the module's `*Messages` class (e.g. `DataNodeQueryMessages`), referenced as `MessagesClass.CONSTANT` — never a `"raw literal"`. This applies to: `LOGGER/log.info|warn|error|debug|trace(...)`, `throw new …Exception(…)`, `super(…)` in exception constructors, `resp.setMessage(…)`, the message arg of `requireNonNull/checkArgument/checkState/checkNotNull`, and the template of `String.format(…)`. A raw literal is invisible to the zh build and renders English under `-P with-zh-locale` — that is the bug this rule prevents. (`toString()` debug output is exempt.) Reviewers and AI agents must reject/fix any new code that introduces such a literal.
+
+**Naming a new constant** (deterministic, matches existing files): `<PREFIX>_<NORMALIZED>_<HASH>` where `PREFIX` is `MESSAGE_` for log/setMessage and `EXCEPTION_` for exception/`super`/precondition messages; `NORMALIZED` is the English value uppercased with non-alphanumeric runs collapsed to `_` and `%s`/`%d`/`{}` replaced by `ARG`; `HASH` is the first 8 hex chars of `md5(englishValue)`, uppercased — compute with `python3 -c "import hashlib;print(hashlib.md5(b'the english').hexdigest()[:8].upper())"`. Add the constant to **both** the `en` and `zh` files under the **same name** (zh gets a natural Chinese translation; preserve every `%s`/`%d`/`{}` exactly; keep config keys, SQL keywords, class/method names, and product terms like TsFile/DataRegion/Consensus/ConfigNode in English inside the Chinese string). Reuse an existing same-named constant instead of duplicating.
+
+**Verify before commit**:
+- `mvn spotless:apply -pl <module>` (the PostToolUse formatter does not add the i18n import; spotless does).
+- Compile **both** locales: `mvn test-compile -DskipTests` AND `mvn test-compile -P with-zh-locale -DskipTests` (the `.github/workflows/zh-locale-compile.yml` CI enforces the zh build).
+- The `en` and `zh` files must stay in key parity (same constant names) with identical format-specifier counts; a raw-literal scan of main java must return nothing.
+
 ### Code Style
 
 - **Always run `mvn spotless:apply` after editing Java files**: Spotless runs `spotless:check` automatically during the `compile` phase. Format violations cause an immediate BUILD FAILURE. Make it a habit to run `mvn spotless:apply -pl <module>` right after editing, not at the end. For files under `integration-test/`, add `-P with-integration-tests`.
