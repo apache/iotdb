@@ -599,7 +599,8 @@ cd-deploy:
 
       echo "=== 处理英文包 ==="
 
-      EN_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-bin.zip' ! -name 'timechodb-*-zh-bin.zip' -type f | head -n 1)
+      # EN_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-bin.zip' ! -name 'timechodb-*-zh-bin.zip' -type f | head -n 1)
+      EN_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-bin.zip' ! -name 'timechodb-*-zh-bin.zip'    ! -name '*-library-pipe-*' -type f | head -n 1)
       if [ -z "$EN_ZIP" ]; then
         echo "错误: 在 distribution/target 中未找到英文 timechodb-*-bin.zip 文件"
         ls -la distribution/target/ 2>/dev/null || echo "distribution/target 目录不存在"
