@@ -27,13 +27,14 @@
 #endif
 
 #if WITH_SSL
-#include "bio.h"
-#include "err.h"
-#include "evp.h"
-#include "pem.h"
-#include "pkcs12.h"
-#include "ssl.h"
-#include "x509.h"
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/pkcs12.h>
+#include <openssl/ssl.h>
+#include <openssl/x509.h>
+#include <thrift/transport/TSSLSocket.h>
 #endif
 
 #include "RpcSslUtils.h"

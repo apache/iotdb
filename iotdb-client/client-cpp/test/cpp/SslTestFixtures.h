@@ -39,7 +39,7 @@ std::string tlcpFixture(const std::string& name);
 std::string buildTlcpDualKeyStoreP12();
 
 #if WITH_SSL
-#include "ssl.h"
+#include <openssl/ssl.h>
 
 bool sslContextHasClientCertificate(SSL_CTX* ctx);
 bool tlcpContextHasDualCredentials(SSL_CTX* ctx);

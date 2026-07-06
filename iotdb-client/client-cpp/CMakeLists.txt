@@ -196,8 +196,8 @@ else()
 endif()
 
 if(WITH_SSL)
-    target_link_libraries(iotdb_session PRIVATE iotdb_tongsuo_openssl_wrap)
-    target_link_libraries(iotdb_session PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+    target_link_libraries(iotdb_session PUBLIC
+            OpenSSL::SSL OpenSSL::Crypto iotdb_tongsuo_openssl_wrap)
     target_compile_definitions(iotdb_session PUBLIC WITH_SSL=1)
 else()
     target_compile_definitions(iotdb_session PUBLIC WITH_SSL=0)

@@ -24,9 +24,16 @@
 #include <string>
 
 #if WITH_SSL
-#include "ssl.h"
-#include <thrift/transport/TSSLSocket.h>
+#include <openssl/ssl.h>
 #endif
+
+namespace apache {
+namespace thrift {
+namespace transport {
+class TSSLSocketFactory;
+} // namespace transport
+} // namespace thrift
+} // namespace apache
 
 struct SslConfig {
   bool useSsl = false;
