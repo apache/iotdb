@@ -32,9 +32,10 @@ function(iotdb_setup_tongsuo_openssl_headers _tongsuo_include_dir)
     set(_ossl_wrap "${_wrap_dir}/openssl")
     file(MAKE_DIRECTORY "${_ossl_wrap}")
     set(_ossl_root "${_tongsuo_include_dir}/openssl")
-    foreach(_header bio err evp pem pkcs12 ssl x509)
-        file(WRITE "${_ossl_wrap}/${_header}.h"
-                "#pragma once\n#include \"${_ossl_root}/${_header}.h\"\n")
+    file(GLOB _ossl_headers RELATIVE "${_ossl_root}" "${_ossl_root}/*.h")
+    foreach(_header ${_ossl_headers})
+        file(WRITE "${_ossl_wrap}/${_header}"
+                "#pragma once\n#include \"${_ossl_root}/${_header}\"\n")
     endforeach()
 
     if(NOT TARGET iotdb_tongsuo_openssl_wrap)
