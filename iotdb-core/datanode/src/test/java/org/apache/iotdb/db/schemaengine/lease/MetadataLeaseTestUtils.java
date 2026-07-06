@@ -41,7 +41,13 @@ public final class MetadataLeaseTestUtils {
     return newManager(nowNanos, () -> {}, () -> {});
   }
 
+  public static boolean isFenced(final MetadataLeaseManager manager) {
+    manager.checkLeaseStatus();
+    return manager.isFenced();
+  }
+
   public static void failIfMetadataLeaseFenced(final MetadataLeaseManager manager) {
+    manager.checkLeaseStatus();
     if (manager.isFenced()) {
       throw new MetadataLeaseFencedException(
           "Metadata lease is fenced. The local metadata cache is unavailable.");
@@ -64,6 +70,8 @@ public final class MetadataLeaseTestUtils {
         () -> T_FENCE_MS,
         Collections.singletonList(clearAction),
         Collections.singletonList(pullAction),
-        MoreExecutors.newDirectExecutorService());
+        MoreExecutors.newDirectExecutorService(),
+        500L,
+        null);
   }
 }

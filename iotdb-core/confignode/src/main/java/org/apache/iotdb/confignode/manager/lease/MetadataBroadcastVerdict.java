@@ -41,11 +41,13 @@ public final class MetadataBroadcastVerdict {
   /** Per-DataNode inputs for one broadcast round. */
   public static final class DataNodeState {
     private final boolean executeSuccess;
-    private final long hbAgeMs;
+    private final long elapsedMsSinceLastSuccessfulHeartbeatResponse;
 
-    public DataNodeState(final boolean executeSuccess, final long hbAgeMs) {
+    public DataNodeState(
+        final boolean executeSuccess, final long elapsedMsSinceLastSuccessfulHeartbeatResponse) {
       this.executeSuccess = executeSuccess;
-      this.hbAgeMs = hbAgeMs;
+      this.elapsedMsSinceLastSuccessfulHeartbeatResponse =
+          elapsedMsSinceLastSuccessfulHeartbeatResponse;
     }
   }
 
@@ -54,7 +56,8 @@ public final class MetadataBroadcastVerdict {
       final long fenceTimeOutsMs,
       final boolean waitBudgetExhausted) {
     for (final DataNodeState state : states) {
-      if (!state.executeSuccess && state.hbAgeMs < fenceTimeOutsMs) {
+      if (!state.executeSuccess
+          && state.elapsedMsSinceLastSuccessfulHeartbeatResponse < fenceTimeOutsMs) {
         return waitBudgetExhausted ? Verdict.FAIL : Verdict.WAIT;
       }
     }

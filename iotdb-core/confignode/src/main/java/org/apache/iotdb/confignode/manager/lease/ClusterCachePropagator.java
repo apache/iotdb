@@ -50,6 +50,9 @@ public class ClusterCachePropagator {
   /** How often to retry while waiting for unacked DataNodes to ack or cross T_proceed. */
   private static final long RETRY_INTERVAL_MS = 1_000L;
 
+  /** Per-attempt timeout for cache-invalidation RPCs broadcast to DataNodes. */
+  public static final long BROADCAST_RPC_TIMEOUT_MS = 1_000L;
+
   /** Broadcasts the cache invalidation to {@code targets} and returns the per-nodeId responses. */
   @FunctionalInterface
   public interface CacheBroadcast {

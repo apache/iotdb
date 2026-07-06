@@ -762,6 +762,13 @@ failure_detector_phi_acceptable_pause_in_ms=10000
 # Datatype: long
 metadata_lease_fence_ms=20000
 
+# Interval at which a DataNode checks whether its metadata lease has expired and self-fences local
+# metadata caches. Keep this value smaller than the ConfigNode-side safe-fence wait so the DataNode
+# can finish self-isolation before the ConfigNode treats it as fenced.
+# effectiveMode: restart
+# Datatype: long
+check_dn_lease_status_interval_ms=500
+
 # Whether to enable topology probing between DataNodes
 # effectiveMode: hot_reload
 # Datatype: Boolean

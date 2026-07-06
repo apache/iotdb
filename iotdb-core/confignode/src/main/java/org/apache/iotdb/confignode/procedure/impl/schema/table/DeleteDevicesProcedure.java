@@ -230,7 +230,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             .propagate(targets -> broadCastInvalidateCache(req, targets));
 
     if (!proceeded) {
-      LOGGER.error(
+      LOGGER.warn(
           ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE,
           database,
           tableName);
@@ -248,7 +248,9 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     final DataNodeAsyncRequestContext<TTableDeviceInvalidateCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.INVALIDATE_MATCHED_TABLE_DEVICE_CACHE, req, targets);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithTimeoutInMs(
+            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     return clientHandler.getResponseMap();
   }
 

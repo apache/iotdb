@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.lease;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -36,10 +37,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicStampedReference;
 import java.util.function.LongSupplier;
 
+import static org.apache.iotdb.commons.concurrent.ThreadName.CHECK_DN_LEASE_STATUS;
 import static org.apache.iotdb.commons.concurrent.ThreadName.RELOAD_TABLE_METADATA_CACHE;
 
 /**
@@ -73,9 +77,10 @@ public class MetadataLeaseManager {
 
   private volatile long lastConfigNodeHeartbeatNanos;
 
-  AtomicBoolean hasPullTaskNowRef;
-  AtomicStampedReference<MetadataState> metadataStateRef;
-  ExecutorService pullExecutorService;
+  private final AtomicBoolean hasPullTaskNowRef;
+  private final AtomicStampedReference<MetadataState> metadataStateRef;
+  private final ExecutorService pullExecutorService;
+  private final ScheduledExecutorService checkLeaseStatusExecutor;
 
   private enum MetadataState {
     NORMAL,
@@ -92,7 +97,9 @@ public class MetadataLeaseManager {
         () -> CommonDescriptor.getInstance().getConfig().getMetadataLeaseFenceMs(),
         defaultClearCacheList(),
         defaultPullMetaList(),
-        IoTDBThreadPoolFactory.newCachedThreadPool(RELOAD_TABLE_METADATA_CACHE.getName()));
+        IoTDBThreadPoolFactory.newCachedThreadPool(RELOAD_TABLE_METADATA_CACHE.getName()),
+        CommonDescriptor.getInstance().getConfig().getCheckDnLeaseStatusIntervalMs(),
+        IoTDBThreadPoolFactory.newScheduledThreadPool(1, CHECK_DN_LEASE_STATUS.getName()));
   }
 
   private static List<MetadataAction> defaultClearCacheList() {
@@ -112,7 +119,9 @@ public class MetadataLeaseManager {
       final LongSupplier fenceThresholdMs,
       final List<MetadataAction> clearCacheList,
       final List<MetadataAction> pullMetaList,
-      final ExecutorService pullExecutorService) {
+      final ExecutorService pullExecutorService,
+      final long checkDnLeaseStatusIntervalMs,
+      final ScheduledExecutorService checkLeaseStatusExecutor) {
     this.nanoClock = nanoClock;
     this.fenceThresholdMs = fenceThresholdMs;
     this.clearCacheList = new ArrayList<>(clearCacheList);
@@ -123,6 +132,15 @@ public class MetadataLeaseManager {
     metadataStateRef = new AtomicStampedReference<>(MetadataState.NORMAL, 0);
     hasPullTaskNowRef = new AtomicBoolean(false);
     this.pullExecutorService = pullExecutorService;
+    this.checkLeaseStatusExecutor = checkLeaseStatusExecutor;
+    if (this.checkLeaseStatusExecutor != null) {
+      ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+          this.checkLeaseStatusExecutor,
+          this::checkLeaseStatus,
+          0,
+          checkDnLeaseStatusIntervalMs,
+          TimeUnit.MILLISECONDS);
+    }
   }
 
   /** Renew the lease: record that a ConfigNode heartbeat has just been received */
@@ -184,10 +202,10 @@ public class MetadataLeaseManager {
     }
     try {
       clearCacheList.forEach(MetadataAction::execute);
-    } catch (Exception e) {
+    } catch (Throwable t) {
       metadataStateRef.set(MetadataState.NEED_CLEAR, metadataStateRef.getStamp() + 1);
-      LOGGER.error(DataNodeSchemaMessages.FAILED_TO_CLEAR_METADATA_CACHE, e);
-      throw e;
+      LOGGER.error(DataNodeSchemaMessages.FAILED_TO_CLEAR_METADATA_CACHE, t);
+      rethrowUnchecked(t);
     }
     metadataStateRef.set(MetadataState.CACHE_CLEARED, metadataStateRef.getStamp() + 1);
     return true;
@@ -211,14 +229,24 @@ public class MetadataLeaseManager {
     for (final MetadataAction action : pullMetaList) {
       try {
         action.execute();
-      } catch (final Exception e) {
+      } catch (final Throwable t) {
         metadataStateRef.set(MetadataState.PULL_OR_INIT_FAILED, metadataStateRef.getStamp() + 1);
-        LOGGER.error(DataNodeSchemaMessages.FAILED_TO_PULL_OR_INIT_METADATA, e);
-        throw e;
+        LOGGER.error(DataNodeSchemaMessages.FAILED_TO_PULL_OR_INIT_METADATA, t);
+        rethrowUnchecked(t);
       }
     }
     this.lastConfigNodeHeartbeatNanos = nanoClock.getAsLong();
     metadataStateRef.set(MetadataState.NORMAL, metadataStateRef.getStamp() + 1);
+  }
+
+  private static void rethrowUnchecked(final Throwable t) {
+    if (t instanceof Error) {
+      throw (Error) t;
+    }
+    if (t instanceof RuntimeException) {
+      throw (RuntimeException) t;
+    }
+    throw new RuntimeException(t);
   }
 
   private boolean hasOutOfLease() {
@@ -232,23 +260,19 @@ public class MetadataLeaseManager {
   }
 
   public boolean isFenced() {
+    return metadataStateRef.getReference() != MetadataState.NORMAL;
+  }
+
+  void checkLeaseStatus() {
     int[] stampHolder = new int[1];
     MetadataState metadataState = metadataStateRef.get(stampHolder);
     if (metadataState != MetadataState.NORMAL) {
-      return true;
+      return;
     }
-
-    // NORMAL and within lease means the metadata cache is available
-    if (!hasOutOfLease()) {
-      return false;
+    if (hasOutOfLease()) {
+      metadataStateRef.compareAndSet(
+          MetadataState.NORMAL, MetadataState.NEED_CLEAR, stampHolder[0], stampHolder[0] + 1);
     }
-
-    // Do not clear cache in caller threads. Mark the lease as fenced only; the heartbeat worker
-    // serializes cache clearing and metadata pulling. The stamp prevents an old isFenced() caller
-    // from changing a newly recovered NORMAL state back to NEED_CLEAR.
-    metadataStateRef.compareAndSet(
-        MetadataState.NORMAL, MetadataState.NEED_CLEAR, stampHolder[0], stampHolder[0] + 1);
-    return true;
   }
 
   /**

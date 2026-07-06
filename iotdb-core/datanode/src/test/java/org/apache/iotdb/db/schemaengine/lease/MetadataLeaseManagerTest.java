@@ -50,6 +50,7 @@ public class MetadataLeaseManagerTest {
     final MetadataLeaseManager manager = newManager(nowNanos, () -> {}, () -> {});
 
     nowNanos.addAndGet(TimeUnit.MILLISECONDS.toNanos(T_FENCE_MS + 1));
+    manager.checkLeaseStatus();
     assertTrue(manager.isFenced());
 
     manager.recoveryLeaseForTest(true);
@@ -72,6 +73,7 @@ public class MetadataLeaseManagerTest {
             () -> {});
 
     nowNanos.addAndGet(TimeUnit.MILLISECONDS.toNanos(T_FENCE_MS + 1));
+    manager.checkLeaseStatus();
     assertTrue(manager.isFenced());
     assertEquals(0, clearAttempts.get());
 
@@ -99,6 +101,7 @@ public class MetadataLeaseManagerTest {
             });
 
     nowNanos.addAndGet(TimeUnit.MILLISECONDS.toNanos(T_FENCE_MS + 1));
+    manager.checkLeaseStatus();
     assertTrue(manager.isFenced());
 
     manager.triggerCheckWithHeartBeat();

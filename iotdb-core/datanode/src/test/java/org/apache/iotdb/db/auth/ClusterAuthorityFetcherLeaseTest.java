@@ -97,7 +97,7 @@ public class ClusterAuthorityFetcherLeaseTest {
 
     @Override
     boolean isMetadataLeaseFenced() {
-      return leaseManager.isFenced();
+      return MetadataLeaseTestUtils.isFenced(leaseManager);
     }
   }
 }

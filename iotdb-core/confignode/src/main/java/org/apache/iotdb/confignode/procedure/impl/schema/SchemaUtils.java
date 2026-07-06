@@ -264,7 +264,9 @@ public class SchemaUtils {
       final TUpdateTableReq req, final Map<Integer, TDataNodeLocation> targets) {
     final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.UPDATE_TABLE, req, targets);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithTimeoutInMs(
+            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     return clientHandler.getResponseMap();
   }
 
@@ -356,7 +358,8 @@ public class SchemaUtils {
                               .setNeedLock(needLock),
                           targets);
               CnToDnInternalServiceAsyncRequestManager.getInstance()
-                  .sendAsyncRequestWithRetry(clientHandler);
+                  .sendAsyncRequestWithTimeoutInMs(
+                      clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
               return clientHandler.getResponseMap();
             });
   }
@@ -380,7 +383,8 @@ public class SchemaUtils {
                   new DataNodeAsyncRequestContext<>(
                       CnToDnAsyncRequestType.UPDATE_TEMPLATE, requestSupplier.get(), targets);
               CnToDnInternalServiceAsyncRequestManager.getInstance()
-                  .sendAsyncRequestWithRetry(clientHandler);
+                  .sendAsyncRequestWithTimeoutInMs(
+                      clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
               return clientHandler.getResponseMap();
             });
   }

@@ -165,7 +165,9 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       final Map<Integer, TDataNodeLocation> dataNodeLocationMap, final TSetTTLReq req) {
     final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.SET_TTL, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithTimeoutInMs(
+            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     return clientHandler;
   }
 
