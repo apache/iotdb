@@ -484,8 +484,6 @@ public class CommonConfig {
   // derive how long it must wait before treating an unreachable DataNode as safely fenced.
   private volatile long metadataLeaseFenceMs = 20_000;
 
-  private volatile long checkDnLeaseStatusIntervalMs = 500;
-
   private final RateLimiter querySamplingRateLimiter = RateLimiter.create(160);
   // if querySamplingRateLimiter < 0, means that there is no rate limit, we need to full sample all
   // the queries
@@ -2957,14 +2955,6 @@ public class CommonConfig {
 
   public void setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
     this.metadataLeaseFenceMs = metadataLeaseFenceMs;
-  }
-
-  public long getCheckDnLeaseStatusIntervalMs() {
-    return checkDnLeaseStatusIntervalMs;
-  }
-
-  public void setCheckDnLeaseStatusIntervalMs(long checkDnLeaseStatusIntervalMs) {
-    this.checkDnLeaseStatusIntervalMs = checkDnLeaseStatusIntervalMs;
   }
 
   public int getArenaNum() {

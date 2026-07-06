@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -98,7 +99,7 @@ public class MetadataLeaseManager {
         defaultClearCacheList(),
         defaultPullMetaList(),
         IoTDBThreadPoolFactory.newCachedThreadPool(RELOAD_TABLE_METADATA_CACHE.getName()),
-        CommonDescriptor.getInstance().getConfig().getCheckDnLeaseStatusIntervalMs(),
+        IoTDBDescriptor.getInstance().getConfig().getCheckDnLeaseStatusIntervalMs(),
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, CHECK_DN_LEASE_STATUS.getName()));
   }
 

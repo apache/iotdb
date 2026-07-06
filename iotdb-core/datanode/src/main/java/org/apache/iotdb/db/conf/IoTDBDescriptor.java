@@ -1004,6 +1004,12 @@ public class IoTDBDescriptor {
                 "device_schema_request_cache_wait_time_ms",
                 String.valueOf(conf.getDeviceSchemaRequestCacheWaitTimeMs()))));
 
+    conf.setCheckDnLeaseStatusIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "check_dn_lease_status_interval_ms",
+                String.valueOf(conf.getCheckDnLeaseStatusIntervalMs()))));
+
     // Commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());

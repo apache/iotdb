@@ -346,12 +346,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "metadata_lease_fence_ms", String.valueOf(config.getMetadataLeaseFenceMs()))));
 
-    config.setCheckDnLeaseStatusIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "check_dn_lease_status_interval_ms",
-                String.valueOf(config.getCheckDnLeaseStatusIntervalMs()))));
-
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);
   }
