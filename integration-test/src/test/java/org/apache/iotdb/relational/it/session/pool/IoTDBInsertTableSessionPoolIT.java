@@ -310,4 +310,127 @@ public class IoTDBInsertTableSessionPoolIT {
       }
     }
   }
+
+  @Test
+  public void testInsertTabletsWithDifferentTables()
+      throws IoTDBConnectionException, StatementExecutionException {
+    final ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
+    try (final ITableSession session = sessionPool.getSession()) {
+      session.executeNonQueryStatement("USE \"test\"");
+      session.executeNonQueryStatement("DROP TABLE IF EXISTS multi_tablet_table1");
+      session.executeNonQueryStatement("DROP TABLE IF EXISTS multi_tablet_table2");
+      session.executeNonQueryStatement("DROP TABLE IF EXISTS multi_tablet_table3");
+      session.executeNonQueryStatement(
+          "CREATE TABLE multi_tablet_table1 (tag1 STRING TAG, attr1 STRING ATTRIBUTE, s1 INT64 FIELD)");
+      session.executeNonQueryStatement(
+          "CREATE TABLE multi_tablet_table2 (tag2 STRING TAG, s2 DOUBLE FIELD)");
+      session.executeNonQueryStatement(
+          "CREATE TABLE multi_tablet_table3 (region STRING TAG, plant STRING TAG, status STRING ATTRIBUTE, s3 BOOLEAN FIELD)");
+
+      final Tablet tablet1 = createTabletForTable1(0, 3);
+      final Tablet tablet2 = createTabletForTable2(10, 3);
+      final Tablet tablet3 = createTabletForTable1(3, 2);
+      final Tablet tablet4 = createTabletForTable3(20, 4);
+
+      session.insertTablets(Arrays.asList(tablet1, tablet2, tablet3, tablet4));
+
+      assertCount(session, "SELECT COUNT(*) FROM multi_tablet_table1 WHERE tag1 = 'tag1'", 5);
+      assertCount(session, "SELECT COUNT(*) FROM multi_tablet_table2 WHERE tag2 = 'tag2'", 3);
+      assertCount(
+          session,
+          "SELECT COUNT(*) FROM multi_tablet_table3 WHERE region = 'r1' AND plant = 'p1'",
+          4);
+      assertCount(
+          session,
+          "SELECT COUNT(*) FROM multi_tablet_table1 WHERE tag1 = 'tag1' AND attr1 = 'attr1'",
+          5);
+      assertCount(
+          session,
+          "SELECT COUNT(*) FROM multi_tablet_table3 WHERE region = 'r1' AND plant = 'p1' AND status = 'running'",
+          4);
+    }
+  }
+
+  private static Tablet createTabletForTable1(final long startTime, final int rowCount) {
+    final List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("tag1", TSDataType.STRING));
+    schemas.add(new MeasurementSchema("attr1", TSDataType.STRING));
+    schemas.add(new MeasurementSchema("s1", TSDataType.INT64));
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+    final Tablet tablet =
+        new Tablet(
+            "multi_tablet_table1",
+            IMeasurementSchema.getMeasurementNameList(schemas),
+            IMeasurementSchema.getDataTypeList(schemas),
+            columnTypes,
+            rowCount);
+    for (int i = 0; i < rowCount; i++) {
+      final int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, startTime + i);
+      tablet.addValue("tag1", rowIndex, "tag1");
+      tablet.addValue("attr1", rowIndex, "attr1");
+      tablet.addValue("s1", rowIndex, startTime + i);
+    }
+    return tablet;
+  }
+
+  private static Tablet createTabletForTable2(final long startTime, final int rowCount) {
+    final List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("tag2", TSDataType.STRING));
+    schemas.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+    final Tablet tablet =
+        new Tablet(
+            "multi_tablet_table2",
+            IMeasurementSchema.getMeasurementNameList(schemas),
+            IMeasurementSchema.getDataTypeList(schemas),
+            columnTypes,
+            rowCount);
+    for (int i = 0; i < rowCount; i++) {
+      final int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, startTime + i);
+      tablet.addValue("tag2", rowIndex, "tag2");
+      tablet.addValue("s2", rowIndex, (startTime + i) * 1.0);
+    }
+    return tablet;
+  }
+
+  private static Tablet createTabletForTable3(final long startTime, final int rowCount) {
+    final List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("region", TSDataType.STRING));
+    schemas.add(new MeasurementSchema("plant", TSDataType.STRING));
+    schemas.add(new MeasurementSchema("status", TSDataType.STRING));
+    schemas.add(new MeasurementSchema("s3", TSDataType.BOOLEAN));
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(
+            ColumnCategory.TAG, ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+    final Tablet tablet =
+        new Tablet(
+            "multi_tablet_table3",
+            IMeasurementSchema.getMeasurementNameList(schemas),
+            IMeasurementSchema.getDataTypeList(schemas),
+            columnTypes,
+            rowCount);
+    for (int i = 0; i < rowCount; i++) {
+      final int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, startTime + i);
+      tablet.addValue("region", rowIndex, "r1");
+      tablet.addValue("plant", rowIndex, "p1");
+      tablet.addValue("status", rowIndex, "running");
+      tablet.addValue("s3", rowIndex, true);
+    }
+    return tablet;
+  }
+
+  private static void assertCount(
+      final ITableSession session, final String query, final long expectedCount)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (final SessionDataSet dataSet = session.executeQueryStatement(query)) {
+      final RowRecord record = dataSet.next();
+      assertEquals(expectedCount, record.getFields().get(0).getLongV());
+      assertFalse(dataSet.hasNext());
+    }
+  }
 }
