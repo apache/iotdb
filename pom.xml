@@ -832,6 +832,7 @@
                             <exclude>**/ainode-example/**</exclude>
                             <!-- C++ client SSL/NTLS test fixtures (generated PEM/P12 material) -->
                             <exclude>client-cpp/test/fixtures/**</exclude>
+                            <exclude>test/fixtures/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
