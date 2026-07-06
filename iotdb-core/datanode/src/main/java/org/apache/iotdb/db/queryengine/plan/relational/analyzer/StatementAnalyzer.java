@@ -1229,7 +1229,10 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitInsertTablets(InsertTablets insert, Optional<Scope> scope) {
-      return visitInsert(insert, scope);
+      return visitInsert(
+          insert,
+          scope,
+          () -> SchemaValidator.validate(metadata, insert, insert.getContext(), accessControl));
     }
 
     @Override
@@ -1238,6 +1241,14 @@ public class StatementAnalyzer {
     }
 
     private Scope visitInsert(WrappedInsertStatement insert, Optional<Scope> scope) {
+      return visitInsert(
+          insert,
+          scope,
+          () -> SchemaValidator.validate(metadata, insert, insert.getContext(), accessControl));
+    }
+
+    private Scope visitInsert(
+        WrappedInsertStatement insert, Optional<Scope> scope, Runnable schemaValidation) {
       final Scope ret = Scope.create();
 
       final MPPQueryContext context = insert.getContext();
@@ -1248,7 +1259,7 @@ public class StatementAnalyzer {
           AnalyzeUtils.analyzeInsert(
               context,
               innerInsert,
-              () -> SchemaValidator.validate(metadata, insert, context, accessControl),
+              schemaValidation,
               metadata::getOrCreateDataPartition,
               AnalyzeUtils::computeTableDataPartitionParams,
               analysis,

@@ -27,11 +27,13 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -76,6 +78,30 @@ public class SchemaValidator {
           new QualifiedObjectName(
               unQualifyDatabaseName(insertStatement.getDatabase()), insertStatement.getTableName()),
           context);
+      insertStatement.validateTableSchema(metadata, context);
+      insertStatement.updateAfterSchemaValidation(context);
+      insertStatement.validateDeviceSchema(metadata, context);
+      insertStatement.removeAttributeColumns();
+    } catch (final QueryProcessException e) {
+      throw new SemanticException(e.getMessage());
+    }
+  }
+
+  public static void validate(
+      final Metadata metadata,
+      final InsertTablets insertStatement,
+      final MPPQueryContext context,
+      final AccessControl accessControl) {
+    try {
+      for (InsertTabletStatement tabletStatement :
+          insertStatement.getInnerTreeStatement().getInsertTabletStatementList()) {
+        accessControl.checkCanInsertIntoTable(
+            context.getSession().getUserName(),
+            new QualifiedObjectName(
+                unQualifyDatabaseName(insertStatement.getDatabase()),
+                tabletStatement.getDevicePath().getFullPath()),
+            context);
+      }
       insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
       insertStatement.validateDeviceSchema(metadata, context);
