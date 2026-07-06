@@ -77,7 +77,7 @@ foreach(_t IN LISTS _test_targets)
     endif()
     target_link_libraries(${_t} PRIVATE iotdb_session)
     if(WITH_SSL)
-        target_link_libraries(${_t} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+        target_link_libraries(${_t} PRIVATE OpenSSL::SSL OpenSSL::Crypto iotdb_tongsuo_openssl_wrap)
     endif()
 endforeach()
 

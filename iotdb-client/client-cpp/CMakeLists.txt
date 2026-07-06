@@ -196,8 +196,7 @@ else()
 endif()
 
 if(WITH_SSL)
-    target_include_directories(iotdb_session BEFORE PRIVATE
-            "${OPENSSL_ROOT_DIR}/include")
+    target_link_libraries(iotdb_session PRIVATE iotdb_tongsuo_openssl_wrap)
     target_link_libraries(iotdb_session PUBLIC OpenSSL::SSL OpenSSL::Crypto)
     target_compile_definitions(iotdb_session PUBLIC WITH_SSL=1)
 else()

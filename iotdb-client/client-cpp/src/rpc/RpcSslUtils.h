@@ -24,7 +24,7 @@
 #include <string>
 
 #if WITH_SSL
-#include <openssl/ssl.h>
+#include "ssl.h"
 #include <thrift/transport/TSSLSocket.h>
 #endif
 
