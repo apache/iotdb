@@ -62,6 +62,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.exception.DirectBufferMemoryAllocationException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -124,10 +125,10 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -617,10 +618,6 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       recoverCompaction();
     } catch (Exception e) {
-      // signal wal recover manager to recover this region's files
-      WALRecoverManager.getInstance()
-          .getAllDataRegionScannedLatch()
-          .countDownWithException(e.getMessage());
       throw new DataRegionException(e);
     }
 
@@ -791,10 +788,6 @@ public class DataRegion implements IDataRegionForQuery {
         updatePartitionFileVersion(partitionNum, resource.getVersion());
       }
     } catch (IOException e) {
-      // signal wal recover manager to recover this region's files
-      WALRecoverManager.getInstance()
-          .getAllDataRegionScannedLatch()
-          .countDownWithException(e.getMessage());
       throw new DataRegionException(e);
     }
 
@@ -3601,12 +3594,12 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> deletedByMods = new ArrayList<>();
     List<TsFileResource> deletedByFiles = new ArrayList<>();
     boolean isDropMeasurementExist = false;
-    IDPredicate.IDPredicateType idPredicateType = null;
+    TagPredicate.TagPredicateType tagPredicateType = null;
 
     if (deletion instanceof TableDeletionEntry) {
       TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
       isDropMeasurementExist = !tableDeletionEntry.getPredicate().getMeasurementNames().isEmpty();
-      idPredicateType = tableDeletionEntry.getPredicate().getIdPredicateType();
+      tagPredicateType = tableDeletionEntry.getPredicate().getTagPredicateType();
     }
 
     for (TsFileResource sealedTsFile : sealedTsFiles) {
@@ -3682,7 +3675,7 @@ public class DataRegion implements IDataRegionForQuery {
                   fileEndTime);
             }
             if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)
-                && idPredicateType.equals(IDPredicate.IDPredicateType.NOP)
+                && tagPredicateType.equals(TagPredicate.TagPredicateType.NOP)
                 && !isDropMeasurementExist) {
               ++matchSize;
             } else {
@@ -5620,12 +5613,9 @@ public class DataRegion implements IDataRegionForQuery {
   private void acquireDirectBufferMemory() throws DataRegionException {
     long acquireDirectBufferMemCost = getAcquireDirectBufferMemCost();
     if (!SystemInfo.getInstance().addDirectBufferMemoryCost(acquireDirectBufferMemCost)) {
-      throw new DataRegionException(
-          String.format(
-              StorageEngineMessages
-                  .STORAGE_EXCEPTION_TOTAL_ALLOCATED_MEMORY_FOR_DIRECT_BUFFER_WILL_BE_S_WHICH_FD7DC149,
-              (SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost),
-              SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit()));
+      throw new DirectBufferMemoryAllocationException(
+          SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost,
+          SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
     }
     this.directBufferMemoryCost = acquireDirectBufferMemCost;
   }

@@ -97,7 +97,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
     return mayDeleteDevice;
   }
 
-  public void parseModEntries(final TsTable table) {
+  public void parseModEntries(final TsTable table, final String databaseName, final MPPQueryContext context) {
     if (Objects.nonNull(getPartitionKeyList())) {
       modEntries =
           getPartitionKeyList().stream()
@@ -109,7 +109,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
               .collect(Collectors.toList());
       return;
     }
-    modEntries = AnalyzeUtils.parseExpressions2ModEntries(where, table);
+    modEntries = AnalyzeUtils.parseExpressions2ModEntries(where, table, databaseName, context);
   }
 
   public void serializeModEntries(final DataOutputStream stream) throws IOException {

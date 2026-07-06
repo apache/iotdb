@@ -18,19 +18,16 @@
  */
 package org.apache.iotdb.db.storageengine;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import java.util.Collections;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
-import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.Lists;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -42,8 +39,6 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
 
-import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -106,6 +101,47 @@ public class StorageEngineTest {
     Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(timePartitionInterval / 2));
     Assert.assertEquals(1, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 - 1));
     Assert.assertEquals(2, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 + 1));
+  }
+
+  @Test
+  public void testNotifyWALRecoverManagerWhenDirectBufferAllocationFailed() throws Exception {
+    DirectBufferMemoryAllocationException directBufferMemoryAllocationException =
+        new DirectBufferMemoryAllocationException(2, 1);
+    WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(1));
+    try {
+      try {
+        storageEngine.handleDataRegionRecoverFailure(
+            "root.sg", new DataRegionId(0), directBufferMemoryAllocationException);
+        Assert.fail("Expected data region recovery to fail.");
+      } catch (DataRegionException e) {
+        Assert.assertSame(directBufferMemoryAllocationException, e);
+      }
+
+      ExceptionalCountDownLatch latch =
+          WALRecoverManager.getInstance().getAllDataRegionScannedLatch();
+      Assert.assertTrue(latch.hasException());
+      Assert.assertEquals(
+          directBufferMemoryAllocationException.getMessage(), latch.getExceptionMessage());
+    } finally {
+      WALRecoverManager.getInstance().clear();
+    }
+  }
+
+  @Test
+  public void testNotifyWALRecoverManagerButContinueForOtherDataRegionException() throws Exception {
+    DataRegionException dataRegionException = new DataRegionException("other recovery failure");
+    WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(1));
+    try {
+      storageEngine.handleDataRegionRecoverFailure(
+          "root.sg", new DataRegionId(0), dataRegionException);
+
+      ExceptionalCountDownLatch latch =
+          WALRecoverManager.getInstance().getAllDataRegionScannedLatch();
+      Assert.assertTrue(latch.hasException());
+      Assert.assertEquals(dataRegionException.getMessage(), latch.getExceptionMessage());
+    } finally {
+      WALRecoverManager.getInstance().clear();
+    }
   }
 
   @Test

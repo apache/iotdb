@@ -1167,6 +1167,7 @@ public class StatementAnalyzer {
                 .getTable(writableView.getSourceTableDatabase(), writableView.getSourceTableName());
         node.setDatabase(writableView.getSourceTableDatabase());
         node.setTableName(writableView.getSourceTableName());
+        node.parseModEntries(table, node.getDatabase(), queryContext);
         analyzeTraverseDevice(node, context, node.getWhere().isPresent());
         node.setOutputColumnHeaderList(
             getWritableViewDeviceColumnHeaders(writableViewDatabase, writableView, false));
@@ -1174,6 +1175,7 @@ public class StatementAnalyzer {
             getWritableViewDeviceColumnHeaders(writableViewDatabase, writableView, true));
       } else {
         modEntriesWhere = originalWhere;
+        node.parseModEntries(table, node.getDatabase(), queryContext);
         analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       }
 

@@ -80,6 +80,8 @@ public final class StorageEngineMessages {
   public static final String INTERRUPTED_WAITING_THREAD_POOL_EXIT = "等待 {} 线程池退出时被中断。 ";
   public static final String BUFFERED_ARRAY_SIZE_THRESHOLD = "BufferedArraySizeThreshold 为 {}";
   public static final String CURRENT_SG_COST = "当前存储组内存开销为 {}";
+  public static final String DIRECT_BUFFER_MEMORY_ALLOCATION_FAILED =
+      "DirectBuffer 总分配内存将达到 %d，超过内存限制：%d";
   public static final String FORCE_DEGRADE_TSFILE_RESOURCE = "强制降级 TsFile 资源 {}";
   public static final String CANNOT_DEGRADE_TIME_INDEX_ALL_FILE_LEVEL = "无法继续降级时间索引，所有时间索引已为文件级别。";
   public static final String DEGRADE_TSFILE_RESOURCE = "降级 TsFile 资源 {}";

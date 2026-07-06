@@ -50,6 +50,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.DirectBufferMemoryAllocationException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -261,11 +262,7 @@ public class StorageEngine implements IService {
               try {
                 dataRegion = buildNewDataRegion(sgName, dataRegionId);
               } catch (DataRegionException e) {
-                LOGGER.error(
-                    StorageEngineMessages.STORAGE_LOG_FAILED_TO_RECOVER_DATA_REGION_804B162D,
-                    sgName,
-                    dataRegionId.getId(),
-                    e);
+                handleDataRegionRecoverFailure(sgName, dataRegionId, e);
                 return null;
               }
               dataRegionMap.put(dataRegionId, dataRegion);
@@ -288,6 +285,17 @@ public class StorageEngine implements IService {
                 MetricService.getInstance().addMetricSet(new ObjectStorageMetrics());
                 return null;
               }));
+    }
+  }
+
+  void handleDataRegionRecoverFailure(
+      String sgName, DataRegionId dataRegionId, DataRegionException e) throws DataRegionException {
+    LOGGER.error("Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
+    WALRecoverManager.getInstance()
+        .getAllDataRegionScannedLatch()
+        .countDownWithException(e.getMessage());
+    if (e instanceof DirectBufferMemoryAllocationException) {
+      throw e;
     }
   }
 
