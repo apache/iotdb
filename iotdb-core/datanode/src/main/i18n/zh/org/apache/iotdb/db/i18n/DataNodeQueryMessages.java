@@ -1736,9 +1736,6 @@ public final class DataNodeQueryMessages {
   public static final String DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
 
       "' 不存在或不是标签列";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
-
-      "时间谓词的右值必须为 long：";
   public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_LT_LT_EQ_GT_OR_GT_EQ =
 
       "时间谓词的操作符必须为 <、<=、> 或 >=：";
@@ -1746,9 +1743,6 @@ public final class DataNodeQueryMessages {
 
 
       "使用 '=' 操作符时，标签谓词的右值不能为 null，请改用 'IS NULL'";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
-
-      "标签谓词的右值必须为字符串：";
   public static final String SELECT_INTO_PLACEHOLDER_CAN_ONLY_BE_USED_AT_THE_END_OF_THE_PATH =
 
 
