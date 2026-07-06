@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
@@ -62,6 +64,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -143,6 +146,21 @@ public class MPPQueryContext implements IAuditEntity {
   private boolean releaseSchemaTreeAfterAnalyzing = true;
   private LongConsumer reserveMemoryForSchemaTreeFunc = null;
 
+  private boolean reservingMemoryForSchemaTree = false;
+
+  private boolean resultSetColumnMemoryTrackingEnabled = false;
+  private boolean alignByDeviceForResultSetColumnTracking = false;
+  private long seriesLimitForResultSetColumnTracking = 0;
+  private long seriesOffsetForResultSetColumnTracking = 0;
+  private long matchedSourceColumnsForResultSet = 0;
+  private long expandedSourceColumnsForResultSet = 0;
+  private long sourceColumnMemoryCostForResultSet = 0;
+  private long generatedResultSetColumns = 0;
+  private long generatedResultSetColumnMemoryCost = 0;
+  private long schemaFetchEstimatedMemoryCost = 0;
+  private long schemaFetchReservedMemoryCost = 0;
+  private long schemaFetchDeserializedColumnCount = 0;
+
   private boolean userQuery = false;
 
   /**
@@ -219,8 +237,17 @@ public class MPPQueryContext implements IAuditEntity {
     if (reserveMemoryForSchemaTreeFunc == null) {
       return;
     }
-    reserveMemoryForSchemaTreeFunc.accept(memoryCost);
+    schemaFetchEstimatedMemoryCost += memoryCost;
+    reservingMemoryForSchemaTree = true;
+    try {
+      reserveMemoryForSchemaTreeFunc.accept(memoryCost);
+    } catch (MemoryNotEnoughException e) {
+      throw enrichSchemaFetchMemoryNotEnoughException(e, memoryCost);
+    } finally {
+      reservingMemoryForSchemaTree = false;
+    }
     this.reservedMemoryCostForSchemaTree += memoryCost;
+    this.schemaFetchReservedMemoryCost += memoryCost;
   }
 
   public void setReleaseSchemaTreeAfterAnalyzing(boolean releaseSchemaTreeAfterAnalyzing) {
@@ -245,6 +272,7 @@ public class MPPQueryContext implements IAuditEntity {
     }
     this.initResultNodeContext();
     this.releaseAllMemoryReservedForFrontEnd();
+    this.resetResultSetColumnMemoryTracking();
   }
 
   private void cleanUpCte() {
@@ -543,11 +571,25 @@ public class MPPQueryContext implements IAuditEntity {
    * single-threaded manner.
    */
   public void reserveMemoryForFrontEnd(final long bytes) {
-    this.memoryReservationManager.reserveMemoryCumulatively(bytes);
+    try {
+      this.memoryReservationManager.reserveMemoryCumulatively(bytes);
+    } catch (MemoryNotEnoughException e) {
+      if (reservingMemoryForSchemaTree) {
+        throw e;
+      }
+      throw enrichResultSetColumnMemoryNotEnoughException(e, bytes);
+    }
   }
 
   public void reserveMemoryForFrontEndImmediately() {
-    this.memoryReservationManager.reserveMemoryImmediately();
+    try {
+      this.memoryReservationManager.reserveMemoryImmediately();
+    } catch (MemoryNotEnoughException e) {
+      if (reservingMemoryForSchemaTree) {
+        throw e;
+      }
+      throw enrichResultSetColumnMemoryNotEnoughException(e, extractRequestedMemory(e));
+    }
   }
 
   public void releaseAllMemoryReservedForFrontEnd() {
@@ -556,6 +598,236 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void releaseMemoryReservedForFrontEnd(final long bytes) {
     this.memoryReservationManager.releaseMemoryCumulatively(bytes);
+  }
+
+  public void initResultSetColumnMemoryTracking(
+      long seriesLimit, long seriesOffset, boolean alignByDevice) {
+    resetResultSetColumnMemoryTracking();
+    resultSetColumnMemoryTrackingEnabled = true;
+    seriesLimitForResultSetColumnTracking = seriesLimit;
+    seriesOffsetForResultSetColumnTracking = seriesOffset;
+    alignByDeviceForResultSetColumnTracking = alignByDevice;
+  }
+
+  public void recordMatchedSourceColumnsForResultSet(long columnCount) {
+    if (resultSetColumnMemoryTrackingEnabled && columnCount > 0) {
+      matchedSourceColumnsForResultSet += columnCount;
+    }
+  }
+
+  public void recordExpandedSourceColumnForResultSet(long memoryCost) {
+    if (!resultSetColumnMemoryTrackingEnabled) {
+      return;
+    }
+    expandedSourceColumnsForResultSet++;
+    sourceColumnMemoryCostForResultSet += Math.max(memoryCost, 0);
+  }
+
+  public void recordGeneratedResultSetColumn(long memoryCost) {
+    if (!resultSetColumnMemoryTrackingEnabled) {
+      return;
+    }
+    generatedResultSetColumns++;
+    generatedResultSetColumnMemoryCost += Math.max(memoryCost, 0);
+  }
+
+  public void recordSchemaFetchDeserializedColumns(long columnCount) {
+    if (columnCount > 0) {
+      schemaFetchDeserializedColumnCount += columnCount;
+    }
+  }
+
+  private void resetResultSetColumnMemoryTracking() {
+    resultSetColumnMemoryTrackingEnabled = false;
+    alignByDeviceForResultSetColumnTracking = false;
+    seriesLimitForResultSetColumnTracking = 0;
+    seriesOffsetForResultSetColumnTracking = 0;
+    matchedSourceColumnsForResultSet = 0;
+    expandedSourceColumnsForResultSet = 0;
+    sourceColumnMemoryCostForResultSet = 0;
+    generatedResultSetColumns = 0;
+    generatedResultSetColumnMemoryCost = 0;
+    schemaFetchEstimatedMemoryCost = 0;
+    schemaFetchReservedMemoryCost = 0;
+    schemaFetchDeserializedColumnCount = 0;
+  }
+
+  private MemoryNotEnoughException enrichResultSetColumnMemoryNotEnoughException(
+      MemoryNotEnoughException e, long requestedBytes) {
+    if (!resultSetColumnMemoryTrackingEnabled
+        || (matchedSourceColumnsForResultSet == 0
+            && expandedSourceColumnsForResultSet == 0
+            && generatedResultSetColumns == 0)) {
+      return e;
+    }
+
+    long freeBytes = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    long shortageBytes =
+        requestedBytes > 0 && requestedBytes > freeBytes ? requestedBytes - freeBytes : -1;
+    long exceededColumns = estimateExceededColumns(freeBytes, requestedBytes);
+
+    return new MemoryNotEnoughException(
+        String.format(
+            Locale.ROOT,
+            DataNodeQueryMessages.RESULT_SET_COLUMN_METADATA_MEMORY_NOT_ENOUGH,
+            matchedSourceColumnsForResultSet,
+            expandedSourceColumnsForResultSet,
+            generatedResultSetColumns,
+            exceededColumns > 0
+                ? String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY,
+                    exceededColumns)
+                : "",
+            formatSeriesPaginationForDiagnostics(),
+            alignByDeviceForResultSetColumnTracking
+                ? ""
+                : DataNodeQueryMessages.USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS,
+            shortageBytes > 0
+                ? String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.BY_AT_LEAST_MEMORY_SIZE,
+                    formatBytes(shortageBytes))
+                : DataNodeQueryMessages.FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL,
+            formatBytes(sourceColumnMemoryCostForResultSet),
+            formatBytes(generatedResultSetColumnMemoryCost),
+            formatBytes(requestedBytes),
+            formatBytes(freeBytes),
+            e.getMessage()));
+  }
+
+  private MemoryNotEnoughException enrichSchemaFetchMemoryNotEnoughException(
+      MemoryNotEnoughException e, long requestedBytes) {
+    long freeBytes = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    if (!resultSetColumnMemoryTrackingEnabled && schemaFetchDeserializedColumnCount == 0) {
+      return e;
+    }
+
+    long shortageBytes =
+        requestedBytes > 0 && requestedBytes > freeBytes ? requestedBytes - freeBytes : -1;
+    long exceededColumns = estimateExceededSchemaFetchColumns(freeBytes, requestedBytes);
+
+    return new MemoryNotEnoughException(
+        String.format(
+            Locale.ROOT,
+            DataNodeQueryMessages.SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH,
+            schemaFetchDeserializedColumnCount,
+            exceededColumns > 0
+                ? String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.SCHEMA_FETCH_COLUMNS_EXCEED_MEMORY_CAPACITY,
+                    exceededColumns)
+                : "",
+            formatSeriesPaginationForDiagnostics(),
+            alignByDeviceForResultSetColumnTracking
+                ? ""
+                : DataNodeQueryMessages.USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS,
+            shortageBytes > 0
+                ? String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.BY_AT_LEAST_MEMORY_SIZE,
+                    formatBytes(shortageBytes))
+                : DataNodeQueryMessages.FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL,
+            formatBytes(schemaFetchEstimatedMemoryCost),
+            formatBytes(schemaFetchReservedMemoryCost),
+            formatBytes(requestedBytes),
+            formatBytes(freeBytes),
+            e.getMessage()));
+  }
+
+  private long estimateExceededColumns(long freeBytes, long requestedBytes) {
+    long avgColumnMemory;
+    if (expandedSourceColumnsForResultSet > 0 && sourceColumnMemoryCostForResultSet > 0) {
+      avgColumnMemory =
+          Math.max(1, sourceColumnMemoryCostForResultSet / expandedSourceColumnsForResultSet);
+    } else if (requestedBytes > 0) {
+      avgColumnMemory = requestedBytes;
+    } else {
+      return -1;
+    }
+    long estimatedCapacity =
+        (sourceColumnMemoryCostForResultSet + Math.max(freeBytes, 0)) / avgColumnMemory;
+    long columnsToCompare =
+        Math.max(matchedSourceColumnsForResultSet, expandedSourceColumnsForResultSet + 1);
+    return Math.max(0, columnsToCompare - estimatedCapacity);
+  }
+
+  private long estimateExceededSchemaFetchColumns(long freeBytes, long requestedBytes) {
+    if (schemaFetchDeserializedColumnCount <= 0) {
+      return -1;
+    }
+
+    long avgColumnMemory;
+    long columnsToCompare = schemaFetchDeserializedColumnCount;
+    if (schemaFetchReservedMemoryCost > 0) {
+      avgColumnMemory =
+          Math.max(
+              1, divideCeil(schemaFetchReservedMemoryCost, schemaFetchDeserializedColumnCount));
+      if (requestedBytes > 0) {
+        columnsToCompare += Math.max(1, divideCeil(requestedBytes, avgColumnMemory));
+      }
+    } else if (requestedBytes > 0) {
+      avgColumnMemory = Math.max(1, divideCeil(requestedBytes, schemaFetchDeserializedColumnCount));
+    } else {
+      return -1;
+    }
+
+    long estimatedCapacity =
+        (schemaFetchReservedMemoryCost + Math.max(freeBytes, 0)) / avgColumnMemory;
+    return Math.max(0, columnsToCompare - estimatedCapacity);
+  }
+
+  private static long divideCeil(long dividend, long divisor) {
+    return dividend / divisor + (dividend % divisor == 0 ? 0 : 1);
+  }
+
+  private String formatSeriesPaginationForDiagnostics() {
+    return String.format(
+        Locale.ROOT,
+        DataNodeQueryMessages.SERIES_PAGINATION_FOR_DIAGNOSTICS,
+        seriesLimitForResultSetColumnTracking > 0
+            ? String.format(Locale.ROOT, "%,d", seriesLimitForResultSetColumnTracking)
+            : DataNodeQueryMessages.NOT_SET,
+        seriesOffsetForResultSetColumnTracking);
+  }
+
+  private static long extractRequestedMemory(MemoryNotEnoughException e) {
+    String message = e.getMessage();
+    if (message == null) {
+      return -1;
+    }
+    String marker = "the memory requested this time is ";
+    int start = message.indexOf(marker);
+    if (start < 0) {
+      return -1;
+    }
+    start += marker.length();
+    int end = message.indexOf('B', start);
+    if (end < 0) {
+      return -1;
+    }
+    try {
+      return Long.parseLong(message.substring(start, end));
+    } catch (NumberFormatException ignored) {
+      return -1;
+    }
+  }
+
+  private static String formatBytes(long bytes) {
+    if (bytes < 0) {
+      return DataNodeQueryMessages.UNKNOWN;
+    }
+    if (bytes < 1024) {
+      return bytes + " B";
+    }
+    double value = bytes;
+    String[] units = {"B", "KB", "MB", "GB", "TB"};
+    int unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex++;
+    }
+    return String.format(Locale.ROOT, "%.2f %s (%d B)", value, units[unitIndex], bytes);
   }
 
   public boolean useSampledAvgTimeseriesOperandMemCost() {

@@ -71,6 +71,7 @@ public class ExpressionUtils {
       final List<? extends PartialPath> actualPaths,
       final MPPQueryContext queryContext) {
     List<Expression> resultExpressions = new ArrayList<>();
+    queryContext.recordMatchedSourceColumnsForResultSet(actualPaths.size());
     for (PartialPath actualPath : actualPaths) {
       Expression expression = reconstructTimeSeriesOperand(rawExpression, actualPath);
       long memCost;
@@ -82,6 +83,7 @@ public class ExpressionUtils {
       }
       queryContext.reserveMemoryForFrontEnd(memCost);
 
+      queryContext.recordExpandedSourceColumnForResultSet(memCost);
       resultExpressions.add(expression);
     }
     return resultExpressions;

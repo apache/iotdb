@@ -129,6 +129,34 @@ public final class DataNodeQueryMessages {
       "释放的内存超过已预留的量。";
   public static final String ESTIMATED_MODS_TREE_SIZE_DECREASED =
       "估算的 mods tree 大小从 %d 减少到 %d，TsFile：%s。";
+  public static final String RESULT_SET_COLUMN_METADATA_MEMORY_NOT_ENOUGH =
+      "查询结果列元数据分析时内存不足。结果集包含过多列。"
+          + "失败前，IoTDB 已匹配 %,d 个用于结果列展开的源列，展开 %,d 个源列，并生成 %,d 个结果集列。"
+          + "%s"
+          + "当前序列分页为 %s。"
+          + "请使用 SLIMIT/SOFFSET 减少返回序列%s，缩小路径模式，或增加查询内存%s。"
+          + "内存详情：结果展开的源列内存 %s，生成结果列内存 %s，本次请求内存 %s，当前空闲内存 %s。"
+          + "原始错误：%s";
+  public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
+      "匹配的源列超过了当前估算内存容量，至少超出 %,d 列。";
+  public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
+      "查询分析拉取元数据时内存不足。结果集可能包含过多列。"
+          + "失败前，IoTDB 已从 schema 拉取结果中反序列化 %,d 个时间序列列。"
+          + "Schema 拉取内存可能会在安全反序列化完整元数据前预留，因此该计数可能小于匹配的 schema 列数。%s"
+          + "当前序列分页为 %s。"
+          + "请使用 SLIMIT/SOFFSET 减少返回序列%s，缩小路径模式，或增加查询内存%s。"
+          + "内存详情：拉取的 schema tree 估算内存 %s，拉取的 schema tree 预留内存 %s，"
+          + "本次请求内存 %s，当前空闲内存 %s。原始错误：%s";
+  public static final String SCHEMA_FETCH_COLUMNS_EXCEED_MEMORY_CAPACITY =
+      "拉取的 schema 列超过了当前估算内存容量，至少超出 %,d 列。";
+  public static final String USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS =
+      "，使用 ALIGN BY DEVICE 可减少跨设备结果列";
+  public static final String BY_AT_LEAST_MEMORY_SIZE = "至少 %s";
+  public static final String FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL =
+      "（用于查询引擎/operator 内存池）";
+  public static final String SERIES_PAGINATION_FOR_DIAGNOSTICS = "SLIMIT=%s，SOFFSET=%,d";
+  public static final String NOT_SET = "未设置";
+  public static final String UNKNOWN = "未知";
 
   // --- Execution / Operator ---
 
