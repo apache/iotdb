@@ -2473,5 +2473,11 @@ public final class DataNodePipeMessages {
       "Invalid aligned value chunk index %d, while there are %d time chunks.";
   public static final String MESSAGE_FAILED_TO_ROLLBACK_CREATED_REALTIME_PIPE_ARG_STATUS_ARG_CE14334A =
       "Failed to rollback created realtime pipe {}. Status: {}";
+  public static final String LOG_REPORTING_PIPE_META_ARG_ISCOMPLETED_ARG_REMAININGEVENTCOUNT_ARG_8F996DF3 =
+      "Reporting pipe meta: %s, isCompleted: %s, remainingEventCount: %s";
+  public static final String LOG_REPORTED_ARG_PIPE_METAS_12068FC6 =
+      "Reported %s pipe metas.";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
+      "Transfer file %s error, result status %s.";
 
 }

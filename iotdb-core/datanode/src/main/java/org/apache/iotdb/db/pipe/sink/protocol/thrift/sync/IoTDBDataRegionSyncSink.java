@@ -700,7 +700,11 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
-          String.format("Network error when transfer file %s, because %s.", file, e.getMessage()),
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_FILE_S_BECAUSE_S_3C673B7A,
+              file,
+              e.getMessage()),
           e);
     }
   }
@@ -727,7 +731,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
         && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       receiverStatusHandler.handle(
           resp.getStatus(),
-          String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
+          String.format(
+              DataNodePipeMessages.MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD,
+              file,
+              resp.getStatus()),
           file.getName());
     }
     return nextPosition;

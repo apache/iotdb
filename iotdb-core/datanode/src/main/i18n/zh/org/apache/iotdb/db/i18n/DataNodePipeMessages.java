@@ -2312,5 +2312,11 @@ public final class DataNodePipeMessages {
       "对齐值 chunk 索引 %d 无效，而共有 %d 个 time chunk。";
   public static final String MESSAGE_FAILED_TO_ROLLBACK_CREATED_REALTIME_PIPE_ARG_STATUS_ARG_CE14334A =
       "回滚已创建的 realtime pipe {} 失败。状态：{}";
+  public static final String LOG_REPORTING_PIPE_META_ARG_ISCOMPLETED_ARG_REMAININGEVENTCOUNT_ARG_8F996DF3 =
+      "正在上报 pipe meta：%s，isCompleted：%s，remainingEventCount：%s";
+  public static final String LOG_REPORTED_ARG_PIPE_METAS_12068FC6 =
+      "已上报 %s 个 pipe meta。";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
+      "传输文件 %s 出错，结果状态为 %s。";
 
 }

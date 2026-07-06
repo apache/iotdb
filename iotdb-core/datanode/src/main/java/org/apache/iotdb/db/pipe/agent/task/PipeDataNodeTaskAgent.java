@@ -452,14 +452,18 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             l ->
                 PipeLogger.log(
                     l::info,
-                    "Reporting pipe meta: %s, isCompleted: %s, remainingEventCount: %s",
+                    DataNodePipeMessages
+                        .LOG_REPORTING_PIPE_META_ARG_ISCOMPLETED_ARG_REMAININGEVENTCOUNT_ARG_8F996DF3,
                     pipeMeta.coreReportMessage(),
                     isCompleted,
                     remainingEventAndTime.getLeft()));
       }
       logger.ifPresent(
           l ->
-              PipeLogger.log(l::info, "Reported %s pipe metas.", report.pipeMetaBinaryList.size()));
+              PipeLogger.log(
+                  l::info,
+                  DataNodePipeMessages.LOG_REPORTED_ARG_PIPE_METAS_12068FC6,
+                  report.pipeMetaBinaryList.size()));
     } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
