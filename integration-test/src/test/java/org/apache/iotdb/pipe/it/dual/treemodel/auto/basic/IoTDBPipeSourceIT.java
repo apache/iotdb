@@ -55,6 +55,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
 
@@ -778,6 +779,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -814,10 +820,12 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      final Map<String, String> expectedCountResult = new HashMap<>();
-      expectedCountResult.put("count(root.db.d1.at1)", "3");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select count(*) from root.db.**", expectedCountResult);
+          receiverEnv,
+          "select count(at1) from root.db.d1",
+          "count(root.db.d1.at1),",
+          Collections.singleton("3,"),
+          handleFailure);
 
       // Insert realtime data that overlapped with time range
       TestUtils.executeNonQueries(
@@ -828,9 +836,12 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
               "flush"),
           null);
 
-      expectedCountResult.put("count(root.db.d3.at1)", "3");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select count(*) from root.db.**", expectedCountResult);
+          receiverEnv,
+          "select count(at1) from root.db.d1, root.db.d3",
+          "count(root.db.d1.at1),count(root.db.d3.at1),",
+          Collections.singleton("3,3,"),
+          handleFailure);
 
       // Session Tablet can have unused timestamp slots when rowSize is smaller than maxRowNumber.
       // The pipe source time range filter should ignore the unused zero tail.
@@ -848,9 +859,12 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         session.insertTablet(tabletWithUnusedTail);
       }
 
-      expectedCountResult.put("count(root.db.d5.at1)", "3");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select count(*) from root.db.**", expectedCountResult);
+          receiverEnv,
+          "select count(at1) from root.db.d1, root.db.d3, root.db.d5",
+          "count(root.db.d1.at1),count(root.db.d3.at1),count(root.db.d5.at1),",
+          Collections.singleton("3,3,3,"),
+          handleFailure);
 
       // Insert realtime data that does not overlap with time range
       TestUtils.executeNonQueries(
@@ -865,7 +879,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           receiverEnv,
           "select count(at1) from root.db.d1, root.db.d3, root.db.d5",
           "count(root.db.d1.at1),count(root.db.d3.at1),count(root.db.d5.at1),",
-          Collections.singleton("3,3,3,"));
+          Collections.singleton("3,3,3,"),
+          600,
+          handleFailure);
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "show timeseries root.db.d2.**",

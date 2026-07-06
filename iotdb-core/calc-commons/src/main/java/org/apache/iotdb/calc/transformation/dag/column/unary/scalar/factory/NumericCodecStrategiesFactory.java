@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar.factory;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import java.nio.ByteBuffer;
@@ -106,7 +107,7 @@ public final class NumericCodecStrategiesFactory {
         // validate input length, if its length is not 4, throw exception
         if (input.length != 4) {
           throw new SemanticException(
-              "The length of the input BLOB of function from_big_endian_32 must be 4.");
+              CalcMessages.EXCEPTION_LENGTH_INPUT_BLOB_FUNCTION_BIG_ENDIAN_32_MUST_4_C1214BB5);
         }
         return ByteBuffer.wrap(input).order(ByteOrder.BIG_ENDIAN).getInt();
       };
@@ -115,7 +116,7 @@ public final class NumericCodecStrategiesFactory {
       (input) -> {
         if (input.length != 8) {
           throw new SemanticException(
-              "The length of the input BLOB of function from_big_endian_64 must be 8.");
+              CalcMessages.EXCEPTION_LENGTH_INPUT_BLOB_FUNCTION_BIG_ENDIAN_64_MUST_8_797F1A26);
         }
         return ByteBuffer.wrap(input).order(ByteOrder.BIG_ENDIAN).getLong();
       };
@@ -124,7 +125,7 @@ public final class NumericCodecStrategiesFactory {
       (input) -> {
         if (input.length != 4) {
           throw new SemanticException(
-              "The length of the input BLOB of function from_little_endian_32 must be 4.");
+              CalcMessages.EXCEPTION_LENGTH_INPUT_BLOB_FUNCTION_LITTLE_ENDIAN_32_MUST_4_0FBBD083);
         }
         return ByteBuffer.wrap(input).order(ByteOrder.LITTLE_ENDIAN).getInt();
       };
@@ -133,7 +134,7 @@ public final class NumericCodecStrategiesFactory {
       (input) -> {
         if (input.length != 8) {
           throw new SemanticException(
-              "The length of the input BLOB of function from_little_endian_64 must be 8.");
+              CalcMessages.EXCEPTION_LENGTH_INPUT_BLOB_FUNCTION_LITTLE_ENDIAN_64_MUST_8_771F7A96);
         }
         return ByteBuffer.wrap(input).order(ByteOrder.LITTLE_ENDIAN).getLong();
       };
@@ -142,7 +143,8 @@ public final class NumericCodecStrategiesFactory {
       (input) -> {
         if (input.length != 4) {
           throw new SemanticException(
-              "The length of the input BLOB of function from_ieee754_32_big_endian must be 4.");
+              CalcMessages
+                  .EXCEPTION_LENGTH_INPUT_BLOB_FUNCTION_IEEE754_32_BIG_ENDIAN_MUST_4_51AF4EF0);
         }
         return Float.intBitsToFloat(ByteBuffer.wrap(input).order(ByteOrder.BIG_ENDIAN).getInt());
       };
@@ -151,7 +153,8 @@ public final class NumericCodecStrategiesFactory {
       (input) -> {
         if (input.length != 8) {
           throw new SemanticException(
-              "The length of the input BLOB of function from_ieee754_64_big_endian must be 8.");
+              CalcMessages
+                  .EXCEPTION_LENGTH_INPUT_BLOB_FUNCTION_IEEE754_64_BIG_ENDIAN_MUST_8_56F33455);
         }
         return Double.longBitsToDouble(
             ByteBuffer.wrap(input).order(ByteOrder.BIG_ENDIAN).getLong());

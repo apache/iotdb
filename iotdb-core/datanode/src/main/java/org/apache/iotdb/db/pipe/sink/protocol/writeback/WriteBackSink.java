@@ -22,14 +22,18 @@ package org.apache.iotdb.db.pipe.sink.protocol.writeback;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
@@ -43,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
@@ -51,8 +56,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckC
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -75,7 +84,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -84,6 +95,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
@@ -103,17 +115,18 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.WRITE_BACK_CONNECTOR_SKIP_IF_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 @TreeModel
 @TableModel
 public class WriteBackSink implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteBackSink.class);
+  private static final String CONNECTOR_IOTDB_DATABASE_KEY = "connector.database";
+  private static final String SINK_IOTDB_DATABASE_KEY = "sink.database";
 
   // Simulate the behavior of the client-to-server communication
   // for correctly handling data insertion in IoTDBReceiverAgent#receive method
-  private static final Coordinator COORDINATOR = Coordinator.getInstance();
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   public static final AtomicLong id = new AtomicLong();
   private InternalClientSession session;
 
@@ -121,10 +134,37 @@ public class WriteBackSink implements PipeConnector {
   private boolean useEventUserName;
 
   private UserEntity userEntity;
-
-  private static final SqlParser RELATIONAL_SQL_PARSER = new SqlParser();
+  private String targetTableModelDatabaseName;
+  private String invalidTargetTableModelDatabaseName;
+  private String targetTreeModelDatabaseName;
 
   private static final Set<String> ALREADY_CREATED_DATABASES = ConcurrentHashMap.newKeySet();
+
+  private static SessionManager getSessionManager() {
+    return SessionManagerHolder.INSTANCE;
+  }
+
+  private static SqlParser getRelationalSqlParser() {
+    return SqlParserHolder.INSTANCE;
+  }
+
+  private static class SessionManagerHolder {
+
+    private static final SessionManager INSTANCE = SessionManager.getInstance();
+
+    private SessionManagerHolder() {
+      // empty constructor
+    }
+  }
+
+  private static class SqlParserHolder {
+
+    private static final SqlParser INSTANCE = new SqlParser();
+
+    private SqlParserHolder() {
+      // empty constructor
+    }
+  }
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -132,6 +172,75 @@ public class WriteBackSink implements PipeConnector {
         Arrays.asList(CONNECTOR_IOTDB_USER_KEY, SINK_IOTDB_USER_KEY),
         Arrays.asList(CONNECTOR_IOTDB_USERNAME_KEY, SINK_IOTDB_USERNAME_KEY),
         false);
+    validator.validateSynonymAttributes(
+        Collections.singletonList(CONNECTOR_IOTDB_DATABASE_KEY),
+        Collections.singletonList(SINK_IOTDB_DATABASE_KEY),
+        false);
+
+    final String targetDatabase =
+        validator
+            .getParameters()
+            .getStringByKeys(CONNECTOR_IOTDB_DATABASE_KEY, SINK_IOTDB_DATABASE_KEY);
+    if (Objects.nonNull(targetDatabase)) {
+      validateTargetDatabase(targetDatabase);
+    }
+  }
+
+  private static void validateTargetDatabase(final String targetDatabase) {
+    if (PathUtils.isTableModelDatabase(targetDatabase)) {
+      validateTableModelDatabaseName(targetDatabase);
+      validateAndNormalizeTreeModelDatabaseName(PathUtils.qualifyDatabaseName(targetDatabase));
+      return;
+    }
+
+    validateAndNormalizeTreeModelDatabaseName(targetDatabase);
+  }
+
+  private static void validateTableModelDatabaseName(final String databaseName) {
+    try {
+      TableConfigTaskVisitor.validateDatabaseName(databaseName);
+    } catch (final Exception e) {
+      throw new PipeException(
+          String.format(
+              DataNodePipeMessages.TABLE_MODEL_DATABASE_INVALID_FMT,
+              databaseName,
+              PATH_SEPARATOR,
+              IoTDBConfig.DATABASE_PATTERN,
+              MAX_DATABASE_NAME_LENGTH),
+          e);
+    }
+  }
+
+  private static String validateAndNormalizeTreeModelDatabaseName(final String databaseName) {
+    try {
+      final PartialPath databasePath = new PartialPath(databaseName);
+      final String[] nodes = databasePath.getNodes();
+      if (nodes.length <= 1 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
+        throw new IllegalPathException(
+            databaseName,
+            DataNodePipeMessages
+                .EXCEPTION_THE_DATABASE_NAME_IN_TREE_MODEL_MUST_START_WITH_ROOT_7BFA4609);
+      }
+
+      final String normalizedDatabaseName = databasePath.getFullPath();
+      MetaFormatUtils.checkDatabase(normalizedDatabaseName);
+
+      if (normalizedDatabaseName.length() > MAX_DATABASE_NAME_LENGTH) {
+        throw new IllegalPathException(
+            normalizedDatabaseName,
+            DataNodePipeMessages.EXCEPTION_THE_LENGTH_OF_DATABASE_NAME_SHALL_NOT_EXCEED_82C7199C
+                + MAX_DATABASE_NAME_LENGTH);
+      }
+      return normalizedDatabaseName;
+    } catch (final Exception e) {
+      throw new PipeException(
+          String.format(
+              DataNodePipeMessages.TREE_MODEL_DATABASE_INVALID_FMT,
+              databaseName,
+              IoTDBConfig.DATABASE_PATTERN,
+              MAX_DATABASE_NAME_LENGTH),
+          e);
+    }
   }
 
   @Override
@@ -184,7 +293,10 @@ public class WriteBackSink implements PipeConnector {
     skipIfNoPrivileges = skipIfOptionSet.remove(CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
     if (!skipIfOptionSet.isEmpty()) {
       throw new PipeParameterNotValidException(
-          String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_PARAMETERS_IN_SET_S_ARE_NOT_ALLOWED_IN_SKIPIF_AAF177AD,
+              skipIfOptionSet));
     }
 
     useEventUserName =
@@ -192,13 +304,20 @@ public class WriteBackSink implements PipeConnector {
             Arrays.asList(CONNECTOR_USE_EVENT_USER_NAME_KEY, SINK_USE_EVENT_USER_NAME_KEY),
             CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE);
 
-    if (SESSION_MANAGER.getCurrSession() == null) {
-      SESSION_MANAGER.registerSession(session);
+    final String targetDatabase =
+        parameters.getStringByKeys(CONNECTOR_IOTDB_DATABASE_KEY, SINK_IOTDB_DATABASE_KEY);
+    if (Objects.nonNull(targetDatabase)) {
+      customizeTargetDatabase(targetDatabase);
+    }
+
+    final SessionManager sessionManager = getSessionManager();
+    if (sessionManager.getCurrSession() == null) {
+      sessionManager.registerSession(session);
     }
 
     // Check the password and its expiration
     if (Objects.nonNull(passwordString)
-        && SESSION_MANAGER
+        && sessionManager
                 .login(
                     session,
                     usernameString,
@@ -211,7 +330,38 @@ public class WriteBackSink implements PipeConnector {
                 .getCode()
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipePasswordCheckException(
-          String.format("Failed to check password for pipe %s.", environment.getPipeName()));
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_FAILED_TO_CHECK_PASSWORD_FOR_PIPE_S_0B1A5C73,
+              environment.getPipeName()));
+    }
+  }
+
+  private void customizeTargetDatabase(final String targetDatabase) {
+    targetTableModelDatabaseName = null;
+    invalidTargetTableModelDatabaseName = null;
+    targetTreeModelDatabaseName = null;
+
+    // The sink only sees its own parameters during customization, without the pipe's isolated
+    // runtime model. Normalize one configured target database to both model names, and later use
+    // the one matching the incoming event model.
+    if (PathUtils.isTableModelDatabase(targetDatabase)) {
+      targetTableModelDatabaseName = targetDatabase.toLowerCase(Locale.ENGLISH);
+      targetTreeModelDatabaseName =
+          validateAndNormalizeTreeModelDatabaseName(
+              PathUtils.qualifyDatabaseName(targetTableModelDatabaseName));
+      return;
+    }
+
+    targetTreeModelDatabaseName = validateAndNormalizeTreeModelDatabaseName(targetDatabase);
+    final String tableModelDatabaseName =
+        PathUtils.unQualifyDatabaseName(targetTreeModelDatabaseName).toLowerCase(Locale.ENGLISH);
+    try {
+      TableConfigTaskVisitor.validateDatabaseName(tableModelDatabaseName);
+      targetTableModelDatabaseName = tableModelDatabaseName;
+    } catch (final Exception e) {
+      // A valid multi-level tree database like root.target.db cannot be converted to a valid
+      // table-model database name, but tree-model events can still use the original target.
+      invalidTargetTableModelDatabaseName = tableModelDatabaseName;
     }
   }
 
@@ -231,9 +381,8 @@ public class WriteBackSink implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WriteBackSink only support "
-              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-              + "Ignore {}.",
+          DataNodePipeMessages
+              .WRITEBACKSINK_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLETI,
           tabletInsertionEvent);
       return;
     }
@@ -266,13 +415,19 @@ public class WriteBackSink implements PipeConnector {
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     final String dataBaseName =
         pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
-            ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-            : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName();
+            ? getTargetTableModelDatabaseNameOrDefault(
+                pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName())
+            : getTargetTreeModelDatabaseNameOrDefault(
+                pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName());
 
     final InsertBaseStatement insertBaseStatement;
     insertBaseStatement =
         PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(insertNode, dataBaseName)
             .constructStatement();
+    if (!insertBaseStatement.isWriteToTable()) {
+      rewriteTreeModelDatabaseNameIfNecessary(
+          insertBaseStatement, pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName());
+    }
 
     final TSStatus status =
         insertBaseStatement.isWriteToTable()
@@ -310,8 +465,10 @@ public class WriteBackSink implements PipeConnector {
       throws PipeException {
     final String dataBaseName =
         pipeRawTabletInsertionEvent.isTableModelEvent()
-            ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-            : pipeRawTabletInsertionEvent.getTreeModelDatabaseName();
+            ? getTargetTableModelDatabaseNameOrDefault(
+                pipeRawTabletInsertionEvent.getTableModelDatabaseName())
+            : getTargetTreeModelDatabaseNameOrDefault(
+                pipeRawTabletInsertionEvent.getTreeModelDatabaseName());
 
     final InsertTabletStatement insertTabletStatement =
         PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
@@ -319,6 +476,10 @@ public class WriteBackSink implements PipeConnector {
                 pipeRawTabletInsertionEvent.isAligned(),
                 dataBaseName)
             .constructStatement();
+    if (!insertTabletStatement.isWriteToTable()) {
+      rewriteTreeModelDatabaseNameIfNecessary(
+          insertTabletStatement, pipeRawTabletInsertionEvent.getTreeModelDatabaseName());
+    }
 
     final TSStatus status =
         insertTabletStatement.isWriteToTable()
@@ -362,15 +523,24 @@ public class WriteBackSink implements PipeConnector {
   private void doTransfer(final PipeStatementInsertionEvent pipeStatementInsertionEvent)
       throws PipeException {
 
-    final TSStatus status =
-        pipeStatementInsertionEvent.isTableModelEvent()
-            ? executeStatementForTableModel(
-                pipeStatementInsertionEvent.getStatement(),
-                pipeStatementInsertionEvent.getTableModelDatabaseName(),
-                pipeStatementInsertionEvent.getUserName())
-            : executeStatementForTreeModel(
-                pipeStatementInsertionEvent.getStatement(),
-                pipeStatementInsertionEvent.getUserName());
+    final TSStatus status;
+    if (pipeStatementInsertionEvent.isTableModelEvent()) {
+      final String dataBaseName =
+          getTargetTableModelDatabaseNameOrDefault(
+              pipeStatementInsertionEvent.getTableModelDatabaseName());
+      status =
+          executeStatementForTableModel(
+              rewriteTableModelDatabaseNameIfNecessary(pipeStatementInsertionEvent.getStatement()),
+              dataBaseName,
+              pipeStatementInsertionEvent.getUserName());
+    } else {
+      status =
+          executeStatementForTreeModel(
+              rewriteTreeModelDatabaseNameIfNecessary(
+                  pipeStatementInsertionEvent.getStatement(),
+                  pipeStatementInsertionEvent.getTreeModelDatabaseName()),
+              pipeStatementInsertionEvent.getUserName());
+    }
 
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -382,6 +552,166 @@ public class WriteBackSink implements PipeConnector {
               "Write back PipeStatementInsertionEvent %s error, result status %s",
               pipeStatementInsertionEvent, status));
     }
+  }
+
+  private String getTargetTableModelDatabaseNameOrDefault(final String databaseName) {
+    if (Objects.nonNull(invalidTargetTableModelDatabaseName)) {
+      throw new PipeException(
+          String.format(
+              DataNodePipeMessages
+                  .TARGET_TREE_MODEL_DATABASE_CANNOT_BE_USED_FOR_TABLE_MODEL_EVENTS_FMT,
+              targetTreeModelDatabaseName,
+              invalidTargetTableModelDatabaseName));
+    }
+
+    validateTableModelDatabaseName(databaseName);
+    return Objects.nonNull(targetTableModelDatabaseName)
+        ? targetTableModelDatabaseName
+        : databaseName;
+  }
+
+  private String getTargetTreeModelDatabaseNameOrDefault(final String databaseName) {
+    final String sourceTreeModelDatabaseName =
+        validateAndNormalizeTreeModelDatabaseName(databaseName);
+    return Objects.nonNull(targetTreeModelDatabaseName)
+        ? targetTreeModelDatabaseName
+        : sourceTreeModelDatabaseName;
+  }
+
+  private Statement rewriteTableModelDatabaseNameIfNecessary(final Statement statement) {
+    if (Objects.isNull(targetTableModelDatabaseName)
+        || !(statement instanceof InsertBaseStatement)) {
+      return statement;
+    }
+
+    rewriteTableModelDatabaseName((InsertBaseStatement) statement);
+    return statement;
+  }
+
+  private void rewriteTableModelDatabaseName(final InsertBaseStatement statement) {
+    statement.setDatabaseName(targetTableModelDatabaseName);
+
+    if (statement instanceof InsertRowsStatement) {
+      ((InsertRowsStatement) statement)
+          .getInsertRowStatementList()
+          .forEach(this::rewriteTableModelDatabaseName);
+    } else if (statement instanceof InsertRowsOfOneDeviceStatement) {
+      ((InsertRowsOfOneDeviceStatement) statement)
+          .getInsertRowStatementList()
+          .forEach(this::rewriteTableModelDatabaseName);
+    } else if (statement instanceof InsertMultiTabletsStatement) {
+      ((InsertMultiTabletsStatement) statement)
+          .getInsertTabletStatementList()
+          .forEach(this::rewriteTableModelDatabaseName);
+    }
+  }
+
+  private Statement rewriteTreeModelDatabaseNameIfNecessary(
+      final Statement statement, final String sourceTreeModelDatabaseName) {
+    if (!(statement instanceof InsertBaseStatement)) {
+      return statement;
+    }
+
+    return rewriteTreeModelDatabaseNameIfNecessary(
+        (InsertBaseStatement) statement, sourceTreeModelDatabaseName);
+  }
+
+  private InsertBaseStatement rewriteTreeModelDatabaseNameIfNecessary(
+      final InsertBaseStatement statement, final String sourceTreeModelDatabaseName) {
+    final String normalizedSourceTreeModelDatabaseName =
+        validateAndNormalizeTreeModelDatabaseName(sourceTreeModelDatabaseName);
+    if (Objects.isNull(targetTreeModelDatabaseName)) {
+      return statement;
+    }
+
+    rewriteTreeModelDatabaseName(statement, normalizedSourceTreeModelDatabaseName);
+    return statement;
+  }
+
+  private void rewriteTreeModelDatabaseName(
+      final InsertBaseStatement statement, final String sourceTreeModelDatabaseName) {
+    statement.setDatabaseName(targetTreeModelDatabaseName);
+
+    if (statement instanceof InsertRowsStatement) {
+      ((InsertRowsStatement) statement)
+          .getInsertRowStatementList()
+          .forEach(
+              rowStatement ->
+                  rewriteTreeModelDatabaseName(rowStatement, sourceTreeModelDatabaseName));
+      return;
+    }
+
+    if (statement instanceof InsertRowsOfOneDeviceStatement) {
+      final InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement =
+          (InsertRowsOfOneDeviceStatement) statement;
+      insertRowsOfOneDeviceStatement
+          .getInsertRowStatementList()
+          .forEach(
+              rowStatement ->
+                  rewriteTreeModelDatabaseName(rowStatement, sourceTreeModelDatabaseName));
+      insertRowsOfOneDeviceStatement.setDevicePath(
+          rewriteTreeModelDevicePath(
+              insertRowsOfOneDeviceStatement.getDevicePath(), sourceTreeModelDatabaseName));
+      return;
+    }
+
+    if (statement instanceof InsertMultiTabletsStatement) {
+      ((InsertMultiTabletsStatement) statement)
+          .getInsertTabletStatementList()
+          .forEach(
+              tabletStatement ->
+                  rewriteTreeModelDatabaseName(tabletStatement, sourceTreeModelDatabaseName));
+      return;
+    }
+
+    statement.setDevicePath(
+        rewriteTreeModelDevicePath(statement.getDevicePath(), sourceTreeModelDatabaseName));
+  }
+
+  private PartialPath rewriteTreeModelDevicePath(
+      final PartialPath devicePath, final String sourceTreeModelDatabaseName) {
+    if (Objects.isNull(devicePath) || Objects.isNull(sourceTreeModelDatabaseName)) {
+      return devicePath;
+    }
+
+    try {
+      final String[] sourceDatabaseNodes = new PartialPath(sourceTreeModelDatabaseName).getNodes();
+      final String[] targetDatabaseNodes = new PartialPath(targetTreeModelDatabaseName).getNodes();
+      final String[] deviceNodes = devicePath.getNodes();
+      // A processor may rewrite the device path before write-back sink receives the event.
+      // If it no longer belongs to the source database, keep it untouched to avoid corruption.
+      if (!startsWith(deviceNodes, sourceDatabaseNodes)) {
+        return devicePath;
+      }
+
+      final ArrayList<String> rebasedNodes =
+          new ArrayList<>(
+              targetDatabaseNodes.length + deviceNodes.length - sourceDatabaseNodes.length);
+      rebasedNodes.addAll(Arrays.asList(targetDatabaseNodes));
+      rebasedNodes.addAll(
+          Arrays.asList(deviceNodes).subList(sourceDatabaseNodes.length, deviceNodes.length));
+      return new PartialPath(rebasedNodes.toArray(new String[0]));
+    } catch (final Exception e) {
+      throw new PipeException(
+          String.format(
+              DataNodePipeMessages.FAILED_TO_REWRITE_TREE_MODEL_DATABASE_FMT,
+              sourceTreeModelDatabaseName,
+              targetTreeModelDatabaseName,
+              devicePath),
+          e);
+    }
+  }
+
+  private static boolean startsWith(final String[] nodes, final String[] prefixNodes) {
+    if (nodes.length < prefixNodes.length) {
+      return false;
+    }
+    for (int i = 0; i < prefixNodes.length; ++i) {
+      if (!Objects.equals(nodes[i], prefixNodes[i])) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private static void throwWriteBackExceptionIfNecessary(
@@ -396,7 +726,9 @@ public class WriteBackSink implements PipeConnector {
   @Override
   public void close() throws Exception {
     if (session != null) {
-      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution, false);
+      getSessionManager()
+          .closeSession(
+              session, queryId -> Coordinator.getInstance().cleanupQueryExecution(queryId), false);
     }
   }
 
@@ -413,10 +745,10 @@ public class WriteBackSink implements PipeConnector {
       return Coordinator.getInstance()
           .executeForTableModel(
               new PipeEnrichedStatement(statement),
-              RELATIONAL_SQL_PARSER,
+              getRelationalSqlParser(),
               session,
-              SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfPipeReceiver(session, dataBaseName),
+              getSessionManager().requestQueryId(),
+              getSessionManager().getSessionInfoOfPipeReceiver(session, dataBaseName),
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -446,10 +778,10 @@ public class WriteBackSink implements PipeConnector {
         return Coordinator.getInstance()
             .executeForTableModel(
                 new PipeEnrichedStatement(statement),
-                RELATIONAL_SQL_PARSER,
+                getRelationalSqlParser(),
                 session,
-                SESSION_MANAGER.requestQueryId(),
-                SESSION_MANAGER.getSessionInfo(session),
+                getSessionManager().requestQueryId(),
+                getSessionManager().getSessionInfo(session),
                 "",
                 LocalExecutionPlanner.getInstance().metadata,
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -493,8 +825,10 @@ public class WriteBackSink implements PipeConnector {
           && statusCode != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         throw new PipeException(
             String.format(
-                "Auto create database failed: %s, status code: %s",
-                database, result.getStatusCode()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_AUTO_CREATE_DATABASE_FAILED_S_STATUS_CODE_S_D8EB60FA,
+                database,
+                result.getStatusCode()));
       }
     } catch (final ExecutionException | InterruptedException e) {
       if (e instanceof InterruptedException) {
@@ -534,8 +868,8 @@ public class WriteBackSink implements PipeConnector {
       return Coordinator.getInstance()
           .executeForTreeModel(
               new PipeEnrichedStatement(statement),
-              SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfo(session),
+              getSessionManager().requestQueryId(),
+              getSessionManager().getSessionInfo(session),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),

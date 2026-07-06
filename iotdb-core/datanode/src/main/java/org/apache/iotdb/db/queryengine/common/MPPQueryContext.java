@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -288,7 +289,9 @@ public class MPPQueryContext implements IAuditEntity {
         // have not been retained by runtime FragmentInstances.
         externalTsFileQueryResource.closeByQueryExecution();
       } catch (Exception e) {
-        LOGGER.warn("Failed to release external TsFile query resource", e);
+        LOGGER.warn(
+            DataNodeQueryMessages.MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978,
+            e);
       }
     }
   }

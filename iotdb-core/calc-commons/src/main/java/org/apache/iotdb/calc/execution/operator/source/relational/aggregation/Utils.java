@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
@@ -127,7 +129,7 @@ public class Utils {
         return 4 + value.getBinary().getValues().length;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", dataType));
+            String.format(CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_7D59F7B2, dataType));
     }
   }
 

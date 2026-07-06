@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.errorprone.annotations.Immutable;
 import org.apache.tsfile.read.common.type.Type;
@@ -36,8 +37,8 @@ public class ResolvedField {
 
   public ResolvedField(
       Scope scope, Field field, int hierarchyFieldIndex, int relationFieldIndex, boolean local) {
-    this.scope = requireNonNull(scope, "scope is null");
-    this.field = requireNonNull(field, "field is null");
+    this.scope = requireNonNull(scope, DataNodeQueryMessages.EXCEPTION_SCOPE_IS_NULL_4F364BA2);
+    this.field = requireNonNull(field, DataNodeQueryMessages.EXCEPTION_FIELD_IS_NULL_80E8CE23);
     this.hierarchyFieldIndex = hierarchyFieldIndex;
     this.relationFieldIndex = relationFieldIndex;
     this.local = local;

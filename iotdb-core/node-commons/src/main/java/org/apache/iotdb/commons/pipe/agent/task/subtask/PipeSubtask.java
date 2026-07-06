@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.subtask;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +48,7 @@ public abstract class PipeSubtask
 
   // For thread pool to execute subtasks
   protected ListeningExecutorService subtaskWorkerThreadPoolExecutor;
+  protected ListeningScheduledExecutorService subtaskWorkerScheduledExecutor;
 
   // For controlling the subtask execution
   protected final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
@@ -65,6 +68,7 @@ public abstract class PipeSubtask
 
   public abstract void bindExecutors(
       ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      ListeningScheduledExecutorService subtaskWorkerScheduledExecutor,
       ExecutorService subtaskCallbackListeningExecutor,
       PipeSubtaskScheduler subtaskScheduler);
 
@@ -81,6 +85,10 @@ public abstract class PipeSubtask
           break;
         }
         hasAtLeastOneEventProcessed = true;
+        // Stop the current call early if the subtask asks to delay its next submission.
+        if (shouldStopSubmittingSelfInCurrentCall()) {
+          break;
+        }
       }
     } finally {
       // Reset the scheduler to make sure that the scheduler can schedule again
@@ -105,6 +113,10 @@ public abstract class PipeSubtask
   @SuppressWarnings("squid:S112") // Allow to throw Exception
   protected abstract boolean executeOnce() throws Exception;
 
+  protected boolean shouldStopSubmittingSelfInCurrentCall() {
+    return false;
+  }
+
   @Override
   public synchronized void onSuccess(final Boolean hasAtLeastOneEventProcessed) {
     final int totalRetryCount = retryCount.getAndSet(0);
@@ -113,7 +125,7 @@ public abstract class PipeSubtask
 
     if (totalRetryCount != 0) {
       LOGGER.warn(
-          "Successfully executed subtask {}({}) after {} retries.",
+          PipeMessages.LOG_SUCCESSFULLY_EXECUTED_SUBTASK_ARG_ARG_AFTER_ARG_RETRIES_70972F07,
           getDisplayTaskID(),
           this.getClass().getSimpleName(),
           totalRetryCount);

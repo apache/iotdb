@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
@@ -247,8 +248,7 @@ public class TreeDeviceSchemaCacheManager {
         throw new RuntimeException(
             new UnsupportedOperationException(
                 String.format(
-                    "The source of view [%s] is also a view! Nested view is unsupported! "
-                        + "Please check it.",
+                    DataNodeSchemaMessages.NESTED_LOGICAL_VIEW_UNSUPPORTED_FMT,
                     logicalViewSchema.getSourcePathIfWritable())));
       }
 
@@ -444,7 +444,7 @@ public class TreeDeviceSchemaCacheManager {
     public LogicalViewSchema getSchemaAsLogicalViewSchema() {
       throw new RuntimeException(
           new UnsupportedOperationException(
-              "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache."));
+              DataNodeSchemaMessages.GET_SCHEMA_AS_LOGICAL_VIEW_SCHEMA_UNSUPPORTED));
     }
 
     @Override

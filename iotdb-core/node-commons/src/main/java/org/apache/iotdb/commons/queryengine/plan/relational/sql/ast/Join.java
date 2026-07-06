@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -54,44 +56,48 @@ public class Join extends Relation {
   public Join(Type type, Relation left, Relation right) {
     super(null);
     this.criteria = null;
-    checkArgument((type == Type.CROSS) || (type == Type.IMPLICIT), "No join criteria specified");
+    checkArgument(
+        (type == Type.CROSS) || (type == Type.IMPLICIT),
+        QueryMessages.EXCEPTION_NO_JOIN_CRITERIA_SPECIFIED_44DED0B9);
     this.type = type;
-    this.left = requireNonNull(left, "left is null");
-    this.right = requireNonNull(right, "right is null");
+    this.left = requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    this.right = requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
   }
 
   public Join(NodeLocation location, Type type, Relation left, Relation right) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.criteria = null;
-    checkArgument((type == Type.CROSS) || (type == Type.IMPLICIT), "No join criteria specified");
+    checkArgument(
+        (type == Type.CROSS) || (type == Type.IMPLICIT),
+        QueryMessages.EXCEPTION_NO_JOIN_CRITERIA_SPECIFIED_44DED0B9);
     this.type = type;
-    this.left = requireNonNull(left, "left is null");
-    this.right = requireNonNull(right, "right is null");
+    this.left = requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    this.right = requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
   }
 
   public Join(Type type, Relation left, Relation right, JoinCriteria criteria) {
     super(null);
-    this.criteria = requireNonNull(criteria, "criteria is null");
+    this.criteria = requireNonNull(criteria, QueryMessages.EXCEPTION_CRITERIA_IS_NULL_2996D1A3);
     checkArgument(
         !((type == Type.CROSS) || (type == Type.IMPLICIT)),
-        "%s join cannot have join criteria",
+        QueryMessages.EXCEPTION_ARG_JOIN_CANNOT_HAVE_JOIN_CRITERIA_3B23E0D1,
         type);
     this.type = type;
-    this.left = requireNonNull(left, "left is null");
-    this.right = requireNonNull(right, "right is null");
+    this.left = requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    this.right = requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
   }
 
   public Join(
       NodeLocation location, Type type, Relation left, Relation right, JoinCriteria criteria) {
-    super(requireNonNull(location, "location is null"));
-    this.criteria = requireNonNull(criteria, "criteria is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.criteria = requireNonNull(criteria, QueryMessages.EXCEPTION_CRITERIA_IS_NULL_2996D1A3);
     checkArgument(
         !((type == Type.CROSS) || (type == Type.IMPLICIT)),
-        "%s join cannot have join criteria",
+        QueryMessages.EXCEPTION_ARG_JOIN_CANNOT_HAVE_JOIN_CRITERIA_3B23E0D1,
         type);
     this.type = type;
-    this.left = requireNonNull(left, "left is null");
-    this.right = requireNonNull(right, "right is null");
+    this.left = requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    this.right = requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
   }
 
   public Type getType() {

@@ -207,7 +207,8 @@ public class WALBuffer extends AbstractWALBuffer {
   public void write(WALEntry walEntry) {
     if (isClosed) {
       logger.warn(
-          "Fail to write WALEntry into wal node-{} because this node is closed. It's ok to see this log during data region deletion.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAIL_TO_WRITE_WALENTRY_INTO_WAL_NODE_BECAUSE_THIS_NODE_IS_5D45E73F,
           identifier);
       walEntry.getWalFlushListener().fail(new WALNodeClosedException(identifier));
       return;
@@ -261,7 +262,8 @@ public class WALBuffer extends AbstractWALBuffer {
         }
       } catch (InterruptedException e) {
         logger.warn(
-            "Interrupted when waiting for taking WALEntry from blocking queue to serialize.");
+            StorageEngineMessages
+                .STORAGE_LOG_INTERRUPTED_WHEN_WAITING_FOR_TAKING_WALENTRY_FROM_BLOCKING_0765C068);
         Thread.currentThread().interrupt();
       }
 
@@ -279,7 +281,8 @@ public class WALBuffer extends AbstractWALBuffer {
           }
         } catch (InterruptedException e) {
           logger.warn(
-              "Interrupted when waiting for taking WALEntry from blocking queue to serialize.");
+              StorageEngineMessages
+                  .STORAGE_LOG_INTERRUPTED_WHEN_WAITING_FOR_TAKING_WALENTRY_FROM_BLOCKING_0765C068);
           Thread.currentThread().interrupt();
         }
 
@@ -329,7 +332,10 @@ public class WALBuffer extends AbstractWALBuffer {
         size = byteBufferView.position() - startPosition;
       } catch (Exception e) {
         logger.error(
-            "Fail to serialize WALEntry to wal node-{}'s buffer, discard it.", identifier, e);
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_SERIALIZE_WALENTRY_TO_WAL_NODE_S_BUFFER_DISCARD_F0948835,
+            identifier,
+            e);
         walEntry.getWalFlushListener().fail(e);
         return;
       }
@@ -379,7 +385,8 @@ public class WALBuffer extends AbstractWALBuffer {
         case CLOSE_SIGNAL:
           if (logger.isDebugEnabled()) {
             logger.debug(
-                "Handle close signal for wal node-{}, there are {} entries left.",
+                StorageEngineMessages
+                    .STORAGE_LOG_HANDLE_CLOSE_SIGNAL_FOR_WAL_NODE_THERE_ARE_ENTRIES_LEFT_393393D0,
                 identifier,
                 walEntries.size());
           }
@@ -558,8 +565,11 @@ public class WALBuffer extends AbstractWALBuffer {
       double usedRatio = (double) syncingBuffer.position() / syncingBuffer.capacity();
       WRITING_METRICS.recordWALBufferUsedRatio(usedRatio);
       logger.debug(
-          "Sync wal buffer, forceFlag: {}, buffer used: {} / {} = {}%",
-          forceFlag, syncingBuffer.position(), syncingBuffer.capacity(), usedRatio * 100);
+          StorageEngineMessages.STORAGE_LOG_SYNC_WAL_BUFFER_FORCEFLAG_BUFFER_USED_C2A75C99,
+          forceFlag,
+          syncingBuffer.position(),
+          syncingBuffer.capacity(),
+          usedRatio * 100);
 
       // flush buffer to os
       double compressionRatio = 1.0;
@@ -567,7 +577,10 @@ public class WALBuffer extends AbstractWALBuffer {
         compressionRatio = currentWALFileWriter.write(syncingBuffer, info.metaData);
       } catch (Throwable e) {
         logger.error(
-            "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_SYNC_WAL_NODE_S_BUFFER_CHANGE_SYSTEM_MODE_TO_ERROR_8C379D57,
+            identifier,
+            e);
         CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
       } finally {
         switchSyncingBufferToIdle();
@@ -593,7 +606,10 @@ public class WALBuffer extends AbstractWALBuffer {
           }
         } catch (IOException e) {
           logger.error(
-              "Fail to roll wal node-{}'s log writer, change system mode to error.", identifier, e);
+              StorageEngineMessages
+                  .STORAGE_LOG_FAIL_TO_ROLL_WAL_NODE_S_LOG_WRITER_CHANGE_SYSTEM_MODE_TO_A384AA54,
+              identifier,
+              e);
           if (info.rollWALFileWriterListener != null) {
             info.rollWALFileWriterListener.fail(e);
           }
@@ -606,7 +622,8 @@ public class WALBuffer extends AbstractWALBuffer {
           forceSuccess = true;
         } catch (IOException e) {
           logger.error(
-              "Fail to fsync wal node-{}'s log writer, change system mode to error.",
+              StorageEngineMessages
+                  .STORAGE_LOG_FAIL_TO_FSYNC_WAL_NODE_S_LOG_WRITER_CHANGE_SYSTEM_MODE_TO_7930160B,
               identifier,
               e);
           for (WALFlushListener fsyncListener : info.fsyncListeners) {
@@ -643,8 +660,10 @@ public class WALBuffer extends AbstractWALBuffer {
             break;
           default:
             throw new RuntimeException(
-                "Cannot make other checkpoint types in the wal buffer, type is "
-                    + checkpoint.getType());
+                String.format(
+                    StorageEngineMessages
+                        .STORAGE_EXCEPTION_CANNOT_MAKE_OTHER_CHECKPOINT_TYPES_IN_THE_WAL_BUFFER_TYPE_E9053BC1,
+                    checkpoint.getType()));
         }
       }
       checkpointManager.fsyncCheckpointFile();
@@ -785,13 +804,15 @@ public class WALBuffer extends AbstractWALBuffer {
                 .getMemTablesId();
           } catch (BrokenWALFileException e) {
             logger.warn(
-                "Fail to read memTable ids from the wal file {} of wal node {}: {}",
+                StorageEngineMessages
+                    .STORAGE_LOG_FAIL_TO_READ_MEMTABLE_IDS_FROM_THE_WAL_FILE_OF_WAL_NODE_54B0056E,
                 id,
                 identifier,
                 e.getMessage());
           } catch (IOException e) {
             logger.warn(
-                "Fail to read memTable ids from the wal file {} of wal node {}.",
+                StorageEngineMessages
+                    .STORAGE_LOG_FAIL_TO_READ_MEMTABLE_IDS_FROM_THE_WAL_FILE_OF_WAL_NODE_D5287E27,
                 id,
                 identifier,
                 e);

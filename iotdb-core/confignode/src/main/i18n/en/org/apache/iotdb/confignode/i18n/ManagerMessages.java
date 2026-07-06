@@ -62,7 +62,6 @@ public final class ManagerMessages {
       "DataRegionGroupExtensionPolicy %s doesn't exist.";
   public static final String DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR =
       "Decrease reference count for snapshot {} error.";
-  public static final String DELETING_REGIONS_COSTS_MS = "Deleting regions costs {}ms";
   public static final String DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE =
       "Detected historical pipe completion report from DataNode {} for pipe {}. remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
@@ -424,8 +423,6 @@ public final class ManagerMessages {
       "Start to create Region: {} on DataNode: {}";
   public static final String START_TO_CREATE_UDF_ON_DATA_NODES_NEEDTOSAVEJAR =
       "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]";
-  public static final String START_TO_DELETE_REGION_ON_DATANODE =
-      "Start to delete Region: {} on DataNode: {}";
   public static final String START_TRANSFER_OF = "Start transfer of {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE = "Stop submitting CQ {} because {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR =
@@ -508,6 +505,8 @@ public final class ManagerMessages {
       "Unexpected interruption during waiting for configNode leader ready.";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID =
       "Unexpected interruption during waiting for get cluster id.";
+  public static final String UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED =
+      "Unexpected non-create task in the RegionMaintainer queue; skipping it (the queue only recreates region replicas now, and region deletion is handled by RemoveRegionGroupProcedure).";
   public static final String UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED =
       "Unexpected null procedure parameters for waitingProcedureFinished";
   public static final String UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT =
@@ -537,4 +536,143 @@ public final class ManagerMessages {
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED = "Remove ConfigNode failed because transfer ConfigNode leader failed.";
 
   private ManagerMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID_ARG_6DBD6075 = "SubscriptionHandleLeaderChangeProcedure was submitted, procedureId: {}.";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_FAILED_SUBMIT_58FAB03F = "SubscriptionHandleLeaderChangeProcedure was failed to submit.";
+  public static final String EXCEPTION_INVALID_2928F475 = " is invalid";
+  public static final String MESSAGE_FAIL_CREATE_TRIGGER_ARG_SIZE_JAR_TOO_LARGE_YOU_CAN_11869523 =
+      "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of"
+      + " property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode";
+  public static final String MESSAGE_FAIL_CREATE_PIPE_PLUGIN_ARG_SIZE_JAR_TOO_LARGE_YOU_D194A893 =
+      "Fail to create pipe plugin[%s], the size of Jar is too large, you can increase the value of"
+      + " property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode";
+  public static final String MESSAGE_FAIL_CREATE_UDF_ARG_SIZE_JAR_TOO_LARGE_YOU_CAN_2F119802 =
+      "Fail to create UDF[%s], the size of Jar is too large, you can increase the value of property"
+      + " 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode";
+  public static final String EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 = "Failed to serialize region progress ";
+  public static final String MESSAGE_CONSENSUSMANAGER_TARGET_CONFIGNODE_NOT_INITIALIZED_4D386066 = "ConsensusManager of target-ConfigNode is not initialized, ";
+  public static final String MESSAGE_PLEASE_MAKE_SURE_TARGET_CONFIGNODE_HAS_BEEN_STARTED_SUCCESSFULLY_C78201DC = "please make sure the target-ConfigNode has been started successfully.";
+  public static final String MESSAGE_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_D0F437AF = "config_node_consensus_protocol_class";
+  public static final String MESSAGE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_AB025B20 = "data_region_consensus_protocol_class";
+  public static final String MESSAGE_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS_480645EF = "schema_region_consensus_protocol_class";
+  public static final String MESSAGE_SERIES_SLOT_NUM_115D9BE0 = "series_slot_num";
+  public static final String MESSAGE_SERIES_PARTITION_EXECUTOR_CLASS_AD1B5C24 = "series_partition_executor_class";
+  public static final String MESSAGE_TIME_PARTITION_INTERVAL_CE476507 = "time_partition_interval";
+  public static final String MESSAGE_SCHEMA_REPLICATION_FACTOR_11DB65B5 = "schema_replication_factor";
+  public static final String MESSAGE_DATA_REPLICATION_FACTOR_22465D3B = "data_replication_factor";
+  public static final String MESSAGE_SCHEMA_REGION_PER_DATA_NODE_555F29BC = "schema_region_per_data_node";
+  public static final String MESSAGE_DATA_REGION_PER_DATA_NODE_C183AAD5 = "data_region_per_data_node";
+  public static final String MESSAGE_READ_CONSISTENCY_LEVEL_B12D8D95 = "read_consistency_level";
+  public static final String MESSAGE_DISK_SPACE_WARNING_THRESHOLD_19635ACA = "disk_space_warning_threshold";
+  public static final String MESSAGE_TIMESTAMP_PRECISION_9591C9C9 = "timestamp_precision";
+  public static final String MESSAGE_SCHEMA_ENGINE_MODE_E37ED98C = "schema_engine_mode";
+  public static final String MESSAGE_TAG_ATTRIBUTE_TOTAL_SIZE_AF658CFE = "tag_attribute_total_size";
+  public static final String MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 = "database_limit_threshold";
+  public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586 = "Unexpected error happened while setting space quota on database: %s ";
+  public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81 = "Unexpected error happened while setting throttle quota on user: %s ";
+  public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "schema_template need two files";
+  public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "Got IOException when deserialize use&role file, type:{}";
+  public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "Got IOException when deserialize roleList";
+  public static final String LOG_GOT_EXCEPTION_DESERIALIZING_TTL_FILE_F806EB40 = "Got exception when deserializing ttl file";
+  public static final String LOG_UNRECOGNIZED_NODE_TYPE_CANNOT_DESERIALIZE_MTREE_GIVEN_BUFFER_5CF3121B = "Unrecognized node type. Cannot deserialize MTree from given buffer";
+  public static final String LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621 = "Got IOException when construct database Tree";
+  public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_TEMPLATE_INFO_49EE617E = "Got IOException when deserialize template info";
+  public static final String MESSAGE_MEASUREMENTS_NOT_FOUND_ARG_CANNOT_AUTO_DETECT_980D7D44 = "Measurements not found for %s, cannot auto detect";
+  public static final String LOG_FAILED_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_ARG_ALREADY_EXIST_EB2A6093 = "Failed to take snapshot, because snapshot file [{}] is already exist.";
+  public static final String LOG_FAILED_LOAD_SNAPSHOT_SNAPSHOT_FILE_ARG_NOT_EXIST_8828CFBA = "Failed to load snapshot,snapshot file [{}] is not exist.";
+  public static final String LOG_YOU_MAYBE_NEED_RENAME_SIMPLE_DIR_0_0_MANUALLY_2A12C5C9 = "you maybe need to rename the simple dir to 0_0 manually.";
+  public static final String LOG_CONFIGNODE_LOCAL_PEER_HAS_ALREADY_BEEN_CREATED_ARG_FA75E88F = "ConfigNode local peer has already been created: {}";
+  public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_ADDED_ARG_A8F958B0 = "ConfigNode peer {} has already been added: {}";
+  public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_REMOVED_ARG_FACD71EE = "ConfigNode peer {} has already been removed: {}";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_NOT_READY_YET_PLEASE_TRY_AGAIN_F0B10645 = "The current ConfigNode is leader but consensus is not ready yet.";
+
+  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_SERVICE_NOT_READY = "The current ConfigNode is leader but leader services are not ready yet.";
+
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D = "The current ConfigNode is not leader, please redirect to a new ConfigNode.";
+  public static final String LOG_FAILED_SYNC_COMMIT_PROGRESS_RESULT_STATUS_ARG_A9E46E80 = "Failed to sync commit progress. Result status: {}.";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DATABASE_2734674F = "Failed to alter database. The Database ";
+  public static final String MESSAGE_DOESN_T_EXIST_EED8C92E = " doesn't exist.";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_SCHEMAREGIONGROUPNUM_COULD_ONLY_INCREASED_B98229D3 = "Failed to alter database. The SchemaRegionGroupNum could only be increased. ";
+  public static final String MESSAGE_CURRENT_SCHEMAREGIONGROUPNUM_ARG_ALTER_SCHEMAREGIONGROUPNUM_ARG_F7495BC2 = "Current SchemaRegionGroupNum: %d, Alter SchemaRegionGroupNum: %d";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DATAREGIONGROUPNUM_COULD_ONLY_INCREASED_84283EB5 = "Failed to alter database. The DataRegionGroupNum could only be increased. ";
+  public static final String MESSAGE_CURRENT_DATAREGIONGROUPNUM_ARG_ALTER_DATAREGIONGROUPNUM_ARG_61C6E978 = "Current DataRegionGroupNum: %d, Alter DataRegionGroupNum: %d";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREPLICATIONFACTOR_SHOULD_POSITIVE_8847F33C = "Failed to create database. The schemaReplicationFactor should be positive.";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_DATAREPLICATIONFACTOR_SHOULD_POSITIVE_C2565B7E = "Failed to create database. The dataReplicationFactor should be positive.";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9 = "Failed to create database. The timePartitionOrigin should be non-negative.";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONINTERVAL_SHOULD_POSITIVE_BB1B473F = "Failed to create database. The timePartitionInterval should be positive.";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREGIONGROUPNUM_SHOULD_POSITIVE_8396A2AB = "Failed to create database. The schemaRegionGroupNum should be positive.";
+  public static final String MESSAGE_ACCEPT_NODE_REGISTRATION_4133276A = "Accept Node registration.";
+  public static final String MESSAGE_ACCEPT_NODE_RESTART_1BC1A8DD = "Accept Node restart.";
+  public static final String MESSAGE_REJECT_ARG_START_BECAUSE_CLUSTERNAME_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_B9E197DB =
+      "Reject %s start. Because the ClusterName of the current %s and the target cluster are"
+      + " inconsistent. ";
+  public static final String MESSAGE_CLUSTERNAME_CURRENT_NODE_ARG_CLUSTERNAME_TARGET_CLUSTER_ARG_5C34BE8D = "ClusterName of the current Node: %s, ClusterName of the target cluster: %s.";
+  public static final String MESSAGE_1_CHANGE_SEED_CONFIG_NODE_PARAMETER_ARG_JOIN_CORRECT_CLUSTER_5E9D753C = "\t1. Change the seed_config_node parameter in %s to join the correct cluster.";
+  public static final String MESSAGE_2_CHANGE_CLUSTER_NAME_PARAMETER_ARG_MATCH_TARGET_CLUSTER_0A0DB235 = "\n\t2. Change the cluster_name parameter in %s to match the target cluster";
+  public static final String MESSAGE_REJECT_ARG_REGISTRATION_BECAUSE_FOLLOWING_IP_PORT_ARG_CURRENT_ARG_CB78CC3B =
+      "Reject %s registration. Because the following ip:port: %s of the current %s is conflicted"
+      + " with other registered Nodes in the cluster.";
+  public static final String MESSAGE_1_USE_SQL_SHOW_CLUSTER_DETAILS_FIND_OUT_CONFLICT_NODES_A1195AEA =
+      "\t1. Use SQL: \"show cluster details\" to find out the conflict Nodes. Remove them and retry"
+      + " start.";
+  public static final String MESSAGE_2_CHANGE_CONFLICT_IP_PORT_CONFIGURATIONS_ARG_FILE_RETRY_START_CF3F08F6 = "\n\t2. Change the conflict ip:port configurations in %s file and retry start.";
+  public static final String MESSAGE_CLUSTER_ID_HAS_NOT_GENERATED_PLEASE_TRY_AGAIN_LATER_58A1C3F2 = "cluster id has not generated, please try again later";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_CLUSTERNAME_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_2075F29D =
+      "Reject %s restart. Because the ClusterName of the current %s and the target cluster are"
+      + " inconsistent. ";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_NODEID_CURRENT_ARG_ARG_AC13EDD5 = "Reject %s restart. Because the nodeId of the current %s is %d.";
+  public static final String MESSAGE_1_DELETE_DATA_DIR_RETRY_86A23473 = "\t1. Delete \"data\" dir and retry.";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_THERE_NO_CORRESPONDING_ARG_WHOSE_NODEID_455578E9 = "Reject %s restart. Because there are no corresponding %s(whose nodeId=%d) in the cluster.";
+  public static final String MESSAGE_1_MAYBE_YOU_VE_ALREADY_REMOVED_CURRENT_ARG_WHOSE_NODEID_92165504 =
+      "\t1. Maybe you've already removed the current %s(whose nodeId=%d). Please delete the useless"
+      + " 'data' dir and retry start.";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_CLUSTERID_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_0398A6CE =
+      "Reject %s restart. Because the clusterId of the current %s and the target cluster are"
+      + " inconsistent. ";
+  public static final String MESSAGE_CLUSTERID_CURRENT_NODE_ARG_CLUSTERID_TARGET_CLUSTER_ARG_23C42434 = "ClusterId of the current Node: %s, ClusterId of the target cluster: %s.";
+  public static final String MESSAGE_1_PLEASE_CHECK_IF_NODE_CONFIGURATION_PATH_CORRECT_7FB5D559 = "\t1. Please check if the node configuration or path is correct.";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_INTERNAL_TENDPOINTS_ARG_CAN_T_MODIFIED_A58B99F0 = "Reject %s restart. Because the internal TEndPoints of this %s can't be modified.";
+  public static final String MESSAGE_1_PLEASE_KEEP_INTERNAL_TENDPOINTS_NODE_SAME_AS_BEFORE_2FDB2034 = "\t1. Please keep the internal TEndPoints of this Node the same as before.";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_ONLY_ONE_CONFIGNODE_CURRENT_CLUSTER_D1273758 = "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_NO_OTHER_CONFIGNODE_RUNNING_STATUS_C9C43315 =
+      "Remove ConfigNode failed because there is no other ConfigNode in Running status in current"
+      + " Cluster.";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CONFIGNODEGROUP_LEADER_ELECTION_PLEASE_RETRY_3EE602F6 = "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.";
+  public static final String MESSAGE_TRANSFER_CONFIGNODE_LEADER_FAILED_BECAUSE_CAN_NOT_FIND_ANY_RUNNING_1FE4F96D = "Transfer ConfigNode leader failed because can not find any running ConfigNode.";
+  public static final String MESSAGE_CONFIGNODE_REMOVED_LEADER_ALREADY_TRANSFER_LEADER_FA6D1603 = "The ConfigNode to be removed is leader, already transfer Leader to ";
+  public static final String MESSAGE_TARGET_DATANODE_NOT_EXISTED_PLEASE_ENSURE_YOUR_INPUT_QUERYID_CORRECT_AB84CCDF = "The target DataNode is not existed, please ensure your input <queryId> is correct";
+  public static final String MESSAGE_CREATE_SCHEMAPARTITION_FAILED_BECAUSE_DATABASE_ARG_NOT_EXISTS_D8AE1679 = "Create SchemaPartition failed because the database: %s is not exists";
+  public static final String MESSAGE_CREATE_SCHEMAPARTITION_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_2617832C = "Create SchemaPartition failed because the database: %s does not exist";
+  public static final String MESSAGE_CREATE_DATAPARTITION_FAILED_BECAUSE_DATABASE_ARG_NOT_EXISTS_F223D5C2 = "Create DataPartition failed because the database: %s is not exists";
+  public static final String MESSAGE_CREATE_DATAPARTITION_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_D7A8C1FC = "Create DataPartition failed because the database: %s does not exist";
+  public static final String LOG_REGIONGROUP_ARG_SERIESPARTITIONSLOT_COUNT_ARG_30F57B14 = "to RegionGroup {}, SeriesPartitionSlot Count: {}";
+  public static final String LOG_REGIONGROUPID_ARG_SERIESPARTITIONSLOT_COUNT_ARG_5DAE4B6A = "RegionGroupId: {}, SeriesPartitionSlot Count: {}";
+  public static final String LOG_INCREASE_REFERENCE_COUNT_SNAPSHOT_ARG_ERROR_HOLDER_MESSAGE_ARG_962E8672 = "Increase reference count for snapshot %s error. Holder Message: %s";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_SNAPSHOT_ARG_ERROR_HOLDER_MESSAGE_ARG_8C7FF9CE = "Decrease reference count for snapshot %s error. Holder Message: %s";
+  public static final String MESSAGE_RECEIVER_CONFIGNODE_HAS_SET_UP_NEW_RECEIVER_SENDER_MUST_RE_77B80C51 =
+      "The receiver ConfigNode has set up a new receiver and the sender must re-send its handshake"
+      + " request.";
+  public static final String LOG_IGNORE_EXCEPTION_2AC431FA = "Ignore this exception.";
+  public static final String LOG_REPORTING_PIPE_META_ARG_REMAININGEVENTCOUNT_ARG_ESTIMATEDREMAININGTIME_ARG_E2727CB4 = "Reporting pipe meta: {}, remainingEventCount: {}, estimatedRemainingTime: {}";
+  public static final String LOG_PIPEMETAFROMAGENT_NULL_PIPEMETAFROMCOORDINATOR_ARG_36C513AE = "pipeMetaFromAgent is null, pipeMetaFromCoordinator: {}";
+  public static final String LOG_DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_DATANODE_ARG_PIPE_ARG_REMAININGEVENTCOUNT_7E6C52E9 =
+      "Detected historical pipe completion report from DataNode {} for pipe {}. remainingEventCount:"
+      + " {}, remainingTime: {}, completedDataNodes: {}";
+  public static final String LOG_ALL_DATANODES_REPORTED_HISTORICAL_PIPE_ARG_COMPLETED_GLOBALREMAININGEVENTCOUNT_ARG_GLOBALREMAININGTIME_255 =
+      "All DataNodes reported historical pipe {} completed. globalRemainingEventCount: {},"
+      + " globalRemainingTime: {}, staticMeta: {}";
+  public static final String LOG_UPDATED_PROGRESS_INDEX_PIPE_NAME_ARG_CONSENSUS_GROUP_ID_ARG_DF112F4F = "Updated progress index for (pipe name: {}, consensus group id: {}) ... ";
+  public static final String LOG_PROGRESS_INDEX_COORDINATOR_ARG_PROGRESS_INDEX_AGENT_ARG_UPDATED_PROGRESSINDEX_1A22ABC5 = "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}";
+  public static final String LOG_DETECT_PIPERUNTIMECONNECTORCRITICALEXCEPTION_ARG_7D198DD7 = "Detect PipeRuntimeConnectorCriticalException %s ";
+  public static final String LOG_AGENT_STOP_PIPE_ARG_42212C21 = "from agent, stop pipe %s.";
+  public static final String LOG_CREATEREGIONGROUPS_REGIONGROUP_ARG_BELONGED_DATABASE_ARG_DATANODES_ARG_5270AB6B = "[CreateRegionGroups] RegionGroup: {}, belonged database: {}, on DataNodes: {}";
+  public static final String EXCEPTION_DATANODEID_SHOULD_NOT_BE_MINUS_1_HERE_5CB27796 = "dataNodeId should not be -1 here";
+  public static final String MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STARTED_SUCCESSFULLY_09CA6848 = "SubscriptionOwnerLeaseSyncer is started successfully.";
+  public static final String MESSAGE_FAILED_TO_PUSH_SUBSCRIPTION_TOPIC_OWNER_LEASES_TO_DATANODES_EBFBA668 = "Failed to push subscription topic owner leases to DataNodes.";
+  public static final String MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STOPPED_SUCCESSFULLY_11442F29 = "SubscriptionOwnerLeaseSyncer is stopped successfully.";
+  public static final String MESSAGE_NO_AVAILABLE_ARG_REGIONGROUP_FOR_DATABASE_ARG_REGIONGROUPS_VISIBLE_IN_PARTITIONINFO_AND_THEIR_LOADCACHE_STATUS_ARG_615F5D49 =
+      "No available {} RegionGroup for Database: {}. RegionGroups visible in PartitionInfo and their LoadCache status: {}";
+
 }

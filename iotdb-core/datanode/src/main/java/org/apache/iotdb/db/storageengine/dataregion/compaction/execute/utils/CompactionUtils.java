@@ -130,7 +130,8 @@ public class CompactionUtils {
     // move to target file and delete old tmp target file
     if (!targetResource.getTsFile().exists()) {
       logger.info(
-          "{} [Compaction] Tmp target tsfile {} may be deleted after compaction.",
+          StorageEngineMessages
+              .STORAGE_LOG_COMPACTION_TMP_TARGET_TSFILE_MAY_BE_DELETED_AFTER_COMPACTION_0BFFA73F,
           fullStorageGroupName,
           targetResource.getTsFilePath());
       return;
@@ -308,7 +309,9 @@ public class CompactionUtils {
         result = false;
       }
       logger.info(
-          "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
+          StorageEngineMessages.STORAGE_LOG_COMPACTION_DELETE_TSFILE_A97320DB,
+          storageGroupName,
+          mergeTsFile.getTsFilePath());
     }
     return result;
   }
@@ -408,7 +411,7 @@ public class CompactionUtils {
   public static void deleteTsFileResourceWithoutLock(TsFileResource resource) {
     if (!resource.remove()) {
       logger.warn(
-          "[Compaction] delete file failed, file path is {}",
+          StorageEngineMessages.STORAGE_LOG_COMPACTION_DELETE_FILE_FAILED_FILE_PATH_IS_6E1D2670,
           resource.getTsFile().getAbsolutePath());
     } else {
       logger.info(

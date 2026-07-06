@@ -134,6 +134,8 @@ public class Session implements ISession {
   protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
+  protected String keyStore;
+  protected String keyStorePwd;
   protected String sslProtocol;
 
   /**
@@ -475,6 +477,8 @@ public class Session implements ISession {
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
+    this.keyStore = builder.keyStore;
+    this.keyStorePwd = builder.keyStorePwd;
     this.sslProtocol = builder.sslProtocol;
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
@@ -545,6 +549,8 @@ public class Session implements ISession {
               useSSL,
               trustStore,
               trustStorePwd,
+              keyStore,
+              keyStorePwd,
               sslProtocol,
               enableRPCCompaction,
               version.toString());
@@ -1666,7 +1672,8 @@ public class Session implements ISession {
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "deviceIds, times, measurementsList and valuesList's size should be equal");
+          SessionMessages
+              .EXCEPTION_DEVICEIDS_TIMES_MEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_EC87D88B);
     }
     if (enableRedirection) {
       insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, false);
@@ -1883,7 +1890,8 @@ public class Session implements ISession {
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
+          SessionMessages
+              .EXCEPTION_PREFIXPATHS_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_1465011C);
     }
     if (enableRedirection) {
       insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, true);
@@ -2058,7 +2066,8 @@ public class Session implements ISession {
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "deviceIds, times, measurementsList and valuesList's size should be equal");
+          SessionMessages
+              .EXCEPTION_DEVICEIDS_TIMES_MEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_EC87D88B);
     }
     // judge if convert records to tablets.
     if (enableRecordsAutoConvertTablet && len >= MIN_RECORDS_SIZE) {
@@ -2112,7 +2121,8 @@ public class Session implements ISession {
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
+          SessionMessages
+              .EXCEPTION_PREFIXPATHS_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_1465011C);
     }
     // judge if convert records to tablets.
     if (enableRecordsAutoConvertTablet && len >= MIN_RECORDS_SIZE) {
@@ -2340,7 +2350,8 @@ public class Session implements ISession {
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "times, subMeasurementsList and valuesList's size should be equal");
+          SessionMessages
+              .EXCEPTION_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_002C539A);
     }
     if (enableRecordsAutoConvertTablet
         && len >= MIN_RECORDS_SIZE
@@ -2680,7 +2691,8 @@ public class Session implements ISession {
         recordsGroup.putIfAbsent(connection, request);
       } catch (NoValidValueException e) {
         logger.warn(
-            "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements are [{}]",
+            SessionMessages
+                .LOG_ALL_VALUES_NULL_SUBMISSION_IGNORED_DEVICEID_ARG_TIME_ARG_MEASUREMENTS_07AFDDFE,
             deviceIds.get(i),
             times.get(i),
             measurementsList.get(i));
@@ -3841,8 +3853,8 @@ public class Session implements ISession {
     int len = measurements.size();
     if (len != dataTypes.size() || len != encodings.size() || len != compressors.size()) {
       throw new StatementExecutionException(
-          "Different length of measurements, datatypes, encodings "
-              + "or compressors when create device template.");
+          SessionMessages.EXCEPTION_DIFFERENT_LENGTH_MEASUREMENTS_DATATYPES_ENCODINGS_ED354A24
+              + SessionMessages.EXCEPTION_COMPRESSORS_CREATE_DEVICE_TEMPLATE_BBDBB28E);
     }
     for (int idx = 0; idx < measurements.size(); idx++) {
       MeasurementNode mNode =
@@ -4155,7 +4167,7 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     if (devicePathList == null || devicePathList.contains(null)) {
       throw new StatementExecutionException(
-          "Given device path list should not be  or contains null.");
+          SessionMessages.EXCEPTION_GIVEN_DEVICE_PATH_LIST_SHOULD_NOT_CONTAINS_NULL_E9132577);
     }
     TCreateTimeseriesUsingSchemaTemplateReq request = new TCreateTimeseriesUsingSchemaTemplateReq();
     request.setDevicePathList(devicePathList);
@@ -4438,6 +4450,16 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder keyStore(String keyStore) {
+      this.keyStore = keyStore;
+      return this;
+    }
+
+    public Builder keyStorePwd(String keyStorePwd) {
+      this.keyStorePwd = keyStorePwd;
+      return this;
+    }
+
     public Builder sslProtocol(String sslProtocol) {
       this.sslProtocol = sslProtocol;
       return this;
@@ -4447,7 +4469,8 @@ public class Session implements ISession {
       if (nodeUrls != null
           && (!SessionConfig.DEFAULT_HOST.equals(host) || rpcPort != SessionConfig.DEFAULT_PORT)) {
         throw new IllegalArgumentException(
-            "You should specify either nodeUrls or (host + rpcPort), but not both");
+            SessionMessages
+                .EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084);
       }
       return new Session(this);
     }

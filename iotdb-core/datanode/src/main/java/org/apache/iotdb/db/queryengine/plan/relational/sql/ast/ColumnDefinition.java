@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -61,8 +62,10 @@ public class ColumnDefinition extends Node {
       final @Nullable String charsetName,
       final @Nullable String comment) {
     super(location);
-    this.name = requireNonNull(name, "name is null");
-    this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.columnCategory =
+        requireNonNull(
+            columnCategory, DataNodeQueryMessages.EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B);
     this.type = getDefaultType(type);
     this.charsetName = charsetName;
     this.comment = comment;

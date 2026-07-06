@@ -211,8 +211,10 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
     if (correctDataNodeLocations.remove(targetDataNode)) {
       LOGGER.warn(
           ProcedureMessages.PID_ADDREGION_IT_APPEARS_THAT_CONSENSUS_WRITE_HAS_NOT_MODIFIED
-              + "Please verify whether a leader change has occurred during this stage. "
-              + "If this log is triggered without a leader change, it indicates a potential bug in the partition table.",
+              + ProcedureMessages
+                  .LOG_PLEASE_VERIFY_WHETHER_LEADER_CHANGE_HAS_OCCURRED_DURING_STAGE_9FE68EE3
+              + ProcedureMessages
+                  .LOG_IF_LOG_TRIGGERED_WITHOUT_LEADER_CHANGE_IT_INDICATES_POTENTIAL_BUG_32AE71FD,
           getProcId());
     }
     String correctStr =

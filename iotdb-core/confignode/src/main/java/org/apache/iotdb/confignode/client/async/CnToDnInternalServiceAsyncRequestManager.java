@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.client.async;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
@@ -143,10 +142,6 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.createDataRegion(
                 (TCreateDataRegionReq) req, (DataNodeTSStatusRPCHandler) handler));
-    actionMapBuilder.put(
-        CnToDnAsyncRequestType.DELETE_REGION,
-        (req, client, handler) ->
-            client.deleteRegion((TConsensusGroupId) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CREATE_SCHEMA_REGION,
         (req, client, handler) ->

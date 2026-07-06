@@ -153,7 +153,13 @@ public class SessionConnection {
     this.database = database;
     try {
       init(
-          endPoint, session.useSSL, session.trustStore, session.trustStorePwd, session.sslProtocol);
+          endPoint,
+          session.useSSL,
+          session.trustStore,
+          session.trustStorePwd,
+          session.keyStore,
+          session.keyStorePwd,
+          session.sslProtocol);
     } catch (StatementExecutionException e) {
       throw new IoTDBConnectionException(e.getMessage());
     } catch (IoTDBConnectionException e) {
@@ -186,6 +192,8 @@ public class SessionConnection {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
       String sslProtocol)
       throws IoTDBConnectionException, StatementExecutionException {
     DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
@@ -196,12 +204,14 @@ public class SessionConnection {
       }
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransportWithSSLConfig(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 session.connectionTimeoutInMs,
                 trustStore,
                 trustStorePwd,
+                keyStore,
+                keyStorePwd,
                 sslProtocol);
       } else {
         transport =
@@ -243,14 +253,15 @@ public class SessionConnection {
       this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
-            "Protocol differ, Client version is {}}, but Server version is {}",
+            SessionMessages.LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_9C8EC583,
             Session.protocolVersion.getValue(),
             openResp.getServerProtocolVersion().getValue());
         // less than 0.10
         if (openResp.getServerProtocolVersion().getValue() == 0) {
           throw new TException(
               String.format(
-                  "Protocol not supported, Client version is %s, but Server version is %s",
+                  SessionMessages
+                      .EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC,
                   Session.protocolVersion.getValue(),
                   openResp.getServerProtocolVersion().getValue()));
         }
@@ -278,6 +289,8 @@ public class SessionConnection {
             session.useSSL,
             session.trustStore,
             session.trustStorePwd,
+            session.keyStore,
+            session.keyStorePwd,
             session.sslProtocol);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
@@ -972,7 +985,10 @@ public class SessionConnection {
       }
 
       logger.debug(
-          "Retry attempt #{}, result {}, exception {}", retryAttempt, result, lastTException);
+          SessionMessages.LOG_RETRY_ATTEMPT_ARG_RESULT_ARG_EXCEPTION_ARG_20E5D9DA,
+          retryAttempt,
+          result,
+          lastTException);
       // prepare for the next retry
       if (lastTException != null
           || !availableNodes.get().contains(this.endPoint)
@@ -1103,6 +1119,8 @@ public class SessionConnection {
                 session.useSSL,
                 session.trustStore,
                 session.trustStorePwd,
+                session.keyStore,
+                session.keyStorePwd,
                 session.sslProtocol);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
