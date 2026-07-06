@@ -37,6 +37,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.util.PipeDataLossDebugUtil;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
@@ -249,6 +250,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     }
 
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
+    logTransferBatch(endPointAndBatch.getLeft(), batch);
 
     if (batch instanceof PipeTabletEventPlainBatch) {
       transfer(
@@ -294,6 +296,27 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     }
 
     endPointAndBatch.getRight().onSuccess();
+  }
+
+  private void logTransferBatch(final TEndPoint endPoint, final PipeTabletEventBatch batch) {
+    if (!LOGGER.isDebugEnabled()) {
+      return;
+    }
+
+    final List<EnrichedEvent> events = batch.deepCopyEvents();
+    final EnrichedEvent firstEvent = events.isEmpty() ? null : events.get(0);
+    LOGGER.debug(
+        "{} async sink emitting tablet batch, firstEventPipe={}, firstEventRegionId={}, endPoint={}, batchType={}, eventCount={}, batchBufferSize={}",
+        PipeDataLossDebugUtil.PREFIX,
+        firstEvent == null
+            ? "null"
+            : PipeDataLossDebugUtil.formatPipe(
+                firstEvent.getPipeName(), firstEvent.getCreationTime()),
+        firstEvent == null ? "null" : String.valueOf(firstEvent.getRegionId()),
+        endPoint,
+        batch.getClass().getSimpleName(),
+        batch.getEventCount(),
+        batch.getTotalBufferSize());
   }
 
   private boolean transferInEventWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)

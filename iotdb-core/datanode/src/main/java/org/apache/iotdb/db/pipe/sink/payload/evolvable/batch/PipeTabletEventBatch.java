@@ -197,6 +197,14 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     return events.isEmpty();
   }
 
+  public int getEventCount() {
+    return events.size();
+  }
+
+  public long getTotalBufferSize() {
+    return totalBufferSize;
+  }
+
   @FunctionalInterface
   public interface TriLongConsumer {
     void accept(long l1, long l2, long l3);

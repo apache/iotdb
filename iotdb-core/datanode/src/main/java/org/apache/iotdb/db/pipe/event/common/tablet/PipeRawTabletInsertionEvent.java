@@ -36,6 +36,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventP
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.util.PipeDataLossDebugUtil;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -409,6 +410,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public String getDeviceId() {
     // NonNull indicates that the internallyDecreaseResourceReferenceCount has not been called.
     return Objects.nonNull(tablet) ? tablet.getDeviceId() : deviceId;
+  }
+
+  public String getTabletDebugString() {
+    return PipeDataLossDebugUtil.formatTablet(tablet);
   }
 
   public EnrichedEvent getSourceEvent() {

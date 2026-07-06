@@ -34,6 +34,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.util.PipeDataLossDebugUtil;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeSyncClientManager;
@@ -280,6 +281,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
   private void doTransferWrapper(final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
       throws IOException, WriteProcessException {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
+    logTransferBatch(endPointAndBatch.getLeft(), batch);
     if (batch instanceof PipeTabletEventPlainBatch) {
       doTransfer(endPointAndBatch.getLeft(), (PipeTabletEventPlainBatch) batch);
     } else if (batch instanceof PipeTabletEventTsFileBatch) {
@@ -289,6 +291,27 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     }
     batch.decreaseEventsReferenceCount(IoTDBDataRegionSyncSink.class.getName(), true);
     batch.onSuccess();
+  }
+
+  private void logTransferBatch(final TEndPoint endPoint, final PipeTabletEventBatch batch) {
+    if (!LOGGER.isDebugEnabled()) {
+      return;
+    }
+
+    final List<EnrichedEvent> events = batch.deepCopyEvents();
+    final EnrichedEvent firstEvent = events.isEmpty() ? null : events.get(0);
+    LOGGER.debug(
+        "{} sync sink emitting tablet batch, firstEventPipe={}, firstEventRegionId={}, endPoint={}, batchType={}, eventCount={}, batchBufferSize={}",
+        PipeDataLossDebugUtil.PREFIX,
+        firstEvent == null
+            ? "null"
+            : PipeDataLossDebugUtil.formatPipe(
+                firstEvent.getPipeName(), firstEvent.getCreationTime()),
+        firstEvent == null ? "null" : String.valueOf(firstEvent.getRegionId()),
+        endPoint,
+        batch.getClass().getSimpleName(),
+        batch.getEventCount(),
+        batch.getTotalBufferSize());
   }
 
   private void doTransfer(

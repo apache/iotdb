@@ -55,6 +55,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
+import org.apache.iotdb.db.pipe.event.common.util.PipeDataLossDebugUtil;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
@@ -515,12 +516,28 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TPipeTransferResp handleTransferTabletBatchV2(final PipeTransferTabletBatchReqV2 req) {
     final List<InsertBaseStatement> statementSet = req.constructStatements();
-    return new TPipeTransferResp(
-        PipeReceiverStatusHandler.getPriorStatus(
-            (statementSet.isEmpty()
-                    ? Stream.of(RpcUtils.SUCCESS_STATUS)
-                    : statementSet.stream().map(this::executeBatchStatementAndAddRedirectInfo))
-                .collect(Collectors.toList())));
+    final List<TSStatus> statusList =
+        (statementSet.isEmpty()
+                ? Stream.of(RpcUtils.SUCCESS_STATUS)
+                : statementSet.stream().map(this::executeBatchStatementAndAddRedirectInfo))
+            .collect(Collectors.toList());
+    final TSStatus priorStatus = PipeReceiverStatusHandler.getPriorStatus(statusList);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} receiver executed tablet batch V2, statementCount={}, statements={}, statuses={}, priorStatus={}",
+          PipeDataLossDebugUtil.PREFIX,
+          statementSet.size(),
+          statementSet.stream()
+              .limit(8)
+              .map(PipeDataLossDebugUtil::formatStatement)
+              .collect(Collectors.toList()),
+          statusList.stream()
+              .limit(8)
+              .map(PipeDataLossDebugUtil::formatStatus)
+              .collect(Collectors.toList()),
+          PipeDataLossDebugUtil.formatStatus(priorStatus));
+    }
+    return new TPipeTransferResp(priorStatus);
   }
 
   @Override

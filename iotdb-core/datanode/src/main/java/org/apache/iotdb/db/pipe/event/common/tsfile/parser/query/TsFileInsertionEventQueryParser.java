@@ -36,6 +36,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
+import org.apache.iotdb.db.pipe.event.common.util.PipeDataLossDebugUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -306,8 +307,32 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       }
 
       // Filter again to get the final deviceMeasurementsMap that exactly matches the pattern.
-      deviceMeasurementsMapIterator =
-          filterDeviceMeasurementsMapByPattern(deviceMeasurementsMap).entrySet().iterator();
+      final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap =
+          filterDeviceMeasurementsMapByPattern(deviceMeasurementsMap);
+      deviceMeasurementsMapIterator = filteredDeviceMeasurementsMap.entrySet().iterator();
+      if (LOGGER.isDebugEnabled()) {
+        final int measurementCount =
+            filteredDeviceMeasurementsMap.values().stream().mapToInt(List::size).sum();
+        LOGGER.debug(
+            "{} query parser selected timeseries, {}, tsFile={}, deviceCount={}, measurementCount={}, isWithMod={}, pattern={}",
+            PipeDataLossDebugUtil.PREFIX,
+            PipeDataLossDebugUtil.formatPipe(pipeName, creationTime),
+            tsFile.getAbsolutePath(),
+            filteredDeviceMeasurementsMap.size(),
+            measurementCount,
+            isWithMod,
+            treePattern);
+        filteredDeviceMeasurementsMap.forEach(
+            (device, measurements) ->
+                LOGGER.debug(
+                    "{} query parser selected device, {}, tsFile={}, device={}, measurements={}, metadataStatistics={}",
+                    PipeDataLossDebugUtil.PREFIX,
+                    PipeDataLossDebugUtil.formatPipe(pipeName, creationTime),
+                    tsFile.getAbsolutePath(),
+                    device,
+                    measurements,
+                    formatMeasurementStatistics(device, measurements)));
+      }
 
       // No longer need this. Help GC.
       tsFileSequenceReader.clearCachedDeviceMetadata();
@@ -339,6 +364,31 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         null,
         deviceMeasurementsMapOverride,
         isWithMod);
+  }
+
+  private List<String> formatMeasurementStatistics(
+      final IDeviceID deviceId, final List<String> measurements) {
+    final List<String> result = new ArrayList<>(measurements.size());
+    for (final String measurement : measurements) {
+      try {
+        final TimeseriesMetadata metadata =
+            tsFileSequenceReader.readTimeseriesMetadata(deviceId, measurement, true);
+        result.add(
+            measurement
+                + (metadata == null
+                    ? "{metadata=null}"
+                    : "{count="
+                        + metadata.getStatistics().getCount()
+                        + ", startTime="
+                        + metadata.getStatistics().getStartTime()
+                        + ", endTime="
+                        + metadata.getStatistics().getEndTime()
+                        + "}"));
+      } catch (final Exception e) {
+        result.add(measurement + "{failedToReadStatistics=" + e.getMessage() + "}");
+      }
+    }
+    return result;
   }
 
   private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
@@ -497,7 +547,10 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                               timeFilterExpression,
                               allocatedMemoryBlockForTablet,
                               currentModifications,
-                              tabletStringInternPool);
+                              tabletStringInternPool,
+                              pipeName,
+                              creationTime,
+                              tsFile.getAbsolutePath());
                     } catch (final Exception e) {
                       close();
                       throw new PipeException(

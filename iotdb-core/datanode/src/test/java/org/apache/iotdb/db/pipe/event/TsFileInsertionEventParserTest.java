@@ -92,6 +92,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -153,6 +156,97 @@ public class TsFileInsertionEventParserTest {
     final long startTime = System.currentTimeMillis();
     testToTabletInsertionEvents(false);
     System.out.println(System.currentTimeMillis() - startTime);
+  }
+
+  @Test
+  public void testQueryParserKeepsPointsForHundredTimeSeriesSplitAlignedTsFile() throws Exception {
+    final int deviceCount = 10;
+    final int measurementCount = 100;
+    final int rowCount = 16;
+
+    final List<IMeasurementSchema> schemaList = new ArrayList<>();
+    for (int measurementIndex = 0; measurementIndex < measurementCount; ++measurementIndex) {
+      schemaList.add(new MeasurementSchema("s" + measurementIndex, TSDataType.INT64));
+    }
+
+    alignedTsFile = new File("query-parser-100-timeseries-split-aligned.tsfile");
+    if (alignedTsFile.exists()) {
+      Assert.assertTrue(alignedTsFile.delete());
+    }
+
+    try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
+      for (int deviceIndex = 0; deviceIndex < deviceCount; ++deviceIndex) {
+        final String device = "root.sg.d" + deviceIndex;
+        writer.registerAlignedTimeseries(new PartialPath(device), schemaList);
+
+        final Tablet tablet = new Tablet(device, schemaList, rowCount);
+        for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+          tablet.addTimestamp(rowIndex, rowIndex);
+          for (int measurementIndex = 0; measurementIndex < measurementCount; ++measurementIndex) {
+            tablet.addValue(
+                "s" + measurementIndex,
+                rowIndex,
+                (long) deviceIndex * measurementCount * rowCount
+                    + (long) measurementIndex * rowCount
+                    + rowIndex);
+          }
+        }
+        writer.writeAligned(tablet);
+      }
+    }
+
+    int totalPointCount = 0;
+    int totalTabletCount = 0;
+    final ExecutorService executor = Executors.newFixedThreadPool(16);
+    try {
+      final List<Future<Pair<Integer, Integer>>> futures = new ArrayList<>();
+      for (int measurementIndex = 0; measurementIndex < measurementCount; ++measurementIndex) {
+        final String measurement = "s" + measurementIndex;
+        futures.add(
+            executor.submit(
+                () -> {
+                  int pointCount = 0;
+                  int tabletCount = 0;
+
+                  final IoTDBTreePattern pattern = new IoTDBTreePattern("root.sg.*." + measurement);
+                  Assert.assertFalse(pattern.mayMatchMultipleTimeSeriesInOneDevice());
+                  try (final TsFileInsertionEventQueryParser parser =
+                      new TsFileInsertionEventQueryParser(
+                          alignedTsFile, pattern, Long.MIN_VALUE, Long.MAX_VALUE, null)) {
+                    final Iterator<TabletInsertionEvent> iterator =
+                        parser.toTabletInsertionEvents().iterator();
+                    while (iterator.hasNext()) {
+                      final PipeRawTabletInsertionEvent event =
+                          (PipeRawTabletInsertionEvent) iterator.next();
+                      final Tablet parsedTablet = event.convertToTablet();
+
+                      Assert.assertTrue(event.isAligned());
+                      Assert.assertEquals(1, parsedTablet.getSchemas().size());
+                      Assert.assertEquals(
+                          measurement, parsedTablet.getSchemas().get(0).getMeasurementName());
+
+                      pointCount += getNonNullSize(parsedTablet);
+                      ++tabletCount;
+                    }
+                  }
+
+                  Assert.assertEquals(deviceCount * rowCount, pointCount);
+                  Assert.assertTrue(tabletCount > 0);
+                  return new Pair<>(pointCount, tabletCount);
+                }));
+      }
+
+      for (final Future<Pair<Integer, Integer>> future : futures) {
+        final Pair<Integer, Integer> result = future.get();
+        totalPointCount += result.getLeft();
+        totalTabletCount += result.getRight();
+      }
+    } finally {
+      executor.shutdownNow();
+    }
+
+    Assert.assertEquals(deviceCount * measurementCount * rowCount, totalPointCount);
+    Assert.assertTrue(totalTabletCount >= measurementCount);
   }
 
   @Test

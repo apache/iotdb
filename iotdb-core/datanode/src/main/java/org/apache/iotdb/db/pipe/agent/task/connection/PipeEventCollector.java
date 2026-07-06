@@ -34,6 +34,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.util.PipeDataLossDebugUtil;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.PipePlanTreePrivilegeParseVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
@@ -167,10 +168,30 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void collectParsedRawTableEvent(final PipeRawTabletInsertionEvent parsedEvent) {
-    if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
-      hasNoGeneratedEvent = false;
-      collectEvent(parsedEvent);
+    if (parsedEvent.hasNoNeedParsingAndIsEmpty()) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} collector dropped empty parsed tablet, {}, regionId={}, tablet={}",
+            PipeDataLossDebugUtil.PREFIX,
+            PipeDataLossDebugUtil.formatPipe(
+                parsedEvent.getPipeName(), parsedEvent.getCreationTime()),
+            regionId,
+            parsedEvent.getTabletDebugString());
+      }
+      return;
     }
+
+    hasNoGeneratedEvent = false;
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} collector enqueued parsed tablet, {}, regionId={}, tablet={}",
+          PipeDataLossDebugUtil.PREFIX,
+          PipeDataLossDebugUtil.formatPipe(
+              parsedEvent.getPipeName(), parsedEvent.getCreationTime()),
+          regionId,
+          parsedEvent.getTabletDebugString());
+    }
+    collectEvent(parsedEvent);
   }
 
   private void parseAndCollectEvent(final PipeDeleteDataNodeEvent deleteDataEvent) {

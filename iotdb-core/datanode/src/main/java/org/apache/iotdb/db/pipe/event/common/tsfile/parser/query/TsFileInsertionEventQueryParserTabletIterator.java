@@ -24,6 +24,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
+import org.apache.iotdb.db.pipe.event.common.util.PipeDataLossDebugUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -46,6 +47,8 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -57,6 +60,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<Tablet> {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(TsFileInsertionEventQueryParserTabletIterator.class);
 
   private final TsFileReader tsFileReader;
   private final Map<String, TSDataType> measurementDataTypeMap;
@@ -77,6 +83,10 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
 
   private RowRecord rowRecord;
 
+  private final String pipeName;
+  private final long creationTime;
+  private final String tsFilePath;
+
   TsFileInsertionEventQueryParserTabletIterator(
       final TsFileReader tsFileReader,
       final Map<String, TSDataType> measurementDataTypeMap,
@@ -85,13 +95,19 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
       final IExpression timeFilterExpression,
       final PipeMemoryBlock allocatedBlockForTablet,
       final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications,
-      final TabletStringInternPool tabletStringInternPool)
+      final TabletStringInternPool tabletStringInternPool,
+      final String pipeName,
+      final long creationTime,
+      final String tsFilePath)
       throws IOException {
     this.tsFileReader = tsFileReader;
     this.measurementDataTypeMap = measurementDataTypeMap;
 
     this.deviceId = deviceId;
     this.deviceIdString = tabletStringInternPool.intern(deviceId.toString());
+    this.pipeName = pipeName;
+    this.creationTime = creationTime;
+    this.tsFilePath = tsFilePath;
     this.measurements =
         measurements.stream()
             .filter(
@@ -159,9 +175,25 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
       return tablet;
     }
 
+    int inputRowCount = 0;
+    int droppedAllNullRowCount = 0;
+    int nullFieldCount = 0;
+    int deletedFieldCount = 0;
+    int nonNullFieldCount = 0;
+    long firstInputTime = Long.MIN_VALUE;
+    long lastInputTime = Long.MIN_VALUE;
+    long firstOutputTime = Long.MIN_VALUE;
+    long lastOutputTime = Long.MIN_VALUE;
+
     boolean isFirstRow = true;
     while (queryDataSet.hasNext()) {
       final RowRecord rowRecord = this.rowRecord != null ? this.rowRecord : queryDataSet.next();
+      final long timestamp = rowRecord.getTimestamp();
+      ++inputRowCount;
+      if (firstInputTime == Long.MIN_VALUE) {
+        firstInputTime = timestamp;
+      }
+      lastInputTime = timestamp;
       if (isFirstRow) {
         // Calculate row count and memory size of the tablet based on the first row
         this.rowRecord = rowRecord; // Save the first row for later use
@@ -188,21 +220,34 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
         final Field field = fields.get(i);
         final String measurement = measurements.get(i);
         final TSDataType dataType = schemas.get(i).getType();
+        final boolean isDeleted =
+            field != null && ModsOperationUtil.isDelete(timestamp, measurementModsList.get(i));
         // Check if this value is deleted by mods
-        if (field == null
-            || ModsOperationUtil.isDelete(rowRecord.getTimestamp(), measurementModsList.get(i))) {
+        if (field == null || isDeleted) {
+          if (field == null) {
+            ++nullFieldCount;
+          } else {
+            ++deletedFieldCount;
+          }
           if (dataType.isBinary()) {
             PipeTabletUtils.putValue(tablet, rowIndex, i, dataType, Binary.EMPTY_VALUE);
           }
           PipeTabletUtils.markNullValue(tablet, rowIndex, i);
         } else {
+          ++nonNullFieldCount;
           PipeTabletUtils.putValue(
               tablet, rowIndex, i, dataType, field.getObjectValue(schemas.get(i).getType()));
           isNeedFillTime = true;
         }
       }
       if (isNeedFillTime) {
-        PipeTabletUtils.putTimestamp(tablet, rowIndex, rowRecord.getTimestamp());
+        if (firstOutputTime == Long.MIN_VALUE) {
+          firstOutputTime = timestamp;
+        }
+        lastOutputTime = timestamp;
+        PipeTabletUtils.putTimestamp(tablet, rowIndex, timestamp);
+      } else {
+        ++droppedAllNullRowCount;
       }
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -211,6 +256,26 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
     }
 
     PipeTabletUtils.compactBitMaps(tablet);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} query parser emitted tablet, {}, tsFile={}, device={}, measurements={}, inputRows={}, outputRows={}, droppedAllNullRows={}, nullFields={}, deletedFields={}, nonNullFields={}, firstInputTime={}, lastInputTime={}, firstOutputTime={}, lastOutputTime={}, tablet={}",
+          PipeDataLossDebugUtil.PREFIX,
+          PipeDataLossDebugUtil.formatPipe(pipeName, creationTime),
+          tsFilePath,
+          deviceIdString,
+          measurements,
+          inputRowCount,
+          tablet.getRowSize(),
+          droppedAllNullRowCount,
+          nullFieldCount,
+          deletedFieldCount,
+          nonNullFieldCount,
+          firstInputTime == Long.MIN_VALUE ? "null" : String.valueOf(firstInputTime),
+          lastInputTime == Long.MIN_VALUE ? "null" : String.valueOf(lastInputTime),
+          firstOutputTime == Long.MIN_VALUE ? "null" : String.valueOf(firstOutputTime),
+          lastOutputTime == Long.MIN_VALUE ? "null" : String.valueOf(lastOutputTime),
+          PipeDataLossDebugUtil.formatTablet(tablet));
+    }
     return tablet;
   }
 }
