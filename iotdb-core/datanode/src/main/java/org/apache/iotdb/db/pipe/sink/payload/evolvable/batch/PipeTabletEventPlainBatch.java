@@ -110,7 +110,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         for (final Tablet tablet : tabletEntry.getValue().getRight()) {
           boolean success = false;
           for (final Pair<Boolean, Tablet> tabletPair : batchTablets) {
-            if (!canAppendTablet(tabletPair.getRight(), tablet)) {
+            if (!mayAppendTablet(tabletPair.getRight(), tablet)) {
               continue;
             }
             if (tabletPair.getLeft()) {
@@ -217,10 +217,10 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + 4;
   }
 
-  private static boolean canAppendTablet(final Tablet target, final Tablet source) {
-    return Objects.equals(target.getDeviceId(), source.getDeviceId())
-        && Objects.equals(target.getSchemas(), source.getSchemas())
-        && Objects.equals(target.getColumnTypes(), source.getColumnTypes());
+  static boolean mayAppendTablet(final Tablet target, final Tablet source) {
+    // Tablet.append already checks schemas and column categories. Avoid repeating those potentially
+    // expensive comparisons here because wide-table pipe transfer can have many columns.
+    return Objects.equals(target.getDeviceId(), source.getDeviceId());
   }
 
   public static Tablet copyTablet(final Tablet tablet) {
