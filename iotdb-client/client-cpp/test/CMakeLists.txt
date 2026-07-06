@@ -84,6 +84,15 @@ foreach(_t IN LISTS _test_targets)
     endif()
 endforeach()
 
+# macOS runners resolve <openssl/*.h> to Homebrew before Tongsuo; mirror the
+# iotdb_session BEFORE PUBLIC wrap path on test binaries that compile OpenSSL code.
+if(WITH_SSL AND IOTDB_TONGSUO_OPENSSL_WRAP_DIR)
+    foreach(_t IN LISTS _test_targets)
+        target_include_directories(${_t} BEFORE PRIVATE
+                "${IOTDB_TONGSUO_OPENSSL_WRAP_DIR}")
+    endforeach()
+endif()
+
 if(WITH_SSL)
     target_compile_definitions(rpc_ssl_utils_tests PRIVATE IOTDB_RPC_SSL_IT=1)
 
