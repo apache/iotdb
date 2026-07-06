@@ -219,6 +219,23 @@ if(NOT EXISTS "${_tongsuo_stamp}")
 endif()
 
 set(OPENSSL_ROOT_DIR "${_tongsuo_inst}" CACHE PATH "Tongsuo install root" FORCE)
+set(OPENSSL_INCLUDE_DIR "${_tongsuo_inst}/include" CACHE PATH "Tongsuo headers" FORCE)
 set(OPENSSL_USE_STATIC_LIBS OFF)
+if(APPLE)
+    # GitHub macOS images expose Homebrew OpenSSL headers that win over the
+    # bundled Tongsuo tree for #include <openssl/*.h>, stripping NTLS APIs.
+    set(_iotdb_homebrew_openssl_ignore
+            "/opt/homebrew"
+            "/opt/homebrew/opt/openssl@3"
+            "/usr/local"
+            "/usr/local/opt/openssl@3")
+    list(APPEND CMAKE_IGNORE_PATH ${_iotdb_homebrew_openssl_ignore})
+    list(REMOVE_DUPLICATES CMAKE_IGNORE_PATH)
+endif()
 find_package(OpenSSL REQUIRED)
+if(APPLE)
+    list(REMOVE_ITEM CMAKE_IGNORE_PATH ${_iotdb_homebrew_openssl_ignore})
+    add_compile_options("-I${_tongsuo_inst}/include")
+endif()
 message(STATUS "[Tongsuo] built from source (shared) at ${OPENSSL_ROOT_DIR}")
+message(STATUS "[Tongsuo] OPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")
