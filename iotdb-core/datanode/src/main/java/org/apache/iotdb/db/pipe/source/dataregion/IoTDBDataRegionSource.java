@@ -236,7 +236,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             && (((IoTDBTreePatternOperations) treePattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
-              "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_PATH_PATTERN_S_IS_NOT_VALID_FOR_THE_SOURCE_ONLY_PREFIX_139F93D6,
               treePattern));
     }
   }
@@ -489,7 +490,9 @@ public class IoTDBDataRegionSource extends IoTDBSource {
               .getCode()
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new PipePasswordCheckException(
-            String.format("Failed to check password for pipe %s.", pipeName));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_FAILED_TO_CHECK_PASSWORD_FOR_PIPE_S_0B1A5C73,
+                pipeName));
       }
     }
   }

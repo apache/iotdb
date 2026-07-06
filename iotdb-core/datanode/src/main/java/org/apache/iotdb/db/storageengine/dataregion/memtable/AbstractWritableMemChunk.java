@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -73,7 +74,9 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
         // print log every 5 seconds
         if (retryCount % 50 == 0) {
           LOGGER.warn(
-              "Failed to transfer tvlist memory owner to query engine, {}", ex.getMessage());
+              StorageEngineMessages
+                  .STORAGE_LOG_FAILED_TO_TRANSFER_TVLIST_MEMORY_OWNER_TO_QUERY_ENGINE_0DFA506D,
+              ex.getMessage());
         }
         retryCount++;
         long waitQueryInMs = System.currentTimeMillis() - startTimeInMs;
@@ -88,7 +91,8 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
               FragmentInstanceContext firstQuery = (FragmentInstanceContext) iterator.next();
               firstQuery.failed(
                   new MemoryNotEnoughException(
-                      "Memory not enough to clone the tvlist during flush phase"));
+                      StorageEngineMessages
+                          .STORAGE_EXCEPTION_MEMORY_NOT_ENOUGH_TO_CLONE_THE_TVLIST_DURING_FLUSH_PHASE_75C90725));
             }
           } finally {
             tvList.unlockQueryList();

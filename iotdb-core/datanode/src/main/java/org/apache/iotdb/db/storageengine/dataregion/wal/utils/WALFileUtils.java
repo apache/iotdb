@@ -95,8 +95,10 @@ public class WALFileUtils {
     if (files == null || files.length != 1) {
       throw new FileNotFoundException(
           String.format(
-              "Fail to get wal file by versionId=%s and files=%s.",
-              versionId, Arrays.toString(files)));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_FAIL_TO_GET_WAL_FILE_BY_VERSIONID_S_AND_FILES_S_9CB045F4,
+              versionId,
+              Arrays.toString(files)));
     }
     return files[0];
   }
@@ -363,7 +365,11 @@ public class WALFileUtils {
           }
         }
       } catch (final IOException e) {
-        logger.warn("Failed to scan WAL file {} for searchable request metadata", walFile, e);
+        logger.warn(
+            StorageEngineMessages
+                .STORAGE_LOG_FAILED_TO_SCAN_WAL_FILE_FOR_SEARCHABLE_REQUEST_METADATA_9B4B0198,
+            walFile,
+            e);
       }
     }
   }

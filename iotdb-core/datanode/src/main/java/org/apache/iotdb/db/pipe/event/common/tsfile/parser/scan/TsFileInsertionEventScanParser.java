@@ -395,7 +395,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
     final Exception exception = deferredException;
     deferredException = null;
-    throw new PipeException("Failed to prepare next tablet insertion event.", exception);
+    throw new PipeException(
+        DataNodePipeMessages.EXCEPTION_FAILED_TO_PREPARE_NEXT_TABLET_INSERTION_EVENT_70A57827,
+        exception);
   }
 
   private boolean isLastTabletWithoutDeferredException() {
@@ -977,8 +979,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (timeChunkIndex < 0 || timeChunkIndex >= timeChunkList.size()) {
       throw new IOException(
           String.format(
-              "Invalid aligned value chunk index %d, while there are %d time chunks.",
-              timeChunkIndex, timeChunkList.size()));
+              DataNodePipeMessages
+                  .EXCEPTION_INVALID_ALIGNED_VALUE_CHUNK_INDEX_ARG_WHILE_THERE_ARE_ARG_TIME_CHUNKS_A7AE6C57,
+              timeChunkIndex,
+              timeChunkList.size()));
     }
   }
 

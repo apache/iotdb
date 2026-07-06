@@ -323,7 +323,9 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitNode(final Node node, final MPPQueryContext context) {
     throw new UnsupportedOperationException(
-        "Unsupported statement type: " + node.getClass().getName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            node.getClass().getName()));
   }
 
   @Override
@@ -380,7 +382,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           if (strValue.isPresent()) {
             if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
               throw new SemanticException(
-                  "ttl value must be 'INF' or a long literal, but now is: " + value);
+                  DataNodeQueryMessages.TTL_VALUE_MUST_BE_INF_OR_A_LONG_LITERAL_BUT_NOW_IS + value);
             }
             if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
               schema.setTTL(Long.MAX_VALUE);
@@ -638,7 +640,9 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
 
       if (table.getColumnSchema(columnName) != null) {
         throw new SemanticException(
-            String.format("Columns in table shall not share the same name: '%s'.", columnName));
+            String.format(
+                DataNodeQueryMessages.COLUMNS_IN_TABLE_SHALL_NOT_SHARE_THE_SAME_NAME_S,
+                columnName));
       }
 
       //  allow the user create time column
@@ -660,7 +664,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       if (!sourceNameSet.add(TreeViewSchema.getSourceName(schema))) {
         throw new SemanticException(
             String.format(
-                "The duplicated source measurement %s is unsupported yet.",
+                DataNodeQueryMessages.THE_DUPLICATED_SOURCE_MEASUREMENT_S_IS_UNSUPPORTED_YET,
                 TreeViewSchema.getSourceName(schema)));
       }
       table.addColumnSchema(schema);
@@ -890,8 +894,10 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           new IllegalPathException(
               dbName,
               dbName.length() > MAX_DATABASE_NAME_LENGTH
-                  ? "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH
-                  : "the database name can only contain english or chinese characters, numbers, backticks and underscores."));
+                  ? DataNodeQueryMessages.THE_LENGTH_OF_DATABASE_NAME_SHALL_NOT_EXCEED
+                      + MAX_DATABASE_NAME_LENGTH
+                  : DataNodeQueryMessages
+                      .THE_DATABASE_NAME_CAN_ONLY_CONTAIN_ENGLISH_OR_CHINESE_CHARACTERS_NUMBERS_BACKTICKS_AND));
     }
   }
 
@@ -922,7 +928,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           if (strValue.isPresent()) {
             if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
               throw new SemanticException(
-                  "ttl value must be 'INF' or a long literal, but now is: " + value);
+                  DataNodeQueryMessages.TTL_VALUE_MUST_BE_INF_OR_A_LONG_LITERAL_BUT_NOW_IS + value);
             }
             map.put(key, strValue.get().toUpperCase(Locale.ENGLISH));
             continue;
@@ -934,7 +940,9 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         }
       } else {
         throw new SemanticException(
-            DataNodeQueryMessages.TABLE_PROPERTY + key + "' is currently not allowed.");
+            DataNodeQueryMessages.TABLE_PROPERTY
+                + key
+                + DataNodeQueryMessages.IS_CURRENTLY_NOT_ALLOWED);
       }
     }
     return map;
@@ -1116,15 +1124,15 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     if (!(value instanceof LongLiteral)) {
       throw new SemanticException(
           name
-              + " value must be a LongLiteral, but now is "
+              + DataNodeQueryMessages.VALUE_MUST_BE_A_LONGLITERAL_BUT_NOW_IS
               + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
-              + ", value: "
+              + DataNodeQueryMessages.VALUE
               + value);
     }
     final long parsedValue = ((LongLiteral) value).getParsedValue();
     if (parsedValue < 0) {
       throw new SemanticException(
-          name + " value must be equal to or greater than 0, but now is: " + value);
+          name + DataNodeQueryMessages.VALUE_MUST_BE_EQUAL_TO_OR_GREATER_THAN_0_BUT_NOW_IS + value);
     }
     return parsedValue;
   }
@@ -1133,18 +1141,22 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     if (!(value instanceof LongLiteral)) {
       throw new SemanticException(
           name
-              + " value must be a LongLiteral, but now is "
+              + DataNodeQueryMessages.VALUE_MUST_BE_A_LONGLITERAL_BUT_NOW_IS
               + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
-              + ", value: "
+              + DataNodeQueryMessages.VALUE
               + value);
     }
     final long parsedValue = ((LongLiteral) value).getParsedValue();
     if (parsedValue < 0) {
       throw new SemanticException(
-          name + " value must be equal to or greater than 0, but now is: " + value);
+          name + DataNodeQueryMessages.VALUE_MUST_BE_EQUAL_TO_OR_GREATER_THAN_0_BUT_NOW_IS + value);
     } else if (parsedValue > Integer.MAX_VALUE) {
       throw new SemanticException(
-          name + " value must be lower than " + Integer.MAX_VALUE + ", but now is: " + value);
+          name
+              + DataNodeQueryMessages.VALUE_MUST_BE_LOWER_THAN
+              + Integer.MAX_VALUE
+              + DataNodeQueryMessages.BUT_NOW_IS
+              + value);
     }
     return (int) parsedValue;
   }
@@ -1160,14 +1172,16 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       if (sourceAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to create pipe %s, setting %s is not allowed.",
-                node.getPipeName(), sourceAttribute));
+                DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_S_SETTING_S_IS_NOT_ALLOWED,
+                node.getPipeName(),
+                sourceAttribute));
       }
       if (sourceAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to create pipe %s, setting %s is not allowed.",
-                node.getPipeName(), sourceAttribute));
+                DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_S_SETTING_S_IS_NOT_ALLOWED,
+                node.getPipeName(),
+                sourceAttribute));
       }
     }
 
@@ -1225,8 +1239,10 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
           String.format(
-              "Failed to %s pipe %s, in iotdb-source, password must be set when the username is specified.",
-              isAlter ? "alter" : "create", pipeName));
+              DataNodeQueryMessages
+                  .FAILED_TO_S_PIPE_S_IN_IOTDB_SOURCE_PASSWORD_MUST_BE_SET_WHEN_THE_USERNAME_IS_SPECIFIED,
+              isAlter ? DataNodeQueryMessages.ALTER : DataNodeQueryMessages.CREATE,
+              pipeName));
     }
   }
 
@@ -1295,8 +1311,10 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY, PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
           String.format(
-              "Failed to %s pipe %s, in write-back-sink, password must be set when the username is specified.",
-              isAlter ? "alter" : "create", pipeName));
+              DataNodeQueryMessages
+                  .FAILED_TO_S_PIPE_S_IN_WRITE_BACK_SINK_PASSWORD_MUST_BE_SET_WHEN_THE_USERNAME_IS,
+              isAlter ? DataNodeQueryMessages.ALTER : DataNodeQueryMessages.CREATE,
+              pipeName));
     }
   }
 
@@ -1313,14 +1331,16 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to alter pipe %s, modifying %s is not allowed.",
-                pipeName, extractorAttributeKey));
+                DataNodeQueryMessages.FAILED_TO_ALTER_PIPE_S_MODIFYING_S_IS_NOT_ALLOWED,
+                pipeName,
+                extractorAttributeKey));
       }
       if (extractorAttributeKey.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to alter pipe %s, modifying %s is not allowed.",
-                pipeName, extractorAttributeKey));
+                DataNodeQueryMessages.FAILED_TO_ALTER_PIPE_S_MODIFYING_S_IS_NOT_ALLOWED,
+                pipeName,
+                extractorAttributeKey));
       }
     }
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is

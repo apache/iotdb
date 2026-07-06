@@ -83,7 +83,9 @@ public class DeletionLoader implements ILoader {
         LOGGER.error(DataNodePipeMessages.DELETE_ERROR_STATEMENT, deletion, statement);
         LOGGER.error(DataNodePipeMessages.DELETE_RESULT_STATUS, result.status);
         throw new LoadFileException(
-            String.format("Can not execute delete statement: %s", statement));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_CAN_NOT_EXECUTE_DELETE_STATEMENT_S_3563E8A3,
+                statement));
       }
     } catch (Exception e) {
       throw new PipeException(e.getMessage());

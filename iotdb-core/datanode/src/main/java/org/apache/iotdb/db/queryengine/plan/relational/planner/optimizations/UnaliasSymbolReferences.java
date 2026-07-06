@@ -59,6 +59,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowN
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.NodeAndMappings;
@@ -116,12 +117,13 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
   private final Metadata metadata;
 
   public UnaliasSymbolReferences(Metadata metadata) {
-    this.metadata = requireNonNull(metadata, "metadata is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
   }
 
   @Override
   public PlanNode optimize(PlanNode plan, Context context) {
-    requireNonNull(plan, "plan is null");
+    requireNonNull(plan, DataNodeQueryMessages.EXCEPTION_PLAN_IS_NULL_717C9DF7);
 
     Visitor visitor = new Visitor(metadata, SymbolMapper::symbolMapper);
     PlanAndMappings result = plan.accept(visitor, UnaliasContext.empty());
@@ -137,9 +139,10 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
    */
   public NodeAndMappings reallocateSymbols(
       PlanNode plan, List<Symbol> fields, SymbolAllocator symbolAllocator) {
-    requireNonNull(plan, "plan is null");
-    requireNonNull(fields, "fields is null");
-    requireNonNull(symbolAllocator, "symbolAllocator is null");
+    requireNonNull(plan, DataNodeQueryMessages.EXCEPTION_PLAN_IS_NULL_717C9DF7);
+    requireNonNull(fields, DataNodeQueryMessages.EXCEPTION_FIELDS_IS_NULL_DE209DBF);
+    requireNonNull(
+        symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
 
     Visitor visitor = new Visitor(metadata, mapping -> symbolReallocator(mapping, symbolAllocator));
     PlanAndMappings result = plan.accept(visitor, UnaliasContext.empty());
@@ -151,8 +154,11 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     private final Function<Map<Symbol, Symbol>, SymbolMapper> mapperProvider;
 
     public Visitor(Metadata metadata, Function<Map<Symbol, Symbol>, SymbolMapper> mapperProvider) {
-      this.metadata = requireNonNull(metadata, "metadata is null");
-      this.mapperProvider = requireNonNull(mapperProvider, "mapperProvider is null");
+      this.metadata =
+          requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
+      this.mapperProvider =
+          requireNonNull(
+              mapperProvider, DataNodeQueryMessages.EXCEPTION_MAPPERPROVIDER_IS_NULL_472725D5);
     }
 
     private SymbolMapper symbolMapper(Map<Symbol, Symbol> mappings) {
@@ -162,7 +168,9 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     @Override
     public PlanAndMappings visitPlan(PlanNode node, UnaliasContext context) {
       throw new UnsupportedOperationException(
-          "Unsupported plan node " + node.getClass().getSimpleName());
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_PLAN_NODE_S_72DD2270,
+              node.getClass().getSimpleName()));
     }
 
     @Override
@@ -1245,7 +1253,10 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     private final Map<Symbol, Symbol> correlationMapping;
 
     public UnaliasContext(Map<Symbol, Symbol> correlationMapping) {
-      this.correlationMapping = requireNonNull(correlationMapping, "correlationMapping is null");
+      this.correlationMapping =
+          requireNonNull(
+              correlationMapping,
+              DataNodeQueryMessages.EXCEPTION_CORRELATIONMAPPING_IS_NULL_9D595C82);
     }
 
     public static UnaliasContext empty() {
@@ -1262,8 +1273,10 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     private final Map<Symbol, Symbol> mappings;
 
     public PlanAndMappings(PlanNode root, Map<Symbol, Symbol> mappings) {
-      this.root = requireNonNull(root, "root is null");
-      this.mappings = ImmutableMap.copyOf(requireNonNull(mappings, "mappings is null"));
+      this.root = requireNonNull(root, DataNodeQueryMessages.EXCEPTION_ROOT_IS_NULL_ECC8987D);
+      this.mappings =
+          ImmutableMap.copyOf(
+              requireNonNull(mappings, DataNodeQueryMessages.EXCEPTION_MAPPINGS_IS_NULL_23BD9025));
     }
 
     public PlanNode getRoot() {

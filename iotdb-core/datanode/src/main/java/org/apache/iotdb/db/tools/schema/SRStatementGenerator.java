@@ -401,7 +401,10 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
           } catch (final IOException ioException) {
             lastExcept = ioException;
             LOGGER.warn(
-                "Error when parse tag and attributes file of node path {}", path, ioException);
+                DataNodeMiscMessages
+                    .MISC_LOG_ERROR_WHEN_PARSE_TAG_AND_ATTRIBUTES_FILE_OF_NODE_PATH_D1492217,
+                path,
+                ioException);
           }
         }
         return statementList;
@@ -502,7 +505,10 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
           } catch (final IOException ioException) {
             lastExcept = ioException;
             LOGGER.warn(
-                "Error when parse tag and attributes file of node path {}", path, ioException);
+                DataNodeMiscMessages
+                    .MISC_LOG_ERROR_WHEN_PARSE_TAG_AND_ATTRIBUTES_FILE_OF_NODE_PATH_D1492217,
+                path,
+                ioException);
           }
           measurement.getAsMeasurementMNode().setOffset(0);
         } else {

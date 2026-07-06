@@ -22,6 +22,7 @@ package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class MeasurementInBlackListException extends MetadataException {
@@ -30,7 +31,7 @@ public class MeasurementInBlackListException extends MetadataException {
 
   public MeasurementInBlackListException(PartialPath path) {
     super(
-        String.format("Some task is deleting timeseries [%s]", path),
+        String.format(DataNodeSchemaMessages.SOME_TASK_DELETING_TIMESERIES_FMT, path),
         TSStatusCode.TIMESERIES_IN_BLACK_LIST.getStatusCode());
     this.path = path;
   }

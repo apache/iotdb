@@ -65,7 +65,9 @@ public abstract class PipeTsFileBuilder {
       this.batchFileBaseDir = getNextBaseDir();
     } catch (final Exception e) {
       throw new PipeException(
-          String.format("Failed to create file dir for batch: %s", e.getMessage()));
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_FAILED_TO_CREATE_FILE_DIR_FOR_BATCH_S_8FCD9125,
+              e.getMessage()));
     }
   }
 
@@ -107,7 +109,10 @@ public abstract class PipeTsFileBuilder {
         return baseDir;
       }
       throw new PipeException(
-          String.format("Failed to create batch file dir. (Batch id = %s)", currentBatchId.get()));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_CREATE_BATCH_FILE_DIR_BATCH_ID_S_EA8BE86C,
+              currentBatchId.get()));
     }
   }
 

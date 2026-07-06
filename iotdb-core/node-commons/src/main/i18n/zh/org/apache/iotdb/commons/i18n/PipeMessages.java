@@ -255,6 +255,12 @@ public final class PipeMessages {
   // ===================== PipeTaskAgent =====================
 
   public static final String NOT_ENOUGH_MEMORY_FOR_PIPE = "pipe 内存不足。";
+  public static final String NOT_ENOUGH_MEMORY_FOR_PIPE_FORMAT =
+      NOT_ENOUGH_MEMORY_FOR_PIPE
+          + "需要内存：%d 字节，空闲内存：%d 字节，保留内存：%d 字节，"
+          + "总内存：%d 字节";
+  public static final String NOT_ENOUGH_FLOATING_MEMORY_FOR_PIPE_FORMAT =
+      NOT_ENOUGH_MEMORY_FOR_PIPE + "需要浮动内存：%d 字节，空闲浮动内存：%d 字节";
   public static final String UNKNOWN_PIPE_STATUS = "Pipe %s 的状态 %s 未知";
   public static final String UNEXPECTED_PIPE_STATUS = "意外的 pipe 状态 %s：";
   public static final String INTERRUPTED_ACQUIRING_READ_LOCK =
@@ -709,6 +715,7 @@ public final class PipeMessages {
       "用户冲突异常：重试超时。将被忽略。事件：{}。状态：{}";
   public static final String USER_CONFLICT_WILL_RETRY =
       "用户冲突异常：将重试 {}。状态：{}";
+  public static final String MESSAGE_FOR_AT_LEAST_ADE37405 = "至少 ";
   public static final String USER_CONFLICT_NOT_ALLOWED =
       "用户冲突异常：因不允许重试而被忽略。事件：{}。状态：{}";
   public static final String OTHER_EXCEPTION_RETRY_TIMEOUT =
@@ -852,5 +859,60 @@ public final class PipeMessages {
       "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}";
   public static final String CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES =
       "SubscriptionMetaSyncerSyncIntervalMinutes: {}";
+
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_UNSUPPORTED_PIPERUNTIMEEXCEPTION_TYPE_ARG_C5D5D84C = "不支持的 PipeRuntimeException 类型 %s.";
+  public static final String LOG_SUBSCRIPTIONENABLED_ARG_6F9EC0F9 = "SubscriptionEnabled: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSPREFETCHEXECUTORMAXTHREADNUM_ARG_94D0BD76 = "SubscriptionConsensusPrefetchExecutorMaxThreadNum: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXDELAYINMS_ARG_38C2CB8B = "SubscriptionConsensusBatchMaxDelayInMs: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXSIZEINBYTES_ARG_F8D28441 = "SubscriptionConsensusBatchMaxSizeInBytes: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXTABLETCOUNT_ARG_60BB1D6A = "SubscriptionConsensusBatchMaxTabletCount: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXWALENTRIES_ARG_9BF1CAE4 = "SubscriptionConsensusBatchMaxWalEntries: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSIDLESAFETIMEBARRIERINTERVALMS_ARG_A6944544 = "SubscriptionConsensusIdleSafeTimeBarrierIntervalMs: {}";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_LENGTH_EBC10484 = "读取 region progress key 长度时遇到意外 EOF";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE = "读取 region progress key 时遇到意外 EOF";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0 = "读取 region progress value 长度时遇到意外 EOF";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521 = "读取 region progress value 时遇到意外 EOF";
+  public static final String EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87 = "添加 subscription 到 consumer group meta 失败：consumer %s 不存在于 consumer group %s";
+  public static final String EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3 = "从 consumer group meta 移除 subscription 失败：consumer %s 不存在于 consumer group %s";
+  public static final String EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8 = "路径模式 %s 对 source 无效。仅允许前缀或完整路径。";
+  public static final String EXCEPTION_CAPTURE_TREE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_29A08445 = "启用 double living 时，capture.tree 不能指定为 false";
+  public static final String EXCEPTION_CAPTURE_TABLE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_8AEB8F7B = "启用 double living 时，capture.table 不能指定为 false";
+  public static final String EXCEPTION_FORWARDING_PIPE_REQUESTS_CAN_NOT_SPECIFIED_TRUE_DOUBLE_LIVING_ENABLED_B000E8A1 = "启用 double living 时，forwarding-pipe-requests 不能指定为 true";
+  public static final String EXCEPTION_PARAMETERS_SET_ARG_NOT_ALLOWED_SKIPIF_2B9AA054 = "参数集 %s 中的参数不允许用于 'skipif'";
+  public static final String LOG_USER_CONFLICT_EXCEPTION_DISCARDED_DATA_INFO_BECAUSE_ARG_DATA_ARG_CCE510A5 = "用户冲突异常：已丢弃数据信息，原因：{}。数据：{}。接收端消息：{}。状态：{}";
+  public static final String LOG_RE_INCREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_B8DAAAEE = "对已释放的 event 重新增加引用计数：{}，堆栈跟踪：{}";
+  public static final String LOG_INCREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_94C472FC = "增加引用计数失败，EnrichedEvent: {}，堆栈跟踪: {}";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_STACK_99FCAB8B = "减少已释放 event 的引用计数：{}，堆栈跟踪：{}";
+  public static final String LOG_RESOURCE_REFERENCE_COUNT_DECREASED_0_BUT_FAILED_RELEASE_RESOURCE_ENRICHEDEVENT_A02A86AF =
+      "资源引用计数已降为 0，但释放资源失败，EnrichedEvent：{}，堆栈跟踪：{}";
+  public static final String LOG_REFERENCE_COUNT_DECREASED_ARG_EVENT_ARG_STACK_TRACE_ARG_A4BF56FC = "引用计数已降至 {}，event: {}，堆栈跟踪: {}";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_6A2024AB = "减少引用计数失败，EnrichedEvent: {}，堆栈跟踪: {}";
+  public static final String LOG_BROKEN_INVARIANT_DETECT_INVISIBLE_EXTRACTOR_PARAMETERS_ARG_ADAD3038 = "不变量被破坏：检测到不可见的 extractor 参数 {}";
+  public static final String LOG_UNKNOWN_PATTERN_FORMAT_ARG_USE_PREFIX_MATCHING_FORMAT_DEFAULT_E7B9EFEC = "未知模式格式：{}，默认使用前缀匹配格式。";
+  public static final String LOG_PIPE_LISTENING_QUEUE_SNAPSHOT_CACHE_UPDATED_ARG_414EE914 = "Pipe listening queue 快照缓存已更新：{}";
+  public static final String LOG_FAILED_SERIALIZE_FILE_BECAUSE_FILE_ARG_ALREADY_EXIST_FACC5C4C = "序列化到文件失败，原因：文件 {} 已存在。";
+  public static final String LOG_FAILED_DESERIALIZE_FILE_FILE_ARG_DOES_NOT_EXIST_2356708C = "从文件反序列化失败，文件 {} 不存在。";
+  public static final String EXCEPTION_UNKNOWN_PIPE_RUNTIME_META_VERSION_C2F4B575 = "未知的 pipe runtime meta 版本: ";
+  public static final String EXCEPTION_ROOT_CAUSE_A22E94DE = "，根本原因: ";
+  public static final String LOG_SUCCESSFULLY_EXECUTED_SUBTASK_ARG_ARG_AFTER_ARG_RETRIES_70972F07 = "重试 {} 次后成功执行 subtask {}({})。";
+  public static final String EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGINMETAKEEPER_NULL_0C9BD2E2 = "反射 PipePlugin 实例失败，原因：PipePluginMetaKeeper 为空。";
+  public static final String EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PLUGIN_NAME_NULL_416BD04D = "反射 PipePlugin 实例失败，原因：插件名为空。";
+  public static final String LOG_IOTDBSINK_ARG_ARG_4E140C06 = "IoTDBSink {} = {}";
+  public static final String EXCEPTION_SOCKET_ARG_CLOSED_WILL_TRY_HANDSHAKE_02562BF1 = "Socket %s 已关闭，将尝试握手";
+  public static final String EXCEPTION_NETWORK_ERROR_TRANSFER_FILE_ARG_BECAUSE_ARG_BC25323C = "传输文件 %s 时发生网络错误，原因：%s。";
+  public static final String LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE = "Origin request type 不匹配：期望 {}，实际 {}";
+  public static final String LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75 = "Origin body size 不匹配：期望 {}，实际 {}";
+  public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "无效的 slice index：期望 {}，实际 {}";
+  public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "解压后长度应介于 0 和 %d 之间，但实际为 %d。";
+  public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
+  public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 = "未找到 DataPartitionTable 生成任务";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_IN_PROGRESS_ARGPCTPCT_F433CBA8 = "DataPartitionTable 生成进行中：%.1f%%";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable 生成已成功完成";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable 生成失败：";
+  public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "未知任务状态：";
+  public static final String MESSAGE_PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_54E0E369 = "PipePeriodicalLogReducer 已分配 {} 字节。";
 
 }

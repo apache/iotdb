@@ -153,7 +153,7 @@ public abstract class WALEntry implements SerializedSize {
    */
   public static PlanNode deserializeForConsensus(ByteBuffer buffer) {
     logger.debug(
-        "buffer capacity is: {}, limit is: {}, position is: {}",
+        StorageEngineMessages.STORAGE_LOG_BUFFER_CAPACITY_IS_LIMIT_IS_POSITION_IS_911625D8,
         buffer.capacity(),
         buffer.limit(),
         buffer.position());

@@ -50,7 +50,7 @@ public class LongLiteral extends Literal {
   }
 
   public LongLiteral(NodeLocation location, String value) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     try {
       this.value = value;
       this.parsedValue = parse(value);

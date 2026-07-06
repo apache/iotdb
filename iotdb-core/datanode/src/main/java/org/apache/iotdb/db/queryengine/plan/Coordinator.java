@@ -273,7 +273,8 @@ public class Coordinator {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Initialized shared MemoryBlock 'Coordinator' with all available memory: {} bytes",
+          DataNodeQueryMessages
+              .INITIALIZED_SHARED_MEMORYBLOCK_COORDINATOR_WITH_ALL_AVAILABLE_MEMORY_ARG_BYTES,
           coordinatorMemoryBlock.getTotalMemorySizeInBytes());
     }
   }
@@ -764,7 +765,8 @@ public class Coordinator {
       PreparedStatementInfo preparedInfo = clientSession.getPreparedStatement(statementName);
       if (preparedInfo == null) {
         throw new SemanticException(
-            String.format("Prepared statement '%s' does not exist", statementName));
+            String.format(
+                DataNodeQueryMessages.PREPARED_STATEMENT_S_DOES_NOT_EXIST, statementName));
       }
 
       org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement resolvedSql =
