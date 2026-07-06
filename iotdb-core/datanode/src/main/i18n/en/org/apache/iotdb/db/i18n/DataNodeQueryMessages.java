@@ -1677,14 +1677,10 @@ public final class DataNodeQueryMessages {
       "The column '";
   public static final String DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
       "' does not exist or is not a tag column";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
-      "The right hand value of time predicate must be a long: ";
   public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_LT_LT_EQ_GT_OR_GT_EQ =
       "The operator of time predicate must be <, <=, >, or >=: ";
   public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_EQ_OPERATOR_PLEASE_USE_IS_NULL =
       "The right hand value of tag predicate cannot be null with '=' operator, please use 'IS NULL' instead";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
-      "The right hand value of tag predicate must be a string: ";
   public static final String SELECT_INTO_PLACEHOLDER_CAN_ONLY_BE_USED_AT_THE_END_OF_THE_PATH =
       "select into: placeholder `::` can only be used at the end of the path.";
   public static final String SELECT_INTO_THE_I_OF_DOLLAR_I_SHOULD_BE_GREATER_THAN_0_AND_EQUAL_TO_OR_LESS_THAN_THE =
