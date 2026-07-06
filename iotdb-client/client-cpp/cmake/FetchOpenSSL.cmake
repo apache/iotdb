@@ -257,6 +257,10 @@ elseif(APPLE)
             INTERFACE_INCLUDE_DIRECTORIES "${_tongsuo_inst}/include"
             INTERFACE_LINK_LIBRARIES OpenSSL::Crypto)
 
+    set(OPENSSL_SSL_LIBRARY "${_iotdb_tongsuo_ssl}" CACHE FILEPATH "" FORCE)
+    set(OPENSSL_CRYPTO_LIBRARY "${_iotdb_tongsuo_crypto}" CACHE FILEPATH "" FORCE)
+    set(OPENSSL_VERSION_MAJOR 3 CACHE STRING "" FORCE)
+
     include(TongsuoOpenSslHeaders)
     iotdb_setup_tongsuo_openssl_headers("${_tongsuo_inst}/include")
 else()
