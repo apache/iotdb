@@ -222,38 +222,46 @@ set(OPENSSL_ROOT_DIR "${_tongsuo_inst}" CACHE PATH "Tongsuo install root" FORCE)
 set(OPENSSL_INCLUDE_DIR "${_tongsuo_inst}/include" CACHE PATH "Tongsuo headers" FORCE)
 set(OPENSSL_USE_STATIC_LIBS OFF)
 
-find_library(_iotdb_tongsuo_ssl NAMES ssl libssl libssl-3 libssl-3-x64
-        PATHS "${_tongsuo_inst}/lib" "${_tongsuo_inst}/lib64"
-        NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
-find_library(_iotdb_tongsuo_crypto NAMES crypto libcrypto libcrypto-3 libcrypto-3-x64
-        PATHS "${_tongsuo_inst}/lib" "${_tongsuo_inst}/lib64"
-        NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
-if(NOT _iotdb_tongsuo_ssl OR NOT _iotdb_tongsuo_crypto)
-    message(FATAL_ERROR
-            "[Tongsuo] libssl/libcrypto not found under ${_tongsuo_inst}/lib")
+if(WIN32)
+    # MSVC needs FindOpenSSL imported targets (IMPORTED_IMPLIB + DLL). Hand-rolled
+    # SHARED IMPORTED targets break the link line (LNK1104: OpenSSL::SSL-NOTFOUND.obj).
+    find_package(OpenSSL REQUIRED)
+elseif(APPLE)
+    # macOS CI runners ship Homebrew/Xcode OpenSSL headers on the default include
+    # path; find_package would satisfy version checks but still compile against the
+    # wrong headers. Link against the bundled Tongsuo libs and route <openssl/*.h>
+    # through generated wrapper headers (see TongsuoOpenSslHeaders.cmake).
+    find_library(_iotdb_tongsuo_ssl NAMES ssl libssl
+            PATHS "${_tongsuo_inst}/lib" "${_tongsuo_inst}/lib64"
+            NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+    find_library(_iotdb_tongsuo_crypto NAMES crypto libcrypto
+            PATHS "${_tongsuo_inst}/lib" "${_tongsuo_inst}/lib64"
+            NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+    if(NOT _iotdb_tongsuo_ssl OR NOT _iotdb_tongsuo_crypto)
+        message(FATAL_ERROR
+                "[Tongsuo] libssl/libcrypto not found under ${_tongsuo_inst}/lib")
+    endif()
+
+    if(NOT TARGET OpenSSL::Crypto)
+        add_library(OpenSSL::Crypto SHARED IMPORTED)
+    endif()
+    set_target_properties(OpenSSL::Crypto PROPERTIES
+            IMPORTED_LOCATION "${_iotdb_tongsuo_crypto}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_tongsuo_inst}/include")
+
+    if(NOT TARGET OpenSSL::SSL)
+        add_library(OpenSSL::SSL SHARED IMPORTED)
+    endif()
+    set_target_properties(OpenSSL::SSL PROPERTIES
+            IMPORTED_LOCATION "${_iotdb_tongsuo_ssl}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_tongsuo_inst}/include"
+            INTERFACE_LINK_LIBRARIES OpenSSL::Crypto)
+
+    include(TongsuoOpenSslHeaders)
+    iotdb_setup_tongsuo_openssl_headers("${_tongsuo_inst}/include")
+else()
+    find_package(OpenSSL REQUIRED)
 endif()
-
-if(NOT TARGET OpenSSL::Crypto)
-    add_library(OpenSSL::Crypto SHARED IMPORTED)
-endif()
-set_target_properties(OpenSSL::Crypto PROPERTIES
-        IMPORTED_LOCATION "${_iotdb_tongsuo_crypto}"
-        INTERFACE_INCLUDE_DIRECTORIES "${_tongsuo_inst}/include")
-
-if(NOT TARGET OpenSSL::SSL)
-    add_library(OpenSSL::SSL SHARED IMPORTED)
-endif()
-set_target_properties(OpenSSL::SSL PROPERTIES
-        IMPORTED_LOCATION "${_iotdb_tongsuo_ssl}"
-        INTERFACE_INCLUDE_DIRECTORIES "${_tongsuo_inst}/include"
-        INTERFACE_LINK_LIBRARIES OpenSSL::Crypto)
-
-set(OPENSSL_SSL_LIBRARY "${_iotdb_tongsuo_ssl}" CACHE FILEPATH "" FORCE)
-set(OPENSSL_CRYPTO_LIBRARY "${_iotdb_tongsuo_crypto}" CACHE FILEPATH "" FORCE)
-set(OPENSSL_VERSION_MAJOR 3 CACHE STRING "" FORCE)
-
-include(TongsuoOpenSslHeaders)
-iotdb_setup_tongsuo_openssl_headers("${_tongsuo_inst}/include")
 
 message(STATUS "[Tongsuo] built from source (shared) at ${OPENSSL_ROOT_DIR}")
 message(STATUS "[Tongsuo] OPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")

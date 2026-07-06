@@ -197,7 +197,14 @@ endif()
 
 if(WITH_SSL)
     target_link_libraries(iotdb_session PUBLIC
-            OpenSSL::SSL OpenSSL::Crypto iotdb_tongsuo_openssl_wrap)
+            OpenSSL::SSL OpenSSL::Crypto)
+    if(TARGET iotdb_tongsuo_openssl_wrap)
+        target_link_libraries(iotdb_session PUBLIC iotdb_tongsuo_openssl_wrap)
+        # BEFORE on a linked INTERFACE target does not always win over Homebrew's
+        # default -isystem paths on macOS; apply the wrap directory directly.
+        target_include_directories(iotdb_session BEFORE PUBLIC
+                "${IOTDB_TONGSUO_OPENSSL_WRAP_DIR}")
+    endif()
     target_compile_definitions(iotdb_session PUBLIC WITH_SSL=1)
 else()
     target_compile_definitions(iotdb_session PUBLIC WITH_SSL=0)

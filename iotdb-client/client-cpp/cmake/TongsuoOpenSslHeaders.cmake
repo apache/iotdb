@@ -42,4 +42,5 @@ function(iotdb_setup_tongsuo_openssl_headers _tongsuo_include_dir)
         target_include_directories(iotdb_tongsuo_openssl_wrap BEFORE INTERFACE
                 "${_wrap_dir}")
     endif()
+    set(IOTDB_TONGSUO_OPENSSL_WRAP_DIR "${_wrap_dir}" PARENT_SCOPE)
 endfunction()
