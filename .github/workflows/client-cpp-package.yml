@@ -317,6 +317,8 @@ jobs:
           echo "$(brew --prefix perl)/bin" >> "$GITHUB_PATH"
           clang-format --version
           bison --version
+          perl --version
+          perl -MLocale::Maketext::Simple -e1
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
@@ -523,8 +525,12 @@ jobs:
           test -n "${PKG_ROOT}"
           EXAMPLE_BUILD="${TEMP_BASE}/client-cpp-example-smoke"
           CMAKE_ARGS=(-S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" -DIOTDB_SDK_ROOT="${PKG_ROOT}")
-          if [ -n "${CMAKE_GENERATOR:-}" ]; then
-            CMAKE_ARGS+=(-G "${CMAKE_GENERATOR}")
+          GENERATOR="${CMAKE_GENERATOR:-}"
+          if [ "${RUNNER_OS}" = "Windows" ] && [ -z "${GENERATOR}" ]; then
+            GENERATOR="Visual Studio 17 2022"
+          fi
+          if [ -n "${GENERATOR}" ]; then
+            CMAKE_ARGS+=(-G "${GENERATOR}")
             # windows-x86_64 SDK; VS2017/2019 default to Win32 without -A x64 (see client-cpp pom).
             CMAKE_ARGS+=(-A x64)
           fi

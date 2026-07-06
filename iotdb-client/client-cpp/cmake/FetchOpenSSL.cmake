@@ -177,9 +177,21 @@ if(NOT EXISTS "${_tongsuo_stamp}")
             message(FATAL_ERROR "[Tongsuo] nmake install_sw failed (rc=${_rc})")
         endif()
     else()
+        find_program(PERL_EXECUTABLE NAMES perl REQUIRED)
+        message(STATUS "[Tongsuo] using Perl: ${PERL_EXECUTABLE}")
+        set(_tongsuo_config_args
+                --prefix=${_tongsuo_inst}
+                --openssldir=${_tongsuo_inst}/ssl
+                shared
+                enable-ntls)
+        # Assembly optimizations often fail on macOS CI toolchains; match the
+        # Windows VC-WIN64A build which already passes no-asm.
+        if(APPLE)
+            list(APPEND _tongsuo_config_args no-asm)
+        endif()
         message(STATUS "[Tongsuo] configuring -> ${_tongsuo_inst}")
         execute_process(
-                COMMAND ./config --prefix=${_tongsuo_inst} --openssldir=${_tongsuo_inst}/ssl shared enable-ntls
+                COMMAND "${PERL_EXECUTABLE}" ./config ${_tongsuo_config_args}
                 WORKING_DIRECTORY "${_tongsuo_src}"
                 RESULT_VARIABLE _rc)
         if(NOT _rc EQUAL 0)
