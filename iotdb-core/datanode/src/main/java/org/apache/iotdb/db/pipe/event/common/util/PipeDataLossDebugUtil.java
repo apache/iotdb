@@ -31,6 +31,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -40,6 +41,8 @@ public final class PipeDataLossDebugUtil {
   public static final String PREFIX = "[PipeDataLossDebug]";
 
   private static final int MAX_PRINTED_MEASUREMENTS = 16;
+  private static final int MAX_PRINTED_STATEMENTS = 16;
+  private static final int MAX_PRINTED_STATUSES = 16;
 
   private PipeDataLossDebugUtil() {}
 
@@ -55,6 +58,7 @@ public final class PipeDataLossDebugUtil {
     final int rowSize = tablet.getRowSize();
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final int schemaSize = Objects.isNull(schemas) ? 0 : schemas.size();
+    final long markedNullCells = countMarkedCells(tablet.getBitMaps(), rowSize);
     final long[] timestamps = tablet.getTimestamps();
     final String firstTime =
         rowSize > 0 && Objects.nonNull(timestamps) && timestamps.length > 0
@@ -71,6 +75,8 @@ public final class PipeDataLossDebugUtil {
         + rowSize
         + ", schemaSize="
         + schemaSize
+        + ", dataPointCount="
+        + countDataPoints(rowSize, schemaSize, markedNullCells)
         + ", measurements="
         + formatMeasurements(schemas)
         + ", firstTime="
@@ -78,7 +84,7 @@ public final class PipeDataLossDebugUtil {
         + ", lastTime="
         + lastTime
         + ", markedNullCells="
-        + countMarkedCells(tablet.getBitMaps(), rowSize);
+        + markedNullCells;
   }
 
   public static String formatStatement(final Statement statement) {
@@ -88,6 +94,10 @@ public final class PipeDataLossDebugUtil {
 
     if (statement instanceof InsertTabletStatement) {
       final InsertTabletStatement insertTabletStatement = (InsertTabletStatement) statement;
+      final int rowCount = insertTabletStatement.getRowCount();
+      final int measurementCount = measurementCount(insertTabletStatement.getMeasurements());
+      final long markedNullCells =
+          countMarkedCells(insertTabletStatement.getBitMaps(), insertTabletStatement.getRowCount());
       return "type="
           + statement.getType()
           + ", database="
@@ -97,16 +107,19 @@ public final class PipeDataLossDebugUtil {
           + ", device="
           + insertTabletStatement.getDevicePath()
           + ", rowCount="
-          + insertTabletStatement.getRowCount()
+          + rowCount
+          + ", measurementCount="
+          + measurementCount
+          + ", dataPointCount="
+          + countDataPoints(rowCount, measurementCount, markedNullCells)
           + ", measurements="
           + formatMeasurements(insertTabletStatement.getMeasurements())
           + ", firstTime="
-          + firstTime(insertTabletStatement.getTimes(), insertTabletStatement.getRowCount())
+          + firstTime(insertTabletStatement.getTimes(), rowCount)
           + ", lastTime="
-          + lastTime(insertTabletStatement.getTimes(), insertTabletStatement.getRowCount())
+          + lastTime(insertTabletStatement.getTimes(), rowCount)
           + ", markedNullCells="
-          + countMarkedCells(
-              insertTabletStatement.getBitMaps(), insertTabletStatement.getRowCount())
+          + markedNullCells
           + ", failedMeasurements="
           + insertTabletStatement.getFailedMeasurements();
     }
@@ -124,6 +137,10 @@ public final class PipeDataLossDebugUtil {
           + statements.size()
           + ", totalRows="
           + statements.stream().mapToInt(InsertTabletStatement::getRowCount).sum()
+          + ", totalDataPointCount="
+          + statements.stream().mapToLong(s -> countDataPoints(s)).sum()
+          + ", totalMarkedNullCells="
+          + statements.stream().mapToLong(s -> countMarkedCells(s)).sum()
           + ", firstTablet={"
           + (statements.isEmpty() ? "null" : formatStatement(statements.get(0)))
           + "}";
@@ -136,7 +153,11 @@ public final class PipeDataLossDebugUtil {
           + ", database="
           + insertRowsStatement.getDatabaseName().orElse(null)
           + ", rowStatementCount="
-          + insertRowsStatement.getInsertRowStatementList().size();
+          + insertRowsStatement.getInsertRowStatementList().size()
+          + ", totalDataPointCount="
+          + insertRowsStatement.getInsertRowStatementList().stream()
+              .mapToLong(s -> countDataPoints(s))
+              .sum();
     }
 
     if (statement instanceof InsertRowStatement) {
@@ -149,6 +170,10 @@ public final class PipeDataLossDebugUtil {
           + insertRowStatement.getDevicePath()
           + ", time="
           + insertRowStatement.getTime()
+          + ", measurementCount="
+          + measurementCount(insertRowStatement.getMeasurements())
+          + ", dataPointCount="
+          + countDataPoints(insertRowStatement)
           + ", measurements="
           + formatMeasurements(insertRowStatement.getMeasurements())
           + ", failedMeasurements="
@@ -156,6 +181,27 @@ public final class PipeDataLossDebugUtil {
     }
 
     return "type=" + statement.getType() + ", class=" + statement.getClass().getName();
+  }
+
+  public static String formatStatements(final Collection<? extends Statement> statements) {
+    if (Objects.isNull(statements)) {
+      return "statements=null";
+    }
+
+    return "statementCount="
+        + statements.size()
+        + ", totalRows="
+        + statements.stream().mapToLong(s -> countRows(s)).sum()
+        + ", totalDataPointCount="
+        + statements.stream().mapToLong(s -> countDataPoints(s)).sum()
+        + ", totalMarkedNullCells="
+        + statements.stream().mapToLong(s -> countMarkedCells(s)).sum()
+        + ", samples="
+        + statements.stream()
+            .limit(MAX_PRINTED_STATEMENTS)
+            .map(PipeDataLossDebugUtil::formatStatement)
+            .collect(Collectors.toList())
+        + (statements.size() > MAX_PRINTED_STATEMENTS ? "...(" + statements.size() + ")" : "");
   }
 
   public static String formatStatus(final TSStatus status) {
@@ -168,6 +214,28 @@ public final class PipeDataLossDebugUtil {
         + status.getSubStatusSize()
         + ", message="
         + status.getMessage();
+  }
+
+  public static String formatStatuses(final Collection<TSStatus> statuses) {
+    if (Objects.isNull(statuses)) {
+      return "statuses=null";
+    }
+
+    return statuses.stream()
+            .limit(MAX_PRINTED_STATUSES)
+            .map(PipeDataLossDebugUtil::formatStatus)
+            .collect(Collectors.toList())
+        + (statuses.size() > MAX_PRINTED_STATUSES ? "...(" + statuses.size() + ")" : "");
+  }
+
+  public static long countDataPoints(final Tablet tablet) {
+    if (Objects.isNull(tablet)) {
+      return 0;
+    }
+    return countDataPoints(
+        tablet.getRowSize(),
+        Objects.isNull(tablet.getSchemas()) ? 0 : tablet.getSchemas().size(),
+        countMarkedCells(tablet.getBitMaps(), tablet.getRowSize()));
   }
 
   public static long countMarkedCells(final BitMap[] bitMaps, final int rowSize) {
@@ -189,12 +257,87 @@ public final class PipeDataLossDebugUtil {
     return count;
   }
 
+  private static long countRows(final Statement statement) {
+    if (statement instanceof InsertTabletStatement) {
+      return ((InsertTabletStatement) statement).getRowCount();
+    }
+    if (statement instanceof InsertMultiTabletsStatement) {
+      return ((InsertMultiTabletsStatement) statement)
+          .getInsertTabletStatementList().stream()
+              .mapToLong(InsertTabletStatement::getRowCount)
+              .sum();
+    }
+    if (statement instanceof InsertRowsStatement) {
+      return ((InsertRowsStatement) statement).getInsertRowStatementList().size();
+    }
+    if (statement instanceof InsertRowStatement) {
+      return 1;
+    }
+    return 0;
+  }
+
+  private static long countDataPoints(final Statement statement) {
+    if (statement instanceof InsertTabletStatement) {
+      return countDataPoints((InsertTabletStatement) statement);
+    }
+    if (statement instanceof InsertMultiTabletsStatement) {
+      return ((InsertMultiTabletsStatement) statement)
+          .getInsertTabletStatementList().stream().mapToLong(s -> countDataPoints(s)).sum();
+    }
+    if (statement instanceof InsertRowsStatement) {
+      return ((InsertRowsStatement) statement)
+          .getInsertRowStatementList().stream().mapToLong(s -> countDataPoints(s)).sum();
+    }
+    if (statement instanceof InsertRowStatement) {
+      return countDataPoints((InsertRowStatement) statement);
+    }
+    return 0;
+  }
+
+  private static long countDataPoints(final InsertTabletStatement statement) {
+    final int rowCount = statement.getRowCount();
+    return countDataPoints(
+        rowCount,
+        measurementCount(statement.getMeasurements()),
+        countMarkedCells(statement.getBitMaps(), rowCount));
+  }
+
+  private static long countDataPoints(final InsertRowStatement statement) {
+    return Math.max(0, measurementCount(statement.getMeasurements()));
+  }
+
+  private static long countDataPoints(
+      final int rowCount, final int measurementCount, final long markedNullCells) {
+    return Math.max(0, (long) rowCount * measurementCount - markedNullCells);
+  }
+
+  private static long countMarkedCells(final Statement statement) {
+    if (statement instanceof InsertTabletStatement) {
+      final InsertTabletStatement insertTabletStatement = (InsertTabletStatement) statement;
+      return countMarkedCells(
+          insertTabletStatement.getBitMaps(), insertTabletStatement.getRowCount());
+    }
+    if (statement instanceof InsertMultiTabletsStatement) {
+      return ((InsertMultiTabletsStatement) statement)
+          .getInsertTabletStatementList().stream().mapToLong(s -> countMarkedCells(s)).sum();
+    }
+    return 0;
+  }
+
+  private static long countMarkedCells(final InsertTabletStatement statement) {
+    return countMarkedCells(statement.getBitMaps(), statement.getRowCount());
+  }
+
   private static String safeGetDeviceId(final Tablet tablet) {
     try {
       return tablet.getDeviceId();
     } catch (final Exception e) {
       return "unknown";
     }
+  }
+
+  private static int measurementCount(final String[] measurements) {
+    return Objects.isNull(measurements) ? 0 : measurements.length;
   }
 
   private static String formatMeasurements(final List<IMeasurementSchema> schemas) {

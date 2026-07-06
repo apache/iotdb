@@ -316,13 +316,15 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       if (LOGGER.isDebugEnabled()) {
         final int measurementCount =
             filteredDeviceMeasurementsMap.values().stream().mapToInt(List::size).sum();
+        final long metadataPointCount = countMetadataPoints(filteredDeviceMeasurementsMap);
         LOGGER.debug(
-            "{} query parser selected timeseries, {}, tsFile={}, deviceCount={}, measurementCount={}, isWithMod={}, pattern={}",
+            "{} query parser selected timeseries, {}, tsFile={}, deviceCount={}, measurementCount={}, metadataPointCount={}, isWithMod={}, pattern={}",
             PipeDataLossDebugUtil.PREFIX,
             PipeDataLossDebugUtil.formatPipe(pipeName, creationTime),
             tsFile.getAbsolutePath(),
             filteredDeviceMeasurementsMap.size(),
             measurementCount,
+            metadataPointCount,
             isWithMod,
             treePattern);
         filteredDeviceMeasurementsMap.forEach(
@@ -389,6 +391,24 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                         + "}"));
       } catch (final Exception e) {
         result.add(measurement + "{failedToReadStatistics=" + e.getMessage() + "}");
+      }
+    }
+    return result;
+  }
+
+  private long countMetadataPoints(final Map<IDeviceID, List<String>> deviceMeasurementsMap) {
+    long result = 0;
+    for (final Map.Entry<IDeviceID, List<String>> entry : deviceMeasurementsMap.entrySet()) {
+      for (final String measurement : entry.getValue()) {
+        try {
+          final TimeseriesMetadata metadata =
+              tsFileSequenceReader.readTimeseriesMetadata(entry.getKey(), measurement, true);
+          if (Objects.nonNull(metadata)) {
+            result += metadata.getStatistics().getCount();
+          }
+        } catch (final Exception ignored) {
+          // The per-measurement metadata debug log records the failure details.
+        }
       }
     }
     return result;

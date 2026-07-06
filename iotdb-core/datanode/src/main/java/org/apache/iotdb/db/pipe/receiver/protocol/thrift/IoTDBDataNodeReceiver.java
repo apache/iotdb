@@ -477,41 +477,71 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp handleTransferTabletInsertNode(
       final PipeTransferTabletInsertNodeReq req) {
     final InsertBaseStatement statement = req.constructStatement();
-    return new TPipeTransferResp(
+    final TSStatus status =
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
-            : executeStatementAndClassifyExceptions(statement));
+            : executeStatementAndClassifyExceptions(statement);
+    logReceiverStatement("insert-node", statement, status);
+    return new TPipeTransferResp(status);
   }
 
   private TPipeTransferResp handleTransferTabletBinary(final PipeTransferTabletBinaryReq req) {
     final InsertBaseStatement statement = req.constructStatement();
-    return new TPipeTransferResp(
+    final TSStatus status =
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
-            : executeStatementAndClassifyExceptions(statement));
+            : executeStatementAndClassifyExceptions(statement);
+    logReceiverStatement("binary", statement, status);
+    return new TPipeTransferResp(status);
   }
 
   private TPipeTransferResp handleTransferTabletRaw(final PipeTransferTabletRawReq req) {
     final InsertTabletStatement statement = req.constructStatement();
-    return new TPipeTransferResp(
+    final TSStatus status =
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
-            : executeStatementAndClassifyExceptions(statement));
+            : executeStatementAndClassifyExceptions(statement);
+    logReceiverStatement("raw", statement, status);
+    return new TPipeTransferResp(status);
+  }
+
+  private void logReceiverStatement(
+      final String requestType, final Statement statement, final TSStatus status) {
+    if (!LOGGER.isDebugEnabled()) {
+      return;
+    }
+
+    LOGGER.debug(
+        "{} receiver executed tablet {}, statement={}, status={}",
+        PipeDataLossDebugUtil.PREFIX,
+        requestType,
+        PipeDataLossDebugUtil.formatStatement(statement),
+        PipeDataLossDebugUtil.formatStatus(status));
   }
 
   private TPipeTransferResp handleTransferTabletBatch(final PipeTransferTabletBatchReq req) {
     final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
         req.constructStatements();
-    return new TPipeTransferResp(
-        PipeReceiverStatusHandler.getPriorStatus(
-            Stream.of(
-                    statementPair.getLeft().isEmpty()
-                        ? RpcUtils.SUCCESS_STATUS
-                        : executeBatchStatementAndAddRedirectInfo(statementPair.getLeft()),
-                    statementPair.getRight().isEmpty()
-                        ? RpcUtils.SUCCESS_STATUS
-                        : executeBatchStatementAndAddRedirectInfo(statementPair.getRight()))
-                .collect(Collectors.toList())));
+    final List<TSStatus> statusList =
+        Stream.of(
+                statementPair.getLeft().isEmpty()
+                    ? RpcUtils.SUCCESS_STATUS
+                    : executeBatchStatementAndAddRedirectInfo(statementPair.getLeft()),
+                statementPair.getRight().isEmpty()
+                    ? RpcUtils.SUCCESS_STATUS
+                    : executeBatchStatementAndAddRedirectInfo(statementPair.getRight()))
+            .collect(Collectors.toList());
+    final TSStatus priorStatus = PipeReceiverStatusHandler.getPriorStatus(statusList);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} receiver executed tablet batch, statements={}, statuses={}, priorStatus={}",
+          PipeDataLossDebugUtil.PREFIX,
+          PipeDataLossDebugUtil.formatStatements(
+              Arrays.asList(statementPair.getLeft(), statementPair.getRight())),
+          PipeDataLossDebugUtil.formatStatuses(statusList),
+          PipeDataLossDebugUtil.formatStatus(priorStatus));
+    }
+    return new TPipeTransferResp(priorStatus);
   }
 
   private TPipeTransferResp handleTransferTabletBatchV2(final PipeTransferTabletBatchReqV2 req) {
@@ -524,17 +554,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final TSStatus priorStatus = PipeReceiverStatusHandler.getPriorStatus(statusList);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "{} receiver executed tablet batch V2, statementCount={}, statements={}, statuses={}, priorStatus={}",
+          "{} receiver executed tablet batch V2, statements={}, statuses={}, priorStatus={}",
           PipeDataLossDebugUtil.PREFIX,
-          statementSet.size(),
-          statementSet.stream()
-              .limit(8)
-              .map(PipeDataLossDebugUtil::formatStatement)
-              .collect(Collectors.toList()),
-          statusList.stream()
-              .limit(8)
-              .map(PipeDataLossDebugUtil::formatStatus)
-              .collect(Collectors.toList()),
+          PipeDataLossDebugUtil.formatStatements(statementSet),
+          PipeDataLossDebugUtil.formatStatuses(statusList),
           PipeDataLossDebugUtil.formatStatus(priorStatus));
     }
     return new TPipeTransferResp(priorStatus);
