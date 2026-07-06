@@ -97,8 +97,12 @@
             <directory>${project.basedir}/examples</directory>
             <includes>
                 <include>CMakeLists.txt</include>
-                <include>*.c</include>
-                <include>*.cpp</include>
+                <include>SessionExample.cpp</include>
+                <include>AlignedTimeseriesSessionExample.cpp</include>
+                <include>TableModelSessionExample.cpp</include>
+                <include>MultiSvrNodeClient.cpp</include>
+                <include>tree_example.c</include>
+                <include>table_example.c</include>
             </includes>
             <outputDirectory>examples</outputDirectory>
         </fileSet>
