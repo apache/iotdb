@@ -913,6 +913,8 @@ public final class ProcedureMessages {
       "在 ConfigNode 上开始回滚重命名表 {}.{}";
   public static final String START_ROLLBACK_SET_PROPERTIES_TO_TABLE =
       "开始回滚设置表 {}.{} 的属性";
+  public static final String STATE_MACHINE_PROCEDURE_EOF_STATE_SKIP_EXECUTION =
+      "StateMachineProcedure pid={} 被 EOF 状态调度，跳过执行：{}";
   public static final String STATE_STUCK_AT = "状态卡在 ";
   public static final String STOPPIPEPROCEDUREV2_EXECUTEFROMCALCULATEINFOFORTASK =
       "StopPipeProcedureV2: executeFromCalculateInfoForTask({})";
