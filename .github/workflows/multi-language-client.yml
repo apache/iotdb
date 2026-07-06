@@ -6,6 +6,7 @@ on:
       - master
       - "rc/*"
     paths:
+      - 'pom.xml'
       - 'iotdb-client/pom.xml'
       - 'iotdb-client/client-py/**'
       - 'iotdb-client/client-cpp/**'
@@ -20,6 +21,7 @@ on:
       - "rc/*"
       - 'force_ci/**'
     paths:
+      - 'pom.xml'
       - 'iotdb-client/pom.xml'
       - 'iotdb-client/client-py/**'
       - 'iotdb-client/client-cpp/**'
@@ -80,7 +82,7 @@ jobs:
           go=false
           while IFS= read -r file; do
             case "$file" in
-              iotdb-client/pom.xml|iotdb-client/client-cpp/*|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/multi-language-client.yml|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
+              pom.xml|iotdb-client/pom.xml|iotdb-client/client-cpp/*|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/multi-language-client.yml|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
                 cpp=true
                 ;;
             esac

@@ -831,7 +831,7 @@
                             <exclude>**/db/qp/sql/gen/**</exclude>
                             <exclude>**/ainode-example/**</exclude>
                             <!-- C++ client SSL/NTLS test fixtures (generated PEM/P12 material) -->
-                            <exclude>iotdb-client/client-cpp/test/fixtures/**</exclude>
+                            <exclude>client-cpp/test/fixtures/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>

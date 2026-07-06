@@ -64,7 +64,7 @@ jobs:
           cpp=false
           while IFS= read -r file; do
             case "$file" in
-              iotdb-client/client-cpp/*|iotdb-client/pom.xml|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
+              pom.xml|iotdb-client/client-cpp/*|iotdb-client/pom.xml|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
                 cpp=true
                 break
                 ;;
