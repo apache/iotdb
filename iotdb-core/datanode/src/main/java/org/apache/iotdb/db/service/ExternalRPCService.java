@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.ProcessorWithMetrics;
 import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandler;
 import org.apache.iotdb.db.protocol.thrift.impl.IClientRPCServiceWithHandler;
@@ -81,7 +82,8 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
       } else if (commonConfig.isThriftSSLClientAuth()) {
         if (!hasText(commonConfig.getTrustStorePath())) {
           throw new IllegalAccessException(
-              "trust_store_path must be set when thrift_ssl_client_auth is true");
+              DataNodeMiscMessages
+                  .EXCEPTION_TRUST_STORE_PATH_MUST_BE_SET_WHEN_THRIFT_SSL_CLIENT_AUTH_IS_TRUE_36016171);
         }
         thriftServiceThread =
             new ThriftServiceThread(

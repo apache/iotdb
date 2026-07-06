@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -114,7 +115,9 @@ public class M4TableFunction implements TableFunction {
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
     if (tableArgument.getOrderBy().isEmpty()) {
-      throw new SemanticException("Table argument with set semantics requires an ORDER BY clause.");
+      throw new SemanticException(
+          CommonMessages
+              .EXCEPTION_TABLE_ARGUMENT_WITH_SET_SEMANTICS_REQUIRES_AN_ORDER_BY_CLAUSE_10C986D9);
     }
 
     String timeColumn =
@@ -156,7 +159,9 @@ public class M4TableFunction implements TableFunction {
       String columnName = tableArgument.getFieldNames().get(i).get();
       if (!isComparableType(type)) {
         throw new SemanticException(
-            String.format("The type of the column [%s] is not comparable.", columnName));
+            String.format(
+                CommonMessages.EXCEPTION_THE_TYPE_OF_THE_COLUMN_ARG_IS_NOT_COMPARABLE_E3098096,
+                columnName));
       }
       participantIndexes.add(i);
       participantTypes.add(type);
@@ -165,7 +170,8 @@ public class M4TableFunction implements TableFunction {
     }
 
     if (participantIndexes.isEmpty()) {
-      throw new SemanticException("No comparable columns found for M4 calculation.");
+      throw new SemanticException(
+          CommonMessages.EXCEPTION_NO_COMPARABLE_COLUMNS_FOUND_FOR_M4_CALCULATION_4E5A3092);
     }
 
     long size = (long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue();
@@ -173,7 +179,9 @@ public class M4TableFunction implements TableFunction {
     if (slide == UNSPECIFIED_SLIDE) {
       slide = size;
     } else if (slide <= 0) {
-      throw new UDFException("Invalid scalar argument SLIDE, should be a positive value");
+      throw new UDFException(
+          CommonMessages
+              .EXCEPTION_INVALID_SCALAR_ARGUMENT_SLIDE_SHOULD_BE_A_POSITIVE_VALUE_F019E091);
     }
 
     MapTableFunctionHandle.Builder handleBuilder =
@@ -236,7 +244,8 @@ public class M4TableFunction implements TableFunction {
     if (tableArgument.getOrderBy().size() != 1
         || !tableArgument.getOrderBy().get(0).equalsIgnoreCase(timeColumn)) {
       throw new SemanticException(
-          "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.");
+          CommonMessages
+              .EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9);
     }
   }
 
@@ -464,7 +473,8 @@ public class M4TableFunction implements TableFunction {
           return valueOperator;
         }
       }
-      throw new IllegalArgumentException("Unsupported M4 value type: " + type);
+      throw new IllegalArgumentException(
+          CommonMessages.EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 + type);
     }
   }
 

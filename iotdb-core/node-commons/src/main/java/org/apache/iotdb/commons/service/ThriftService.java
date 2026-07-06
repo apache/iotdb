@@ -100,7 +100,7 @@ public abstract class ThriftService implements IService {
   public void startService() throws StartupException {
     if (STATUS_UP.equals(getRPCServiceStatus())) {
       logger.info(
-          "{}: {} has been already running now",
+          ServiceMessages.SERVICE_ALREADY_RUNNING,
           IoTDBConstant.GLOBAL_DB_NAME,
           this.getID().getName());
       return;
@@ -129,7 +129,7 @@ public abstract class ThriftService implements IService {
     }
 
     logger.info(
-        "{}: start {} successfully, listening on ip {} port {}",
+        ServiceMessages.START_SERVICE_SUCCESSFULLY,
         IoTDBConstant.GLOBAL_DB_NAME,
         this.getID().getName(),
         getBindIP(),
@@ -163,10 +163,15 @@ public abstract class ThriftService implements IService {
       stopLatch.await();
       reset();
       logger.info(
-          "{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+          ServiceMessages.CLOSE_SERVICE_SUCCESSFULLY,
+          IoTDBConstant.GLOBAL_DB_NAME,
+          this.getID().getName());
     } catch (InterruptedException e) {
       logger.error(
-          "{}: close {} failed because: ", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
+          ServiceMessages.CLOSE_SERVICE_FAILED,
+          IoTDBConstant.GLOBAL_DB_NAME,
+          this.getID().getName(),
+          e);
       Thread.currentThread().interrupt();
     }
   }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.SpaceSavingBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -73,7 +74,7 @@ public class SpaceSavingStateFactory {
     }
 
     public void setSpaceSavings(SpaceSavingBigArray<T> value) {
-      requireNonNull(value, "value is null");
+      requireNonNull(value, CalcMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
       this.spaceSavings = value;
     }
 

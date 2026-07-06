@@ -448,18 +448,20 @@ public class CompactionTaskManager implements IService {
         if (!this.subCompactionTaskExecutionPool.awaitTermination(
             MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
           throw new InterruptedException(
-              "Has been waiting over "
-                  + MAX_WAITING_TIME / 1000
-                  + " seconds for all sub compaction tasks to finish.");
+              String.format(
+                  StorageEngineMessages
+                      .STORAGE_EXCEPTION_HAS_BEEN_WAITING_OVER_S_SECONDS_FOR_ALL_SUB_COMPACTION_TASKS_76BD45D6,
+                  MAX_WAITING_TIME / 1000));
         }
       }
       if (taskExecutionPool != null) {
         this.taskExecutionPool.shutdownNow();
         if (!this.taskExecutionPool.awaitTermination(MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
           throw new InterruptedException(
-              "Has been waiting over "
-                  + MAX_WAITING_TIME / 1000
-                  + " seconds for all compaction tasks to finish.");
+              String.format(
+                  StorageEngineMessages
+                      .STORAGE_EXCEPTION_HAS_BEEN_WAITING_OVER_S_SECONDS_FOR_ALL_COMPACTION_TASKS_87E1B82E,
+                  MAX_WAITING_TIME / 1000));
         }
       }
       initThreadPool();

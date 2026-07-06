@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.resource.log;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -74,7 +75,9 @@ public class PipePeriodicalLogReducer {
     final long maxWeight =
         memoryResizeFunction.applyAsLong(
             PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
-    LOGGER.info("PipePeriodicalLogReducer is allocated to {} bytes.", maxWeight);
+    LOGGER.info(
+        PipeMessages.MESSAGE_PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_54E0E369,
+        maxWeight);
     update(maxWeight);
   }
 

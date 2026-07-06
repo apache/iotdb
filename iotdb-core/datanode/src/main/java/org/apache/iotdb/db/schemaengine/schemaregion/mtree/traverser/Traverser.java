@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MNodeIterator;
@@ -109,7 +110,11 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {
       throw new IllegalPathException(
-          path.getFullPath(), path.getFullPath() + " doesn't start with " + startNode.getName());
+          path.getFullPath(),
+          String.format(
+              DataNodeSchemaMessages.PATH_DOES_NOT_START_WITH_FMT,
+              path.getFullPath(),
+              startNode.getName()));
     }
     this.startNode = startNode;
     this.nodes = nodes;

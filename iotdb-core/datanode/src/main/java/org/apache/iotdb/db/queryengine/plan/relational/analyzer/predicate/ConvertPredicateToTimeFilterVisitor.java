@@ -209,7 +209,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       }
     } else {
       throw new IllegalStateException(
-          "Either left or right operand of ComparisonExpression should have time column.");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_EITHER_LEFT_OR_RIGHT_OPERAND_OF_COMPARISONEXPRESSION_SHOULD_FC89CE57);
     }
   }
 
@@ -262,7 +263,10 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       // 1 NOT BETWEEN time AND 0 => TRUE
       checkArgument(
           value <= maxValue,
-          String.format("Predicate [%s] should be simplified in previous step", node));
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_PREDICATE_LEFT_BRACKET_ARG_RIGHT_BRACKET_SHOULD_BE_SIMPLIFIED_IN_PREVIOUS_STEP_9262C154,
+              node));
       return TimeFilterApi.ltEq(value);
     } else if (thirdExpression instanceof SymbolReference) {
       // thirdExpression is TIMESTAMP
@@ -278,7 +282,10 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       // 1 NOT BETWEEN 0 AND time => time < 1
       checkArgument(
           value >= minValue,
-          String.format("Predicate [%s] should be simplified in previous step", node));
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_PREDICATE_LEFT_BRACKET_ARG_RIGHT_BRACKET_SHOULD_BE_SIMPLIFIED_IN_PREVIOUS_STEP_9262C154,
+              node));
       return TimeFilterApi.gtEq(value);
     } else if (firstExpression instanceof Extract) {
       long minValue = getLongValue(secondExpression);
@@ -296,13 +303,16 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
               TimeFilterApi.extractTimeLtEq(maxValue, field, zoneId, currPrecision)));
     } else if (secondExpression instanceof Extract) {
       throw new IllegalStateException(
-          "Should not reach here before GlobalTimePredicateExtractVisitor support Extract push-down in second child");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SHOULD_NOT_REACH_HERE_BEFORE_GLOBALTIMEPREDICATEEXTRACTVISITOR_3ECC819B);
     } else if (thirdExpression instanceof Extract) {
       throw new IllegalStateException(
-          "Should not reach here before GlobalTimePredicateExtractVisitor support Extract push-down in third child");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SHOULD_NOT_REACH_HERE_BEFORE_GLOBALTIMEPREDICATEEXTRACTVISITOR_FB8489E8);
     } else {
       throw new IllegalStateException(
-          "Three operand of between expression should have time column.");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_THREE_OPERAND_OF_BETWEEN_EXPRESSION_SHOULD_HAVE_TIME_COLUMN_25ED881D);
     }
   }
 

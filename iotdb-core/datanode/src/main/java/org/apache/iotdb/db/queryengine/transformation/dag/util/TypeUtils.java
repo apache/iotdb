@@ -56,7 +56,10 @@ public class TypeUtils {
         return new BinaryColumnBuilder(null, count);
       default:
         throw new UnSupportedDataTypeException(
-            "Do not support create ColumnBuilder with data type " + type);
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DO_NOT_SUPPORT_CREATE_COLUMNBUILDER_WITH_DATA_TYPE_S_1672578A,
+                type));
     }
   }
 

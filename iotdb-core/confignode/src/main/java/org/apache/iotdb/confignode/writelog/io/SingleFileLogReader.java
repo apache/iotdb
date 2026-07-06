@@ -85,8 +85,8 @@ public class SingleFileLogReader implements ILogReader {
         throw new IOException(
             String.format(
                 ConfigNodeMessages.THE_CHECK_SUM_OF_THE_NO_LOG_BATCH_IS_INCORRECT
-                    + "file: "
-                    + "%d Calculated: %d.",
+                    + ConfigNodeMessages.EXCEPTION_FILE_11296840
+                    + ConfigNodeMessages.EXCEPTION_ARG_CALCULATED_ARG_0EEEE191,
                 idx,
                 checkSum,
                 checkSummer.getValue()));
@@ -101,7 +101,8 @@ public class SingleFileLogReader implements ILogReader {
       fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
     } catch (Exception e) {
       logger.error(
-          "Cannot read more PhysicalPlans from {}, successfully read index is {}. The reason is",
+          ConfigNodeMessages
+              .LOG_CANNOT_READ_MORE_PHYSICALPLANS_ARG_SUCCESSFULLY_READ_INDEX_ARG_REASON_2EC90E78,
           idx,
           filepath,
           e);

@@ -94,7 +94,9 @@ public class VariationTableFunction implements TableFunction {
     } catch (UDFTypeMismatchException e) {
       // print more information for the exception
       throw new UDFTypeMismatchException(
-          e.getMessage() + " The column type must be numeric if DELTA is not 0.", e);
+          e.getMessage()
+              + CommonMessages.EXCEPTION_COLUMN_TYPE_MUST_NUMERIC_IF_DELTA_NOT_0_F7864D4E,
+          e);
     }
 
     DescribedSchema properColumnSchema =

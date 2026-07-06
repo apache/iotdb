@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 
 import java.io.DataOutputStream;
@@ -33,8 +34,11 @@ public final class ScalarValuePointer implements ValuePointer {
   private final Symbol inputSymbol;
 
   public ScalarValuePointer(LogicalIndexPointer logicalIndexPointer, Symbol inputSymbol) {
-    this.logicalIndexPointer = requireNonNull(logicalIndexPointer, "logicalIndexPointer is null");
-    this.inputSymbol = requireNonNull(inputSymbol, "inputSymbol is null");
+    this.logicalIndexPointer =
+        requireNonNull(
+            logicalIndexPointer, QueryMessages.EXCEPTION_LOGICALINDEXPOINTER_IS_NULL_BF8B516B);
+    this.inputSymbol =
+        requireNonNull(inputSymbol, QueryMessages.EXCEPTION_INPUTSYMBOL_IS_NULL_F4B354EB);
   }
 
   public LogicalIndexPointer getLogicalIndexPointer() {

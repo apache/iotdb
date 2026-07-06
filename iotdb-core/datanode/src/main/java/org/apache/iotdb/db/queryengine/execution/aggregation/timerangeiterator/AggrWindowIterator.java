@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.TimeDuration;
@@ -165,7 +166,8 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       if (slidingStep.containsMonth()) {
         // group by month doesn't support ascending.
         throw new UnsupportedOperationException(
-            "Ascending is not supported when sliding step contains month.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_ASCENDING_IS_NOT_SUPPORTED_WHEN_SLIDING_STEP_CONTAINS_MONTH_3446C0DC);
       } else {
         retStartTime = curStartTime - slidingStep.nonMonthDuration;
       }

@@ -1292,7 +1292,9 @@ public class ProcedureManager {
                 .orElseThrow(
                     () ->
                         new IllegalArgumentException(
-                            ManagerMessages.REGION_ID + x + " is invalid"));
+                            ManagerMessages.REGION_ID
+                                + x
+                                + ManagerMessages.EXCEPTION_INVALID_2928F475));
         final TDataNodeLocation coordinator =
             handler
                 .filterDataNodeWithOtherRegionReplica(
@@ -1531,7 +1533,8 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    ManagerMessages
+                        .MESSAGE_FAIL_CREATE_TRIGGER_ARG_SIZE_JAR_TOO_LARGE_YOU_CAN_11869523,
                     triggerInformation.getTriggerName()));
       }
     } catch (IOException e) {
@@ -1584,7 +1587,8 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Fail to create pipe plugin[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    ManagerMessages
+                        .MESSAGE_FAIL_CREATE_PIPE_PLUGIN_ARG_SIZE_JAR_TOO_LARGE_YOU_D194A893,
                     pipePluginMeta.getPluginName()));
       }
     } catch (IOException e) {
@@ -1825,9 +1829,13 @@ public class ProcedureManager {
               new SubscriptionHandleLeaderChangeProcedure(
                   regionGroupToOldAndNewLeaderPairMap, runtimeVersion));
       LOGGER.info(
-          "SubscriptionHandleLeaderChangeProcedure was submitted, procedureId: {}.", procedureId);
+          ManagerMessages
+              .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID_ARG_6DBD6075,
+          procedureId);
     } catch (Exception e) {
-      LOGGER.warn("SubscriptionHandleLeaderChangeProcedure was failed to submit.", e);
+      LOGGER.warn(
+          ManagerMessages.LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_FAILED_SUBMIT_58FAB03F,
+          e);
     }
   }
 

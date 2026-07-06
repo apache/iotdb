@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
@@ -113,7 +114,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (final BatchProcessException e) {
       LOGGER.warn(
-          "Batch failure in executing a InsertTabletNode. device: {}, startTime: {}, measurements: {}, failing status: {}",
+          DataNodePipeMessages
+              .PIPE_LOG_BATCH_FAILURE_IN_EXECUTING_A_INSERTTABLETNODE_DEVICE_STARTTIME_9A5A70F6,
           node.getTargetPath(),
           node.getTimes()[0],
           node.getMeasurements(),
@@ -152,7 +154,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
           firstStatus = failedEntry.getValue();
         }
         LOGGER.warn(
-            "Insert row failed. device: {}, time: {}, measurements: {}, failing status: {}",
+            DataNodePipeMessages
+                .PIPE_LOG_INSERT_ROW_FAILED_DEVICE_TIME_MEASUREMENTS_FAILING_STATUS_63054E8B,
             insertRowNode.getTargetPath(),
             insertRowNode.getTime(),
             insertRowNode.getMeasurements(),
@@ -189,7 +192,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
           firstStatus = failedEntry.getValue();
         }
         LOGGER.warn(
-            "Insert tablet failed. device: {}, startTime: {}, measurements: {}, failing status: {}",
+            DataNodePipeMessages
+                .PIPE_LOG_INSERT_TABLET_FAILED_DEVICE_STARTTIME_MEASUREMENTS_FAILING_B409B2C4,
             insertTabletNode.getTargetPath(),
             insertTabletNode.getTimes()[0],
             insertTabletNode.getMeasurements(),
@@ -226,7 +230,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
           firstStatus = failedEntry.getValue();
         }
         LOGGER.warn(
-            "Insert row failed. device: {}, time: {}, measurements: {}, failing status: {}",
+            DataNodePipeMessages
+                .PIPE_LOG_INSERT_ROW_FAILED_DEVICE_TIME_MEASUREMENTS_FAILING_STATUS_63054E8B,
             insertRowNode.getTargetPath(),
             insertRowNode.getTime(),
             insertRowNode.getMeasurements(),
@@ -257,7 +262,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
         if (path.matchFullPath(databaseToDelete)
             || path.getFullPath().equals(databaseToDelete.getFullPath())) {
           LOGGER.info(
-              "now try to delete directly, databasePath: {}, deletePath:{}",
+              DataNodePipeMessages
+                  .PIPE_LOG_NOW_TRY_TO_DELETE_DIRECTLY_DATABASEPATH_DELETEPATH_A427CD01,
               databaseToDelete.getFullPath(),
               path.getFullPath());
           dataRegion.deleteDataDirectly(databaseToDelete, node);
