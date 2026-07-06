@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -45,31 +47,31 @@ public class LikePredicate extends Expression {
 
   public LikePredicate(Expression value, Expression pattern, Expression escape) {
     super(null);
-    this.value = requireNonNull(value, "value is null");
-    this.pattern = requireNonNull(pattern, "pattern is null");
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    this.pattern = requireNonNull(pattern, QueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
     this.escape = escape;
   }
 
   public LikePredicate(NodeLocation location, Expression value, Expression pattern) {
-    super(requireNonNull(location, "location is null"));
-    this.value = requireNonNull(value, "value is null");
-    this.pattern = requireNonNull(pattern, "pattern is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    this.pattern = requireNonNull(pattern, QueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
     this.escape = null;
   }
 
   public LikePredicate(Expression value, Expression pattern) {
     super(null);
-    this.value = requireNonNull(value, "value is null");
-    this.pattern = requireNonNull(pattern, "pattern is null");
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    this.pattern = requireNonNull(pattern, QueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
     this.escape = null;
   }
 
   public LikePredicate(
       NodeLocation location, Expression value, Expression pattern, Expression escape) {
-    super(requireNonNull(location, "location is null"));
-    this.value = requireNonNull(value, "value is null");
-    this.pattern = requireNonNull(pattern, "pattern is null");
-    this.escape = requireNonNull(escape, "escape is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    this.pattern = requireNonNull(pattern, QueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
+    this.escape = requireNonNull(escape, QueryMessages.EXCEPTION_ESCAPE_IS_NULL_C9E4F69B);
   }
 
   public LikePredicate(ByteBuffer byteBuffer) {

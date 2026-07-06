@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -149,7 +150,7 @@ public class QuotaInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       logger.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          ManagerMessages.LOG_FAILED_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_ARG_ALREADY_EXIST_EB2A6093,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -197,7 +198,7 @@ public class QuotaInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       logger.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          ManagerMessages.LOG_FAILED_LOAD_SNAPSHOT_SNAPSHOT_FILE_ARG_NOT_EXIST_8828CFBA,
           snapshotFile.getAbsolutePath());
       return;
     }

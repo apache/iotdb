@@ -81,14 +81,15 @@ public class DeleteDatabaseProcedure
       switch (state) {
         case PRE_DELETE_DATABASE:
           LOG.info(
-              "[DeleteDatabaseProcedure] Pre delete database: {}", deleteDatabaseSchema.getName());
+              ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_PRE_DELETE_DATABASE_ARG_6A1FEACC,
+              deleteDatabaseSchema.getName());
           env.preDeleteDatabase(
               PreDeleteDatabasePlan.PreDeleteType.EXECUTE, deleteDatabaseSchema.getName());
           setNextState(DeleteDatabaseState.INVALIDATE_CACHE);
           break;
         case INVALIDATE_CACHE:
           LOG.info(
-              "[DeleteDatabaseProcedure] Invalidate cache of database: {}",
+              ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_DATABASE_ARG_299FC9BC,
               deleteDatabaseSchema.getName());
           if (env.invalidateCache(deleteDatabaseSchema.getName())) {
             setNextState(DeleteDatabaseState.DELETE_DATABASE_SCHEMA);
@@ -100,7 +101,7 @@ public class DeleteDatabaseProcedure
           break;
         case DELETE_DATABASE_SCHEMA:
           LOG.info(
-              "[DeleteDatabaseProcedure] Delete DatabaseSchema: {}",
+              ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_ARG_A49A47AC,
               deleteDatabaseSchema.getName());
 
           // Enqueue deletion of every region group (both schema and data regions) of this database.
@@ -141,7 +142,8 @@ public class DeleteDatabaseProcedure
               .getLoadManager()
               .clearDataPartitionPolicyTable(deleteDatabaseSchema.getName());
           LOG.info(
-              "[DeleteDatabaseProcedure] The data partition policy table of database: {} is cleared.",
+              ProcedureMessages
+                  .LOG_DELETEDATABASEPROCEDURE_DATA_PARTITION_POLICY_TABLE_DATABASE_ARG_CLEARED_7A32E28A,
               deleteDatabaseSchema.getName());
 
           // Delete Database metrics
@@ -154,7 +156,8 @@ public class DeleteDatabaseProcedure
 
           if (deleteConfigResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOG.info(
-                "[DeleteDatabaseProcedure] Database: {} is deleted successfully",
+                ProcedureMessages
+                    .LOG_DELETEDATABASEPROCEDURE_DATABASE_ARG_DELETED_SUCCESSFULLY_3A4E9202,
                 deleteDatabaseSchema.getName());
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > RETRY_THRESHOLD) {
@@ -169,11 +172,12 @@ public class DeleteDatabaseProcedure
             new ProcedureException(
                 ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASE
                     + deleteDatabaseSchema.getName()
-                    + " failed "
+                    + ProcedureMessages.EXCEPTION_FAILED_DAA6EA2F
                     + state));
       } else {
         LOG.error(
-            "[DeleteDatabaseProcedure] Retriable error trying to delete database {}, state {}",
+            ProcedureMessages
+                .LOG_DELETEDATABASEPROCEDURE_RETRIABLE_ERROR_TRYING_DELETE_DATABASE_ARG_STATE_ARG_8167D246,
             deleteDatabaseSchema.getName(),
             state,
             e);
@@ -194,7 +198,8 @@ public class DeleteDatabaseProcedure
       case PRE_DELETE_DATABASE:
       case INVALIDATE_CACHE:
         LOG.info(
-            "[DeleteDatabaseProcedure] Rollback to preDeleted: {}", deleteDatabaseSchema.getName());
+            ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_ROLLBACK_PREDELETED_ARG_638F53DA,
+            deleteDatabaseSchema.getName());
         env.preDeleteDatabase(
             PreDeleteDatabasePlan.PreDeleteType.ROLLBACK, deleteDatabaseSchema.getName());
         break;

@@ -73,10 +73,13 @@ public class LocalSourceHandle implements ISourceHandle {
 
   public LocalSourceHandle(
       SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener, String threadName) {
-    this.queue = Validate.notNull(queue, "queue can not be null.");
+    this.queue =
+        Validate.notNull(queue, DataNodeQueryMessages.EXCEPTION_QUEUE_CAN_NOT_BE_NULL_DOT_9BB286B1);
     this.queue.setSourceHandle(this);
     this.sourceHandleListener =
-        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
+        Validate.notNull(
+            sourceHandleListener,
+            DataNodeQueryMessages.EXCEPTION_SOURCEHANDLELISTENER_CAN_NOT_BE_NULL_DOT_01817F52);
     this.threadName = threadName;
   }
 
@@ -87,12 +90,20 @@ public class LocalSourceHandle implements ISourceHandle {
       SharedTsBlockQueue queue,
       SourceHandleListener sourceHandleListener) {
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId, "localPlanNodeId can not be null.");
-    this.queue = Validate.notNull(queue, "queue can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
+    this.localPlanNodeId =
+        Validate.notNull(
+            localPlanNodeId,
+            DataNodeQueryMessages.EXCEPTION_LOCALPLANNODEID_CAN_NOT_BE_NULL_DOT_44A34A33);
+    this.queue =
+        Validate.notNull(queue, DataNodeQueryMessages.EXCEPTION_QUEUE_CAN_NOT_BE_NULL_DOT_9BB286B1);
     this.queue.setSourceHandle(this);
     this.sourceHandleListener =
-        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
+        Validate.notNull(
+            sourceHandleListener,
+            DataNodeQueryMessages.EXCEPTION_SOURCEHANDLELISTENER_CAN_NOT_BE_NULL_DOT_01817F52);
     this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
   }
 
@@ -127,7 +138,9 @@ public class LocalSourceHandle implements ISourceHandle {
       if (tsBlock != null) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[GetTsBlockFromQueue] TsBlock:{} size:{}", currSequenceId, tsBlock.getSizeInBytes());
+              DataNodeQueryMessages.GETTSBLOCKFROMQUEUE_TSBLOCK_ARG_SIZE_ARG,
+              currSequenceId,
+              tsBlock.getSizeInBytes());
         }
         currSequenceId++;
       }
@@ -274,7 +287,9 @@ public class LocalSourceHandle implements ISourceHandle {
         }
       }
       throw new IllegalStateException(
-          DataNodeQueryMessages.LOCAL_SINK_CHANNEL_STATE_IS + (aborted ? "ABORTED" : "CLOSED"));
+          String.format(
+              DataNodeQueryMessages.LOCAL_SINK_CHANNEL_STATE_IS_WITH_STATE_FMT,
+              aborted ? DataNodeQueryMessages.STATE_ABORTED : DataNodeQueryMessages.STATE_CLOSED));
     }
   }
 

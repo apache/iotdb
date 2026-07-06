@@ -205,13 +205,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       outputPipeSink.transfer(event);
     } catch (final Exception e) {
       throw new PipeConnectionException(
-          DataNodePipeMessages.PIPECONNECTOR
-              + outputPipeSink.getClass().getName()
-              + "(id: "
-              + getDisplayTaskID()
-              + ")"
-              + " heartbeat failed, or encountered failure when transferring generic event. Failure: "
-              + e.getMessage(),
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_PIPECONNECTOR_ARG_ID_ARG_HEARTBEAT_FAILED_OR_ENCOUNTERED_FAILURE_WHEN_TRANSFERRING_GENERIC_EVENT_FAILURE_ARG_679A4A49,
+              outputPipeSink.getClass().getName(),
+              getDisplayTaskID(),
+              e.getMessage()),
           e);
     }
 

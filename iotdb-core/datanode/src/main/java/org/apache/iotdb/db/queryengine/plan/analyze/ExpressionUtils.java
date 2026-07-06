@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -70,6 +71,7 @@ public class ExpressionUtils {
       final List<? extends PartialPath> actualPaths,
       final MPPQueryContext queryContext) {
     List<Expression> resultExpressions = new ArrayList<>();
+    queryContext.recordMatchedSourceColumnsForResultSet(actualPaths.size());
     for (PartialPath actualPath : actualPaths) {
       Expression expression = reconstructTimeSeriesOperand(rawExpression, actualPath);
       long memCost;
@@ -81,6 +83,7 @@ public class ExpressionUtils {
       }
       queryContext.reserveMemoryForFrontEnd(memCost);
 
+      queryContext.recordExpandedSourceColumnForResultSet(memCost);
       resultExpressions.add(expression);
     }
     return resultExpressions;
@@ -266,7 +269,9 @@ public class ExpressionUtils {
         break;
       default:
         throw new IllegalArgumentException(
-            "unsupported rawExpression type: " + rawExpression.getExpressionType());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_RAWEXPRESSION_TYPE_S_CDBBD685,
+                rawExpression.getExpressionType()));
     }
     return cloneCommonFields(rawExpression, resultExpression);
   }

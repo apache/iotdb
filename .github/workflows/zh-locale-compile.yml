@@ -1,0 +1,74 @@
+# This workflow verifies that the project compiles with the Chinese (zh) locale.
+#
+# IoTDB uses compile-time i18n (build-helper-maven-plugin): each participating module has
+# twin EN/ZH Messages classes under src/main/i18n/{en,zh}/, swapped via the i18n.locale
+# property. The default CI builds compile the EN locale only. This job activates the
+# `with-zh-locale` profile (i18n.locale=zh) so the ZH source roots are compiled across
+# the whole reactor, catching:
+#   - constants present in EN but missing in ZH (key-parity regressions),
+#   - constants present in ZH but not referenced / removed from EN,
+#   - format-specifier or type errors in the ZH Message classes,
+#   - source files that reference a constant only defined under the EN root.
+
+name: ZH-Locale-Compile
+
+on:
+  push:
+    branches:
+      - master
+      - "rel/*"
+      - "rc/*"
+    paths-ignore:
+      - "docs/**"
+      - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
+  pull_request:
+    branches:
+      - master
+      - "rel/*"
+      - "rc/*"
+      - "force_ci/**"
+    paths-ignore:
+      - "docs/**"
+      - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Xms2g -Xmx4g -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
+jobs:
+  zh-locale-compile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Compile with ZH locale
+        shell: bash
+        run: mvn clean test-compile -P with-zh-locale -DskipTests

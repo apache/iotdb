@@ -93,7 +93,8 @@ public class RoundColumnTransformer extends BinaryColumnTransformer {
       case TIMESTAMP:
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported source dataType: %s", sourceType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_ARG_678B759C, sourceType));
     }
   }
 

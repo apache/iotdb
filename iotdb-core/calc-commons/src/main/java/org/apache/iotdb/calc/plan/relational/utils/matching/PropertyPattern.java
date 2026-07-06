@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.calc.plan.relational.utils.matching;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import static java.util.Objects.requireNonNull;
 
 public class PropertyPattern<F, C, R> {
@@ -30,8 +32,8 @@ public class PropertyPattern<F, C, R> {
   }
 
   private PropertyPattern(Property<F, C, ?> property, Pattern<R> pattern) {
-    this.property = requireNonNull(property, "property is null");
-    this.pattern = requireNonNull(pattern, "pattern is null");
+    this.property = requireNonNull(property, CalcMessages.EXCEPTION_PROPERTY_IS_NULL_1C6980FF);
+    this.pattern = requireNonNull(pattern, CalcMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
   }
 
   public Property<F, C, ?> getProperty() {

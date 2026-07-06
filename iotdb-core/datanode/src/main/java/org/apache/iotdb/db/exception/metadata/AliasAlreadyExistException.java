@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class AliasAlreadyExistException extends MetadataException {
@@ -29,7 +30,7 @@ public class AliasAlreadyExistException extends MetadataException {
 
   public AliasAlreadyExistException(String path, String alias) {
     super(
-        String.format("Alias [%s] for Path [%s] already exist", alias, path),
+        String.format(DataNodeSchemaMessages.ALIAS_FOR_PATH_ALREADY_EXIST_FMT, alias, path),
         TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode(),
         true);
   }

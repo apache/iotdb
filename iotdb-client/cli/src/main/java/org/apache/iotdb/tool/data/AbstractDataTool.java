@@ -322,8 +322,8 @@ public abstract class AbstractDataTool {
       }
     }
     LOGGER.info(
-        "Input time format {} is not supported, "
-            + "please input like yyyy-MM-dd\\ HH:mm:ss.SSS or yyyy-MM-dd'T'HH:mm:ss.SSS%n",
+        CliMessages.LOG_INPUT_TIME_FORMAT_ARG_NOT_SUPPORTED_00172A7B
+            + CliMessages.LOG_PLEASE_INPUT_LIKE_YYYY_MM_DD_HH_MM_SS_SSS_9318BFC7,
         timeFormat);
     return false;
   }

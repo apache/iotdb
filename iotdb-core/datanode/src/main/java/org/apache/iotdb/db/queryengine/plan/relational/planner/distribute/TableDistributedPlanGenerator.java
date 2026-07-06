@@ -422,7 +422,9 @@ public class TableDistributedPlanGenerator
     nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
     checkArgument(
-        node.getChildren().size() == 1, "Size of TopKNode can only be 1 in logical plan.");
+        node.getChildren().size() == 1,
+        DataNodeQueryMessages
+            .EXCEPTION_SIZE_OF_TOPKNODE_CAN_ONLY_BE_1_IN_LOGICAL_PLAN_DOT_DB32E3C5);
     List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
     if (childrenNodes.size() == 1) {
       if (canTopKEliminated(node.getOrderingScheme(), node.getCount(), childrenNodes.get(0))) {
@@ -647,10 +649,13 @@ public class TableDistributedPlanGenerator
       // be MergeSortNode or
       // SortNode
       checkArgument(
-          leftChildrenNodes.size() == 1, "The size of left children node of JoinNode should be 1");
+          leftChildrenNodes.size() == 1,
+          DataNodeQueryMessages
+              .EXCEPTION_THE_SIZE_OF_LEFT_CHILDREN_NODE_OF_JOINNODE_SHOULD_BE_1_F3437368);
       checkArgument(
           rightChildrenNodes.size() == 1,
-          "The size of right children node of JoinNode should be 1");
+          DataNodeQueryMessages
+              .EXCEPTION_THE_SIZE_OF_RIGHT_CHILDREN_NODE_OF_JOINNODE_SHOULD_BE_1_6BA167CF);
     }
 
     OrderingScheme leftChildOrdering = nodeOrderingMap.get(node.getLeftChild().getPlanNodeId());
@@ -677,7 +682,8 @@ public class TableDistributedPlanGenerator
           break;
         case RIGHT:
           throw new IllegalStateException(
-              "RIGHT Join should be transformed to LEFT Join in previous process");
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_RIGHT_JOIN_SHOULD_BE_TRANSFORMED_TO_LEFT_JOIN_IN_PREVIOUS_D6B56B1F);
         default:
           throw new UnsupportedOperationException(
               DataNodeQueryMessages.UNSUPPORTED_JOIN_TYPE + node.getJoinType());
@@ -711,10 +717,12 @@ public class TableDistributedPlanGenerator
     List<PlanNode> rightChildrenNodes = node.getRightChild().accept(this, context);
     checkArgument(
         leftChildrenNodes.size() == 1,
-        "The size of left children node of SemiJoinNode should be 1");
+        DataNodeQueryMessages
+            .EXCEPTION_THE_SIZE_OF_LEFT_CHILDREN_NODE_OF_SEMIJOINNODE_SHOULD_BE_1_FFEE3F41);
     checkArgument(
         rightChildrenNodes.size() == 1,
-        "The size of right children node of SemiJoinNode should be 1");
+        DataNodeQueryMessages
+            .EXCEPTION_THE_SIZE_OF_RIGHT_CHILDREN_NODE_OF_SEMIJOINNODE_SHOULD_BE_1_AE90C4B8);
     node.setLeftChild(leftChildrenNodes.get(0));
     node.setRightChild(rightChildrenNodes.get(0));
     return Collections.singletonList(node);
@@ -861,7 +869,7 @@ public class TableDistributedPlanGenerator
         dataPartition.getDataPartitionMap().get(dbName);
     if (seriesSlotMap == null) {
       throw new SemanticException(
-          String.format("Given queried database: %s is not exist!", dbName));
+          String.format(DataNodeQueryMessages.GIVEN_QUERIED_DATABASE_S_IS_NOT_EXIST, dbName));
     }
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
 
@@ -954,7 +962,7 @@ public class TableDistributedPlanGenerator
         dataPartition.getDataPartitionMap().get(dbName);
     if (seriesSlotMap == null) {
       throw new SemanticException(
-          String.format("Given queried database: %s is not exist!", dbName));
+          String.format(DataNodeQueryMessages.GIVEN_QUERIED_DATABASE_S_IS_NOT_EXIST, dbName));
     }
 
     final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
@@ -1044,7 +1052,7 @@ public class TableDistributedPlanGenerator
         dataPartition.getDataPartitionMap().get(dbName);
     if (seriesSlotMap == null) {
       throw new SemanticException(
-          String.format("Given queried database: %s is not exist!", dbName));
+          String.format(DataNodeQueryMessages.GIVEN_QUERIED_DATABASE_S_IS_NOT_EXIST, dbName));
     }
 
     Map<TRegionReplicaSet, Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
@@ -1173,7 +1181,8 @@ public class TableDistributedPlanGenerator
         dataNodeLocationSupplier.getDataNodeLocations(tableName);
     if (dataNodeLocations.isEmpty()) {
       throw new IoTDBRuntimeException(
-          "No available dataNodes, may be the cluster is closing",
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_NO_AVAILABLE_DATANODES_MAY_BE_THE_CLUSTER_IS_CLOSING_E13B8C50,
           TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode());
     }
 
@@ -1283,8 +1292,10 @@ public class TableDistributedPlanGenerator
         } else {
           throw new IllegalStateException(
               String.format(
-                  "Should never reach here. Child ordering: %s. PreGroupedSymbols: %s",
-                  childOrdering.getOrderBy(), node.getPreGroupedSymbols()));
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_SHOULD_NEVER_REACH_HERE_CHILD_ORDERING_S_PREGROUPEDSYMBOLS_79A94AB5,
+                  childOrdering.getOrderBy(),
+                  node.getPreGroupedSymbols()));
         }
       } else if (context.deviceCrossRegion) {
         // Child has no Ordering and the device cross region, the grouped property of child is not
@@ -1687,7 +1698,7 @@ public class TableDistributedPlanGenerator
         dataPartition.getDataPartitionMap().get(dbName);
     if (seriesSlotMap == null) {
       throw new SemanticException(
-          String.format("Given queried database: %s is not exist!", dbName));
+          String.format(DataNodeQueryMessages.GIVEN_QUERIED_DATABASE_S_IS_NOT_EXIST, dbName));
     }
 
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
@@ -1894,8 +1905,12 @@ public class TableDistributedPlanGenerator
 
   private PlanNode mergeChildrenViaCollectOrMergeSort(
       final OrderingScheme childOrdering, final List<PlanNode> childrenNodes) {
-    checkArgument(childrenNodes != null, "childrenNodes should not be null.");
-    checkArgument(!childrenNodes.isEmpty(), "childrenNodes should not be empty.");
+    checkArgument(
+        childrenNodes != null,
+        DataNodeQueryMessages.EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_NULL_DOT_0C93B063);
+    checkArgument(
+        !childrenNodes.isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_EMPTY_DOT_E5555FD9);
 
     if (childrenNodes.size() == 1) {
       return childrenNodes.get(0);
@@ -2345,7 +2360,9 @@ public class TableDistributedPlanGenerator
 
     // TODO: per partition topk eliminate
     checkArgument(
-        node.getChildren().size() == 1, "Size of TopKRankingNode can only be 1 in logical plan.");
+        node.getChildren().size() == 1,
+        DataNodeQueryMessages
+            .EXCEPTION_SIZE_OF_TOPKRANKINGNODE_CAN_ONLY_BE_1_IN_LOGICAL_PLAN_DOT_20D6A513);
     boolean canSplitPushDown = node.getChild() instanceof GroupNode;
     if (!canSplitPushDown) {
       node.setChild(((SortNode) node.getChild()).getChild());

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -38,7 +39,11 @@ public class AlterDB extends DatabaseStatement {
       final boolean exists,
       final String dbName,
       final List<Property> properties) {
-    super(requireNonNull(location, "location is null"), exists, dbName, properties);
+    super(
+        requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388),
+        exists,
+        dbName,
+        properties);
   }
 
   @Override

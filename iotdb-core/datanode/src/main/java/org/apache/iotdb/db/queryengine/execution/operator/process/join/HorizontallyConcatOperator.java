@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.join;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.AbstractConsumeAllOperator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import org.apache.tsfile.block.column.Column;
@@ -59,7 +60,9 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
       OperatorContext operatorContext, List<Operator> children, List<TSDataType> dataTypes) {
     super(operatorContext, children);
     checkArgument(
-        !children.isEmpty(), "child size of VerticallyConcatOperator should be larger than 0");
+        !children.isEmpty(),
+        DataNodeQueryMessages
+            .EXCEPTION_CHILD_SIZE_OF_VERTICALLYCONCATOPERATOR_SHOULD_BE_LARGER_THAN_0_14A2513A);
     this.inputIndex = new int[this.inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
   }

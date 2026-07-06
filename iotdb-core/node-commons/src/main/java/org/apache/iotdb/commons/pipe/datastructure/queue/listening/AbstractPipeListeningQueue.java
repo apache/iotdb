@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.queue.listening;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializerType;
@@ -72,7 +73,8 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
           event -> event.increaseReferenceCount(AbstractPipeListeningQueue.class.getName()));
       queueTailIndex2SnapshotsCache.setRight(events);
       LOGGER.info(
-          "Pipe listening queue snapshot cache is updated: {}", queueTailIndex2SnapshotsCache);
+          PipeMessages.LOG_PIPE_LISTENING_QUEUE_SNAPSHOT_CACHE_UPDATED_ARG_414EE914,
+          queueTailIndex2SnapshotsCache);
     }
   }
 

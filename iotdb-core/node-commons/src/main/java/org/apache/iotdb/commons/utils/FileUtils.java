@@ -123,12 +123,17 @@ public class FileUtils {
       Files.delete(file.toPath());
     } catch (NoSuchFileException e) {
       if (!quietForNoSuchFile) {
-        LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+        LOGGER.warn(
+            UtilMessages.LOG_ARG_COLON_ARG_DCE519A1,
+            e.getMessage(),
+            Arrays.toString(file.list()),
+            e);
       }
     } catch (DirectoryNotEmptyException e) {
-      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+      LOGGER.warn(
+          UtilMessages.LOG_ARG_COLON_ARG_DCE519A1, e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {
-      LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
+      LOGGER.warn(UtilMessages.LOG_ARG_COLON_ARG_DCE519A1, e.getMessage(), file.getName(), e);
     }
   }
 
@@ -148,9 +153,10 @@ public class FileUtils {
             return null;
           });
     } catch (DirectoryNotEmptyException e) {
-      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+      LOGGER.warn(
+          UtilMessages.LOG_ARG_COLON_ARG_DCE519A1, e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {
-      LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
+      LOGGER.warn(UtilMessages.LOG_ARG_COLON_ARG_DCE519A1, e.getMessage(), file.getName(), e);
     }
   }
 

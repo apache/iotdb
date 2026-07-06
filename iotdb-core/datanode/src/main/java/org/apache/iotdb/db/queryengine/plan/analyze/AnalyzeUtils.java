@@ -470,7 +470,10 @@ public class AnalyzeUtils {
         tagPredicate = parseIsNull((IsNullPredicate) currExp, tagPredicate, table);
       } else {
         throw new SemanticException(
-            DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + currExp + " in " + expression);
+            DataNodeQueryMessages.UNSUPPORTED_EXPRESSION
+                + currExp
+                + DataNodeQueryMessages.IN
+                + expression);
       }
     }
     if (tagPredicate != null) {
@@ -479,8 +482,9 @@ public class AnalyzeUtils {
     if (timeRange.getStartTime() > timeRange.getEndTime()) {
       throw new SemanticException(
           String.format(
-              "Start time %d is greater than end time %d",
-              timeRange.getStartTime(), timeRange.getEndTime()));
+              DataNodeQueryMessages.START_TIME_D_IS_GREATER_THAN_END_TIME_D,
+              timeRange.getStartTime(),
+              timeRange.getEndTime()));
     }
 
     return new TableDeletionEntry(predicate, timeRange.toTsFileTimeRange());
@@ -505,7 +509,9 @@ public class AnalyzeUtils {
     int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
     if (tagColumnOrdinal == -1) {
       throw new SemanticException(
-          "The column '" + columnName + "' does not exist or is not a tag column");
+          DataNodeQueryMessages.THE_COLUMN
+              + columnName
+              + DataNodeQueryMessages.DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN);
     }
 
     // the first segment is the table name, so + 1
@@ -543,7 +549,7 @@ public class AnalyzeUtils {
         rightHandValue = ((LongLiteral) right).getParsedValue();
       } else {
         throw new SemanticException(
-            "The right hand value of time predicate must be a long: " + right);
+            DataNodeQueryMessages.THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG + right);
       }
 
       switch (comparisonExpression.getOperator()) {
@@ -567,7 +573,8 @@ public class AnalyzeUtils {
         case IS_DISTINCT_FROM:
         default:
           throw new SemanticException(
-              "The operator of time predicate must be <, <=, >, or >=: " + right);
+              DataNodeQueryMessages.THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_LT_LT_EQ_GT_OR_GT_EQ
+                  + right);
       }
 
       return oldPredicate;
@@ -577,7 +584,9 @@ public class AnalyzeUtils {
     int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
     if (tagColumnOrdinal == -1) {
       throw new SemanticException(
-          "The column '" + columnName + "' does not exist or is not a tag column");
+          DataNodeQueryMessages.THE_COLUMN
+              + columnName
+              + DataNodeQueryMessages.DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN);
     }
 
     IDPredicate newPredicate = getTagPredicate(comparisonExpression, right, tagColumnOrdinal);
@@ -607,10 +616,11 @@ public class AnalyzeUtils {
       rightHandValue = ((StringLiteral) right).getValue();
     } else if (right instanceof NullLiteral) {
       throw new SemanticException(
-          "The right hand value of tag predicate cannot be null with '=' operator, please use 'IS NULL' instead");
+          DataNodeQueryMessages
+              .THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_EQ_OPERATOR_PLEASE_USE_IS_NULL);
     } else {
       throw new SemanticException(
-          "The right hand value of tag predicate must be a string: " + right);
+          DataNodeQueryMessages.THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING + right);
     }
     // the first segment is the table name, so + 1
     return new SegmentExactMatch(rightHandValue, tagColumnOrdinal + 1);

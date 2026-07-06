@@ -520,7 +520,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       if (waitTimeSeconds * 1000 > timeoutMs) {
         // should contain 'TimeoutException' in exception message
         throw new PipeException(
-            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_TIMEOUTEXCEPTION_WAITED_S_SECONDS_8B31A3A5,
+                waitTimeSeconds));
       }
     }
 

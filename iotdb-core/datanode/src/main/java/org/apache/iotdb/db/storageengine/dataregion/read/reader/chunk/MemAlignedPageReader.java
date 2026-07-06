@@ -328,7 +328,9 @@ public class MemAlignedPageReader implements IPageReader {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", tsDataTypes.get(column)));
+                String.format(
+                    StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    tsDataTypes.get(column)));
         }
       }
     }

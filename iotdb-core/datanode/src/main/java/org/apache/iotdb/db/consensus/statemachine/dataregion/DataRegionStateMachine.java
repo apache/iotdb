@@ -31,6 +31,7 @@ import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
@@ -94,7 +95,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       return snapshotTaker.takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
     } catch (Exception e) {
       logger.error(
-          "Exception occurs when taking snapshot for {}-{} in {}",
+          DataNodePipeMessages.PIPE_LOG_EXCEPTION_OCCURS_WHEN_TAKING_SNAPSHOT_FOR_IN_48CBDFCC,
           region.getDatabaseName(),
           region.getDataRegionIdString(),
           snapshotDir,
@@ -110,7 +111,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
           .takeFullSnapshot(snapshotDir.getAbsolutePath(), snapshotTmpId, snapshotId, true);
     } catch (Exception e) {
       logger.error(
-          "Exception occurs when taking snapshot for {}-{} in {}",
+          DataNodePipeMessages.PIPE_LOG_EXCEPTION_OCCURS_WHEN_TAKING_SNAPSHOT_FOR_IN_48CBDFCC,
           region.getDatabaseName(),
           region.getDataRegionIdString(),
           snapshotDir,
@@ -195,8 +196,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
         } else {
           throw new IllegalArgumentException(
               String.format(
-                  "There are two types of PlanNode in one request: %s and %s",
-                  onlyOne.getClass(), planNode.getClass()));
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_THERE_ARE_TWO_TYPES_OF_PLANNODE_IN_ONE_REQUEST_S_AND_S_30FB3EE5,
+                  onlyOne.getClass(),
+                  planNode.getClass()));
         }
       }
     }
@@ -204,7 +207,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
       if (!searchNodes.isEmpty()) {
         throw new IllegalArgumentException(
             String.format(
-                "There are two types of PlanNode in one request: %s and SearchNode",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_THERE_ARE_TWO_TYPES_OF_PLANNODE_IN_ONE_REQUEST_S_AND_SEARCHNODE_F8B4D860,
                 onlyOne.getClass()));
       }
       return onlyOne;
@@ -223,7 +227,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
           .getSnapshotFileInfo();
     } catch (IOException e) {
       logger.error(
-          "Meets error when getting snapshot files for {}-{}",
+          DataNodePipeMessages.PIPE_LOG_MEETS_ERROR_WHEN_GETTING_SNAPSHOT_FILES_FOR_9BFA76B9,
           region.getDatabaseName(),
           region.getDataRegionIdString(),
           e);
@@ -252,10 +256,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
       if (needRetry(result.getCode()) && !planNode.isGeneratedByPipe()) {
         retryTime++;
         logger.debug(
-            "write operation failed because {}, retryTime: {}.", result.getCode(), retryTime);
+            DataNodePipeMessages.PIPE_LOG_WRITE_OPERATION_FAILED_BECAUSE_RETRYTIME_34EFBE99,
+            result.getCode(),
+            retryTime);
         if (retryTime == MAX_WRITE_RETRY_TIMES) {
           logger.error(
-              "write operation still failed after {} retry times, because {}.",
+              DataNodePipeMessages
+                  .PIPE_LOG_WRITE_OPERATION_STILL_FAILED_AFTER_RETRY_TIMES_BECAUSE_15EEA702,
               MAX_WRITE_RETRY_TIMES,
               result.getCode());
         }

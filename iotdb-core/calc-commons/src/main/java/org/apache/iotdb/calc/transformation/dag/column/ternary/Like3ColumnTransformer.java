@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.ternary;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -43,15 +44,18 @@ public class Like3ColumnTransformer extends TernaryColumnTransformer {
   protected void checkType() {
     if (!isCharType(firstColumnTransformer.getType())) {
       throw new UnsupportedOperationException(
-          "Unsupported Type: " + firstColumnTransformer.getType().getTypeEnum());
+          CalcMessages.EXCEPTION_UNSUPPORTED_TYPE_FF7F518D
+              + firstColumnTransformer.getType().getTypeEnum());
     }
     if (!isCharType(secondColumnTransformer.getType())) {
       throw new UnsupportedOperationException(
-          "Unsupported Type: " + secondColumnTransformer.getType().getTypeEnum());
+          CalcMessages.EXCEPTION_UNSUPPORTED_TYPE_FF7F518D
+              + secondColumnTransformer.getType().getTypeEnum());
     }
     if (!isCharType(thirdColumnTransformer.getType())) {
       throw new UnsupportedOperationException(
-          "Unsupported Type: " + thirdColumnTransformer.getType().getTypeEnum());
+          CalcMessages.EXCEPTION_UNSUPPORTED_TYPE_FF7F518D
+              + thirdColumnTransformer.getType().getTypeEnum());
     }
   }
 

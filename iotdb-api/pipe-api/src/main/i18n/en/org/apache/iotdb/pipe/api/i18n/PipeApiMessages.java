@@ -23,6 +23,15 @@ public final class PipeApiMessages {
 
   // --- PipeParameterValidator ---
   public static final String PARAMETER_SHOULD_BE_SET = "Parameter %s should be set.";
+  public static final String EXCEPTION_CANNOT_SPECIFY_BOTH_ARG_AND_ARG_AT_THE_SAME_TIME_7DA8858B =
+      "Cannot specify both %s and %s at the same time";
+  public static final String
+      EXCEPTION_INVALID_VALUE_ARG_OF_ARG_THE_VALUE_SHOULD_BE_ONE_OF_ARG_7D1B4AF8 =
+          "Invalid value %s of %s. The value should be one of %s";
+
+  // --- PipeAttributeNotProvidedException ---
+  public static final String EXCEPTION_ATTRIBUTE_ARG_IS_REQUIRED_BUT_WAS_NOT_PROVIDED_5A6C1F93 =
+      "Attribute \"%s\" is required but was not provided.";
 
   private PipeApiMessages() {}
 }

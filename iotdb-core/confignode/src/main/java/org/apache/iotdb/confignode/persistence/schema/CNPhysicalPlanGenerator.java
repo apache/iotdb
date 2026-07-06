@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
@@ -110,7 +111,7 @@ public class CNPhysicalPlanGenerator
       final Path snapshotFilePath, final CNSnapshotFileType fileType, final String userName)
       throws IOException {
     if (fileType == CNSnapshotFileType.SCHEMA) {
-      logger.warn("schema_template need two files");
+      logger.warn(ManagerMessages.LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A);
       return;
     }
     if (fileType == CNSnapshotFileType.USER_ROLE) {
@@ -297,7 +298,9 @@ public class CNPhysicalPlanGenerator
       }
     } catch (IOException ioException) {
       logger.error(
-          "Got IOException when deserialize use&role file, type:{}", snapshotFileType, ioException);
+          ManagerMessages.LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759,
+          snapshotFileType,
+          ioException);
       latestException = ioException;
     } finally {
       strBufferLocal.remove();
@@ -317,7 +320,7 @@ public class CNPhysicalPlanGenerator
         planDeque.add(plan);
       }
     } catch (IOException ioException) {
-      logger.error("Got IOException when deserialize roleList", ioException);
+      logger.error(ManagerMessages.LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E, ioException);
       latestException = ioException;
     } finally {
       strBufferLocal.remove();
@@ -358,7 +361,7 @@ public class CNPhysicalPlanGenerator
         size--;
       }
     } catch (final IOException | IllegalPathException e) {
-      logger.error("Got exception when deserializing ttl file", e);
+      logger.error(ManagerMessages.LOG_GOT_EXCEPTION_DESERIALIZING_TTL_FILE_F806EB40, e);
       latestException = e;
     }
   }
@@ -496,12 +499,15 @@ public class CNPhysicalPlanGenerator
             tableSet.add(tableNode.getTable());
             break;
           default:
-            logger.error("Unrecognized node type. Cannot deserialize MTree from given buffer");
+            logger.error(
+                ManagerMessages
+                    .LOG_UNRECOGNIZED_NODE_TYPE_CANNOT_DESERIALIZE_MTREE_GIVEN_BUFFER_5CF3121B);
             return;
         }
       }
     } catch (final IOException ioException) {
-      logger.error("Got IOException when construct database Tree", ioException);
+      logger.error(
+          ManagerMessages.LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621, ioException);
       latestException = ioException;
     }
   }
@@ -524,7 +530,8 @@ public class CNPhysicalPlanGenerator
         size--;
       }
     } catch (IOException ioException) {
-      logger.error("Got IOException when deserialize template info", ioException);
+      logger.error(
+          ManagerMessages.LOG_GOT_IOEXCEPTION_DESERIALIZE_TEMPLATE_INFO_49EE617E, ioException);
       latestException = ioException;
     }
   }
