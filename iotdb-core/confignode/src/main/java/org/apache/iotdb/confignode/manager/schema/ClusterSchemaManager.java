@@ -40,7 +40,6 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -125,7 +124,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -160,13 +158,8 @@ public class ClusterSchemaManager {
     return !databaseSchema.isSetNeedLastCache() || databaseSchema.isNeedLastCache();
   }
 
-  private static boolean needInvalidateLastCache(
-      final TDatabaseSchema before, final TDatabaseSchema after) {
-    final TDatabaseSchema mergedSchema = deepCopyDatabaseSchema(before);
-    if (after.isSetNeedLastCache()) {
-      mergedSchema.setNeedLastCache(after.isNeedLastCache());
-    }
-    return isNeedLastCacheEnabled(before) && !isNeedLastCacheEnabled(mergedSchema);
+  private static boolean needInvalidateLastCache(final TDatabaseSchema after) {
+    return after.isSetNeedLastCache() && !after.isNeedLastCache();
   }
 
   public ClusterSchemaManager(
@@ -244,9 +237,8 @@ public class ClusterSchemaManager {
     TSStatus result;
     final TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
 
-    final TDatabaseSchema originalSchema;
     try {
-      originalSchema = deepCopyDatabaseSchema(getDatabaseSchemaByName(databaseSchema.getName()));
+      getDatabaseSchemaByName(databaseSchema.getName());
     } catch (final DatabaseNotExistsException e) {
       // Reject if Database doesn't exist
       result = new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
@@ -285,8 +277,7 @@ public class ClusterSchemaManager {
                       ? new PipeEnrichedPlan(databaseSchemaPlan)
                       : databaseSchemaPlan);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (databaseSchema.isSetNeedLastCache()
-            && needInvalidateLastCache(originalSchema, databaseSchema)) {
+        if (needInvalidateLastCache(databaseSchema)) {
           invalidateLastCache(databaseSchema.getName());
         }
         PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
@@ -1735,6 +1726,13 @@ public class ClusterSchemaManager {
       return result.get();
     }
 
+    if (isTableView && updatedProperties.containsKey(TsTable.NEED_LAST_CACHE_PROPERTY)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.SEMANTIC_ERROR, TreeViewSchema.UNSUPPORTED_NEED_LAST_CACHE_PROPERTY),
+          null);
+    }
+
     updatedProperties
         .keySet()
         .removeIf(
@@ -1771,13 +1769,6 @@ public class ClusterSchemaManager {
           }
         });
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
-  }
-
-  private static TDatabaseSchema deepCopyDatabaseSchema(final TDatabaseSchema schema) {
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(schema, outputStream);
-    return ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(
-        ByteBuffer.wrap(outputStream.toByteArray()));
   }
 
   private void invalidateLastCache(final String database) {

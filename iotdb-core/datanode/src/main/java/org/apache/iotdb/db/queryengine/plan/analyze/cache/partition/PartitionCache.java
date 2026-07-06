@@ -586,9 +586,8 @@ public class PartitionCache {
       databaseMap.forEach(
           (database, schema) -> {
             final boolean needLastCache = isNeedLastCacheEnabled(schema);
-            final Boolean previousNeedLastCache =
-                database2NeedLastCacheCache.put(database, needLastCache);
-            if (Boolean.TRUE.equals(previousNeedLastCache) && !needLastCache) {
+            database2NeedLastCacheCache.put(database, needLastCache);
+            if (!needLastCache) {
               TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(database);
             }
           });

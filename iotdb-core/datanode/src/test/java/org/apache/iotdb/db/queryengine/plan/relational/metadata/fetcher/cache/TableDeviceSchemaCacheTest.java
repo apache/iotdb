@@ -658,6 +658,38 @@ public class TableDeviceSchemaCacheTest {
   }
 
   @Test
+  public void testLastCacheIsInvalidatedWhenTableNeedLastCacheSetFalseWithoutCachedTable() {
+    final String database = "sg_missing_table_cache";
+    final String tableName = "t_missing_table_cache";
+    final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
+    final IDeviceID deviceID = convertTagValuesToDeviceID(tableName, device0);
+    final String[] measurements = new String[] {measurement1};
+    final TimeValuePair[] values =
+        new TimeValuePair[] {new TimeValuePair(1L, new TsPrimitiveType.TsInt(1))};
+
+    final TsTable enabledTable =
+        new TsTable(DataNodeTableCache.getInstance().getTable(database1, table1));
+    enabledTable.renameTable(tableName);
+    DataNodeTableCache.getInstance().preUpdateTable(database, enabledTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null);
+
+    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
+    updateLastCache4Query(cache, database, deviceID, measurements, values);
+    Assert.assertEquals(values[0], cache.getLastEntry(database, deviceID, measurement1));
+
+    try {
+      DataNodeTableCache.getInstance().invalid(database);
+      final TsTable disabledTable = new TsTable(enabledTable);
+      disabledTable.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.FALSE.toString());
+      DataNodeTableCache.getInstance().preUpdateTable(database, disabledTable, null);
+
+      Assert.assertNull(cache.getLastEntry(database, deviceID, measurement1));
+    } finally {
+      DataNodeTableCache.getInstance().invalid(database);
+    }
+  }
+
+  @Test
   public void testLastCacheIsInvalidatedWhenDatabaseNeedLastCacheTurnsFalse() {
     final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
     final IDeviceID deviceInDatabase1 = convertTagValuesToDeviceID(table1, device0);

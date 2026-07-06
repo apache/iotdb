@@ -690,30 +690,31 @@ public class IoTDBTableIT {
       assertTableNeedLastCache(statement, "need_cache_default_db", "default_reset_table", true);
 
       statement.execute("use need_cache_db");
+      try {
+        statement.execute(
+            "create view invalid_need_cache_view (tag1 string tag, s1 int32 field) restrict with (ttl=100, need_last_cache=false) as root.need_cache_view_source.**");
+        fail("tree view need_last_cache should be rejected");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The tree view does not support need_last_cache property.", e.getMessage());
+      }
+
       statement.execute(
-          "create view explicit_false_view (tag1 string tag, s1 int32 field) restrict with (ttl=100, need_last_cache=false) as root.need_cache_view_source.**");
-      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_view", false);
+          "create view explicit_view (tag1 string tag, s1 int32 field) restrict with (ttl=100) as root.need_cache_view_source.**");
 
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("show create view explicit_false_view"),
+          statement.executeQuery("show create view explicit_view"),
           "View,Create View,",
           Collections.singleton(
-              "explicit_false_view,CREATE VIEW \"explicit_false_view\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"s1\" INT32 FIELD) RESTRICT WITH (ttl=100, need_last_cache=false) AS root.\"need_cache_view_source\".**,"));
+              "explicit_view,CREATE VIEW \"explicit_view\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"s1\" INT32 FIELD) RESTRICT WITH (ttl=100) AS root.\"need_cache_view_source\".**,"));
 
-      statement.execute("alter view explicit_false_view set properties need_last_cache=true");
-      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_view", true);
-
-      statement.execute("alter view explicit_false_view set properties need_last_cache=false");
-      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_view", false);
-
-      statement.execute("alter view explicit_false_view set properties need_last_cache=default");
-      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_view", false);
-
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("show create view explicit_false_view"),
-          "View,Create View,",
-          Collections.singleton(
-              "explicit_false_view,CREATE VIEW \"explicit_false_view\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"s1\" INT32 FIELD) RESTRICT WITH (ttl=100, need_last_cache=false) AS root.\"need_cache_view_source\".**,"));
+      try {
+        statement.execute("alter view explicit_view set properties need_last_cache=false");
+        fail("tree view need_last_cache alter should be rejected");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The tree view does not support need_last_cache property.", e.getMessage());
+      }
     }
   }
 
@@ -1191,14 +1192,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"閲嶅簡\".\"1\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"閲嶅簡\".\"1\".**,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"閲嶅簡\".\"1\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"閲嶅簡\".\"1\".**,"));
 
       statement.execute("create table a ()");
       try {

@@ -147,8 +147,7 @@ public class DataNodeTableCache implements ITableCache {
       LOGGER.info(DataNodeSchemaMessages.PRE_UPDATE_TABLE_SUCCESS, database, table.getTableName());
       // Since a pre-updated table can be used for query planning before commit-release, stale
       // last cache should stop serving as soon as need_last_cache turns off.
-      final TsTable oldTableBeforeUpdate = getTableFromCache(database, table.getTableName());
-      if (Objects.nonNull(oldTableBeforeUpdate) && !table.getCachedNeedLastCache()) {
+      if (!table.getCachedNeedLastCache()) {
         TableDeviceSchemaCache.getInstance().invalidateLastCache(database, table.getTableName());
       }
 
@@ -241,11 +240,8 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   private void invalidateLastCacheIfDisabled(
-      final String database, final String tableName, final @Nullable TsTable oldTable) {
-    final TsTable currentTable = getTableFromCache(database, tableName);
-    if (Objects.nonNull(oldTable)
-        && Objects.nonNull(currentTable)
-        && !currentTable.getCachedNeedLastCache()) {
+      final String database, final String tableName, final TsTable currentTable) {
+    if (Objects.nonNull(currentTable) && !currentTable.getCachedNeedLastCache()) {
       TableDeviceSchemaCache.getInstance().invalidateLastCache(database, tableName);
     }
   }
@@ -277,7 +273,7 @@ public class DataNodeTableCache implements ITableCache {
           databaseTableMap
               .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
               .put(tableName, newTable);
-      invalidateLastCacheIfDisabled(database, tableName, oldTable);
+      invalidateLastCacheIfDisabled(database, tableName, newTable);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL,
@@ -483,12 +479,11 @@ public class DataNodeTableCache implements ITableCache {
                           DataNodeSchemaMessages.UPDATE_TABLE_BY_FETCH, database, tableName);
                     }
                     existingPair.setLeft(null);
-                    final TsTable oldTable = getTableFromCache(database, tableName);
                     if (Objects.nonNull(tsTable)) {
                       databaseTableMap
                           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
                           .put(tableName, tsTable);
-                      invalidateLastCacheIfDisabled(database, tableName, oldTable);
+                      invalidateLastCacheIfDisabled(database, tableName, tsTable);
                     } else if (databaseTableMap.containsKey(database)) {
                       databaseTableMap.get(database).remove(tableName);
                     }

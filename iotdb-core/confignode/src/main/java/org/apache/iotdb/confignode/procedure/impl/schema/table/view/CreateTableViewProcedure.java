@@ -72,8 +72,17 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
 
   @Override
   protected void checkTableExistence(final ConfigNodeProcedureEnv env) {
+    if (table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).isPresent()) {
+      setFailure(
+          new ProcedureException(
+              new IoTDBException(
+                  TreeViewSchema.UNSUPPORTED_NEED_LAST_CACHE_PROPERTY,
+                  TSStatusCode.SEMANTIC_ERROR.getStatusCode())));
+      return;
+    }
     if (!replace) {
       super.checkTableExistence(env);
+      table.removeProp(TsTable.NEED_LAST_CACHE_PROPERTY);
     } else {
       try {
         final Optional<Pair<TsTable, TableNodeStatus>> oldTableAndStatus =
@@ -100,10 +109,6 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
             && schema.isSetTTL()
             && schema.getTTL() != Long.MAX_VALUE) {
           table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
-        }
-        if (!table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).isPresent()
-            && schema.isSetNeedLastCache()) {
-          table.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, String.valueOf(schema.isNeedLastCache()));
         }
         setNextState(CreateTableState.PRE_CREATE);
       } catch (final MetadataException | DatabaseNotExistsException e) {

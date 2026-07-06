@@ -591,6 +591,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
 
   @Override
   public IConfigTask visitCreateView(final CreateView node, final MPPQueryContext context) {
+    validateTreeViewProperties(node.getProperties());
     final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
     final TsTable table = databaseTablePair.getRight();
     accessControl.checkCanCreateViewFromTreePath(node.getPrefixPath(), context);
@@ -842,13 +843,17 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     accessControl.checkCanAlterTable(
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
 
+    final boolean isTreeView = node.getType() == SetProperties.Type.TREE_VIEW;
+    if (isTreeView) {
+      validateTreeViewProperties(node.getProperties());
+    }
     return new AlterTableSetPropertiesTask(
         database,
         tableName,
         convertPropertiesToMap(node.getProperties(), true),
         context.getQueryId().getId(),
         node.ifExists(),
-        node.getType() == SetProperties.Type.TREE_VIEW);
+        isTreeView);
   }
 
   @Override
@@ -915,6 +920,15 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     return new Pair<>(database, name.getSuffix());
+  }
+
+  private void validateTreeViewProperties(final List<Property> propertyList) {
+    for (final Property property : propertyList) {
+      final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
+      if (NEED_LAST_CACHE_PROPERTY.equals(key)) {
+        throw new SemanticException(TreeViewSchema.UNSUPPORTED_NEED_LAST_CACHE_PROPERTY);
+      }
+    }
   }
 
   private Map<String, String> convertPropertiesToMap(

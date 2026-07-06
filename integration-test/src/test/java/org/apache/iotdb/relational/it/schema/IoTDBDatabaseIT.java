@@ -764,7 +764,7 @@ public class IoTDBDatabaseIT {
       statement.execute(
           "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
       statement.execute(
-          "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"a\".**");
+          "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) RESTRICT WITH (ttl=100) AS root.\"a\".**");
 
       try (final ResultSet resultSet = statement.executeQuery("select * from databases")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
@@ -872,7 +872,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("select * from views"),
           "database,table_name,view_definition,",
           Collections.singleton(
-              "test,view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"a\".**,"));
+              "test,view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"a\".**,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
@@ -931,7 +931,8 @@ public class IoTDBDatabaseIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create database root.test with NEED_LAST_CACHE=false");
+      statement.execute("create database root.test");
+      statement.execute("alter database root.test WITH NEED_LAST_CACHE=false");
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS root.test")) {
         assertTrue(resultSet.next());
         assertEquals("root.test", resultSet.getString("Database"));
@@ -943,14 +944,6 @@ public class IoTDBDatabaseIT {
           () ->
               statement.execute(
                   "alter database root.test WITH MAX_SCHEMA_REGION_GROUP_NUM=2, MAX_DATA_REGION_GROUP_NUM=3"));
-      try {
-        statement.execute("alter database root.test WITH NEED_LAST_CACHE=true");
-        fail("tree database need_last_cache alter should be rejected");
-      } catch (final SQLException e) {
-        assertEquals(
-            "701: The tree model database does not support alter need last cache now.",
-            e.getMessage());
-      }
       statement.execute("insert into root.test.d1 (s1) values(1)");
       statement.execute("drop database root.test");
     }
