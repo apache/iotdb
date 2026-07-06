@@ -91,6 +91,22 @@ public class FFTTableFunctionTest {
   }
 
   @Test
+  public void testSupportsNonPowerOfTwoTransformLength() throws UDFException {
+    TableFunctionDataProcessor processor = createProcessor(true, 3L);
+    processor.process(record(0L, 1.0), Collections.emptyList(), null);
+    processor.process(record(1L, 2.0), Collections.emptyList(), null);
+    processor.process(record(2L, 3.0), Collections.emptyList(), null);
+
+    List<ColumnBuilder> builders = createOutputBuilders(3);
+    processor.finish(builders, null);
+
+    double imaginaryComponent = Math.sqrt(3.0) / 2.0;
+    assertLongColumn(builders.get(0).build(), 0L, 1L, 2L);
+    assertDoubleColumn(builders.get(2).build(), 6.0, -1.5, -1.5);
+    assertDoubleColumn(builders.get(3).build(), 0.0, imaginaryComponent, -imaginaryComponent);
+  }
+
+  @Test
   public void testRejectsInvalidRowsEvenWhenBeyondTruncatedN() throws UDFException {
     TableFunctionDataProcessor processor = createProcessor(true, 2L);
     processor.process(record(0L, 1.0), Collections.emptyList(), null);

@@ -40,7 +40,6 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.utils.Binary;
-import org.jtransforms.fft.DoubleFFT_1D;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -633,7 +632,7 @@ public class FFTTableFunction implements TableFunction {
       double[][] spectra = new double[valueColumns.length][2 * transformLength];
 
       int copiedRows = Math.min(rows.size(), transformLength);
-      DoubleFFT_1D fft = new DoubleFFT_1D(transformLength);
+      DoubleFft1d fft = new DoubleFft1d(transformLength);
       for (int columnIndex = 0; columnIndex < valueColumns.length; columnIndex++) {
         double[] spectrum = spectra[columnIndex];
         for (int rowIndex = 0; rowIndex < copiedRows; rowIndex++) {

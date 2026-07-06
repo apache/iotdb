@@ -309,6 +309,16 @@ License: https://github.com/addthis/stream-lib/blob/master/LICENSE.txt
 
 --------------------------------------------------------------------------------
 
+The following file includes code modified from JTransforms project.
+
+./iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin/relational/tvf/DoubleFft1d.java
+
+Copyright (c) 2007 onward, Piotr Wendykier
+Project page: https://github.com/wendykierp/JTransforms
+License: http://opensource.org/licenses/BSD-2-Clause
+
+--------------------------------------------------------------------------------
+
 The following files include code modified from Dropwizard Metrics project.
 
 ./iotdb-core/metrics/core/src/main/java/org/apache/iotdb/metrics/core/utils/IoTDBCachedGauge.java
