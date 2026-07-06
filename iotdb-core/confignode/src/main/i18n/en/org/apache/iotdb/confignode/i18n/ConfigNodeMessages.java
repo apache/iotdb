@@ -121,6 +121,9 @@ public final class ConfigNodeMessages {
       "Current node [nodeId: {}, ip:port: {}] becomes config region leader";
   public static final String CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER =
       "Current node [nodeId:{}, ip:port: {}] is no longer the leader, ";
+  public static final String MESSAGE_CURRENT_NODE_NODEID_ARG_IP_PORT_ARG_IS_NO_LONGER_THE_LEADER_SKIP_STARTING_LEADER_SERVICES_BECAUSE_THE_LEADER_EPOCH_IS_STALE_CCF39435 =
+      "Current node [nodeId:{}, ip:port: {}] is no longer the leader, skip starting leader "
+          + "services because the leader epoch is stale";
   public static final String DATABASE_INCONSISTENCY_DETECTED_WHEN_ADJUSTING_MAX_REGION_GROUP_COUNT_MESSAGE =
       "Database inconsistency detected when adjusting max region group count, message: {}, will be corrected by the following adjusting plans";
   public static final String DATABASE_NOT_EXIST = "Database not exist";
@@ -540,4 +543,122 @@ public final class ConfigNodeMessages {
 
   public static final String AUTHENTICATION_FAILED = "Authentication failed.";
   private ConfigNodeMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String MESSAGE_ILLEGAL_PATTERN_PATH_ARG_PATTERN_PATH_SHOULD_END_OTHERWISE_IT_50E969BB =
+      "Illegal pattern path: %s, pattern path should end with **, otherwise, it should be a specific"
+      + " database or device path without *";
+  public static final String MESSAGE_NUMBER_TTL_RULES_HAS_REACHED_LIMIT_8575FF1E = "The number of TTL rules has reached the limit ";
+  public static final String MESSAGE_CAPACITY_ARG_REQUESTED_TOTAL_ARG_PLEASE_DELETE_SOME_EXISTING_RULES_35B24B22 = "(capacity: %d, requested total: %d). Please delete some existing rules first.";
+  public static final String LOG_EXITS_JVM_MEMORY_USAGE_ARG_0BCD1CCF = " exits. Jvm memory usage: {}";
+  public static final String EXCEPTION_TOPOLOGY_PROBING_BASE_INTERVAL_MS_MUST_POSITIVE_BUT_GOT_18C9B7A2 = "topology_probing_base_interval_in_ms must be positive, but got: ";
+  public static final String EXCEPTION_TOPOLOGY_PROBING_TIMEOUT_RATIO_MUST_0_1_BUT_GOT_FBD0E28B = "topology_probing_timeout_ratio must be in (0, 1), but got: ";
+  public static final String EXCEPTION_DATA_CONFIGNODE_SYSTEM_CONFIGNODE_SYSTEM_PROPERTIES_786349AB = "data/confignode/system/confignode-system.properties. ";
+  public static final String EXCEPTION_PLEASE_DELETE_DATA_DIR_DATA_CONFIGNODE_RESTART_AGAIN_8527BE66 = "Please delete data dir data/confignode and restart again.";
+  public static final String EXCEPTION_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_SET_E7A83ED6 = "the config_node_consensus_protocol_class is set to";
+  public static final String EXCEPTION_AVAILABLE_ONLY_SCHEMA_REPLICATION_FACTOR_SET_1_45667207 = "available only when schema_replication_factor is set to 1";
+  public static final String EXCEPTION_MESSAGE_E81C4E4F = "or";
+  public static final String EXCEPTION_AVAILABLE_ONLY_DATA_REPLICATION_FACTOR_SET_1_71748D3D = "available only when data_replication_factor is set to 1";
+  public static final String EXCEPTION_ARG_ARG_6E068B23 = "%s or %s";
+  public static final String EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUS_84350FD1 = "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensus";
+  public static final String EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUSV2_BA353C6D = "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensusV2";
+  public static final String EXCEPTION_GREEDY_MIN_COST_FLOW_HASH_C07DA2EE = "GREEDY or MIN_COST_FLOW or HASH";
+  public static final String EXCEPTION_UNRECOGNIZED_LEADER_DISTRIBUTION_POLICY_SET_F9FFB410 = "an unrecognized leader_distribution_policy is set";
+  public static final String EXCEPTION_LEADER_GREEDY_55C6B994 = "LEADER or GREEDY";
+  public static final String EXCEPTION_UNRECOGNIZED_ROUTE_PRIORITY_POLICY_SET_C0012AE4 = "an unrecognized route_priority_policy is set";
+  public static final String EXCEPTION_THERE_NO_AVAILABLE_ARG_DATABASES_ARG_CURRENTLY_9B8297B3 = "There are no available %s for databases: %s currently, ";
+  public static final String EXCEPTION_PLEASE_USE_SHOW_CLUSTER_SHOW_REGIONS_CHECK_CLUSTER_STATUS_611120DF = "please use \"show cluster\" or \"show regions\" to check the cluster status";
+  public static final String EXCEPTION_SCHEMAREGIONGROUPS_3C409207 = "SchemaRegionGroups";
+  public static final String EXCEPTION_DATAREGIONGROUPS_945CCE78 = "DataRegionGroups";
+  public static final String EXCEPTION_DATANODE_NOT_ENOUGH_PLEASE_REGISTER_MORE_9F5EEDF5 = "DataNode is not enough, please register more. ";
+  public static final String EXCEPTION_CURRENT_DATANODES_ARG_REPLICATIONFACTOR_ARG_5D686D2B = "Current DataNodes: %s, replicationFactor: %d";
+  public static final String EXCEPTION_THERE_NO_AVAILABLE_AINODES_CURRENTLY_PLEASE_USE_SHOW_CLUSTER_CHECK_FD32EB52 =
+      "There are no available AINodes currently, please use \"show cluster\" to check the cluster"
+      + " status.";
+  public static final String EXCEPTION_ADD_CONSENSUSGROUP_ARG_FAILED_D3FDDC1B = "Add ConsensusGroup to: %s failed.";
+  public static final String EXCEPTION_ADD_PEER_ARG_FAILED_17DEB6CA = "Add peer: %s failed.";
+  public static final String EXCEPTION_DATABASE_ARG_DOESN_T_EXIST_778BBF66 = "Database: %s doesn't exist.";
+  public static final String LOG_REDIRECTION_RECOMMENDED_REMOVECONFIGNODE_BUT_NO_LEADER_ENDPOINT_PROVIDED_ABORT_RETRY_520A4C64 = "Redirection recommended for removeConfigNode but no leader endpoint provided, abort retry.";
+  public static final String LOG_FAILED_WRITE_AUDIT_LOG_DATANODE_ARG_RESPONSE_ARG_691ABC90 = "Failed to write audit log to DataNode {}, response: {}";
+  public static final String LOG_FAILED_WRITE_AUDIT_LOG_DATANODE_ARG_90F15E13 = "Failed to write audit log to DataNode {}";
+  public static final String EXCEPTION_UNKNOWN_PHYSICALPLANTYPE_ARG_7F21B699 = "Unknown PhysicalPlanType: %d";
+  public static final String LOG_CANNOT_READ_MORE_PHYSICALPLANS_ARG_SUCCESSFULLY_READ_INDEX_ARG_REASON_2EC90E78 = "Cannot read more PhysicalPlans from {}, successfully read index is {}. The reason is";
+  public static final String EXCEPTION_FILE_11296840 = "file: ";
+  public static final String EXCEPTION_ARG_CALCULATED_ARG_0EEEE191 = "%d Calculated: %d.";
+  public static final String LOG_CANNOT_DESERIALIZE_PHYSICALPLANS_BYTEBUFFER_IGNORE_REMAINING_LOGS_06AE778F = "Cannot deserialize PhysicalPlans from ByteBuffer, ignore remaining logs";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_SCHEMAREPLICATIONFACTOR_YET_AD96111F = "Failed to alter database. Doesn't support ALTER SchemaReplicationFactor yet.";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_DATAREPLICATIONFACTOR_YET_2E7FF6E7 = "Failed to alter database. Doesn't support ALTER DataReplicationFactor yet.";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONORIGIN_YET_B315F2E3 = "Failed to alter database. Doesn't support ALTER TimePartitionOrigin yet.";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONINTERVAL_YET_F539A76F = "Failed to alter database. Doesn't support ALTER TimePartitionInterval yet.";
+  public static final String MESSAGE_REMOVE_CONSENSUSGROUP_FAILED_BECAUSE_TARGET_CONFIGNODE_NOT_CURRENT_CONFIGNODE_608E64F9 = "remove ConsensusGroup failed because the target ConfigNode is not current ConfigNode.";
+  public static final String MESSAGE_REMOVE_CONSENSUSGROUP_FAILED_BECAUSE_INTERNAL_FAILURE_SEE_OTHER_LOGS_MORE_51858EC2 = "remove ConsensusGroup failed because internal failure. See other logs for more details";
+  public static final String EXCEPTION_LOADPIPETASKINFOEXCEPTION_2270468E = "loadPipeTaskInfoException=";
+  public static final String EXCEPTION_LOADPIPEPLUGININFOEXCEPTION_40362E11 = ", loadPipePluginInfoException=";
+  public static final String MESSAGE_FAILED_SET_PIPE_STATUS_STOPPED_RUNTIME_EXCEPTION_FLAG_BECAUSE_BFEA15AA = "Failed to set pipe status with stopped-by-runtime-exception flag, because ";
+  public static final String EXCEPTION_UNKNOWN_TYPE_7618F8F4 = "unknown type: ";
+  public static final String EXCEPTION_NO_SUCH_USER_ARG_D11B1046 = "No such user : %s";
+  public static final String EXCEPTION_NO_SUCH_USER_ID_99CA691B = "No such user id: ";
+  public static final String LOG_HANDLING_COMMIT_PROGRESS_META_CHANGES_FA21A080 = "Handling commit progress meta changes ...";
+  public static final String EXCEPTION_FAILED_CREATE_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_1_POSITIVE_A33070FB = "Failed to create or alter topic, illegal %s=%s, expected -1 or a positive long value";
+  public static final String LOG_TRYING_GET_MAX_TTL_UNDER_ONE_DATABASE_USE_LONG_MAX_9D70ACB2 = " when trying to get max ttl under one database, use Long.MAX_VALUE.";
+  public static final String MESSAGE_ENABLE_IOTDB_CLUSTER_S_DATA_SERVICE_PLEASE_REGISTER_ARG_MORE_F48F3890 = "To enable IoTDB-Cluster's data service, please register %d more IoTDB-DataNode";
+  public static final String MESSAGE_APPLY_NEW_CONFIGNODE_FAILED_BECAUSE_CURRENT_CONFIGNODE_CAN_T_STORE_1BB6A6BF = "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CURRENT_CONFIGNODE_CAN_T_STORE_CONFIGNODE_8AB3BCB4 = "Remove ConfigNode failed because current ConfigNode can't store ConfigNode information.";
+  public static final String LOG_NODE_ARG_REGION_ARG_70A7CD4F = "node: {}, region: {}";
+  public static final String LOG_NO_NEED_REMOVE_IT_NODE_ARG_REGION_ARG_D14062CE = "no need to remove it, node: {}, region: {}";
+  public static final String LOG_PID_ARG_FAILED_WRITE_UPDATE_API_EXECUTING_CONSENSUS_LAYER_824FB30E = "pid={} Failed in the write update API executing the consensus layer due to: ";
+  public static final String LOG_PID_ARG_FAILED_WRITE_DELETE_API_EXECUTING_CONSENSUS_LAYER_0E758BF5 = "pid={} Failed in the write delete API executing the consensus layer due to: ";
+  public static final String LOG_NEW_LEADER_NODEID_ARG_0A63760B = "the new leader is [nodeId:{}]";
+  public static final String LOG_START_CLEANING_UP_RELATED_SERVICES_A409E261 = "start cleaning up related services";
+  public static final String LOG_ALL_SERVICES_OLD_LEADER_UNAVAILABLE_NOW_8A22E60F = "all services on old leader are unavailable now.";
+  public static final String LOG_FILEPATH_ARG_RETRY_ARG_16284354 = "filePath: {}, retry: {}";
+  public static final String EXCEPTION_COLON_5D70AD09 = ":";
+  public static final String MESSAGE_COLON_CEFF3F4D = ": ";
+  public static final String EMPTY_MESSAGE = "";
+  public static final String EXCEPTION_PROCEDURE_TYPE_IS_NULL_93147BD3 = "Procedure type is null";
+  public static final String EXCEPTION_DOT_9D9B854A = ".";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FAILED_TO_START_LEADER_SERVICE_ARG_THE_1754011A =
+      "Current ConfigNode(nodeId: {}, ip: {}) failed to start leader service [{}], the";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FAILED_TO_START_LEADER_SERVICE_ARG_THE_NODE_WILL_STILL_FINISH_WARMING_UP_THIS_SERVICE_STAYS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_E89A98E7 =
+      "Current ConfigNode(nodeId: {}, ip: {}) failed to start leader service [{}], the node will "
+          + "still finish warming up; this service stays unavailable until the next leadership "
+          + "transition.";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FINISHED_STARTING_LEADER_SERVICES_WHILE_LOAD_0C57A408 =
+      "Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FINISHED_STARTING_LEADER_SERVICES_WHILE_LOAD_WARM_UP_IS_STILL_IN_PROGRESS_ARG_17C09A31 =
+      "Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load warm-up "
+          + "is still in progress: {}";
+  public static final String MESSAGE_UNEXPECTED_INTERRUPTION_WHILE_WAITING_FOR_CONFIGNODE_LEADER_LOAD_WARM_UP_BB5AA4F7 =
+      "Unexpected interruption while waiting for ConfigNode leader load warm-up.";
+  public static final String EXCEPTION_PROCEDURE_FILE_ARG_EXCEEDS_THE_LOAD_BUFFER_LIMIT_ARG_ACTUAL_SIZE_ARG_62375B4C =
+      "Procedure file %s exceeds the load buffer limit %s, actual size %s";
+  public static final String MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_REPLAYING_OFFER_PLAN_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_2A81A649 =
+      "Dropping legacy region-delete task for {} while replaying offer plan; region deletion is now handled by RemoveRegionGroupProcedure.";
+  public static final String MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_LOADING_SNAPSHOT_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_A9D409A0 =
+      "Dropping legacy region-delete task for {} while loading snapshot; region deletion is now handled by RemoveRegionGroupProcedure.";
+  public static final String MESSAGE_CONFIGNODE_LEADER_IS_WARMING_UP_BEFORE_SERVING_THE_REGISTERING_CONFIGNODE_WILL_WAIT_2E051639 =
+      "ConfigNode leader is warming up before serving the registering ConfigNode, will wait";
+  public static final String MESSAGE_CONFIGNODE_LEADER_IS_WARMING_UP_BEFORE_SERVING_THE_REGISTERING_CONFIGNODE_WILL_WAIT_AND_RETRY_STATUS_ARG_RETRY_ARG_3C924873 =
+      "ConfigNode leader is warming up before serving the registering ConfigNode, will wait and "
+          + "retry. Status: {}, retry: {}";
+  public static final String EXCEPTION_ARG_SHOULD_BE_AN_INTEGER_BUT_WAS_ARG_56B5D91B =
+      "%s should be an integer, but was %s.";
+  public static final String EXCEPTION_HEARTBEAT_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_WAS_2269997B =
+      "heartbeat_interval_in_ms should be greater than 0, but was ";
+  public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 =
+      "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is ";
+  public static final String EXCEPTION_DEFAULT_SCHEMA_REGION_GROUP_NUM_PER_DATABASE_SHOULD_BE_POSITIVE_C8F77774 =
+      "default_schema_region_group_num_per_database should be positive.";
+  public static final String EXCEPTION_SCHEMA_REGION_PER_DATA_NODE_SHOULD_BE_POSITIVE_CDEB9FC1 =
+      "schema_region_per_data_node should be positive.";
+  public static final String EXCEPTION_DEFAULT_DATA_REGION_GROUP_NUM_PER_DATABASE_SHOULD_BE_POSITIVE_8E68B5A0 =
+      "default_data_region_group_num_per_database should be positive.";
+  public static final String EXCEPTION_DATA_REGION_PER_DATA_NODE_SHOULD_BE_NON_NEGATIVE_D2960368 =
+      "data_region_per_data_node should be non-negative.";
+  public static final String EXCEPTION_PROCEDURE_COMPLETED_CLEAN_INTERVAL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_8781558E =
+      "procedure_completed_clean_interval should be greater than 0, but was ";
+  public static final String EXCEPTION_PROCEDURE_COMPLETED_EVICT_TTL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_5A4D0CF6 =
+      "procedure_completed_evict_ttl should be greater than 0, but was ";
+
 }

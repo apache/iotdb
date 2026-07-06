@@ -418,8 +418,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             ConfigNodeMessages.THE_RESULT_OF_REGISTER_SELF_CONFIGNODE_IS_RETRY, status, retry);
       } else if (status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()) {
         LOGGER.info(
-            "ConfigNode leader is warming up before serving the registering ConfigNode, will wait"
-                + " and retry. Status: {}, retry: {}",
+            ConfigNodeMessages
+                .MESSAGE_CONFIGNODE_LEADER_IS_WARMING_UP_BEFORE_SERVING_THE_REGISTERING_CONFIGNODE_WILL_WAIT_AND_RETRY_STATUS_ARG_RETRY_ARG_3C924873,
             status,
             retry);
       } else {

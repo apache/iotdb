@@ -250,7 +250,8 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     if (allDataNodes.isEmpty()) {
       LOG.error(
-          "[DataPartitionIntegrity] No DataNodes registered, no way to collect earliest timeslots, waiting for them to go up");
+          ProcedureMessages
+              .LOG_DATAPARTITIONINTEGRITY_NO_DATANODES_REGISTERED_NO_WAY_COLLECT_EARLIEST_TIMESLOTS_WAITING_7025EB23);
       sleep(
           CHECK_ALL_DATANODE_IS_ALIVE_INTERVAL,
           "[DataPartitionIntegrity] Error waiting for DataNode startup due to thread interruption.");
@@ -281,7 +282,8 @@ public class DataPartitionTableIntegrityCheckProcedure
         if (response instanceof TSStatus) {
           failedDataNodes.add(dataNode);
           LOG.error(
-              "[DataPartitionIntegrity] Failed to collected earliest timeslots from the DataNode[id={}], already out of max retry time",
+              ProcedureMessages
+                  .LOG_DATAPARTITIONINTEGRITY_FAILED_COLLECTED_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ALREADY_OUT_834B62B9,
               dataNode.getLocation().getDataNodeId());
           continue;
         }
@@ -290,7 +292,8 @@ public class DataPartitionTableIntegrityCheckProcedure
         if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           failedDataNodes.add(dataNode);
           LOG.error(
-              "[DataPartitionIntegrity] Failed to collected earliest timeslots from the DataNode[id={}], response status is {}",
+              ProcedureMessages
+                  .LOG_DATAPARTITIONINTEGRITY_FAILED_COLLECTED_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_RESPONSE_STATUS_B0A31EC4,
               dataNode.getLocation().getDataNodeId(),
               resp.getStatus());
           continue;
@@ -305,13 +308,14 @@ public class DataPartitionTableIntegrityCheckProcedure
 
         if (LOG.isDebugEnabled()) {
           LOG.debug(
-              "Collected earliest timeslots from the DataNode[id={}]: {}",
+              ProcedureMessages.LOG_COLLECTED_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ARG_5CDF2BA6,
               dataNode.getLocation().getDataNodeId(),
               nodeTimeslots);
         }
       } catch (Exception e) {
         LOG.error(
-            "[DataPartitionIntegrity] Failed to collect earliest timeslots from the DataNode[id={}]: {}",
+            ProcedureMessages
+                .LOG_DATAPARTITIONINTEGRITY_FAILED_COLLECT_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ARG_A211840A,
             dataNode.getLocation().getDataNodeId(),
             e.getMessage(),
             e);
@@ -321,7 +325,8 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     if (LOG.isDebugEnabled()) {
       LOG.debug(
-          "Collected earliest timeslots from {} DataNodes: {}, the number of successful DataNodes is {}",
+          ProcedureMessages
+              .LOG_COLLECTED_EARLIEST_TIMESLOTS_ARG_DATANODES_ARG_NUMBER_SUCCESSFUL_DATANODES_ARG_1CC129EF,
           targetDataNodes.size(),
           earliestTimeslots,
           targetDataNodes.size() - failedDataNodes.size());
@@ -347,7 +352,8 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     if (earliestTimeslots.isEmpty()) {
       LOG.warn(
-          "[DataPartitionIntegrity] No missing data partitions detected, nothing needs to be repaired, terminating procedure");
+          ProcedureMessages
+              .LOG_DATAPARTITIONINTEGRITY_NO_MISSING_DATA_PARTITIONS_DETECTED_NOTHING_NEEDS_REPAIRED_TERMINATING_72F2635F);
       return Flow.NO_MORE_STATE;
     }
 
@@ -367,7 +373,8 @@ public class DataPartitionTableIntegrityCheckProcedure
           || localDataPartitionTable.get(database).isEmpty()) {
         databasesWithLostDataPartition.add(database);
         LOG.warn(
-            "[DataPartitionIntegrity] No data partition table related to database {} was found from the ConfigNode, and this issue needs to be repaired",
+            ProcedureMessages
+                .LOG_DATAPARTITIONINTEGRITY_NO_DATA_PARTITION_TABLE_RELATED_DATABASE_ARG_WAS_FOUND_B5B90613,
             database);
         continue;
       }
@@ -397,7 +404,8 @@ public class DataPartitionTableIntegrityCheckProcedure
           > TimePartitionUtils.getStartTimeByPartitionId(earliestTimeslot)) {
         databasesWithLostDataPartition.add(database);
         LOG.warn(
-            "[DataPartitionIntegrity] Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
+            ProcedureMessages
+                .LOG_DATAPARTITIONINTEGRITY_DATABASE_ARG_HAS_LOST_TIMESLOT_ARG_ITS_DATA_TABLE_499AF395,
             database,
             earliestTimeslot);
       }
@@ -405,12 +413,14 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     if (databasesWithLostDataPartition.isEmpty()) {
       LOG.info(
-          "[DataPartitionIntegrity] No databases have lost data partitions, terminating procedure");
+          ProcedureMessages
+              .LOG_DATAPARTITIONINTEGRITY_NO_DATABASES_HAVE_LOST_DATA_PARTITIONS_TERMINATING_PROCEDURE_3E718CC3);
       return Flow.NO_MORE_STATE;
     }
 
     LOG.info(
-        "[DataPartitionIntegrity] Identified {} databases have lost data partitions, will request DataPartitionTable generation from {} DataNodes",
+        ProcedureMessages
+            .LOG_DATAPARTITIONINTEGRITY_IDENTIFIED_ARG_DATABASES_HAVE_LOST_DATA_PARTITIONS_WILL_REQUEST_6DEA7502,
         databasesWithLostDataPartition.size(),
         allDataNodes.size() - failedDataNodes.size());
     setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES);
@@ -448,12 +458,14 @@ public class DataPartitionTableIntegrityCheckProcedure
   private Flow requestPartitionTables() {
     if (LOG.isDebugEnabled()) {
       LOG.debug(
-          "Requesting DataPartitionTable generation from {} DataNodes...", allDataNodes.size());
+          ProcedureMessages.LOG_REQUESTING_DATAPARTITIONTABLE_GENERATION_ARG_DATANODES_559F97E8,
+          allDataNodes.size());
     }
 
     if (allDataNodes.isEmpty()) {
       LOG.error(
-          "[DataPartitionIntegrity] No DataNodes registered, no way to requested DataPartitionTable generation, terminating procedure");
+          ProcedureMessages
+              .LOG_DATAPARTITIONINTEGRITY_NO_DATANODES_REGISTERED_NO_WAY_REQUESTED_DATAPARTITIONTABLE_GENERATION_TERMINATING_);
       sleep(
           CHECK_ALL_DATANODE_IS_ALIVE_INTERVAL,
           "[DataPartitionIntegrity] Error waiting for DataNode startup due to thread interruption.");
@@ -492,7 +504,8 @@ public class DataPartitionTableIntegrityCheckProcedure
             failedDataNodes.add(dataNode);
             dataNodeGeneratorProgress.put(dataNodeId, 1.0);
             LOG.error(
-                "[DataPartitionIntegrity] Failed to request DataPartitionTable generation from the DataNode[id={}], already out of max retry time",
+                ProcedureMessages
+                    .LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_DATANODE_ID_ARG_ALREADY_OUT_6B0C9351,
                 dataNode.getLocation().getDataNodeId());
             continue;
           }
@@ -502,7 +515,8 @@ public class DataPartitionTableIntegrityCheckProcedure
             failedDataNodes.add(dataNode);
             dataNodeGeneratorProgress.put(dataNodeId, 1.0);
             LOG.error(
-                "[DataPartitionIntegrity] Failed to request DataPartitionTable generation from the DataNode[id={}], response status is {}",
+                ProcedureMessages
+                    .LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_DATANODE_ID_ARG_RESPONSE_STATUS_93012D,
                 dataNode.getLocation().getDataNodeId(),
                 resp.getStatus());
           }
@@ -510,7 +524,8 @@ public class DataPartitionTableIntegrityCheckProcedure
           failedDataNodes.add(dataNode);
           dataNodeGeneratorProgress.put(dataNodeId, 1.0);
           LOG.error(
-              "[DataPartitionIntegrity] Failed to request DataPartitionTable generation from DataNode[id={}]: {}",
+              ProcedureMessages
+                  .LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_DATANODE_ID_ARG_ARG_818B47B8,
               dataNodeId,
               e.getMessage(),
               e);
@@ -566,7 +581,8 @@ public class DataPartitionTableIntegrityCheckProcedure
             failedDataNodes.add(dataNode);
             dataNodeGeneratorProgress.put(dataNodeId, 1.0);
             LOG.error(
-                "[DataPartitionIntegrity] Failed to request DataPartitionTable generation heart beat from the DataNode[id={}], already out of max retry time",
+                ProcedureMessages
+                    .LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_HEART_BEAT_DATANODE_ID_ARG_2AB63F12,
                 dataNode.getLocation().getDataNodeId());
             continue;
           }
@@ -578,7 +594,8 @@ public class DataPartitionTableIntegrityCheckProcedure
 
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOG.error(
-                "[DataPartitionIntegrity] Failed to request DataPartitionTable generation heart beat from the DataNode[id={}], state is {}, response status is {}",
+                ProcedureMessages
+                    .LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_HEART_BEAT_DATANODE_ID_ARG_DC1702EF,
                 dataNode.getLocation().getDataNodeId(),
                 state,
                 resp.getStatus());
@@ -593,28 +610,32 @@ public class DataPartitionTableIntegrityCheckProcedure
               dataPartitionTables.put(dataNodeId, databaseScopedDataPartitionTableList);
               dataNodeGeneratorProgress.put(dataNodeId, 1.0);
               LOG.info(
-                  "[DataPartitionIntegrity] DataNode {} completed DataPartitionTable generation, terminating heart beat",
+                  ProcedureMessages
+                      .LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_COMPLETED_DATAPARTITIONTABLE_GENERATION_TERMINATING_HEART_BEAT_59DAAD5,
                   dataNodeId);
               completeCount++;
               break;
             case IN_PROGRESS:
               dataNodeGeneratorProgress.put(dataNodeId, clampProgress(resp.getProgress()));
               LOG.info(
-                  "[DataPartitionIntegrity] DataNode {} still generating DataPartitionTable",
+                  ProcedureMessages
+                      .LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_STILL_GENERATING_DATAPARTITIONTABLE_63F84C78,
                   dataNodeId);
               break;
             default:
               failedDataNodes.add(dataNode);
               dataNodeGeneratorProgress.put(dataNodeId, 1.0);
               LOG.error(
-                  "[DataPartitionIntegrity] DataNode {} returned unknown error code: {}",
+                  ProcedureMessages
+                      .LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_RETURNED_UNKNOWN_ERROR_CODE_ARG_2DA6A21E,
                   dataNodeId,
                   resp.getErrorCode());
               break;
           }
         } catch (Exception e) {
           LOG.error(
-              "[DataPartitionIntegrity] Error checking DataPartitionTable status from DataNode {}: {}, terminating heart beat",
+              ProcedureMessages
+                  .LOG_DATAPARTITIONINTEGRITY_ERROR_CHECKING_DATAPARTITIONTABLE_STATUS_DATANODE_ARG_ARG_TERMINATING_HEART_D6EDA91,
               dataNodeId,
               e.getMessage(),
               e);
@@ -666,7 +687,8 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     if (dataPartitionTables.isEmpty()) {
       LOG.error(
-          "[DataPartitionIntegrity] No DataPartitionTables to merge, dataPartitionTables is empty");
+          ProcedureMessages
+              .LOG_DATAPARTITIONINTEGRITY_NO_DATAPARTITIONTABLES_MERGE_DATAPARTITIONTABLES_EMPTY_920E3DE6);
       delayRollbackNextState(
           DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
@@ -685,26 +707,26 @@ public class DataPartitionTableIntegrityCheckProcedure
           || localDataPartitionTableMap.get(database) == null
           || localDataPartitionTableMap.get(database).isEmpty()) {
         LOG.warn(
-            "[DataPartitionIntegrity] No data partition table related to database {} was found from the ConfigNode, use data partition table of DataNode directly",
+            ProcedureMessages
+                .LOG_DATAPARTITIONINTEGRITY_NO_DATA_PARTITION_TABLE_RELATED_DATABASE_ARG_WAS_FOUND_D1698512,
             database);
-        continue;
+      } else {
+        localDataPartitionTableMap
+            .values()
+            .forEach(
+                map ->
+                    map.forEach(
+                        (tSeriesPartitionSlot, seriesPartitionTableMap) -> {
+                          if (tSeriesPartitionSlot == null
+                              || seriesPartitionTableMap == null
+                              || seriesPartitionTableMap.isEmpty()) {
+                            return;
+                          }
+                          finalDataPartitionMap.computeIfAbsent(
+                              tSeriesPartitionSlot,
+                              k -> new SeriesPartitionTable(seriesPartitionTableMap));
+                        }));
       }
-
-      localDataPartitionTableMap
-          .values()
-          .forEach(
-              map ->
-                  map.forEach(
-                      (tSeriesPartitionSlot, seriesPartitionTableMap) -> {
-                        if (tSeriesPartitionSlot == null
-                            || seriesPartitionTableMap == null
-                            || seriesPartitionTableMap.isEmpty()) {
-                          return;
-                        }
-                        finalDataPartitionMap.computeIfAbsent(
-                            tSeriesPartitionSlot,
-                            k -> new SeriesPartitionTable(seriesPartitionTableMap));
-                      }));
 
       dataPartitionTables.forEach(
           (k, v) ->
@@ -764,7 +786,8 @@ public class DataPartitionTableIntegrityCheckProcedure
 
         if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOG.info(
-              "[DataPartitionIntegrity] DataPartitionTable successfully written to consensus log");
+              ProcedureMessages
+                  .LOG_DATAPARTITIONINTEGRITY_DATAPARTITIONTABLE_SUCCESSFULLY_WRITTEN_CONSENSUS_LOG_2B1634A6);
           break;
         } else {
           LOG.error(
@@ -853,7 +876,8 @@ public class DataPartitionTableIntegrityCheckProcedure
           stream.write(buf, 0, size);
         } catch (IOException | TException e) {
           LOG.error(
-              "[DataPartitionIntegrity] {} serialize failed for dataNodeId: {}",
+              ProcedureMessages
+                  .LOG_DATAPARTITIONINTEGRITY_ARG_SERIALIZE_FAILED_DATANODEID_ARG_967B51AA,
               this.getClass().getSimpleName(),
               entry.getKey(),
               e);
@@ -886,7 +910,8 @@ public class DataPartitionTableIntegrityCheckProcedure
           stream.write(buf, 0, size);
         } catch (IOException | TException e) {
           LOG.error(
-              "[DataPartitionIntegrity] {} serialize finalDataPartitionTables failed",
+              ProcedureMessages
+                  .LOG_DATAPARTITIONINTEGRITY_ARG_SERIALIZE_FINALDATAPARTITIONTABLES_FAILED_7E44DCD8,
               this.getClass().getSimpleName(),
               e);
           throw new IOException(ProcedureMessages.FAILED_TO_SERIALIZE_FINALDATAPARTITIONTABLES, e);
@@ -972,7 +997,8 @@ public class DataPartitionTableIntegrityCheckProcedure
 
         } catch (IOException | TException e) {
           LOG.error(
-              "[DataPartitionIntegrity] {} deserialize failed for dataNodeId: {}",
+              ProcedureMessages
+                  .LOG_DATAPARTITIONINTEGRITY_ARG_DESERIALIZE_FAILED_DATANODEID_ARG_22388A60,
               this.getClass().getSimpleName(),
               dataNodeId,
               e);
@@ -1014,7 +1040,8 @@ public class DataPartitionTableIntegrityCheckProcedure
 
       } catch (IOException | TException e) {
         LOG.error(
-            "[DataPartitionIntegrity] {} deserialize finalDataPartitionTables failed",
+            ProcedureMessages
+                .LOG_DATAPARTITIONINTEGRITY_ARG_DESERIALIZE_FINALDATAPARTITIONTABLES_FAILED_7E23E4BD,
             this.getClass().getSimpleName(),
             e);
         throw new RuntimeException(
@@ -1084,7 +1111,9 @@ public class DataPartitionTableIntegrityCheckProcedure
         result.add(table);
       } catch (Exception e) {
         LOG.error(
-            "[DataPartitionIntegrity] Failed to deserialize DatabaseScopedDataPartitionTable", e);
+            ProcedureMessages
+                .LOG_DATAPARTITIONINTEGRITY_FAILED_DESERIALIZE_DATABASESCOPEDDATAPARTITIONTABLE_3B6933B5,
+            e);
       }
     }
 
@@ -1153,7 +1182,10 @@ public class DataPartitionTableIntegrityCheckProcedure
           .setMessage(
               String.format("DataPartitionTable integrity check progress: %.1f%%", progress));
     } catch (Exception e) {
-      LOG.warn("Failed to show DataPartitionTable integrity check progress", e);
+      LOG.warn(
+          ProcedureMessages
+              .MESSAGE_FAILED_TO_SHOW_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_5EE98694,
+          e);
       return new TShowRepairDataPartitionTableProgressResp(
               RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
               RepairDataPartitionTableProgressState.UNKNOWN.name(),
@@ -1179,7 +1211,8 @@ public class DataPartitionTableIntegrityCheckProcedure
         return 0.99;
       default:
         LOG.warn(
-            "Encountered unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress",
+            ProcedureMessages
+                .MESSAGE_ENCOUNTERED_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_5FA2739F,
             currentState);
         return 0.0;
     }
@@ -1194,7 +1227,8 @@ public class DataPartitionTableIntegrityCheckProcedure
       return RepairDataPartitionTableProgressState.valueOf(currentState.name()).name();
     } catch (IllegalArgumentException e) {
       LOG.warn(
-          "Unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress",
+          ProcedureMessages
+              .MESSAGE_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_D3C07BA1,
           currentState);
       return RepairDataPartitionTableProgressState.UNKNOWN.name();
     }

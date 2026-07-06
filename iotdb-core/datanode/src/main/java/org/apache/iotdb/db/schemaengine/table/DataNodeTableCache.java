@@ -182,7 +182,8 @@ public class DataNodeTableCache implements ITableCache {
         final TsTable oldTable = getTableFromPreUpdateMap(database, oldName);
         if (Objects.isNull(oldTable)) {
           LOGGER.info(
-              "Skip rollback renaming old table {}.{} because it has been handled.",
+              DataNodeSchemaMessages
+                  .MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456,
               database,
               oldName);
           return;
@@ -237,7 +238,10 @@ public class DataNodeTableCache implements ITableCache {
       final TsTable newTable = getTableFromPreUpdateMap(database, tableName);
       if (Objects.isNull(newTable)) {
         LOGGER.info(
-            "Skip commit-update table {}.{} because it has been handled.", database, tableName);
+            DataNodeSchemaMessages
+                .MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C,
+            database,
+            tableName);
         if (Objects.nonNull(oldName)) {
           removeTableFromPreUpdateMap(database, oldName);
         }

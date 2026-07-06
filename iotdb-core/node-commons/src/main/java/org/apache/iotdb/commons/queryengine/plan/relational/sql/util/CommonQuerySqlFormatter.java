@@ -102,7 +102,9 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
 
   @Override
   public Void visitExpression(Expression node, Integer indent) {
-    checkArgument(indent == 0, "visitExpression should only be called at root");
+    checkArgument(
+        indent == 0,
+        QueryMessages.EXCEPTION_VISITEXPRESSION_SHOULD_ONLY_BE_CALLED_AT_ROOT_93E4AAD4);
     builder.append(formatExpression(node));
     return null;
   }
@@ -379,7 +381,9 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
 
   @Override
   public Void visitRowPattern(RowPattern node, Integer indent) {
-    checkArgument(indent == 0, "visitRowPattern should only be called at root");
+    checkArgument(
+        indent == 0,
+        QueryMessages.EXCEPTION_VISITROWPATTERN_SHOULD_ONLY_BE_CALLED_AT_ROOT_9DE9F574);
     builder.append(formatPattern(node));
     return null;
   }
@@ -581,7 +585,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
     private final StringBuilder builder;
 
     public SqlBuilder(StringBuilder builder) {
-      this.builder = requireNonNull(builder, "builder is null");
+      this.builder = requireNonNull(builder, QueryMessages.EXCEPTION_BUILDER_IS_NULL_ADE64E9B);
     }
 
     @CanIgnoreReturnValue
@@ -645,7 +649,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
           break;
         default:
           throw new IllegalStateException(
-              "unexpected rowsPerMatch: " + node.getRowsPerMatch().get());
+              QueryMessages.EXCEPTION_UNEXPECTED_ROWSPERMATCH_F9B931C9
+                  + node.getRowsPerMatch().get());
       }
       append(indent + 1, rowsPerMatch).append("\n");
     }
@@ -661,7 +666,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
         case LAST:
           checkState(
               node.getAfterMatchSkipTo().get().getIdentifier().isPresent(),
-              "missing identifier in AFTER MATCH SKIP TO LAST");
+              QueryMessages.EXCEPTION_MISSING_IDENTIFIER_IN_AFTER_MATCH_SKIP_TO_LAST_82A12A21);
           skipTo =
               "AFTER MATCH SKIP TO LAST "
                   + formatExpression(node.getAfterMatchSkipTo().get().getIdentifier().get());
@@ -669,7 +674,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
         case FIRST:
           checkState(
               node.getAfterMatchSkipTo().get().getIdentifier().isPresent(),
-              "missing identifier in AFTER MATCH SKIP TO FIRST");
+              QueryMessages.EXCEPTION_MISSING_IDENTIFIER_IN_AFTER_MATCH_SKIP_TO_FIRST_F988B839);
           skipTo =
               "AFTER MATCH SKIP TO FIRST "
                   + formatExpression(node.getAfterMatchSkipTo().get().getIdentifier().get());

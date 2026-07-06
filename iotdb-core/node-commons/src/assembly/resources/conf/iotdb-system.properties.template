@@ -768,7 +768,7 @@ topology_probing_base_interval_in_ms=5000
 topology_probing_timeout_ratio=0.5
 
 # Disk remaining threshold at which DataNode is set to ReadOnly status
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: double(percentage)
 disk_space_warning_threshold=0.05
 
@@ -2190,12 +2190,12 @@ zombie_tsfile_writer_threshold=600000
 procedure_core_worker_thread_count=4
 
 # Default time interval of completed procedure cleaner work in, time unit is second
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int
 procedure_completed_clean_interval=30
 
 # Default ttl of completed procedure, time unit is second
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int
 procedure_completed_evict_ttl=60
 

@@ -583,7 +583,9 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE;
     }
     throw new UnsupportedOperationException(
-        ProcedureMessages.PROCEDURE_TYPE + procedure.getClass() + " is not supported");
+        ProcedureMessages.PROCEDURE_TYPE
+            + procedure.getClass()
+            + ProcedureMessages.EXCEPTION_NOT_SUPPORTED_0A83F963);
   }
 
   private static class ProcedureFactoryHolder {

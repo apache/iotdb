@@ -171,7 +171,7 @@ public class PipeReceiverStatusHandler {
               PipeMessages.USER_CONFLICT_WILL_RETRY,
               retryMaxMillisWhenConflictOccurs == Long.MAX_VALUE
                   ? "forever"
-                  : "for at least "
+                  : PipeMessages.MESSAGE_FOR_AT_LEAST_ADE37405
                       + (retryMaxMillisWhenConflictOccurs
                               + exceptionFirstEncounteredTime.get()
                               - System.currentTimeMillis())
@@ -276,7 +276,7 @@ public class PipeReceiverStatusHandler {
     }
 
     LOGGER.warn(
-        "User conflict exception: discarded data info because {}. data: {}. receiver message: {}. status: {}",
+        PipeMessages.LOG_USER_CONFLICT_EXCEPTION_DISCARDED_DATA_INFO_BECAUSE_ARG_DATA_ARG_CCE510A5,
         reason,
         summarizeRecordMessage(recordMessage),
         status.getMessage(),

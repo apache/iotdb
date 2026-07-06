@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -66,7 +68,10 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
   // Column should be like: | x | y |
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 2, "Length of input Column[] for MAX_BY/MIN_BY should be 2");
+    checkArgument(
+        arguments.length == 2,
+        CalcMessages
+            .EXCEPTION_LENGTH_OF_INPUT_COLUMN_LEFT_BRACKET_RIGHT_BRACKET_FOR_MAX_BY_SLASH_MIN_BY_SHOULD_3767E905);
     switch (yDataType) {
       case INT32:
       case DATE:
@@ -102,7 +107,8 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of MAX_BY/MIN_BY should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_MAX_BY_SLASH_MIN_BY_SHOULD_BE_BINARYCOLUMN_82B1BE6B);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -123,7 +129,8 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of MAX_BY/MIN_BY should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_MAX_BY_SLASH_MIN_BY_SHOULD_BE_BINARYCOLUMN_82B1BE6B);
 
     if (!initResult) {
       columnBuilder.appendNull();

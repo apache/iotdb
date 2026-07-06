@@ -103,7 +103,7 @@ public class TabletDecoder {
       return output;
     } catch (IOException e) {
       throw new IoTDBRuntimeException(
-          "Failed to decompress compressedBuffer",
+          DataNodeMiscMessages.MISC_EXCEPTION_FAILED_TO_DECOMPRESS_COMPRESSEDBUFFER_56398D3E,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }

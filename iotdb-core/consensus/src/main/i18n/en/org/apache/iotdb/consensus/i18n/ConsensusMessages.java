@@ -165,4 +165,14 @@ public final class ConsensusMessages {
   public static final String FAILED_TO_READ_KEYSTORE =
       "Failed to read key store or trust store.";
   public static final String NOT_IMPLEMENTED_YET = "not implemented yet";
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_RAFT_SERVER_CANNOT_SERVE_READ_REQUESTS_NOW_LEADER_UNKNOWN_UNDER_B6D65373 = "Raft Server cannot serve read requests now (leader is unknown or under recovery). ";
+  public static final String EXCEPTION_PLEASE_TRY_READ_LATER_D8E0CDE1 = "Please try read later: ";
+  public static final String EXCEPTION_RATIS_REQUEST_FAILED_52AF217F = "Ratis request failed ";
+  public static final String EXCEPTION_UNKNOWN_88183B94 = "Unknown";
+  public static final String EXCEPTION_RATIS_REQUEST_FAILED_58107CDE = "Ratis request failed: ";
+  public static final String EXCEPTION_DOT_F779BA66 = ". ";
+
 }
