@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDat
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -187,7 +188,7 @@ public class ConfigNodeProcedureEnv {
           try {
             TimeUnit.MILLISECONDS.sleep(500);
           } catch (final InterruptedException e) {
-            LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
+            LOG.error(ProcedureMessages.LOG_SLEEP_FAILED_CONFIGNODEPROCEDUREENV_BCD470AC, e);
             Thread.currentThread().interrupt();
             break;
           }
@@ -197,7 +198,7 @@ public class ConfigNodeProcedureEnv {
 
       if (nodeStatus == NodeStatus.Unknown) {
         LOG.warn(
-            "Invalidate cache failed, because DataNode {} is Unknown",
+            ProcedureMessages.LOG_INVALIDATE_CACHE_FAILED_BECAUSE_DATANODE_ARG_UNKNOWN_4F2D374C,
             dataNodeConfiguration.getLocation().getInternalEndPoint());
         return false;
       }
@@ -221,7 +222,8 @@ public class ConfigNodeProcedureEnv {
 
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
         LOG.error(
-            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine cache status is {}",
+            ProcedureMessages
+                .LOG_INVALIDATE_CACHE_FAILED_INVALIDATE_PARTITION_CACHE_STATUS_ARG_INVALIDATE_SCHEMAENGINE_BEB7A065,
             invalidatePartitionStatus,
             invalidateSchemaStatus);
         return false;
@@ -288,10 +290,11 @@ public class ConfigNodeProcedureEnv {
         tsStatus =
             new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
                 .setMessage(
-                    "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
+                    ProcedureMessages
+                        .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_UPDATE_CONSENSUSGROUP_PEER_INFORMATION_FAILED_FCE5302B);
       }
     } catch (ConsensusException e) {
-      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOG.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       tsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       tsStatus.setMessage(e.getMessage());
     }
@@ -519,7 +522,7 @@ public class ConfigNodeProcedureEnv {
     try {
       return getConsensusManager().write(createRegionGroupsPlan);
     } catch (ConsensusException e) {
-      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOG.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(
               "Failed to persist RegionGroup allocation in the consensus layer: " + e.getMessage());

@@ -112,7 +112,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
     if (slotList.isEmpty()) {
       throw new IllegalStateException(
-          String.format("Devices in TsFile %s is empty, this should not happen here.", tsFile));
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_DEVICES_IN_TSFILE_S_IS_EMPTY_THIS_SHOULD_NOT_HAPPEN_HERE_BC1BE63C,
+              tsFile));
     } else {
       final TTimePartitionSlot firstSlot = slotList.get(0).right;
       for (int i = 1, size = slotList.size(); i < size; i++) {

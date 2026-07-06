@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArrayFIFOQueue;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -51,10 +52,10 @@ public class RowReferenceTsBlockManager {
   }
 
   public LoadCursor add(TsBlock tsBlock, int startingPosition) {
-    checkState(currentCursor == null, "Cursor still active");
+    checkState(currentCursor == null, CalcMessages.EXCEPTION_CURSOR_STILL_ACTIVE_E9462D3B);
     checkArgument(
         startingPosition >= 0 && startingPosition <= tsBlock.getPositionCount(),
-        "invalid startingPosition: %s",
+        CalcMessages.EXCEPTION_INVALID_STARTINGPOSITION_COLON_ARG_7B4D49C0,
         startingPosition);
 
     TsBlockAccounting tsBlockAccounting =
@@ -99,7 +100,7 @@ public class RowReferenceTsBlockManager {
 
   public TsBlock getTsBlock(long rowId) {
     if (isCursorRowId(rowId)) {
-      checkState(currentCursor != null, "No active cursor");
+      checkState(currentCursor != null, CalcMessages.EXCEPTION_NO_ACTIVE_CURSOR_C89C9944);
       return currentCursor.getTsBlock();
     }
     int tsBlockId = rowIdBuffer.getTsBlockId(rowId);
@@ -108,7 +109,7 @@ public class RowReferenceTsBlockManager {
 
   public int getPosition(long rowId) {
     if (isCursorRowId(rowId)) {
-      checkState(currentCursor != null, "No active cursor");
+      checkState(currentCursor != null, CalcMessages.EXCEPTION_NO_ACTIVE_CURSOR_C89C9944);
       // rowId for cursors only reference the single current position
       return currentCursor.getCurrentPosition();
     }
@@ -160,7 +161,7 @@ public class RowReferenceTsBlockManager {
     }
 
     private int getCurrentPosition() {
-      checkState(currentPosition >= 0, "Not yet advanced");
+      checkState(currentPosition >= 0, CalcMessages.EXCEPTION_NOT_YET_ADVANCED_1600C5A7);
       return currentPosition;
     }
 
@@ -174,25 +175,25 @@ public class RowReferenceTsBlockManager {
 
     @Override
     public int compareTo(RowIdComparisonStrategy strategy, long rowId) {
-      checkState(currentPosition >= 0, "Not yet advanced");
+      checkState(currentPosition >= 0, CalcMessages.EXCEPTION_NOT_YET_ADVANCED_1600C5A7);
       return strategy.compare(RESERVED_ROW_ID_FOR_CURSOR, rowId);
     }
 
     @Override
     public boolean equals(RowIdHashStrategy strategy, long rowId) {
-      checkState(currentPosition >= 0, "Not yet advanced");
+      checkState(currentPosition >= 0, CalcMessages.EXCEPTION_NOT_YET_ADVANCED_1600C5A7);
       return strategy.equals(RESERVED_ROW_ID_FOR_CURSOR, rowId);
     }
 
     @Override
     public long hash(RowIdHashStrategy strategy) {
-      checkState(currentPosition >= 0, "Not yet advanced");
+      checkState(currentPosition >= 0, CalcMessages.EXCEPTION_NOT_YET_ADVANCED_1600C5A7);
       return strategy.hashCode(RESERVED_ROW_ID_FOR_CURSOR);
     }
 
     @Override
     public long allocateRowId() {
-      checkState(currentPosition >= 0, "Not yet advanced");
+      checkState(currentPosition >= 0, CalcMessages.EXCEPTION_NOT_YET_ADVANCED_1600C5A7);
       return tsBlockAccounting.referencePosition(currentPosition);
     }
 
@@ -255,7 +256,9 @@ public class RowReferenceTsBlockManager {
     /** Dereferences the row ID from this TsBlock. */
     public void dereference(long rowId) {
       int position = rowIdBuffer.getPosition(rowId);
-      checkArgument(rowId == rowIds[position], "rowId does not match this TsBlock");
+      checkArgument(
+          rowId == rowIds[position],
+          CalcMessages.EXCEPTION_ROWID_DOES_NOT_MATCH_THIS_TSBLOCK_18F9EB4D);
       rowIds[position] = RowIdBuffer.UNKNOWN_ID;
       activePositions--;
       rowIdBuffer.deallocate(rowId);
@@ -280,7 +283,9 @@ public class RowReferenceTsBlockManager {
     }
 
     public void compact() {
-      checkState(!lockedTsBlock, "Should not attempt compaction when TsBlock is locked");
+      checkState(
+          !lockedTsBlock,
+          CalcMessages.EXCEPTION_SHOULD_NOT_ATTEMPT_COMPACTION_WHEN_TSBLOCK_IS_LOCKED_DF775E6B);
 
       if (activePositions == tsBlock.getPositionCount()) {
         return;

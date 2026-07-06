@@ -148,8 +148,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     } catch (final Exception e) {
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
-              "Failed to transfer tablet insertion event %s, because %s.",
-              tabletInsertionEvent, e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_TRANSFER_TABLET_INSERTION_EVENT_S_BECAUSE_S_9710318F,
+              tabletInsertionEvent,
+              e.getMessage()),
           Integer.MAX_VALUE);
     }
   }
@@ -171,8 +173,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     } catch (Exception e) {
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
-              "Failed to transfer tsfile insertion event %s, because %s.",
-              tsFileInsertionEvent, e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_TRANSFER_TSFILE_INSERTION_EVENT_S_BECAUSE_S_21AD3263,
+              tsFileInsertionEvent,
+              e.getMessage()),
           Integer.MAX_VALUE);
     }
   }
@@ -472,7 +476,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
         } catch (Exception e) {
           throw new PipeRuntimeSinkRetryTimesConfigurableException(
               String.format(
-                  "Network error when transfer file %s, because %s.", file, e.getMessage()),
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_FILE_S_BECAUSE_S_3C673B7A,
+                  file,
+                  e.getMessage()),
               Integer.MAX_VALUE);
         }
 

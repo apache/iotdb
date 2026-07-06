@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -36,7 +38,7 @@ public class TypeParameter extends DataTypeParameter {
 
   public TypeParameter(DataType type) {
     super(null);
-    this.type = requireNonNull(type, "type is null");
+    this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
   }
 
   public DataType getValue() {

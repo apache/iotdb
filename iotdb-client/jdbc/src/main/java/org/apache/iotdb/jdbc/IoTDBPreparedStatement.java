@@ -514,8 +514,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       // Can't infer a type.
       throw new SQLException(
           String.format(
-              "Can''t infer the SQL type to use for an instance of %s. Use setObject() with"
-                  + " an explicit Types value to specify the type to use.",
+              JdbcMessages.EXCEPTION_CAN_T_INFER_SQL_TYPE_USE_INSTANCE_ARG_USE_SETOBJECT_A5B1C1BD
+                  + JdbcMessages.EXCEPTION_EXPLICIT_TYPES_VALUE_SPECIFY_TYPE_USE_CD046EDA,
               x.getClass().getName()));
     }
   }
@@ -556,7 +556,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                 setBoolean(parameterIndex, false);
               } else {
                 throw new SQLException(
-                    "No conversion from " + parameterObj + " to Types.BOOLEAN possible.");
+                    JdbcMessages.EXCEPTION_NO_CONVERSION_3F7E3A35
+                        + parameterObj
+                        + JdbcMessages.EXCEPTION_TYPES_BOOLEAN_POSSIBLE_54D316E6);
               }
               break;
             } else if (parameterObj instanceof Number) {
@@ -567,7 +569,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
               break;
             } else {
               throw new SQLException(
-                  "No conversion from " + parameterObj + " to Types.BOOLEAN possible.");
+                  JdbcMessages.EXCEPTION_NO_CONVERSION_3F7E3A35
+                      + parameterObj
+                      + JdbcMessages.EXCEPTION_TYPES_BOOLEAN_POSSIBLE_54D316E6);
             }
 
           case Types.BIT:
@@ -963,11 +967,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                   ((java.math.BigDecimal) parameterAsNum).setScale(scale, BigDecimal.ROUND_HALF_UP);
             } catch (ArithmeticException arEx) {
               throw new SQLException(
-                  "Can't set scale of '"
+                  JdbcMessages.EXCEPTION_CAN_T_SET_SCALE_5559DE62
                       + scale
-                      + "' for DECIMAL argument '"
+                      + JdbcMessages.EXCEPTION_DECIMAL_ARGUMENT_504BC102
                       + parameterAsNum
-                      + "'");
+                      + JdbcMessages.SINGLE_QUOTE);
             }
           }
 
@@ -1044,7 +1048,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setLong(parameterIndex, time);
     } catch (TException e) {
       logger.error(
-          String.format("set time error when iotdb prepared statement :%s ", e.getMessage()));
+          String.format(
+              JdbcMessages.LOG_SET_TIME_ERROR_IOTDB_PREPARED_STATEMENT_ARG_AAAACB25,
+              e.getMessage()));
     }
   }
 
@@ -1081,7 +1087,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setParameter(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     } catch (TException e) {
       logger.error(
-          String.format("set time error when iotdb prepared statement :%s ", e.getMessage()));
+          String.format(
+              JdbcMessages.LOG_SET_TIME_ERROR_IOTDB_PREPARED_STATEMENT_ARG_AAAACB25,
+              e.getMessage()));
     }
   }
 

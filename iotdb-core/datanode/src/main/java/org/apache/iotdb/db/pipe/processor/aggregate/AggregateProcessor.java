@@ -299,7 +299,9 @@ public class AggregateProcessor implements PipeProcessor {
     if (!aggregatorName2OutputNameMap.isEmpty()) {
       throw new PipeException(
           String.format(
-              "The aggregator and output name %s is invalid.", aggregatorName2OutputNameMap));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_AGGREGATOR_AND_OUTPUT_NAME_S_IS_INVALID_BC22CF92,
+              aggregatorName2OutputNameMap));
     }
 
     intermediateResultName2OperatorSupplierMap.keySet().retainAll(declaredIntermediateResultSet);
@@ -307,7 +309,9 @@ public class AggregateProcessor implements PipeProcessor {
     if (!declaredIntermediateResultSet.isEmpty()) {
       throw new PipeException(
           String.format(
-              "The needed intermediate values %s are not defined.", declaredIntermediateResultSet));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_NEEDED_INTERMEDIATE_VALUES_S_ARE_NOT_DEFINED_3FF0C52D,
+              declaredIntermediateResultSet));
     }
 
     // Set up column name strings
@@ -326,7 +330,10 @@ public class AggregateProcessor implements PipeProcessor {
         agent.getConfiguredProcessor(processorName, parameters, configuration);
     if (!(windowProcessor instanceof AbstractWindowingProcessor)) {
       throw new PipeException(
-          String.format("The processor %s is not a windowing processor.", processorName));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_PROCESSOR_S_IS_NOT_A_WINDOWING_PROCESSOR_EA5B59BA,
+              processorName));
     }
     windowingProcessor = (AbstractWindowingProcessor) windowProcessor;
 
@@ -349,7 +356,9 @@ public class AggregateProcessor implements PipeProcessor {
     if (!(index instanceof TimeWindowStateProgressIndex)) {
       throw new PipeException(
           String.format(
-              "The aggregate processor does not support progressIndexType %s", index.getType()));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_AGGREGATE_PROCESSOR_DOES_NOT_SUPPORT_PROGRESSINDEXTYPE_35351D27,
+              index.getType()));
     }
 
     final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
@@ -510,7 +519,9 @@ public class AggregateProcessor implements PipeProcessor {
               break;
             default:
               throw new UnsupportedOperationException(
-                  String.format("The type %s is not supported", row.getDataType(index)));
+                  String.format(
+                      DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_IS_NOT_SUPPORTED_E1A6F05D,
+                      row.getDataType(index)));
           }
           if (Objects.nonNull(result)) {
             collectWindowOutputs(result.getLeft(), timeSeries, rowCollector);
@@ -706,7 +717,8 @@ public class AggregateProcessor implements PipeProcessor {
               default:
                 throw new UnsupportedOperationException(
                     String.format(
-                        "The output tablet does not support column type %s",
+                        DataNodePipeMessages
+                            .PIPE_EXCEPTION_THE_OUTPUT_TABLET_DOES_NOT_SUPPORT_COLUMN_TYPE_S_62F3845C,
                         valueColumnTypes[columnIndex]));
             }
           }
@@ -756,7 +768,8 @@ public class AggregateProcessor implements PipeProcessor {
             default:
               throw new UnsupportedOperationException(
                   String.format(
-                      "The output tablet does not support column type %s",
+                      DataNodePipeMessages
+                          .PIPE_EXCEPTION_THE_OUTPUT_TABLET_DOES_NOT_SUPPORT_COLUMN_TYPE_S_62F3845C,
                       valueColumnTypes[columnIndex]));
           }
         } else {

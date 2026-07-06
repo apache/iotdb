@@ -107,4 +107,26 @@ public final class MetricsMessages {
       "Interrupted while collecting windows disk metrics";
 
   private MetricsMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_FAILED_LOAD_ARG_REPORTER_BECAUSE_ALREADY_EXISTED_4BAF2E58 = "Failed to load {} reporter because already existed";
+  public static final String EXCEPTION_FAILED_REMOVE_BECAUSE_MISMATCH_TYPE_044E55F6 = " failed to remove because the mismatch of type. ";
+  public static final String LOG_SIZE_METRIC_TAGS_SHOULD_EVEN_BUT_WAS_ODD_TAGS_ARG_201E6A2A = "The size of metric tags should be even, but was odd, tags: {}.";
+  public static final String LOG_GC_NOTIFICATIONS_WILL_NOT_AVAILABLE_BECAUSE_MEMORYPOOLMXBEANS_86C3EB6B = "GC notifications will not be available because MemoryPoolMXBeans ";
+  public static final String LOG_NOT_PROVIDED_JVM_948976D1 = "are not provided by the JVM";
+  public static final String LOG_GC_NOTIFICATIONS_WILL_NOT_AVAILABLE_BECAUSE_22FD13E0 = "GC notifications will not be available because ";
+  public static final String LOG_COM_SUN_MANAGEMENT_GARBAGECOLLECTIONNOTIFICATIONINFO_NOT_PRESENT_FA43486E = "com.sun.management.GarbageCollectionNotificationInfo is not present";
+  public static final String LOG_FAILED_GET_MEMORY_BECAUSE_041BE661 = "Failed to get memory, because ";
+  public static final String LOG_INTERRUPTED_WAITING_MEMORY_COMMAND_CF538E10 = "Interrupted while waiting for memory command";
+  public static final String LOG_FAILED_REMOVE_LOGBACKMETRICS_BECAUSE_9BE74246 = "Failed to remove logBackMetrics, because ";
+  public static final String LOG_ARG_WINDOWS_DISK_METRICS_WILL_SKIPPED_ARG_MS_BEFORE_RETRYING_1F1EB4C4 = "{}. Windows disk metrics will be skipped for {} ms before retrying.";
+  public static final String LOG_ARG_ARG_WINDOWS_DISK_METRICS_WILL_SKIPPED_ARG_MS_BEFORE_74269D0A = "{}: {}. Windows disk metrics will be skipped for {} ms before retrying.";
+  public static final String LOG_FAILED_WINDOWS_DISK_METRICS_POWERSHELL_COMMAND_ARG_OUTPUT_ARG_16D24C0C = "Failed windows disk metrics powershell command: {}, output: {}";
+  public static final String LOG_ARG_WINDOWS_DISK_METRICS_COLLECTION_STILL_RETRY_BACKOFF_C237EE87 = "{}. Windows disk metrics collection is still in retry backoff.";
+  public static final String LOG_RECOVERED_WINDOWS_DISK_METRICS_COLLECTION_THROUGH_POWERSHELL_CIM_03B9110E = "Recovered windows disk metrics collection through PowerShell/CIM.";
+  public static final String LOG_IOTDBSESSIONREPORTER_START_WRITE_ARG_ARG_E79CDDAE = "IoTDBSessionReporter start, write to {}:{}";
+  public static final String LOG_PROMETHEUSREPORTER_STARTED_USE_PORT_ARG_A688FFC8 = "PrometheusReporter started, use port {}";
+  public static final String LOG_DETECTED_ERROR_TAKING_METRIC_TIMER_SNAPSHOT_WILL_DISCARD_METRIC_B7154169 = "Detected an error when taking metric timer snapshot, will discard this metric";
+
 }

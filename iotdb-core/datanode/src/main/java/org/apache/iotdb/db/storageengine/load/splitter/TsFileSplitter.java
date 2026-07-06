@@ -101,7 +101,10 @@ public class TsFileSplitter {
 
       if (!checkMagic(reader)) {
         throw new TsFileRuntimeException(
-            String.format("Magic String check error when parsing TsFile %s.", tsFile.getPath()));
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_MAGIC_STRING_CHECK_ERROR_WHEN_PARSING_TSFILE_S_EA3D68E3,
+                tsFile.getPath()));
       }
 
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -160,8 +163,10 @@ public class TsFileSplitter {
     if (header.getDataSize() == 0) {
       throw new TsFileRuntimeException(
           String.format(
-              "Empty Nonaligned Chunk or Time Chunk with offset %d in TsFile %s.",
-              chunkOffset, tsFile.getPath()));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_EMPTY_NONALIGNED_CHUNK_OR_TIME_CHUNK_WITH_OFFSET_D_IN_TSFILE_B1E462C9,
+              chunkOffset,
+              tsFile.getPath()));
     }
 
     isAligned =
@@ -397,14 +402,18 @@ public class TsFileSplitter {
     if (versionNumber < TSFileConfig.VERSION_NUMBER) {
       if (versionNumber == TSFileConfig.VERSION_NUMBER_V3 && TSFileConfig.VERSION_NUMBER == 4) {
         logger.info(
-            "try to load TsFile V3 into current version (V4), file path: {}", reader.getFileName());
+            StorageEngineMessages
+                .STORAGE_LOG_TRY_TO_LOAD_TSFILE_V3_INTO_CURRENT_VERSION_V4_FILE_PATH_B8D38E22,
+            reader.getFileName());
       } else {
         logger.error(StorageEngineMessages.FILE_VERSION_TOO_OLD, reader.getFileName());
         return false;
       }
     } else if (versionNumber > TSFileConfig.VERSION_NUMBER) {
       logger.error(
-          "the file's Version Number is higher than current, file path: {}", reader.getFileName());
+          StorageEngineMessages
+              .STORAGE_LOG_THE_FILE_S_VERSION_NUMBER_IS_HIGHER_THAN_CURRENT_FILE_PATH_6D17349F,
+          reader.getFileName());
       return false;
     }
 
@@ -458,14 +467,17 @@ public class TsFileSplitter {
           && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
         throw new LoadFileException(
             String.format(
-                "Time partition slots size is greater than %s",
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_TIME_PARTITION_SLOTS_SIZE_IS_GREATER_THAN_S_D076F78E,
                 CONFIG.getLoadTsFileSpiltPartitionMaxSize()));
       }
       if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
         throw new IllegalStateException(
             String.format(
-                "Consume aligned chunk data error, next chunk offset: %d, chunkData: %s",
-                offset, chunkData));
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_CONSUME_ALIGNED_CHUNK_DATA_ERROR_NEXT_CHUNK_OFFSET_D_CHUNKDATA_D896FAE2,
+                offset,
+                chunkData));
       }
     }
     this.pageIndex2ChunkData = new HashMap<>();
@@ -478,14 +490,18 @@ public class TsFileSplitter {
         && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
       throw new LoadFileException(
           String.format(
-              "Time partition slots size is greater than %s",
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_TIME_PARTITION_SLOTS_SIZE_IS_GREATER_THAN_S_D076F78E,
               CONFIG.getLoadTsFileSpiltPartitionMaxSize()));
     }
     if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
       throw new IllegalStateException(
           String.format(
-              "Consume chunkData error, chunk offset: %d, measurement: %s, chunkData: %s",
-              offset, measurement, chunkData));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_CONSUME_CHUNKDATA_ERROR_CHUNK_OFFSET_D_MEASUREMENT_S_CHUNKDATA_4A1F1EE1,
+              offset,
+              measurement,
+              chunkData));
     }
   }
 

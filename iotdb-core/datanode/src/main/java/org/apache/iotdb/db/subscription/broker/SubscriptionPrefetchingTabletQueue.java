@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -80,7 +81,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           if (Objects.isNull(ev)) {
             if (isCommitContextOutdated(commitContext)) {
               LOGGER.warn(
-                  "SubscriptionPrefetchingTabletQueue {} detected outdated poll request, consumer {}, commit context {}, offset {}",
+                  DataNodePipeMessages
+                      .PIPE_LOG_SUBSCRIPTIONPREFETCHINGTABLETQUEUE_DETECTED_OUTDATED_POLL_C0001CCF,
                   this,
                   consumerId,
                   commitContext,

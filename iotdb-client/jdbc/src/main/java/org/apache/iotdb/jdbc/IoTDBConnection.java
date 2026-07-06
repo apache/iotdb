@@ -193,7 +193,10 @@ public class IoTDBConnection implements Connection {
       getClient().closeSession(req);
     } catch (TException e) {
       SQLException closeSessionException =
-          new SQLException("Error occurs when closing session at server. Maybe server is down.", e);
+          new SQLException(
+              JdbcMessages
+                  .EXCEPTION_ERROR_OCCURS_CLOSING_SESSION_AT_SERVER_MAYBE_SERVER_DOWN_2BCE63C0,
+              e);
       if (statementCloseException != null) {
         closeSessionException.addSuppressed(statementCloseException);
       }
@@ -261,11 +264,14 @@ public class IoTDBConnection implements Connection {
     if (resultSetConcurrency != ResultSet.CONCUR_READ_ONLY) {
       throw new SQLException(
           String.format(
-              "Statements with result set concurrency %d are not supported", resultSetConcurrency));
+              JdbcMessages.EXCEPTION_STATEMENTS_RESULT_SET_CONCURRENCY_ARG_NOT_SUPPORTED_C6043E9A,
+              resultSetConcurrency));
     }
     if (resultSetType == ResultSet.TYPE_SCROLL_SENSITIVE) {
       throw new SQLException(
-          String.format("Statements with ResultSet type %d are not supported", resultSetType));
+          String.format(
+              JdbcMessages.EXCEPTION_STATEMENTS_RESULTSET_TYPE_ARG_NOT_SUPPORTED_8BE22644,
+              resultSetType));
     }
     IoTDBStatement statement =
         new IoTDBStatement(this, getClient(), sessionId, zoneId, charset, queryTimeout);
@@ -670,14 +676,16 @@ public class IoTDBConnection implements Connection {
       this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
-            "Protocol differ, Client version is {}, but Server version is {}",
+            JdbcMessages.LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_F0AA3D03,
             protocolVersion.getValue(),
             openResp.getServerProtocolVersion().getValue());
         if (openResp.getServerProtocolVersion().getValue() == 0) { // less than 0.10
           throw new TException(
               String.format(
-                  "Protocol not supported, Client version is %s, but Server version is %s",
-                  protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
+                  JdbcMessages
+                      .EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC,
+                  protocolVersion.getValue(),
+                  openResp.getServerProtocolVersion().getValue()));
         }
       }
       String expirationInformer = "Your password will expire at ";
@@ -690,7 +698,7 @@ public class IoTDBConnection implements Connection {
         LocalDateTime now = LocalDateTime.now();
         if (now.isAfter(expirationDate.minusDays(3))) {
           logger.warn(
-              "{}{}, please change it in time via 'ALTER USER' statement",
+              JdbcMessages.LOG_ARG_ARG_PLEASE_CHANGE_IT_TIME_VIA_ALTER_USER_STATEMENT_6B67087C,
               expirationInformer,
               expirationDateStr);
         }
@@ -701,14 +709,17 @@ public class IoTDBConnection implements Connection {
         // the server is an old version (less than 0.10)
         throw new SQLException(
             String.format(
-                "Can not establish connection with %s : You may try to connect an old version IoTDB instance using a client with new version: %s. ",
-                params.getJdbcUriString(), e.getMessage()),
+                JdbcMessages
+                    .EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_YOU_MAY_TRY_CONNECT_OLD_8FC3703E,
+                params.getJdbcUriString(),
+                e.getMessage()),
             e);
       }
       throw new SQLException(
           String.format(
-              "Can not establish connection with %s : %s. ",
-              params.getJdbcUriString(), e.getMessage()),
+              JdbcMessages.EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_ARG_D7246055,
+              params.getJdbcUriString(),
+              e.getMessage()),
           e);
     } catch (StatementExecutionException e) {
       // failed to connect, disconnect from the server

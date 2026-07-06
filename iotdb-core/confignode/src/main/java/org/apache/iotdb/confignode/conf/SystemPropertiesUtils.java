@@ -349,8 +349,10 @@ public class SystemPropertiesUtils {
     } catch (NumberFormatException e) {
       throw new IOException(
           ConfigNodeMessages.THE_PARAMETER_CONFIG_NODE_ID_DOESN_T_EXIST_IN
-              + "data/confignode/system/confignode-system.properties. "
-              + "Please delete data dir data/confignode and restart again.",
+              + ConfigNodeMessages
+                  .EXCEPTION_DATA_CONFIGNODE_SYSTEM_CONFIGNODE_SYSTEM_PROPERTIES_786349AB
+              + ConfigNodeMessages
+                  .EXCEPTION_PLEASE_DELETE_DATA_DIR_DATA_CONFIGNODE_RESTART_AGAIN_8527BE66,
           e);
     }
   }

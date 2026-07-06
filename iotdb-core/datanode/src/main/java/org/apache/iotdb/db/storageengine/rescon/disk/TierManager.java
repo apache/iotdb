@@ -225,7 +225,9 @@ public class TierManager {
         logger.info(StorageEngineMessages.FOLDER_NOT_EXIST_CREATE_IT, file.getPath());
       } else {
         logger.info(
-            "create folder {} failed. Is the folder existed: {}", file.getPath(), file.exists());
+            StorageEngineMessages.STORAGE_LOG_CREATE_FOLDER_FAILED_IS_THE_FOLDER_EXISTED_18E29D51,
+            file.getPath(),
+            file.exists());
       }
     }
   }
