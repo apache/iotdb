@@ -883,8 +883,7 @@ void Session::Impl::initNodesSupplier(const std::vector<std::string>& nodeUrls) 
   }
 
   if (enableAutoFetch_) {
-    nodesSupplier_ =
-        NodesSupplier::create(endPoints, username_, password_, sslConfig_);
+    nodesSupplier_ = NodesSupplier::create(endPoints, username_, password_, sslConfig_);
   } else {
     nodesSupplier_ = make_shared<StaticNodesSupplier>(endPoints);
   }

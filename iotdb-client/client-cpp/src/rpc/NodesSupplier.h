@@ -79,8 +79,7 @@ public:
 
   static std::shared_ptr<NodesSupplier>
   create(const std::vector<TEndPoint>& endpoints, const std::string& userName,
-         const std::string& password, const SslConfig& sslConfig,
-         const std::string& zoneId = "",
+         const std::string& password, const SslConfig& sslConfig, const std::string& zoneId = "",
          int32_t thriftDefaultBufferSize = ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE,
          int32_t thriftMaxFrameSize = ThriftConnection::THRIFT_MAX_FRAME_SIZE,
          int32_t connectionTimeoutInMs = ThriftConnection::CONNECTION_TIMEOUT_IN_MS,
@@ -88,9 +87,10 @@ public:
          std::chrono::milliseconds refreshInterval = std::chrono::milliseconds(TIMEOUT_IN_MS),
          NodeSelectionPolicy policy = RoundRobinPolicy::select);
 
-  NodesSupplier(const std::string& userName, const std::string& password, const SslConfig& sslConfig,
-                const std::string& zoneId, int32_t thriftDefaultBufferSize,
-                int32_t thriftMaxFrameSize, int32_t connectionTimeoutInMs, bool enableRPCCompression,
+  NodesSupplier(const std::string& userName, const std::string& password,
+                const SslConfig& sslConfig, const std::string& zoneId,
+                int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize,
+                int32_t connectionTimeoutInMs, bool enableRPCCompression,
                 const std::string& version, const std::vector<TEndPoint>& endpoints,
                 NodeSelectionPolicy policy);
 

@@ -67,12 +67,13 @@ std::vector<TEndPoint> StaticNodesSupplier::getEndPointList() {
 
 StaticNodesSupplier::~StaticNodesSupplier() = default;
 
-std::shared_ptr<NodesSupplier> NodesSupplier::create(
-    const std::vector<TEndPoint>& endpoints, const std::string& userName,
-    const std::string& password, const SslConfig& sslConfig, const std::string& zoneId,
-    int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize, int32_t connectionTimeoutInMs,
-    bool enableRPCCompression, const std::string& version, std::chrono::milliseconds refreshInterval,
-    NodeSelectionPolicy policy) {
+std::shared_ptr<NodesSupplier>
+NodesSupplier::create(const std::vector<TEndPoint>& endpoints, const std::string& userName,
+                      const std::string& password, const SslConfig& sslConfig,
+                      const std::string& zoneId, int32_t thriftDefaultBufferSize,
+                      int32_t thriftMaxFrameSize, int32_t connectionTimeoutInMs,
+                      bool enableRPCCompression, const std::string& version,
+                      std::chrono::milliseconds refreshInterval, NodeSelectionPolicy policy) {
   if (endpoints.empty()) {
     return nullptr;
   }

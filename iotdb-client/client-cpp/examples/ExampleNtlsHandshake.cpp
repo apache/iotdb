@@ -52,11 +52,16 @@ extern "C" int example_run_tlcp_handshake(void) {
   if (!server.start({
           "-enable_ntls",
           "-ntls",
-          "-CAfile", caFile,
-          "-sign_cert", signCert,
-          "-sign_key", signKey,
-          "-enc_cert", encCert,
-          "-enc_key", encKey,
+          "-CAfile",
+          caFile,
+          "-sign_cert",
+          signCert,
+          "-sign_key",
+          signKey,
+          "-enc_cert",
+          encCert,
+          "-enc_key",
+          encKey,
           "-www",
       })) {
     return 1;

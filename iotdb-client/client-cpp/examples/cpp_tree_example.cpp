@@ -41,7 +41,8 @@ int main() {
   }
 
   session->setStorageGroup(database);
-  session->createTimeseries(timeseries, TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+  session->createTimeseries(timeseries, TSDataType::INT64, TSEncoding::RLE,
+                            CompressionType::SNAPPY);
   session->insertRecord(database + ".d0", 1, {"s0"}, {"100"});
 
   std::unique_ptr<SessionDataSet> dataSet(

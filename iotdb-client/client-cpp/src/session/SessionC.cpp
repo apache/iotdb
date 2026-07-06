@@ -421,8 +421,8 @@ TsStatus ts_session_set_trust_cert_file_path(CSession* session, const char* trus
   clearError();
   if (!session)
     return setError(TS_ERR_NULL_PTR, "session is null");
-  TsStatus status =
-      setSslStringField(session->sslConfig.trustCertFilePath, trustCertFilePath, "trustCertFilePath");
+  TsStatus status = setSslStringField(session->sslConfig.trustCertFilePath, trustCertFilePath,
+                                      "trustCertFilePath");
   if (status == TS_OK) {
     session->sslConfigured = true;
   }
@@ -558,8 +558,8 @@ TsStatus ts_table_session_set_trust_cert_file_path(CTableSession* session,
   clearError();
   if (!session)
     return setError(TS_ERR_NULL_PTR, "session is null");
-  TsStatus status =
-      setSslStringField(session->sslConfig.trustCertFilePath, trustCertFilePath, "trustCertFilePath");
+  TsStatus status = setSslStringField(session->sslConfig.trustCertFilePath, trustCertFilePath,
+                                      "trustCertFilePath");
   if (status == TS_OK) {
     session->sslConfigured = true;
   }

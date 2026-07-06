@@ -130,7 +130,7 @@ PKCS12* loadPkcs12(const std::string& path, const std::string& password) {
 struct Pkcs12ParsedIdentity {
   EVP_PKEY* pkey = nullptr;
   X509* cert = nullptr;
-  STACK_OF(X509)* ca = nullptr;
+  STACK_OF(X509) * ca = nullptr;
 
   ~Pkcs12ParsedIdentity() {
     if (pkey != nullptr) {
@@ -241,7 +241,8 @@ void addCertToStore(X509_STORE* store, X509* cert) {
   }
   if (X509_STORE_add_cert(store, cert) != 1) {
     const unsigned long errCode = ERR_peek_last_error();
-    if (ERR_GET_LIB(errCode) != ERR_LIB_X509 || ERR_GET_REASON(errCode) != X509_R_CERT_ALREADY_IN_HASH_TABLE) {
+    if (ERR_GET_LIB(errCode) != ERR_LIB_X509 ||
+        ERR_GET_REASON(errCode) != X509_R_CERT_ALREADY_IN_HASH_TABLE) {
       throwSslError("Failed to add certificate to trust store");
     }
   }
@@ -391,7 +392,8 @@ void assignTlcpMaterial(TlcpIdentity& identity, const std::string& friendlyName,
   EVP_PKEY_free(key);
 }
 
-void loadTlcpKeyStoreFromPkcs12(SSL_CTX* ctx, const std::string& path, const std::string& password) {
+void loadTlcpKeyStoreFromPkcs12(SSL_CTX* ctx, const std::string& path,
+                                const std::string& password) {
   PKCS12* p12 = loadPkcs12(path, password);
   TlcpIdentity identity;
 
@@ -450,7 +452,8 @@ void loadTlcpKeyStoreFromPkcs12(SSL_CTX* ctx, const std::string& path, const std
 
   if (identity.signCert == nullptr || identity.signKey == nullptr) {
     freeTlcpIdentity(identity);
-    throw IoTDBException("TLCP PKCS12 key store must contain a signing certificate and key: " + path);
+    throw IoTDBException("TLCP PKCS12 key store must contain a signing certificate and key: " +
+                         path);
   }
 
   if (SSL_CTX_use_sign_certificate(ctx, identity.signCert) != 1 ||
