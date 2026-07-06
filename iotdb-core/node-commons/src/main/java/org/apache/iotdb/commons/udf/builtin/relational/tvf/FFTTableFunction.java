@@ -40,6 +40,8 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.jtransforms.fft.DoubleFFT_1D;
+import org.jtransforms.fft.FloatFFT_1D;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,7 +73,7 @@ public class FFTTableFunction implements TableFunction {
   private static final long UNSPECIFIED_SAMPLE_INTERVAL = Long.MIN_VALUE;
   private static final long UNSPECIFIED_N = -1L;
   private static final long MAX_TRANSFORM_LENGTH = 65_536L;
-  private static final long MAX_SPECTRUM_DOUBLE_VALUES = 16_777_216L;
+  private static final long MAX_SPECTRUM_VALUES = 16_777_216L;
   private static final String NORM_BACKWARD = "backward";
   private static final String NORM_FORWARD = "forward";
   private static final String NORM_ORTHO = "ortho";
@@ -263,15 +265,15 @@ public class FFTTableFunction implements TableFunction {
       throw new SemanticException(
           String.format("FFT transform length N must not exceed %d.", MAX_TRANSFORM_LENGTH));
     }
-    long spectrumDoubleValues;
+    long spectrumValues;
     try {
-      spectrumDoubleValues =
+      spectrumValues =
           Math.multiplyExact(Math.multiplyExact(transformLength, 2L), valueColumnCount);
     } catch (ArithmeticException e) {
       throw new SemanticException(
           "FFT spectrum buffer is too large. Reduce N or the number of numeric columns.");
     }
-    if (spectrumDoubleValues > MAX_SPECTRUM_DOUBLE_VALUES) {
+    if (spectrumValues > MAX_SPECTRUM_VALUES) {
       throw new SemanticException(
           "FFT spectrum buffer is too large. Reduce N or the number of numeric columns.");
     }
@@ -469,38 +471,44 @@ public class FFTTableFunction implements TableFunction {
   }
 
   private enum NumericOperator {
-    INT32(Type.INT32) {
+    INT32(Type.INT32, false) {
       @Override
-      double read(Record record, int index) {
+      Number read(Record record, int index) {
         return record.getInt(index);
       }
     },
-    INT64(Type.INT64) {
+    INT64(Type.INT64, false) {
       @Override
-      double read(Record record, int index) {
+      Number read(Record record, int index) {
         return record.getLong(index);
       }
     },
-    FLOAT(Type.FLOAT) {
+    FLOAT(Type.FLOAT, true) {
       @Override
-      double read(Record record, int index) {
+      Number read(Record record, int index) {
         return record.getFloat(index);
       }
     },
-    DOUBLE(Type.DOUBLE) {
+    DOUBLE(Type.DOUBLE, false) {
       @Override
-      double read(Record record, int index) {
+      Number read(Record record, int index) {
         return record.getDouble(index);
       }
     };
 
     private final Type type;
+    private final boolean floatFft;
 
-    NumericOperator(Type type) {
+    NumericOperator(Type type, boolean floatFft) {
       this.type = type;
+      this.floatFft = floatFft;
     }
 
-    abstract double read(Record record, int index);
+    abstract Number read(Record record, int index);
+
+    boolean usesFloatFft() {
+      return floatFft;
+    }
 
     static NumericOperator fromType(Type type) {
       for (NumericOperator numericOperator : values()) {
@@ -541,8 +549,40 @@ public class FFTTableFunction implements TableFunction {
       this.numericOperator = numericOperator;
     }
 
-    private double read(Record record) {
+    private Number read(Record record) {
       return numericOperator.read(record, inputIndex);
+    }
+
+    private boolean usesFloatFft() {
+      return numericOperator.usesFloatFft();
+    }
+  }
+
+  private static class Spectrum {
+    private final double[] doubleValues;
+    private final float[] floatValues;
+
+    private Spectrum(double[] doubleValues, float[] floatValues) {
+      this.doubleValues = doubleValues;
+      this.floatValues = floatValues;
+    }
+
+    private static Spectrum fromDouble(double[] values) {
+      return new Spectrum(values, null);
+    }
+
+    private static Spectrum fromFloat(float[] values) {
+      return new Spectrum(null, values);
+    }
+
+    private double real(int frequencyIndex, double scaleFactor) {
+      int index = 2 * frequencyIndex;
+      return (doubleValues == null ? floatValues[index] : doubleValues[index]) * scaleFactor;
+    }
+
+    private double imaginary(int frequencyIndex, double scaleFactor) {
+      int index = 2 * frequencyIndex + 1;
+      return (doubleValues == null ? floatValues[index] : doubleValues[index]) * scaleFactor;
     }
   }
 
@@ -555,7 +595,7 @@ public class FFTTableFunction implements TableFunction {
     private final NumericColumn[] valueColumns;
     private final Object[] partitionValues;
     private final boolean[] partitionValueIsNull;
-    private final List<double[]> rows = new ArrayList<>();
+    private final List<Number[]> rows = new ArrayList<>();
     private long inputRowCount;
     private long previousTime;
     private long inferredSampleInterval = UNSPECIFIED_SAMPLE_INTERVAL;
@@ -602,7 +642,7 @@ public class FFTTableFunction implements TableFunction {
 
       boolean shouldCacheRow =
           specifiedTransformLength == UNSPECIFIED_N || rows.size() < specifiedTransformLength;
-      double[] row = shouldCacheRow ? new double[valueColumns.length] : null;
+      Number[] row = shouldCacheRow ? new Number[valueColumns.length] : null;
       for (int i = 0; i < valueColumns.length; i++) {
         NumericColumn valueColumn = valueColumns[i];
         if (input.isNull(valueColumn.inputIndex)) {
@@ -629,16 +669,33 @@ public class FFTTableFunction implements TableFunction {
       int transformLength = getTransformLength();
       double sampleIntervalSeconds = getSampleIntervalSeconds();
       double scaleFactor = getScaleFactor(transformLength);
-      double[][] spectra = new double[valueColumns.length][2 * transformLength];
+      Spectrum[] spectra = new Spectrum[valueColumns.length];
 
       int copiedRows = Math.min(rows.size(), transformLength);
-      DoubleFft1d fft = new DoubleFft1d(transformLength);
+      DoubleFFT_1D doubleFft = null;
+      FloatFFT_1D floatFft = null;
       for (int columnIndex = 0; columnIndex < valueColumns.length; columnIndex++) {
-        double[] spectrum = spectra[columnIndex];
-        for (int rowIndex = 0; rowIndex < copiedRows; rowIndex++) {
-          spectrum[2 * rowIndex] = rows.get(rowIndex)[columnIndex];
+        if (valueColumns[columnIndex].usesFloatFft()) {
+          float[] spectrum = new float[2 * transformLength];
+          for (int rowIndex = 0; rowIndex < copiedRows; rowIndex++) {
+            spectrum[2 * rowIndex] = rows.get(rowIndex)[columnIndex].floatValue();
+          }
+          if (floatFft == null) {
+            floatFft = new FloatFFT_1D(transformLength);
+          }
+          floatFft.complexForward(spectrum);
+          spectra[columnIndex] = Spectrum.fromFloat(spectrum);
+        } else {
+          double[] spectrum = new double[2 * transformLength];
+          for (int rowIndex = 0; rowIndex < copiedRows; rowIndex++) {
+            spectrum[2 * rowIndex] = rows.get(rowIndex)[columnIndex].doubleValue();
+          }
+          if (doubleFft == null) {
+            doubleFft = new DoubleFFT_1D(transformLength);
+          }
+          doubleFft.complexForward(spectrum);
+          spectra[columnIndex] = Spectrum.fromDouble(spectrum);
         }
-        fft.complexForward(spectrum);
       }
 
       for (int frequencyIndex = 0; frequencyIndex < transformLength; frequencyIndex++) {
@@ -657,13 +714,12 @@ public class FFTTableFunction implements TableFunction {
             .writeDouble(
                 calculateFrequency(frequencyIndex, transformLength, sampleIntervalSeconds));
         for (int columnIndex = 0; columnIndex < valueColumns.length; columnIndex++) {
-          double[] spectrum = spectra[columnIndex];
           properColumnBuilders
               .get(outputColumnIndex++)
-              .writeDouble(spectrum[2 * frequencyIndex] * scaleFactor);
+              .writeDouble(spectra[columnIndex].real(frequencyIndex, scaleFactor));
           properColumnBuilders
               .get(outputColumnIndex++)
-              .writeDouble(spectrum[2 * frequencyIndex + 1] * scaleFactor);
+              .writeDouble(spectra[columnIndex].imaginary(frequencyIndex, scaleFactor));
         }
       }
     }

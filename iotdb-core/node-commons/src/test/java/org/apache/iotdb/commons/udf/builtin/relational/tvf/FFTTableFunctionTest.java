@@ -107,6 +107,23 @@ public class FFTTableFunctionTest {
   }
 
   @Test
+  public void testSupportsFloatInputWithFloatFft() throws UDFException {
+    TableFunctionDataProcessor processor = createProcessor(Type.FLOAT, true, 3L);
+    processor.process(record(0L, 1.0f), Collections.emptyList(), null);
+    processor.process(record(1L, 2.0f), Collections.emptyList(), null);
+    processor.process(record(2L, 3.0f), Collections.emptyList(), null);
+
+    List<ColumnBuilder> builders = createOutputBuilders(3);
+    processor.finish(builders, null);
+
+    double imaginaryComponent = Math.sqrt(3.0) / 2.0;
+    assertLongColumn(builders.get(0).build(), 0L, 1L, 2L);
+    assertDoubleColumnWithDelta(builders.get(2).build(), 1e-6, 6.0, -1.5, -1.5);
+    assertDoubleColumnWithDelta(
+        builders.get(3).build(), 1e-6, 0.0, imaginaryComponent, -imaginaryComponent);
+  }
+
+  @Test
   public void testRejectsInvalidRowsEvenWhenBeyondTruncatedN() throws UDFException {
     TableFunctionDataProcessor processor = createProcessor(true, 2L);
     processor.process(record(0L, 1.0), Collections.emptyList(), null);
@@ -202,12 +219,17 @@ public class FFTTableFunctionTest {
 
   private TableFunctionDataProcessor createProcessor(
       boolean sampleIntervalSpecified, long transformLength) throws UDFException {
+    return createProcessor(Type.DOUBLE, sampleIntervalSpecified, transformLength);
+  }
+
+  private TableFunctionDataProcessor createProcessor(
+      Type valueType, boolean sampleIntervalSpecified, long transformLength) throws UDFException {
     Map<String, Argument> arguments = new HashMap<>();
     arguments.put(
         FFTTableFunction.DATA_PARAMETER_NAME,
         new TableArgument(
             Arrays.asList(Optional.of("time"), Optional.of("value")),
-            Arrays.asList(Type.TIMESTAMP, Type.DOUBLE),
+            Arrays.asList(Type.TIMESTAMP, valueType),
             Collections.emptyList(),
             Collections.singletonList("time"),
             false));
@@ -231,6 +253,10 @@ public class FFTTableFunctionTest {
     return new SimpleRecord(time, value);
   }
 
+  private Record record(long time, float value) {
+    return new SimpleRecord(time, value);
+  }
+
   private Record nullValueRecord(long time) {
     return new SimpleRecord(time, null);
   }
@@ -251,9 +277,13 @@ public class FFTTableFunctionTest {
   }
 
   private void assertDoubleColumn(Column column, double... expected) {
+    assertDoubleColumnWithDelta(column, DELTA, expected);
+  }
+
+  private void assertDoubleColumnWithDelta(Column column, double delta, double... expected) {
     assertEquals(expected.length, column.getPositionCount());
     for (int i = 0; i < expected.length; i++) {
-      assertEquals(expected[i], column.getDouble(i), DELTA);
+      assertEquals(expected[i], column.getDouble(i), delta);
     }
   }
 
@@ -268,9 +298,9 @@ public class FFTTableFunctionTest {
 
   private static class SimpleRecord implements Record {
     private final long time;
-    private final Double value;
+    private final Number value;
 
-    private SimpleRecord(long time, Double value) {
+    private SimpleRecord(long time, Number value) {
       this.time = time;
       this.value = value;
     }
@@ -290,13 +320,16 @@ public class FFTTableFunctionTest {
 
     @Override
     public float getFloat(int columnIndex) {
+      if (columnIndex == 1 && value instanceof Float) {
+        return value.floatValue();
+      }
       throw new UnsupportedOperationException();
     }
 
     @Override
     public double getDouble(int columnIndex) {
-      if (columnIndex == 1 && value != null) {
-        return value;
+      if (columnIndex == 1 && value instanceof Double) {
+        return value.doubleValue();
       }
       throw new UnsupportedOperationException();
     }

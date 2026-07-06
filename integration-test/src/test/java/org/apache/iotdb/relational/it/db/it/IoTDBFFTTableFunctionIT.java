@@ -31,16 +31,22 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBFFTTableFunctionIT {
 
   private static final String DATABASE_NAME = "test_fft";
+  private static final double DELTA = 1e-9;
   private static final String[] SQLS =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -104,24 +110,20 @@ public class IoTDBFFTTableFunctionIT {
           "speed_real",
           "speed_imag"
         };
-    String[] retArray =
-        new String[] {
-          "d1,0,0.0,1.0,0.0,10.0,0.0,",
-          "d1,1,0.25,1.0,0.0,-2.0,2.0,",
-          "d1,2,-0.5,1.0,0.0,-2.0,0.0,",
-          "d1,3,-0.25,1.0,0.0,-2.0,-2.0,",
-          "d2,0,0.0,2.0,0.0,10.0,0.0,",
-          "d2,1,0.25,2.0,0.0,2.0,-2.0,",
-          "d2,2,-0.5,2.0,0.0,2.0,0.0,",
-          "d2,3,-0.25,2.0,0.0,2.0,2.0,"
-        };
-
-    tableResultSetEqualTest(
+    assertFftRows(
         "SELECT * FROM FFT(DATA => signal PARTITION BY device_id ORDER BY time, "
             + "SAMPLE_INTERVAL => 1s, N => 4) ORDER BY device_id, frequency_index",
         expectedHeader,
-        retArray,
-        DATABASE_NAME);
+        new Object[][] {
+          {"d1", 0L, 0.0, 1.0, 0.0, 10.0, 0.0},
+          {"d1", 1L, 0.25, 1.0, 0.0, -2.0, 2.0},
+          {"d1", 2L, -0.5, 1.0, 0.0, -2.0, 0.0},
+          {"d1", 3L, -0.25, 1.0, 0.0, -2.0, -2.0},
+          {"d2", 0L, 0.0, 2.0, 0.0, 10.0, 0.0},
+          {"d2", 1L, 0.25, 2.0, 0.0, 2.0, -2.0},
+          {"d2", 2L, -0.5, 2.0, 0.0, 2.0, 0.0},
+          {"d2", 3L, -0.25, 2.0, 0.0, 2.0, 2.0}
+        });
   }
 
   @Test
@@ -219,5 +221,38 @@ public class IoTDBFFTTableFunctionIT {
         "SELECT * FROM FFT(DATA => signal PARTITION BY device_id ORDER BY time, N => 65537)",
         "701: FFT transform length N must not exceed 65536.",
         DATABASE_NAME);
+  }
+
+  private static void assertFftRows(String sql, String[] expectedHeader, Object[][] expectedRows) {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertHeader(resultSet.getMetaData(), expectedHeader);
+
+        int rowIndex = 0;
+        while (resultSet.next()) {
+          Object[] expectedRow = expectedRows[rowIndex];
+          assertEquals(expectedRow[0], resultSet.getString(1));
+          assertEquals(expectedRow[1], resultSet.getLong(2));
+          for (int columnIndex = 2; columnIndex < expectedRow.length; columnIndex++) {
+            assertEquals(
+                (double) expectedRow[columnIndex], resultSet.getDouble(columnIndex + 1), DELTA);
+          }
+          rowIndex++;
+        }
+        assertEquals(expectedRows.length, rowIndex);
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private static void assertHeader(ResultSetMetaData metaData, String[] expectedHeader)
+      throws SQLException {
+    assertEquals(expectedHeader.length, metaData.getColumnCount());
+    for (int i = 1; i <= metaData.getColumnCount(); i++) {
+      assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
+    }
   }
 }
