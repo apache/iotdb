@@ -84,12 +84,11 @@ foreach(_t IN LISTS _test_targets)
     endif()
 endforeach()
 
-# macOS runners resolve <openssl/*.h> to Homebrew before Tongsuo; mirror the
-# iotdb_session BEFORE PUBLIC wrap path on test binaries that compile OpenSSL code.
-if(WITH_SSL AND IOTDB_TONGSUO_OPENSSL_WRAP_DIR)
+# macOS: apply Tongsuo openssl header wrap to test targets (same as iotdb_session).
+if(WITH_SSL AND TARGET iotdb_tongsuo_openssl_wrap)
     foreach(_t IN LISTS _test_targets)
         target_include_directories(${_t} BEFORE PRIVATE
-                "${IOTDB_TONGSUO_OPENSSL_WRAP_DIR}")
+                "${CMAKE_BINARY_DIR}/generated/tongsuo-openssl-wrap")
     endforeach()
 endif()
 
@@ -133,7 +132,7 @@ if(WITH_SSL)
     endif()
 endif()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC AND NOT APPLE)
     set(_iotdb_asan_targets session_tests session_relational_tests session_c_tests
             session_c_relational_tests rpc_ssl_utils_tests rpc_ntls_utils_tests)
     foreach(_t IN LISTS _iotdb_asan_targets)

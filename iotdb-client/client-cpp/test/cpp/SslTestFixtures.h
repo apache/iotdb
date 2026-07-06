@@ -42,7 +42,6 @@ std::string buildTlcpDualKeyStoreP12();
 #include <openssl/ssl.h>
 
 bool sslContextHasClientCertificate(SSL_CTX* ctx);
-bool tlcpContextHasDualCredentials(SSL_CTX* ctx);
 
 bool tlsHandshakeWithSslConfig(const SslConfig& config, const std::string& host, int port,
                                int timeoutMs = 5000);

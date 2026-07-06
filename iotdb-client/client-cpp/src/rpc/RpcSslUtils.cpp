@@ -651,6 +651,12 @@ void RpcSslUtils::validateKeyStore(const std::string& keyStorePath,
 
 #if WITH_SSL
 
+void RpcSslUtils::enableNtlsOnSsl(SSL* ssl) {
+  if (ssl != nullptr) {
+    SSL_enable_ntls(ssl);
+  }
+}
+
 SSL_CTX* RpcSslUtils::createClientSslContext(const SslConfig& config) {
   const std::string protocol = resolveProtocol(config.sslProtocol);
   if (isTlcpProtocol(protocol)) {

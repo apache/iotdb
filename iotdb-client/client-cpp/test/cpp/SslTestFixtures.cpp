@@ -36,6 +36,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <cstdlib>
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#include <limits.h>
+#endif
 #endif
 
 #if WITH_SSL
@@ -85,6 +89,15 @@ std::string executableDir() {
   }
   std::string path(buffer, len);
   const auto pos = path.find_last_of("\\/");
+  return pos == std::string::npos ? "." : path.substr(0, pos);
+#elif defined(__APPLE__)
+  char buffer[PATH_MAX];
+  uint32_t size = sizeof(buffer);
+  if (_NSGetExecutablePath(buffer, &size) != 0) {
+    return ".";
+  }
+  std::string path(buffer);
+  const auto pos = path.find_last_of('/');
   return pos == std::string::npos ? "." : path.substr(0, pos);
 #else
   char buffer[4096];
@@ -301,6 +314,14 @@ void prependOpenSslRuntimeToLdLibraryPath() {
     libPath = libPath + ":" + existing;
   }
   setenv("LD_LIBRARY_PATH", libPath.c_str(), 1);
+#if defined(__APPLE__)
+  const char* dyldExisting = std::getenv("DYLD_LIBRARY_PATH");
+  std::string dyldPath = libPath;
+  if (dyldExisting != nullptr && dyldExisting[0] != '\0') {
+    dyldPath = dyldPath + ":" + dyldExisting;
+  }
+  setenv("DYLD_LIBRARY_PATH", dyldPath.c_str(), 1);
+#endif
 #endif
 }
 #endif
@@ -398,22 +419,6 @@ bool sslContextHasClientCertificate(SSL_CTX* ctx) {
   return cert != nullptr && key != nullptr;
 }
 
-bool tlcpContextHasDualCredentials(SSL_CTX* ctx) {
-  if (ctx == nullptr) {
-    return false;
-  }
-  SSL* ssl = SSL_new(ctx);
-  if (ssl == nullptr) {
-    return false;
-  }
-  SSL_enable_ntls(ssl);
-  X509* signCert = SSL_get_sign_certificate_ntls(ssl);
-  X509* encCert = SSL_get_enc_certificate_ntls(ssl);
-  const bool ok = signCert != nullptr && encCert != nullptr;
-  SSL_free(ssl);
-  return ok;
-}
-
 bool tlsHandshakeWithSslConfig(const SslConfig& config, const std::string& host, int port,
                                int timeoutMs) {
 #if defined(_WIN32)
@@ -431,7 +436,7 @@ bool tlsHandshakeWithSslConfig(const SslConfig& config, const std::string& host,
       continue;
     }
     if (RpcSslUtils::isTlcpProtocol(config.sslProtocol)) {
-      SSL_enable_ntls(ssl);
+      RpcSslUtils::enableNtlsOnSsl(ssl);
     }
     const std::string target = host + ":" + std::to_string(port);
     BIO* bio = BIO_new_connect(target.c_str());

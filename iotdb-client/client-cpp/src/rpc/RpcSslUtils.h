@@ -66,6 +66,8 @@ public:
                                const std::string& keyStorePassword);
 
 #if WITH_SSL
+  static void enableNtlsOnSsl(SSL* ssl);
+
   static SSL_CTX* createClientSslContext(const SslConfig& config);
   static std::shared_ptr<apache::thrift::transport::TSSLSocketFactory>
   createSslSocketFactory(const SslConfig& config);
