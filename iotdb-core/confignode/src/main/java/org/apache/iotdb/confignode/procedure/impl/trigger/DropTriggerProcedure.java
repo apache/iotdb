@@ -117,7 +117,10 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
         setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOG.error(
-            "Retrievable error trying to drop trigger [{}], state [{}]", triggerName, state, e);
+            ProcedureMessages.LOG_RETRIEVABLE_ERROR_TRYING_DROP_TRIGGER_ARG_STATE_ARG_2282AC35,
+            triggerName,
+            state,
+            e);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(

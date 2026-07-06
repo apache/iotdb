@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDat
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
@@ -246,10 +247,11 @@ public class ConfigNodeProcedureEnv {
         tsStatus =
             new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
                 .setMessage(
-                    "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
+                    ProcedureMessages
+                        .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_UPDATE_CONSENSUSGROUP_PEER_INFORMATION_FAILED_FCE5302B);
       }
     } catch (ConsensusException e) {
-      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOG.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       tsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       tsStatus.setMessage(e.getMessage());
     }
@@ -477,7 +479,7 @@ public class ConfigNodeProcedureEnv {
     try {
       return getConsensusManager().write(createRegionGroupsPlan);
     } catch (ConsensusException e) {
-      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOG.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(
               "Failed to persist RegionGroup allocation in the consensus layer: " + e.getMessage());

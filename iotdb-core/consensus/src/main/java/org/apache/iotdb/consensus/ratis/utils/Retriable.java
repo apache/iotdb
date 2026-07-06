@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.ratis.utils;
 
+import org.apache.iotdb.consensus.i18n.RatisMessages;
+
 import org.apache.ratis.util.TimeDuration;
 import org.apache.ratis.util.function.CheckedSupplier;
 import org.slf4j.Logger;
@@ -45,7 +47,7 @@ public class Retriable {
       Supplier<?> name,
       Logger log)
       throws THROWABLE, InterruptedException {
-    Objects.requireNonNull(supplier, "supplier == null");
+    Objects.requireNonNull(supplier, RatisMessages.EXCEPTION_SUPPLIER_EQUALS_EQUALS_NULL_13BACC3E);
     for (int attempt = 0; ; attempt++) {
       try {
         final RETURN ret = supplier.get();
@@ -54,7 +56,10 @@ public class Retriable {
           TimeDuration waitTime = policy.getWaitTime(attempt);
           if (log != null && log.isDebugEnabled()) {
             log.debug(
-                "Failed {}, attempt #{}, sleep {} and then retry", name.get(), attempt, waitTime);
+                RatisMessages.LOG_FAILED_ARG_ATTEMPT_ARG_SLEEP_ARG_THEN_RETRY_36A9A0C2,
+                name.get(),
+                attempt,
+                waitTime);
           }
           waitTime.sleep();
           continue;
@@ -63,7 +68,7 @@ public class Retriable {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         if (log != null && log.isWarnEnabled()) {
-          log.warn("{}: interrupted when waiting for retry", name.get());
+          log.warn(RatisMessages.LOG_ARG_INTERRUPTED_WAITING_RETRY_38D69BCC, name.get());
         }
         throw e;
       }
@@ -83,7 +88,8 @@ public class Retriable {
   public static void attemptUntilTrue(
       BooleanSupplier condition, int maxAttempts, TimeDuration sleepTime, String name, Logger log)
       throws InterruptedException {
-    Objects.requireNonNull(condition, "condition == null");
+    Objects.requireNonNull(
+        condition, RatisMessages.EXCEPTION_CONDITION_EQUALS_EQUALS_NULL_E3A6C947);
     attempt(
         () -> null,
         RetryPolicy.newBuilder()

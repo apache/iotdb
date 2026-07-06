@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
@@ -49,7 +50,8 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
 
   public PruneTableScanColumns(Metadata metadata) {
     super(tableScan());
-    this.metadata = requireNonNull(metadata, "metadata is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
   }
 
   @Override
@@ -204,7 +206,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
       return Optional.empty();
     } else {
       throw new UnsupportedOperationException(
-          "Unknown TableScanNode type: " + node.getClass().getSimpleName());
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_UNKNOWN_TABLESCANNODE_TYPE_S_6246EF1E,
+              node.getClass().getSimpleName()));
     }
   }
 }

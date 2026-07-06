@@ -24,6 +24,7 @@ import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.builder.HashAggregationBuilder;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.builder.InMemoryHashAggregationBuilder;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
@@ -126,7 +127,8 @@ public class HashAggregationOperator extends AbstractOperator {
       }
       updateOccupiedMemorySize();
     } else {
-      checkState(!aggregationBuilder.isFull(), "Aggregation buffer is full");
+      checkState(
+          !aggregationBuilder.isFull(), CalcMessages.EXCEPTION_AGGREGATION_BUFFER_IS_FULL_233DAF3E);
     }
 
     // Each call only calculate at most once, no need to check time slice.

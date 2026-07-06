@@ -234,7 +234,9 @@ public class ClusterSchemaManager {
       // Reject if Database doesn't exist
       result = new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       result.setMessage(
-          "Failed to alter database. The Database " + databaseSchema.getName() + " doesn't exist.");
+          ManagerMessages.MESSAGE_FAILED_ALTER_DATABASE_DATABASE_2734674F
+              + databaseSchema.getName()
+              + ManagerMessages.MESSAGE_DOESN_T_EXIST_EED8C92E);
       return result;
     }
 
@@ -870,7 +872,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The schemaReplicationFactor should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREPLICATIONFACTOR_SHOULD_POSITIVE_8847F33C);
     }
 
     if (!databaseSchema.isSetDataReplicationFactor()) {
@@ -880,7 +883,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The dataReplicationFactor should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_DATAREPLICATIONFACTOR_SHOULD_POSITIVE_C2565B7E);
     }
 
     if (!databaseSchema.isSetTimePartitionOrigin()) {
@@ -890,7 +894,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The timePartitionOrigin should be non-negative.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9);
     }
 
     if (!databaseSchema.isSetTimePartitionInterval()) {
@@ -900,7 +905,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The timePartitionInterval should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONINTERVAL_SHOULD_POSITIVE_BB1B473F);
     }
 
     if (isSystemDatabase || isAuditDatabase) {
@@ -912,7 +918,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The schemaRegionGroupNum should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREGIONGROUPNUM_SHOULD_POSITIVE_8396A2AB);
     }
 
     if (isSystemDatabase || isAuditDatabase) {

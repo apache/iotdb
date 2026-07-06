@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
@@ -150,7 +151,8 @@ public class IoTDBDescriptor {
         loadProperties(trimProperties);
       } catch (Exception e) {
         LOGGER.error(
-            "Failed to reload properties from {}, reject DataNode startup.",
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_RELOAD_PROPERTIES_FROM_REJECT_DATANODE_STARTUP_74E66EEC,
             loader.getClass().getName(),
             e);
         System.exit(-1);
@@ -193,8 +195,8 @@ public class IoTDBDescriptor {
         return uri;
       }
       LOGGER.warn(
-          "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
-              + "config file {}, use default configuration",
+          DataNodeMiscMessages
+              .MISC_LOG_CANNOT_FIND_IOTDB_HOME_OR_IOTDB_CONF_ENVIRONMENT_VARIABLE_BE01B2FE,
           configFileName);
       // update all data seriesPath
       conf.updatePath();
@@ -252,7 +254,8 @@ public class IoTDBDescriptor {
       }
     } else {
       LOGGER.warn(
-          "Couldn't load the configuration {} from any of the known sources.",
+          DataNodeMiscMessages
+              .MISC_LOG_COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN_SOURCES_EE3ED103,
           CommonConfig.SYSTEM_CONFIG_NAME);
     }
   }
@@ -284,7 +287,8 @@ public class IoTDBDescriptor {
       conf.setMaxClientNumForEachNode(
           Integer.parseInt(properties.getProperty("dn_max_connection_for_internal_service")));
       LOGGER.warn(
-          "The parameter dn_max_connection_for_internal_service is out of date. Please rename it to dn_max_client_count_for_each_node_in_client_manager.");
+          DataNodeMiscMessages
+              .MISC_LOG_THE_PARAMETER_DN_MAX_CONNECTION_FOR_INTERNAL_SERVICE_IS_D2F24BEB);
     }
     conf.setMaxClientNumForEachNode(
         Integer.parseInt(
@@ -1149,8 +1153,8 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getPartitionTableRecoverWorkerNum())));
     if (partitionTableRecoverWorkerNum <= 0) {
       LOGGER.warn(
-          "partition_table_recover_worker_num should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
+          DataNodeMiscMessages
+              .MISC_LOG_PARTITION_TABLE_RECOVER_WORKER_NUM_SHOULD_BE_GREATER_THAN_74A2512B,
           partitionTableRecoverWorkerNum,
           conf.getPartitionTableRecoverWorkerNum());
       partitionTableRecoverWorkerNum = conf.getPartitionTableRecoverWorkerNum();
@@ -1163,8 +1167,8 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond())));
     if (partitionTableRecoverMaxReadMBsPerSecond <= 0) {
       LOGGER.warn(
-          "partition_table_recover_max_read_megabytes_per_second should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
+          DataNodeMiscMessages
+              .MISC_LOG_PARTITION_TABLE_RECOVER_MAX_READ_MEGABYTES_PER_SECOND_SHOULD_42BCDFBC,
           partitionTableRecoverMaxReadMBsPerSecond,
           conf.getPartitionTableRecoverMaxReadMBsPerSecond());
       partitionTableRecoverMaxReadMBsPerSecond = conf.getPartitionTableRecoverMaxReadMBsPerSecond();
@@ -1232,6 +1236,11 @@ public class IoTDBDescriptor {
     if (maxSubTaskNumForInformationTableScan > 0) {
       conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
     }
+
+    // Reflect the in-memory effective values (which the setters above may have rewritten) into
+    // lastAppliedProperties, so that `show configuration` displays effective values rather than
+    // the raw config-file values.
+    overlayEffectiveConfigurationValues();
   }
 
   private void loadFixedSizeLimitForQuery(
@@ -1791,7 +1800,8 @@ public class IoTDBDescriptor {
     String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[0], null);
     if (old_throttleThreshold != null) {
       LOGGER.warn(
-          "The throttle threshold params: {} is deprecated, please use {}",
+          DataNodeMiscMessages
+              .MISC_LOG_THE_THROTTLE_THRESHOLD_PARAMS_IS_DEPRECATED_PLEASE_USE_AA0E8EC7,
           DEFAULT_WAL_THRESHOLD_NAME[0],
           DEFAULT_WAL_THRESHOLD_NAME[1]);
       return old_throttleThreshold;
@@ -2252,6 +2262,12 @@ public class IoTDBDescriptor {
         BinaryAllocator.getInstance().close(true);
       }
 
+      // update disk_space_warning_threshold; also refresh the static copy in JVMCommonUtils that
+      // the ReadOnly disk guard reads, otherwise the new threshold would not take effect until
+      // restart. Parsing / validation is shared with the ConfigNode hot-reload path.
+      JVMCommonUtils.setDiskSpaceWarningThreshold(
+          commonDescriptor.loadHotModifiedDiskSpaceWarningThreshold(properties));
+
       commonDescriptor
           .getConfig()
           .setTimestampPrecisionCheckEnabled(
@@ -2333,6 +2349,9 @@ public class IoTDBDescriptor {
       }
 
       ConfigurationFileUtils.updateAppliedProperties(properties, true);
+      // Overwrite the keys whose setters above may have rewritten, so `show configuration`
+      // displays the effective values rather than the raw file values.
+      overlayEffectiveConfigurationValues();
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2340,6 +2359,31 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format(DataNodeMiscMessages.FAIL_RELOAD_CONFIGURATION_FMT, e));
     }
+  }
+
+  // `show configuration` (table model) renders ConfigurationFileUtils.getAppliedProperties().
+  // That map is populated from the raw config-file values, but several hot-reloaded parameters
+  // have setters that rewrite the loaded value before it takes effect, e.g.:
+  //   - `if (x > 0) setX(x)` skips non-positive values (keeps the previous/default value);
+  //   - loadFixedSizeLimitForQuery rewrites `<=0` to a computed default.
+  // For those keys the displayed value would otherwise diverge from the effective one. This
+  // method overwrites them with the post-setter effective value. It is invoked after the setters
+  // in both the startup (loadProperties) and hot-reload (loadHotModifiedProps) paths, so that
+  // local *and* remote `show configuration` (which reads each node's own map over RPC) stay
+  // correct.
+  private void overlayEffectiveConfigurationValues() {
+    ConfigurationFileUtils.updateAppliedProperties(
+        "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "max_rows_in_cte_buffer", Integer.toString(commonConfig.getMaxRowsInCteBuffer()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "max_sub_task_num_for_information_table_scan",
+        Integer.toString(conf.getMaxSubTaskNumForInformationTableScan()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "sort_buffer_size_in_bytes",
+        Long.toString(commonDescriptor.getConfig().getSortBufferSize()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
@@ -2354,7 +2398,8 @@ public class IoTDBDescriptor {
         commonDescriptor.getConfig().setQuerySamplingRateLimit(rateLimit);
       } catch (Exception e) {
         LOGGER.warn(
-            "Failed to parse query_sample_throughput_bytes_per_sec {} to integer",
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_PARSE_QUERY_SAMPLE_THROUGHPUT_BYTES_PER_SEC_TO_00144244,
             querySamplingRateLimitNumber);
       }
     }
@@ -2395,7 +2440,10 @@ public class IoTDBDescriptor {
     } catch (Exception e) {
       LOGGER.warn(DataNodeMiscMessages.FAIL_RELOAD_CONFIG_FILE, url, e);
       throw new QueryProcessException(
-          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+          String.format(
+              DataNodeMiscMessages.MISC_EXCEPTION_FAIL_TO_RELOAD_CONFIG_FILE_S_BECAUSE_S_93CCAB8D,
+              url,
+              e.getMessage()));
     } finally {
       ConfigurationFileUtils.releaseDefault();
     }
@@ -2732,9 +2780,10 @@ public class IoTDBDescriptor {
           maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
     } catch (Exception e) {
       throw new RuntimeException(
-          "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
-              + " should be an integer, which is "
-              + readerTransformerCollectorMemoryProportion,
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_UDF_READER_TRANSFORMER_97CA8962,
+              readerTransformerCollectorMemoryProportion),
           e);
     }
   }
@@ -2841,7 +2890,8 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getCqMinEveryIntervalInMs())));
     if (cqMinEveryIntervalInMs <= 0) {
       throw new IOException(
-          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is "
+          DataNodeMiscMessages
+                  .EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4
               + cqMinEveryIntervalInMs
               + ".");
     }
@@ -2855,7 +2905,8 @@ public class IoTDBDescriptor {
     if (!"strong".equals(readConsistencyLevel) && !"weak".equals(readConsistencyLevel)) {
       throw new IOException(
           String.format(
-              "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+              DataNodeMiscMessages
+                  .EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949,
               readConsistencyLevel));
     }
     conf.setReadConsistencyLevel(readConsistencyLevel);
@@ -2866,9 +2917,8 @@ public class IoTDBDescriptor {
     if (configNodeUrls == null) {
       configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
       LOGGER.warn(
-          "The parameter dn_target_config_node_list has been abandoned, "
-              + "only the first ConfigNode address will be used to join in the cluster. "
-              + "Please use dn_seed_config_node instead.");
+          DataNodeMiscMessages
+              .MISC_LOG_THE_PARAMETER_DN_TARGET_CONFIG_NODE_LIST_HAS_BEEN_ABANDONED_6C0DE50B);
     }
     if (configNodeUrls != null) {
       try {
@@ -2876,7 +2926,9 @@ public class IoTDBDescriptor {
         conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls).get(0));
       } catch (BadNodeUrlException e) {
         LOGGER.error(
-            "ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710", e);
+            DataNodeMiscMessages
+                .MISC_LOG_CONFIGNODES_ARE_SET_IN_WRONG_FORMAT_PLEASE_SET_THEM_LIKE_18E97679,
+            e);
       }
     }
 

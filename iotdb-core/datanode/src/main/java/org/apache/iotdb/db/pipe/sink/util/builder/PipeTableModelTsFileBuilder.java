@@ -185,7 +185,10 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
               deleteSuccess ? "Successfully" : "Failed to",
               sealedFile.right.getPath(),
               file.getPath(),
-              deleteSuccess ? "" : "Maybe the tsfile needs to be deleted manually.");
+              deleteSuccess
+                  ? ""
+                  : DataNodePipeMessages
+                      .MESSAGE_MAYBE_THE_TSFILE_NEEDS_TO_BE_DELETED_MANUALLY_342E28E2);
         }
         sealedFiles.clear();
 

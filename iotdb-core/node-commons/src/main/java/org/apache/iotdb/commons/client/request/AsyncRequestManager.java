@@ -186,9 +186,10 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
     try {
       if (!actionMap.containsKey(requestContext.getRequestType())) {
         throw new UnsupportedOperationException(
-            "unsupported request type "
+            ClientMessages.EXCEPTION_UNSUPPORTED_REQUEST_TYPE_2030CDC7
                 + requestContext.getRequestType()
-                + ", please set it in AsyncRequestManager::initActionMapBuilder()");
+                + ClientMessages
+                    .EXCEPTION_PLEASE_SET_IT_ASYNCREQUESTMANAGER_INITACTIONMAPBUILDER_0F039A93);
       }
       handler = buildHandler(requestContext, requestId, targetNode);
       client = clientManager.borrowClient(endPoint);
@@ -212,7 +213,8 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           handler.onError(e);
         } catch (final Exception handlerException) {
           LOGGER.warn(
-              "Failed to handle async request error for request type {} on node {}: {}",
+              ClientMessages
+                  .MESSAGE_FAILED_TO_HANDLE_ASYNC_REQUEST_ERROR_FOR_REQUEST_TYPE_ARG_ON_NODE_ARG_ARG_3AE293F7,
               requestContext.getRequestType(),
               endPoint,
               handlerException.getMessage(),

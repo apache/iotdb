@@ -54,7 +54,9 @@ public class ConstantInputReader implements LayerReader {
     Object value = CommonUtils.parseValue(expression.getDataType(), expression.getValueString());
     if (value == null) {
       throw new QueryProcessException(
-          "Invalid constant operand: " + expression.getExpressionString());
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_INVALID_CONSTANT_OPERAND_S_939F3B8D,
+              expression.getExpressionString()));
     }
 
     // Use RLEColumn to mimic column filled with same values

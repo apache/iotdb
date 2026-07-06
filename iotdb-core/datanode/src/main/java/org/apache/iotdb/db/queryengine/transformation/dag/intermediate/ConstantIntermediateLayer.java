@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
@@ -72,6 +73,7 @@ public class ConstantIntermediateLayer extends IntermediateLayer {
       StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
     // Not allowed since the timestamp of a constant row is not defined.
     throw new UnsupportedOperationException(
-        "StateWindowAccessStrategy does not support pure constant input.");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_STATEWINDOWACCESSSTRATEGY_DOES_NOT_SUPPORT_PURE_CONSTANT_B09D811B);
   }
 }

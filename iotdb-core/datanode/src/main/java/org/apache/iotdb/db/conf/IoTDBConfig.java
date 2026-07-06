@@ -1513,7 +1513,8 @@ public class IoTDBConfig {
       Class.forName(multiDirStrategyClassName);
     } catch (ClassNotFoundException e) {
       logger.warn(
-          "Cannot find given directory strategy {}, using the default value",
+          DataNodeMiscMessages
+              .MISC_LOG_CANNOT_FIND_GIVEN_DIRECTORY_STRATEGY_USING_THE_DEFAULT_VALUE_7997B145,
           getMultiDirStrategyClassName(),
           e);
       setMultiDirStrategyClassName(MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY);
@@ -2398,7 +2399,8 @@ public class IoTDBConfig {
   public void setBooleanStringInferType(TSDataType booleanStringInferType) {
     if (booleanStringInferType != TSDataType.BOOLEAN && booleanStringInferType != TSDataType.TEXT) {
       logger.warn(
-          "Config Property boolean_string_infer_type can only be BOOLEAN or TEXT but is {}",
+          DataNodeMiscMessages
+              .MISC_LOG_CONFIG_PROPERTY_BOOLEAN_STRING_INFER_TYPE_CAN_ONLY_BE_BOOLEAN_2FA3AFC5,
           booleanStringInferType);
       return;
     }
@@ -2422,7 +2424,8 @@ public class IoTDBConfig {
         && floatingNumberStringInferType != TSDataType.FLOAT
         && floatingNumberStringInferType != TSDataType.TEXT) {
       logger.warn(
-          "Config Property floating_string_infer_type can only be FLOAT, DOUBLE or TEXT but is {}",
+          DataNodeMiscMessages
+              .MISC_LOG_CONFIG_PROPERTY_FLOATING_STRING_INFER_TYPE_CAN_ONLY_BE_FLOAT_8041EAC4,
           floatingNumberStringInferType);
       return;
     }
@@ -2438,7 +2441,8 @@ public class IoTDBConfig {
         && nanStringInferType != TSDataType.FLOAT
         && nanStringInferType != TSDataType.TEXT) {
       logger.warn(
-          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is {}",
+          DataNodeMiscMessages
+              .MISC_LOG_CONFIG_PROPERTY_NAN_STRING_INFER_TYPE_CAN_ONLY_BE_FLOAT_61F60E0E,
           nanStringInferType);
       return;
     }
@@ -2453,12 +2457,16 @@ public class IoTDBConfig {
     if (defaultDatabaseLevel < 1) {
       if (startUp) {
         logger.warn(
-            "Illegal defaultDatabaseLevel: {}, should >= 1, use default value 1",
+            DataNodeMiscMessages
+                .MISC_LOG_ILLEGAL_DEFAULTDATABASELEVEL_SHOULD_1_USE_DEFAULT_VALUE_97F43732,
             defaultDatabaseLevel);
         defaultDatabaseLevel = 1;
       } else {
         throw new IllegalArgumentException(
-            String.format("Illegal defaultDatabaseLevel: %d, should >= 1", defaultDatabaseLevel));
+            String.format(
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_ILLEGAL_DEFAULTDATABASELEVEL_D_SHOULD_1_03088B38,
+                defaultDatabaseLevel));
       }
     }
     this.defaultDatabaseLevel = defaultDatabaseLevel;
@@ -4239,7 +4247,8 @@ public class IoTDBConfig {
   public void setLoadTsFileSpiltPartitionMaxSize(int loadTsFileSpiltPartitionMaxSize) {
     if (loadTsFileSpiltPartitionMaxSize <= 0) {
       throw new IllegalArgumentException(
-          "loadTsFileSpiltPartitionMaxSize should be greater than or equal to 0");
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23);
     }
 
     if (this.loadTsFileSpiltPartitionMaxSize == loadTsFileSpiltPartitionMaxSize) {
@@ -4247,7 +4256,7 @@ public class IoTDBConfig {
     }
 
     logger.info(
-        "Set loadTsFileSpiltPartitionMaxSize from {} to {}",
+        DataNodeMiscMessages.MISC_LOG_SET_LOADTSFILESPILTPARTITIONMAXSIZE_FROM_TO_560BA8F7,
         this.loadTsFileSpiltPartitionMaxSize,
         loadTsFileSpiltPartitionMaxSize);
     this.loadTsFileSpiltPartitionMaxSize = loadTsFileSpiltPartitionMaxSize;
@@ -4260,13 +4269,14 @@ public class IoTDBConfig {
   public void setLoadTsFileStatementSplitThreshold(final int loadTsFileStatementSplitThreshold) {
     if (loadTsFileStatementSplitThreshold < 0) {
       logger.warn(
-          "Invalid loadTsFileStatementSplitThreshold value: {}. Using default value: 10",
+          DataNodeMiscMessages
+              .MISC_LOG_INVALID_LOADTSFILESTATEMENTSPLITTHRESHOLD_VALUE_USING_DEFAULT_45EA7FBF,
           loadTsFileStatementSplitThreshold);
       return;
     }
     if (this.loadTsFileStatementSplitThreshold != loadTsFileStatementSplitThreshold) {
       logger.info(
-          "loadTsFileStatementSplitThreshold changed from {} to {}",
+          DataNodeMiscMessages.MISC_LOG_LOADTSFILESTATEMENTSPLITTHRESHOLD_CHANGED_FROM_TO_1CB90529,
           this.loadTsFileStatementSplitThreshold,
           loadTsFileStatementSplitThreshold);
     }
@@ -4280,13 +4290,14 @@ public class IoTDBConfig {
   public void setLoadTsFileSubStatementBatchSize(final int loadTsFileSubStatementBatchSize) {
     if (loadTsFileSubStatementBatchSize <= 0) {
       logger.warn(
-          "Invalid loadTsFileSubStatementBatchSize value: {}. Using default value: 10",
+          DataNodeMiscMessages
+              .MISC_LOG_INVALID_LOADTSFILESUBSTATEMENTBATCHSIZE_VALUE_USING_DEFAULT_5C285109,
           loadTsFileSubStatementBatchSize);
       return;
     }
     if (this.loadTsFileSubStatementBatchSize != loadTsFileSubStatementBatchSize) {
       logger.info(
-          "loadTsFileSubStatementBatchSize changed from {} to {}",
+          DataNodeMiscMessages.MISC_LOG_LOADTSFILESUBSTATEMENTBATCHSIZE_CHANGED_FROM_TO_D4EF3D07,
           this.loadTsFileSubStatementBatchSize,
           loadTsFileSubStatementBatchSize);
     }

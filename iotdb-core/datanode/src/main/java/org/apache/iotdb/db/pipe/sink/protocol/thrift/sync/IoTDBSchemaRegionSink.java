@@ -190,7 +190,10 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
         batch.getPipeName(),
         batch.getCreationTime(),
         planNode.toString());
-    LOGGER.info("Successfully transferred batched schema events, batch size {}.", batch.size());
+    LOGGER.info(
+        DataNodePipeMessages
+            .MESSAGE_SUCCESSFULLY_TRANSFERRED_BATCHED_SCHEMA_EVENTS_BATCH_SIZE_ARG_CF2E881C,
+        batch.size());
   }
 
   private void doTransfer(
@@ -225,8 +228,10 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer schema region write plan %s, because %s.",
-              planNode.getType(), e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_SCHEMA_REGION_WRITE_PLAN_S_BECAUSE_AEB210C7,
+              planNode.getType(),
+              e.getMessage()),
           e);
     }
 
@@ -317,8 +322,12 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when seal snapshot file %s, %s and %s, because %s.",
-              mTreeSnapshotFile, tagLogSnapshotFile, attributeSnapshotFile, e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_SEAL_SNAPSHOT_FILE_S_S_AND_S_BECAUSE_5EF373E6,
+              mTreeSnapshotFile,
+              tagLogSnapshotFile,
+              attributeSnapshotFile,
+              e.getMessage()),
           e);
     }
 

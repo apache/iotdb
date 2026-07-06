@@ -77,7 +77,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
       LOG.info(
-          "procedureId {}-RemoveDataNodes skips acquiring lock, since upper layer ensures the serial execution.",
+          ProcedureMessages
+              .LOG_PROCEDUREID_ARG_REMOVEDATANODES_SKIPS_ACQUIRING_LOCK_SINCE_UPPER_LAYER_ENSURES_C7546FF8,
           getProcId());
       return ProcedureLockState.LOCK_ACQUIRED;
     } finally {
@@ -90,7 +91,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
       LOG.info(
-          "procedureId {}-RemoveDataNodes skips releasing lock, since it hasn't acquire any lock.",
+          ProcedureMessages
+              .LOG_PROCEDUREID_ARG_REMOVEDATANODES_SKIPS_RELEASING_LOCK_SINCE_IT_HASN_T_AED8A3DA,
           getProcId());
     } finally {
       configNodeProcedureEnv.getSchedulerLock().unlock();
@@ -111,8 +113,9 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             setNextState(RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE);
           } else {
             LOG.error(
-                "{}, Can not remove DataNode {} "
-                    + "because the number of DataNodes is less or equal than region replica number",
+                ProcedureMessages.LOG_ARG_CAN_NOT_REMOVE_DATANODE_ARG_495F9F85
+                    + ProcedureMessages
+                        .LOG_BECAUSE_NUMBER_DATANODES_LESS_EQUAL_THAN_REGION_REPLICA_NUMBER_DEC0CB38,
                 REMOVE_DATANODE_PROCESS,
                 removedDataNodes);
             return Flow.NO_MORE_STATE;
@@ -125,7 +128,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           regionMigrationPlans =
               removeDataNodeHandler.selectedRegionMigrationPlans(removedDataNodes);
           LOG.info(
-              "{}, DataNode regions to be removed is {}",
+              ProcedureMessages.LOG_ARG_DATANODE_REGIONS_REMOVED_ARG_216A7DC7,
               REMOVE_DATANODE_PROCESS,
               regionMigrationPlans);
           setNextState(RemoveDataNodeState.BROADCAST_DISABLE_DATA_NODE);
@@ -150,7 +153,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
         setFailure(new ProcedureException(ProcedureMessages.REMOVE_DATA_NODE_FAILED + state));
       } else {
         LOG.error(
-            "Retrievable error trying to remove data node {}, state {}",
+            ProcedureMessages.LOG_RETRIEVABLE_ERROR_TRYING_REMOVE_DATA_NODE_ARG_STATE_ARG_4EFEB850,
             removedDataNodes,
             state,
             e);
@@ -185,7 +188,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
                     coordinatorForRemovePeer);
             addChildProcedure(regionMigrateProcedure);
             LOG.info(
-                "Submit RegionMigrateProcedure for regionId {}: removedDataNode={}, destDataNode={}, coordinatorForAddPeer={}, coordinatorForRemovePeer={}",
+                ProcedureMessages
+                    .LOG_SUBMIT_REGIONMIGRATEPROCEDURE_REGIONID_ARG_REMOVEDDATANODE_ARG_DESTDATANODE_ARG_COORDINATORFORADDPEER_ARG_,
                 regionId,
                 simplifyTDataNodeLocation(removedDataNode),
                 simplifyTDataNodeLocation(destDataNode),
@@ -193,7 +197,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
                 simplifyTDataNodeLocation(coordinatorForRemovePeer));
           } else {
             LOG.error(
-                "{}, Cannot find target DataNode to migrate the region: {}",
+                ProcedureMessages.LOG_ARG_CANNOT_FIND_TARGET_DATANODE_MIGRATE_REGION_ARG_81A78E06,
                 REMOVE_DATANODE_PROCESS,
                 regionId);
             // TODO terminate all the uncompleted remove datanode process
@@ -223,8 +227,10 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
               .collect(Collectors.toList());
       if (!migratedFailedRegions.isEmpty()) {
         LOG.warn(
-            "{}, Some regions are migrated failed in DataNode: {}, migratedFailedRegions: {}."
-                + "Regions that have been successfully migrated will not roll back, you can submit the RemoveDataNodes task again later.",
+            ProcedureMessages
+                    .LOG_ARG_SOME_REGIONS_MIGRATED_FAILED_DATANODE_ARG_MIGRATEDFAILEDREGIONS_ARG_11644841
+                + ProcedureMessages
+                    .LOG_REGIONS_HAVE_BEEN_SUCCESSFULLY_MIGRATED_WILL_NOT_ROLL_BACK_YOU_AE904563,
             REMOVE_DATANODE_PROCESS,
             dataNode,
             migratedFailedRegions);
@@ -235,7 +241,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     }
     if (!successDataNodes.isEmpty()) {
       LOG.info(
-          "{}, DataNodes: {} all regions migrated successfully, start to stop them.",
+          ProcedureMessages
+              .LOG_ARG_DATANODES_ARG_ALL_REGIONS_MIGRATED_SUCCESSFULLY_START_STOP_THEM_32D56F28,
           REMOVE_DATANODE_PROCESS,
           successDataNodes);
       env.getRemoveDataNodeHandler().removeDataNodePersistence(successDataNodes);
@@ -243,13 +250,13 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     }
     if (!rollBackDataNodes.isEmpty()) {
       LOG.info(
-          "{}, Start to roll back the DataNodes status: {}",
+          ProcedureMessages.LOG_ARG_START_ROLL_BACK_DATANODES_STATUS_ARG_05C67270,
           REMOVE_DATANODE_PROCESS,
           rollBackDataNodes);
       env.getRemoveDataNodeHandler().changeDataNodeStatus(rollBackDataNodes, nodeStatusMap);
       env.getRemoveDataNodeHandler().broadcastDataNodeStatusChange(rollBackDataNodes);
       LOG.info(
-          "{}, Roll back the DataNodes status successfully: {}",
+          ProcedureMessages.LOG_ARG_ROLL_BACK_DATANODES_STATUS_SUCCESSFULLY_ARG_6773A2DF,
           REMOVE_DATANODE_PROCESS,
           rollBackDataNodes);
     }

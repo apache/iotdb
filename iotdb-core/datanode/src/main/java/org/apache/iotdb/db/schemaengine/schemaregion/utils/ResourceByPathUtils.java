@@ -146,7 +146,8 @@ public abstract class ResourceByPathUtils {
       tvList.lockQueryList();
       try {
         LOGGER.debug(
-            "Flushing/Working MemTable - add current query context to immutable TVList's query list");
+            DataNodeSchemaMessages
+                .SCHEMA_LOG_FLUSHING_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_IMMUTABLE_7B7CD373);
         tvList.getQueryContextSet().add(context);
         tvListQueryMap.put(tvList, tvList.rowCount());
       } finally {
@@ -182,7 +183,8 @@ public abstract class ResourceByPathUtils {
          */
         boolean canUseListDirectly = list.isSorted() || list.getQueryContextSet().isEmpty();
         LOGGER.debug(
-            "Flushing MemTable - add current query context to mutable TVList's query list");
+            DataNodeSchemaMessages
+                .SCHEMA_LOG_FLUSHING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_BEB0D766);
         if (canUseListDirectly) {
           list.getQueryContextSet().add(context);
           tvListQueryMap.put(list, list.rowCount());
@@ -209,7 +211,8 @@ public abstract class ResourceByPathUtils {
       } else {
         if (list.isSorted() || list.getQueryContextSet().isEmpty()) {
           LOGGER.debug(
-              "Working MemTable - add current query context to mutable TVList's query list when it's sorted or no other query on it");
+              DataNodeSchemaMessages
+                  .SCHEMA_LOG_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_8C937414);
           list.getQueryContextSet().add(context);
           tvListQueryMap.put(list, list.rowCount());
         } else {
@@ -228,7 +231,8 @@ public abstract class ResourceByPathUtils {
            *      +------------+
            */
           LOGGER.debug(
-              "Working MemTable - clone mutable TVList and replace old TVList in working MemTable");
+              DataNodeSchemaMessages
+                  .SCHEMA_LOG_WORKING_MEMTABLE_CLONE_MUTABLE_TVLIST_AND_REPLACE_OLD_TVLIST_FD1EAE22);
           QueryContext firstQuery = list.getQueryContextSet().iterator().next();
           // reserve query memory
           if (firstQuery instanceof FragmentInstanceContext) {

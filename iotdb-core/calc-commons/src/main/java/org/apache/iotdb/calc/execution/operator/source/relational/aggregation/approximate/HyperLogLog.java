@@ -98,14 +98,14 @@ public class HyperLogLog {
   }
 
   private static boolean isPowerOf2(long value) {
-    Preconditions.checkArgument(value > 0L, "value must be positive");
+    Preconditions.checkArgument(value > 0L, CalcMessages.EXCEPTION_VALUE_MUST_BE_POSITIVE_24FE7959);
     return (value & value - 1L) == 0L;
   }
 
   private static int indexBitLength(int numberOfBuckets) {
     Preconditions.checkArgument(
         isPowerOf2(numberOfBuckets),
-        "numberOfBuckets must be a power of 2, actual: %s",
+        CalcMessages.EXCEPTION_NUMBEROFBUCKETS_MUST_BE_A_POWER_OF_2_COMMA_ACTUAL_COLON_ARG_476E74ED,
         numberOfBuckets);
     return Integer.numberOfTrailingZeros(numberOfBuckets);
   }
@@ -115,8 +115,10 @@ public class HyperLogLog {
         || maxStandardError > HIGHEST_MAX_STANDARD_ERROR) {
       throw new IoTDBRuntimeException(
           String.format(
-              "Max Standard Error must be in [%s, %s]: %s",
-              LOWEST_MAX_STANDARD_ERROR, HIGHEST_MAX_STANDARD_ERROR, maxStandardError),
+              CalcMessages.EXCEPTION_MAX_STANDARD_ERROR_MUST_ARG_ARG_ARG_EB8443D6,
+              LOWEST_MAX_STANDARD_ERROR,
+              HIGHEST_MAX_STANDARD_ERROR,
+              maxStandardError),
           NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
           true);
     }
@@ -223,7 +225,7 @@ public class HyperLogLog {
   public void merge(HyperLogLog other) {
     if (this.m != other.m) {
       throw new IllegalArgumentException(
-          "Cannot merge HyperLogLog instances with different precision");
+          CalcMessages.EXCEPTION_CANNOT_MERGE_HYPERLOGLOG_INSTANCES_DIFFERENT_PRECISION_9DCF13BC);
     }
 
     for (int i = 0; i < m; i++) {

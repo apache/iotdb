@@ -149,8 +149,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       if (!Files.isReadable(listeningDirPath)) {
         if (!noPermissionDirs.contains(listeningDir)) {
           LOGGER.error(
-              "Current dir path is not readable: {}."
-                  + "Skip scanning this dir. Please check the permission.",
+              StorageEngineMessages
+                  .STORAGE_LOG_CURRENT_DIR_PATH_IS_NOT_READABLE_SKIP_SCANNING_THIS_DIR_9C8B7E00,
               listeningDirPath);
           noPermissionDirs.add(listeningDir);
         }
@@ -160,8 +160,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       if (!Files.isWritable(listeningDirPath)) {
         if (!noPermissionDirs.contains(listeningDir)) {
           LOGGER.error(
-              "Current dir path is not writable: {}."
-                  + "Skip scanning this dir. Please check the permission.",
+              StorageEngineMessages
+                  .STORAGE_LOG_CURRENT_DIR_PATH_IS_NOT_WRITABLE_SKIP_SCANNING_THIS_DIR_4885E78F,
               listeningDirPath);
           noPermissionDirs.add(listeningDir);
         }
@@ -172,7 +172,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       return true;
     } catch (final Exception e) {
       LOGGER.error(
-          "Error occurred during checking r/w permission of dir: {}. Skip scanning this dir.",
+          StorageEngineMessages
+              .STORAGE_LOG_ERROR_OCCURRED_DURING_CHECKING_R_W_PERMISSION_OF_DIR_SKIP_3EC7FC7D,
           listeningDir,
           e);
       return false;
@@ -228,8 +229,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       ActiveLoadingFilesSizeMetricsSet.getInstance().updatePendingDirList(listeningDirs);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Error occurred during hot reload active load dirs. "
-              + "Current active load listening dirs: {}.",
+          StorageEngineMessages
+              .STORAGE_LOG_ERROR_OCCURRED_DURING_HOT_RELOAD_ACTIVE_LOAD_DIRS_CURRENT_673AFC0F,
           listeningDirs,
           e);
     }
