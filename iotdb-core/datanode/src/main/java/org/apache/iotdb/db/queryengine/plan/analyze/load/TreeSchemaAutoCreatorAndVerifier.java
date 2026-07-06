@@ -121,7 +121,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
         }
       } catch (IllegalPathException e) {
         LOGGER.warn(
-            "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
+            DataNodeQueryMessages
+                .FAILED_TO_CHECK_IF_DEVICE_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT_DELETED,
             device,
             e);
       }
@@ -136,7 +137,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // IllegalPathException.
           if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
             LOGGER.warn(
-                "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                DataNodeQueryMessages
+                    .FAILED_TO_CHECK_IF_DEVICE_ARG_TIMESERIES_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT,
                 device,
                 timeseriesMetadata.getMeasurementId(),
                 e);
@@ -254,8 +256,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
     LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
     throw new SemanticException(
         String.format(
-            "Auto create or verify schema error when executing statement %s.  Detail: %s.",
-            statementString, e.getMessage()));
+            DataNodeQueryMessages
+                .AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT_S_DETAIL_S,
+            statementString,
+            e.getMessage()));
   }
 
   private void makeSureNoDuplicatedMeasurementsInDevices() throws LoadAnalyzeException {
@@ -275,7 +279,11 @@ public class TreeSchemaAutoCreatorAndVerifier {
         if (existingSchema != null) {
           if (existingSchema.getType() != timeseriesSchema.getType()) {
             throw new LoadAnalyzeException(
-                String.format("Duplicated measurements %s in device %s.", measurement, device));
+                String.format(
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_DUPLICATED_MEASUREMENTS_S_IN_DEVICE_S_438713CD,
+                    measurement,
+                    device));
           }
           deviceHasDuplicates = true;
           hasDuplicates = true;
@@ -310,7 +318,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
       if (devicePrefixNodes.length < databasePrefixNodesLength) {
         throw new LoadAnalyzeException(
             String.format(
-                "Database level %d is longer than device %s.", databasePrefixNodesLength, device));
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DATABASE_LEVEL_D_IS_LONGER_THAN_DEVICE_S_9B34DD2F,
+                databasePrefixNodesLength,
+                device));
       }
 
       final String[] databasePrefixNodes = new String[databasePrefixNodesLength];
@@ -390,11 +401,15 @@ public class TreeSchemaAutoCreatorAndVerifier {
         // root.db.ss.a) conflicts with the created database. just do not throw exception here.
         && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
       LOGGER.warn(
-          "Create database error, statement: {}, result status is: {}", statement, result.status);
+          DataNodeQueryMessages.CREATE_DATABASE_ERROR_STATEMENT_ARG_RESULT_STATUS_IS_ARG,
+          statement,
+          result.status);
       throw new LoadFileException(
           String.format(
-              "Create database error, statement: %s, result status is: %s",
-              statement, result.status));
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_CREATE_DATABASE_ERROR_STATEMENT_S_RESULT_STATUS_IS_S_5C4AFD58,
+              statement,
+              result.status));
     }
   }
 
@@ -467,10 +482,15 @@ public class TreeSchemaAutoCreatorAndVerifier {
       if (isAlignedInTsFile != isAlignedInIoTDB) {
         throw new LoadAnalyzeTypeMismatchException(
             String.format(
-                "Device %s in TsFile is %s, but in IoTDB is %s.",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DEVICE_S_IN_TSFILE_IS_S_BUT_IN_IOTDB_IS_S_350D5903,
                 device,
-                isAlignedInTsFile ? "aligned" : "not aligned",
-                isAlignedInIoTDB ? "aligned" : "not aligned"));
+                isAlignedInTsFile
+                    ? DataNodeQueryMessages.ALIGNMENT_ALIGNED
+                    : DataNodeQueryMessages.ALIGNMENT_NOT_ALIGNED,
+                isAlignedInIoTDB
+                    ? DataNodeQueryMessages.ALIGNMENT_ALIGNED
+                    : DataNodeQueryMessages.ALIGNMENT_NOT_ALIGNED));
       }
 
       // check timeseries schema
@@ -490,7 +510,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
         if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
           throw new LoadAnalyzeTypeMismatchException(
               String.format(
-                  "Data type mismatch for measurement %s%s%s, type in TsFile: %s, type in IoTDB: %s",
+                  DataNodeQueryMessages
+                      .EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD,
                   device,
                   TsFileConstant.PATH_SEPARATOR,
                   iotdbSchema.getMeasurementName(),
@@ -503,8 +524,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
             && !tsFileSchema.getEncodingType().equals(iotdbSchema.getEncodingType())) {
           // we allow a measurement to have different encodings in different chunks
           LOGGER.debug(
-              "Encoding type not match, measurement: {}{}{}, "
-                  + "TsFile encoding: {}, IoTDB encoding: {}",
+              DataNodeQueryMessages.ENCODING_TYPE_NOT_MATCH_MEASUREMENT_ARGARGARG
+                  + DataNodeQueryMessages.TSFILE_ENCODING_ARG_IOTDB_ENCODING_ARG,
               device,
               TsFileConstant.PATH_SEPARATOR,
               iotdbSchema.getMeasurementName(),
@@ -517,8 +538,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
             && !tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
           // we allow a measurement to have different compressors in different chunks
           LOGGER.debug(
-              "Compressor not match, measurement: {}{}{}, "
-                  + "TsFile compressor: {}, IoTDB compressor: {}",
+              DataNodeQueryMessages.COMPRESSOR_NOT_MATCH_MEASUREMENT_ARGARGARG
+                  + DataNodeQueryMessages.TSFILE_COMPRESSOR_ARG_IOTDB_COMPRESSOR_ARG,
               device,
               TsFileConstant.PATH_SEPARATOR,
               iotdbSchema.getMeasurementName(),

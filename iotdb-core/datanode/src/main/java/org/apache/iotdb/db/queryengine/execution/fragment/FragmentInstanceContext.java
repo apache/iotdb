@@ -700,7 +700,9 @@ public class FragmentInstanceContext extends QueryContext {
       // last runtime usage closes the shared resource and deletes its temporary run files.
       externalTsFileQueryResource.closeByFragmentInstance();
     } catch (Exception e) {
-      LOGGER.warn("Failed to release external TsFile query resource", e);
+      LOGGER.warn(
+          DataNodeQueryMessages.MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978,
+          e);
     }
     externalTsFileQueryResource = null;
     externalTsFileQueryResourceRetained = false;
@@ -905,7 +907,10 @@ public class FragmentInstanceContext extends QueryContext {
           break;
         default:
           throw new QueryProcessException(
-              "Unsupported query data source type: " + queryDataSourceType);
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_UNSUPPORTED_QUERY_DATA_SOURCE_TYPE_S_7424E63F,
+                  queryDataSourceType));
       }
     }
     return sharedQueryDataSource;
@@ -916,7 +921,7 @@ public class FragmentInstanceContext extends QueryContext {
     // record warn log every 10 times retry
     if (initQueryDataSourceRetryCount % 10 == 0) {
       LOGGER.warn(
-          "Failed to acquire the read lock of DataRegion-{} for {} times",
+          DataNodeQueryMessages.FAILED_TO_ACQUIRE_THE_READ_LOCK_OF_DATAREGION_ARG_FOR_ARG_TIMES,
           dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionIdString(),
           initQueryDataSourceRetryCount);
     }
@@ -1016,7 +1021,9 @@ public class FragmentInstanceContext extends QueryContext {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn(
-            "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
+            DataNodeQueryMessages
+                .INTERRUPTED_WHEN_AWAIT_ON_ALLDRIVERSCLOSED_FRAGMENTINSTANCE_ID_IS_ARG,
+            this.getId());
       }
     }
     long duration = System.nanoTime() - startTime;
@@ -1042,14 +1049,16 @@ public class FragmentInstanceContext extends QueryContext {
         if (tvList.getOwnerQuery() == this) {
           if (tvList.getReservedMemoryBytes() != tvListRamSize) {
             LOGGER.warn(
-                "Release TVList owned by query: allocate size {}, release size {}",
+                DataNodeQueryMessages
+                    .RELEASE_TVLIST_OWNED_BY_QUERY_ALLOCATE_SIZE_ARG_RELEASE_SIZE_ARG,
                 tvList.getReservedMemoryBytes(),
                 tvListRamSize);
           }
           if (queryContextSet.isEmpty()) {
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
-                  "TVList {} is released by the query, FragmentInstance Id is {}",
+                  DataNodeQueryMessages
+                      .TVLIST_ARG_IS_RELEASED_BY_THE_QUERY_FRAGMENTINSTANCE_ID_IS_ARG,
                   tvList,
                   this.getId());
             }
@@ -1069,12 +1078,14 @@ public class FragmentInstanceContext extends QueryContext {
                   .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
             } catch (MemoryNotEnoughException ex) {
               LOGGER.warn(
-                  "MemoryNotEnoughException when transferring TVList ownership from query {} to another query {}.",
+                  DataNodeQueryMessages
+                      .MEMORYNOTENOUGHEXCEPTION_WHEN_TRANSFERRING_TVLIST_OWNERSHIP_FROM_QUERY_ARG_TO_ANOTHER,
                   this.getId(),
                   queryContext.getId());
             } catch (RuntimeException ex) {
               LOGGER.warn(
-                  "Unexpected Exception when transferring TVList ownership from query {} to another query {}.",
+                  DataNodeQueryMessages
+                      .UNEXPECTED_EXCEPTION_WHEN_TRANSFERRING_TVLIST_OWNERSHIP_FROM_QUERY_ARG_TO_ANOTHER_QUERY,
                   this.getId(),
                   queryContext.getId(),
                   ex);
@@ -1082,7 +1093,8 @@ public class FragmentInstanceContext extends QueryContext {
 
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
-                  "TVList {} is now owned by another query, FragmentInstance Id is {}",
+                  DataNodeQueryMessages
+                      .TVLIST_ARG_IS_NOW_OWNED_BY_ANOTHER_QUERY_FRAGMENTINSTANCE_ID_IS_ARG,
                   tvList,
                   queryContext.getId());
             }
@@ -1365,6 +1377,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setHighestPriority(boolean highestPriority) {
     this.highestPriority = highestPriority;
+    if (memoryReservationManager != null) {
+      memoryReservationManager.setHighestPriority(highestPriority);
+    }
   }
 
   public boolean isSingleSourcePath() {

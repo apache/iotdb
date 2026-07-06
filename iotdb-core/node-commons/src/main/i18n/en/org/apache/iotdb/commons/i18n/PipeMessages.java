@@ -256,6 +256,13 @@ public final class PipeMessages {
   // ===================== PipeTaskAgent =====================
 
   public static final String NOT_ENOUGH_MEMORY_FOR_PIPE = "Not enough memory for pipe.";
+  public static final String NOT_ENOUGH_MEMORY_FOR_PIPE_FORMAT =
+      NOT_ENOUGH_MEMORY_FOR_PIPE
+          + " Need memory: %d bytes, free memory: %d bytes, "
+          + "reserved memory: %d bytes, total memory: %d bytes";
+  public static final String NOT_ENOUGH_FLOATING_MEMORY_FOR_PIPE_FORMAT =
+      NOT_ENOUGH_MEMORY_FOR_PIPE
+          + " Need floating memory: %d bytes, free floating memory: %d bytes";
   public static final String UNKNOWN_PIPE_STATUS = "Unknown pipe status %s for pipe %s";
   public static final String UNEXPECTED_PIPE_STATUS = "Unexpected pipe status %s: ";
   public static final String INTERRUPTED_ACQUIRING_READ_LOCK =
@@ -728,6 +735,7 @@ public final class PipeMessages {
       "User conflict exception: retry timeout. will be ignored. event: {}. status: {}";
   public static final String USER_CONFLICT_WILL_RETRY =
       "User conflict exception: will retry {}. status: {}";
+  public static final String MESSAGE_FOR_AT_LEAST_ADE37405 = "for at least ";
   public static final String USER_CONFLICT_NOT_ALLOWED =
       "User conflict exception: will be ignored because retry is not allowed. event: {}. status: {}";
   public static final String OTHER_EXCEPTION_RETRY_TIMEOUT =
@@ -876,5 +884,67 @@ public final class PipeMessages {
       "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}";
   public static final String CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES =
       "SubscriptionMetaSyncerSyncIntervalMinutes: {}";
+
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_UNSUPPORTED_PIPERUNTIMEEXCEPTION_TYPE_ARG_C5D5D84C = "Unsupported PipeRuntimeException type %s.";
+  public static final String LOG_SUBSCRIPTIONENABLED_ARG_6F9EC0F9 = "SubscriptionEnabled: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSPREFETCHEXECUTORMAXTHREADNUM_ARG_94D0BD76 = "SubscriptionConsensusPrefetchExecutorMaxThreadNum: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXDELAYINMS_ARG_38C2CB8B = "SubscriptionConsensusBatchMaxDelayInMs: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXSIZEINBYTES_ARG_F8D28441 = "SubscriptionConsensusBatchMaxSizeInBytes: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXTABLETCOUNT_ARG_60BB1D6A = "SubscriptionConsensusBatchMaxTabletCount: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXWALENTRIES_ARG_9BF1CAE4 = "SubscriptionConsensusBatchMaxWalEntries: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSIDLESAFETIMEBARRIERINTERVALMS_ARG_A6944544 = "SubscriptionConsensusIdleSafeTimeBarrierIntervalMs: {}";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_LENGTH_EBC10484 = "Unexpected EOF reading region progress key length";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE = "Unexpected EOF reading region progress key";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0 = "Unexpected EOF reading region progress value length";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521 = "Unexpected EOF reading region progress value";
+  public static final String EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87 =
+      "Failed to add subscription to consumer group meta: consumer %s does not exist in consumer"
+      + " group %s";
+  public static final String EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3 =
+      "Failed to remove subscription from consumer group meta: consumer %s does not exist in"
+      + " consumer group %s";
+  public static final String EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8 = "The path pattern %s is not valid for the source. Only prefix or full path is allowed.";
+  public static final String EXCEPTION_CAPTURE_TREE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_29A08445 = "capture.tree can not be specified to false when double living is enabled";
+  public static final String EXCEPTION_CAPTURE_TABLE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_8AEB8F7B = "capture.table can not be specified to false when double living is enabled";
+  public static final String EXCEPTION_FORWARDING_PIPE_REQUESTS_CAN_NOT_SPECIFIED_TRUE_DOUBLE_LIVING_ENABLED_B000E8A1 = "forwarding-pipe-requests can not be specified to true when double living is enabled";
+  public static final String EXCEPTION_PARAMETERS_SET_ARG_NOT_ALLOWED_SKIPIF_2B9AA054 = "Parameters in set %s are not allowed in 'skipif'";
+  public static final String LOG_USER_CONFLICT_EXCEPTION_DISCARDED_DATA_INFO_BECAUSE_ARG_DATA_ARG_CCE510A5 =
+      "User conflict exception: discarded data info because {}. data: {}. receiver message: {}."
+      + " status: {}";
+  public static final String LOG_RE_INCREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_B8DAAAEE = "re-increase reference count to event that has already been released: {}, stack trace: {}";
+  public static final String LOG_INCREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_94C472FC = "increase reference count failed, EnrichedEvent: {}, stack trace: {}";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_STACK_99FCAB8B = "decrease reference count to event that has already been released: {}, stack trace: {}";
+  public static final String LOG_RESOURCE_REFERENCE_COUNT_DECREASED_0_BUT_FAILED_RELEASE_RESOURCE_ENRICHEDEVENT_A02A86AF =
+      "resource reference count is decreased to 0, but failed to release the resource,"
+      + " EnrichedEvent: {}, stack trace: {}";
+  public static final String LOG_REFERENCE_COUNT_DECREASED_ARG_EVENT_ARG_STACK_TRACE_ARG_A4BF56FC = "reference count is decreased to {}, event: {}, stack trace: {}";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_6A2024AB = "decrease reference count failed, EnrichedEvent: {}, stack trace: {}";
+  public static final String LOG_BROKEN_INVARIANT_DETECT_INVISIBLE_EXTRACTOR_PARAMETERS_ARG_ADAD3038 = "BROKEN INVARIANT: DETECT INVISIBLE EXTRACTOR PARAMETERS {}";
+  public static final String LOG_UNKNOWN_PATTERN_FORMAT_ARG_USE_PREFIX_MATCHING_FORMAT_DEFAULT_E7B9EFEC = "Unknown pattern format: {}, use prefix matching format by default.";
+  public static final String LOG_PIPE_LISTENING_QUEUE_SNAPSHOT_CACHE_UPDATED_ARG_414EE914 = "Pipe listening queue snapshot cache is updated: {}";
+  public static final String LOG_FAILED_SERIALIZE_FILE_BECAUSE_FILE_ARG_ALREADY_EXIST_FACC5C4C = "Failed to serialize to file, because file {} is already exist.";
+  public static final String LOG_FAILED_DESERIALIZE_FILE_FILE_ARG_DOES_NOT_EXIST_2356708C = "Failed to deserialize from file, file {} does not exist.";
+  public static final String EXCEPTION_UNKNOWN_PIPE_RUNTIME_META_VERSION_C2F4B575 = "Unknown pipe runtime meta version: ";
+  public static final String EXCEPTION_ROOT_CAUSE_A22E94DE = ", root cause: ";
+  public static final String LOG_SUCCESSFULLY_EXECUTED_SUBTASK_ARG_ARG_AFTER_ARG_RETRIES_70972F07 = "Successfully executed subtask {}({}) after {} retries.";
+  public static final String EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGINMETAKEEPER_NULL_0C9BD2E2 = "Failed to reflect PipePlugin instance, because PipePluginMetaKeeper is null.";
+  public static final String EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PLUGIN_NAME_NULL_416BD04D = "Failed to reflect PipePlugin instance, because plugin name is null.";
+  public static final String LOG_IOTDBSINK_ARG_ARG_4E140C06 = "IoTDBSink {} = {}";
+  public static final String EXCEPTION_SOCKET_ARG_CLOSED_WILL_TRY_HANDSHAKE_02562BF1 = "Socket %s is closed, will try to handshake";
+  public static final String EXCEPTION_NETWORK_ERROR_TRANSFER_FILE_ARG_BECAUSE_ARG_BC25323C = "Network error when transfer file %s, because %s.";
+  public static final String LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE = "Origin request type mismatch: expected {}, actual {}";
+  public static final String LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75 = "Origin body size mismatch: expected {}, actual {}";
+  public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "Invalid slice index: expected {}, actual {}";
+  public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "Decompressed length should be between 0 and %d, but got %d.";
+  public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
+  public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 = "No DataPartitionTable generation task found";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_IN_PROGRESS_ARGPCTPCT_F433CBA8 = "DataPartitionTable generation in progress: %.1f%%";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable generation completed successfully";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
+  public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
+  public static final String MESSAGE_PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_54E0E369 = "PipePeriodicalLogReducer is allocated to {} bytes.";
 
 }

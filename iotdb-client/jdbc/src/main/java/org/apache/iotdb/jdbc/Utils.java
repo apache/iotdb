@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcSslUtils;
 
 import java.nio.charset.Charset;
@@ -99,7 +100,8 @@ public class Utils {
     }
     if (!isUrlLegal) {
       throw new IoTDBURLException(
-          "Error url format, url should be jdbc:iotdb://anything:port/[database] or jdbc:iotdb://anything:port[/database]?property1=value1&property2=value2, current url is "
+          JdbcMessages
+                  .EXCEPTION_ERROR_URL_FORMAT_URL_SHOULD_JDBC_IOTDB_ANYTHING_PORT_DATABASE_17D1DCFB
               + url);
     }
 
@@ -137,6 +139,12 @@ public class Utils {
     }
     if (info.containsKey(Config.TRUST_STORE_PWD)) {
       params.setTrustStorePwd(info.getProperty(Config.TRUST_STORE_PWD));
+    }
+    if (info.containsKey(Config.KEY_STORE)) {
+      params.setKeyStore(info.getProperty(Config.KEY_STORE));
+    }
+    if (info.containsKey(Config.KEY_STORE_PWD)) {
+      params.setKeyStorePwd(info.getProperty(Config.KEY_STORE_PWD));
     }
     if (info.containsKey(Config.SSL_PROTOCOL)) {
       params.setSslProtocol(RpcSslUtils.normalizeProtocol(info.getProperty(Config.SSL_PROTOCOL)));
@@ -180,6 +188,8 @@ public class Utils {
         case Config.USE_SSL:
         case Config.TRUST_STORE:
         case Config.TRUST_STORE_PWD:
+        case Config.KEY_STORE:
+        case Config.KEY_STORE_PWD:
         case Config.SSL_PROTOCOL:
         case Config.VERSION:
         case Config.NETWORK_TIMEOUT:

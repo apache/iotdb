@@ -41,6 +41,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.Set;
@@ -82,6 +83,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   private final Queue<SubscriptionMessage> pendingDrainedMessages = new ConcurrentLinkedQueue<>();
 
   private SortedMap<Long, Set<SubscriptionCommitContext>> uncommittedCommitContexts;
+
+  private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -137,6 +140,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
 
     // set isClosed to false before submitting workers
     isClosed.set(false);
+    emptyPollLogThrottler.reset();
 
     // submit auto poll worker if enabling auto commit
     if (autoCommit) {
@@ -158,7 +162,9 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
           try {
             commitSync(drainedMessages);
           } catch (final SubscriptionException e) {
-            LOGGER.warn("Failed to commit drained processor messages on close", e);
+            LOGGER.warn(
+                SubscriptionMessages.LOG_FAILED_COMMIT_DRAINED_PROCESSOR_MESSAGES_CLOSE_4264DB35,
+                e);
           }
         }
       } else {
@@ -176,7 +182,10 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
         try {
           commitSync(drainedMessages);
         } catch (final SubscriptionException e) {
-          LOGGER.warn("Failed to commit pending drained processor messages on close", e);
+          LOGGER.warn(
+              SubscriptionMessages
+                  .LOG_FAILED_COMMIT_PENDING_DRAINED_PROCESSOR_MESSAGES_CLOSE_644B5DDD,
+              e);
         }
       }
     }
@@ -224,7 +233,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
           .forEach(
               topicName ->
                   LOGGER.warn(
-                      "SubscriptionPullConsumer {} does not subscribe to topic {}",
+                      SubscriptionMessages
+                          .LOG_SUBSCRIPTIONPULLCONSUMER_ARG_DOES_NOT_SUBSCRIBE_TOPIC_ARG_F40BE4D1,
                       this,
                       topicName));
     } else {
@@ -237,11 +247,16 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
 
     final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
     if (messages.isEmpty() && processors.isEmpty()) {
-      LOGGER.info(
-          "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
-          this,
-          CollectionUtils.getLimitedString(parsedTopicNames, 32),
-          timeoutMs);
+      final OptionalLong consecutiveEmptyPollCount =
+          emptyPollLogThrottler.markEmptyPollAndMaybeGetCount();
+      if (consecutiveEmptyPollCount.isPresent()) {
+        LOGGER.info(
+            SubscriptionMessages.PULL_CONSUMER_POLL_EMPTY_MESSAGE,
+            this,
+            CollectionUtils.getLimitedString(parsedTopicNames, 32),
+            timeoutMs,
+            consecutiveEmptyPollCount.getAsLong());
+      }
       return messages;
     }
 
@@ -260,6 +275,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       return processed;
     }
 
+    emptyPollLogThrottler.reset();
     trackAutoCommitMessages(processed);
 
     return processed;
@@ -414,8 +430,11 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       if (!processor.supportsTopicScopedReset()) {
         throw new SubscriptionParameterNotValidException(
             String.format(
-                "SubscriptionPullConsumer %s cannot seek topic %s while subscribed to multiple topics because processor %s does not support topic-scoped reset",
-                this, topicName, processor.getClass().getName()));
+                SubscriptionMessages
+                    .EXCEPTION_SUBSCRIPTIONPULLCONSUMER_ARG_CANNOT_SEEK_TOPIC_ARG_SUBSCRIBED_MULTIPLE_TOPICS_BECAUSE_B99BCABC,
+                this,
+                topicName,
+                processor.getClass().getName()));
       }
     }
   }

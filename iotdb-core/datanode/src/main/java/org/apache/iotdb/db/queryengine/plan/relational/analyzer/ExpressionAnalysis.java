@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -56,23 +57,42 @@ public class ExpressionAnalysis {
       Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons,
       Set<NodeRef<FunctionCall>> windowFunctions) {
     this.expressionTypes =
-        ImmutableMap.copyOf(requireNonNull(expressionTypes, "expressionTypes is null"));
+        ImmutableMap.copyOf(
+            requireNonNull(
+                expressionTypes, DataNodeQueryMessages.EXCEPTION_EXPRESSIONTYPES_IS_NULL_4107A4A2));
     //    this.expressionCoercions =
     //        ImmutableMap.copyOf(requireNonNull(expressionCoercions, "expressionCoercions is
     // null"));
     //    this.typeOnlyCoercions =
     //        ImmutableSet.copyOf(requireNonNull(typeOnlyCoercions, "typeOnlyCoercions is null"));
     this.columnReferences =
-        ImmutableMap.copyOf(requireNonNull(columnReferences, "columnReferences is null"));
+        ImmutableMap.copyOf(
+            requireNonNull(
+                columnReferences,
+                DataNodeQueryMessages.EXCEPTION_COLUMNREFERENCES_IS_NULL_124955C5));
     this.subqueryInPredicates =
-        ImmutableSet.copyOf(requireNonNull(subqueryInPredicates, "subqueryInPredicates is null"));
-    this.subqueries = ImmutableSet.copyOf(requireNonNull(subqueries, "subqueries is null"));
+        ImmutableSet.copyOf(
+            requireNonNull(
+                subqueryInPredicates,
+                DataNodeQueryMessages.EXCEPTION_SUBQUERYINPREDICATES_IS_NULL_5A37F1C8));
+    this.subqueries =
+        ImmutableSet.copyOf(
+            requireNonNull(
+                subqueries, DataNodeQueryMessages.EXCEPTION_SUBQUERIES_IS_NULL_0D5EA053));
     this.existsSubqueries =
-        ImmutableSet.copyOf(requireNonNull(existsSubqueries, "existsSubqueries is null"));
+        ImmutableSet.copyOf(
+            requireNonNull(
+                existsSubqueries,
+                DataNodeQueryMessages.EXCEPTION_EXISTSSUBQUERIES_IS_NULL_5EA140F5));
     this.quantifiedComparisons =
-        ImmutableSet.copyOf(requireNonNull(quantifiedComparisons, "quantifiedComparisons is null"));
+        ImmutableSet.copyOf(
+            requireNonNull(
+                quantifiedComparisons,
+                DataNodeQueryMessages.EXCEPTION_QUANTIFIEDCOMPARISONS_IS_NULL_A30F5121));
     this.windowFunctions =
-        ImmutableSet.copyOf(requireNonNull(windowFunctions, "windowFunctions is null"));
+        ImmutableSet.copyOf(
+            requireNonNull(
+                windowFunctions, DataNodeQueryMessages.EXCEPTION_WINDOWFUNCTIONS_IS_NULL_D77C3CD5));
   }
 
   public Type getType(Expression expression) {

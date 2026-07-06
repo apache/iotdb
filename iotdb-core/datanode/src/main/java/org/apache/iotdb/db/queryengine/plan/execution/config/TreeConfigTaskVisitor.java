@@ -110,6 +110,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.RepairDataParti
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowRepairDataPartitionTableProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StartRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StopRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
@@ -224,6 +225,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
@@ -251,7 +253,9 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitNode(StatementNode node, MPPQueryContext context) {
     throw new UnsupportedOperationException(
-        "Unsupported statement type: " + node.getClass().getName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            node.getClass().getName()));
   }
 
   @Override
@@ -396,6 +400,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitRepairDataPartitionTable(
       RepairDataPartitionTable repairDataPartitionTable, MPPQueryContext context) {
     return new RepairDataPartitionTableTask();
+  }
+
+  @Override
+  public IConfigTask visitShowRepairDataPartitionTableProgress(
+      ShowRepairDataPartitionTableProgressStatement showRepairDataPartitionTableProgressStatement,
+      MPPQueryContext context) {
+    return new ShowRepairDataPartitionTableProgressTask();
   }
 
   @Override
@@ -637,14 +648,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
       if (sourceAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to create pipe %s, setting %s is not allowed.",
-                createPipeStatement.getPipeName(), sourceAttribute));
+                DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_S_SETTING_S_IS_NOT_ALLOWED,
+                createPipeStatement.getPipeName(),
+                sourceAttribute));
       }
       if (sourceAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to create pipe %s, setting %s is not allowed.",
-                createPipeStatement.getPipeName(), sourceAttribute));
+                DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_S_SETTING_S_IS_NOT_ALLOWED,
+                createPipeStatement.getPipeName(),
+                sourceAttribute));
       }
     }
 
@@ -674,14 +687,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
       if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to alter pipe %s, modifying %s is not allowed.",
-                alterPipeStatement.getPipeName(), extractorAttributeKey));
+                DataNodeQueryMessages.FAILED_TO_ALTER_PIPE_S_MODIFYING_S_IS_NOT_ALLOWED,
+                alterPipeStatement.getPipeName(),
+                extractorAttributeKey));
       }
       if (extractorAttributeKey.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to alter pipe %s, modifying %s is not allowed.",
-                alterPipeStatement.getPipeName(), extractorAttributeKey));
+                DataNodeQueryMessages.FAILED_TO_ALTER_PIPE_S_MODIFYING_S_IS_NOT_ALLOWED,
+                alterPipeStatement.getPipeName(),
+                extractorAttributeKey));
       }
     }
 

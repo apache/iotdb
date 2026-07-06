@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.sink.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
@@ -100,8 +101,8 @@ public class IoTDBSyncClient extends IClientRPCService.Client
     }
 
     LOGGER.warn(
-        "The body size of the request is too large. The request will be sliced. Origin req: {}-{}. "
-            + "Request body size: {}, threshold: {}",
+        ClientMessages.LOG_BODY_SIZE_REQUEST_TOO_LARGE_REQUEST_WILL_SLICED_ORIGIN_REQ_35E73788
+            + ClientMessages.LOG_REQUEST_BODY_SIZE_ARG_THRESHOLD_ARG_69B1BE00,
         req.getVersion(),
         req.getType(),
         req.body.limit(),
@@ -123,8 +124,13 @@ public class IoTDBSyncClient extends IClientRPCService.Client
         if (sliceResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new PipeConnectionException(
               String.format(
-                  "Failed to transfer slice. Origin req: %s-%s, slice index: %d, slice count: %d. Reason: %s",
-                  req.getVersion(), req.getType(), i, sliceCount, sliceResp.getStatus()));
+                  ClientMessages
+                      .EXCEPTION_FAILED_TRANSFER_SLICE_ORIGIN_REQ_ARG_ARG_SLICE_INDEX_ARG_7219936C,
+                  req.getVersion(),
+                  req.getType(),
+                  i,
+                  sliceCount,
+                  sliceResp.getStatus()));
         }
       }
 
@@ -132,7 +138,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
       return super.pipeTransfer(req);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to transfer slice. Origin req: {}-{}. Retry the whole transfer.",
+          ClientMessages.LOG_FAILED_TRANSFER_SLICE_ORIGIN_REQ_ARG_ARG_RETRY_WHOLE_TRANSFER_E1EA2F41,
           req.getVersion(),
           req.getType(),
           e);

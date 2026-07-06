@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.executable;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.trigger.exception.TriggerJarTooLargeException;
 import org.apache.iotdb.commons.utils.IOUtils;
 
@@ -197,7 +198,8 @@ public class ExecutableManager {
       if (size > Integer.MAX_VALUE) {
         // Max length of Thrift Binary is Integer.MAX_VALUE bytes.
         throw new TriggerJarTooLargeException(
-            String.format("Size of file exceed %d bytes", Integer.MAX_VALUE));
+            String.format(
+                CommonMessages.EXCEPTION_SIZE_FILE_EXCEED_ARG_BYTES_C60F1149, Integer.MAX_VALUE));
       }
       ByteBuffer byteBuffer = ByteBuffer.allocate((int) size);
       IOUtils.readFully(fileChannel, byteBuffer);
@@ -205,7 +207,10 @@ public class ExecutableManager {
       return byteBuffer;
     } catch (Exception e) {
       LOGGER.warn(
-          "Error occurred during transferring file{} to ByteBuffer, the cause is {}", filePath, e);
+          CommonMessages
+              .LOG_ERROR_OCCURRED_DURING_TRANSFERRING_FILE_ARG_BYTEBUFFER_CAUSE_ARG_FEDC38A3,
+          filePath,
+          e);
       throw e;
     }
   }
@@ -232,7 +237,9 @@ public class ExecutableManager {
       }
     } catch (IOException e) {
       LOGGER.warn(
-          "Error occurred during writing bytebuffer to {} , the cause is {}", destination, e);
+          CommonMessages.LOG_ERROR_OCCURRED_DURING_WRITING_BYTEBUFFER_ARG_CAUSE_ARG_F3AD2DA0,
+          destination,
+          e);
       throw e;
     }
   }

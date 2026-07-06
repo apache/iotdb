@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
+import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -238,6 +239,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
@@ -1180,6 +1182,18 @@ public class ConfigManager implements IManager {
     return partitionManager.dataPartitionTableIntegrityCheck();
   }
 
+  @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TShowRepairDataPartitionTableProgressResp(
+              status, RepairDataPartitionTableProgressState.UNKNOWN.name(), 0.0)
+          .setMessage(status.getMessage());
+    }
+
+    return partitionManager.showRepairDataPartitionTableProgress();
+  }
+
   private void printNewCreatedDataPartition(
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan, TDataPartitionTableResp resp) {
     final String lineSeparator = System.lineSeparator();
@@ -1254,8 +1268,9 @@ public class ConfigManager implements IManager {
     if (getConsensusManager() == null) {
       return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode())
           .setMessage(
-              "ConsensusManager of target-ConfigNode is not initialized, "
-                  + "please make sure the target-ConfigNode has been started successfully.");
+              ManagerMessages.MESSAGE_CONSENSUSMANAGER_TARGET_CONFIGNODE_NOT_INITIALIZED_4D386066
+                  + ManagerMessages
+                      .MESSAGE_PLEASE_MAKE_SURE_TARGET_CONFIGNODE_HAS_BEEN_STARTED_SUCCESSFULLY_C78201DC);
     }
     // Procedure recovery replays metadata writes before external load warm-up is complete.
     if (procedureManager.isProcedureExecutionThread()) {
@@ -1466,71 +1481,94 @@ public class ConfigManager implements IManager {
         .getConfigNodeConsensusProtocolClass()
         .equals(CONF.getConfigNodeConsensusProtocolClass())) {
       return errorStatus.setMessage(
-          errorPrefix + "config_node_consensus_protocol_class" + errorSuffix);
+          errorPrefix
+              + ManagerMessages.MESSAGE_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_D0F437AF
+              + errorSuffix);
     }
     if (!clusterParameters
         .getDataRegionConsensusProtocolClass()
         .equals(CONF.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
-          errorPrefix + "data_region_consensus_protocol_class" + errorSuffix);
+          errorPrefix
+              + ManagerMessages.MESSAGE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_AB025B20
+              + errorSuffix);
     }
     if (!clusterParameters
         .getSchemaRegionConsensusProtocolClass()
         .equals(CONF.getSchemaRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
-          errorPrefix + "schema_region_consensus_protocol_class" + errorSuffix);
+          errorPrefix
+              + ManagerMessages.MESSAGE_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS_480645EF
+              + errorSuffix);
     }
 
     if (clusterParameters.getSeriesPartitionSlotNum() != CONF.getSeriesSlotNum()) {
-      return errorStatus.setMessage(errorPrefix + "series_slot_num" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_SERIES_SLOT_NUM_115D9BE0 + errorSuffix);
     }
     if (!clusterParameters
         .getSeriesPartitionExecutorClass()
         .equals(CONF.getSeriesPartitionExecutorClass())) {
-      return errorStatus.setMessage(errorPrefix + "series_partition_executor_class" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix
+              + ManagerMessages.MESSAGE_SERIES_PARTITION_EXECUTOR_CLASS_AD1B5C24
+              + errorSuffix);
     }
 
     if (clusterParameters.getTimePartitionInterval() != COMMON_CONF.getTimePartitionInterval()) {
-      return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_TIME_PARTITION_INTERVAL_CE476507 + errorSuffix);
     }
 
     if (clusterParameters.getSchemaReplicationFactor() != CONF.getSchemaReplicationFactor()) {
-      return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_SCHEMA_REPLICATION_FACTOR_11DB65B5 + errorSuffix);
     }
     if (clusterParameters.getDataReplicationFactor() != CONF.getDataReplicationFactor()) {
-      return errorStatus.setMessage(errorPrefix + "data_replication_factor" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_DATA_REPLICATION_FACTOR_22465D3B + errorSuffix);
     }
 
     if (clusterParameters.getSchemaRegionPerDataNode() != CONF.getSchemaRegionPerDataNode()) {
-      return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_SCHEMA_REGION_PER_DATA_NODE_555F29BC + errorSuffix);
     }
     if (clusterParameters.getDataRegionPerDataNode() != CONF.getDataRegionPerDataNode()) {
-      return errorStatus.setMessage(errorPrefix + "data_region_per_data_node" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_DATA_REGION_PER_DATA_NODE_C183AAD5 + errorSuffix);
     }
 
     if (!clusterParameters.getReadConsistencyLevel().equals(CONF.getReadConsistencyLevel())) {
-      return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_READ_CONSISTENCY_LEVEL_B12D8D95 + errorSuffix);
     }
 
     if (clusterParameters.getDiskSpaceWarningThreshold()
         != COMMON_CONF.getDiskSpaceWarningThreshold()) {
-      return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix
+              + ManagerMessages.MESSAGE_DISK_SPACE_WARNING_THRESHOLD_19635ACA
+              + errorSuffix);
     }
 
     if (!clusterParameters.getTimestampPrecision().equals(COMMON_CONF.getTimestampPrecision())) {
-      return errorStatus.setMessage(errorPrefix + "timestamp_precision" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_TIMESTAMP_PRECISION_9591C9C9 + errorSuffix);
     }
 
     if (!clusterParameters.getSchemaEngineMode().equals(COMMON_CONF.getSchemaEngineMode())) {
-      return errorStatus.setMessage(errorPrefix + "schema_engine_mode" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_SCHEMA_ENGINE_MODE_E37ED98C + errorSuffix);
     }
 
     if (clusterParameters.getTagAttributeTotalSize() != COMMON_CONF.getTagAttributeTotalSize()) {
-      return errorStatus.setMessage(errorPrefix + "tag_attribute_total_size" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_TAG_ATTRIBUTE_TOTAL_SIZE_AF658CFE + errorSuffix);
     }
 
     if (clusterParameters.getDatabaseLimitThreshold() != COMMON_CONF.getDatabaseLimitThreshold()) {
-      return errorStatus.setMessage(errorPrefix + "database_limit_threshold" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + ManagerMessages.MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 + errorSuffix);
     }
 
     return null;
@@ -1773,6 +1811,8 @@ public class ConfigManager implements IManager {
       int previousSchemaRegionPerDataNode = CONF.getSchemaRegionPerDataNode();
       int previousDataRegionPerDataNode = CONF.getDataRegionPerDataNode();
       boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
+      int previousProcedureCompletedCleanInterval = CONF.getProcedureCompletedCleanInterval();
+      int previousProcedureCompletedEvictTTL = CONF.getProcedureCompletedEvictTTL();
       if (configurationFileFound) {
         File file = new File(url.getFile());
         try {
@@ -1803,6 +1843,8 @@ public class ConfigManager implements IManager {
       handleRegionPerDataNodeHotReload(
           previousSchemaRegionPerDataNode, previousDataRegionPerDataNode);
       handleTopologyProbingHotReload(wasTopologyProbingEnabled);
+      handleProcedureCleanerHotReload(
+          previousProcedureCompletedCleanInterval, previousProcedureCompletedEvictTTL);
       if (currentNodeId == req.getNodeId() || req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
         return tsStatus;
       }
@@ -1868,6 +1910,14 @@ public class ConfigManager implements IManager {
     } else if (!isEnabled) {
       getLoadManager().stopTopologyService();
     }
+  }
+
+  private void handleProcedureCleanerHotReload(int previousCleanInterval, int previousEvictTTL) {
+    if (previousCleanInterval == CONF.getProcedureCompletedCleanInterval()
+        && previousEvictTTL == CONF.getProcedureCompletedEvictTTL()) {
+      return;
+    }
+    getProcedureManager().updateCompletedProcedureCleaner();
   }
 
   @Override
@@ -2676,7 +2726,8 @@ public class ConfigManager implements IManager {
       regionProgress.serialize(dos);
       return ByteBuffer.wrap(baos.getBuf(), 0, baos.size()).asReadOnlyBuffer();
     } catch (final IOException e) {
-      throw new RuntimeException("Failed to serialize region progress " + regionProgress, e);
+      throw new RuntimeException(
+          ManagerMessages.EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 + regionProgress, e);
     }
   }
 
@@ -3178,7 +3229,8 @@ public class ConfigManager implements IManager {
             resp.getPipeMetaList(),
             resp.getPipeCompletedList(),
             resp.getPipeRemainingEventCountList(),
-            resp.getPipeRemainingTimeList());
+            resp.getPipeRemainingTimeList(),
+            resp.getPipeDegradedStatusList());
     return StatusUtils.OK;
   }
 

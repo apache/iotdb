@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.sink.payload.thrift.request;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
@@ -120,8 +121,9 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     if (decompressedLength < 0 || decompressedLength > maxDecompressedLength) {
       throw new IllegalArgumentException(
           String.format(
-              "Decompressed length should be between 0 and %d, but got %d.",
-              maxDecompressedLength, decompressedLength));
+              PipeMessages.EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073,
+              maxDecompressedLength,
+              decompressedLength));
     }
   }
 

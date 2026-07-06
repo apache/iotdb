@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.exception.load;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 public class PartitionViolationException extends LoadFileException {
 
   public PartitionViolationException(String file) {
-    super(String.format("The data of file %s crosses partitions", file));
+    super(String.format(DataNodeQueryMessages.LOAD_FILE_CROSSES_PARTITIONS_FMT, file));
   }
 
   public PartitionViolationException() {
-    super("The data of file crosses partitions");
+    super(DataNodeQueryMessages.LOAD_FILE_CROSSES_PARTITIONS);
   }
 }

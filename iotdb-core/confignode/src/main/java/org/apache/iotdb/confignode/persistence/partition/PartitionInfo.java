@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
@@ -232,7 +233,20 @@ public class PartitionInfo implements SnapshotProcessor {
   public TSStatus offerRegionMaintainTasks(
       OfferRegionMaintainTasksPlan offerRegionMaintainTasksPlan) {
     synchronized (regionMaintainTaskList) {
-      regionMaintainTaskList.addAll(offerRegionMaintainTasksPlan.getRegionMaintainTaskList());
+      // The RegionMaintainer queue only recreates failed region replicas now; region deletion is
+      // owned by RemoveRegionGroupProcedure. Drop any legacy DELETE task that an upgraded node may
+      // replay from an old consensus log, so it cannot get stuck in the queue and block the
+      // recreation of that region's other replicas.
+      for (RegionMaintainTask task : offerRegionMaintainTasksPlan.getRegionMaintainTaskList()) {
+        if (RegionMaintainType.DELETE.equals(task.getType())) {
+          LOGGER.info(
+              ConfigNodeMessages
+                  .MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_REPLAYING_OFFER_PLAN_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_2A81A649,
+              task.getRegionId());
+          continue;
+        }
+        regionMaintainTaskList.add(task);
+      }
       return RpcUtils.SUCCESS_STATUS;
     }
   }
@@ -1073,11 +1087,22 @@ public class PartitionInfo implements SnapshotProcessor {
         databasePartitionTables.put(database, databasePartitionTable);
       }
 
-      // restore deletedRegionSet
+      // restore the RegionMaintainer queue
       length = ReadWriteIOUtils.readInt(fileInputStream);
       for (int i = 0; i < length; i++) {
         final RegionMaintainTask task =
             RegionMaintainTask.Factory.create(fileInputStream, protocol);
+        // The RegionMaintainer queue only recreates failed region replicas now; region deletion is
+        // owned by RemoveRegionGroupProcedure. Drop any legacy DELETE task carried over from an
+        // upgraded snapshot so it cannot get stuck at the head of a region's queue and block the
+        // recreation of that region's other replicas.
+        if (RegionMaintainType.DELETE.equals(task.getType())) {
+          LOGGER.info(
+              ConfigNodeMessages
+                  .MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_LOADING_SNAPSHOT_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_A9D409A0,
+              task.getRegionId());
+          continue;
+        }
         regionMaintainTaskList.add(task);
       }
     }

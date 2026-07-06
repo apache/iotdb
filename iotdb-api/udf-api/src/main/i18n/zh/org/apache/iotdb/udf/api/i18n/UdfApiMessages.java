@@ -72,5 +72,59 @@ public final class UdfApiMessages {
   public static final String INDEX_OUT_OF_BOUND = "索引越界错误！";
   public static final String INVALID_INPUT = "无效输入：";
 
+  // ScalarParameterSpecification
+  public static final String
+      EXCEPTION_DEFAULT_VALUE_ARG_DOES_NOT_MATCH_THE_DECLARED_TYPE_ARG_76648C9D =
+          "默认值 %s 与声明的类型不匹配：%s";
+
+  // SessionTimeWindowAccessStrategy
+  public static final String
+      EXCEPTION_PARAMETER_SESSIONTIMEGAP_ARG_SHOULD_BE_EQUAL_TO_OR_GREATER_THAN_ZERO_20C0672D =
+          "参数 sessionTimeGap(%d) 应当大于等于 0。";
+  public static final String EXCEPTION_DISPLAYWINDOWEND_ARG_DISPLAYWINDOWBEGIN_ARG_216864F1 =
+      "displayWindowEnd(%d) < displayWindowBegin(%d)";
+
+  // SlidingTimeWindowAccessStrategy
+  public static final String EXCEPTION_PARAMETER_TIMEINTERVAL_ARG_SHOULD_BE_POSITIVE_7CF8DCE4 =
+      "参数 timeInterval(%d) 必须为正数。";
+  public static final String EXCEPTION_PARAMETER_SLIDINGSTEP_ARG_SHOULD_BE_POSITIVE_BBB66A4C =
+      "参数 slidingStep(%d) 必须为正数。";
+
+  // SlidingSizeWindowAccessStrategy
+  public static final String EXCEPTION_PARAMETER_WINDOWSIZE_ARG_SHOULD_BE_POSITIVE_7170E783 =
+      "参数 windowSize(%d) 必须为正数。";
+
+  // StateWindowAccessStrategy
+  public static final String
+      EXCEPTION_PARAMETER_DELTA_ARG_SHOULD_BE_POSITIVE_OR_EQUAL_TO_0_787DD7AE =
+          "参数 delta(%f) 必须为正数或等于 0。";
+
+  // UDFInputSeriesNumberNotValidException
+  public static final String
+      EXCEPTION_THE_NUMBER_OF_THE_INPUT_SERIES_IS_NOT_VALID_EXPECTED_ARG_ACTUAL_ARG_48AF79C9 =
+          "输入序列的数量无效。期望：%d。实际：%d。";
+  public static final String
+      EXCEPTION_THE_NUMBER_OF_THE_INPUT_SERIES_IS_NOT_VALID_EXPECTED_ARG_ARG_ACTUAL_ARG_819C0F0A =
+          "输入序列的数量无效。期望：[%d, %d]。实际：%d。";
+
+  // UDFInputSeriesIndexNotValidException
+  public static final String
+      EXCEPTION_THE_INDEX_ARG_OF_THE_INPUT_SERIES_IS_NOT_VALID_VALID_INDEX_RANGE_0_ARG_8B8367FE =
+          "输入序列的索引 (%d) 无效。有效索引范围：[0, %d)。";
+
+  // UDFAttributeNotProvidedException
+  public static final String EXCEPTION_ATTRIBUTE_ARG_IS_REQUIRED_BUT_WAS_NOT_PROVIDED_867D4638 =
+      "属性 \"%s\" 是必填的，但未提供。";
+
+  // UDFOutputSeriesDataTypeNotValidException
+  public static final String
+      EXCEPTION_THE_DATA_TYPE_OF_THE_OUTPUT_SERIES_INDEX_ARG_IS_NOT_VALID_EXPECTED_ARG_388E46F3 =
+          "输出序列（索引：%d）的数据类型无效。期望：%s。";
+
+  // UDFInputSeriesDataTypeNotValidException
+  public static final String
+      EXCEPTION_THE_DATA_TYPE_OF_THE_INPUT_SERIES_INDEX_ARG_IS_NOT_VALID_EXPECTED_ARG_ACTUAL_ARG_6DE799E5 =
+          "输入序列（索引：%d）的数据类型无效。期望：%s。实际：%s。";
+
   private UdfApiMessages() {}
 }

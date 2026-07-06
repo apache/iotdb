@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
@@ -275,11 +276,33 @@ public class TableDeviceSchemaCache {
       final String[] measurements,
       final TimeValuePair[] timeValuePairs,
       boolean invalidateNull) {
+    updateLastCacheIfExists(database, deviceId, measurements, null, timeValuePairs, invalidateNull);
+  }
+
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs) {
+    updateLastCacheIfExists(
+        database, deviceId, measurements, measurementSchemas, timeValuePairs, false);
+  }
+
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs,
+      boolean invalidateNull) {
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
         null,
-        entry -> entry.tryUpdateLastCache(measurements, timeValuePairs, invalidateNull),
+        entry ->
+            entry.tryUpdateLastCache(
+                measurements, measurementSchemas, timeValuePairs, invalidateNull),
         false);
   }
 
@@ -449,7 +472,7 @@ public class TableDeviceSchemaCache {
             : entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.tryUpdateLastCache(measurements, timeValuePairs),
+                    + entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs),
         Objects.isNull(timeValuePairs));
   }
 
@@ -480,7 +503,8 @@ public class TableDeviceSchemaCache {
               return devicePath.matchPrefixPath(new PartialPath(tableId.getTableName()));
             } catch (final IllegalPathException e) {
               logger.warn(
-                  "Illegal tableID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  DataNodeQueryMessages
+                      .ILLEGAL_TABLEID_ARG_FOUND_IN_CACHE_WHEN_INVALIDATING_BY_PATH_ARG_INVALIDATE_IT_ANYWAY,
                   tableId.getTableName(),
                   devicePath);
               return true;
@@ -491,7 +515,8 @@ public class TableDeviceSchemaCache {
               return devicePath.matchFullPath(cachedDeviceID);
             } catch (final IllegalPathException e) {
               logger.warn(
-                  "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  DataNodeQueryMessages
+                      .ILLEGAL_DEVICEID_ARG_FOUND_IN_CACHE_WHEN_INVALIDATING_BY_PATH_ARG_INVALIDATE_IT_ANYWAY,
                   cachedDeviceID,
                   devicePath);
               return true;
@@ -518,7 +543,8 @@ public class TableDeviceSchemaCache {
               return devicePath.matchPrefixPath(new PartialPath(tableId.getTableName()));
             } catch (final IllegalPathException e) {
               logger.warn(
-                  "Illegal tableID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  DataNodeQueryMessages
+                      .ILLEGAL_TABLEID_ARG_FOUND_IN_CACHE_WHEN_INVALIDATING_BY_PATH_ARG_INVALIDATE_IT_ANYWAY,
                   tableId.getTableName(),
                   devicePath);
               return true;
@@ -531,7 +557,8 @@ public class TableDeviceSchemaCache {
                   : devicePath.matchFullPath(cachedDeviceID);
             } catch (final IllegalPathException e) {
               logger.warn(
-                  "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  DataNodeQueryMessages
+                      .ILLEGAL_DEVICEID_ARG_FOUND_IN_CACHE_WHEN_INVALIDATING_BY_PATH_ARG_INVALIDATE_IT_ANYWAY,
                   cachedDeviceID,
                   devicePath);
               return true;

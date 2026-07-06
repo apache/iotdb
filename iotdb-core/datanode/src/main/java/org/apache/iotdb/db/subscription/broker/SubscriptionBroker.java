@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
@@ -206,7 +207,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
       if (Objects.isNull(prefetchingQueue)) {
         if (completedTopicNames.containsKey(topicName)) {
           LOGGER.info(
-              "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, return termination response to client",
+              DataNodePipeMessages
+                  .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_ECB64624,
               topicName,
               brokerId);
           // Add a termination event for the completed topic
@@ -237,7 +239,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
             .ifPresent(
                 l ->
                     l.warn(
-                        "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+                        DataNodePipeMessages
+                            .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_EA7D450B,
                         topicName,
                         brokerId));
         continue;
@@ -274,7 +277,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     }
     if (prefetchingQueue.isClosed()) {
       LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_EA7D450B,
           topicName,
           brokerId);
       return Collections.emptyList();
@@ -313,7 +317,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     }
     if (prefetchingQueue.isClosed()) {
       LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_EA7D450B,
           topicName,
           brokerId);
       return Collections.emptyList();
@@ -343,14 +348,16 @@ public class SubscriptionBroker implements ISubscriptionBroker {
           topicNameToPrefetchingQueue.get(topicName);
       if (Objects.isNull(prefetchingQueue)) {
         LOGGER.warn(
-            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_12E69B65,
             topicName,
             brokerId);
         continue;
       }
       if (prefetchingQueue.isClosed()) {
         LOGGER.warn(
-            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_EA7D450B,
             topicName,
             brokerId);
         continue;
@@ -406,7 +413,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
       // If there is no prefetching queue for the topic, check if it's completed
       if (Objects.isNull(prefetchingQueue) && completedTopicNames.containsKey(topicName)) {
         LOGGER.info(
-            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, reply to client heartbeat request",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_8F561EB2,
             topicName,
             brokerId);
         topicNamesToUnsubscribe.add(topicName);
@@ -422,7 +430,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
       final String topicName, final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
     if (Objects.nonNull(topicNameToPrefetchingQueue.get(topicName))) {
       LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] has already existed",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_C2735402,
           topicName,
           brokerId);
       return;
@@ -447,7 +456,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     SubscriptionPrefetchingQueueMetrics.getInstance().register(prefetchingQueue);
     topicNameToPrefetchingQueue.put(topicName, prefetchingQueue);
     LOGGER.info(
-        "Subscription: create prefetching queue bound to topic [{}] for consumer group [{}]",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTION_CREATE_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_E7F21F1E,
         topicName,
         brokerId);
   }
@@ -466,7 +476,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
       LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_12E69B65,
           topicName,
           brokerId);
       return;
@@ -491,7 +502,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     // remove prefetching queue
     topicNameToPrefetchingQueue.remove(topicName);
     LOGGER.info(
-        "Subscription: drop prefetching queue bound to topic [{}] for consumer group [{}]",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTION_DROP_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_21F313CB,
         topicName,
         brokerId);
   }
@@ -511,7 +523,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
       LOGGER.info(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] still exists, unbind it before closing",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_03B89C51,
           topicName,
           brokerId);
       // TODO: consider more robust metadata semantics
@@ -532,7 +545,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
           .ifPresent(
               l ->
                   l.warn(
-                      "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+                      DataNodePipeMessages
+                          .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_12E69B65,
                       topicName,
                       brokerId));
       return false;
@@ -543,7 +557,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
           .ifPresent(
               l ->
                   l.warn(
-                      "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+                      DataNodePipeMessages
+                          .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_EA7D450B,
                       topicName,
                       brokerId));
       return false;
@@ -565,14 +580,16 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
       LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_12E69B65,
           topicName,
           brokerId);
       return 0;
     }
     if (prefetchingQueue.isClosed()) {
       LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_EA7D450B,
           topicName,
           brokerId);
       return 0;
