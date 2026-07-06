@@ -35,7 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -154,7 +153,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   public void validateTableSchema(
       final Metadata metadata,
       final MPPQueryContext context,
-      final InsertRowStatement insertRowStatement,
+      final InsertBaseStatement insertRowStatement,
       final String databaseName,
       final boolean allowCreateTable) {
     metadata.validateInsertNodeMeasurements(
@@ -179,7 +178,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     validate(index, innerTreeStatement, measurement, dataType, columnCategory, existingColumn);
   }
 
-  private void validate(
+  void validate(
       final int index,
       final InsertBaseStatement innerTreeStatement,
       final String measurement,

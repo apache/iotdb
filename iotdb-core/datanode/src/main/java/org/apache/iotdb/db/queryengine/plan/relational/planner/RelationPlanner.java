@@ -97,6 +97,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
@@ -133,8 +134,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -1344,12 +1347,18 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   @Override
   public RelationPlan visitInsertTablet(InsertTablet node, Void context) {
     final InsertTabletStatement insertTabletStatement = node.getInnerTreeStatement();
+    RelationalInsertTabletNode insertNode = fromInsertTabletStatement(insertTabletStatement);
+    return new RelationPlan(
+        insertNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
+  }
 
+  public RelationalInsertTabletNode fromInsertTabletStatement(
+      final InsertTabletStatement insertTabletStatement) {
     String[] measurements = insertTabletStatement.getMeasurements();
     MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
     stayConsistent(measurements, measurementSchemas);
 
-    RelationalInsertTabletNode insertNode =
+    final RelationalInsertTabletNode insertNode =
         new RelationalInsertTabletNode(
             idAllocator.genPlanNodeId(),
             insertTabletStatement.getDevicePath(),
@@ -1366,8 +1375,22 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     if (insertTabletStatement.isSingleDevice()) {
       insertNode.setSingleDevice();
     }
+    return insertNode;
+  }
+
+  @Override
+  public RelationPlan visitInsertTablets(InsertTablets node, Void context) {
+    final InsertMultiTabletsStatement insertMultiTabletsStatement = node.getInnerTreeStatement();
+    final InsertMultiTabletsNode insertMultiTabletsNode =
+        new InsertMultiTabletsNode(idAllocator.genPlanNodeId());
+    for (int i = 0; i < insertMultiTabletsStatement.getInsertTabletStatementList().size(); i++) {
+      insertMultiTabletsNode.addInsertTabletNode(
+          fromInsertTabletStatement(
+              insertMultiTabletsStatement.getInsertTabletStatementList().get(i)),
+          i);
+    }
     return new RelationPlan(
-        insertNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
+        insertMultiTabletsNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
   @Override

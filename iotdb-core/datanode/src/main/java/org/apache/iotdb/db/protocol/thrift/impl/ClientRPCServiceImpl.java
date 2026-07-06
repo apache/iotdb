@@ -2416,14 +2416,28 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
-      ExecutionResult result =
-          COORDINATOR.executeForTreeModel(
-              statement,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(clientSession),
-              "",
-              partitionFetcher,
-              schemaFetcher);
+      ExecutionResult result;
+      if (statement.isWriteToTable()) {
+        result =
+            COORDINATOR.executeForTableModel(
+                statement,
+                relationSqlParser,
+                clientSession,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(clientSession),
+                "",
+                metadata,
+                config.getConnectionTimeoutInMS());
+      } else {
+        result =
+            COORDINATOR.executeForTreeModel(
+                statement,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(clientSession),
+                "",
+                partitionFetcher,
+                schemaFetcher);
+      }
 
       return result.status;
     } catch (IoTDBException e) {
@@ -2667,8 +2681,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
-      req.setMeasurementsList(
-          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
+      if (!req.isWriteToTable()) {
+        req.setMeasurementsList(
+            PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
+      }
 
       // Step 1: transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement = StatementGenerator.createStatement(req);
@@ -2677,16 +2693,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
-      // permission check
-      TSStatus status =
-          AuthorityChecker.checkAuthority(
-              statement,
-              new TreeAccessCheckContext(
-                  clientSession.getUserId(),
-                  clientSession.getUsername(),
-                  clientSession.getClientAddress()));
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
+      // permission check for tree model, table model does this in the analysis stage
+      if (!req.isWriteToTable()) {
+        TSStatus status =
+            AuthorityChecker.checkAuthority(
+                statement,
+                new TreeAccessCheckContext(
+                    clientSession.getUserId(),
+                    clientSession.getUsername(),
+                    clientSession.getClientAddress()));
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
       }
 
       quota =
@@ -2695,14 +2713,28 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
-      ExecutionResult result =
-          COORDINATOR.executeForTreeModel(
-              statement,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(clientSession),
-              "",
-              partitionFetcher,
-              schemaFetcher);
+      ExecutionResult result;
+      if (statement.isWriteToTable()) {
+        result =
+            COORDINATOR.executeForTableModel(
+                statement,
+                relationSqlParser,
+                clientSession,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(clientSession),
+                "",
+                metadata,
+                config.getConnectionTimeoutInMS());
+      } else {
+        result =
+            COORDINATOR.executeForTreeModel(
+                statement,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(clientSession),
+                "",
+                partitionFetcher,
+                schemaFetcher);
+      }
 
       return result.status;
     } catch (IoTDBException e) {

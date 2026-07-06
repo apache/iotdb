@@ -2857,6 +2857,25 @@ public class Session implements ISession {
     }
   }
 
+  /**
+   * insert relational Tablets. Note: This method is for internal use only, we do not guarantee
+   * compatibility with subsequent versions.
+   *
+   * @param tablets data batches
+   */
+  public void insertRelationalTablets(List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, false, false);
+    request.setWriteToTable(true);
+    for (Tablet tablet : tablets) {
+      request.addToColumnCategoriesList(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
+    }
+    try {
+      getDefaultSessionConnection().insertTablets(request);
+    } catch (RedirectException ignored) {
+    }
+  }
+
   private void insertRelationalTabletWithLeaderCache(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();

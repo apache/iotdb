@@ -250,6 +250,64 @@ public class IoTDBInsertTableSessionPoolIT {
         assertEquals("20240815", rec.getFields().get(12).getStringValue());
       }
       assertFalse(rs1.hasNext());
+
+      Tablet tablet2 =
+          new Tablet(
+              "table20",
+              IMeasurementSchema.getMeasurementNameList(schemas),
+              schemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList()),
+              columnTypes,
+              10);
+
+      for (long row = 10; row < 20; row++) {
+        int rowIndex = tablet2.getRowSize();
+        tablet2.addTimestamp(rowIndex, timestamp + row);
+        tablet2.addValue("device_id", rowIndex, "2");
+        tablet2.addValue("attribute", rowIndex, "2");
+        tablet2.addValue("boolean", rowIndex, true);
+        tablet2.addValue("int32", rowIndex, Integer.valueOf("2"));
+        tablet2.addValue("int64", rowIndex, Long.valueOf("2"));
+        tablet2.addValue("float", rowIndex, Float.valueOf("2.0"));
+        tablet2.addValue("double", rowIndex, Double.valueOf("2.0"));
+        tablet2.addValue("text", rowIndex, "false");
+        tablet2.addValue("string", rowIndex, "false");
+        tablet2.addValue("blob", rowIndex, new Binary("iotdb", Charset.defaultCharset()));
+        tablet2.addValue("timestamp", rowIndex, 2L);
+        tablet2.addValue("date", rowIndex, LocalDate.parse("2024-08-16"));
+      }
+
+      Tablet tablet3 =
+          new Tablet(
+              "table20",
+              IMeasurementSchema.getMeasurementNameList(schemas),
+              schemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList()),
+              columnTypes,
+              10);
+
+      for (long row = 20; row < 30; row++) {
+        int rowIndex = tablet3.getRowSize();
+        tablet3.addTimestamp(rowIndex, timestamp + row);
+        tablet3.addValue("device_id", rowIndex, "2");
+        tablet3.addValue("attribute", rowIndex, "2");
+        tablet3.addValue("boolean", rowIndex, true);
+        tablet3.addValue("int32", rowIndex, Integer.valueOf("2"));
+        tablet3.addValue("int64", rowIndex, Long.valueOf("2"));
+        tablet3.addValue("float", rowIndex, Float.valueOf("2.0"));
+        tablet3.addValue("double", rowIndex, Double.valueOf("2.0"));
+        tablet3.addValue("text", rowIndex, "false");
+        tablet3.addValue("string", rowIndex, "false");
+        tablet3.addValue("blob", rowIndex, new Binary("iotdb", Charset.defaultCharset()));
+        tablet3.addValue("timestamp", rowIndex, 2L);
+        tablet3.addValue("date", rowIndex, LocalDate.parse("2024-08-16"));
+      }
+      session.insertTablets(Arrays.asList(tablet2, tablet3));
+
+      try (SessionDataSet rs2 =
+          session.executeQueryStatement("select count(*) from table20 where device_id='2'")) {
+        RowRecord rec = rs2.next();
+        assertEquals(20, rec.getFields().get(0).getLongV());
+        assertFalse(rs2.hasNext());
+      }
     }
   }
 }

@@ -26,6 +26,8 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.write.record.Tablet;
 
+import java.util.List;
+
 public class TableSession implements ITableSession {
 
   private final Session session;
@@ -37,6 +39,12 @@ public class TableSession implements ITableSession {
   @Override
   public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
     session.insertRelationalTablet(tablet);
+  }
+
+  @Override
+  public void insertTablets(List<Tablet> tablets)
+      throws StatementExecutionException, IoTDBConnectionException {
+    session.insertRelationalTablets(tablets);
   }
 
   @Override
