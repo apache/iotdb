@@ -88,9 +88,7 @@ public class FolderManager {
       this.selectStrategy.setFolders(folders);
       this.selectStrategy.setFoldersStates(foldersStates);
     } catch (DiskSpaceInsufficientException e) {
-      logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+      changeToReadOnlyIfDiskFull(e);
       throw e;
     }
   }
@@ -104,9 +102,7 @@ public class FolderManager {
     try {
       return folders.get(selectStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
-      logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+      changeToReadOnlyIfDiskFull(e);
       throw e;
     }
   }
@@ -116,6 +112,24 @@ public class FolderManager {
         .anyMatch(
             folder ->
                 foldersStates.getOrDefault(folder, FolderState.ABNORMAL) == FolderState.HEALTHY);
+  }
+
+  private boolean hasFolderWithAvailableDiskSpace() {
+    return folders.stream()
+        .anyMatch(
+            folder ->
+                foldersStates.getOrDefault(folder, FolderState.ABNORMAL) == FolderState.HEALTHY
+                    && JVMCommonUtils.hasSpace(folder));
+  }
+
+  private void changeToReadOnlyIfDiskFull(DiskSpaceInsufficientException e) {
+    if (!hasFolderWithAvailableDiskSpace()) {
+      logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+    } else {
+      logger.warn(UtilMessages.CANNOT_SELECT_FOLDER_BUT_DISK_HAS_SPACE, e);
+    }
   }
 
   @FunctionalInterface
@@ -135,9 +149,7 @@ public class FolderManager {
       try {
         folder = folders.get(selectStrategy.nextFolderIndex());
       } catch (DiskSpaceInsufficientException e) {
-        logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-        CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+        changeToReadOnlyIfDiskFull(e);
         throw e;
       }
       try {

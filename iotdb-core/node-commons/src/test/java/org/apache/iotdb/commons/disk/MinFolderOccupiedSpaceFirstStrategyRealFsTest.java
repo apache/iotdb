@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.disk;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
@@ -34,8 +35,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
@@ -123,5 +126,63 @@ public class MinFolderOccupiedSpaceFirstStrategyRealFsTest {
     // The threshold is now reached: the next selection refreshes the cache via a real walk
     // and correctly avoids the now-largest folder 0, picking the least occupied folder 1.
     assertEquals(1, strategy.nextFolderIndex());
+  }
+
+  @Test
+  public void getNextFolderDoesNotEnterReadOnlyWhenDiskHasSpace() throws Exception {
+    Path snapshotRoot = Files.createTempDirectory("snapshot-root-");
+    tempDirs.add(snapshotRoot);
+    Path subDir = snapshotRoot.resolve("tod_sod0-71");
+    Files.createDirectories(subDir);
+    writeFileInPath(subDir, "a.bin", 1024);
+
+    List<String> singleFolder = Collections.singletonList(snapshotRoot.toFile().getAbsolutePath());
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
+
+    AtomicBoolean stop = new AtomicBoolean(false);
+    Thread deleter =
+        new Thread(
+            () -> {
+              while (!stop.get()) {
+                try {
+                  deleteRecursively(subDir);
+                  Files.createDirectories(subDir);
+                  writeFileInPath(subDir, "temp.bin", 512);
+                  Thread.sleep(1);
+                } catch (Exception ignored) {
+                  // Concurrent create/delete is expected in this test.
+                }
+              }
+            });
+    deleter.start();
+
+    try {
+      FolderManager folderManager =
+          new FolderManager(
+              singleFolder, DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY);
+      for (int i = 0; i < 100; i++) {
+        assertEquals(
+            NodeStatus.Running, CommonDescriptor.getInstance().getConfig().getNodeStatus());
+        assertEquals(singleFolder.get(0), folderManager.getNextFolder());
+      }
+    } finally {
+      stop.set(true);
+      deleter.join(5000);
+    }
+  }
+
+  private void writeFileInPath(Path folder, String name, int sizeBytes) throws IOException {
+    byte[] payload = new byte[sizeBytes];
+    Arrays.fill(payload, (byte) 1);
+    Files.write(folder.resolve(name), payload);
+  }
+
+  private static void deleteRecursively(Path path) throws IOException {
+    if (!Files.exists(path)) {
+      return;
+    }
+    try (Stream<Path> walk = Files.walk(path)) {
+      walk.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+    }
   }
 }
