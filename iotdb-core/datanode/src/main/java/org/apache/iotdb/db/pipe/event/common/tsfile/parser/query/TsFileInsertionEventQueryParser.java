@@ -77,6 +77,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   private final TsFileReader tsFileReader;
+  private final String tsFilePath;
 
   private final Iterator<Map.Entry<IDeviceID, List<String>>> deviceMeasurementsMapIterator;
   private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
@@ -180,6 +181,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         skipIfNoPrivileges,
         sourceEvent,
         isWithMod);
+
+    tsFilePath = tsFile.getAbsolutePath();
 
     try {
       currentModifications =
@@ -550,7 +553,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                               tabletStringInternPool,
                               pipeName,
                               creationTime,
-                              tsFile.getAbsolutePath());
+                              tsFilePath);
                     } catch (final Exception e) {
                       close();
                       throw new PipeException(
