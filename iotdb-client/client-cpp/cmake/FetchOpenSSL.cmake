@@ -224,6 +224,12 @@ set(OPENSSL_USE_STATIC_LIBS OFF)
 if(APPLE)
     # GitHub macOS images expose Homebrew OpenSSL headers that win over the
     # bundled Tongsuo tree for #include <openssl/*.h>, stripping NTLS APIs.
+    foreach(_var CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH)
+        if(DEFINED ENV{${_var}})
+            message(STATUS "[Tongsuo] clearing ${_var}=$ENV{${_var}}")
+            set(ENV{${_var}} "")
+        endif()
+    endforeach()
     set(_iotdb_homebrew_openssl_ignore
             "/opt/homebrew"
             "/opt/homebrew/opt/openssl@3"
