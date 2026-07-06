@@ -190,12 +190,7 @@ public class IoTDBMigrateMultiRegionForIoTV1IT extends IoTDBRegionOperationRelia
     int firstRegion = regionIds.get(0);
     int secondRegion = regionIds.get(1);
     int targetDataNode = regionMap.get(secondRegion).iterator().next();
-    if (regionMap.get(firstRegion).contains(targetDataNode)) {
-      targetDataNode = regionMap.get(firstRegion).iterator().next();
-      regionGroupExpand(statement, client, secondRegion, targetDataNode);
-    } else {
-      regionGroupExpand(statement, client, firstRegion, targetDataNode);
-    }
+    regionGroupExpand(statement, client, firstRegion, targetDataNode);
     return getAllRegionMap(statement);
   }
 
