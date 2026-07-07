@@ -155,11 +155,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     // the memory of the TsFile event is not released, so the memory is not enough for slicing. This
     // will cause a deadlock.
     waitForResourceEnough4Slicing((long) ((1 + Math.random()) * 20 * 1000)); // 20 - 40 seconds
+    final long maxFileLength =
+        transferMod && Objects.nonNull(modFile)
+            ? Math.max(tsFile.length(), modFile.length())
+            : tsFile.length();
     readFileBufferSize =
         (int)
             Math.min(
-                PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
-                transferMod ? Math.max(tsFile.length(), modFile.length()) : tsFile.length());
+                (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+                Math.max(maxFileLength, 1L));
     position = 0;
 
     isSealSignalSent = new AtomicBoolean(false);
@@ -173,7 +177,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final IoTDBDataNodeAsyncClientManager clientManager,
       final AsyncPipeDataTransferServiceClient client)
       throws TException, IOException {
-    // Delay creation of resources to avoid OOM or too many open files
+
     this.clientManager = clientManager;
     this.client = client;
 
@@ -190,20 +194,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       return;
     }
 
-    client.setShouldReturnSelf(false);
-    client.setTimeoutDynamically(clientManager.getConnectionTimeout());
-
-    // Reserve read buffer up-front (same as legacy): object batch path does not use it, but TsFile
-    // slicing memory is held for the whole handler lifetime once transfer starts.
+    // Delay creation of resources to avoid OOM or too many open files
     if (readBuffer == null) {
       memoryBlock =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTsFileWithRetry(
-                  PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()
-                      ? readFileBufferSize
-                      : 0);
+          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
       readBuffer = new byte[readFileBufferSize];
     }
+
+    client.setShouldReturnSelf(false);
+    client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
     if (objectBatchIterator != null) {
       if (objectBatchIterator.hasNext()) {
@@ -226,9 +225,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     if (reader == null) {
-      if (currentFile == null) {
-        currentFile = transferMod ? modFile : tsFile;
-      }
+      advanceToNextFile();
       reader = new RandomAccessFile(currentFile, "r");
     }
 
@@ -310,6 +307,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       super.onComplete(response);
     } finally {
       if (sink.isClosed()) {
+        releaseReadBufferMemoryBlock();
         returnClientIfNecessary();
       }
     }
@@ -369,6 +367,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
               referenceCount);
         }
 
+        releaseReadBufferMemoryBlock();
         returnClientIfNecessary();
       }
 
@@ -421,6 +420,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     try {
       super.onError(exception);
     } finally {
+      releaseReadBufferMemoryBlock();
       returnClientIfNecessary();
     }
   }
@@ -468,6 +468,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE, e);
     } finally {
       try {
+        releaseReadBufferMemoryBlock();
         returnClientIfNecessary();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
@@ -556,12 +557,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void close() {
     super.close();
-
+    releaseReadBufferMemoryBlock();
     objectFileStream.close();
+  }
 
+  private void releaseReadBufferMemoryBlock() {
     if (memoryBlock != null) {
       memoryBlock.close();
       memoryBlock = null;
+      readBuffer = null;
     }
   }
 

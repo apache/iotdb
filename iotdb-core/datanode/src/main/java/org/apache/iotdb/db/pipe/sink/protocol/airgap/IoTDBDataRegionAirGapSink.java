@@ -36,6 +36,8 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventTsFileBatch;
@@ -831,10 +833,13 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final AirGapSocket socket,
       final boolean isMultiFile)
       throws PipeException, IOException {
-    final int readFileBufferSize = PIPE_CONFIG.getPipeSinkReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+    final int readFileBufferSize = getReadFileBufferSize(file);
+    try (final PipeTsFileMemoryBlock ignored =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+        final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      final byte[] readBuffer = new byte[readFileBufferSize];
+      long position = 0;
       while (true) {
         mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
@@ -864,6 +869,11 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         }
       }
     }
+  }
+
+  private int getReadFileBufferSize(final File file) {
+    return (int)
+        Math.min((long) PIPE_CONFIG.getPipeSinkReadFileBufferSize(), Math.max(file.length(), 1L));
   }
 
   private boolean sendBatch(

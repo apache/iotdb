@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -156,6 +157,8 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
                   event -> {
                     try {
                       process(event, eventCollector);
+                    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                      throw e;
                     } catch (Exception e) {
                       ex.set(e);
                     }

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -549,6 +550,8 @@ public class AggregateProcessor implements PipeProcessor {
                 event -> {
                   try {
                     process(event, eventCollector);
+                  } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                    throw e;
                   } catch (Exception e) {
                     ex.set(e);
                   }

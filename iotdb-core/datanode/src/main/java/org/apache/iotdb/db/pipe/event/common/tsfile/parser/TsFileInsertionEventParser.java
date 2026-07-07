@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
@@ -134,9 +133,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
     this.hasObjectData = sourceEvent == null || sourceEvent.hasObjectData();
 
     this.allocatedMemoryBlockForTablet =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(
-                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
     this.objectPathsOnly = objectPathsOnly;
 
@@ -206,6 +203,13 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       PipeTsFileToTabletsMetrics.getInstance().recordTabletGenerated(taskID, tabletMemorySize);
     } catch (final Exception e) {
       LOGGER.warn(DataNodePipeMessages.FAILED_TO_RECORD_TABLET_METRICS_FOR_PIPE, pipeName, e);
+    }
+  }
+
+  protected void releaseTabletMemoryBlock() {
+    if (allocatedMemoryBlockForTablet != null
+        && allocatedMemoryBlockForTablet.getMemoryUsageInBytes() > 0) {
+      PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForTablet, 0);
     }
   }
 

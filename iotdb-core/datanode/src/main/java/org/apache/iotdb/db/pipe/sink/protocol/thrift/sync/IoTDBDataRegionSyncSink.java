@@ -40,6 +40,8 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeSyncClientManager;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
@@ -78,6 +80,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -1035,6 +1038,137 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
             tsFileBaseName);
       }
     }
+  }
+
+  @Override
+  protected void transferFilePieces(
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      final File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final boolean isMultiFile)
+      throws PipeException, IOException {
+    final int readFileBufferSize = getReadFileBufferSize(file);
+    try (final PipeTsFileMemoryBlock ignored =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+        final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      final byte[] readBuffer = new byte[readFileBufferSize];
+      long position = 0;
+      int readLength;
+      while ((readLength = readNextFilePiece(reader, readBuffer, readFileBufferSize)) != -1) {
+        position =
+            transferFilePiece(
+                pipe2WeightMap,
+                file,
+                clientAndStatus,
+                isMultiFile,
+                readBuffer,
+                position,
+                readLength,
+                reader);
+      }
+    }
+  }
+
+  private int readNextFilePiece(
+      final RandomAccessFile reader, final byte[] readBuffer, final int readFileBufferSize)
+      throws IOException {
+    mayLimitRateAndRecordIO(readFileBufferSize);
+    return reader.read(readBuffer);
+  }
+
+  private long transferFilePiece(
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      final File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final boolean isMultiFile,
+      final byte[] readBuffer,
+      final long position,
+      final int readLength,
+      final RandomAccessFile reader)
+      throws PipeException, IOException {
+    final byte[] payLoad = buildFilePiecePayload(readBuffer, readLength);
+    final PipeTransferFilePieceResp resp =
+        doTransferFilePiece(pipe2WeightMap, file, clientAndStatus, isMultiFile, payLoad, position);
+    return handleTransferFilePieceResp(file, clientAndStatus, reader, position + readLength, resp);
+  }
+
+  private byte[] buildFilePiecePayload(final byte[] readBuffer, final int readLength) {
+    return readLength == readBuffer.length
+        ? readBuffer
+        : Arrays.copyOfRange(readBuffer, 0, readLength);
+  }
+
+  private PipeTransferFilePieceResp doTransferFilePiece(
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      final File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final boolean isMultiFile,
+      final byte[] payLoad,
+      final long position)
+      throws PipeException, IOException {
+    try {
+      final TPipeTransferReq req =
+          compressIfNeeded(
+              isMultiFile
+                  ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
+                  : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
+      pipe2WeightMap.forEach(
+          (namePair, weight) ->
+              rateLimitIfNeeded(
+                  namePair.getLeft(),
+                  namePair.getRight(),
+                  clientAndStatus.getLeft().getEndPoint(),
+                  (long) (req.getBody().length * weight)));
+      return PipeTransferFilePieceResp.fromTPipeTransferResp(
+          clientAndStatus.getLeft().pipeTransfer(req));
+    } catch (final Exception e) {
+      clientAndStatus.setRight(false);
+      throw new PipeConnectionException(
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_FILE_S_BECAUSE_S_3C673B7A,
+              file,
+              e.getMessage()),
+          e);
+    }
+  }
+
+  private long handleTransferFilePieceResp(
+      final File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final RandomAccessFile reader,
+      final long nextPosition,
+      final PipeTransferFilePieceResp resp)
+      throws PipeException, IOException {
+    final TSStatus status = resp.getStatus();
+    if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+      reader.seek(resp.getEndWritingOffset());
+      LOGGER.info(DataNodePipeMessages.REDIRECT_FILE_POSITION_TO, resp.getEndWritingOffset());
+      return resp.getEndWritingOffset();
+    }
+
+    if (status.getCode() == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
+      getClientManager().sendHandshakeReq(clientAndStatus);
+    }
+
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          resp.getStatus(),
+          String.format(
+              DataNodePipeMessages.MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD,
+              file,
+              resp.getStatus()),
+          file.getName());
+    }
+    return nextPosition;
+  }
+
+  private int getReadFileBufferSize(final File file) {
+    return (int)
+        Math.min(
+            PipeConfig.getInstance().getPipeSinkReadFileBufferSize(), Math.max(file.length(), 1L));
   }
 
   @Override

@@ -279,7 +279,8 @@ public final class DataNodePipeMessages {
       "判断 PipeInsertNodeTabletInsertionEvent({}) 的事件时间是否与时间范围 [{}, {}] 重叠时"
           + "发生异常。为保证数据完整性返回 true。";
   public static final String FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE =
-      "{}：为解析 TsFile {} 分配内存失败，tablet event 序号 {}，重试次数 {}，将持续重试。";
+      "{}：为解析 TsFile {} 分配内存失败，tablet 事件编号 {}，"
+          + "将释放解析器内存并稍后重试该 TsFile 事件。";
   public static final String FAILED_TO_BUILD_TABLET = "构建 tablet 失败";
   public static final String FAILED_TO_CHECK_NEXT = "check next 失败";
   public static final String FAILED_TO_CLOSE_TSFILEREADER = "关闭 TsFileReader 失败";
@@ -2337,5 +2338,11 @@ public final class DataNodePipeMessages {
       "对齐值 chunk 索引 %d 无效，而共有 %d 个 time chunk。";
   public static final String MESSAGE_FAILED_TO_ROLLBACK_CREATED_REALTIME_PIPE_ARG_STATUS_ARG_CE14334A =
       "回滚已创建的 realtime pipe {} 失败。状态：{}";
+  public static final String LOG_REPORTING_PIPE_META_ARG_ISCOMPLETED_ARG_REMAININGEVENTCOUNT_ARG_8F996DF3 =
+      "正在上报 pipe meta：%s，isCompleted：%s，remainingEventCount：%s";
+  public static final String LOG_REPORTED_ARG_PIPE_METAS_12068FC6 =
+      "已上报 %s 个 pipe meta。";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
+      "传输文件 %s 出错，结果状态为 %s。";
 
 }

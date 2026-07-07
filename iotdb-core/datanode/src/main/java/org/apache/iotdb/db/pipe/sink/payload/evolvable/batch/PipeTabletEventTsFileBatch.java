@@ -89,6 +89,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           (PipeInsertNodeTabletInsertionEvent) event;
       final boolean isTableModel = insertNodeTabletInsertionEvent.isTableModelEvent();
       final List<Tablet> tablets = insertNodeTabletInsertionEvent.convertToTablets();
+      increaseTotalBufferSizeAndUpdateMemoryBlock(calculateTabletsSizeInBytes(tablets));
       for (int i = 0; i < tablets.size(); ++i) {
         final Tablet tablet = tablets.get(i);
         if (isTabletEmpty(tablet)) {
@@ -121,6 +122,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       if (isTabletEmpty(tablet)) {
         return true;
       }
+      increaseTotalBufferSizeAndUpdateMemoryBlock(calculateTabletSizeInBytes(tablet));
       if (rawTabletInsertionEvent.isTableModelEvent()) {
         // table Model
         bufferTableModelTablet(
@@ -149,14 +151,23 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     return true;
   }
 
+  private long calculateTabletsSizeInBytes(final List<Tablet> tablets) {
+    return tablets.stream()
+        .filter(tablet -> !isTabletEmpty(tablet))
+        .mapToLong(PipeTabletEventTsFileBatch::calculateTabletSizeInBytes)
+        .sum();
+  }
+
+  private static long calculateTabletSizeInBytes(final Tablet tablet) {
+    return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
+  }
+
   private void bufferTreeModelTablet(
       final String pipeName,
       final long creationTime,
       final Tablet tablet,
       final boolean isAligned) {
     new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
-
-    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
@@ -168,8 +179,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private void bufferTableModelTablet(
       final String pipeName, final long creationTime, final Tablet tablet, final String dataBase) {
     new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
-
-    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
@@ -239,7 +248,13 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   @Override
   public synchronized void onSuccess() {
+    clearBatchData();
+
     super.onSuccess();
+  }
+
+  @Override
+  protected void clearBatchData() {
     pipeName2WeightMap.clear();
     tableModeTsFileBuilder.onSuccess();
     treeModeTsFileBuilder.onSuccess();
@@ -248,8 +263,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   @Override
   public synchronized void close() {
     super.close();
-
-    pipeName2WeightMap.clear();
 
     tableModeTsFileBuilder.close();
     treeModeTsFileBuilder.close();
