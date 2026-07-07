@@ -295,6 +295,9 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE =
       "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, "
           + "will release parser memory and retry the TsFile event later.";
+  public static final String FAILED_TO_CONSUME_PARSED_TABLET_FROM_TSFILE_KEEP_PARSER =
+      "{}: failed to consume parsed tablet from TsFile {}, tablet event no. {}, retry count is {}, "
+          + "will keep parser and retry locally for a short time.";
   public static final String FAILED_TO_BUILD_TABLET = "Failed to build tablet";
   public static final String FAILED_TO_CHECK_NEXT = "Failed to check next";
   public static final String FAILED_TO_CLOSE_TSFILEREADER = "Failed to close TsFileReader";

@@ -238,6 +238,62 @@ public class TsFileInsertionEventParserTest {
   }
 
   @Test
+  public void testConsumeTabletInsertionEventsWithRetryKeepsParserForTransientOutOfMemory()
+      throws Exception {
+    nonalignedTsFile =
+        TsFileGeneratorUtils.generateNonAlignedTsFile(
+            "nonaligned-consume-transient-oom.tsfile", 1, 1, 10, 0, 100, 10, 10);
+    resource = new TsFileResource(nonalignedTsFile);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0");
+    resource.updateStartTime(deviceID, 0);
+    resource.updateEndTime(deviceID, 9);
+
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            false,
+            "root",
+            resource,
+            null,
+            false,
+            false,
+            false,
+            null,
+            null,
+            0,
+            null,
+            new PrefixTreePattern("root"),
+            null,
+            null,
+            null,
+            null,
+            true,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    final AtomicInteger retryCount = new AtomicInteger(0);
+    final AtomicReference<PipeRawTabletInsertionEvent> parsedEventReference =
+        new AtomicReference<>();
+
+    event.consumeTabletInsertionEventsWithRetry(
+        parsedEvent -> {
+          parsedEventReference.set(parsedEvent);
+          if (retryCount.getAndIncrement() == 0) {
+            throw new PipeRuntimeOutOfMemoryCriticalException("transient oom");
+          }
+          parsedEvent.clearReferenceCount(getClass().getName());
+        },
+        "test");
+
+    Assert.assertEquals(2, retryCount.get());
+    Assert.assertNotNull(parsedEventReference.get());
+    Assert.assertTrue(parsedEventReference.get().isReleased());
+    Assert.assertNotNull(getEventParser(event).get());
+
+    event.close();
+  }
+
+  @Test
   public void testScanParserSplitNonAlignedSinglePageChunkByEstimatedPageMemory() throws Exception {
     final long originalPipeMaxReaderChunkSize =
         CommonDescriptor.getInstance().getConfig().getPipeMaxReaderChunkSize();
