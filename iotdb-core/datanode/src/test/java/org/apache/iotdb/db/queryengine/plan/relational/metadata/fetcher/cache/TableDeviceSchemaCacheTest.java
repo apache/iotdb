@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
@@ -27,8 +26,6 @@ import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
@@ -59,11 +56,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
 
 public class TableDeviceSchemaCacheTest {
-
-  private static final DataNodeMemoryConfig memoryConfig =
-      IoTDBDescriptor.getInstance().getMemoryConfig();
-
-  private static long originMemConfig;
 
   private static final String database1 = "sg1";
   private static final String database2 = "sg2";
@@ -182,25 +174,12 @@ public class TableDeviceSchemaCacheTest {
     DataNodeTableCache.getInstance()
         .preUpdateTable(database1, testTableNeedLastCacheDisabled, null);
     DataNodeTableCache.getInstance().commitUpdateTable(database1, tableNeedLastCacheDisabled, null);
-
-    originMemConfig = memoryConfig.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes();
-    changeSchemaCacheMemorySize(1300L);
   }
 
   @AfterClass
   public static void clearEnvironment() {
     DataNodeTableCache.getInstance().invalid(database1);
     DataNodeTableCache.getInstance().invalid(database2);
-    changeSchemaCacheMemorySize(originMemConfig);
-  }
-
-  private static void changeSchemaCacheMemorySize(long size) {
-    MemoryManager memoryManager = memoryConfig.getSchemaEngineMemoryManager();
-    MemoryManager schemaCacheMemoryManager = memoryConfig.getSchemaCacheMemoryManager();
-    schemaCacheMemoryManager.clearAll();
-    memoryManager.releaseChildMemoryManager("schemaCache");
-    schemaCacheMemoryManager = memoryManager.getOrCreateMemoryManager("schemaCache", size);
-    memoryConfig.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
   }
 
   @After
@@ -208,9 +187,13 @@ public class TableDeviceSchemaCacheTest {
     TableDeviceSchemaCache.getInstance().invalidateAll();
   }
 
+  private TableDeviceSchemaCache createTestCache() {
+    return TableDeviceSchemaCache.createForTest(1300L);
+  }
+
   @Test
   public void testDeviceCache() {
-    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
+    final TableDeviceSchemaCache cache = createTestCache();
 
     final Map<String, Binary> attributeMap = new HashMap<>();
     attributeMap.put(attributeName1, new Binary("new", TSFileConfig.STRING_CHARSET));
@@ -294,7 +277,7 @@ public class TableDeviceSchemaCacheTest {
 
   @Test
   public void testLastCache() {
-    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
+    final TableDeviceSchemaCache cache = createTestCache();
 
     final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
 
@@ -593,7 +576,7 @@ public class TableDeviceSchemaCacheTest {
     final TimeValuePair[] testTimeValuePairs = new TimeValuePair[] {tv3, tv3, tv3, tv3};
 
     // Test disable put cache by writing
-    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
+    final TableDeviceSchemaCache cache = createTestCache();
 
     cache.updateLastCacheIfExists(
         database1,
@@ -731,7 +714,7 @@ public class TableDeviceSchemaCacheTest {
     final TimeValuePair[] values =
         new TimeValuePair[] {new TimeValuePair(1L, new TsPrimitiveType.TsInt(1))};
 
-    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
+    final TableDeviceSchemaCache cache = createTestCache();
     final IDeviceID disabledDevice =
         convertTagValuesToDeviceID(tableNeedLastCacheDisabled, device0);
 
