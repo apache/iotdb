@@ -136,18 +136,21 @@ public class FFTTableFunctionTest {
   }
 
   @Test
-  public void testInfersSampleIntervalFromInputRowsBeyondSpecifiedN() throws UDFException {
-    TableFunctionDataProcessor processor = createProcessor(false, 1L);
+  public void testInfersSampleIntervalFromFullInputRangeBeyondSpecifiedN() throws UDFException {
+    TableFunctionDataProcessor processor = createProcessor(false, 2L);
     processor.process(record(0L, 1.0), Collections.emptyList(), null);
-    processor.process(record(2L, 2.0), Collections.emptyList(), null);
+    processor.process(record(1L, 2.0), Collections.emptyList(), null);
+    processor.process(record(3L, 3.0), Collections.emptyList(), null);
 
-    List<ColumnBuilder> builders = createOutputBuilders(1);
+    List<ColumnBuilder> builders = createOutputBuilders(2);
     processor.finish(builders, null);
 
-    assertLongColumn(builders.get(0).build(), 0L);
-    assertDoubleColumn(builders.get(1).build(), 0.0);
-    assertDoubleColumn(builders.get(2).build(), 1.0);
-    assertDoubleColumn(builders.get(3).build(), 0.0);
+    double intervalSeconds =
+        1.5 * TimestampPrecisionUtils.currPrecision.toNanos(1L) / 1_000_000_000.0;
+    assertLongColumn(builders.get(0).build(), 0L, 1L);
+    assertDoubleColumn(builders.get(1).build(), 0.0, -1.0 / (2.0 * intervalSeconds));
+    assertDoubleColumn(builders.get(2).build(), 3.0, -1.0);
+    assertDoubleColumn(builders.get(3).build(), 0.0, 0.0);
   }
 
   @Test
@@ -181,24 +184,37 @@ public class FFTTableFunctionTest {
   }
 
   @Test
-  public void testRejectsIrregularTimeWhenInferringSampleInterval() throws UDFException {
+  public void testInfersSampleIntervalFromPartitionTimeRange() throws UDFException {
     TableFunctionDataProcessor processor = createProcessor(false);
     processor.process(record(0L, 1.0), Collections.emptyList(), null);
     processor.process(record(1L, 2.0), Collections.emptyList(), null);
+    processor.process(record(3L, 3.0), Collections.emptyList(), null);
 
-    assertSemanticException(
-        () -> processor.process(record(3L, 3.0), Collections.emptyList(), null),
-        "FFT requires evenly spaced input time values when SAMPLE_INTERVAL is not specified.");
+    List<ColumnBuilder> builders = createOutputBuilders(3);
+    processor.finish(builders, null);
+
+    double intervalSeconds =
+        1.5 * TimestampPrecisionUtils.currPrecision.toNanos(1L) / 1_000_000_000.0;
+    assertLongColumn(builders.get(0).build(), 0L, 1L, 2L);
+    assertDoubleColumn(
+        builders.get(1).build(),
+        0.0,
+        1.0 / (3.0 * intervalSeconds),
+        -1.0 / (3.0 * intervalSeconds));
   }
 
   @Test
-  public void testRejectsTimeGapDifferentFromExplicitSampleInterval() throws UDFException {
+  public void testUsesExplicitSampleIntervalWithoutGapValidation() throws UDFException {
     TableFunctionDataProcessor processor = createProcessor(true);
     processor.process(record(0L, 1.0), Collections.emptyList(), null);
+    processor.process(record(2L, 2.0), Collections.emptyList(), null);
 
-    assertSemanticException(
-        () -> processor.process(record(2L, 2.0), Collections.emptyList(), null),
-        "FFT input time interval must match the specified SAMPLE_INTERVAL.");
+    List<ColumnBuilder> builders = createOutputBuilders(2);
+    processor.finish(builders, null);
+
+    double intervalSeconds = TimestampPrecisionUtils.currPrecision.toNanos(1L) / 1_000_000_000.0;
+    assertLongColumn(builders.get(0).build(), 0L, 1L);
+    assertDoubleColumn(builders.get(1).build(), 0.0, -1.0 / (2.0 * intervalSeconds));
   }
 
   @Test

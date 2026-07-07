@@ -605,8 +605,8 @@ public class FFTTableFunction implements TableFunction {
     private final boolean[] partitionValueIsNull;
     private final List<Number[]> rows = new ArrayList<>();
     private long inputRowCount;
+    private long firstTime;
     private long previousTime;
-    private long inferredSampleInterval = UNSPECIFIED_SAMPLE_INTERVAL;
     private boolean initialized;
 
     private FFTDataProcessor(
@@ -634,12 +634,11 @@ public class FFTTableFunction implements TableFunction {
       long currentTime = input.getLong(0);
       if (!initialized) {
         capturePartitionValues(input);
+        firstTime = currentTime;
         initialized = true;
       } else if (currentTime <= previousTime) {
         throw new SemanticException(
             "The time column of FFT input must be strictly ascending within each partition.");
-      } else {
-        validateSampleInterval(currentTime - previousTime);
       }
       previousTime = currentTime;
 
@@ -750,14 +749,14 @@ public class FFTTableFunction implements TableFunction {
     }
 
     private double getSampleIntervalSeconds() {
-      long interval;
+      double interval;
       if (sampleIntervalSpecified) {
         interval = sampleInterval;
       } else {
         if (inputRowCount < 2) {
           throw new SemanticException("FFT requires at least two rows to infer SAMPLE_INTERVAL.");
         }
-        interval = inferredSampleInterval;
+        interval = (double) (previousTime - firstTime) / (inputRowCount - 1);
       }
       double intervalSeconds =
           interval * TimestampPrecisionUtils.currPrecision.toNanos(1L) / 1_000_000_000.0;
@@ -765,23 +764,6 @@ public class FFTTableFunction implements TableFunction {
         throw new SemanticException("FFT SAMPLE_INTERVAL must be positive.");
       }
       return intervalSeconds;
-    }
-
-    private void validateSampleInterval(long currentInterval) {
-      if (sampleIntervalSpecified) {
-        if (currentInterval != sampleInterval) {
-          throw new SemanticException(
-              "FFT input time interval must match the specified SAMPLE_INTERVAL.");
-        }
-        return;
-      }
-
-      if (inferredSampleInterval == UNSPECIFIED_SAMPLE_INTERVAL) {
-        inferredSampleInterval = currentInterval;
-      } else if (currentInterval != inferredSampleInterval) {
-        throw new SemanticException(
-            "FFT requires evenly spaced input time values when SAMPLE_INTERVAL is not specified.");
-      }
     }
 
     private double getScaleFactor(int transformLength) {

@@ -209,6 +209,32 @@ public class IoTDBFFTTableFunctionIT {
   }
 
   @Test
+  public void testFFTIrregularTimeUsesInferredOrExplicitSampleInterval() {
+    String[] expectedHeader =
+        new String[] {"device_id", "frequency_index", "frequency", "value_real", "value_imag"};
+
+    assertFftRows(
+        "SELECT * FROM FFT(DATA => irregular PARTITION BY device_id ORDER BY time) "
+            + "ORDER BY frequency_index",
+        expectedHeader,
+        new Object[][] {
+          {"d1", 0L, 0.0, 6.0, 0.0},
+          {"d1", 1L, 0.26666666666666666, -1.5, 0.8660254037844386},
+          {"d1", 2L, -0.26666666666666666, -1.5, -0.8660254037844386}
+        });
+
+    assertFftRows(
+        "SELECT * FROM FFT(DATA => irregular PARTITION BY device_id ORDER BY time, "
+            + "SAMPLE_INTERVAL => 1s) ORDER BY frequency_index",
+        expectedHeader,
+        new Object[][] {
+          {"d1", 0L, 0.0, 6.0, 0.0},
+          {"d1", 1L, 0.3333333333333333, -1.5, 0.8660254037844386},
+          {"d1", 2L, -0.3333333333333333, -1.5, -0.8660254037844386}
+        });
+  }
+
+  @Test
   public void testFFTFailures() {
     tableAssertTestFail(
         "SELECT * FROM FFT(DATA => signal PARTITION BY device_id, SAMPLE_INTERVAL => 1s)",
@@ -225,14 +251,6 @@ public class IoTDBFFTTableFunctionIT {
     tableAssertTestFail(
         "SELECT * FROM FFT(DATA => with_null PARTITION BY device_id ORDER BY time, SAMPLE_INTERVAL => 1s)",
         "701: FFT does not support null values in column [value].",
-        DATABASE_NAME);
-    tableAssertTestFail(
-        "SELECT * FROM FFT(DATA => irregular PARTITION BY device_id ORDER BY time)",
-        "701: FFT requires evenly spaced input time values when SAMPLE_INTERVAL is not specified.",
-        DATABASE_NAME);
-    tableAssertTestFail(
-        "SELECT * FROM FFT(DATA => irregular PARTITION BY device_id ORDER BY time, SAMPLE_INTERVAL => 1s)",
-        "701: FFT input time interval must match the specified SAMPLE_INTERVAL.",
         DATABASE_NAME);
     tableAssertTestFail(
         "SELECT * FROM FFT(DATA => signal PARTITION BY device_id ORDER BY time, N => 65537)",
