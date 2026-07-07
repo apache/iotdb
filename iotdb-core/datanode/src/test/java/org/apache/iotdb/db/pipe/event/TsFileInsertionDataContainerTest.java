@@ -20,10 +20,13 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.AlignedSinglePageWholeChunkReader;
@@ -37,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionT
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.pipe.api.access.Row;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -78,6 +82,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -135,6 +140,80 @@ public class TsFileInsertionDataContainerTest {
     final long startTime = System.currentTimeMillis();
     testToTabletInsertionEvents(false);
     System.out.println(System.currentTimeMillis() - startTime);
+  }
+
+  @Test
+  public void testScanContainerReleasesTabletMemoryAfterRawTabletGenerated() throws Exception {
+    nonalignedTsFile =
+        TsFileGeneratorUtils.generateNonAlignedTsFile(
+            "nonaligned-release-tablet-memory.tsfile", 1, 1, 10, 0, 100, 10, 10);
+
+    try (final TsFileInsertionScanDataContainer container =
+        new TsFileInsertionScanDataContainer(
+            nonalignedTsFile,
+            new PrefixPipePattern("root"),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE,
+            null,
+            null,
+            false)) {
+      final Iterator<TabletInsertionEvent> iterator =
+          container.toTabletInsertionEvents().iterator();
+
+      Assert.assertTrue(iterator.hasNext());
+      final TabletInsertionEvent event = iterator.next();
+      Assert.assertTrue(event instanceof PipeRawTabletInsertionEvent);
+      Assert.assertEquals(0, getAllocatedTabletMemory(container).getMemoryUsageInBytes());
+
+      ((PipeRawTabletInsertionEvent) event).clearReferenceCount(getClass().getName());
+    }
+  }
+
+  @Test
+  public void testConsumeTabletInsertionEventsWithRetryReleasesContainerOnOutOfMemory()
+      throws Exception {
+    nonalignedTsFile =
+        TsFileGeneratorUtils.generateNonAlignedTsFile(
+            "nonaligned-consume-oom.tsfile", 1, 1, 10, 0, 100, 10, 10);
+    resource = new TsFileResource(nonalignedTsFile);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    // The TsFile generator only creates the file, so mark the resource non-empty explicitly.
+    final IDeviceID deviceID = new PlainDeviceID("root.testsg.d0");
+    resource.updateStartTime(deviceID, 0);
+    resource.updateEndTime(deviceID, 9);
+
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            resource,
+            null,
+            false,
+            false,
+            false,
+            null,
+            0,
+            null,
+            new PrefixPipePattern("root"),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    final AtomicReference<PipeRawTabletInsertionEvent> parsedEventReference =
+        new AtomicReference<>();
+
+    final PipeRuntimeOutOfMemoryCriticalException exception =
+        Assert.assertThrows(
+            PipeRuntimeOutOfMemoryCriticalException.class,
+            () ->
+                event.consumeTabletInsertionEventsWithRetry(
+                    parsedEvent -> {
+                      parsedEventReference.set(parsedEvent);
+                      throw new PipeRuntimeOutOfMemoryCriticalException("expected oom");
+                    },
+                    "test"));
+
+    Assert.assertEquals("expected oom", exception.getMessage());
+    Assert.assertNotNull(parsedEventReference.get());
+    Assert.assertTrue(parsedEventReference.get().isReleased());
+    Assert.assertNull(getDataContainer(event).get());
   }
 
   @Test
@@ -1135,6 +1214,22 @@ public class TsFileInsertionDataContainerTest {
         TsFileInsertionScanDataContainer.class.getDeclaredField("allocatedMemoryBlockForBatchData");
     field.setAccessible(true);
     return (PipeMemoryBlock) field.get(parser);
+  }
+
+  private PipeMemoryBlock getAllocatedTabletMemory(final TsFileInsertionDataContainer container)
+      throws NoSuchFieldException, IllegalAccessException {
+    final Field field =
+        TsFileInsertionDataContainer.class.getDeclaredField("allocatedMemoryBlockForTablet");
+    field.setAccessible(true);
+    return (PipeMemoryBlock) field.get(container);
+  }
+
+  @SuppressWarnings("unchecked")
+  private AtomicReference<TsFileInsertionDataContainer> getDataContainer(
+      final PipeTsFileInsertionEvent event) throws NoSuchFieldException, IllegalAccessException {
+    final Field field = PipeTsFileInsertionEvent.class.getDeclaredField("dataContainer");
+    field.setAccessible(true);
+    return (AtomicReference<TsFileInsertionDataContainer>) field.get(event);
   }
 
   private long calculatePipeMaxReaderChunkSizeForSinglePageAlignedChunk(final File tsFile)

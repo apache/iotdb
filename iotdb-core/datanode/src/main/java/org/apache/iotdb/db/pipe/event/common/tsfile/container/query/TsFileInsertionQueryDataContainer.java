@@ -484,6 +484,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
                   final Tablet tablet = tabletIterator.next();
                   // Record tablet metrics
                   recordTabletMetrics(tablet);
+                  releaseTabletMemoryBlock();
                   final boolean isAligned =
                       deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.deviceId), false);
                   boolean isLast;

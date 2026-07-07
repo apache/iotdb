@@ -479,39 +479,38 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   }
 
   public void consumeTabletInsertionEventsWithRetry(
-      final TabletInsertionEventConsumer consumer, final String callerName) throws PipeException {
-    final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
-    final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+      final TabletInsertionEventConsumer consumer, final String callerName) throws Exception {
     int tabletEventCount = 0;
-    while (iterator.hasNext()) {
-      final TabletInsertionEvent parsedEvent = iterator.next();
-      tabletEventCount++;
-      int retryCount = 0;
-      while (true) {
-        // If failed due do insufficient memory, retry until success to avoid race among multiple
-        // processor threads
+    try {
+      final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
+      final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+      while (iterator.hasNext()) {
+        final TabletInsertionEvent parsedEvent = iterator.next();
+        tabletEventCount++;
         try {
           consumer.consume((PipeRawTabletInsertionEvent) parsedEvent);
-          break;
         } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-          if (retryCount++ % 100 == 0) {
-            LOGGER.warn(
-                "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
-                callerName,
-                getTsFile(),
-                tabletEventCount,
-                retryCount);
-          } else if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(
-                "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
-                callerName,
-                getTsFile(),
-                tabletEventCount,
-                retryCount,
-                e);
-          }
+          releaseParsedTabletEvent(parsedEvent);
+          throw e;
         }
       }
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      close();
+      LOGGER.warn(
+          "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, will release parser memory and retry the TsFile event later.",
+          callerName,
+          getTsFile(),
+          tabletEventCount,
+          e);
+      throw e;
+    }
+  }
+
+  private void releaseParsedTabletEvent(final TabletInsertionEvent parsedEvent) {
+    if (parsedEvent instanceof PipeRawTabletInsertionEvent
+        && ((PipeRawTabletInsertionEvent) parsedEvent).getReferenceCount() == 0
+        && !((PipeRawTabletInsertionEvent) parsedEvent).isReleased()) {
+      ((PipeRawTabletInsertionEvent) parsedEvent).clearReferenceCount(getClass().getName());
     }
   }
 
@@ -634,7 +633,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     }
   }
 
-  public long count(final boolean skipReportOnCommit) throws IOException {
+  public long count(final boolean skipReportOnCommit) throws Exception {
     AtomicLong count = new AtomicLong();
 
     if (shouldParseTime()) {

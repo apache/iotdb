@@ -326,13 +326,6 @@ public class PipeMemoryManager {
     }
 
     final long oldSize = block.getMemoryUsageInBytes();
-    if (oldSize == 0) {
-      // If the memory block is not registered, we need to register it first.
-      // Otherwise, the memory usage will be inconsistent.
-      // See registerMemoryBlock for more details.
-      allocatedBlocks.add(block);
-    }
-
     if (oldSize >= targetSize) {
       usedMemorySizeInBytes -= oldSize - targetSize;
       if (block instanceof PipeTabletMemoryBlock) {
@@ -347,6 +340,8 @@ public class PipeMemoryManager {
       if (targetSize == 0) {
         allocatedBlocks.remove(block);
       }
+
+      this.notifyAll();
       return;
     }
 
@@ -355,6 +350,12 @@ public class PipeMemoryManager {
     for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
       if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes >= sizeInBytes) {
         usedMemorySizeInBytes += sizeInBytes;
+        if (oldSize == 0) {
+          // If the memory block is not registered, we need to register it first.
+          // Otherwise, the memory usage will be inconsistent.
+          // See registerMemoryBlock for more details.
+          allocatedBlocks.add(block);
+        }
         if (block instanceof PipeTabletMemoryBlock) {
           usedMemorySizeInBytesOfTablets += sizeInBytes;
         }
@@ -486,6 +487,9 @@ public class PipeMemoryManager {
     if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes
         >= memoryInBytesNeededToBeAllocated) {
       usedMemorySizeInBytes += memoryInBytesNeededToBeAllocated;
+      if (block.getMemoryUsageInBytes() == 0) {
+        allocatedBlocks.add(block);
+      }
       if (block instanceof PipeTabletMemoryBlock) {
         usedMemorySizeInBytesOfTablets += memoryInBytesNeededToBeAllocated;
       }
