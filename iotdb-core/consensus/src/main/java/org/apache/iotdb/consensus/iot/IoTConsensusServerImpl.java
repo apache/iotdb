@@ -331,7 +331,9 @@ public class IoTConsensusServerImpl {
           }
           searchIndex.incrementAndGet();
         }
-        updateWriterMetaOnSuccess(indexedConsensusRequest);
+        latestWriterMeta =
+            new WriterMeta(
+                indexedConsensusRequest.getLocalSeq(), indexedConsensusRequest.getPhysicalTime());
         // statistic the time of offering request into queue
         ioTConsensusServerMetrics.recordOfferRequestToQueueTime(
             System.nanoTime() - writeToStateMachineEndTime);
@@ -351,6 +353,7 @@ public class IoTConsensusServerImpl {
       return result;
     } finally {
       stateMachineLock.unlock();
+      persistLatestWriterMeta(false);
     }
   }
 
@@ -1046,9 +1049,7 @@ public class IoTConsensusServerImpl {
   }
 
   private void updateWriterMetaOnSuccess(final IndexedConsensusRequest indexedConsensusRequest) {
-    latestWriterMeta =
-        new WriterMeta(
-            indexedConsensusRequest.getLocalSeq(), indexedConsensusRequest.getPhysicalTime());
+
     persistLatestWriterMeta(false);
   }
 
@@ -1067,8 +1068,8 @@ public class IoTConsensusServerImpl {
     synchronized (writerMetaPersistLock) {
       final WriterMeta latestMeta = latestWriterMeta;
       if (latestMeta == null
-          || (latestMeta.getLastAllocatedLocalSeq() == lastPersistedWriterLocalSeq
-              && latestMeta.getLastAssignedPhysicalTimeMs() == lastPersistedWriterPhysicalTime)) {
+          || (latestMeta.getLastAllocatedLocalSeq() <= lastPersistedWriterLocalSeq
+              && latestMeta.getLastAssignedPhysicalTimeMs() <= lastPersistedWriterPhysicalTime)) {
         return;
       }
 

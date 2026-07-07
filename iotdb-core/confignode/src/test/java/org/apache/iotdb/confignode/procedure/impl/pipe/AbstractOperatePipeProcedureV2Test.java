@@ -82,7 +82,8 @@ public class AbstractOperatePipeProcedureV2Test {
     Assert.assertTrue(procedure.isYieldAfterExecution(null));
     Assert.assertEquals(1, procedure.calculateExecutionCount);
 
-    Assert.assertNull(procedure.runOnce());
+    final Procedure<?>[] failedSubProcedures = procedure.runOnce();
+    Assert.assertEquals(0, failedSubProcedures.length);
     Assert.assertTrue(procedure.hasException());
     Assert.assertFalse(procedure.isYieldAfterExecution(null));
     Assert.assertEquals(2, procedure.calculateExecutionCount);

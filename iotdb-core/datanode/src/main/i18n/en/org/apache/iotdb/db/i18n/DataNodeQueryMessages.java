@@ -308,8 +308,33 @@ public final class DataNodeQueryMessages {
       "The left hand value must be an identifier: ";
   public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
       "The table '%s' does not contain a time column";
+  public static final String START_TIME_IS_GREATER_THAN_END_TIME =
+      "Start time %d is greater than end time %d";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
+      "The right hand value of time predicate must be a long: ";
+  public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_FOR =
+      "The operator of time predicate must be <, <=, >, or >=: ";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "The operator of tag predicate must be '=' for ";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "The right hand value of tag predicate cannot be null with '=' operator, "
+              + "please use 'IS NULL' instead";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
+      "The right hand value of tag predicate must be a string: ";
+  public static final String THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR =
+      "The operator of attribute predicate must be =, !=, <, <=, >, >=, LIKE, or IN for ";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "The right hand value of attribute predicate cannot be null with comparison operator, "
+              + "please use IS NULL or IS NOT NULL instead";
+  public static final String THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_MUST_BE_A_STRING =
+      "The right hand value of attribute predicate must be a string: ";
+  public static final String THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
+      "The column '%s' does not exist or is not a tag column";
+  public static final String TOO_MANY_DEVICES_MATCHED_BY_ATTRIBUTE_FILTERS_IN_DELETION =
+      "Too many devices (%d) matched by attribute filters in deletion, limit is %d. "
+          + "Please remove all attribute filters (%s) or add more attribute filters.";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =
       "Only time filters are supported in LAST query";
   public static final String VIEWS_CANNOT_BE_USED_IN_GROUP_BY_TAGS =
@@ -1691,14 +1716,10 @@ public final class DataNodeQueryMessages {
       "The column '";
   public static final String DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
       "' does not exist or is not a tag column";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
-      "The right hand value of time predicate must be a long: ";
   public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_LT_LT_EQ_GT_OR_GT_EQ =
       "The operator of time predicate must be <, <=, >, or >=: ";
   public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_EQ_OPERATOR_PLEASE_USE_IS_NULL =
       "The right hand value of tag predicate cannot be null with '=' operator, please use 'IS NULL' instead";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
-      "The right hand value of tag predicate must be a string: ";
   public static final String SELECT_INTO_PLACEHOLDER_CAN_ONLY_BE_USED_AT_THE_END_OF_THE_PATH =
       "select into: placeholder `::` can only be used at the end of the path.";
   public static final String SELECT_INTO_THE_I_OF_DOLLAR_I_SHOULD_BE_GREATER_THAN_0_AND_EQUAL_TO_OR_LESS_THAN_THE =

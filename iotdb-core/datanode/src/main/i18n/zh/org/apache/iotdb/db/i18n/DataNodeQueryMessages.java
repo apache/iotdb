@@ -295,8 +295,30 @@ public final class DataNodeQueryMessages {
       "左侧值必须是标识符：";
   public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
       "表 '%s' 不包含时间列";
+  public static final String START_TIME_IS_GREATER_THAN_END_TIME =
+      "开始时间 %d 大于结束时间 %d";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
+      "时间谓词的右值必须是 long 类型：";
+  public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_FOR =
+      "时间谓词的操作符必须是 <、<=、> 或 >=：";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "标签谓词的运算符必须为 '='，目标：";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "标签谓词在使用 '=' 操作符时右值不能为 null，请改用 'IS NULL'";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
+      "标签谓词的右值必须是字符串：";
+  public static final String THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR =
+      "属性谓词的运算符必须为 =, !=, <, <=, >, >=, LIKE 或 IN，目标：";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "属性谓词的右侧值不能在比较运算符中为 null，请改用 IS NULL 或 IS NOT NULL";
+  public static final String THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_MUST_BE_A_STRING =
+      "属性谓词的右侧值必须为字符串：";
+  public static final String THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
+      "列 '%s' 不存在或不是标签列";
+  public static final String TOO_MANY_DEVICES_MATCHED_BY_ATTRIBUTE_FILTERS_IN_DELETION =
+      "删除语句中的属性过滤条件匹配了过多设备（%d），限制为 %d。请移除所有属性过滤条件（%s），或进一步增加属性过滤条件。";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =
       "LAST 查询中仅支持时间过滤器";
   public static final String VIEWS_CANNOT_BE_USED_IN_GROUP_BY_TAGS =
@@ -1742,9 +1764,6 @@ public final class DataNodeQueryMessages {
   public static final String DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
 
       "' 不存在或不是标签列";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
-
-      "时间谓词的右值必须为 long：";
   public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_LT_LT_EQ_GT_OR_GT_EQ =
 
       "时间谓词的操作符必须为 <、<=、> 或 >=：";
@@ -1752,9 +1771,6 @@ public final class DataNodeQueryMessages {
 
 
       "使用 '=' 操作符时，标签谓词的右值不能为 null，请改用 'IS NULL'";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
-
-      "标签谓词的右值必须为字符串：";
   public static final String SELECT_INTO_PLACEHOLDER_CAN_ONLY_BE_USED_AT_THE_END_OF_THE_PATH =
 
 

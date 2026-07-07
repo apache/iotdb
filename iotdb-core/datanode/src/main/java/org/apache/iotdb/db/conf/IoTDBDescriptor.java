@@ -1236,6 +1236,11 @@ public class IoTDBDescriptor {
     if (maxSubTaskNumForInformationTableScan > 0) {
       conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
     }
+
+    // Reflect the in-memory effective values (which the setters above may have rewritten) into
+    // lastAppliedProperties, so that `show configuration` displays effective values rather than
+    // the raw config-file values.
+    overlayEffectiveConfigurationValues();
   }
 
   private void loadFixedSizeLimitForQuery(
@@ -2344,6 +2349,9 @@ public class IoTDBDescriptor {
       }
 
       ConfigurationFileUtils.updateAppliedProperties(properties, true);
+      // Overwrite the keys whose setters above may have rewritten, so `show configuration`
+      // displays the effective values rather than the raw file values.
+      overlayEffectiveConfigurationValues();
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2351,6 +2359,31 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format(DataNodeMiscMessages.FAIL_RELOAD_CONFIGURATION_FMT, e));
     }
+  }
+
+  // `show configuration` (table model) renders ConfigurationFileUtils.getAppliedProperties().
+  // That map is populated from the raw config-file values, but several hot-reloaded parameters
+  // have setters that rewrite the loaded value before it takes effect, e.g.:
+  //   - `if (x > 0) setX(x)` skips non-positive values (keeps the previous/default value);
+  //   - loadFixedSizeLimitForQuery rewrites `<=0` to a computed default.
+  // For those keys the displayed value would otherwise diverge from the effective one. This
+  // method overwrites them with the post-setter effective value. It is invoked after the setters
+  // in both the startup (loadProperties) and hot-reload (loadHotModifiedProps) paths, so that
+  // local *and* remote `show configuration` (which reads each node's own map over RPC) stay
+  // correct.
+  private void overlayEffectiveConfigurationValues() {
+    ConfigurationFileUtils.updateAppliedProperties(
+        "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "max_rows_in_cte_buffer", Integer.toString(commonConfig.getMaxRowsInCteBuffer()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "max_sub_task_num_for_information_table_scan",
+        Integer.toString(conf.getMaxSubTaskNumForInformationTableScan()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "sort_buffer_size_in_bytes",
+        Long.toString(commonDescriptor.getConfig().getSortBufferSize()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {

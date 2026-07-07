@@ -112,6 +112,8 @@ public final class UtilMessages {
 
   public static final String ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY =
       "All folders are full, change system mode to read-only.";
+  public static final String CANNOT_SELECT_FOLDER_BUT_DISK_HAS_SPACE =
+      "Cannot select folder but disk still has available space, will not change to read-only.";
   public static final String FAILED_TO_PROCESS_FOLDER = "Failed to process folder {}";
   public static final String FAILED_TO_READ_FILE_STORE_PATH =
       "Failed to read file store path '{}'";

@@ -1050,7 +1050,7 @@ public class StatementAnalyzer {
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
-      node.parseModEntries(table);
+      node.parseModEntries(table, node.getDatabase(), queryContext);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       node.parseWhere(
           null,
