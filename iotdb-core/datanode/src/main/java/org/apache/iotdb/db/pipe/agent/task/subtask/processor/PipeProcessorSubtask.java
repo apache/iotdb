@@ -179,6 +179,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                   event1 -> {
                     try {
                       pipeProcessor.process(event1, outputEventCollector);
+                    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                      throw e;
                     } catch (Exception e) {
                       ex.set(e);
                     }

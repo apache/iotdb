@@ -22,10 +22,13 @@ package org.apache.iotdb.commons.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -138,10 +141,55 @@ public class IoTDBFileReceiverTest {
     }
   }
 
+  @Test
+  public void testFilePieceMemoryAllocationFailureReturnsTemporaryUnavailable() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.setFailFilePieceMemoryAllocation(true);
+
+      final TPipeTransferResp response =
+          receiver.writeFilePiece("normal.tsfile", 0, new byte[] {1, 2, 3});
+      final PipeTransferFilePieceResp filePieceResp =
+          PipeTransferFilePieceResp.fromTPipeTransferResp(response);
+
+      Assert.assertEquals(
+          TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
+          response.getStatus().getCode());
+      Assert.assertTrue(response.getStatus().getMessage().contains("no memory for file piece"));
+      Assert.assertEquals(
+          PipeTransferFilePieceResp.ERROR_END_OFFSET, filePieceResp.getEndWritingOffset());
+      Assert.assertFalse(receiver.getWritingFileInBaseDir("normal.tsfile").exists());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testFilePieceMemoryAllocationIsClosedAfterWrite() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      final TPipeTransferResp response =
+          receiver.writeFilePiece("normal.tsfile", 0, new byte[] {1, 2, 3});
+      final PipeTransferFilePieceResp filePieceResp =
+          PipeTransferFilePieceResp.fromTPipeTransferResp(response);
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+      Assert.assertEquals(3, filePieceResp.getEndWritingOffset());
+      Assert.assertEquals(1, receiver.getFilePieceMemoryCloseCount());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
   private static class DummyFileReceiver extends IoTDBFileReceiver {
 
     private final File receiverFileBaseDir;
     private TSStatus loadFileV1Status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    private boolean failFilePieceMemoryAllocation = false;
+    private int filePieceMemoryCloseCount = 0;
 
     DummyFileReceiver(final File baseDir) {
       receiverFileBaseDir = baseDir;
@@ -164,6 +212,23 @@ public class IoTDBFileReceiverTest {
 
     void setLoadFileV1Status(final TSStatus status) {
       loadFileV1Status = status;
+    }
+
+    void setFailFilePieceMemoryAllocation(final boolean failFilePieceMemoryAllocation) {
+      this.failFilePieceMemoryAllocation = failFilePieceMemoryAllocation;
+    }
+
+    int getFilePieceMemoryCloseCount() {
+      return filePieceMemoryCloseCount;
+    }
+
+    TPipeTransferResp writeFilePiece(
+        final String fileName, final long startWritingOffset, final byte[] filePiece)
+        throws IOException {
+      return handleTransferFilePiece(
+          DummyFilePieceReq.toTPipeTransferReq(fileName, startWritingOffset, filePiece),
+          false,
+          true);
     }
 
     TPipeTransferResp sealFileV1(final String fileName, final long fileLength) throws IOException {
@@ -229,6 +294,14 @@ public class IoTDBFileReceiverTest {
     }
 
     @Override
+    protected AutoCloseable tryAllocateMemoryForFilePiece(final PipeTransferFilePieceReq req) {
+      if (failFilePieceMemoryAllocation) {
+        throw new PipeRuntimeOutOfMemoryCriticalException("no memory for file piece");
+      }
+      return () -> filePieceMemoryCloseCount++;
+    }
+
+    @Override
     protected TSStatus loadFileV1(
         final PipeTransferFileSealReqV1 req, final String fileAbsolutePath) {
       return loadFileV1Status;
@@ -249,6 +322,22 @@ public class IoTDBFileReceiverTest {
     @Override
     public TPipeTransferResp receive(TPipeTransferReq req) {
       return null;
+    }
+  }
+
+  private static class DummyFilePieceReq extends PipeTransferFilePieceReq {
+
+    static DummyFilePieceReq toTPipeTransferReq(
+        final String fileName, final long startWritingOffset, final byte[] filePiece)
+        throws IOException {
+      return (DummyFilePieceReq)
+          new DummyFilePieceReq()
+              .convertToTPipeTransferReq(fileName, startWritingOffset, filePiece);
+    }
+
+    @Override
+    protected PipeRequestType getPlanType() {
+      return PipeRequestType.TRANSFER_TS_FILE_PIECE;
     }
   }
 

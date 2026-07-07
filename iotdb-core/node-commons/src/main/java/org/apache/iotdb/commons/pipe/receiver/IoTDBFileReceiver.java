@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
@@ -386,7 +387,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final PipeTransferFilePieceReq req,
       final boolean isRequestThroughAirGap,
       final boolean isSingleFile) {
-    try {
+    try (final AutoCloseable ignored = tryAllocateMemoryForFilePiece(req)) {
       updateWritingFileIfNeeded(req.getFileName(), isSingleFile);
 
       // If the request is through air gap, the sender will resend the file piece from the beginning
@@ -419,6 +420,18 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       writingFileWriter.write(req.getFilePiece());
       return PipeTransferFilePieceResp.toTPipeTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      final TSStatus status =
+          getReceiverTemporaryUnavailableStatus(
+              "receiving pipe file piece", getFilePieceSizeInBytes(req), e);
+      PipeLogger.log(
+          LOGGER::warn, e, PipeMessages.RECEIVER_FAILED_WRITE_FILE_PIECE, receiverId.get(), req);
+      try {
+        return PipeTransferFilePieceResp.toTPipeTransferResp(
+            status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
+      } catch (Exception ex) {
+        return PipeTransferFilePieceResp.toTPipeTransferResp(status);
+      }
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn, e, PipeMessages.RECEIVER_FAILED_WRITE_FILE_PIECE, receiverId.get(), req);
@@ -433,6 +446,28 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         return PipeTransferFilePieceResp.toTPipeTransferResp(status);
       }
     }
+  }
+
+  protected AutoCloseable tryAllocateMemoryForFilePiece(final PipeTransferFilePieceReq req)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return () -> {};
+  }
+
+  protected TSStatus getReceiverTemporaryUnavailableStatus(
+      final String action,
+      final long requestedMemorySizeInBytes,
+      final PipeRuntimeOutOfMemoryCriticalException e) {
+    return new TSStatus(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+        .setMessage(
+            String.format(
+                PipeMessages.RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT,
+                action,
+                requestedMemorySizeInBytes,
+                e.getMessage()));
+  }
+
+  private static long getFilePieceSizeInBytes(final PipeTransferFilePieceReq req) {
+    return req.getFilePiece() == null ? 0 : req.getFilePiece().length;
   }
 
   protected final void updateWritingFileIfNeeded(final String fileName, final boolean isSingleFile)
