@@ -152,6 +152,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private PipeMemoryBlock allocatedMemoryBlock;
+  private final List<PipeMemoryBlock> allocatedSliceMemoryBlocks = new ArrayList<>();
 
   static {
     try {
@@ -173,7 +174,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
         if (requestType != PipeRequestType.TRANSFER_SLICE) {
-          sliceReqHandler.clear();
+          clearSliceReqHandler();
         }
         switch (requestType) {
           case HANDSHAKE_DATANODE_V1:
@@ -356,8 +357,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             }
           case TRANSFER_COMPRESSED:
             {
+              long requestedMemorySizeInBytes = 0;
               try {
-                return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+                requestedMemorySizeInBytes =
+                    PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req);
+                try (final PipeMemoryBlock ignored =
+                    tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
+                  return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+                }
+              } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+                return new TPipeTransferResp(
+                    getReceiverTemporaryUnavailableStatus(
+                        "decompressing pipe transfer request", requestedMemorySizeInBytes, e));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferCompressedTimer(System.nanoTime() - startTime);
@@ -669,22 +680,97 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferSlice(final PipeTransferSliceReq pipeTransferSliceReq) {
-    final boolean isInorder = sliceReqHandler.receiveSlice(pipeTransferSliceReq);
-    if (!isInorder) {
+    final long sliceBodySizeInBytes = getSliceBodySizeInBytes(pipeTransferSliceReq);
+    long requestedMemorySizeInBytes = sliceBodySizeInBytes;
+    String memoryAction = "buffering sliced pipe transfer request";
+    PipeMemoryBlock sliceMemoryBlock = null;
+    try {
+      sliceMemoryBlock = tryAllocateReceiverMemory(sliceBodySizeInBytes);
+
+      final boolean isInorder = sliceReqHandler.receiveSlice(pipeTransferSliceReq);
+      if (!isInorder) {
+        closeMemoryBlock(sliceMemoryBlock);
+        clearSliceReqHandler();
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
+                "Slice request is out of order, please check the request sequence."));
+      }
+
+      allocatedSliceMemoryBlocks.add(sliceMemoryBlock);
+      sliceMemoryBlock = null;
+
+      if (pipeTransferSliceReq.getSliceIndex() + 1 < pipeTransferSliceReq.getSliceCount()) {
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SUCCESS_STATUS,
+                "Slice received, waiting for more slices to complete the request."));
+      }
+
+      memoryAction = "assembling sliced pipe transfer request";
+      requestedMemorySizeInBytes = pipeTransferSliceReq.getOriginBodySize();
+      try (final PipeMemoryBlock ignored = tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
+        final Optional<TPipeTransferReq> req = sliceReqHandler.makeReqIfComplete();
+        if (!req.isPresent()) {
+          return new TPipeTransferResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.SUCCESS_STATUS,
+                  "Slice received, waiting for more slices to complete the request."));
+        }
+        clearSliceReqHandler();
+        return receive(req.get());
+      }
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      closeMemoryBlock(sliceMemoryBlock);
+      clearSliceReqHandler();
       return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
-              "Slice request is out of order, please check the request sequence."));
+          getReceiverTemporaryUnavailableStatus(memoryAction, requestedMemorySizeInBytes, e));
+    } catch (final RuntimeException e) {
+      closeMemoryBlock(sliceMemoryBlock);
+      clearSliceReqHandler();
+      throw e;
     }
-    final Optional<TPipeTransferReq> req = sliceReqHandler.makeReqIfComplete();
-    if (!req.isPresent()) {
-      return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.SUCCESS_STATUS,
-              "Slice received, waiting for more slices to complete the request."));
+  }
+
+  private long getSliceBodySizeInBytes(final PipeTransferSliceReq pipeTransferSliceReq) {
+    return pipeTransferSliceReq.getSliceBody() == null
+        ? 0
+        : pipeTransferSliceReq.getSliceBody().length;
+  }
+
+  private void clearSliceReqHandler() {
+    sliceReqHandler.clear();
+    allocatedSliceMemoryBlocks.forEach(this::closeMemoryBlock);
+    allocatedSliceMemoryBlocks.clear();
+  }
+
+  private void closeMemoryBlock(final PipeMemoryBlock memoryBlock) {
+    if (Objects.nonNull(memoryBlock)) {
+      memoryBlock.close();
     }
-    // sliceReqHandler will be cleared in the receive(req) method
-    return receive(req.get());
+  }
+
+  private PipeMemoryBlock tryAllocateReceiverMemory(final long requestedMemorySizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return PipeDataNodeResourceManager.memory()
+        .forceAllocate(Math.max(requestedMemorySizeInBytes, 0));
+  }
+
+  @Override
+  protected TSStatus getReceiverTemporaryUnavailableStatus(
+      final String action,
+      final long requestedMemorySizeInBytes,
+      final PipeRuntimeOutOfMemoryCriticalException e) {
+    return new TSStatus(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+        .setMessage(
+            String.format(
+                "Temporarily out of memory when %s. Requested memory: %d bytes, used memory: %d "
+                    + "bytes, free memory: %d bytes, total non-floating memory: %d bytes",
+                action,
+                requestedMemorySizeInBytes,
+                PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
+                PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes(),
+                PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()));
   }
 
   /**
@@ -910,6 +996,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized void handleExit() {
+    clearSliceReqHandler();
     if (Objects.nonNull(configReceiverId.get())) {
       try {
         ClusterConfigTaskExecutor.getInstance().handlePipeConfigClientExit(configReceiverId.get());
