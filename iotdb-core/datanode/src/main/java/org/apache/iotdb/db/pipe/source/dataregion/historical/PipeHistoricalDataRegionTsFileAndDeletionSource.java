@@ -1095,15 +1095,15 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       final TsFileResource resource, final Set<String> tableNames) {
     return isModelDetected
         && isTableModel
-        && tablePattern.isTableModelDataAllowedToBeCaptured()
+        && dataTablePattern.isTableModelDataAllowedToBeCaptured()
         && Objects.nonNull(resource)
         && Objects.nonNull(tableNames)
         && !tableNames.isEmpty()
         && tableNames.stream()
             .allMatch(
                 tableName ->
-                    tablePattern.matchesDatabase(resource.getDatabaseName())
-                        && tablePattern.matchesTable(tableName));
+                    dataTablePattern.matchesDatabaseAndTable(
+                        resource.getDatabaseName(), tableName));
   }
 
   private Event supplyDeletionEvent(final DeletionResource deletionResource) {
