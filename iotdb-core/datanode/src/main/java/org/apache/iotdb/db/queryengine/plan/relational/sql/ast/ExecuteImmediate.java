@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -58,8 +59,11 @@ public final class ExecuteImmediate extends Statement {
 
   public ExecuteImmediate(NodeLocation location, StringLiteral sql, List<Literal> parameters) {
     super(location);
-    this.sql = requireNonNull(sql, "sql is null");
-    this.parameters = ImmutableList.copyOf(requireNonNull(parameters, "parameters is null"));
+    this.sql = requireNonNull(sql, DataNodeQueryMessages.EXCEPTION_SQL_IS_NULL_BEDB2B7A);
+    this.parameters =
+        ImmutableList.copyOf(
+            requireNonNull(
+                parameters, DataNodeQueryMessages.EXCEPTION_PARAMETERS_IS_NULL_418C7892));
   }
 
   public StringLiteral getSql() {

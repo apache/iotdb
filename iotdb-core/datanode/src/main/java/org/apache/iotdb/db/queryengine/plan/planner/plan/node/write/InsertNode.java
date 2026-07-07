@@ -478,15 +478,19 @@ public abstract class InsertNode extends SearchNode {
   public String[] getRawMeasurements() {
     String[] measurements = getMeasurements();
     MeasurementSchema[] measurementSchemas = getMeasurementSchemas();
-    String[] rawMeasurements = new String[measurements.length];
+    String[] rawMeasurements = measurements;
     for (int i = 0; i < measurements.length; i++) {
       if (measurementSchemas != null
           && i < measurementSchemas.length
           && measurementSchemas[i] != null) {
         // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementName();
-      } else {
-        rawMeasurements[i] = measurements[i];
+        String rawMeasurement = measurementSchemas[i].getMeasurementName();
+        if (!Objects.equals(rawMeasurement, measurements[i])) {
+          if (rawMeasurements == measurements) {
+            rawMeasurements = Arrays.copyOf(measurements, measurements.length);
+          }
+          rawMeasurements[i] = rawMeasurement;
+        }
       }
     }
     return rawMeasurements;

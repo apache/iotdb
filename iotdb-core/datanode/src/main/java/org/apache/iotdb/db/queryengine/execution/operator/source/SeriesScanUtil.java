@@ -208,27 +208,7 @@ public class SeriesScanUtil implements Accountable {
     dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending());
     this.dataSource = dataSource;
 
-    // updated filter concerning TTL
-    // IgnoreAllNullRows is false indicating that the current query is a table model query.
-    // In most cases, We can use this condition to determine from which model to obtain the ttl
-    // of the current device. However, it should be noted that for tree model data queried using
-    // table view, ttl also needs to be obtained from the tree model.
-    if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
-      if (deviceID != EMPTY_DEVICE_ID) {
-        long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
-        scanOptions.setTTLForTreeDevice(ttl);
-      }
-    } else {
-      if (scanOptions.timeFilterNeedUpdatedByTtl()) {
-        String databaseName = dataSource.getDatabaseName();
-        long ttl =
-            databaseName == null
-                ? Long.MAX_VALUE
-                : DataNodeTTLCache.getInstance()
-                    .getTTLForTable(databaseName, deviceID.getTableName());
-        scanOptions.setTTLForTableDevice(ttl);
-      }
-    }
+    updateFilterUsingTTL(dataSource);
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
@@ -251,6 +231,30 @@ public class SeriesScanUtil implements Accountable {
         endTime = Math.max(endTime, timeRange.getMax());
       }
       satisfiedTimeRange = new TimeRange(startTime, endTime);
+    }
+  }
+
+  protected void updateFilterUsingTTL(QueryDataSource dataSource) {
+    // updated filter concerning TTL
+    // IgnoreAllNullRows is false indicating that the current query is a table model query.
+    // In most cases, We can use this condition to determine from which model to obtain the ttl
+    // of the current device. However, it should be noted that for tree model data queried using
+    // table view, ttl also needs to be obtained from the tree model.
+    if (context.isIgnoreAllNullRows() || scanOptions.isTableViewForTreeModel()) {
+      if (deviceID != EMPTY_DEVICE_ID) {
+        long ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+        scanOptions.setTTLForTreeDevice(ttl);
+      }
+    } else {
+      if (scanOptions.timeFilterNeedUpdatedByTtl()) {
+        String databaseName = dataSource.getDatabaseName();
+        long ttl =
+            databaseName == null
+                ? Long.MAX_VALUE
+                : DataNodeTTLCache.getInstance()
+                    .getTTLForTable(databaseName, deviceID.getTableName());
+        scanOptions.setTTLForTableDevice(ttl);
+      }
     }
   }
 
@@ -280,12 +284,12 @@ public class SeriesScanUtil implements Accountable {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IllegalStateException(
-          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
-              + unSeqPageReaders.isEmpty()
-              + " firstPageReader != null is "
-              + (firstPageReader != null)
-              + " mergeReader.hasNextTimeValuePair() = "
-              + mergeReader.hasNextTimeValuePair());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ALL_CACHED_PAGES_SHOULD_BE_CONSUMED_FIRST_UNSEQPAGEREADERS_55898EFB,
+              unSeqPageReaders.isEmpty(),
+              (firstPageReader != null),
+              mergeReader.hasNextTimeValuePair()));
     }
 
     if (firstChunkMetadata != null || !cachedChunkMetadata.isEmpty()) {
@@ -325,7 +329,8 @@ public class SeriesScanUtil implements Accountable {
   }
 
   public boolean canUseCurrentFileStatistics() {
-    checkState(firstTimeSeriesMetadata != null, "no first file");
+    checkState(
+        firstTimeSeriesMetadata != null, DataNodeQueryMessages.EXCEPTION_NO_FIRST_FILE_F5F2E276);
 
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
       return false;
@@ -372,12 +377,12 @@ public class SeriesScanUtil implements Accountable {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IllegalStateException(
-          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
-              + unSeqPageReaders.isEmpty()
-              + " firstPageReader != null is "
-              + (firstPageReader != null)
-              + " mergeReader.hasNextTimeValuePair() = "
-              + mergeReader.hasNextTimeValuePair());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ALL_CACHED_PAGES_SHOULD_BE_CONSUMED_FIRST_UNSEQPAGEREADERS_55898EFB,
+              unSeqPageReaders.isEmpty(),
+              (firstPageReader != null),
+              mergeReader.hasNextTimeValuePair()));
     }
 
     if (firstChunkMetadata != null) {
@@ -503,7 +508,7 @@ public class SeriesScanUtil implements Accountable {
   }
 
   public boolean canUseCurrentChunkStatistics() {
-    checkState(firstChunkMetadata != null, "no first chunk");
+    checkState(firstChunkMetadata != null, DataNodeQueryMessages.EXCEPTION_NO_FIRST_CHUNK_7DCEB14C);
 
     if (currentChunkOverlapped() || firstChunkMetadata.isModified()) {
       return false;

@@ -35,7 +35,7 @@ public final class RpcMessages {
 
   // TElasticFramedTransport - SSL
   public static final String NON_SSL_TO_SSL_PORT =
-      "可能正在发送非 SSL 请求%s到启用了 SSL 的 Thrift-RPC 端口，请确认使用了正确的配置";
+      "可能正在发送非 SSL 请求%s 到启用了 SSL 的 Thrift-RPC 端口，请确认使用了正确的配置";
 
   // ConfigurableTByteBuffer
   public static final String UNEXPECTED_END_OF_INPUT = "输入缓冲区意外结束";
@@ -43,6 +43,12 @@ public final class RpcMessages {
 
   // BaseRpcTransportFactory
   public static final String COULD_NOT_LOAD_KEYSTORE = "无法加载密钥库或信任库文件";
+
+  // AutoResizingBuffer
+  public static final String AUTO_RESIZING_BUFFER_ALLOCATE_INTERRUPTED =
+      "AutoResizingBuffer 分配 %d 字节内存时被中断";
+  public static final String AUTO_RESIZING_BUFFER_ALLOCATE_FAILED =
+      "AutoResizingBuffer 在 %d 次重试后仍无法分配 %d 字节内存";
 
   // IoTDBRpcDataSet / IoTDBJDBCDataSet
   public static final String CLOSE_OPERATION_SERVER_ERROR = "服务端关闭操作失败，原因：";
@@ -66,5 +72,23 @@ public final class RpcMessages {
   // SynchronizedHandler
   public static final String ERROR_IN_CALLING_METHOD = "调用方法时出错：";
 
+  // Shared fragments
+  public static final String EMPTY_MESSAGE = "";
+  public static final String REMOTE_ADDRESS_PREFIX = " 来自 ";
+
   private RpcMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_SIZE_COLUMNINDEX2TSBLOCKCOLUMNINDEXLIST_ARG_DOESN_T_EQUAL_SIZE_COLUMNNAMELIST_ARG_F1209A2B = "columnIndex2TsBlockColumnIndexList 的大小 %s 不等于 columnNameList 的大小 %s。";
+  public static final String EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326 = "由于网络连接问题，无法从服务器获取结果：{} ";
+  public static final String EXCEPTION_ARG_ARG_046AFB8B = "%d: %s";
+  public static final String EXCEPTION_LATER_REQUEST_SAME_GROUP_WILL_REDIRECTED_0A61CB0B = "同一组中的后续请求将被重定向到 ";
+  public static final String EXCEPTION_NO_SUPPORTED_KEYSTORE_OR_TRUSTSTORE_TYPE_IS_AVAILABLE_B6EA1528 =
+      "没有可用的 keystore 或 truststore 类型";
+  public static final String EXCEPTION_FAILED_TO_LOAD_KEYSTORE_OR_TRUSTSTORE_FILE_F3306313 =
+      "加载 keystore 或 truststore 文件失败";
+  public static final String EXCEPTION_KEYSTORE_OR_TRUSTSTORE_FILE_NOT_FOUND_5A6845B2 =
+      "未找到 keystore 或 truststore 文件：";
+
 }

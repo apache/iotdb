@@ -54,6 +54,7 @@ public class IoTDBLegacyPipeReceiverSecurityIT {
 
   @BeforeClass
   public static void setUp() {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDatanodeMemoryProportion("3:3:1:1:1:0");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

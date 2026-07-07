@@ -122,8 +122,9 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         // skip pipe creation
         consensusTopicNames.add(topicName);
         LOGGER.info(
-            "CreateSubscriptionProcedure: topic [{}] uses consensus subscription mode "
-                + "(mode={}), skipping pipe creation",
+            ProcedureMessages
+                    .LOG_CREATESUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_031CF049
+                + ProcedureMessages.LOG_MODE_ARG_SKIPPING_PIPE_CREATION_5F4D1026,
             topicName,
             topicMode);
         continue;
@@ -134,7 +135,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       if (!subscriptionInfo.get().isTopicSubscribedByConsumerGroup(topicName, consumerGroupId)
           // even if there existed subscription meta, if there is no corresponding pipe meta, it
           // will try to create the pipe
-          || !pipeTaskInfo.get().isPipeExisted(pipeName)) {
+          || !pipeTaskInfo.get().isPipeExisted(pipeName, topicMeta.visibleUnderTableModel())) {
         createPipeProcedures.add(
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
@@ -203,27 +204,30 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
 
     if (!consensusTopicNames.isEmpty()) {
       LOGGER.info(
-          "CreateSubscriptionProcedure: consensus-based topics {} will be handled by DataNode "
-              + "via consumer group meta push (no pipe creation needed)",
+          ProcedureMessages
+                  .LOG_CREATESUBSCRIPTIONPROCEDURE_CONSENSUS_BASED_TOPICS_ARG_WILL_HANDLED_DATANODE_90A9C2FD
+              + ProcedureMessages.LOG_VIA_CONSUMER_GROUP_META_PUSH_NO_PIPE_CREATION_NEEDED_D56CFE31,
           consensusTopicNames);
     }
 
     // Push pipe meta to data nodes (only for non-consensus pipe-based topics)
     if (!createPipeProcedures.isEmpty()) {
-      final List<String> pipeNames =
+      final List<PipeStaticMeta> pipeStaticMetas =
           createPipeProcedures.stream()
-              .map(CreatePipeProcedureV2::getPipeName)
+              .map(CreatePipeProcedureV2::getPipeStaticMeta)
               .collect(Collectors.toList());
       final String exceptionMessage =
           AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
-              null, pushMultiPipeMetaToDataNodes(pipeNames, env));
+              null, pushMultiPipeMetaToDataNodes(pipeStaticMetas, env));
       if (!exceptionMessage.isEmpty()) {
         // throw exception instead of logging warn, do not rely on metadata synchronization
         throw new SubscriptionException(
             String.format(
                 ProcedureMessages
                     .FAILED_TO_CREATE_PIPES_WHEN_CREATING_SUBSCRIPTION_WITH_REQUEST_DETAILS,
-                pipeNames,
+                pipeStaticMetas.stream()
+                    .map(PipeStaticMeta::getPipeName)
+                    .collect(Collectors.toList()),
                 subscribeReq,
                 exceptionMessage));
       }
@@ -243,7 +247,11 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     // Rollback CreatePipeProcedureV2s
     final List<ConfigPhysicalPlan> dropPipePlans =
         createPipeProcedures.stream()
-            .map(procedure -> new DropPipePlanV2(procedure.getPipeName()))
+            .map(
+                procedure ->
+                    new DropPipePlanV2(
+                        procedure.getPipeName(),
+                        procedure.getPipeStaticMeta().visibleUnderTableModel()))
             .collect(Collectors.toList());
     TSStatus response;
     try {

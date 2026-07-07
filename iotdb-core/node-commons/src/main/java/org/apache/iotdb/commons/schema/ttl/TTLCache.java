@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.schema.ttl;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -90,7 +91,8 @@ public class TTLCache {
     int start = nodes[0].equals("root") ? 1 : 0;
     if (nodes.length <= start) {
       return new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode())
-          .setMessage(String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes));
+          .setMessage(
+              String.join(IoTDBConstant.PATH_SEPARATOR + SchemaMessages.EMPTY_MESSAGE, nodes));
     } else if (nodes.length == start + 1) {
       // if path equals to root.**, then unset it to configured ttl
       if (nodes[0].equals(IoTDBConstant.PATH_ROOT)
@@ -110,9 +112,10 @@ public class TTLCache {
         // there is no matching path on ttl cache tree
         return new TSStatus(TSStatusCode.PATH_NOT_EXIST.getStatusCode())
             .setMessage(
-                "Not TTL rule"
-                    + " set for "
-                    + String.join(IoTDBConstant.PATH_SEPARATOR + "", nodes));
+                SchemaMessages.MESSAGE_NOT_TTL_RULE_669A7BA4
+                    + SchemaMessages.MESSAGE_SET_4BE61E08
+                    + String.join(
+                        IoTDBConstant.PATH_SEPARATOR + SchemaMessages.EMPTY_MESSAGE, nodes));
       }
       if (hasNonDefaultTTL) {
         parentOfSubPathToBeRemoved = current;

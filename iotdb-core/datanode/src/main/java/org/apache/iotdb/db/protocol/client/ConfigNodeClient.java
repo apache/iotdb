@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -169,6 +170,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -227,7 +229,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   private static final long REGISTER_LEADER_WARMING_UP_RETRY_TIMEOUT_MS = 60_000L;
 
   private static final String UNSUPPORTED_INVOCATION =
-      "This method is not supported for invocation by DataNode";
+      DataNodeMiscMessages.UNSUPPORTED_INVOCATION_BY_DATANODE;
 
   private final ThriftClientProperty property;
 
@@ -397,8 +399,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
         if (!isFirstInitiated) {
           logger.info(
-              "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
-                  + "leader or not ready yet, will try again later",
+              DataNodeMiscMessages.FAILED_CONNECT_CONFIG_NODE_NOT_LEADER,
               configNode,
               config.getAddressAndPort());
         }
@@ -407,8 +408,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       if (status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()) {
         if (!isFirstInitiated) {
           logger.info(
-              "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry."
-                  + " Reason: {}",
+              DataNodeMiscMessages
+                  .MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163,
               configNode,
               config.getAddressAndPort(),
               status.getMessage());
@@ -746,6 +747,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress()
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showRepairDataPartitionTableProgress(),
+        resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TSStatus operatePermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.operatePermission(req), status -> !updateConfigNodeLeader(status));
@@ -881,7 +890,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus loadConfiguration() throws TException {
     throw new UnsupportedOperationException(
-        UNSUPPORTED_INVOCATION + ", please call submitLoadConfigurationTask instead");
+        DataNodeMiscMessages.UNSUPPORTED_INVOCATION_BY_DATANODE_USE_SUBMIT_LOAD_CONFIGURATION_TASK);
   }
 
   @Override
@@ -1242,6 +1251,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus createTopic(TCreateTopicReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTopic(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus alterTopic(TAlterTopicReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterTopic(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

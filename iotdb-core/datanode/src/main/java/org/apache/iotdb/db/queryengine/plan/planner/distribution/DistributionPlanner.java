@@ -307,7 +307,8 @@ public class DistributionPlanner {
         ExchangeNode exchangeNode = (ExchangeNode) root;
         Validate.isTrue(
             exchangeNode.getChild() instanceof MultiChildrenSinkNode,
-            "child of ExchangeNode must be MultiChildrenSinkNode");
+            DataNodeQueryMessages
+                .EXCEPTION_CHILD_OF_EXCHANGENODE_MUST_BE_MULTICHILDRENSINKNODE_1BF715FD);
         MultiChildrenSinkNode sinkNode = (MultiChildrenSinkNode) (exchangeNode.getChild());
 
         // We cut off the subtree to make the ExchangeNode as the leaf node of current PlanFragment

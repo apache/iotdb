@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -77,7 +78,7 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
         break;
       default:
         throw new IllegalArgumentException(
-            "Unsupported precision: "
+            CalcMessages.EXCEPTION_UNSUPPORTED_PRECISION_CDB58979
                 + CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
 
@@ -100,7 +101,7 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
         return TimeUnit.MILLISECONDS.toNanos(epochMilliSecond) + nanoAdjustment;
       default:
         throw new IllegalArgumentException(
-            "Unknown precision: "
+            CalcMessages.EXCEPTION_UNKNOWN_PRECISION_0119BEB0
                 + CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
   }
@@ -115,7 +116,7 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
         return timestamp;
       default:
         throw new IllegalArgumentException(
-            "Unknown precision: "
+            CalcMessages.EXCEPTION_UNKNOWN_PRECISION_0119BEB0
                 + CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
   }

@@ -36,6 +36,8 @@ public final class DataNodeSchemaMessages {
       "SchemaRegion(id = {}) has been deleted, skiped";
   public static final String FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT =
       "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.";
+  public static final String TREE_VIEW_TABLE_CANNOT_BE_WRITTEN_OR_DELETED =
+      "The table %s.%s is a view from tree, cannot be written or deleted from";
   public static final String PEER_IS_SHUTTING_DOWN = "Peer is shutting down now.";
   public static final String SCHEMA_REGION_DUPLICATED =
       "SchemaRegion [%s] is duplicated between [%s] and [%s], and the former one has been recovered.";
@@ -396,6 +398,8 @@ public final class DataNodeSchemaMessages {
 
   public static final String SYSTEM_VIEW_NOT_SUPPORT_SHOW_CREATE =
       "The system view does not support show create.";
+  public static final String SYSTEM_DATABASE_NOT_SUPPORT_SHOW_CREATE =
+      "The system database does not support show create.";
 
   // ======================== Traverser ========================
 
@@ -605,4 +609,123 @@ public final class DataNodeSchemaMessages {
   public static final String ILLEGAL_PATH_LOG = "illegal path {}";
 
   private DataNodeSchemaMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional log messages
+  // ---------------------------------------------------------------------------
+  public static final String SCHEMA_LOG_FLUSHING_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_IMMUTABLE_7B7CD373 =
+      "Flushing/Working MemTable - add current query context to immutable TVList's query list";
+  public static final String SCHEMA_LOG_FLUSHING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_BEB0D766 =
+      "Flushing MemTable - add current query context to mutable TVList's query list";
+  public static final String SCHEMA_LOG_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_8C937414 =
+      "Working MemTable - add current query context to mutable TVList's query list when it's "
+          + "sorted or no other query on it";
+  public static final String SCHEMA_LOG_WORKING_MEMTABLE_CLONE_MUTABLE_TVLIST_AND_REPLACE_OLD_TVLIST_FD1EAE22 =
+      "Working MemTable - clone mutable TVList and replace old TVList in working MemTable";
+  public static final String PATH_DOES_NOT_START_WITH_FMT = "%s doesn't start with %s";
+  public static final String ALIAS_DUPLICATED_FULLPATH_OTHER_MEASUREMENT_FMT =
+      "The alias is duplicated with the name or alias of other measurement, alias: %s, fullPath: %s, otherMeasurement: %s";
+  public static final String TAG_ACTION_DELETE = "Delete";
+  public static final String TAG_ACTION_UPSERT = "Upsert";
+  public static final String TAG_ACTION_DROP = "Drop";
+  public static final String TAG_ACTION_SET = "Set";
+  public static final String TAG_ACTION_RENAME = "Rename";
+  public static final String NESTED_LOGICAL_VIEW_UNSUPPORTED_FMT =
+      "The source of view [%s] is also a view! Nested view is unsupported! Please check it.";
+  public static final String GET_SCHEMA_AS_LOGICAL_VIEW_SCHEMA_UNSUPPORTED =
+      "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache.";
+  public static final String DEVICE_TEMPLATE_ALREADY_ACTIVATED_ON_PATH_FMT =
+      "Device Template has already been activated on path %s, there's no need to activate again.";
+  public static final String SOME_TASK_DELETING_TIMESERIES_FMT =
+      "Some task is deleting timeseries [%s]";
+  public static final String PATH_ALREADY_EXIST_FMT = "Path [%s] already exist";
+  public static final String MNODE_TYPE_MISMATCH_FMT = "MNode [%s] is not a %s.";
+  public static final String ALIAS_FOR_PATH_ALREADY_EXIST_FMT =
+      "Alias [%s] for Path [%s] already exist";
+  public static final String DATABASE_NOT_SET_FOR_SERIES_PATH_FMT =
+      "%s for current seriesPath: [%s]";
+  public static final String DATABASE_ALREADY_CREATED_AS_DATABASE_FMT =
+      "%s has already been created as database";
+  public static final String SCHEMA_QUOTA_EXCEEDED_FMT =
+      "The current metadata capacity has exceeded the cluster quota. Please review your "
+          + "configuration on ConfigNode or delete some existing %s to comply with the quota.";
+  public static final String DATABASE_QUOTA_EXCEEDED_FMT =
+      "The current database number has exceeded the cluster quota. The maximum number of cluster "
+          + "databases allowed is %d, Please review your configuration database_limit_threshold "
+          + "or delete some existing database to comply with the quota.";
+  public static final String SERIES_OVERFLOW_FMT =
+      "Too many timeseries in memory without device template(current memory: %s, series num: %s). "
+          + "To optimize memory, DEVICE TEMPLATE is more recommended when devices have same time series.";
+  public static final String ILLEGAL_PARAMETER_FAILED_CREATE_TIMESERIES_FMT =
+      "%s. Failed to create timeseries for path %s";
+  public static final String PATH_NOT_EXIST_WRONG_MESSAGE = "Path [%s] does not exist";
+  public static final String SOURCE_PATH_NOT_EXIST_WRONG_MESSAGE =
+      "The source path [%s] of view [%s] does not exist.";
+  public static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
+      "Timeseries [%s] does not exist or is represented by device template";
+  public static final String TEMPLATE_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
+      "Timeseries [%s] does not exist or is not represented by device template";
+  public static final String VIEW_NOT_EXIST_WRONG_MESSAGE = "View [%s] does not exist";
+  public static final String PATH_LIST_ELLIPSIS_SEPARATOR = " ... ";
+  public static final String REGISTERED_TYPE_STRING = "registered type";
+  public static final String NULL_VALUE = "null";
+  public static final String DATA_TYPE_MISMATCH_REGISTERED_TYPE_FMT =
+      "data type of %s.%s is not consistent, %s %s, inserting type %s, timestamp %s, value %s";
+  public static final String DATA_TYPE_AND_VALUE_MISMATCH_FMT =
+      "data type and value of %s.%s is not consistent, inserting type %s, timestamp %s, value %s";
+  public static final String SCHEMA_DIR_CREATION_FAILED_FMT =
+      "create database schema folder %s failed.";
+  public static final String MNODE_NOT_PINNED = "MNode has not been pinned.";
+  public static final String MNODE_NOT_CACHED = "MNode has not been cached or has been evicted.";
+  public static final String TEMPLATE_IS_IN_USE_ON_FMT = "Template is in use on %s";
+  public static final String CANNOT_CREATE_TIMESERIES_TEMPLATE_SET_FMT =
+      "Cannot create timeseries [%s] since device template [%s] already set on path [%s].";
+  public static final String CANNOT_SET_DEVICE_TEMPLATE_TIMESERIES_UNDER_PATH_FMT =
+      "Cannot set device template [%s] to path [%s] since there's timeseries under path [%s].";
+  public static final String FAILED_CREATE_DUPLICATED_TEMPLATE_FMT =
+      "Failed to create duplicated template for path %s";
+  public static final String TEMPLATE_ON_PATH_DIFFERENT_FROM_FMT =
+      "The template on %s is different from %s";
+  public static final String UNDEFINED_TEMPLATE_NAME_FMT = "Undefined template name: %s";
+  public static final String COLOSSAL_RECORD_FMT =
+      "Record of key [%s] is too large for SchemaFile to store, content size:%d";
+  public static final String KEY_TOO_LARGE_FOR_INTERNAL_PAGE_FMT =
+      "Key [%s] is too large to store in a InternalPage as index entry.";
+  public static final String KEY_ALIAS_PAIR_TOO_LARGE_FMT =
+      "Key-Alias pair (%s, %s) is too large for SchemaFile to store.";
+  public static final String SEGMENT_OVERFLOW_FMT = "Segment overflow  : %d";
+  public static final String SEGMENT_NOT_ENOUGH_SPACE = "Segment not enough space";
+  public static final String SEGMENT_NOT_ENOUGH_SPACE_AFTER_SPLIT_FMT =
+      "Segment not enough space even after split and compact to insert: %s";
+  public static final String SEGMENT_NOT_FOUND_FMT = "Segment(index:%d) not found in page(index:%d).";
+  public static final String SEGMENT_IS_NOT_LAST_FMT =
+      "Segment(index:%d) is not the last segment within the page";
+  public static final String NO_SPLITTABLE_SEGMENT_FOUND_FMT =
+      "No splittable segment found in page [%s]";
+  public static final String PBTREE_FILE_LOG_CORRUPTED_FMT =
+      "PBTreeFileLog [%s] corrupted for [%s].";
+  public static final String RECORD_DUPLICATED_FMT = "Segment has duplicated record key : %s";
+  public static final String PBTREE_FILE_NOT_EXISTS_FMT = "PBTree file [%s] not exists.";
+  public static final String SCHEMA_PAGE_OVERFLOW_FMT =
+      "Page [%s] in pbtree file runs out of space or contains too many segments.";
+  public static final String SOURCE_PATH_DELETED_FMT = "The source path [%s] is deleted";
+  public static final String BROKEN_VIEW_UNMATCHED_FMT =
+      "View is broken! The source path [%s] maps to unmatched %s path(s): %s.";
+  public static final String INSERT_NON_WRITABLE_VIEW_FMT =
+      "Can not insert data to a view which is not alias series. (View path: %s)";
+  public static final String INSERT_NON_WRITABLE_VIEW =
+      "Can not insert data to a view which is not alias series.";
+  public static final String DATABASE_NOT_SET = "Database is not set";
+  public static final String DUPLICATE_INSERTION_WRONG_MESSAGE =
+      "Insertion is illegal because measurement [%s] under device [%s] is duplicate.";
+  public static final String VIEW_IS_UNSUPPORTED_FMT = "View unsupported, because: %s";
+  public static final String VIEW_CONTAINS_AGGREGATION_FUNCTION_FMT =
+      "This view contains aggregation function(s) named [%s]";
+  public static final String EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB = "operatorContext is null";
+  public static final String EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C = "child operator is null";
+  public static final String EXCEPTION_DOT_9D9B854A = ".";
+  public static final String EMPTY_MESSAGE = "";
+  public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
+  public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "Skip rollback renaming old table {}.{} because it has been handled.";
+  public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "Skip commit-update table {}.{} because it has been handled.";
+
 }

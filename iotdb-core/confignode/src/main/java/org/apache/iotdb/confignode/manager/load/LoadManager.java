@@ -186,6 +186,12 @@ public class LoadManager {
     routeBalancer.clearRegionPriority();
   }
 
+  public void reloadHeartbeatInterval() {
+    heartbeatService.reloadHeartbeatInterval();
+    statisticsService.reloadHeartbeatInterval();
+    eventService.reloadHeartbeatInterval();
+  }
+
   public boolean isLoadReady() {
     return loadReady.get() || tryUpdateLoadReady();
   }

@@ -115,12 +115,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ReadTsFileTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.rowpattern.RowPatternToIrRewriter;
@@ -151,6 +154,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -209,15 +213,18 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
       final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
       PredicateWithUncorrelatedScalarSubqueryReconstructor
           predicateWithUncorrelatedScalarSubqueryReconstructor) {
-    requireNonNull(analysis, "analysis is null");
-    requireNonNull(symbolAllocator, "symbolAllocator is null");
-    requireNonNull(queryContext, "queryContext is null");
-    requireNonNull(outerContext, "outerContext is null");
-    requireNonNull(sessionInfo, "session is null");
-    requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
+    requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
+    requireNonNull(
+        symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+    requireNonNull(queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_IS_NULL_761DB539);
+    requireNonNull(outerContext, DataNodeQueryMessages.EXCEPTION_OUTERCONTEXT_IS_NULL_031CD366);
+    requireNonNull(sessionInfo, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
+    requireNonNull(
+        recursiveSubqueries, DataNodeQueryMessages.EXCEPTION_RECURSIVESUBQUERIES_IS_NULL_6AD8A180);
     requireNonNull(
         predicateWithUncorrelatedScalarSubqueryReconstructor,
-        "predicateWithUncorrelatedScalarSubqueryReconstructor is null");
+        DataNodeQueryMessages
+            .EXCEPTION_PREDICATEWITHUNCORRELATEDSCALARSUBQUERYRECONSTRUCTOR_IS_NULL_B264FEBC);
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -404,7 +411,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   public static QualifiedObjectName getQualifiedObjectName(Table table, Analysis analysis) {
     final QualifiedName qualifiedName = analysis.getRelationName(table);
     if (!qualifiedName.getPrefix().isPresent()) {
-      throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
+      throw new IllegalStateException(
+          String.format(DataNodeQueryMessages.TABLE_HAS_NO_PREFIX_FMT, table.getName()));
     }
 
     final QualifiedObjectName qualifiedObjectName =
@@ -658,7 +666,9 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
           // the case when we mix symbols from both left and right join side on either side of
           // condition.
           throw new SemanticException(
-              format("Complex ASOF main join expression [%s] is not supported", asofCriteria));
+              format(
+                  DataNodeQueryMessages.COMPLEX_ASOF_MAIN_JOIN_EXPRESSION_S_IS_NOT_SUPPORTED,
+                  asofCriteria));
         }
       }
 
@@ -1175,7 +1185,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
                 matchNumberSymbol);
       } else {
         throw new SemanticException(
-            "Unexpected descriptor type: " + accessor.getDescriptor().getClass().getName());
+            DataNodeQueryMessages.UNEXPECTED_DESCRIPTOR_TYPE
+                + accessor.getDescriptor().getClass().getName());
       }
 
       Symbol symbol = symbolAllocator.newSymbol(name, analysis.getType(accessor.getExpression()));
@@ -1226,7 +1237,9 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
 
   @Override
   public RelationPlan visitUnion(Union node, Void context) {
-    Preconditions.checkArgument(!node.getRelations().isEmpty(), "No relations specified for UNION");
+    Preconditions.checkArgument(
+        !node.getRelations().isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_NO_RELATIONS_SPECIFIED_FOR_UNION_70CE42C4);
 
     SetOperationPlan setOperationPlan = process(node);
 
@@ -1246,7 +1259,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   @Override
   public RelationPlan visitIntersect(Intersect node, Void context) {
     Preconditions.checkArgument(
-        !node.getRelations().isEmpty(), "No relations specified for intersect");
+        !node.getRelations().isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_NO_RELATIONS_SPECIFIED_FOR_INTERSECT_76B0ED3B);
     SetOperationPlan setOperationPlan = process(node);
 
     PlanNode intersectNode =
@@ -1264,7 +1278,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   @Override
   public RelationPlan visitExcept(Except node, Void context) {
     Preconditions.checkArgument(
-        !node.getRelations().isEmpty(), "No relations specified for except");
+        !node.getRelations().isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_NO_RELATIONS_SPECIFIED_FOR_EXCEPT_C8E4B4AA);
     SetOperationPlan setOperationPlan = process(node);
 
     PlanNode exceptNode =
@@ -1459,6 +1474,11 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   @Override
   public RelationPlan visitTableFunctionInvocation(TableFunctionInvocation node, Void context) {
     TableFunctionInvocationAnalysis functionAnalysis = analysis.getTableFunctionAnalysis(node);
+    if (DataNodeTableBuiltinTableFunction.READ_TSFILE
+        .getFunctionName()
+        .equalsIgnoreCase(functionAnalysis.getFunctionName())) {
+      return planExternalTsFileScan(node, functionAnalysis);
+    }
 
     ImmutableList.Builder<PlanNode> sources = ImmutableList.builder();
     ImmutableList.Builder<TableFunctionNode.TableArgumentProperties> sourceProperties =
@@ -1590,6 +1610,66 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     return new RelationPlan(root, analysis.getScope(node), outputSymbols.build(), outerContext);
   }
 
+  private RelationPlan planExternalTsFileScan(
+      TableFunctionInvocation node, TableFunctionInvocationAnalysis functionAnalysis) {
+    if (!(functionAnalysis.getTableFunctionHandle()
+        instanceof ReadTsFileTableFunction.ReadTsFileTableFunctionHandle)) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.READ_TSFILE_TABLE_FUNCTION_HANDLE_IS_INVALID);
+    }
+
+    ReadTsFileTableFunction.ReadTsFileTableFunctionHandle handle =
+        (ReadTsFileTableFunction.ReadTsFileTableFunctionHandle)
+            functionAnalysis.getTableFunctionHandle();
+    Scope scope = analysis.getScope(node);
+    RelationType relationType = scope.getRelationType();
+
+    ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<Symbol, ColumnSchema> assignmentsBuilder = ImmutableMap.builder();
+    Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
+    int tagIndex = 0;
+    for (int i = 0; i < relationType.getAllFieldCount(); i++) {
+      Field field = relationType.getFieldByIndex(i);
+      Symbol symbol = symbolAllocator.newSymbol(field);
+      TsTableColumnCategory columnCategory = handle.getOutputColumnCategories().get(i);
+      outputSymbolsBuilder.add(symbol);
+      assignmentsBuilder.put(
+          symbol,
+          new ColumnSchema(
+              field.getName().orElse(null), field.getType(), field.isHidden(), columnCategory));
+      if (columnCategory == TsTableColumnCategory.TAG) {
+        tagAndAttributeIndexMap.put(symbol, tagIndex++);
+      }
+    }
+
+    List<Symbol> outputSymbols = outputSymbolsBuilder.build();
+    Map<Symbol, ColumnSchema> assignments = assignmentsBuilder.build();
+    QualifiedObjectName qualifiedObjectName =
+        createExternalTsFileQualifiedObjectName(handle.getTableName());
+
+    ExternalTsFileScanNode scanNode =
+        new ExternalTsFileScanNode(
+            idAllocator.genPlanNodeId(),
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            tagAndAttributeIndexMap,
+            queryContext.createExternalTsFileQueryResource(
+                handle.getTableName(), handle.getTsFilePaths(), assignments));
+
+    return new RelationPlan(scanNode, scope, outputSymbols, outerContext);
+  }
+
+  private QualifiedObjectName createExternalTsFileQualifiedObjectName(String tableName) {
+    String normalizedTableName = tableName.toLowerCase(Locale.ENGLISH);
+    if (normalizedTableName.indexOf('.') >= 0) {
+      return QualifiedObjectName.valueOf(normalizedTableName);
+    }
+    String databaseName =
+        sessionInfo.getDatabaseName().orElse("external").toLowerCase(Locale.ENGLISH);
+    return new QualifiedObjectName(databaseName, normalizedTableName);
+  }
+
   private static void stayConsistent(
       String[] measurements, MeasurementSchema[] measurementSchemas) {
     int minLength = Math.min(measurements.length, measurementSchemas.length);
@@ -1634,12 +1714,21 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
         SkipToPosition skipToPosition,
         IrRowPattern pattern,
         Map<IrLabel, ExpressionAndValuePointers> variableDefinitions) {
-      this.measures = requireNonNull(measures, "measures is null");
-      this.measureOutputs = requireNonNull(measureOutputs, "measureOutputs is null");
+      this.measures =
+          requireNonNull(measures, DataNodeQueryMessages.EXCEPTION_MEASURES_IS_NULL_EC9D2431);
+      this.measureOutputs =
+          requireNonNull(
+              measureOutputs, DataNodeQueryMessages.EXCEPTION_MEASUREOUTPUTS_IS_NULL_923F7C4B);
       this.skipToLabels = ImmutableSet.copyOf(skipToLabels);
-      this.skipToPosition = requireNonNull(skipToPosition, "skipToPosition is null");
-      this.pattern = requireNonNull(pattern, "pattern is null");
-      this.variableDefinitions = requireNonNull(variableDefinitions, "variableDefinitions is null");
+      this.skipToPosition =
+          requireNonNull(
+              skipToPosition, DataNodeQueryMessages.EXCEPTION_SKIPTOPOSITION_IS_NULL_EFBA10CA);
+      this.pattern =
+          requireNonNull(pattern, DataNodeQueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
+      this.variableDefinitions =
+          requireNonNull(
+              variableDefinitions,
+              DataNodeQueryMessages.EXCEPTION_VARIABLEDEFINITIONS_IS_NULL_5F7B8ED4);
     }
 
     public Map<Symbol, Measure> getMeasures() {

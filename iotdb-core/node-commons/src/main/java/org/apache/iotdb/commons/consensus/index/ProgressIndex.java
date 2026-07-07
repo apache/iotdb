@@ -117,6 +117,17 @@ public abstract class ProgressIndex implements Accountable {
   }
 
   /**
+   * A.isEqualOrAfter(B) is true if and only if A already covers B in every tuple member. In other
+   * words, blending B into A does not advance A.
+   *
+   * @param progressIndex the progress index to be compared
+   * @return true if and only if this progress index is equal to or after the given progress index
+   */
+  public final boolean isEqualOrAfter(@Nonnull final ProgressIndex progressIndex) {
+    return updateToMinimumEqualOrIsAfterProgressIndex(progressIndex).equals(this);
+  }
+
+  /**
    * Define the isEqualOrAfter relation, A.isEqualOrAfter(B) if and only if each tuple member in A
    * is greater than or equal to B in the corresponding total order relation.
    *

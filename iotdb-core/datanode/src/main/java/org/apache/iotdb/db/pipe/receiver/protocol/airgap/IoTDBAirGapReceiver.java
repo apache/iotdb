@@ -231,8 +231,11 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     if (length > maxLength) {
       throw new IOException(
           String.format(
-              "AirGap payload length (%d) exceeds maximum allowed (%d). Closing connection from %s",
-              length, maxLength, socket.getRemoteSocketAddress()));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_AIRGAP_PAYLOAD_LENGTH_D_EXCEEDS_MAXIMUM_ALLOWED_D_CLOSING_D1712B3D,
+              length,
+              maxLength,
+              socket.getRemoteSocketAddress()));
     }
 
     final byte[] resultBuffer = new byte[length];
@@ -264,7 +267,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       if (isELanguage) {
         throw new IOException(
             String.format(
-                "Detected suspicious nested E-Language prefix. Closing connection from %s",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_DETECTED_SUSPICIOUS_NESTED_E_LANGUAGE_PREFIX_CLOSING_CONNECTION_69C76172,
                 socket.getRemoteSocketAddress()));
       }
       isELanguagePayload = true;

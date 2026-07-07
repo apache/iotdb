@@ -562,7 +562,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  private void clearUp(
+  public static void clearUp(
       IClientSession clientSession,
       Long statementId,
       Long queryId,
@@ -572,7 +572,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     clientSession.removeQueryId(statementId, queryId);
   }
 
-  private void clearUp(
+  private static void clearUp(
       IClientSession clientSession,
       Long statementId,
       Long queryId,
@@ -1043,7 +1043,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     int dataRegionSize = dataRegionList.size();
     if (dataRegionSize != 1) {
       throw new IllegalArgumentException(
-          "dataRegionList.size() should only be 1 now,  current size is " + dataRegionSize);
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_DATAREGIONLIST_SIZE_SHOULD_ONLY_BE_1_NOW_CURRENT_SIZE_IS_282E453C,
+              dataRegionSize));
     }
 
     Filter timeFilter = TimeFilterApi.between(startTime, endTime - 1);
@@ -1185,7 +1188,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         RpcUtils.getTSExecuteStatementResp(
             new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
                 .setMessage(
-                    "The \"executeFastLastDataQueryForOnePrefixPath\" dos not support wildcards."));
+                    DataNodeMiscMessages
+                        .MESSAGE_EXECUTEFASTLASTDATAQUERYFORONEPREFIXPATH_DOS_NOT_SUPPORT_WILDCARDS_8E8F44F5));
       }
 
       final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> resultMap =
@@ -2026,6 +2030,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
+      if (path.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
       // Step 1: transfer from DeleteStorageGroupsReq to Statement
       DeleteTimeSeriesStatement statement =
           StatementGenerator.createDeleteTimeSeriesStatement(path);

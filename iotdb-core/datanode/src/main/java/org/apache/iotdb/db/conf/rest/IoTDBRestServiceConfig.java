@@ -45,6 +45,9 @@ public class IoTDBRestServiceConfig {
   /** ssl trust Store password. */
   private String trustStorePwd = "";
 
+  /** SSL protocol. */
+  private String sslProtocol = "";
+
   /** ssl timeout. */
   private int idleTimeoutInSeconds = 50000;
 
@@ -76,6 +79,14 @@ public class IoTDBRestServiceConfig {
 
   public void setTrustStorePwd(String trustStorePwd) {
     this.trustStorePwd = trustStorePwd;
+  }
+
+  public String getSslProtocol() {
+    return sslProtocol;
+  }
+
+  public void setSslProtocol(String sslProtocol) {
+    this.sslProtocol = sslProtocol;
   }
 
   public int getIdleTimeoutInSeconds() {

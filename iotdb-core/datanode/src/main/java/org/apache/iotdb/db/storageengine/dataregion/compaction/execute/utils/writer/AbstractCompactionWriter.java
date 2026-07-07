@@ -24,13 +24,16 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -66,6 +69,13 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   // The index of the array corresponds to subTaskId.
   protected int[] chunkPointNumArray = new int[subTaskNum];
 
+  // Each sub task has estimated total size of written points in current chunk.
+  // The index of the array corresponds to subTaskId.
+  protected long[] writtenPointTotalSizeArray = new long[subTaskNum];
+
+  // Whether each sub task's current chunk writer contains TEXT, STRING, BLOB or OBJECT.
+  protected boolean[] hasVariableLengthTypeArray = new boolean[subTaskNum];
+
   // used to control the target chunk size
   protected long targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
@@ -77,7 +87,12 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   @SuppressWarnings("squid:S1170")
   private final long checkPoint = (targetChunkPointNum >= 10 ? targetChunkPointNum : 10) / 10;
 
-  private long lastCheckIndex = 0;
+  private final long[] lastCheckIndexArray = new long[subTaskNum];
+
+  // When estimated size of written points reaches check point, then check chunk size.
+  private final long writtenPointTotalSizeCheckPoint = Math.max(targetChunkSize / 10, 1L);
+
+  private final long[] lastWrittenPointTotalSizeCheckIndexArray = new long[subTaskNum];
 
   // if unsealed chunk size is lower then this, then deserialize next chunk no matter it is
   // overlapped or not
@@ -122,10 +137,24 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   public void startMeasurement(String measurement, IChunkWriter chunkWriter, int subTaskId) {
-    lastCheckIndex = 0;
+    resetChunkWriterStatistics(subTaskId);
     lastTimeSet[subTaskId] = false;
     chunkWriters[subTaskId] = chunkWriter;
     measurementId[subTaskId] = measurement;
+    hasVariableLengthTypeArray[subTaskId] = containsVariableLengthType(chunkWriter);
+  }
+
+  private boolean containsVariableLengthType(IChunkWriter chunkWriter) {
+    if (chunkWriter instanceof ChunkWriterImpl) {
+      return ((ChunkWriterImpl) chunkWriter).getDataType().isBinary();
+    }
+    AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
+    for (ValueChunkWriter valueChunkWriter : alignedChunkWriter.getValueChunkWriterList()) {
+      if (valueChunkWriter.getDataType().isBinary()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public abstract void endMeasurement(int subTaskId) throws IOException;
@@ -146,7 +175,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
    */
   public abstract void checkAndMayFlushChunkMetadata() throws IOException;
 
-  protected void writeDataPoint(long timestamp, TsPrimitiveType value, IChunkWriter chunkWriter) {
+  protected void writeDataPoint(
+      long timestamp, TsPrimitiveType value, IChunkWriter chunkWriter, int subTaskId) {
+    long writtenPointTotalSize = 0;
     if (chunkWriter instanceof ChunkWriterImpl) {
       ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
       switch (chunkWriterImpl.getDataType()) {
@@ -155,6 +186,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
         case BLOB:
         case OBJECT:
           chunkWriterImpl.write(timestamp, value.getBinary());
+          writtenPointTotalSize += value.getBinary().getLength();
           break;
         case DOUBLE:
           chunkWriterImpl.write(timestamp, value.getDouble());
@@ -180,7 +212,86 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     } else {
       AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
       alignedChunkWriter.write(timestamp, value.getVector());
+      if (hasVariableLengthTypeArray[subTaskId]) {
+        writtenPointTotalSize = estimateWrittenPointTotalSize(value);
+      }
     }
+    chunkPointNumArray[subTaskId]++;
+    if (hasVariableLengthTypeArray[subTaskId]) {
+      writtenPointTotalSizeArray[subTaskId] += writtenPointTotalSize;
+    }
+  }
+
+  private long estimateWrittenPointTotalSize(TsPrimitiveType value) {
+    long size = Long.BYTES;
+    TsPrimitiveType[] vector = value.getVector();
+    for (TsPrimitiveType tsPrimitiveType : vector) {
+      if (tsPrimitiveType == null) {
+        continue;
+      }
+      TSDataType dataType = tsPrimitiveType.getDataType();
+      switch (dataType) {
+        case TEXT:
+        case STRING:
+        case BLOB:
+        case OBJECT:
+          size += tsPrimitiveType.getBinary().getLength();
+          break;
+        case DOUBLE:
+        case INT64:
+        case TIMESTAMP:
+          size += Long.BYTES;
+          break;
+        case INT32:
+        case DATE:
+        case FLOAT:
+          size += Integer.BYTES;
+          break;
+        case BOOLEAN:
+          size += 1;
+          break;
+        default:
+          break;
+      }
+    }
+    return size;
+  }
+
+  protected long estimateWrittenPointTotalSize(TsBlock tsBlock) {
+    int pointCount = tsBlock.getPositionCount();
+    long size = (long) Long.BYTES * pointCount;
+    Column[] columns = tsBlock.getValueColumns();
+    for (Column column : columns) {
+      TSDataType dataType = column.getDataType();
+      if (dataType.isBinary()) {
+        for (int j = 0; j < pointCount; j++) {
+          if (column.isNull(j)) {
+            continue;
+          }
+          size += column.getBinary(j).getLength();
+        }
+        continue;
+      }
+      // This is only used as a checkpoint estimate, so fixed-width values use count directly.
+      switch (dataType) {
+        case DOUBLE:
+        case INT64:
+        case TIMESTAMP:
+          size += (long) Long.BYTES * pointCount;
+          break;
+        case INT32:
+        case DATE:
+        case FLOAT:
+          size += (long) Integer.BYTES * pointCount;
+          break;
+        case BOOLEAN:
+          size += pointCount;
+          break;
+        default:
+          break;
+      }
+    }
+    return size;
   }
 
   @SuppressWarnings("squid:S2445")
@@ -190,7 +301,14 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     synchronized (targetWriter) {
       targetWriter.writeChunk(chunkWriter);
     }
+    resetChunkWriterStatistics(subTaskId);
+  }
+
+  private void resetChunkWriterStatistics(int subTaskId) {
     chunkPointNumArray[subTaskId] = 0;
+    writtenPointTotalSizeArray[subTaskId] = 0;
+    lastCheckIndexArray[subTaskId] = 0;
+    lastWrittenPointTotalSizeCheckIndexArray[subTaskId] = 0;
   }
 
   public abstract EncryptParameter getEncryptParameter();
@@ -214,7 +332,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     synchronized (targetWriter) {
       // seal last chunk to file writer
       targetWriter.writeChunk(chunkWriters[subTaskId]);
-      chunkPointNumArray[subTaskId] = 0;
+      resetChunkWriterStatistics(subTaskId);
       targetWriter.writeChunk(chunk, chunkMetadata);
     }
   }
@@ -232,7 +350,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriters[subTaskId];
       // seal last chunk to file writer
       targetWriter.writeChunk(alignedChunkWriter);
-      chunkPointNumArray[subTaskId] = 0;
+      resetChunkWriterStatistics(subTaskId);
 
       targetWriter.markStartingWritingAligned();
 
@@ -279,6 +397,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     chunkWriter.writePageHeaderAndDataIntoBuff(compressedPageData, pageHeader);
 
     chunkPointNumArray[subTaskId] += pageHeader.getStatistics().getCount();
+    if (hasVariableLengthTypeArray[subTaskId]) {
+      writtenPointTotalSizeArray[subTaskId] += pageHeader.getSerializedPageSize();
+    }
   }
 
   public abstract boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId)
@@ -303,29 +424,51 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     // flush new time page to chunk writer directly
     alignedChunkWriter.writePageHeaderAndDataIntoTimeBuff(compressedTimePageData, timePageHeader);
 
+    long writtenValuePageSize = 0;
     // flush new value pages to chunk writer directly
     for (int i = 0; i < valuePageHeaders.size(); i++) {
-      if (valuePageHeaders.get(i) == null) {
+      PageHeader valuePageHeader = valuePageHeaders.get(i);
+      if (valuePageHeader == null) {
         // sub sensor does not exist in current file or value page has been deleted completely
         alignedChunkWriter.getValueChunkWriterByIndex(i).writeEmptyPageToPageBuffer();
         continue;
       }
       alignedChunkWriter.writePageHeaderAndDataIntoValueBuff(
-          compressedValuePageDatas.get(i), valuePageHeaders.get(i), i);
+          compressedValuePageDatas.get(i), valuePageHeader, i);
+      if (hasVariableLengthTypeArray[subTaskId]) {
+        writtenValuePageSize += valuePageHeader.getSerializedPageSize();
+      }
     }
 
     chunkPointNumArray[subTaskId] += timePageHeader.getStatistics().getCount();
+    if (hasVariableLengthTypeArray[subTaskId]) {
+      // Direct-flushed pages are already serialized, so use page size as checkpoint estimate.
+      writtenPointTotalSizeArray[subTaskId] +=
+          timePageHeader.getSerializedPageSize() + writtenValuePageSize;
+    }
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(
       CompactionTsFileWriter fileWriter, IChunkWriter chunkWriter, int subTaskId)
       throws IOException {
-    if (chunkPointNumArray[subTaskId] >= (lastCheckIndex + 1) * checkPoint) {
-      // if chunk point num reaches the check point, then check if the chunk size over threshold
-      lastCheckIndex = chunkPointNumArray[subTaskId] / checkPoint;
+    if (chunkWriter instanceof FollowingBatchCompactionAlignedChunkWriter
+        && chunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, false)) {
+      sealChunk(fileWriter, chunkWriter, subTaskId);
+      return;
+    }
+    boolean reachesPointCheckPoint =
+        chunkPointNumArray[subTaskId] >= (lastCheckIndexArray[subTaskId] + 1) * checkPoint;
+    boolean reachesSizeCheckPoint =
+        hasVariableLengthTypeArray[subTaskId]
+            && writtenPointTotalSizeArray[subTaskId]
+                >= (lastWrittenPointTotalSizeCheckIndexArray[subTaskId] + 1)
+                    * writtenPointTotalSizeCheckPoint;
+    if (reachesPointCheckPoint || reachesSizeCheckPoint) {
+      lastCheckIndexArray[subTaskId] = chunkPointNumArray[subTaskId] / checkPoint;
+      lastWrittenPointTotalSizeCheckIndexArray[subTaskId] =
+          writtenPointTotalSizeArray[subTaskId] / writtenPointTotalSizeCheckPoint;
       if (chunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, false)) {
         sealChunk(fileWriter, chunkWriter, subTaskId);
-        lastCheckIndex = 0;
       }
     }
   }

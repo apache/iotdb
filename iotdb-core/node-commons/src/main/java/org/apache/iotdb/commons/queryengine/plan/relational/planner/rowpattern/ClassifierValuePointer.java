@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,7 +32,9 @@ public final class ClassifierValuePointer implements ValuePointer {
   private final LogicalIndexPointer logicalIndexPointer;
 
   public ClassifierValuePointer(LogicalIndexPointer logicalIndexPointer) {
-    this.logicalIndexPointer = requireNonNull(logicalIndexPointer, "logicalIndexPointer is null");
+    this.logicalIndexPointer =
+        requireNonNull(
+            logicalIndexPointer, QueryMessages.EXCEPTION_LOGICALINDEXPOINTER_IS_NULL_BF8B516B);
   }
 
   public LogicalIndexPointer getLogicalIndexPointer() {

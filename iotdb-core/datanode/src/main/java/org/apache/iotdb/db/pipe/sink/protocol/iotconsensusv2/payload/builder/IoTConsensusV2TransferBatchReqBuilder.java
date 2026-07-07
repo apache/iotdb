@@ -118,8 +118,7 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
 
     if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
       LOGGER.info(
-          "IoTConsensusV2TransferBatchReqBuilder: the max batch size is adjusted from {} to {} due to the "
-              + "memory restriction",
+          DataNodePipeMessages.IOTCONSENSUSV2TRANSFERBATCHREQBUILDER_THE_MAX_BATCH_SIZE_IS_ADJUSTED,
           requestMaxBatchSizeInBytes,
           getMaxBatchSizeInBytes());
     }

@@ -51,8 +51,7 @@ public class ExportSchemaTree extends AbstractExportSchema {
             .username(username)
             .password(password);
     if (useSsl) {
-      sessionBuilder =
-          sessionBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      sessionBuilder = configureSsl(sessionBuilder);
     }
     session = sessionBuilder.build();
     session.open(false);

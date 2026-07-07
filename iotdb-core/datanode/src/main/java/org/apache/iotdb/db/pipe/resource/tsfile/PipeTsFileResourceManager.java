@@ -56,6 +56,11 @@ public class PipeTsFileResourceManager {
       hardlinkOrCopiedFileToPipeTsFileResourceMap = new ConcurrentHashMap<>();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
 
+  public static String getPipeTsFileResourcePipeName(
+      final @Nullable String pipeName, final long creationTime) {
+    return Objects.isNull(pipeName) ? null : pipeName + "_" + creationTime;
+  }
+
   public File increaseFileReference(
       final File file, final boolean isTsFile, final @Nullable String pipeName) throws IOException {
     return increaseFileReference(file, isTsFile, pipeName, null);
@@ -170,8 +175,8 @@ public class PipeTsFileResourceManager {
     } catch (final Exception e) {
       throw new IOException(
           String.format(
-              "failed to get hardlink or copied file in pipe dir "
-                  + "for file %s, it is not a tsfile, mod file or resource file",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_GET_HARDLINK_OR_COPIED_FILE_IN_PIPE_DIR_FOR_FILE_F009D86E,
               file.getPath()),
           e);
     }

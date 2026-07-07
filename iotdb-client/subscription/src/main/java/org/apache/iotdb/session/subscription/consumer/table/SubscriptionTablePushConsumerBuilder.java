@@ -77,6 +77,24 @@ public class SubscriptionTablePushConsumerBuilder extends AbstractSubscriptionPu
   }
 
   @Override
+  public SubscriptionTablePushConsumerBuilder ownerId(final String ownerId) {
+    super.ownerId(ownerId);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePushConsumerBuilder ownerEpoch(final long ownerEpoch) {
+    super.ownerEpoch(ownerEpoch);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePushConsumerBuilder ownerEpoch(final Long ownerEpoch) {
+    super.ownerEpoch(ownerEpoch);
+    return this;
+  }
+
+  @Override
   public SubscriptionTablePushConsumerBuilder heartbeatIntervalMs(final long heartbeatIntervalMs) {
     super.heartbeatIntervalMs(heartbeatIntervalMs);
     return this;

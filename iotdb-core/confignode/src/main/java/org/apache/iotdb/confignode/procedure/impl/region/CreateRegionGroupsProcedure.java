@@ -36,7 +36,6 @@ import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -51,7 +50,9 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -107,6 +108,12 @@ public class CreateRegionGroupsProcedure
       case SHUNT_REGION_REPLICAS:
         persistPlan = new CreateRegionGroupsPlan();
         final OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
+        // RegionGroups that failed to reach a serving quorum have their redundant (already-created)
+        // replicas removed via an independent root RemoveRegionGroupProcedure. Submitting them as
+        // root procedures (instead of children) keeps this procedure from waiting for or being
+        // failed by the cleanup: each one retries forever until those replicas are deleted, while
+        // this procedure proceeds to activate the region groups that did form a quorum.
+        final List<RemoveRegionGroupProcedure> removeRegionGroupProcedures = new ArrayList<>();
         // Filter those RegionGroups that created successfully
         createRegionGroupsPlan
             .getRegionGroupMap()
@@ -154,7 +161,11 @@ public class CreateRegionGroupsProcedure
                                       .CREATEREGIONGROUPS_FAILED_TO_CREATE_SOME_REPLICAS_OF_REGIONGROUP_BUT_THIS,
                                   regionReplicaSet.getRegionId());
                             } else {
-                              // The redundant RegionReplicas should be deleted otherwise
+                              // The redundant RegionReplicas (the ones that did get created) should
+                              // be deleted otherwise
+                              final TRegionReplicaSet redundantReplicas =
+                                  new TRegionReplicaSet()
+                                      .setRegionId(regionReplicaSet.getRegionId());
                               regionReplicaSet
                                   .getDataNodeLocations()
                                   .forEach(
@@ -162,12 +173,13 @@ public class CreateRegionGroupsProcedure
                                         if (!failedRegionReplicas
                                             .getDataNodeLocations()
                                             .contains(targetDataNode)) {
-                                          RegionDeleteTask deleteTask =
-                                              new RegionDeleteTask(
-                                                  targetDataNode, regionReplicaSet.getRegionId());
-                                          offerPlan.appendRegionMaintainTask(deleteTask);
+                                          redundantReplicas.addToDataNodeLocations(targetDataNode);
                                         }
                                       });
+                              if (redundantReplicas.getDataNodeLocationsSize() > 0) {
+                                removeRegionGroupProcedures.add(
+                                    new RemoveRegionGroupProcedure(redundantReplicas));
+                              }
 
                               LOGGER.info(
                                   ProcedureMessages
@@ -188,6 +200,26 @@ public class CreateRegionGroupsProcedure
           LOGGER.warn(
               ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
         }
+        // Submit the redundant-replica cleanups as independent root procedures. This is
+        // intentionally NOT guarded by isStateDeserialized(): the executor persists a procedure at
+        // a state BEFORE that state's body has run (it advances the state on the previous cycle,
+        // then may stop at the inter-state boundary on a leader switch — see
+        // ProcedureExecutor#executeProcedure), so a recovery that lands on SHUNT_REGION_REPLICAS
+        // means the submissions have NOT happened yet. Skipping them would leave the
+        // already-created
+        // replicas of sub-quorum region groups on disk with no cleanup and no partition-table
+        // record
+        // (the else branch above never persisted them). Re-submitting on recovery is safe instead:
+        // the cleanups are recomputed from the serialized failedRegionReplicaSets, each gets a
+        // fresh
+        // procId and performs an idempotent delete, so a duplicate is harmless whereas a skip
+        // leaks.
+        removeRegionGroupProcedures.forEach(
+            removeRegionGroupProcedure ->
+                env.getConfigManager()
+                    .getProcedureManager()
+                    .getExecutor()
+                    .submitProcedure(removeRegionGroupProcedure));
         setNextState(CreateRegionGroupsState.REBALANCE_DATA_PARTITION_POLICY);
         break;
       case REBALANCE_DATA_PARTITION_POLICY:

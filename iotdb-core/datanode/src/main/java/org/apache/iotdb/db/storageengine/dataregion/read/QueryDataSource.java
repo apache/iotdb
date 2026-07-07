@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -127,7 +128,11 @@ public class QueryDataSource implements IQueryDataSource {
       IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug) {
     if (curIndex != this.curSeqIndex) {
       throw new IllegalArgumentException(
-          String.format("curIndex %d is not equal to curSeqIndex %d", curIndex, this.curSeqIndex));
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_CURINDEX_D_IS_NOT_EQUAL_TO_CURSEQINDEX_D_6B9B1134,
+              curIndex,
+              this.curSeqIndex));
     }
     if (curSeqSatisfied == null) {
       TsFileResource tsFileResource = seqResources.get(curSeqIndex);
@@ -142,7 +147,11 @@ public class QueryDataSource implements IQueryDataSource {
   public long getCurrentSeqOrderTime(int curIndex) {
     if (curIndex != this.curSeqIndex) {
       throw new IllegalArgumentException(
-          String.format("curIndex %d is not equal to curSeqIndex %d", curIndex, this.curSeqIndex));
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_CURINDEX_D_IS_NOT_EQUAL_TO_CURSEQINDEX_D_6B9B1134,
+              curIndex,
+              this.curSeqIndex));
     }
     return this.curSeqOrderTime;
   }
@@ -172,7 +181,10 @@ public class QueryDataSource implements IQueryDataSource {
     if (curIndex != this.curUnSeqIndex) {
       throw new IllegalArgumentException(
           String.format(
-              "curIndex %d is not equal to curUnSeqIndex %d", curIndex, this.curUnSeqIndex));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_CURINDEX_D_IS_NOT_EQUAL_TO_CURUNSEQINDEX_D_AB32F71D,
+              curIndex,
+              this.curUnSeqIndex));
     }
     if (curUnSeqSatisfied == null) {
       TsFileResource tsFileResource = unseqResources.get(unSeqFileOrderIndex[curIndex]);
@@ -188,7 +200,10 @@ public class QueryDataSource implements IQueryDataSource {
     if (curIndex != this.curUnSeqIndex) {
       throw new IllegalArgumentException(
           String.format(
-              "curIndex %d is not equal to curSeqIndex %d", curIndex, this.curUnSeqIndex));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_CURINDEX_D_IS_NOT_EQUAL_TO_CURSEQINDEX_D_6B9B1134,
+              curIndex,
+              this.curUnSeqIndex));
     }
     return this.curUnSeqOrderTime;
   }

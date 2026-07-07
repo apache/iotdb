@@ -89,6 +89,23 @@ public class FileUtils {
     }
   }
 
+  public static void createLink(Path link, Path existing, boolean fallBackToCopy)
+      throws IOException {
+    try {
+      Files.createLink(link, existing);
+    } catch (IOException | UnsupportedOperationException e) {
+      if (!fallBackToCopy) {
+        throw e;
+      }
+      try {
+        Files.copy(existing, link);
+      } catch (IOException copyException) {
+        copyException.addSuppressed(e);
+        throw copyException;
+      }
+    }
+  }
+
   public static void deleteFileOrDirectory(File file) {
     deleteFileOrDirectory(file, false);
   }
@@ -106,12 +123,17 @@ public class FileUtils {
       Files.delete(file.toPath());
     } catch (NoSuchFileException e) {
       if (!quietForNoSuchFile) {
-        LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+        LOGGER.warn(
+            UtilMessages.LOG_ARG_COLON_ARG_DCE519A1,
+            e.getMessage(),
+            Arrays.toString(file.list()),
+            e);
       }
     } catch (DirectoryNotEmptyException e) {
-      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+      LOGGER.warn(
+          UtilMessages.LOG_ARG_COLON_ARG_DCE519A1, e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {
-      LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
+      LOGGER.warn(UtilMessages.LOG_ARG_COLON_ARG_DCE519A1, e.getMessage(), file.getName(), e);
     }
   }
 
@@ -131,9 +153,10 @@ public class FileUtils {
             return null;
           });
     } catch (DirectoryNotEmptyException e) {
-      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+      LOGGER.warn(
+          UtilMessages.LOG_ARG_COLON_ARG_DCE519A1, e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {
-      LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
+      LOGGER.warn(UtilMessages.LOG_ARG_COLON_ARG_DCE519A1, e.getMessage(), file.getName(), e);
     }
   }
 

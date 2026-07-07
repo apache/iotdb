@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeSinkWithSchedulingDelay;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -60,6 +61,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
+  private final String attributeDisplayString;
   private final int sinkIndex;
 
   // Now parallel connectors run the same time, thus the heartbeat events are not sure
@@ -75,8 +77,27 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final int sinkIndex,
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
       final PipeConnector outputPipeConnector) {
+    this(
+        taskID,
+        creationTime,
+        attributeSortedString,
+        attributeSortedString,
+        sinkIndex,
+        inputPendingQueue,
+        outputPipeConnector);
+  }
+
+  public PipeSinkSubtask(
+      final String taskID,
+      final long creationTime,
+      final String attributeSortedString,
+      final String attributeDisplayString,
+      final int sinkIndex,
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
+      final PipeConnector outputPipeConnector) {
     super(taskID, creationTime, outputPipeConnector);
     this.attributeSortedString = attributeSortedString;
+    this.attributeDisplayString = attributeDisplayString;
     this.sinkIndex = sinkIndex;
     this.inputPendingQueue = inputPendingQueue;
 
@@ -142,6 +163,37 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     return true;
   }
 
+  @Override
+  protected long peekSchedulingDelayInMs() {
+    if (!(outputPipeSink instanceof PipeSinkWithSchedulingDelay)) {
+      return 0;
+    }
+
+    return ((PipeSinkWithSchedulingDelay) outputPipeSink).peekSchedulingDelayMs();
+  }
+
+  @Override
+  protected long consumeSchedulingDelayInMs() {
+    if (!(outputPipeSink instanceof PipeSinkWithSchedulingDelay)) {
+      return 0;
+    }
+
+    final long remainingSchedulingDelayMs =
+        ((PipeSinkWithSchedulingDelay) outputPipeSink).consumeSchedulingDelayMs();
+    if (remainingSchedulingDelayMs <= 0) {
+      return 0;
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          DataNodePipeMessages.PIPE_SINK_SUBTASK_DELAYED_TO_AVOID_FREQUENT_HANDSHAKES,
+          getDisplayTaskID(),
+          remainingSchedulingDelayMs);
+    }
+
+    return remainingSchedulingDelayMs;
+  }
+
   private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
     // DO NOT call heartbeat or transfer after closed, or will cause connection leak
     if (isClosed.get()) {
@@ -153,13 +205,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       outputPipeSink.transfer(event);
     } catch (final Exception e) {
       throw new PipeConnectionException(
-          DataNodePipeMessages.PIPECONNECTOR
-              + outputPipeSink.getClass().getName()
-              + "(id: "
-              + taskID
-              + ")"
-              + " heartbeat failed, or encountered failure when transferring generic event. Failure: "
-              + e.getMessage(),
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_PIPECONNECTOR_ARG_ID_ARG_HEARTBEAT_FAILED_OR_ENCOUNTERED_FAILURE_WHEN_TRANSFERRING_GENERIC_EVENT_FAILURE_ARG_679A4A49,
+              outputPipeSink.getClass().getName(),
+              getDisplayTaskID(),
+              e.getMessage()),
           e);
     }
 
@@ -181,13 +232,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       outputPipeSink.close();
       LOGGER.info(
           DataNodePipeMessages.PIPE_CONNECTOR_SUBTASK_WAS_CLOSED_WITHIN_MS,
-          taskID,
+          getDisplayTaskID(),
           outputPipeSink,
           System.currentTimeMillis() - startTime);
     } catch (final Exception e) {
       LOGGER.info(
           DataNodePipeMessages.EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_CONNECTOR_SUBTASK,
-          taskID,
+          getDisplayTaskID(),
           ErrorHandlingCommonUtils.getRootCause(e).getMessage(),
           e);
     } finally {
@@ -328,6 +379,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
   }
 
+  public void setSchemaBatchSizeHistogram(Histogram schemaBatchSizeHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).setSchemaBatchSizeHistogram(schemaBatchSizeHistogram);
+    }
+  }
+
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
     if (outputPipeSink instanceof IoTDBSink) {
       ((IoTDBSink) outputPipeSink).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
@@ -338,6 +395,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     if (outputPipeSink instanceof IoTDBSink) {
       ((IoTDBSink) outputPipeSink)
           .setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
+    }
+  }
+
+  public void setSchemaBatchTimeIntervalHistogram(Histogram schemaBatchTimeIntervalHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink)
+          .setSchemaBatchTimeIntervalHistogram(schemaBatchTimeIntervalHistogram);
     }
   }
 
@@ -365,5 +429,15 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     lastExceptionTime = Long.MAX_VALUE;
     PipeDataNodeAgent.runtime().report(event, exception);
+  }
+
+  @Override
+  public String getDisplayTaskID() {
+    return generateDisplayTaskID(attributeDisplayString, creationTime, sinkIndex);
+  }
+
+  static String generateDisplayTaskID(
+      final String attributeDisplayString, final long creationTime, final int sinkIndex) {
+    return String.format("%s_%s_%s", attributeDisplayString, creationTime, sinkIndex);
   }
 }

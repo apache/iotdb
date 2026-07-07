@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -45,7 +47,7 @@ public class WithQuery extends Node {
   public WithQuery(Identifier name, Query query, boolean materialized) {
     super(null);
     this.name = name;
-    this.query = requireNonNull(query, "query is null");
+    this.query = requireNonNull(query, QueryMessages.EXCEPTION_QUERY_IS_NULL_689B7978);
     this.columnNames = null;
     this.materialized = materialized;
   }
@@ -54,15 +56,16 @@ public class WithQuery extends Node {
       Identifier name, Query query, List<Identifier> columnNames, boolean materialized) {
     super(null);
     this.name = name;
-    this.query = requireNonNull(query, "query is null");
-    this.columnNames = requireNonNull(columnNames, "columnNames is null");
+    this.query = requireNonNull(query, QueryMessages.EXCEPTION_QUERY_IS_NULL_689B7978);
+    this.columnNames =
+        requireNonNull(columnNames, QueryMessages.EXCEPTION_COLUMNNAMES_IS_NULL_C3BF708F);
     this.materialized = materialized;
   }
 
   public WithQuery(NodeLocation location, Identifier name, Query query, boolean materialized) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.name = name;
-    this.query = requireNonNull(query, "query is null");
+    this.query = requireNonNull(query, QueryMessages.EXCEPTION_QUERY_IS_NULL_689B7978);
     this.columnNames = null;
     this.materialized = materialized;
   }
@@ -73,10 +76,11 @@ public class WithQuery extends Node {
       Query query,
       List<Identifier> columnNames,
       boolean materialized) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.name = name;
-    this.query = requireNonNull(query, "query is null");
-    this.columnNames = requireNonNull(columnNames, "columnNames is null");
+    this.query = requireNonNull(query, QueryMessages.EXCEPTION_QUERY_IS_NULL_689B7978);
+    this.columnNames =
+        requireNonNull(columnNames, QueryMessages.EXCEPTION_COLUMNNAMES_IS_NULL_C3BF708F);
     this.materialized = materialized;
   }
 

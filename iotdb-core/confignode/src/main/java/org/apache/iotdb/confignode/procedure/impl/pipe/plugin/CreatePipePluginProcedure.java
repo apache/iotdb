@@ -327,7 +327,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
     if (that instanceof CreatePipePluginProcedure) {
       CreatePipePluginProcedure thatProcedure = (CreatePipePluginProcedure) that;
       return thatProcedure.getProcId() == getProcId()
-          && thatProcedure.getCurrentState().equals(getCurrentState())
+          && Objects.equals(thatProcedure.getCurrentState(), getCurrentState())
           && thatProcedure.getCycles() == getCycles()
           && thatProcedure.pipePluginMeta.equals(pipePluginMeta);
     }

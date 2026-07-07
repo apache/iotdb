@@ -343,7 +343,8 @@ public class SetTemplateProcedure
                             String.format(
                                 ProcedureMessages
                                         .SET_TEMPLATE_TO_FAILED_WHEN_CHECK_TIME_SERIES_EXISTENCE_ON
-                                    + "failed to check time series existence in all replicaset of schemaRegion %s. Failures: %s",
+                                    + ProcedureMessages
+                                        .EXCEPTION_FAILED_CHECK_TIME_SERIES_EXISTENCE_ALL_REPLICASET_SCHEMAREGION_ARG_FAILURES_5F668154,
                                 templateName,
                                 templateSetPath,
                                 consensusGroupId.id,

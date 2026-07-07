@@ -188,8 +188,19 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       buffer.position(startPosition);
     }
 
-    tablet = PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
-    isAligned = ReadWriteIOUtils.readBool(buffer);
+    try {
+      tablet = PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
+      isAligned = ReadWriteIOUtils.readBool(buffer);
+    } catch (final RuntimeException e) {
+      buffer.position(startPosition);
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_FAILED_TO_DESERIALIZE_RAW_TABLET_REQUEST_AT_BODY_POSITION_ARG_WITH_REMAINING_BODY_LENGTH_ARG_45AC3692,
+              startPosition,
+              buffer.remaining()),
+          e);
+    }
   }
 
   private static void ensureStatementDeserializedFromCurrentTabletFormat(
@@ -201,23 +212,27 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
         || Objects.isNull(dataTypes)
         || measurements.length != dataTypes.length) {
       throw new IllegalArgumentException(
-          "Incomplete schema in current tablet format deserialization.");
+          DataNodePipeMessages
+              .EXCEPTION_INCOMPLETE_SCHEMA_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_A23A1C30);
     }
 
     final Object[] columns = statement.getColumns();
     if (Objects.nonNull(columns) && columns.length != measurements.length) {
       throw new IllegalArgumentException(
-          "Column count is inconsistent with schema count in current tablet format deserialization.");
+          DataNodePipeMessages
+              .EXCEPTION_COLUMN_COUNT_IS_INCONSISTENT_WITH_SCHEMA_COUNT_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_53BA037A);
     }
 
     for (int i = 0; i < measurements.length; ++i) {
       if (Objects.isNull(measurements[i]) || Objects.isNull(dataTypes[i])) {
         throw new IllegalArgumentException(
-            "Incomplete measurement schema in current tablet format deserialization.");
+            DataNodePipeMessages
+                .EXCEPTION_INCOMPLETE_MEASUREMENT_SCHEMA_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_B8DB28A8);
       }
       if (statement.getRowCount() > 0 && (Objects.isNull(columns) || Objects.isNull(columns[i]))) {
         throw new IllegalArgumentException(
-            "Incomplete column values in current tablet format deserialization.");
+            DataNodePipeMessages
+                .EXCEPTION_INCOMPLETE_COLUMN_VALUES_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_269782B9);
       }
     }
 
@@ -226,7 +241,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
         && measurements.length > 0
         && (Objects.isNull(times) || times.length < statement.getRowCount())) {
       throw new IllegalArgumentException(
-          "Incomplete timestamps in current tablet format deserialization.");
+          DataNodePipeMessages
+              .EXCEPTION_INCOMPLETE_TIMESTAMPS_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_FE212461);
     }
   }
 

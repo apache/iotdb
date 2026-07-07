@@ -200,8 +200,10 @@ public class IoTDBRpcDataSet {
     if (columnIndex2TsBlockColumnIndexList.size() != this.columnNameList.size()) {
       throw new IllegalArgumentException(
           String.format(
-              "Size of columnIndex2TsBlockColumnIndexList %s doesn't equal to size of columnNameList %s.",
-              columnIndex2TsBlockColumnIndexList.size(), this.columnNameList.size()));
+              RpcMessages
+                  .EXCEPTION_SIZE_COLUMNINDEX2TSBLOCKCOLUMNINDEXLIST_ARG_DOESN_T_EQUAL_SIZE_COLUMNNAMELIST_ARG_F1209A2B,
+              columnIndex2TsBlockColumnIndexList.size(),
+              this.columnNameList.size()));
     }
     this.columnIndex2TsBlockColumnIndexList = columnIndex2TsBlockColumnIndexList;
   }
@@ -279,7 +281,8 @@ public class IoTDBRpcDataSet {
       return resp.hasResultSet;
     } catch (TException e) {
       throw new IoTDBConnectionException(
-          "Cannot fetch result from server, because of network connection: {} ", e);
+          RpcMessages.EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326,
+          e);
     }
   }
 

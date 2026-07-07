@@ -158,8 +158,8 @@ public class DataNodeMemoryConfig {
           properties.getProperty("storage_query_schema_consensus_free_memory_proportion");
       if (memoryAllocateProportion != null) {
         LOGGER.warn(
-            "The parameter storage_query_schema_consensus_free_memory_proportion is deprecated since v1.2.3, "
-                + "please use datanode_memory_proportion instead.");
+            DataNodeMiscMessages
+                .MISC_LOG_THE_PARAMETER_STORAGE_QUERY_SCHEMA_CONSENSUS_FREE_MEMORY_51C9A377);
       }
     }
 
@@ -168,6 +168,7 @@ public class DataNodeMemoryConfig {
     long schemaEngineMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long consensusMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long pipeMemorySize = Runtime.getRuntime().maxMemory() / 10;
+    long autoResizingBufferMemorySize = Runtime.getRuntime().maxMemory() / 20;
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -189,6 +190,11 @@ public class DataNodeMemoryConfig {
         if (proportions.length >= 6) {
           pipeMemorySize =
               maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum;
+          autoResizingBufferMemorySize =
+              maxMemoryAvailable
+                  * Integer.parseInt(proportions[proportions.length - 1].trim())
+                  / proportionSum
+                  / 2;
         } else {
           pipeMemorySize =
               (maxMemoryAvailable
@@ -211,19 +217,26 @@ public class DataNodeMemoryConfig {
     consensusMemoryManager =
         onHeapMemoryManager.getOrCreateMemoryManager("Consensus", consensusMemorySize);
     pipeMemoryManager = onHeapMemoryManager.getOrCreateMemoryManager("Pipe", pipeMemorySize);
+    MemoryConfig.getInstance()
+        .setAutoResizingBufferMemoryControl(onHeapMemoryManager, autoResizingBufferMemorySize);
     LOGGER.info(
-        "initial allocateMemoryForWrite = {}",
+        DataNodeMiscMessages.MISC_LOG_INITIAL_ALLOCATEMEMORYFORWRITE_B90EC7D9,
         storageEngineMemoryManager.getTotalMemorySizeInBytes());
     LOGGER.info(
-        "initial allocateMemoryForRead = {}", queryEngineMemoryManager.getTotalMemorySizeInBytes());
+        DataNodeMiscMessages.MISC_LOG_INITIAL_ALLOCATEMEMORYFORREAD_07FB30F0,
+        queryEngineMemoryManager.getTotalMemorySizeInBytes());
     LOGGER.info(
-        "initial allocateMemoryForSchema = {}",
+        DataNodeMiscMessages.MISC_LOG_INITIAL_ALLOCATEMEMORYFORSCHEMA_965D4CE3,
         schemaEngineMemoryManager.getTotalMemorySizeInBytes());
     LOGGER.info(
-        "initial allocateMemoryForConsensus = {}",
+        DataNodeMiscMessages.MISC_LOG_INITIAL_ALLOCATEMEMORYFORCONSENSUS_18B40138,
         consensusMemoryManager.getTotalMemorySizeInBytes());
     LOGGER.info(
-        "initial allocateMemoryForPipe = {}", pipeMemoryManager.getTotalMemorySizeInBytes());
+        DataNodeMiscMessages.MISC_LOG_INITIAL_ALLOCATEMEMORYFORPIPE_616F9713,
+        pipeMemoryManager.getTotalMemorySizeInBytes());
+    LOGGER.info(
+        DataNodeMiscMessages.MESSAGE_INITIAL_ALLOCATEMEMORYFORAUTORESIZINGBUFFER_ARG_A0DB6DA0,
+        autoResizingBufferMemorySize);
 
     initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
     initStorageEngineAllocate(storageEngineMemoryManager, properties);
@@ -286,12 +299,13 @@ public class DataNodeMemoryConfig {
             PARTITION_CACHE, schemaMemoryTotal * schemaMemoryProportion[2] / proportionSum);
 
     LOGGER.info(
-        "allocateMemoryForSchemaRegion = {}",
+        DataNodeMiscMessages.MISC_LOG_ALLOCATEMEMORYFORSCHEMAREGION_3BE141E8,
         schemaRegionMemoryManager.getTotalMemorySizeInBytes());
     LOGGER.info(
-        "allocateMemoryForSchemaCache = {}", schemaCacheMemoryManager.getTotalMemorySizeInBytes());
+        DataNodeMiscMessages.MISC_LOG_ALLOCATEMEMORYFORSCHEMACACHE_61BFCE7D,
+        schemaCacheMemoryManager.getTotalMemorySizeInBytes());
     LOGGER.info(
-        "allocateMemoryForPartitionCache = {}",
+        DataNodeMiscMessages.MISC_LOG_ALLOCATEMEMORYFORPARTITIONCACHE_809AA695,
         partitionCacheMemoryManager.getTotalMemorySizeInBytes());
   }
 
@@ -312,7 +326,8 @@ public class DataNodeMemoryConfig {
 
     if (rejectProportion + walBufferQueueProportion + devicePathCacheProportion >= 1) {
       LOGGER.warn(
-          "The sum of reject_proportion, wal_buffer_queue_proportion and device_path_cache_proportion is too large, use default values 0.8, 0.1 and 0.05.");
+          DataNodeMiscMessages
+              .MISC_LOG_THE_SUM_OF_REJECT_PROPORTION_WAL_BUFFER_QUEUE_PROPORTION_185B1C49);
     } else {
       setRejectProportion(rejectProportion);
       setWalBufferQueueProportion(walBufferQueueProportion);
@@ -339,7 +354,8 @@ public class DataNodeMemoryConfig {
         int proportionValue = Integer.parseInt(proportion.trim());
         if (proportionValue <= 0) {
           LOGGER.warn(
-              "The value of storage_engine_memory_proportion is illegal, use default value 8:2 .");
+              DataNodeMiscMessages
+                  .MISC_LOG_THE_VALUE_OF_STORAGE_ENGINE_MEMORY_PROPORTION_IS_ILLEGAL_22CA9433);
           return;
         }
         storageEngineMemoryProportion += proportionValue;
@@ -362,7 +378,8 @@ public class DataNodeMemoryConfig {
           writeMemoryProportion += proportionValue;
           if (proportionValue <= 0) {
             LOGGER.warn(
-                "The value of write_memory_proportion is illegal, use default value 19:1 .");
+                DataNodeMiscMessages
+                    .MISC_LOG_THE_VALUE_OF_WRITE_MEMORY_PROPORTION_IS_ILLEGAL_USE_DEFAULT_EE4FA112);
             return;
           }
         }
@@ -471,9 +488,10 @@ public class DataNodeMemoryConfig {
               maxMemoryAvailable * Integer.parseInt(proportions[6].trim()) / proportionSum;
         } catch (Exception e) {
           throw new IllegalArgumentException(
-              "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
-                  + " should be an integer, which is "
-                  + queryMemoryAllocateProportion,
+              String.format(
+                  DataNodeMiscMessages
+                      .MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_CHUNKMETA_CHUNK_TIMESERIESMETA_77A43CE2,
+                  queryMemoryAllocateProportion),
               e);
         }
       }

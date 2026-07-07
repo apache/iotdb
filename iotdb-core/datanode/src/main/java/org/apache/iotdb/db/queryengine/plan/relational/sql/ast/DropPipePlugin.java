@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,7 +38,9 @@ public class DropPipePlugin extends PipeStatement {
   private final boolean ifExistsCondition;
 
   public DropPipePlugin(final String pluginName, final boolean ifExistsCondition) {
-    this.pluginName = requireNonNull(pluginName, "plugin name can not be null");
+    this.pluginName =
+        requireNonNull(
+            pluginName, DataNodeQueryMessages.EXCEPTION_PLUGIN_NAME_CAN_NOT_BE_NULL_92F0F4D6);
     this.ifExistsCondition = ifExistsCondition;
   }
 
