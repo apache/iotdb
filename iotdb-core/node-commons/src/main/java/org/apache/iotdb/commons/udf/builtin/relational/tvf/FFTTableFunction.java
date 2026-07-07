@@ -99,11 +99,6 @@ public class FFTTableFunction implements TableFunction {
     return Arrays.asList(
         TableParameterSpecification.builder().name(DATA_PARAMETER_NAME).setSemantics().build(),
         ScalarParameterSpecification.builder()
-            .name(TIMECOL_PARAMETER_NAME)
-            .type(Type.STRING)
-            .defaultValue(DEFAULT_TIME_COLUMN_NAME)
-            .build(),
-        ScalarParameterSpecification.builder()
             .name(SAMPLE_INTERVAL_PARAMETER_NAME)
             .type(Type.INT64)
             .defaultValue(UNSPECIFIED_SAMPLE_INTERVAL)
@@ -119,6 +114,11 @@ public class FFTTableFunction implements TableFunction {
             .name(NORM_PARAMETER_NAME)
             .type(Type.STRING)
             .defaultValue(NORM_BACKWARD)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(TIMECOL_PARAMETER_NAME)
+            .type(Type.STRING)
+            .defaultValue(DEFAULT_TIME_COLUMN_NAME)
             .build());
   }
 

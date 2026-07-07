@@ -604,6 +604,14 @@ public class TableFunctionTest {
   }
 
   @Test
+  public void testFFTPositionalArgumentsKeepExistingOrder() {
+    PlanTester planTester = new PlanTester();
+    String sql = "SELECT * FROM TABLE(FFT(TABLE(table1) ORDER BY time, 1s, 4, 'ortho'))";
+
+    planTester.createPlan(sql);
+  }
+
+  @Test
   public void testFFTRejectsInvalidArguments() {
     assertAnalyzeFails(
         "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1, SAMPLE_INTERVAL => 1ms)",
