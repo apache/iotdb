@@ -17,13 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1;
+package org.apache.iotdb.confignode.it.regionmigration.pass.commit;
 
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
@@ -43,23 +45,21 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getAllDataNodes;
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getDataRegionMapWithLeader;
-import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.MULTI_DATA_DIRS;
-import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.awaitModsVisibleOnReplicas;
-import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.awaitRegionReplicas;
-import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.awaitTsFileResourceVisibleOnReplicas;
-import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.awaitTsFileVisibleOnReplicas;
-import static org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1.RegionMigrateFileAssertions.getReplicaDataNodeIds;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.commit.RegionMigrateFileAssertions.MULTI_DATA_DIRS;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.commit.RegionMigrateFileAssertions.awaitModsVisibleOnReplicas;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.commit.RegionMigrateFileAssertions.awaitRegionReplicas;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.commit.RegionMigrateFileAssertions.awaitTsFileResourceVisibleOnReplicas;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.commit.RegionMigrateFileAssertions.awaitTsFileVisibleOnReplicas;
+import static org.apache.iotdb.confignode.it.regionmigration.pass.commit.RegionMigrateFileAssertions.getReplicaDataNodeIds;
 
 /**
- * Tree-model coverage for IoTConsensus region migration over multiple data dirs: a deletion (mods)
- * must survive the snapshot transfer to the migrated peer. With several data dirs the snapshot
- * fragments of one TsFile can be received into different folders, so the receiver groups companion
- * files and the loader relinks them into one data dir; if that breaks, the migrated replica loses
- * the deletion. See the table-model twin {@link IoTDBRegionMigrateWithDeletionMultiDataDirTableIT}.
+ * Table-model twin of {@link IoTDBRegionMigrateWithDeletionMultiDataDirIT}: a deletion (mods) must
+ * survive IoTConsensus region migration across multiple data dirs, asserted through the relational
+ * (table) SQL dialect so the table-model cluster CI covers the same snapshot mods-transfer path.
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
-public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
+@Category({TableClusterIT.class})
+public class IoTDBRegionMigrateWithDeletionMultiDataDirTableIT {
 
   @Before
   public void setUp() throws Exception {
@@ -79,11 +79,12 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
 
   @Test
   public void testRegionMigratePreservesDeletionWithMultiDataDirs() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.db");
-      statement.execute(
-          "INSERT INTO root.db.d1(timestamp, s1) VALUES (100, 100), (200, 200), (300, 300)");
+      statement.execute("CREATE DATABASE test");
+      statement.execute("USE test");
+      statement.execute("CREATE TABLE t1 (s1 INT64 FIELD)");
+      statement.execute("INSERT INTO t1 (time, s1) VALUES (100, 100), (200, 200), (300, 300)");
       statement.execute("FLUSH");
 
       Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMapWithLeader =
@@ -93,14 +94,14 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
       Set<Integer> initialReplicaDataNodeIds =
           getReplicaDataNodeIds(statement, dataRegionIdForTest);
 
-      awaitTsFileVisibleOnReplicas("root.db", dataRegionIdForTest, initialReplicaDataNodeIds);
+      awaitTsFileVisibleOnReplicas("test", dataRegionIdForTest, initialReplicaDataNodeIds);
       awaitTsFileResourceVisibleOnReplicas(
-          statement, "root.db", dataRegionIdForTest, initialReplicaDataNodeIds);
+          statement, "test", dataRegionIdForTest, initialReplicaDataNodeIds);
 
-      statement.execute("DELETE FROM root.db.d1.s1 WHERE time <= 200");
+      statement.execute("DELETE FROM t1 WHERE time <= 200");
       statement.execute("FLUSH");
-      awaitModsVisibleOnReplicas("root.db", dataRegionIdForTest, initialReplicaDataNodeIds);
-      assertDeletionVisibleOnAllReplicas(dataRegionIdForTest, 1);
+      awaitModsVisibleOnReplicas("test", dataRegionIdForTest, initialReplicaDataNodeIds);
+      assertDeletionVisibleOnAllReplicas(statement, dataRegionIdForTest, 1);
 
       Pair<Integer, Set<Integer>> leaderAndNodes = dataRegionMapWithLeader.get(dataRegionIdForTest);
       Set<Integer> allDataNodes = getAllDataNodes(statement);
@@ -118,19 +119,15 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
               "migrate region %d from %d to %d", dataRegionIdForTest, leaderId, destDataNodeId));
 
       awaitRegionReplicas(statement, dataRegionIdForTest, Set.of(followerId, destDataNodeId));
-      awaitModsVisibleOnReplicas("root.db", dataRegionIdForTest, Set.of(destDataNodeId));
+      awaitModsVisibleOnReplicas("test", dataRegionIdForTest, Set.of(destDataNodeId));
 
-      assertDeletionVisibleOnAllReplicas(dataRegionIdForTest, 1);
+      assertDeletionVisibleOnAllReplicas(statement, dataRegionIdForTest, 1);
     }
   }
 
-  private void assertDeletionVisibleOnAllReplicas(int dataRegionId, int expectedCount)
-      throws Exception {
-    Set<Integer> replicaDataNodeIds;
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      replicaDataNodeIds = getReplicaDataNodeIds(statement, dataRegionId);
-    }
+  private void assertDeletionVisibleOnAllReplicas(
+      Statement statement, int dataRegionId, int expectedCount) throws Exception {
+    Set<Integer> replicaDataNodeIds = getReplicaDataNodeIds(statement, dataRegionId);
     for (int dataNodeId : replicaDataNodeIds) {
       DataNodeWrapper dataNodeWrapper =
           EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeId).orElseThrow();
@@ -144,15 +141,21 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirIT {
 
   private void assertDeletionVisibleOnReplica(DataNodeWrapper dataNodeWrapper, int expectedCount)
       throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection(dataNodeWrapper);
+    try (Connection connection =
+            EnvFactory.getEnv()
+                .getConnection(
+                    dataNodeWrapper,
+                    SessionConfig.DEFAULT_USER,
+                    SessionConfig.DEFAULT_PASSWORD,
+                    BaseEnv.TABLE_SQL_DIALECT);
         Statement dataNodeStatement = connection.createStatement()) {
-      try (ResultSet countResultSet =
-          dataNodeStatement.executeQuery("SELECT COUNT(s1) FROM root.db.d1")) {
+      dataNodeStatement.execute("USE test");
+      try (ResultSet countResultSet = dataNodeStatement.executeQuery("SELECT COUNT(s1) FROM t1")) {
         Assert.assertTrue(countResultSet.next());
         Assert.assertEquals(expectedCount, countResultSet.getLong(1));
       }
       try (ResultSet deletedRangeResultSet =
-          dataNodeStatement.executeQuery("SELECT s1 FROM root.db.d1 WHERE time <= 200")) {
+          dataNodeStatement.executeQuery("SELECT s1 FROM t1 WHERE time <= 200")) {
         Assert.assertFalse(deletedRangeResultSet.next());
       }
     }
