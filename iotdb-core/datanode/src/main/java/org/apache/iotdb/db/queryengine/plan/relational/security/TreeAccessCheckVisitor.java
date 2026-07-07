@@ -1671,7 +1671,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
               .setMessage(
                   String.format(
-                      "'AUDIT' permission is needed to alter the encoding and compressor of database %s",
+                      DataNodeQueryMessages
+                          .MESSAGE_AUDIT_PERMISSION_NEEDED_ALTER_ENCODING_COMPRESSOR_DATABASE_ARG_CC06994D,
                       TREE_MODEL_AUDIT_DATABASE));
         }
       }

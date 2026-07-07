@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -79,7 +80,10 @@ public class SubscriptionTopicAgent {
     } catch (final Exception e) {
       final String topicName = topicMetaFromCoordinator.getTopicName();
       LOGGER.warn(
-          "Exception occurred when handling single topic meta changes for topic {}", topicName, e);
+          DataNodePipeMessages
+              .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_TOPIC_META_CHANGES_43434FC4,
+          topicName,
+          e);
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
@@ -111,7 +115,8 @@ public class SubscriptionTopicAgent {
         } catch (final Exception e) {
           final String topicName = topicMetaFromCoordinator.getTopicName();
           LOGGER.warn(
-              "Exception occurred when handling single topic meta changes for topic {}",
+              DataNodePipeMessages
+                  .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_TOPIC_META_CHANGES_43434FC4,
               topicName,
               e);
           final String exceptionMessage =

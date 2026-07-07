@@ -199,7 +199,7 @@ public class SubscriptionConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
 
   public void printAllConfigs() {
-    LOGGER.info("SubscriptionEnabled: {}", getSubscriptionEnabled());
+    LOGGER.info(PipeMessages.LOG_SUBSCRIPTIONENABLED_ARG_6F9EC0F9, getSubscriptionEnabled());
     LOGGER.info(
         PipeMessages.CONFIG_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE,
         getSubscriptionCacheMemoryUsagePercentage());
@@ -207,7 +207,7 @@ public class SubscriptionConfig {
         PipeMessages.CONFIG_SUBSCRIPTION_SUBTASK_EXECUTOR_MAX_THREAD_NUM,
         getSubscriptionSubtaskExecutorMaxThreadNum());
     LOGGER.info(
-        "SubscriptionConsensusPrefetchExecutorMaxThreadNum: {}",
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSPREFETCHEXECUTORMAXTHREADNUM_ARG_94D0BD76,
         getSubscriptionConsensusPrefetchExecutorMaxThreadNum());
 
     LOGGER.info(
@@ -285,18 +285,19 @@ public class SubscriptionConfig {
         getSubscriptionMetaSyncerSyncIntervalMinutes());
 
     LOGGER.info(
-        "SubscriptionConsensusBatchMaxDelayInMs: {}", getSubscriptionConsensusBatchMaxDelayInMs());
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSBATCHMAXDELAYINMS_ARG_38C2CB8B,
+        getSubscriptionConsensusBatchMaxDelayInMs());
     LOGGER.info(
-        "SubscriptionConsensusBatchMaxSizeInBytes: {}",
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSBATCHMAXSIZEINBYTES_ARG_F8D28441,
         getSubscriptionConsensusBatchMaxSizeInBytes());
     LOGGER.info(
-        "SubscriptionConsensusBatchMaxTabletCount: {}",
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSBATCHMAXTABLETCOUNT_ARG_60BB1D6A,
         getSubscriptionConsensusBatchMaxTabletCount());
     LOGGER.info(
-        "SubscriptionConsensusBatchMaxWalEntries: {}",
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSBATCHMAXWALENTRIES_ARG_9BF1CAE4,
         getSubscriptionConsensusBatchMaxWalEntries());
     LOGGER.info(
-        "SubscriptionConsensusIdleSafeTimeBarrierIntervalMs: {}",
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSIDLESAFETIMEBARRIERINTERVALMS_ARG_A6944544,
         getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs());
   }
 

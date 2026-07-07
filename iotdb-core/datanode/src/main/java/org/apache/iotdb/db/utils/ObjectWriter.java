@@ -68,7 +68,11 @@ public class ObjectWriter implements AutoCloseable {
         fos.getChannel().truncate(offset);
       } else {
         throw new IOException(
-            "The file length " + file.length() + " is not equal to the offset " + offset);
+            String.format(
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_THE_FILE_LENGTH_S_IS_NOT_EQUAL_TO_THE_OFFSET_S_73905F07,
+                file.length(),
+                offset));
       }
     }
     if (file.length() + content.length > config.getMaxObjectSizeInByte()) {

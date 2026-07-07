@@ -23,9 +23,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.DeviceIn;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.SegmentExactMatch;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -131,6 +132,14 @@ public class ModificationFileTest {
                   new FullExactMatch(Factory.DEFAULT_FACTORY.create(new String[] {"id1", "id2"}))),
               new TimeRange(5, 6)),
           new TableDeletionEntry(new DeletionPredicate("table4"), new TimeRange(7, 8)),
+          new TableDeletionEntry(
+              new DeletionPredicate(
+                  "table5",
+                  new DeviceIn(
+                      Arrays.asList(
+                          Factory.DEFAULT_FACTORY.create(new String[] {"table5", "id1", "id2"}),
+                          Factory.DEFAULT_FACTORY.create(new String[] {"table5", "id3", "id4"})))),
+              new TimeRange(9, 10)),
         };
     try (ModificationFile mFile = new ModificationFile(tempFileName, false)) {
       for (int i = 0; i < 4; i++) {
@@ -141,11 +150,11 @@ public class ModificationFileTest {
         assertEquals(modifications[i], modificationList.get(i));
       }
 
-      for (int i = 4; i < 8; i++) {
+      for (int i = 4; i < modifications.length; i++) {
         mFile.write(modifications[i]);
       }
       modificationList = mFile.getAllMods();
-      for (int i = 0; i < 8; i++) {
+      for (int i = 0; i < modifications.length; i++) {
         assertEquals(modifications[i], modificationList.get(i));
       }
     } catch (IOException e) {
@@ -172,6 +181,14 @@ public class ModificationFileTest {
                   new FullExactMatch(Factory.DEFAULT_FACTORY.create(new String[] {"id1", "id2"}))),
               new TimeRange(5, 6)),
           new TableDeletionEntry(new DeletionPredicate("table4"), new TimeRange(7, 8)),
+          new TableDeletionEntry(
+              new DeletionPredicate(
+                  "table5",
+                  new DeviceIn(
+                      Arrays.asList(
+                          Factory.DEFAULT_FACTORY.create(new String[] {"table5", "id1", "id2"}),
+                          Factory.DEFAULT_FACTORY.create(new String[] {"table5", "id3", "id4"})))),
+              new TimeRange(9, 10)),
         };
     try (ModificationFile mFile = new ModificationFile(tempFileName, false)) {
       mFile.write(Arrays.asList(modifications));

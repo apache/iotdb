@@ -73,5 +73,59 @@ public final class UdfApiMessages {
   public static final String INDEX_OUT_OF_BOUND = "Index out of bound error!";
   public static final String INVALID_INPUT = "Invalid input: ";
 
+  // ScalarParameterSpecification
+  public static final String
+      EXCEPTION_DEFAULT_VALUE_ARG_DOES_NOT_MATCH_THE_DECLARED_TYPE_ARG_76648C9D =
+          "default value %s does not match the declared type: %s";
+
+  // SessionTimeWindowAccessStrategy
+  public static final String
+      EXCEPTION_PARAMETER_SESSIONTIMEGAP_ARG_SHOULD_BE_EQUAL_TO_OR_GREATER_THAN_ZERO_20C0672D =
+          "Parameter sessionTimeGap(%d) should be equal to or greater than zero.";
+  public static final String EXCEPTION_DISPLAYWINDOWEND_ARG_DISPLAYWINDOWBEGIN_ARG_216864F1 =
+      "displayWindowEnd(%d) < displayWindowBegin(%d)";
+
+  // SlidingTimeWindowAccessStrategy
+  public static final String EXCEPTION_PARAMETER_TIMEINTERVAL_ARG_SHOULD_BE_POSITIVE_7CF8DCE4 =
+      "Parameter timeInterval(%d) should be positive.";
+  public static final String EXCEPTION_PARAMETER_SLIDINGSTEP_ARG_SHOULD_BE_POSITIVE_BBB66A4C =
+      "Parameter slidingStep(%d) should be positive.";
+
+  // SlidingSizeWindowAccessStrategy
+  public static final String EXCEPTION_PARAMETER_WINDOWSIZE_ARG_SHOULD_BE_POSITIVE_7170E783 =
+      "Parameter windowSize(%d) should be positive.";
+
+  // StateWindowAccessStrategy
+  public static final String
+      EXCEPTION_PARAMETER_DELTA_ARG_SHOULD_BE_POSITIVE_OR_EQUAL_TO_0_787DD7AE =
+          "Parameter delta(%f) should be positive or equal to 0.";
+
+  // UDFInputSeriesNumberNotValidException
+  public static final String
+      EXCEPTION_THE_NUMBER_OF_THE_INPUT_SERIES_IS_NOT_VALID_EXPECTED_ARG_ACTUAL_ARG_48AF79C9 =
+          "the number of the input series is not valid. expected: %d. actual: %d.";
+  public static final String
+      EXCEPTION_THE_NUMBER_OF_THE_INPUT_SERIES_IS_NOT_VALID_EXPECTED_ARG_ARG_ACTUAL_ARG_819C0F0A =
+          "the number of the input series is not valid. expected: [%d, %d]. actual: %d.";
+
+  // UDFInputSeriesIndexNotValidException
+  public static final String
+      EXCEPTION_THE_INDEX_ARG_OF_THE_INPUT_SERIES_IS_NOT_VALID_VALID_INDEX_RANGE_0_ARG_8B8367FE =
+          "the index (%d) of the input series is not valid. valid index range: [0, %d).";
+
+  // UDFAttributeNotProvidedException
+  public static final String EXCEPTION_ATTRIBUTE_ARG_IS_REQUIRED_BUT_WAS_NOT_PROVIDED_867D4638 =
+      "attribute \"%s\" is required but was not provided.";
+
+  // UDFOutputSeriesDataTypeNotValidException
+  public static final String
+      EXCEPTION_THE_DATA_TYPE_OF_THE_OUTPUT_SERIES_INDEX_ARG_IS_NOT_VALID_EXPECTED_ARG_388E46F3 =
+          "the data type of the output series (index: %d) is not valid. expected: %s.";
+
+  // UDFInputSeriesDataTypeNotValidException
+  public static final String
+      EXCEPTION_THE_DATA_TYPE_OF_THE_INPUT_SERIES_INDEX_ARG_IS_NOT_VALID_EXPECTED_ARG_ACTUAL_ARG_6DE799E5 =
+          "the data type of the input series (index: %d) is not valid. expected: %s. actual: %s.";
+
   private UdfApiMessages() {}
 }

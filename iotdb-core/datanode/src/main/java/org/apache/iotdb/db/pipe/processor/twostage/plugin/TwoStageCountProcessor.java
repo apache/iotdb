@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.plugin;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -102,6 +103,9 @@ public class TwoStageCountProcessor implements PipeProcessor {
   private final Queue<Pair<long[], ProgressIndex> /* ([timestamp, local count], progress index) */>
       localCommitQueue = new ConcurrentLinkedQueue<>();
 
+  private UserEntity sourceUserEntity;
+  private String sourcePassword;
+
   private TwoStageAggregateSender twoStageAggregateSender;
   private final Queue<Pair<Long, Long> /* (timestamp, global count) */> globalCountQueue =
       new ConcurrentLinkedQueue<>();
@@ -139,6 +143,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
     creationTime = runtimeEnvironment.getCreationTime();
     regionId = runtimeEnvironment.getRegionId();
     pipeTaskMeta = runtimeEnvironment.getPipeTaskMeta();
+    sourceUserEntity = runtimeEnvironment.getSourceUserEntity();
+    sourcePassword = runtimeEnvironment.getSourcePassword();
     dataBaseName =
         StorageEngine.getInstance()
             .getDataRegion(new DataRegionId(runtimeEnvironment.getRegionId()))
@@ -163,8 +169,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
           Objects.isNull(localCountState) ? 0 : Long.parseLong(localCountState.toString()));
     }
     LOGGER.info(
-        "TwoStageCountProcessor customized by thread {}: pipeName={}, creationTime={}, regionId={}, outputSeries={}, "
-            + "localCommitProgressIndex={}, localCount={}",
+        DataNodePipeMessages.TWOSTAGECOUNTPROCESSOR_CUSTOMIZED_BY_THREAD_PIPENAME_CREATIONTIME_RE,
         Thread.currentThread().getName(),
         pipeName,
         creationTime,
@@ -176,7 +181,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
     PipeCombineHandlerManager.getInstance()
         .register(
             pipeName, creationTime, (combineId) -> new CountOperator(combineId, globalCountQueue));
-    twoStageAggregateSender = new TwoStageAggregateSender(pipeName, creationTime);
+    twoStageAggregateSender =
+        new TwoStageAggregateSender(pipeName, creationTime, sourceUserEntity, sourcePassword);
   }
 
   static PartialPath parseOutputSeries(final PipeParameters parameters)

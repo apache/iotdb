@@ -393,8 +393,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for TsFile %s or modFile %s error. Holder Message: %s",
-              tsFile, modFile, holderMessage),
+              DataNodePipeMessages.INCREASE_REFERENCE_COUNT_TSFILE_OR_MODFILE_ERROR_HOLDER_FMT,
+              tsFile,
+              modFile,
+              holderMessage),
           e);
       return false;
     } finally {
@@ -421,8 +423,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Decrease reference count for TsFile %s error. Holder Message: %s",
-              tsFile.getPath(), holderMessage),
+              DataNodePipeMessages.DECREASE_REFERENCE_COUNT_TSFILE_ERROR_HOLDER_FMT,
+              tsFile.getPath(),
+              holderMessage),
           e);
       return false;
     } finally {
@@ -551,8 +554,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             } else {
               throw new AccessDeniedException(
                   String.format(
-                      "No privilege for SELECT for user %s at table %s.%s",
-                      userName, tableModelDatabaseName, table));
+                      DataNodePipeMessages
+                          .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
+                      userName,
+                      tableModelDatabaseName,
+                      table));
             }
           }
         }
@@ -720,38 +726,37 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   public void consumeTabletInsertionEventsWithRetry(
       final TabletInsertionEventConsumer consumer, final String callerName) throws Exception {
-    final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
-    final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
     int tabletEventCount = 0;
-    while (iterator.hasNext()) {
-      final TabletInsertionEvent parsedEvent = iterator.next();
-      tabletEventCount++;
-      int retryCount = 0;
-      while (true) {
-        // If failed due do insufficient memory, retry until success to avoid race among multiple
-        // processor threads
+    try {
+      final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
+      final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+      while (iterator.hasNext()) {
+        final TabletInsertionEvent parsedEvent = iterator.next();
+        tabletEventCount++;
         try {
           consumer.consume((PipeRawTabletInsertionEvent) parsedEvent);
-          break;
         } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-          if (retryCount++ % 100 == 0) {
-            LOGGER.warn(
-                DataNodePipeMessages.FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE,
-                callerName,
-                getTsFile(),
-                tabletEventCount,
-                retryCount);
-          } else if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(
-                DataNodePipeMessages.FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE,
-                callerName,
-                getTsFile(),
-                tabletEventCount,
-                retryCount,
-                e);
-          }
+          releaseParsedTabletEvent(parsedEvent);
+          throw e;
         }
       }
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      close();
+      LOGGER.warn(
+          DataNodePipeMessages.FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE,
+          callerName,
+          getTsFile(),
+          tabletEventCount,
+          e);
+      throw e;
+    }
+  }
+
+  private void releaseParsedTabletEvent(final TabletInsertionEvent parsedEvent) {
+    if (parsedEvent instanceof PipeRawTabletInsertionEvent
+        && ((PipeRawTabletInsertionEvent) parsedEvent).getReferenceCount() == 0
+        && !((PipeRawTabletInsertionEvent) parsedEvent).isReleased()) {
+      ((PipeRawTabletInsertionEvent) parsedEvent).clearReferenceCount(getClass().getName());
     }
   }
 
@@ -828,7 +833,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         // should contain 'TimeoutException' in exception message
         throw new PipeRuntimeOutOfMemoryCriticalException(
             String.format(
-                "TimeoutException: Waited %s seconds for memory to parse TsFile", waitTimeSeconds));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_TIMEOUTEXCEPTION_WAITED_S_SECONDS_FOR_MEMORY_TO_PARSE_TSFILE_0E4EF8FD,
+                waitTimeSeconds));
       }
     }
 

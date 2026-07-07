@@ -121,8 +121,12 @@ class OpcUaKeyStoreLoader {
       serverKeyPair = new KeyPair(serverPublicKey, (PrivateKey) serverPrivateKey);
     } else {
       throw new Exception(
-          "Invalid keyStore, the serverPrivateKey is "
-              + (serverPrivateKey != null ? serverPrivateKey.getClass().getSimpleName() : "null"));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_INVALID_KEYSTORE_THE_SERVERPRIVATEKEY_IS_S_F5F3C02F,
+              (serverPrivateKey != null
+                  ? serverPrivateKey.getClass().getSimpleName()
+                  : DataNodePipeMessages.NULL_VALUE)));
     }
 
     return this;

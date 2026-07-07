@@ -252,7 +252,7 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
       }
     } catch (Exception e) {
       LoggerFactory.getLogger(AINodeClient.class)
-          .debug("[AINodeClient] refreshFromConfigNode failed: {}", e.toString());
+          .debug(DataNodeMiscMessages.AINODE_CLIENT_REFRESH_FROM_CONFIG_NODE_FAILED, e.toString());
     }
     return null;
   }

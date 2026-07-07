@@ -915,6 +915,8 @@ public final class ProcedureMessages {
       "Start rollback Renaming table {}.{} on configNode";
   public static final String START_ROLLBACK_SET_PROPERTIES_TO_TABLE =
       "Start rollback set properties to table {}.{}";
+  public static final String STATE_MACHINE_PROCEDURE_EOF_STATE_SKIP_EXECUTION =
+      "StateMachineProcedure pid={} is scheduled with EOF state, skip execution: {}";
   public static final String STATE_STUCK_AT = "State stuck at ";
   public static final String STOPPIPEPROCEDUREV2_EXECUTEFROMCALCULATEINFOFORTASK =
       "StopPipeProcedureV2: executeFromCalculateInfoForTask({})";
@@ -1102,4 +1104,214 @@ public final class ProcedureMessages {
 
   public static final String FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE = "Failed in the write API executing the consensus layer due to: ";
   private ProcedureMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_MS_95BA098D = " ms.";
+  public static final String LOG_ARG_JOIN_WAIT_GOT_INTERRUPTED_316B5E9F = "{} join wait got interrupted";
+  public static final String LOG_NO_COMPLETED_PROCEDURES_CLEANUP_50434D91 = "No completed procedures to cleanup.";
+  public static final String LOG_ERROR_DELETING_COMPLETED_PROCEDURES_ARG_1A3A185E = "Error deleting completed procedures {}.";
+  public static final String LOG_EVICT_COMPLETED_ARG_A968A070 = "Evict completed {}";
+  public static final String LOG_EXECUTING_PROCEDURE_SHOULD_RUNNABLE_STATE_BUT_IT_S_NOT_PROCEDURE_7CF42CE8 = "The executing procedure should in RUNNABLE state, but it's not. Procedure is {}";
+  public static final String LOG_FINISHED_SUBPROCEDURE_PID_ARG_RESUME_PROCESSING_PPID_ARG_93ED990B = "Finished subprocedure pid={}, resume processing ppid={}";
+  public static final String LOG_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF = "Halt pid={}, activeCount={}";
+  public static final String LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D = "Exception happened when worker {} execute procedure {}";
+  public static final String LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354 = "Worker stuck {}({}), run time {} ms";
+  public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D = "Procedure workers: {} is running, {} is running and stuck";
+  public static final String LOG_PROCEDUREEXECUTOR_THREADGROUP_ARG_CONTAINS_RUNNING_THREADS_WHICH_USED_NON_PROCEDURE_BD865211 =
+      "ProcedureExecutor threadGroup {} contains running threads which are used by non-procedure"
+      + " module.";
+  public static final String LOG_ADD_PROCEDURE_ARG_AS_ARG_TH_ROLLBACK_STEP_C71B2184 = "Add procedure {} as the {}th rollback step";
+  public static final String LOG_STATEMACHINEPROCEDURE_PID_ARG_NOT_SET_NEXT_STATE_BUT_RETURN_HAS_7F93E63F =
+      "StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE. It is likely that"
+      + " there is some problem with the code. Please check the code. This procedure is about to be"
+      + " terminated: {}";
+  public static final String LOG_STATEMACHINEPROCEDURE_PID_ARG_SET_NEXT_STATE_ARG_BUT_RETURN_NO_0CA2D56C = "StateMachineProcedure pid={} set next state to {}, but return NO_MORE_STATE";
+  public static final String LOG_DON_T_ADD_SUCCESSFUL_PROCEDURE_BACK_SCHEDULER_IT_WILL_IGNORED_E015472C = "Don't add a successful procedure back to the scheduler, it will be ignored";
+  public static final String LOG_SCHEDULER_NOT_RUNNING_6969C9FF = "the scheduler is not running";
+  public static final String LOG_SCHEDULER_WAITING_TIME_LEFT_ARG_NANOS_D7717019 = "the scheduler waiting time left {} nanos";
+  public static final String LOG_SLEEP_FAILED_CONFIGNODEPROCEDUREENV_BCD470AC = "Sleep failed in ConfigNodeProcedureEnv: ";
+  public static final String LOG_INVALIDATE_CACHE_FAILED_BECAUSE_DATANODE_ARG_UNKNOWN_4F2D374C = "Invalidate cache failed, because DataNode {} is Unknown";
+  public static final String LOG_INVALIDATE_CACHE_FAILED_INVALIDATE_PARTITION_CACHE_STATUS_ARG_INVALIDATE_SCHEMAENGINE_BEB7A065 =
+      "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine"
+      + " cache status is {}";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_UPDATE_CONSENSUSGROUP_PEER_INFORMATION_FAILED_FCE5302B = "Remove ConfigNode failed because update ConsensusGroup peer information failed.";
+  public static final String MESSAGE_CAN_T_REMOVE_DATANODE_LIMIT_REPLICATION_FACTOR_D960E3A6 = "Can't remove datanode due to the limit of replication factor, ";
+  public static final String MESSAGE_AVAILABLEDATANODESIZE_ARG_MAXREPLICAFACTOR_ARG_MAX_ALLOWED_REMOVED_DATA_NODE_SIZE_FB8C382C = "availableDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s";
+  public static final String EXCEPTION_NOT_SUPPORTED_0A83F963 = " is not supported";
+  public static final String LOG_START_ADD_TRIGGER_ARG_TRIGGERTABLE_CONFIG_NODES_NEEDTOSAVEJAR_ARG_0C23D81E = "Start to add trigger [{}] in TriggerTable on Config Nodes, needToSaveJar[{}]";
+  public static final String LOG_START_CREATE_TRIGGERINSTANCE_ARG_DATA_NODES_917C3313 = "Start to create triggerInstance [{}] on Data Nodes";
+  public static final String LOG_START_ACTIVE_TRIGGER_ARG_DATA_NODES_A4AB8131 = "Start to active trigger [{}] on Data Nodes";
+  public static final String LOG_START_ACTIVE_TRIGGER_ARG_CONFIG_NODES_153A5D40 = "Start to active trigger [{}] on Config Nodes";
+  public static final String LOG_RETRIEVABLE_ERROR_TRYING_CREATE_TRIGGER_ARG_STATE_ARG_44976C4E = "Retrievable error trying to create trigger [{}], state [{}]";
+  public static final String LOG_START_CONFIG_NODE_INACTIVE_ROLLBACK_TRIGGER_ARG_536929E5 = "Start to [CONFIG_NODE_INACTIVE] rollback of trigger [{}]";
+  public static final String LOG_START_DATA_NODE_INACTIVE_ROLLBACK_TRIGGER_ARG_38C93D64 = "Start to [DATA_NODE_INACTIVE] rollback of trigger [{}]";
+  public static final String LOG_RETRIEVABLE_ERROR_TRYING_DROP_TRIGGER_ARG_STATE_ARG_2282AC35 = "Retrievable error trying to drop trigger [{}], state [{}]";
+  public static final String LOG_DELETEDATABASEPROCEDURE_PRE_DELETE_DATABASE_ARG_6A1FEACC = "[DeleteDatabaseProcedure] Pre delete database: {}";
+  public static final String LOG_DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_DATABASE_ARG_299FC9BC = "[DeleteDatabaseProcedure] Invalidate cache of database: {}";
+  public static final String LOG_DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_ARG_A49A47AC = "[DeleteDatabaseProcedure] Delete DatabaseSchema: {}";
+  public static final String LOG_DELETEDATABASEPROCEDURE_SUCCESSFULLY_DELETE_SCHEMAREGION_ARG_ARG_BA0535DA = "[DeleteDatabaseProcedure] Successfully delete SchemaRegion[{}] on {}";
+  public static final String LOG_DELETEDATABASEPROCEDURE_FAILED_DELETE_SCHEMAREGION_ARG_ARG_SUBMIT_ASYNC_DELETION_8C3E6DE3 = "[DeleteDatabaseProcedure] Failed to delete SchemaRegion[{}] on {}. Submit to async deletion.";
+  public static final String LOG_DELETEDATABASEPROCEDURE_DATA_PARTITION_POLICY_TABLE_DATABASE_ARG_CLEARED_7A32E28A = "[DeleteDatabaseProcedure] The data partition policy table of database: {} is cleared.";
+  public static final String LOG_DELETEDATABASEPROCEDURE_DATABASE_ARG_DELETED_SUCCESSFULLY_3A4E9202 = "[DeleteDatabaseProcedure] Database: {} is deleted successfully";
+  public static final String LOG_DELETEDATABASEPROCEDURE_RETRIABLE_ERROR_TRYING_DELETE_DATABASE_ARG_STATE_ARG_8167D246 = "[DeleteDatabaseProcedure] Retriable error trying to delete database {}, state {}";
+  public static final String LOG_DELETEDATABASEPROCEDURE_ROLLBACK_PREDELETED_ARG_638F53DA = "[DeleteDatabaseProcedure] Rollback to preDeleted: {}";
+  public static final String EXCEPTION_FAILED_DAA6EA2F = " failed ";
+  public static final String EXCEPTION_FAILED_CHECK_TIME_SERIES_EXISTENCE_ALL_REPLICASET_SCHEMAREGION_ARG_FAILURES_5F668154 = "failed to check time series existence in all replicaset of schemaRegion %s. Failures: %s";
+  public static final String LOG_FAILED_ROLLBACK_CONFIGNODE_TTL_STATE_9666EF54 = "Failed to rollback ConfigNode ttl state.";
+  public static final String LOG_FAILED_ROLLBACK_DATANODE_TTL_CACHE_436C008A = "Failed to rollback DataNode ttl cache.";
+  public static final String EXCEPTION_ROLLBACK_CONFIGNODE_TTL_FAILED_6D4FB59A = "Rollback ConfigNode ttl failed for ";
+  public static final String EXCEPTION_ROLLBACK_DATANODE_TTL_CACHE_FAILED_AF9C7102 = "Rollback dataNode ttl cache failed for ";
+  public static final String LOG_PLEASE_VERIFY_WHETHER_LEADER_CHANGE_HAS_OCCURRED_DURING_STAGE_9FE68EE3 = "Please verify whether a leader change has occurred during this stage. ";
+  public static final String LOG_IF_LOG_TRIGGERED_WITHOUT_LEADER_CHANGE_IT_INDICATES_POTENTIAL_BUG_32AE71FD =
+      "If this log is triggered without a leader change, it indicates a potential bug in the"
+      + " partition table.";
+  public static final String LOG_SKIP_RECOVERING_SCHEDULE_TASK_CQ_ARG_BECAUSE_ITS_METADATA_UNAVAILABLE_00286802 = "Skip recovering the schedule task of CQ {} because its metadata is unavailable.";
+  public static final String LOG_PROCEDUREID_ARG_ACQUIRE_LOCK_3FBF9987 = "procedureId {} acquire lock.";
+  public static final String LOG_PROCEDUREID_ARG_ACQUIRE_LOCK_FAILED_WILL_WAIT_LOCK_AFTER_FINISHING_3B27278E = "procedureId {} acquire lock failed, will wait for lock after finishing execution.";
+  public static final String LOG_PROCEDUREID_ARG_RELEASE_LOCK_FF860D6B = "procedureId {} release lock.";
+  public static final String LOG_RETRIEVABLE_ERROR_TRYING_ADD_CONFIG_NODE_ARG_STATE_ARG_D7285810 = "Retrievable error trying to add config node {}, state {}";
+  public static final String LOG_RETRIEVABLE_ERROR_TRYING_REMOVE_CONFIG_NODE_ARG_STATE_ARG_3754EBA1 = "Retrievable error trying to remove config node {}, state {}";
+  public static final String LOG_PROCEDUREID_ARG_REMOVEDATANODES_SKIPS_ACQUIRING_LOCK_SINCE_UPPER_LAYER_ENSURES_C7546FF8 =
+      "procedureId {}-RemoveDataNodes skips acquiring lock, since upper layer ensures the serial"
+      + " execution.";
+  public static final String LOG_PROCEDUREID_ARG_REMOVEDATANODES_SKIPS_RELEASING_LOCK_SINCE_IT_HASN_T_AED8A3DA = "procedureId {}-RemoveDataNodes skips releasing lock, since it hasn't acquire any lock.";
+  public static final String LOG_ARG_CAN_NOT_REMOVE_DATANODE_ARG_495F9F85 = "{}, Can not remove DataNode {} ";
+  public static final String LOG_BECAUSE_NUMBER_DATANODES_LESS_EQUAL_THAN_REGION_REPLICA_NUMBER_DEC0CB38 = "because the number of DataNodes is less or equal than region replica number";
+  public static final String LOG_ARG_DATANODE_REGIONS_REMOVED_ARG_216A7DC7 = "{}, DataNode regions to be removed is {}";
+  public static final String LOG_RETRIEVABLE_ERROR_TRYING_REMOVE_DATA_NODE_ARG_STATE_ARG_4EFEB850 = "Retrievable error trying to remove data node {}, state {}";
+  public static final String LOG_SUBMIT_REGIONMIGRATEPROCEDURE_REGIONID_ARG_REMOVEDDATANODE_ARG_DESTDATANODE_ARG_COORDINATORFORADDPEER_ARG_ =
+      "Submit RegionMigrateProcedure for regionId {}: removedDataNode={}, destDataNode={},"
+      + " coordinatorForAddPeer={}, coordinatorForRemovePeer={}";
+  public static final String LOG_ARG_CANNOT_FIND_TARGET_DATANODE_MIGRATE_REGION_ARG_81A78E06 = "{}, Cannot find target DataNode to migrate the region: {}";
+  public static final String LOG_ARG_SOME_REGIONS_MIGRATED_FAILED_DATANODE_ARG_MIGRATEDFAILEDREGIONS_ARG_11644841 = "{}, Some regions are migrated failed in DataNode: {}, migratedFailedRegions: {}.";
+  public static final String LOG_REGIONS_HAVE_BEEN_SUCCESSFULLY_MIGRATED_WILL_NOT_ROLL_BACK_YOU_AE904563 =
+      "Regions that have been successfully migrated will not roll back, you can submit the"
+      + " RemoveDataNodes task again later.";
+  public static final String LOG_ARG_DATANODES_ARG_ALL_REGIONS_MIGRATED_SUCCESSFULLY_START_STOP_THEM_32D56F28 = "{}, DataNodes: {} all regions migrated successfully, start to stop them.";
+  public static final String LOG_ARG_START_ROLL_BACK_DATANODES_STATUS_ARG_05C67270 = "{}, Start to roll back the DataNodes status: {}";
+  public static final String LOG_ARG_ROLL_BACK_DATANODES_STATUS_SUCCESSFULLY_ARG_6773A2DF = "{}, Roll back the DataNodes status successfully: {}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATANODES_REGISTERED_NO_WAY_COLLECT_EARLIEST_TIMESLOTS_WAITING_7025EB23 =
+      "[DataPartitionIntegrity] No DataNodes registered, no way to collect earliest timeslots,"
+      + " waiting for them to go up";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_COLLECTED_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ALREADY_OUT_834B62B9 =
+      "[DataPartitionIntegrity] Failed to collected earliest timeslots from the DataNode[id={}],"
+      + " already out of max retry time";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_COLLECTED_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_RESPONSE_STATUS_B0A31EC4 =
+      "[DataPartitionIntegrity] Failed to collected earliest timeslots from the DataNode[id={}],"
+      + " response status is {}";
+  public static final String LOG_COLLECTED_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ARG_5CDF2BA6 = "Collected earliest timeslots from the DataNode[id={}]: {}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_COLLECT_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ARG_A211840A = "[DataPartitionIntegrity] Failed to collect earliest timeslots from the DataNode[id={}]: {}";
+  public static final String LOG_COLLECTED_EARLIEST_TIMESLOTS_ARG_DATANODES_ARG_NUMBER_SUCCESSFUL_DATANODES_ARG_1CC129EF = "Collected earliest timeslots from {} DataNodes: {}, the number of successful DataNodes is {}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_NO_MISSING_DATA_PARTITIONS_DETECTED_NOTHING_NEEDS_REPAIRED_TERMINATING_72F2635F =
+      "[DataPartitionIntegrity] No missing data partitions detected, nothing needs to be repaired,"
+      + " terminating procedure";
+  public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATA_PARTITION_TABLE_RELATED_DATABASE_ARG_WAS_FOUND_B5B90613 =
+      "[DataPartitionIntegrity] No data partition table related to database {} was found from the"
+      + " ConfigNode, and this issue needs to be repaired";
+  public static final String LOG_DATAPARTITIONINTEGRITY_DATABASE_ARG_HAS_LOST_TIMESLOT_ARG_ITS_DATA_TABLE_499AF395 =
+      "[DataPartitionIntegrity] Database {} has lost timeslot {} in its data table partition, and"
+      + " this issue needs to be repaired";
+  public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATABASES_HAVE_LOST_DATA_PARTITIONS_TERMINATING_PROCEDURE_3E718CC3 = "[DataPartitionIntegrity] No databases have lost data partitions, terminating procedure";
+  public static final String LOG_DATAPARTITIONINTEGRITY_IDENTIFIED_ARG_DATABASES_HAVE_LOST_DATA_PARTITIONS_WILL_REQUEST_6DEA7502 =
+      "[DataPartitionIntegrity] Identified {} databases have lost data partitions, will request"
+      + " DataPartitionTable generation from {} DataNodes";
+  public static final String LOG_REQUESTING_DATAPARTITIONTABLE_GENERATION_ARG_DATANODES_559F97E8 = "Requesting DataPartitionTable generation from {} DataNodes...";
+  public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATANODES_REGISTERED_NO_WAY_REQUESTED_DATAPARTITIONTABLE_GENERATION_TERMINATING_ =
+      "[DataPartitionIntegrity] No DataNodes registered, no way to requested DataPartitionTable"
+      + " generation, terminating procedure";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_DATANODE_ID_ARG_ALREADY_OUT_6B0C9351 =
+      "[DataPartitionIntegrity] Failed to request DataPartitionTable generation from the"
+      + " DataNode[id={}], already out of max retry time";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_DATANODE_ID_ARG_RESPONSE_STATUS_93012D =
+      "[DataPartitionIntegrity] Failed to request DataPartitionTable generation from the"
+      + " DataNode[id={}], response status is {}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_DATANODE_ID_ARG_ARG_818B47B8 =
+      "[DataPartitionIntegrity] Failed to request DataPartitionTable generation from"
+      + " DataNode[id={}]: {}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_HEART_BEAT_DATANODE_ID_ARG_2AB63F12 =
+      "[DataPartitionIntegrity] Failed to request DataPartitionTable generation heart beat from the"
+      + " DataNode[id={}], already out of max retry time";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_HEART_BEAT_DATANODE_ID_ARG_DC1702EF =
+      "[DataPartitionIntegrity] Failed to request DataPartitionTable generation heart beat from the"
+      + " DataNode[id={}], state is {}, response status is {}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_COMPLETED_DATAPARTITIONTABLE_GENERATION_TERMINATING_HEART_BEAT_59DAAD5 =
+      "[DataPartitionIntegrity] DataNode {} completed DataPartitionTable generation, terminating"
+      + " heart beat";
+  public static final String LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_STILL_GENERATING_DATAPARTITIONTABLE_63F84C78 = "[DataPartitionIntegrity] DataNode {} still generating DataPartitionTable";
+  public static final String LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_RETURNED_UNKNOWN_ERROR_CODE_ARG_2DA6A21E = "[DataPartitionIntegrity] DataNode {} returned unknown error code: {}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_ERROR_CHECKING_DATAPARTITIONTABLE_STATUS_DATANODE_ARG_ARG_TERMINATING_HEART_D6EDA91 =
+      "[DataPartitionIntegrity] Error checking DataPartitionTable status from DataNode {}: {},"
+      + " terminating heart beat";
+  public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATAPARTITIONTABLES_MERGE_DATAPARTITIONTABLES_EMPTY_920E3DE6 = "[DataPartitionIntegrity] No DataPartitionTables to merge, dataPartitionTables is empty";
+  public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATA_PARTITION_TABLE_RELATED_DATABASE_ARG_WAS_FOUND_D1698512 =
+      "[DataPartitionIntegrity] No data partition table related to database {} was found from the"
+      + " ConfigNode, use data partition table of DataNode directly";
+  public static final String LOG_DATAPARTITIONINTEGRITY_DATAPARTITIONTABLE_SUCCESSFULLY_WRITTEN_CONSENSUS_LOG_2B1634A6 = "[DataPartitionIntegrity] DataPartitionTable successfully written to consensus log";
+  public static final String LOG_DATAPARTITIONINTEGRITY_ARG_SERIALIZE_FAILED_DATANODEID_ARG_967B51AA = "[DataPartitionIntegrity] {} serialize failed for dataNodeId: {}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_ARG_SERIALIZE_FINALDATAPARTITIONTABLES_FAILED_7E44DCD8 = "[DataPartitionIntegrity] {} serialize finalDataPartitionTables failed";
+  public static final String LOG_DATAPARTITIONINTEGRITY_ARG_DESERIALIZE_FAILED_DATANODEID_ARG_22388A60 = "[DataPartitionIntegrity] {} deserialize failed for dataNodeId: {}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_ARG_DESERIALIZE_FINALDATAPARTITIONTABLES_FAILED_7E23E4BD = "[DataPartitionIntegrity] {} deserialize finalDataPartitionTables failed";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_DESERIALIZE_DATABASESCOPEDDATAPARTITIONTABLE_3B6933B5 = "[DataPartitionIntegrity] Failed to deserialize DatabaseScopedDataPartitionTable";
+  public static final String EXCEPTION_FAILED_C6FF154E = " failed";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMVALIDATE_97490577 = "SubscriptionHandleLeaderChangeProcedure: executeFromValidate";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_D4E8BD37 = "SubscriptionHandleLeaderChangeProcedure: executeFromOperateOnConfigNodes";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_8C6DEC4E =
+      "SubscriptionHandleLeaderChangeProcedure: failed to pull commit progress from DataNode {},"
+      + " status: {}";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_WRITE_API_EXECUTING_CONSENSUS_LAYER_56B3832A =
+      "SubscriptionHandleLeaderChangeProcedure: failed in the write API executing the consensus"
+      + " layer due to: ";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMOPERATEONDATANODES_0D9F7C98 = "SubscriptionHandleLeaderChangeProcedure: executeFromOperateOnDataNodes";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_TOPIC_META_PUSH_DATANODE_ARG_STATUS_ARG_67FC003F =
+      "SubscriptionHandleLeaderChangeProcedure: ignored failed topic meta push to DataNode {},"
+      + " status: {}";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_CONSUMER_GROUP_META_PUSH_DATANODE_ARG_STATUS_17C948 =
+      "SubscriptionHandleLeaderChangeProcedure: ignored failed consumer group meta push to DataNode"
+      + " {}, status: {}";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_SUBSCRIPTION_RUNTIME_PUSH_UNREADABLE_DATANODE_ARG_S =
+      "SubscriptionHandleLeaderChangeProcedure: ignored failed subscription runtime push to"
+      + " unreadable DataNode {}, status: {}";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMVALIDATE_74B408B7 = "SubscriptionHandleLeaderChangeProcedure: rollbackFromValidate";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES_D4C70763 = "SubscriptionHandleLeaderChangeProcedure: rollbackFromOperateOnConfigNodes";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMOPERATEONDATANODES_0250F6E9 = "SubscriptionHandleLeaderChangeProcedure: rollbackFromOperateOnDataNodes";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_DESERIALIZE_REGION_PROGRESS_KEY_ARG_SUMMARY_ARG_F6935E59 =
+      "SubscriptionHandleLeaderChangeProcedure: failed to deserialize region progress, key={},"
+      + " summary={}";
+  public static final String EXCEPTION_FAILED_PUSH_SUBSCRIPTION_RUNTIME_STATE_READABLE_DATANODES_DURING_LEADER_CHANGE_F37E6F2C =
+      "Failed to push subscription runtime state to readable DataNodes during leader change,"
+      + " details: %s";
+  public static final String EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 = "Failed to serialize region progress ";
+  public static final String EXCEPTION_NO_READABLE_DATANODE_AVAILABLE_ACCEPT_SUBSCRIPTION_METADATA_RUNTIME_UPDATES_DURING_22E61621 =
+      "No readable DataNode is available to accept subscription metadata/runtime updates during"
+      + " leader change";
+  public static final String LOG_CREATESUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_031CF049 = "CreateSubscriptionProcedure: topic [{}] uses consensus subscription mode ";
+  public static final String LOG_MODE_ARG_SKIPPING_PIPE_CREATION_5F4D1026 = "(mode={}), skipping pipe creation";
+  public static final String LOG_CREATESUBSCRIPTIONPROCEDURE_CONSENSUS_BASED_TOPICS_ARG_WILL_HANDLED_DATANODE_90A9C2FD = "CreateSubscriptionProcedure: consensus-based topics {} will be handled by DataNode ";
+  public static final String LOG_VIA_CONSUMER_GROUP_META_PUSH_NO_PIPE_CREATION_NEEDED_D56CFE31 = "via consumer group meta push (no pipe creation needed)";
+  public static final String LOG_DROPSUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_6962D13C = "DropSubscriptionProcedure: topic [{}] uses consensus subscription mode ";
+  public static final String LOG_MODE_ARG_SKIPPING_PIPE_REMOVAL_133B0CD6 = "(mode={}), skipping pipe removal";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ACQUIRELOCK_SKIP_PROCEDURE_LAST_EXECUTION_TIME_ARG_CE3DD247 = "CommitProgressSyncProcedure: acquireLock, skip the procedure due to the last execution time {}";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMVALIDATE_CF220E1F = "CommitProgressSyncProcedure: executeFromValidate";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_0DC818CA = "CommitProgressSyncProcedure: executeFromOperateOnConfigNodes";
+  public static final String LOG_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_33037B29 = "Failed to pull commit progress from DataNode {}, status: {}";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES_NO_OP_34420360 = "CommitProgressSyncProcedure: executeFromOperateOnDataNodes (no-op)";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMVALIDATE_2309D4D2 = "CommitProgressSyncProcedure: rollbackFromValidate";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES_57CB907B = "CommitProgressSyncProcedure: rollbackFromOperateOnConfigNodes";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMOPERATEONDATANODES_0D2CEB50 = "CommitProgressSyncProcedure: rollbackFromOperateOnDataNodes";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_FAILED_DESERIALIZE_REGION_PROGRESS_KEY_ARG_SUMMARY_ARG_0202F658 = "CommitProgressSyncProcedure: failed to deserialize region progress, key={}, summary={}";
+  public static final String EXCEPTION_UNEXPECTED_PARENT_444B4289 = "Unexpected parent";
+  public static final String LOG_ARG_8393DD4A = "{}";
+  public static final String MESSAGE_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF = "Halt pid={}, activeCount={}";
+  public static final String MESSAGE_EXCEPTION_HAPPENED_WHEN_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D = "Exception happened when worker {} execute procedure {}";
+  public static final String EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_71B7046A =
+      "cannot derive a collision-free delete taskId: procId=%d, deleteTaskSeq=%d exceed the ";
+  public static final String EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_ARG_ARG_BIT_BUDGET_015C598D =
+      "cannot derive a collision-free delete taskId: procId=%d, deleteTaskSeq=%d exceed the %d/%d-bit budget";
+  public static final String MESSAGE_FAILED_TO_SHOW_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_5EE98694 = "Failed to show DataPartitionTable integrity check progress";
+  public static final String MESSAGE_ENCOUNTERED_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_5FA2739F =
+      "Encountered unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress";
+  public static final String MESSAGE_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_D3C07BA1 =
+      "Unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress";
+
 }

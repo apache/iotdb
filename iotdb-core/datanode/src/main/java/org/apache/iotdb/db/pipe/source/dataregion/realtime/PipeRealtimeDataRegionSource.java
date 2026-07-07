@@ -166,7 +166,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
             String.format(
-                "%s (%s) [%s] should be less than or equal to %s (%s) [%s].",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_S_S_S_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_S_S_S_0B9726E1,
                 SOURCE_START_TIME_KEY,
                 EXTRACTOR_START_TIME_KEY,
                 realtimeDataExtractionStartTime,
@@ -203,7 +204,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       if (!sloppyOptionSet.isEmpty()) {
         throw new PipeParameterNotValidException(
             String.format(
-                "Parameters in set %s are not allowed in 'realtime.loose-range'", sloppyOptionSet));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_PARAMETERS_IN_SET_S_ARE_NOT_ALLOWED_IN_REALTIME_LOOSE_RANGE_BACD2475,
+                sloppyOptionSet));
       }
     }
   }

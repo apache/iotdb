@@ -235,8 +235,10 @@ public class PipeHeartbeatParser {
               .ifPresent(
                   l ->
                       l.info(
-                          "Updated progress index for (pipe name: {}, consensus group id: {}) ... "
-                              + "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}",
+                          ManagerMessages
+                                  .LOG_UPDATED_PROGRESS_INDEX_PIPE_NAME_ARG_CONSENSUS_GROUP_ID_ARG_DF112F4F
+                              + ManagerMessages
+                                  .LOG_PROGRESS_INDEX_COORDINATOR_ARG_PROGRESS_INDEX_AGENT_ARG_UPDATED_PROGRESSINDEX_1A22ABC5,
                           pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
                           runtimeMetaFromCoordinator.getKey(),
                           runtimeMetaFromCoordinator.getValue().getProgressIndex(),
@@ -248,24 +250,21 @@ public class PipeHeartbeatParser {
 
         // Update runtime exception
         final PipeTaskMeta pipeTaskMetaFromCoordinator = runtimeMetaFromCoordinator.getValue();
+        final PipeRuntimeMeta pipeRuntimeMeta = pipeMetaFromCoordinator.getRuntimeMeta();
         pipeTaskMetaFromCoordinator.clearExceptionMessages();
         for (final PipeRuntimeException exception : runtimeMetaFromAgent.getExceptionMessages()) {
-
-          // Do not judge the exception's clear time to avoid the restart process
-          // being ended after the failure of some pipe
+          if (exception.getTimeStamp() <= pipeRuntimeMeta.getExceptionsClearTime()) {
+            needPushPipeMetaToDataNodes.set(true);
+            continue;
+          }
 
           pipeTaskMetaFromCoordinator.trackExceptionMessage(exception);
 
           if (exception instanceof PipeRuntimeCriticalException) {
             final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
-            if (!pipeMetaFromCoordinator
-                .getRuntimeMeta()
-                .getStatus()
-                .get()
-                .equals(PipeStatus.STOPPED)) {
-              PipeRuntimeMeta runtimeMeta = pipeMetaFromCoordinator.getRuntimeMeta();
-              runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-              runtimeMeta.setIsStoppedByRuntimeException(true);
+            if (!pipeRuntimeMeta.getStatus().get().equals(PipeStatus.STOPPED)) {
+              pipeRuntimeMeta.getStatus().set(PipeStatus.STOPPED);
+              pipeRuntimeMeta.setIsStoppedByRuntimeException(true);
 
               needWriteConsensusOnConfigNodes.set(true);
               needPushPipeMetaToDataNodes.set(false);

@@ -106,7 +106,10 @@ public class WALMetaData implements SerializedSize {
   private static short toShortExact(long value, String fieldName) {
     if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
       throw new IllegalArgumentException(
-          String.format("%s %s exceeds short range", fieldName, value));
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_S_S_EXCEEDS_SHORT_RANGE_1DF75A2D,
+              fieldName,
+              value));
     }
     return (short) value;
   }

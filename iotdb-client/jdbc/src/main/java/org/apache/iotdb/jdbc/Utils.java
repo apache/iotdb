@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcSslUtils;
 
 import java.nio.charset.Charset;
@@ -99,7 +100,8 @@ public class Utils {
     }
     if (!isUrlLegal) {
       throw new IoTDBURLException(
-          "Error url format, url should be jdbc:iotdb://anything:port/[database] or jdbc:iotdb://anything:port[/database]?property1=value1&property2=value2, current url is "
+          JdbcMessages
+                  .EXCEPTION_ERROR_URL_FORMAT_URL_SHOULD_JDBC_IOTDB_ANYTHING_PORT_DATABASE_17D1DCFB
               + url);
     }
 

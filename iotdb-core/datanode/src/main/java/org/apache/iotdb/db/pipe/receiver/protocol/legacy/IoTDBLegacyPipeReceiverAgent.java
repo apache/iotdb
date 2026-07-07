@@ -359,7 +359,7 @@ public class IoTDBLegacyPipeReceiverAgent {
     if (Objects.nonNull(illegalError)) {
       throw new IOException(
           String.format(PipeMessages.ILLEGAL_FILENAME_PATH_TRAVERSAL, fileName)
-              + ", "
+              + PipeMessages.EXCEPTION_COMMA_50AD1C01
               + illegalError);
     }
 
@@ -376,17 +376,10 @@ public class IoTDBLegacyPipeReceiverAgent {
     }
     // compare and check
     if (localIndex < 0 && startIndex != 0) {
-      LOGGER.error(
-          "The start index {} of data sync is not valid. "
-              + "The file is not exist and start index should equal to 0).",
-          startIndex);
+      LOGGER.error(DataNodePipeMessages.THE_START_INDEX_OF_DATA_SYNC_IS, startIndex);
       return new IndexCheckResult(false, "0");
     } else if (localIndex >= 0 && localIndex != startIndex) {
-      LOGGER.error(
-          "The start index {} of data sync is not valid. "
-              + "The start index of the file should equal to {}.",
-          startIndex,
-          localIndex);
+      LOGGER.error(DataNodePipeMessages.THE_START_INDEX_OF_DATA_SYNC_IS_1, startIndex, localIndex);
       return new IndexCheckResult(false, String.valueOf(localIndex));
     }
     return new IndexCheckResult(true, "0");
