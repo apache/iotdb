@@ -159,32 +159,39 @@ set(_it_ntls_examples "")
 if(_iotdb_examples_in_tree)
     ADD_EXECUTABLE(cpp_tree_example cpp_tree_example.cpp)
     ADD_EXECUTABLE(cpp_table_example cpp_table_example.cpp)
-    ADD_EXECUTABLE(cpp_tls_example cpp_tls_example.cpp ExampleTlsConfig.cpp)
-    ADD_EXECUTABLE(cpp_ntls_example cpp_ntls_example.cpp ExampleNtlsHandshake.cpp)
-    ADD_EXECUTABLE(tls_tree_example tls_tree_example.c ExampleTlsConfig.cpp)
-    ADD_EXECUTABLE(c_ntls_example c_ntls_example.c ExampleNtlsHandshake.cpp)
 
     list(APPEND _example_targets
         cpp_tree_example
-        cpp_table_example
-        cpp_tls_example
-        cpp_ntls_example
-        tls_tree_example
-        c_ntls_example)
+        cpp_table_example)
 
     set(_it_plain_examples
         cpp_tree_example
         cpp_table_example
         tree_example
         table_example)
+endif()
 
-    set(_it_ssl_examples
+if(WITH_SSL AND (_iotdb_examples_in_tree OR _iotdb_use_bundled_ssl))
+    ADD_EXECUTABLE(cpp_tls_example cpp_tls_example.cpp ExampleTlsConfig.cpp)
+    ADD_EXECUTABLE(cpp_ntls_example cpp_ntls_example.cpp ExampleNtlsHandshake.cpp)
+    ADD_EXECUTABLE(tls_tree_example tls_tree_example.c ExampleTlsConfig.cpp)
+    ADD_EXECUTABLE(c_ntls_example c_ntls_example.c ExampleNtlsHandshake.cpp)
+
+    list(APPEND _example_targets
         cpp_tls_example
-        tls_tree_example)
-
-    set(_it_ntls_examples
         cpp_ntls_example
+        tls_tree_example
         c_ntls_example)
+
+    if(_iotdb_examples_in_tree)
+        set(_it_ssl_examples
+            cpp_tls_example
+            tls_tree_example)
+
+        set(_it_ntls_examples
+            cpp_ntls_example
+            c_ntls_example)
+    endif()
 endif()
 
 foreach(_t IN LISTS _example_targets)

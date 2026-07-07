@@ -68,8 +68,8 @@ Alternatively copy files manually from the URLs listed in
 
 | Platform   | Typical files |
 |------------|---------------|
-| `linux/`   | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `tongsuo-8.4-stable.tar.gz` (when `WITH_SSL=ON`, default) |
-| `mac/`     | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_60_0.tar.gz` (Xcode CLT usually provides m4/flex/bison) |
-| `windows/` | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_60_0.tar.gz`, `win_flex_bison-2.5.25.zip` (or any `win_flex_bison*.zip`; skip if flex/bison already on `PATH`) |
+| `linux/`   | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `tongsuo-8.4.0.tar.gz` (when `WITH_SSL=ON`, default) |
+| `mac/`     | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_84_0.tar.gz`, `tongsuo-8.4.0.tar.gz` (when `WITH_SSL=ON`, default; Xcode CLT usually provides m4/flex/bison) |
+| `windows/` | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_60_0.tar.gz`, `tongsuo-8.4.0.tar.gz` (when `WITH_SSL=ON`, default), `win_flex_bison-2.5.25.zip` (or any `win_flex_bison*.zip`; skip if flex/bison already on `PATH`) |
 
 Download URLs: see the *Offline build* table in [`README.md`](../README.md).

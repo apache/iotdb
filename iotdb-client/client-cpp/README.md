@@ -385,7 +385,8 @@ etc. directly.
 | `IOTDB_DEPS_DIR`      | `<client-cpp>/third-party`       | Override the local tarball cache directory.                                                              |
 | `BOOST_VERSION`       | `1.60.0` (`1.84.0` on macOS)     | Boost version that CMake will look for / download.                                                       |
 | `THRIFT_GIT_COMMIT`   | `6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242` | Apache Thrift git commit to build from source.                                                  |
-| `TONGSUO_GIT_REF`     | `8.4-stable`                     | Tongsuo git ref built from source when `WITH_SSL=ON`.                                                    |
+| `TONGSUO_GIT_REF`     | `8.4.0`                          | Immutable Tongsuo git tag built from source when `WITH_SSL=ON`.                                            |
+| `TONGSUO_TARBALL_SHA256` | `57c274…fc975`                | Expected SHA256 of the Tongsuo source tarball (verified on download).                                    |
 | `BOOST_ROOT`          | (unset)                          | Existing Boost install to reuse, equivalent to `-Dboost.include.dir=...` from the legacy build.          |
 | `CMAKE_INSTALL_PREFIX`| `<build>/install`                | Install location.                                                                                        |
 | `CMAKE_BUILD_TYPE`    | `Release`                        | Single-config generator build type. Use `Debug` to produce a debug library.                              |
@@ -427,9 +428,9 @@ cmake --build build --config Release --target install
 
    | Platform   | Required files                                                                                                                                                       |
    |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-   | `linux/`   | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `tongsuo-8.4-stable.tar.gz` |
-   | `mac/`     | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_84_0.tar.gz`, `tongsuo-8.4-stable.tar.gz` (Apple ships m4/flex/bison) |
-   | `windows/` | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_60_0.tar.gz` (Boost headers only - no `b2` build required for `iotdb_session`) |
+   | `linux/`   | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `tongsuo-8.4.0.tar.gz` |
+   | `mac/`     | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_84_0.tar.gz`, `tongsuo-8.4.0.tar.gz` (Apple ships m4/flex/bison) |
+   | `windows/` | `thrift-6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz`, `boost_1_60_0.tar.gz`, `tongsuo-8.4.0.tar.gz` (Boost headers only - no `b2` build required for `iotdb_session`) |
 
    Reference URLs (the configure step uses the same):
    - Apache Thrift (git): <https://github.com/apache/thrift/archive/6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242.tar.gz>
@@ -437,7 +438,7 @@ cmake --build build --config Release --target install
    - GNU m4 1.4.19:       <https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.gz>
    - GNU flex 2.6.4:      <https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz>
    - GNU bison 3.8:       <https://ftp.gnu.org/gnu/bison/bison-3.8.tar.gz>
-   - Tongsuo 8.4-stable: <https://github.com/Tongsuo-Project/Tongsuo/archive/refs/heads/8.4-stable.tar.gz>
+   - Tongsuo 8.4.0: <https://github.com/Tongsuo-Project/Tongsuo/archive/refs/tags/8.4.0.tar.gz>
 
 2. Run the build with offline mode enabled:
 
@@ -493,7 +494,7 @@ Prerequisites:
    and rename `win_flex.exe`→`flex.exe`, `win_bison.exe`→`bison.exe` on
    `PATH`.
 3. **Perl** (for building Tongsuo when `WITH_SSL=ON`).
-4. **Tongsuo / SSL** *(`WITH_SSL=ON` is the default)*: Tongsuo 8.4-stable is
+4. **Tongsuo / SSL** *(`WITH_SSL=ON` is the default)*: Tongsuo 8.4.0 is
    always built from source (requires Perl and `nmake` from the VS Developer
    Command Prompt). Pass `-DWITH_SSL=OFF` to build without SSL.
 
@@ -511,7 +512,7 @@ the GNU autotools tarballs assume a POSIX shell environment.
 `iotdb_session` builds **with SSL/TLS by default** (`WITH_SSL=ON`). Disable
 it with `-Dwith.ssl=OFF` (Maven) or `-DWITH_SSL=OFF` (standalone CMake).
 
-[Tongsuo](https://github.com/Tongsuo-Project/Tongsuo) **8.4-stable** is
+[Tongsuo](https://github.com/Tongsuo-Project/Tongsuo) **8.4.0** is
 **always built from source** during configure (Apache-2.0 licensed,
 OpenSSL-compatible API). It adds Chinese commercial cipher and TLCP protocol
 support on top of standard TLS. The resulting `libssl` / `libcrypto` shared
@@ -528,8 +529,18 @@ Host prerequisites when `WITH_SSL=ON`:
 ### Client SSL / TLCP configuration
 
 The C++ client mirrors the Java Session API. Use **PKCS12** (`.p12` / `.pfx`)
-for `trustStore` and `keyStore`. JKS files must be converted to PKCS12 first
-(the C++ client does not parse JKS).
+for `trustStore` and `keyStore`. **JKS is not supported** — convert to PKCS12
+first. PEM CA files are supported via `trustStore` (PEM path) or the legacy
+`trustCertFilePath()` setter when `trustStore` is empty.
+
+| API field | C++ meaning | Notes |
+|-----------|-------------|-------|
+| `trustStore` | Server trust material (PKCS#12 or PEM CA file) | Not JKS; `.p12`/`.pfx` = PKCS#12 |
+| `keyStore` | Client identity (PKCS#12 or PEM cert+key) | TLCP mutual auth needs dual-cert PKCS#12 |
+| `trustCertFilePath` | Legacy PEM CA path | Used only when `trustStore` is unset |
+
+OpenSSL-style PEM users can point `trustStore` at a `.pem` CA bundle, or use
+`trustCertFilePath()` for the same PEM file without PKCS#12 wrapping.
 
 **TLS one-way (server authentication):**
 

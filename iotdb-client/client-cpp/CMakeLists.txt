@@ -99,8 +99,10 @@ set(BOOST_VERSION "${_iotdb_default_boost_version}"
     CACHE STRING "Boost version used when downloading / unpacking (Thrift build only)")
 set(THRIFT_GIT_COMMIT "6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242"
     CACHE STRING "Apache Thrift git commit used when downloading / building")
-set(TONGSUO_GIT_REF "8.4-stable"
-    CACHE STRING "Tongsuo git ref used when building SSL/TLS from source")
+set(TONGSUO_GIT_REF "8.4.0"
+    CACHE STRING "Tongsuo git tag/commit used when building SSL/TLS from source")
+set(TONGSUO_TARBALL_SHA256 "57c2741750a699bfbdaa1bbe44a5733e9c8fc65d086c210151cfbc2bbd6fc975"
+    CACHE STRING "Expected SHA256 of the Tongsuo source tarball")
 
 if(WIN32)
     set(IOTDB_OS_DEPS_DIR "${IOTDB_DEPS_DIR}/windows")

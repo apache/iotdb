@@ -244,7 +244,7 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 | `CMAKE_BUILD_TYPE` | `cmake.build.type`，例如 `-Dcmake.build.type=Debug` |
 
 SSL 默认开启（`WITH_SSL=ON`）。配置阶段**始终从源码构建**
-[Tongsuo](https://github.com/Tongsuo-Project/Tongsuo) **8.4-stable**
+[Tongsuo](https://github.com/Tongsuo-Project/Tongsuo) **8.4.0**
 （OpenSSL 兼容 API，Apache-2.0，支持国密/TLCP），并把 `libssl`/`libcrypto`
 动态库复制到产物 `lib/` 目录。Windows 需要 Perl 与 VS 的 `nmake`。
 直接使用 CMake 时传入 `-DWITH_SSL=OFF`、`-DIOTDB_OFFLINE=ON` 等即可。
@@ -252,7 +252,15 @@ SSL 默认开启（`WITH_SSL=ON`）。配置阶段**始终从源码构建**
 ### 客户端 SSL / TLCP 配置
 
 C++ 客户端 API 与 Java Session 对齐。`trustStore` 与 `keyStore` 请使用
-**PKCS12**（`.p12` / `.pfx`）。JKS 需先转换为 PKCS12（C++ 端不解析 JKS）。
+**PKCS12**（`.p12` / `.pfx`）。**不支持 JKS**，需先转换为 PKCS12。PEM 格式
+CA 可通过 `trustStore`（指向 `.pem` 文件）或遗留的 `trustCertFilePath()` 配置
+（仅当 `trustStore` 为空时生效）。
+
+| API 字段 | C++ 含义 | 说明 |
+|----------|----------|------|
+| `trustStore` | 服务端信任材料（PKCS#12 或 PEM CA） | 非 JKS；`.p12`/`.pfx` 表示 PKCS#12 |
+| `keyStore` | 客户端身份（PKCS#12 或 PEM 证书+私钥） | TLCP 双向认证需双证书 PKCS#12 |
+| `trustCertFilePath` | 遗留 PEM CA 路径 | 仅 `trustStore` 未设置时使用 |
 
 **TLS 单向认证：**
 

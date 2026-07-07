@@ -51,7 +51,8 @@
         <iotdb.offline>OFF</iotdb.offline>
         <with.ssl>ON</with.ssl>
         <thrift.git.commit>6dfb0b26ea6b9ab9c114e0ef4c0f6e7b8110b242</thrift.git.commit>
-        <tongsuo.git.ref>8.4-stable</tongsuo.git.ref>
+        <tongsuo.git.ref>8.4.0</tongsuo.git.ref>
+        <tongsuo.tarball.sha256>57c2741750a699bfbdaa1bbe44a5733e9c8fc65d086c210151cfbc2bbd6fc975</tongsuo.tarball.sha256>
         <iotdb.cxx11.abi/>
         <!-- Switched to OFF by the .skipTests profile below. -->
         <build.tests>ON</build.tests>
@@ -117,6 +118,7 @@
                                 <option>-DWITH_SSL=${with.ssl}</option>
                                 <option>-DTHRIFT_GIT_COMMIT=${thrift.git.commit}</option>
                                 <option>-DTONGSUO_GIT_REF=${tongsuo.git.ref}</option>
+                                <option>-DTONGSUO_TARBALL_SHA256=${tongsuo.tarball.sha256}</option>
                                 <option>-DIOTDB_OFFLINE=${iotdb.offline}</option>
                                 <option>-DIOTDB_DEPS_DIR=${iotdb.deps.dir}</option>
                                 <option>-DIOTDB_USE_CXX11_ABI=${iotdb.cxx11.abi}</option>

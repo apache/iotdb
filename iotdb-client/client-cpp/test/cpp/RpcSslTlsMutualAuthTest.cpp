@@ -122,3 +122,46 @@ TEST_CASE("TLS one-way auth fails when server requires client certificate", "[rp
   server.stop();
 #endif
 }
+
+TEST_CASE("Thrift TSSLSocketFactory verifies server certificate when trust store is set",
+          "[rpc][ssl][thrift][e2e]") {
+#if WITH_SSL
+  const std::string caFile = ssltest::tlsFixture("ca.crt");
+  const std::string serverCert = ssltest::tlsFixture("server.crt");
+  const std::string serverKey = ssltest::tlsFixture("server.key");
+  REQUIRE(fixtureExists(caFile));
+  REQUIRE(fixtureExists(serverCert));
+  REQUIRE(fixtureExists(serverKey));
+
+  ssltest::OpenSslServerProcess server;
+  const bool started = server.start({
+      "-tls1_2",
+      "-CAfile", caFile,
+      "-cert", serverCert,
+      "-key", serverKey,
+      "-www",
+  });
+  REQUIRE(started);
+  REQUIRE(server.port() > 0);
+
+  SslConfig goodConfig;
+  goodConfig.useSsl = true;
+  goodConfig.sslProtocol = "TLS";
+  goodConfig.trustStore = ssltest::tlsFixture("tls-trust.p12");
+  goodConfig.trustStorePwd = ssltest::kStorePassword;
+  REQUIRE(ssltest::thriftTlsHandshakeWithSslConfig(goodConfig, "127.0.0.1", server.port()));
+
+  SslConfig badConfig = goodConfig;
+  badConfig.trustStore = ssltest::tlsFixture("tls-client.p12");
+  badConfig.keyStore.clear();
+  REQUIRE_FALSE(ssltest::thriftTlsHandshakeWithSslConfig(badConfig, "127.0.0.1", server.port()));
+  server.stop();
+#endif
+}
+
+TEST_CASE("RpcSslUtils rejects JKS store paths", "[rpc][ssl]") {
+#if WITH_SSL
+  REQUIRE_THROWS_AS(RpcSslUtils::validateTrustStore("/path/to/trust.jks", "pwd"), IoTDBException);
+  REQUIRE_THROWS_AS(RpcSslUtils::validateKeyStore("/path/to/client.jks", "pwd"), IoTDBException);
+#endif
+}

@@ -32,6 +32,10 @@
 if(TONGSUO_GIT_REF MATCHES "^[0-9a-fA-F]{7,40}$")
     set(_tongsuo_extracted_dir "Tongsuo-${TONGSUO_GIT_REF}")
     set(_tongsuo_url "https://github.com/Tongsuo-Project/Tongsuo/archive/${TONGSUO_GIT_REF}.tar.gz")
+elseif(TONGSUO_GIT_REF MATCHES "^[0-9]+\\.[0-9]")
+    set(_tongsuo_extracted_dir "Tongsuo-${TONGSUO_GIT_REF}")
+    set(_tongsuo_url
+            "https://github.com/Tongsuo-Project/Tongsuo/archive/refs/tags/${TONGSUO_GIT_REF}.tar.gz")
 else()
     set(_tongsuo_extracted_dir "Tongsuo-${TONGSUO_GIT_REF}")
     set(_tongsuo_url
@@ -56,6 +60,18 @@ if(NOT EXISTS "${_tongsuo_tarball}")
         list(GET _st 1 _msg)
         file(REMOVE "${_tongsuo_tarball}")
         message(FATAL_ERROR "[Tongsuo] download failed: ${_msg}")
+    endif()
+endif()
+
+if(TONGSUO_TARBALL_SHA256)
+    file(SHA256 "${_tongsuo_tarball}" _tongsuo_actual_sha256)
+    string(TOLOWER "${TONGSUO_TARBALL_SHA256}" _tongsuo_expected_sha256)
+    string(TOLOWER "${_tongsuo_actual_sha256}" _tongsuo_actual_sha256)
+    if(NOT _tongsuo_actual_sha256 STREQUAL _tongsuo_expected_sha256)
+        file(REMOVE "${_tongsuo_tarball}")
+        message(FATAL_ERROR
+                "[Tongsuo] tarball SHA256 mismatch for ${_tongsuo_tarname}: "
+                "expected ${_tongsuo_expected_sha256}, got ${_tongsuo_actual_sha256}")
     endif()
 endif()
 

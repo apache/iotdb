@@ -48,6 +48,8 @@
 #include <openssl/pem.h>
 #include <openssl/pkcs12.h>
 #include <openssl/x509.h>
+#include <thrift/transport/TSSLSocket.h>
+#include <thrift/transport/TTransportException.h>
 #endif
 
 #include "RpcSslUtils.h"
@@ -472,6 +474,27 @@ bool tlsHandshakeWithSslConfig(const SslConfig& config, const std::string& host,
   WSACleanup();
 #endif
   (void)timeoutMs;
+  return false;
+}
+
+bool thriftTlsHandshakeWithSslConfig(const SslConfig& config, const std::string& host, int port,
+                                     int timeoutMs) {
+  (void)timeoutMs;
+  for (int attempt = 0; attempt < 3; ++attempt) {
+    try {
+      auto factory = RpcSslUtils::createSslSocketFactory(config);
+      std::shared_ptr<apache::thrift::transport::TSSLSocket> socket =
+          factory->createSocket(host, port);
+      socket->open();
+      socket->close();
+      return true;
+    } catch (const apache::thrift::transport::TTransportException&) {
+      // Server may still be starting; retry below.
+    } catch (const IoTDBException&) {
+      return false;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  }
   return false;
 }
 

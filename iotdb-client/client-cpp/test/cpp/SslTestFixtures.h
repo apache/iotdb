@@ -45,6 +45,8 @@ bool sslContextHasClientCertificate(SSL_CTX* ctx);
 
 bool tlsHandshakeWithSslConfig(const SslConfig& config, const std::string& host, int port,
                                int timeoutMs = 5000);
+bool thriftTlsHandshakeWithSslConfig(const SslConfig& config, const std::string& host, int port,
+                                     int timeoutMs = 5000);
 #endif
 
 /** Spawn bundled Tongsuo openssl s_server for integration-style handshake tests. */

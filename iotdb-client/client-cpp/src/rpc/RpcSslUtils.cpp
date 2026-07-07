@@ -83,6 +83,17 @@ bool isPkcs12Path(const std::string& path) {
   return endsWithIgnoreCase(path, ".p12") || endsWithIgnoreCase(path, ".pfx");
 }
 
+bool isJksPath(const std::string& path) {
+  return endsWithIgnoreCase(path, ".jks");
+}
+
+void rejectJksPath(const std::string& path, const std::string& label) {
+  if (isJksPath(path)) {
+    throw IoTDBException(label + " JKS is not supported by the C++ client; "
+                                 "convert to PKCS#12 (.p12/.pfx) or use PEM");
+  }
+}
+
 #if WITH_SSL
 
 std::string collectOpenSslErrors() {
@@ -287,6 +298,7 @@ void loadTrustFromPem(SSL_CTX* ctx, const std::string& path) {
 }
 
 void loadTrustStore(SSL_CTX* ctx, const std::string& path, const std::string& password) {
+  rejectJksPath(path, "Trust store");
   ensureFileReadable(path, "Trust store");
   if (isPkcs12Path(path)) {
     loadTrustFromPkcs12(ctx, path, password);
@@ -325,6 +337,7 @@ void loadTlsIdentityFromPem(SSL_CTX* ctx, const std::string& path) {
 }
 
 void loadTlsKeyStore(SSL_CTX* ctx, const std::string& path, const std::string& password) {
+  rejectJksPath(path, "Key store");
   ensureFileReadable(path, "Key store");
   if (isPkcs12Path(path)) {
     loadTlsIdentityFromPkcs12(ctx, path, password);
@@ -620,6 +633,7 @@ std::string RpcSslUtils::resolveProtocol(const std::string& value) {
 void RpcSslUtils::validateTrustStore(const std::string& trustStorePath,
                                      const std::string& trustStorePassword) {
 #if WITH_SSL
+  rejectJksPath(trustStorePath, "Trust store");
   ensureFileReadable(trustStorePath, "Trust store");
   if (isPkcs12Path(trustStorePath)) {
     validatePkcs12Store(trustStorePath, trustStorePassword);
@@ -636,6 +650,7 @@ void RpcSslUtils::validateTrustStore(const std::string& trustStorePath,
 void RpcSslUtils::validateKeyStore(const std::string& keyStorePath,
                                    const std::string& keyStorePassword) {
 #if WITH_SSL
+  rejectJksPath(keyStorePath, "Key store");
   ensureFileReadable(keyStorePath, "Key store");
   if (isPkcs12Path(keyStorePath)) {
     validatePkcs12Store(keyStorePath, keyStorePassword);
@@ -673,7 +688,7 @@ RpcSslUtils::createSslSocketFactory(const SslConfig& config) {
         SSL_CTX* ctx = createClientSslContext(*sslConfig);
         return std::make_shared<apache::thrift::transport::SSLContext>(ctx);
       });
-  factory->authenticate(false);
+  factory->authenticate(!config.effectiveTrustStore().empty());
   return factory;
 }
 
