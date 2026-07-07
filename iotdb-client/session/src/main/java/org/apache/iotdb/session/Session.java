@@ -172,7 +172,11 @@ public class Session implements ISession {
   private static final double SAMPLE_PROPORTION = 0.05;
   private static final int MIN_RECORDS_SIZE = 40;
   private static final int MAX_CONSECUTIVE_RELATIONAL_TABLET_MERGE_MISS_COUNT = 10;
+  private static final int MERGE_TABLETS_PERFORMANCE_CHECK_COUNT = 10;
   private int consecutiveRelationalTabletMergeMissCount = 0;
+  private int mergeTabletsPerformanceCheckCount = 0;
+  private long mergeTabletsCostInNanos = 0;
+  private long insertTabletsCostInNanos = 0;
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
@@ -2869,17 +2873,26 @@ public class Session implements ISession {
    */
   public void insertRelationalTablets(List<Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
+    final boolean recordMergeTabletsCost = enableMergeTablets;
+    long mergeTabletsCost = 0;
     if (enableMergeTablets) {
+      final long mergeTabletsStartTime = System.nanoTime();
       tablets = mergeRelationalTablets(tablets);
+      mergeTabletsCost = System.nanoTime() - mergeTabletsStartTime;
     }
     TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, false, false);
     request.setWriteToTable(true);
     for (Tablet tablet : tablets) {
       request.addToColumnCategoriesList(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
     }
+    final long insertTabletsStartTime = System.nanoTime();
     try {
       getDefaultSessionConnection().insertTablets(request);
     } catch (RedirectException ignored) {
+    } finally {
+      if (recordMergeTabletsCost) {
+        recordMergeTabletsCost(mergeTabletsCost, System.nanoTime() - insertTabletsStartTime);
+      }
     }
   }
 
@@ -2914,10 +2927,31 @@ public class Session implements ISession {
       consecutiveRelationalTabletMergeMissCount = 0;
     } else {
       consecutiveRelationalTabletMergeMissCount++;
+      if (consecutiveRelationalTabletMergeMissCount
+          >= MAX_CONSECUTIVE_RELATIONAL_TABLET_MERGE_MISS_COUNT) {
+        enableMergeTablets = false;
+      }
     }
     return mergedTablets.stream()
         .map(relationalTablet -> relationalTablet.tablet)
         .collect(Collectors.toList());
+  }
+
+  private void recordMergeTabletsCost(
+      final long currentMergeTabletsCostInNanos, final long currentInsertTabletsCostInNanos) {
+    mergeTabletsPerformanceCheckCount++;
+    mergeTabletsCostInNanos += currentMergeTabletsCostInNanos;
+    insertTabletsCostInNanos += currentInsertTabletsCostInNanos;
+    if (mergeTabletsPerformanceCheckCount < MERGE_TABLETS_PERFORMANCE_CHECK_COUNT) {
+      return;
+    }
+    if (mergeTabletsCostInNanos > insertTabletsCostInNanos / 2) {
+      enableMergeTablets = false;
+      return;
+    }
+    mergeTabletsPerformanceCheckCount = 0;
+    mergeTabletsCostInNanos = 0;
+    insertTabletsCostInNanos = 0;
   }
 
   private boolean canMergeRelationalTablets(

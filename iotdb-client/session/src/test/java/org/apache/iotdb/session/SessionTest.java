@@ -1176,6 +1176,30 @@ public class SessionTest {
   }
 
   @Test
+  public void testMergeTabletsDisabledWhenMergeCostExceedsHalfOfInsertCost() throws Exception {
+    for (int i = 0; i < 9; i++) {
+      Whitebox.invokeMethod(session, "recordMergeTabletsCost", 11L, 20L);
+      Assert.assertTrue(Whitebox.getInternalState(session, "enableMergeTablets"));
+    }
+
+    Whitebox.invokeMethod(session, "recordMergeTabletsCost", 11L, 20L);
+
+    Assert.assertFalse(Whitebox.getInternalState(session, "enableMergeTablets"));
+  }
+
+  @Test
+  public void testMergeTabletsKeepsEnabledWhenMergeCostIsNotTooHigh() throws Exception {
+    for (int i = 0; i < 10; i++) {
+      Whitebox.invokeMethod(session, "recordMergeTabletsCost", 5L, 20L);
+    }
+
+    Assert.assertTrue(Whitebox.getInternalState(session, "enableMergeTablets"));
+    assertEquals(0, (int) Whitebox.getInternalState(session, "mergeTabletsPerformanceCheckCount"));
+    assertEquals(0L, (long) Whitebox.getInternalState(session, "mergeTabletsCostInNanos"));
+    assertEquals(0L, (long) Whitebox.getInternalState(session, "insertTabletsCostInNanos"));
+  }
+
+  @Test
   public void testTestInsertTablet() throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
