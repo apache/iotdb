@@ -794,7 +794,7 @@ partition_table_recover_worker_num=10
 # Limit the number of bytes read per second from a file, the unit is MB
 # effectiveMode: restart
 # Datatype: Integer
-partition_table_recover_max_read_megabytes_per_second=10
+partition_table_recover_max_read_mb_per_sec=10
 
 ####################
 ### Memory Control Configuration

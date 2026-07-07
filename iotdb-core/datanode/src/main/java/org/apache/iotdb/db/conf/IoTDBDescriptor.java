@@ -1159,11 +1159,11 @@ public class IoTDBDescriptor {
     int partitionTableRecoverMaxReadMBsPerSecond =
         Integer.parseInt(
             properties.getProperty(
-                "partition_table_recover_max_read_megabytes_per_second",
+                "partition_table_recover_max_read_mb_per_sec",
                 String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond())));
     if (partitionTableRecoverMaxReadMBsPerSecond <= 0) {
       LOGGER.warn(
-          "partition_table_recover_max_read_megabytes_per_second should be greater than 0, "
+          "partition_table_recover_max_read_mb_per_sec should be greater than 0, "
               + "but current value is {}, ignore that and use the default value {}",
           partitionTableRecoverMaxReadMBsPerSecond,
           conf.getPartitionTableRecoverMaxReadMBsPerSecond());
