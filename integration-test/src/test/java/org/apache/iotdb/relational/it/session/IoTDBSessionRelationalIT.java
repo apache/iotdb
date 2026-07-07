@@ -85,6 +85,7 @@ public class IoTDBSessionRelationalIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionRelationalIT.class);
   private static final int TABLET_PERFORMANCE_ROWS_PER_TABLET = 20;
   private static final int TABLET_PERFORMANCE_REPEAT_COUNT = 3;
+  private static final int TABLET_PERFORMANCE_WARM_UP_TABLET_COUNT = 16;
   private static final int[] TABLET_PERFORMANCE_TABLET_COUNTS = {1, 2, 4, 8, 16};
 
   @BeforeClass
@@ -691,7 +692,7 @@ public class IoTDBSessionRelationalIT {
       createTabletPerformanceTable(session, "single_tablet_perf");
       createTabletPerformanceTable(session, "multi_tablets_perf");
 
-      long expectedRows = 0;
+      long expectedRows = warmUpTabletPerformanceTest(session);
       for (int tabletCount : TABLET_PERFORMANCE_TABLET_COUNTS) {
         long singleTabletCost = 0;
         long multiTabletsCost = 0;
@@ -747,6 +748,30 @@ public class IoTDBSessionRelationalIT {
         "CREATE TABLE "
             + tableName
             + " (tag1 string tag, attr1 string attribute, s1 int64 field, s2 double field)");
+  }
+
+  private long warmUpTabletPerformanceTest(final ITableSession session)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final List<Tablet> singleTablets =
+        createTabletPerformanceTablets(
+            "single_tablet_perf", TABLET_PERFORMANCE_WARM_UP_TABLET_COUNT, 0);
+    final List<Tablet> multiTablets =
+        createTabletPerformanceTablets(
+            "multi_tablets_perf", TABLET_PERFORMANCE_WARM_UP_TABLET_COUNT, 0);
+    for (Tablet tablet : singleTablets) {
+      session.insert(tablet);
+    }
+    session.insertTablets(multiTablets);
+
+    final long expectedRows =
+        (long) TABLET_PERFORMANCE_WARM_UP_TABLET_COUNT * TABLET_PERFORMANCE_ROWS_PER_TABLET;
+    assertEquals(
+        expectedRows,
+        queryTabletPerformanceRowCount(session, "select count(s1) from single_tablet_perf"));
+    assertEquals(
+        expectedRows,
+        queryTabletPerformanceRowCount(session, "select count(s1) from multi_tablets_perf"));
+    return expectedRows;
   }
 
   private List<Tablet> createTabletPerformanceTablets(
