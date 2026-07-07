@@ -84,7 +84,7 @@ public class IoTDBSessionRelationalIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionRelationalIT.class);
   private static final int TABLET_PERFORMANCE_ROWS_PER_TABLET = 20;
-  private static final int TABLET_PERFORMANCE_REPEAT_COUNT = 3;
+  private static final int TABLET_PERFORMANCE_REPEAT_COUNT = 20;
   private static final int TABLET_PERFORMANCE_WARM_UP_TABLET_COUNT = 16;
   private static final int[] TABLET_PERFORMANCE_TABLET_COUNTS = {1, 2, 4, 8, 16};
 
@@ -705,15 +705,13 @@ public class IoTDBSessionRelationalIT {
           final List<Tablet> multiTablets =
               createTabletPerformanceTablets("multi_tablets_perf", tabletCount, baseTime);
 
-          final long singleTabletStartTime = System.nanoTime();
-          for (Tablet tablet : singleTablets) {
-            session.insert(tablet);
+          if (repeatIndex % 2 == 0) {
+            singleTabletCost += insertTabletPerformanceTest(session, singleTablets);
+            multiTabletsCost += insertTabletsPerformanceTest(session, multiTablets);
+          } else {
+            multiTabletsCost += insertTabletsPerformanceTest(session, multiTablets);
+            singleTabletCost += insertTabletPerformanceTest(session, singleTablets);
           }
-          singleTabletCost += System.nanoTime() - singleTabletStartTime;
-
-          final long multiTabletsStartTime = System.nanoTime();
-          session.insertTablets(multiTablets);
-          multiTabletsCost += System.nanoTime() - multiTabletsStartTime;
         }
 
         expectedRows +=
@@ -772,6 +770,22 @@ public class IoTDBSessionRelationalIT {
         expectedRows,
         queryTabletPerformanceRowCount(session, "select count(s1) from multi_tablets_perf"));
     return expectedRows;
+  }
+
+  private long insertTabletPerformanceTest(final ITableSession session, final List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final long startTime = System.nanoTime();
+    for (Tablet tablet : tablets) {
+      session.insert(tablet);
+    }
+    return System.nanoTime() - startTime;
+  }
+
+  private long insertTabletsPerformanceTest(final ITableSession session, final List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final long startTime = System.nanoTime();
+    session.insertTablets(tablets);
+    return System.nanoTime() - startTime;
   }
 
   private List<Tablet> createTabletPerformanceTablets(
