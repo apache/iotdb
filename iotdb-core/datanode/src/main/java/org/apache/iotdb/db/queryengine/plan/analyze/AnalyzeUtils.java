@@ -94,6 +94,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static java.util.Locale.ENGLISH;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 
 public class AnalyzeUtils {
@@ -460,11 +461,40 @@ public class AnalyzeUtils {
       table =
           DataNodeTableCache.getInstance()
               .getTable(writableView.getSourceTableDatabase(), writableView.getSourceTableName());
+      if (isDeleteWithoutColumnList(node)) {
+        checkWritableViewDeleteWithoutColumnList(writableView, table);
+      }
     }
     // Maybe set by pipe transfer
     if (Objects.isNull(node.getTableDeletionEntries())) {
       node.setTableDeletionEntries(
           parseExpressions2ModEntries(rewrittenExpression, table, databaseName, queryContext));
+    }
+  }
+
+  private static boolean isDeleteWithoutColumnList(final Delete node) {
+    return Objects.isNull(node.getTableDeletionEntries())
+        || node.getTableDeletionEntries().stream()
+            .anyMatch(entry -> entry.getPredicate().getMeasurementNames().isEmpty());
+  }
+
+  private static void checkWritableViewDeleteWithoutColumnList(
+      final WritableView writableView, final TsTable sourceTable) {
+    final Set<String> exposedSourceColumnNames =
+        writableView.getColumnList().stream()
+            .map(TsTableColumnSchema::getColumnName)
+            .map(writableView::getOriginalColumnName)
+            .map(columnName -> columnName.toLowerCase(ENGLISH))
+            .collect(Collectors.toSet());
+
+    for (final TsTableColumnSchema sourceColumn : sourceTable.getColumnList()) {
+      if (!exposedSourceColumnNames.contains(sourceColumn.getColumnName().toLowerCase(ENGLISH))) {
+        final String errorMessage =
+            DataNodeQueryMessages
+                .EXCEPTION_DELETE_FROM_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_IS_ALLOWED_ONLY_WHEN_EVERY_SOURCE_TABLE_COLUMN_IS_EXPOSED_BY_THE_VIEW_USE_AN_EXPLICIT_COLUMN_LIST_22369DEF;
+        LOGGER.warn(errorMessage);
+        throw new SemanticException(errorMessage);
+      }
     }
   }
 

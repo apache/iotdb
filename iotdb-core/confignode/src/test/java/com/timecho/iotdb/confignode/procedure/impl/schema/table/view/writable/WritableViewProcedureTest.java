@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -693,13 +694,21 @@ public class WritableViewProcedureTest {
       throws Exception {
     final DropWritableViewProcedure procedure =
         new DropWritableViewProcedure("database1", "view1", "0", false);
-    procedure.setTable(new WritableView("view1", "database1", "source1", true));
+    final WritableView writableView = new WritableView("view1", "database1", "source1", true);
+    writableView.addColumnSchema(
+        new TimeColumnSchema(TsTable.TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
+    writableView.addColumnSchema(new FieldColumnSchema("viewValue", TSDataType.DOUBLE));
+    writableView.putViewColumnSourceColumnMapping("viewValue", "sourceValue");
+    procedure.setTable(writableView);
 
     final ConfigNode originalConfigNode = ConfigNode.getInstance();
     final ConfigNode mockedConfigNode = mock(ConfigNode.class);
     final ConfigManager configManager = mock(ConfigManager.class);
     final ClusterSchemaManager clusterSchemaManager = mock(ClusterSchemaManager.class);
     final TsTable sourceTable = new TsTable("source1");
+    sourceTable.addColumnSchema(
+        new TimeColumnSchema(TsTable.TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
+    sourceTable.addColumnSchema(new FieldColumnSchema("sourceValue", TSDataType.DOUBLE));
     when(mockedConfigNode.getConfigManager()).thenReturn(configManager);
     when(configManager.getClusterSchemaManager()).thenReturn(clusterSchemaManager);
     when(clusterSchemaManager.getTableAndStatusIfExists("database1", "source1"))
@@ -709,6 +718,40 @@ public class WritableViewProcedureTest {
     try {
       Assert.assertEquals("database1", procedure.getOriginalDatabase());
       Assert.assertEquals(sourceTable, procedure.getOriginalTable());
+    } finally {
+      ConfigNode.setInstance(originalConfigNode);
+    }
+  }
+
+  @Test
+  public void dropWritableViewShouldSkipOriginalResolutionWhenViewDoesNotCoverAllSourceColumns()
+      throws Exception {
+    final DropWritableViewProcedure procedure =
+        new DropWritableViewProcedure("database1", "view1", "0", false);
+    final WritableView writableView = new WritableView("view1", "database1", "source1", true);
+    writableView.addColumnSchema(
+        new TimeColumnSchema(TsTable.TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
+    writableView.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.DOUBLE));
+    procedure.setTable(writableView);
+
+    final ConfigNode originalConfigNode = ConfigNode.getInstance();
+    final ConfigNode mockedConfigNode = mock(ConfigNode.class);
+    final ConfigManager configManager = mock(ConfigManager.class);
+    final ClusterSchemaManager clusterSchemaManager = mock(ClusterSchemaManager.class);
+    final TsTable sourceTable = new TsTable("source1");
+    sourceTable.addColumnSchema(
+        new TimeColumnSchema(TsTable.TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
+    sourceTable.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.DOUBLE));
+    sourceTable.addColumnSchema(new FieldColumnSchema("humidity", TSDataType.DOUBLE));
+    when(mockedConfigNode.getConfigManager()).thenReturn(configManager);
+    when(configManager.getClusterSchemaManager()).thenReturn(clusterSchemaManager);
+    when(clusterSchemaManager.getTableAndStatusIfExists("database1", "source1"))
+        .thenReturn(Optional.of(new Pair<>(sourceTable, TableNodeStatus.USING)));
+
+    ConfigNode.setInstance(mockedConfigNode);
+    try {
+      Assert.assertNull(procedure.getOriginalDatabase());
+      Assert.assertNull(procedure.getOriginalTable());
     } finally {
       ConfigNode.setInstance(originalConfigNode);
     }

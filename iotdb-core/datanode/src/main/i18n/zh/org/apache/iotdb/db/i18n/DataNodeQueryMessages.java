@@ -1589,6 +1589,9 @@ public final class DataNodeQueryMessages {
       "LOAD TSFILE 目标 '%s.%s' 是可写视图，需要先转换为 Tablet 再加载到源表 '%s.%s'。";
   public static final String INSERT_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_REQUIRES_MAPPING =
       "不带列列表向可写视图 INSERT 时，源表的每一列都必须映射到视图列，但源列 '%s' 未暴露在视图中。请使用显式列列表。";
+  public static final String
+      EXCEPTION_DELETE_FROM_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_IS_ALLOWED_ONLY_WHEN_EVERY_SOURCE_TABLE_COLUMN_IS_EXPOSED_BY_THE_VIEW_USE_AN_EXPLICIT_COLUMN_LIST_22369DEF =
+          "只有当源表的每一列都暴露在视图中时，才允许不带列列表对可写视图执行 DELETE FROM。请使用显式列列表。";
   public static final String INSERT_COLUMN_NOT_EXPOSED_BY_WRITABLE_VIEW =
       "INSERT 列 '%s' 未暴露在可写视图 '%s.%s' 中。";
   public static final String ONLY_WRITABLE_VIEW_TIMESERIES_ALIGN_BY_DEVICE =

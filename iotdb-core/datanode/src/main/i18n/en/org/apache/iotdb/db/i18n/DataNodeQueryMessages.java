@@ -1605,6 +1605,9 @@ public final class DataNodeQueryMessages {
       "LOAD TSFILE target '%s.%s' is a writable view and requires tablet conversion to load into source table '%s.%s'.";
   public static final String INSERT_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_REQUIRES_MAPPING =
       "INSERT into writable view without column list requires every source table column to be mapped, but source column '%s' is not exposed by the view. Use an explicit column list.";
+  public static final String
+      EXCEPTION_DELETE_FROM_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_IS_ALLOWED_ONLY_WHEN_EVERY_SOURCE_TABLE_COLUMN_IS_EXPOSED_BY_THE_VIEW_USE_AN_EXPLICIT_COLUMN_LIST_22369DEF =
+          "DELETE FROM writable view without column list is allowed only when every source table column is exposed by the view. Use an explicit column list.";
   public static final String INSERT_COLUMN_NOT_EXPOSED_BY_WRITABLE_VIEW =
       "Insert column '%s' is not exposed by writable view '%s.%s'.";
   public static final String ONLY_WRITABLE_VIEW_TIMESERIES_ALIGN_BY_DEVICE =

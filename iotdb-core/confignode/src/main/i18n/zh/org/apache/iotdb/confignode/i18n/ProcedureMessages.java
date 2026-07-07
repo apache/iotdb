@@ -1110,6 +1110,9 @@ public final class ProcedureMessages {
       "跳过可写视图 {}.{} 的 schema 级联，因为源表 {}.{} 不存在。";
   public static final String SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL =
       "跳过可写视图 {}.{} 的 schema 级联，因为源表 {}.{} 不存在：{}";
+  public static final String
+      LOG_SKIP_SCHEMA_CASCADE_FOR_DROPPING_WRITABLE_VIEW_ARG_ARG_BECAUSE_ITS_COLUMNS_DO_NOT_COVER_ALL_COLUMNS_IN_SOURCE_TABLE_ARG_ARG_1067BF72 =
+          "跳过删除可写视图 {}.{} 时的 schema 级联，因为该视图的列未覆盖源表 {}.{} 的全部列。";
   public static final String TABLE_IS_NOT_WRITABLE_VIEW_CHECK_IMPLEMENTATION =
       "表 '%s.%s' 不是可写视图，请检查实现";
   public static final String SET_WRITABLE_VIEW_PROPERTIES = "设置可写视图属性";

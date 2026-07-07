@@ -188,6 +188,47 @@ public class PipeConfigTablePatternParseVisitorTest {
   }
 
   @Test
+  public void testCommitDeleteWritableViewSkippedCascadeDoesNotSyncSourceDrop() {
+    final CommitDeleteWritableViewPlan skippedSourceCascadePlan =
+        new CommitDeleteWritableViewPlan("db1", "view", null, null);
+    final TablePattern sourceOnlyPattern = new TablePattern(true, "db1", "source");
+
+    Assert.assertFalse(
+        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
+            .process(skippedSourceCascadePlan, sourceOnlyPattern)
+            .isPresent());
+
+    final ConfigPhysicalPlan result =
+        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
+            .process(skippedSourceCascadePlan, new TablePattern(true, "db1", null))
+            .orElseThrow(AssertionError::new);
+
+    Assert.assertTrue(result instanceof CommitDeleteWritableViewPlan);
+    final CommitDeleteWritableViewPlan replayPlan = (CommitDeleteWritableViewPlan) result;
+    Assert.assertEquals("db1", replayPlan.getDatabase());
+    Assert.assertEquals("view", replayPlan.getTableName());
+    Assert.assertNull(replayPlan.getOriginalDatabase());
+    Assert.assertNull(replayPlan.getOriginalTableName());
+  }
+
+  @Test
+  public void testCommitDeleteWritableViewNonSkippedCascadeSyncsSourceDrop() {
+    final ConfigPhysicalPlan result =
+        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
+            .process(
+                new CommitDeleteWritableViewPlan("db1", "view", "db1", "source"),
+                new TablePattern(true, "db1", null))
+            .orElseThrow(AssertionError::new);
+
+    Assert.assertTrue(result instanceof CommitDeleteWritableViewPlan);
+    final CommitDeleteWritableViewPlan replayPlan = (CommitDeleteWritableViewPlan) result;
+    Assert.assertEquals("db1", replayPlan.getDatabase());
+    Assert.assertEquals("view", replayPlan.getTableName());
+    Assert.assertEquals("db1", replayPlan.getOriginalDatabase());
+    Assert.assertEquals("source", replayPlan.getOriginalTableName());
+  }
+
+  @Test
   public void testWritableViewPlanKeepsOriginalWhenWholeDatabaseCovered() {
     final TablePattern databasePattern = new TablePattern(true, "db1", null);
 

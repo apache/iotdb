@@ -851,6 +851,56 @@ public class IoTDBWritableViewIT {
   }
 
   @Test
+  public void testProjectionWritableViewDeleteRequiresExplicitColumns() throws Exception {
+    final String database = "writable_view_projection_delete_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("create database " + database);
+        statement.execute("use " + database);
+        statement.execute(
+            "create table source_table("
+                + "device_id string tag, "
+                + "temperature int32 field, "
+                + "humidity double field)");
+        statement.execute(
+            "create writable view writable_view as select "
+                + "device_id as dev, "
+                + "temperature as temp "
+                + "from source_table");
+        statement.execute(
+            "insert into source_table(time, device_id, temperature, humidity) values "
+                + "(1, 'd1', 10, 1.1), "
+                + "(2, 'd1', 20, 2.2)");
+
+        try {
+          statement.execute("delete from writable_view where time <= 1 and dev = 'd1'");
+          fail("projection writable view delete without column list should fail");
+        } catch (final SQLException e) {
+          assertTrue(
+              e.getMessage(),
+              e.getMessage()
+                  .contains(
+                      "DELETE FROM writable view without column list is allowed only when every "
+                          + "source table column is exposed by the view"));
+        }
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery(
+                "select time, device_id, temperature, humidity from source_table "
+                    + "order by time"),
+            "time,device_id,temperature,humidity,",
+            new HashSet<>(
+                Arrays.asList(
+                    "1970-01-01T00:00:00.001Z,d1,10,1.1,", "1970-01-01T00:00:00.002Z,d1,20,2.2,")));
+      } finally {
+        dropDatabaseQuietly(statement, database);
+      }
+    }
+  }
+
+  @Test
   public void testWritableViewTTLFiltersQuery() throws Exception {
     final String database = "writable_view_ttl_query_db";
     try (final Connection connection =

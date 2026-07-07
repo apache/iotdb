@@ -36,8 +36,10 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 public class WritableViewUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableViewUtils.class);
@@ -120,6 +122,10 @@ public class WritableViewUtils {
             sourceTableName);
         return null;
       }
+      if (shouldSkipSourceCascadeForDrop(
+          procedure, writableView, sourceDatabase, sourceTableName, tablePair.get().left)) {
+        return null;
+      }
       return new Pair<>(sourceDatabase, tablePair.get().left);
     } catch (final MetadataException e) {
       if (isMissingSourceTable(e.getErrorCode())) {
@@ -135,6 +141,40 @@ public class WritableViewUtils {
       procedure.setFailure(new ProcedureException(e));
     }
     return null;
+  }
+
+  private static boolean shouldSkipSourceCascadeForDrop(
+      final AbstractAlterOrDropTableProcedure<?> procedure,
+      final WritableView writableView,
+      final String sourceDatabase,
+      final String sourceTableName,
+      final TsTable sourceTable) {
+    if (!(procedure instanceof DropWritableViewProcedure)
+        || canMapAllSourceColumns(writableView, sourceTable)) {
+      return false;
+    }
+    LOGGER.warn(
+        ProcedureMessages
+            .LOG_SKIP_SCHEMA_CASCADE_FOR_DROPPING_WRITABLE_VIEW_ARG_ARG_BECAUSE_ITS_COLUMNS_DO_NOT_COVER_ALL_COLUMNS_IN_SOURCE_TABLE_ARG_ARG_1067BF72,
+        procedure.getDatabase(),
+        procedure.getTableName(),
+        sourceDatabase,
+        sourceTableName);
+    return true;
+  }
+
+  private static boolean canMapAllSourceColumns(
+      final WritableView writableView, final TsTable sourceTable) {
+    final Set<String> mappedSourceColumnNames = new HashSet<>();
+    writableView
+        .getColumnList()
+        .forEach(
+            columnSchema ->
+                mappedSourceColumnNames.add(
+                    writableView.getOriginalColumnName(columnSchema.getColumnName())));
+    return sourceTable.getColumnList().stream()
+        .map(columnSchema -> columnSchema.getColumnName())
+        .allMatch(mappedSourceColumnNames::contains);
   }
 
   public static void executeForSource(

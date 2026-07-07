@@ -1112,6 +1112,9 @@ public final class ProcedureMessages {
       "Skip schema cascade for writable view {}.{} because source table {}.{} does not exist.";
   public static final String SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL =
       "Skip schema cascade for writable view {}.{} because source table {}.{} does not exist: {}";
+  public static final String
+      LOG_SKIP_SCHEMA_CASCADE_FOR_DROPPING_WRITABLE_VIEW_ARG_ARG_BECAUSE_ITS_COLUMNS_DO_NOT_COVER_ALL_COLUMNS_IN_SOURCE_TABLE_ARG_ARG_1067BF72 =
+          "Skip schema cascade for dropping writable view {}.{} because its columns do not cover all columns in source table {}.{}.";
   public static final String TABLE_IS_NOT_WRITABLE_VIEW_CHECK_IMPLEMENTATION =
       "Table '%s.%s' is not a writable view, please check the implementation";
   public static final String SET_WRITABLE_VIEW_PROPERTIES = "set writable view properties";
