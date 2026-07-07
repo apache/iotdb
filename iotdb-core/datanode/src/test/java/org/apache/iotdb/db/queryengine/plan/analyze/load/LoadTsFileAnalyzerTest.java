@@ -44,8 +44,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -364,8 +364,7 @@ public class LoadTsFileAnalyzerTest {
             schemaCache,
             new TableDeletionEntry(
                 new DeletionPredicate(
-                    viewName,
-                    new IDPredicate.FullExactMatch(new StringArrayDeviceID(viewName, "d0"))),
+                    viewName, new FullExactMatch(new StringArrayDeviceID(viewName, "d0"))),
                 new TimeRange(100, 101)));
         IoTDBDescriptor.getInstance().getConfig().setSkipFailedTableSchemaCheck(true);
 
@@ -425,8 +424,7 @@ public class LoadTsFileAnalyzerTest {
             schemaCache,
             new TableDeletionEntry(
                 new DeletionPredicate(
-                    viewName,
-                    new IDPredicate.FullExactMatch(new StringArrayDeviceID(viewName, "d0"))),
+                    viewName, new FullExactMatch(new StringArrayDeviceID(viewName, "d0"))),
                 new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)));
         IoTDBDescriptor.getInstance().getConfig().setSkipFailedTableSchemaCheck(true);
 
@@ -488,7 +486,7 @@ public class LoadTsFileAnalyzerTest {
             new TableDeletionEntry(
                 new DeletionPredicate(
                     viewName,
-                    new IDPredicate.FullExactMatch(new StringArrayDeviceID(viewName, "d0")),
+                    new FullExactMatch(new StringArrayDeviceID(viewName, "d0")),
                     Collections.singletonList("temp")),
                 new TimeRange(100, 101)));
         IoTDBDescriptor.getInstance().getConfig().setSkipFailedTableSchemaCheck(true);

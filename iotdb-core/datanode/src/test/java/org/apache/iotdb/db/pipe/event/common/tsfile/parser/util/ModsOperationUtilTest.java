@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.util;
 
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.read.common.TimeRange;

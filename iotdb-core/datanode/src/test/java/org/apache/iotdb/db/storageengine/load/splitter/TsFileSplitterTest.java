@@ -22,9 +22,9 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 import org.apache.iotdb.calc.utils.IObjectPath;
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -196,13 +196,13 @@ public class TsFileSplitterTest {
           new ModificationFile(ModificationFile.getExclusiveMods(sourceTsFile), false)) {
         modificationFile.write(
             new TableDeletionEntry(
-                new DeletionPredicate("view_table", new IDPredicate.FullExactMatch(viewDeviceID)),
+                new DeletionPredicate("view_table", new FullExactMatch(viewDeviceID)),
                 new TimeRange(100, 101)));
         modificationFile.write(
             new TableDeletionEntry(
                 new DeletionPredicate(
                     "view_table",
-                    new IDPredicate.FullExactMatch(viewDeviceID),
+                    new FullExactMatch(viewDeviceID),
                     Collections.singletonList(viewMeasurement)),
                 new TimeRange(102, 103)));
       }

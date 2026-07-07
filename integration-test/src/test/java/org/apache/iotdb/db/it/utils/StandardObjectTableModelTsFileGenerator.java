@@ -22,9 +22,9 @@ package org.apache.iotdb.db.it.utils;
 import org.apache.iotdb.calc.utils.IObjectPath;
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 
 import com.timecho.iotdb.calc.storageengine.dataregion.Base32ObjectPath;
 import org.apache.tsfile.enums.ColumnCategory;
@@ -105,7 +105,7 @@ public class StandardObjectTableModelTsFileGenerator implements AutoCloseable {
 
     TableDeletionEntry deletionEntry =
         new TableDeletionEntry(
-            new DeletionPredicate(tableName, new IDPredicate.FullExactMatch(deviceID)),
+            new DeletionPredicate(tableName, new FullExactMatch(deviceID)),
             new TimeRange(startTime, endTime));
 
     modificationFile.write(deletionEntry);

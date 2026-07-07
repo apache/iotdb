@@ -1194,10 +1194,10 @@ public class StatementAnalyzer {
       }
       if (Objects.nonNull(modEntriesWhere) && Objects.isNull(node.getPartitionKeyList())) {
         node.setWhere(modEntriesWhere);
-        node.parseModEntries(table);
+        node.parseModEntries(table, node.getDatabase(), queryContext);
         node.setWhere(analyzedWhere);
       } else {
-        node.parseModEntries(table);
+        node.parseModEntries(table, node.getDatabase(), queryContext);
       }
       return null;
     }

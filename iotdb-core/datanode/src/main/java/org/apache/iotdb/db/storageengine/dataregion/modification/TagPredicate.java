@@ -90,7 +90,7 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
 
   public abstract boolean matches(IDeviceID deviceID);
 
-  public IDPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
+  public TagPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
     return this;
   }
 
@@ -241,7 +241,7 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     }
 
     @Override
-    public IDPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
+    public TagPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
       if (deviceID == null
           || tableNameRewriteMap == null
           || tableNameRewriteMap.isEmpty()
@@ -349,7 +349,7 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     }
 
     @Override
-    public IDPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
+    public TagPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
       if (segmentIndex != 0 || tableNameRewriteMap == null || tableNameRewriteMap.isEmpty()) {
         return this;
       }
@@ -630,19 +630,19 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     }
 
     @Override
-    public IDPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
+    public TagPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
       if (tableNameRewriteMap == null || tableNameRewriteMap.isEmpty()) {
         return this;
       }
 
       boolean rewritten = false;
-      final List<IDPredicate> rewrittenPredicates = new ArrayList<>(predicates.size());
-      for (final IDPredicate predicate : predicates) {
-        final IDPredicate rewrittenPredicate = predicate.rewriteTableName(tableNameRewriteMap);
+      final List<TagPredicate> rewrittenPredicates = new ArrayList<>(predicates.size());
+      for (final TagPredicate predicate : predicates) {
+        final TagPredicate rewrittenPredicate = predicate.rewriteTableName(tableNameRewriteMap);
         rewritten |= rewrittenPredicate != predicate;
         rewrittenPredicates.add(rewrittenPredicate);
       }
-      return rewritten ? new And(rewrittenPredicates.toArray(new IDPredicate[0])) : this;
+      return rewritten ? new And(rewrittenPredicates.toArray(new TagPredicate[0])) : this;
     }
 
     @Override

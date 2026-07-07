@@ -115,7 +115,7 @@ public class ModsOperationUtil {
 
     return new TableDeletionEntry(
         new DeletionPredicate(
-            predicate.getTableName(), predicate.getIdPredicate(), targetMeasurements),
+            predicate.getTableName(), predicate.getTagPredicate(), targetMeasurements),
         new TimeRange(
             tableDeletionEntry.getTimeRange().getMin(),
             tableDeletionEntry.getTimeRange().getMax()));

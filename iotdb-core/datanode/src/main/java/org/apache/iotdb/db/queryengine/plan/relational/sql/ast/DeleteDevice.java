@@ -45,9 +45,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -97,7 +97,8 @@ public class DeleteDevice extends AbstractTraverseDevice {
     return mayDeleteDevice;
   }
 
-  public void parseModEntries(final TsTable table, final String databaseName, final MPPQueryContext context) {
+  public void parseModEntries(
+      final TsTable table, final String databaseName, final MPPQueryContext context) {
     if (Objects.nonNull(getPartitionKeyList())) {
       modEntries =
           getPartitionKeyList().stream()

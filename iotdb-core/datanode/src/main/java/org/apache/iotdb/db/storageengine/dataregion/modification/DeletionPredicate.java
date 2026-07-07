@@ -109,7 +109,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
       return rewriteColumns(columnNameRewriteMap);
     }
 
-    final IDPredicate rewrittenIdPredicate = idPredicate.rewriteTableName(tableNameRewriteMap);
+    final TagPredicate rewrittenIdPredicate = tagPredicate.rewriteTableName(tableNameRewriteMap);
     final List<String> rewrittenMeasurementNames = rewriteMeasurementNames(columnNameRewriteMap);
 
     return new DeletionPredicate(
@@ -121,7 +121,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     final List<String> rewrittenMeasurementNames = rewriteMeasurementNames(columnNameRewriteMap);
     return rewrittenMeasurementNames == measurementNames
         ? this
-        : new DeletionPredicate(tableName, idPredicate, rewrittenMeasurementNames);
+        : new DeletionPredicate(tableName, tagPredicate, rewrittenMeasurementNames);
   }
 
   private List<String> rewriteMeasurementNames(

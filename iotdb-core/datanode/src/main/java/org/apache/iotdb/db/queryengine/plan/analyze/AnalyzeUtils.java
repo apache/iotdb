@@ -42,8 +42,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
@@ -89,6 +89,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -463,8 +464,7 @@ public class AnalyzeUtils {
     // Maybe set by pipe transfer
     if (Objects.isNull(node.getTableDeletionEntries())) {
       node.setTableDeletionEntries(
-          parseExpressions2ModEntries(
-              rewrittenExpression, table, databaseName, queryContext));
+          parseExpressions2ModEntries(rewrittenExpression, table, databaseName, queryContext));
     }
   }
 
@@ -573,6 +573,7 @@ public class AnalyzeUtils {
               .fetchDeviceSchemaForDataQuery(
                   databaseName,
                   table.getTableName(),
+                  Optional.empty(),
                   predicateParseContext.deviceFilterExpressions,
                   predicateParseContext.attributeColumns,
                   queryContext)

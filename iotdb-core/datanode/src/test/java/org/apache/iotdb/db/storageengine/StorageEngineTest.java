@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine;
 
-import java.io.IOException;
-import java.util.Collections;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
@@ -32,11 +30,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObj
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
-
-import com.google.common.collect.Lists;
 import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import com.google.common.collect.Lists;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -48,6 +46,8 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
 
+import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
