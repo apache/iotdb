@@ -526,6 +526,24 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
         && historicalDataExtractionEndTime >= resource.getFileEndTime();
   }
 
+  private boolean isTsFileResourceCoveredByPattern(final TsFileResource resource) {
+    final Set<IDeviceID> deviceSet;
+    try {
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+          PipeDataNodeResourceManager.tsfile()
+              .getDeviceIsAlignedMapFromCache(resource.getTsFile(), false);
+      deviceSet =
+          Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
+    } catch (final IOException e) {
+      return false;
+    }
+
+    return !deviceSet.isEmpty()
+        && deviceSet.stream()
+            .allMatch(
+                deviceID -> pipePattern.coversDevice(((PlainDeviceID) deviceID).toStringID()));
+  }
+
   @Override
   public synchronized Event supply() {
     if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
@@ -598,7 +616,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
             pipePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
-    if (sloppyPattern || isDbNameCoveredByPattern) {
+    if (sloppyPattern || isDbNameCoveredByPattern || isTsFileResourceCoveredByPattern(resource)) {
       event.skipParsingPattern();
     }
 
