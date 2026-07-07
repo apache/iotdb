@@ -18,14 +18,23 @@
  */
 package org.apache.iotdb.db.storageengine;
 
+import java.io.IOException;
 import java.util.Collections;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.DirectBufferMemoryAllocationException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 
 import com.google.common.collect.Lists;
+import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.After;
