@@ -684,6 +684,21 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
+  public void insertTabletsAutoCreateTableTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      final List<Tablet> tablets = createTabletPerformanceTablets("auto_create_tablets", 2, 0);
+
+      session.insertTablets(tablets);
+
+      assertEquals(
+          (long) TABLET_PERFORMANCE_ROWS_PER_TABLET * 2,
+          queryTabletPerformanceRowCount(session, "select count(s1) from auto_create_tablets"));
+    }
+  }
+
+  @Test
   @Ignore("Performance comparison test for manual execution.")
   public void compareInsertTabletAndInsertTabletsPerformanceWithIncreasingTabletCount()
       throws IoTDBConnectionException, StatementExecutionException {

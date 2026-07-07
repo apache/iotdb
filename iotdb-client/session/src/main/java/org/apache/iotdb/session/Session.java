@@ -92,6 +92,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -2880,18 +2881,199 @@ public class Session implements ISession {
       tablets = mergeRelationalTablets(tablets);
       mergeTabletsCost = System.nanoTime() - mergeTabletsStartTime;
     }
-    TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, false, false);
-    request.setWriteToTable(true);
-    for (Tablet tablet : tablets) {
-      request.addToColumnCategoriesList(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
+    if (tablets.isEmpty()) {
+      throw new BatchExecutionException(SessionMessages.NO_TABLET_INSERTING);
     }
     final long insertTabletsStartTime = System.nanoTime();
+    if (enableRedirection) {
+      insertRelationalTabletsWithLeaderCache(tablets);
+    } else {
+      TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, false, false);
+      request.setWriteToTable(true);
+      for (Tablet tablet : tablets) {
+        request.addToColumnCategoriesList(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
+      }
+      try {
+        getDefaultSessionConnection().insertTablets(request);
+      } catch (RedirectException ignored) {
+      }
+    }
+    if (recordMergeTabletsCost) {
+      recordMergeTabletsCost(mergeTabletsCost, System.nanoTime() - insertTabletsStartTime);
+    }
+  }
+
+  private void insertRelationalTabletsWithLeaderCache(final List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final Map<SessionConnection, RelationalTabletsReq> tabletGroup = new HashMap<>();
+    for (final Tablet tablet : tablets) {
+      addRelationalTabletToGroup(tabletGroup, tablet);
+    }
+    if (tabletGroup.size() == 1) {
+      insertRelationalTabletsOnce(tabletGroup);
+    } else {
+      insertRelationalTabletsByGroup(tabletGroup);
+    }
+  }
+
+  private void addRelationalTabletToGroup(
+      final Map<SessionConnection, RelationalTabletsReq> tabletGroup, final Tablet tablet)
+      throws IoTDBConnectionException {
+    if (SessionUtils.isTabletContainsSingleDevice(tablet)) {
+      final SessionConnection connection = getTableModelSessionConnection(tablet.getDeviceID(0));
+      updateRelationalTabletsReq(tabletGroup, connection, tablet);
+      return;
+    }
+    for (int row = 0; row < tablet.getRowSize(); row++) {
+      final IDeviceID deviceID = tablet.getDeviceID(row);
+      final SessionConnection connection = getTableModelSessionConnection(deviceID);
+      final Tablet subTablet =
+          tabletGroup
+              .computeIfAbsent(connection, ignored -> new RelationalTabletsReq())
+              .tabletByDevice
+              .computeIfAbsent(deviceID, ignored -> createEmptyRelationalTabletLike(tablet));
+      for (int column = 0; column < subTablet.getSchemas().size(); column++) {
+        subTablet.addValue(
+            subTablet.getSchemas().get(column).getMeasurementName(),
+            subTablet.getRowSize(),
+            tablet.getValue(row, column));
+      }
+      subTablet.addTimestamp(subTablet.getRowSize(), tablet.getTimestamp(row));
+    }
+  }
+
+  private SessionConnection getTableModelSessionConnection(final IDeviceID deviceID)
+      throws IoTDBConnectionException {
+    return tableModelDeviceIdToEndpoint == null || tableModelDeviceIdToEndpoint.isEmpty()
+        ? getDefaultSessionConnection()
+        : getSessionConnection(deviceID);
+  }
+
+  private Tablet createEmptyRelationalTabletLike(final Tablet tablet) {
+    final List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
+    final List<TSDataType> dataTypes = new ArrayList<>(tablet.getSchemas().size());
+    tablet
+        .getSchemas()
+        .forEach(
+            schema -> {
+              measurements.add(schema.getMeasurementName());
+              dataTypes.add(schema.getType());
+            });
+    return new Tablet(
+        tablet.getTableName(),
+        measurements,
+        dataTypes,
+        tablet.getColumnTypes(),
+        tablet.getRowSize());
+  }
+
+  private void updateRelationalTabletsReq(
+      final Map<SessionConnection, RelationalTabletsReq> tabletGroup,
+      final SessionConnection connection,
+      final Tablet tablet) {
+    tabletGroup
+        .computeIfAbsent(connection, ignored -> new RelationalTabletsReq())
+        .addTablet(tablet);
+  }
+
+  private void buildRelationalTabletsRequests(
+      final Map<SessionConnection, RelationalTabletsReq> tabletGroup) {
+    for (final RelationalTabletsReq relationalTabletsReq : tabletGroup.values()) {
+      relationalTabletsReq.buildRequest();
+    }
+  }
+
+  private void insertRelationalTabletsOnce(
+      final Map<SessionConnection, RelationalTabletsReq> tabletGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
+    buildRelationalTabletsRequests(tabletGroup);
+    final Map.Entry<SessionConnection, RelationalTabletsReq> entry =
+        tabletGroup.entrySet().iterator().next();
+    final SessionConnection connection = entry.getKey();
+    final RelationalTabletsReq relationalTabletsReq = entry.getValue();
     try {
-      getDefaultSessionConnection().insertTablets(request);
-    } catch (RedirectException ignored) {
-    } finally {
-      if (recordMergeTabletsCost) {
-        recordMergeTabletsCost(mergeTabletsCost, System.nanoTime() - insertTabletsStartTime);
+      connection.insertTablets(relationalTabletsReq.request);
+    } catch (RedirectException e) {
+      handleRelationalTabletsRedirection(e, relationalTabletsReq.deviceIDs);
+    } catch (IoTDBConnectionException e) {
+      if (endPointToSessionConnection != null && endPointToSessionConnection.size() > 1) {
+        removeBrokenSessionConnection(connection);
+        try {
+          getDefaultSessionConnection().insertTablets(relationalTabletsReq.request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  private void insertRelationalTabletsByGroup(
+      final Map<SessionConnection, RelationalTabletsReq> tabletGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
+    buildRelationalTabletsRequests(tabletGroup);
+    final List<CompletableFuture<Void>> completableFutures =
+        tabletGroup.entrySet().stream()
+            .map(
+                entry -> {
+                  final SessionConnection connection = entry.getKey();
+                  final RelationalTabletsReq relationalTabletsReq = entry.getValue();
+                  return CompletableFuture.runAsync(
+                      () -> {
+                        try {
+                          connection.insertTablets(relationalTabletsReq.request);
+                        } catch (RedirectException e) {
+                          handleRelationalTabletsRedirection(e, relationalTabletsReq.deviceIDs);
+                        } catch (StatementExecutionException e) {
+                          throw new CompletionException(e);
+                        } catch (IoTDBConnectionException e) {
+                          removeBrokenSessionConnection(connection);
+                          try {
+                            getDefaultSessionConnection()
+                                .insertTablets(relationalTabletsReq.request);
+                          } catch (IoTDBConnectionException | StatementExecutionException ex) {
+                            throw new CompletionException(ex);
+                          } catch (RedirectException ignored) {
+                          }
+                        }
+                      },
+                      OPERATION_EXECUTOR);
+                })
+            .collect(Collectors.toList());
+
+    final StringBuilder errMsgBuilder = new StringBuilder();
+    for (final CompletableFuture<Void> completableFuture : completableFutures) {
+      try {
+        completableFuture.join();
+      } catch (CompletionException completionException) {
+        final Throwable cause = completionException.getCause();
+        logger.error(SessionMessages.MEET_ERROR_WHEN_ASYNC_INSERT, cause);
+        if (cause instanceof IoTDBConnectionException) {
+          throw (IoTDBConnectionException) cause;
+        }
+        if (errMsgBuilder.length() > 0) {
+          errMsgBuilder.append(";");
+        }
+        errMsgBuilder.append(cause.getMessage());
+      }
+    }
+    if (errMsgBuilder.length() > 0) {
+      throw new StatementExecutionException(errMsgBuilder.toString());
+    }
+  }
+
+  private void handleRelationalTabletsRedirection(
+      final RedirectException redirectException, final List<IDeviceID> deviceIDs) {
+    final List<TEndPoint> endPointList = redirectException.getEndPointList();
+    if (endPointList == null) {
+      return;
+    }
+    for (int i = 0; i < endPointList.size() && i < deviceIDs.size(); i++) {
+      if (endPointList.get(i) != null) {
+        handleRedirection(deviceIDs.get(i), endPointList.get(i));
       }
     }
   }
@@ -3122,6 +3304,30 @@ public class Session implements ISession {
         final Tablet tablet, final Map<String, Integer> columnIndexMap) {
       this.tablet = tablet;
       this.columnIndexMap = columnIndexMap;
+    }
+  }
+
+  private class RelationalTabletsReq {
+
+    private final TSInsertTabletsReq request = new TSInsertTabletsReq();
+    private final List<IDeviceID> deviceIDs = new ArrayList<>();
+    private final List<Tablet> tablets = new ArrayList<>();
+    private final Map<IDeviceID, Tablet> tabletByDevice = new LinkedHashMap<>();
+
+    private void addTablet(final Tablet tablet) {
+      tablets.add(tablet);
+    }
+
+    private void buildRequest() {
+      request.setWriteToTable(true);
+      tablets.forEach(this::addTabletToRequest);
+      tabletByDevice.values().forEach(this::addTabletToRequest);
+    }
+
+    private void addTabletToRequest(final Tablet tablet) {
+      updateTSInsertTabletsReq(request, tablet, false, false);
+      request.addToColumnCategoriesList(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
+      deviceIDs.add(tablet.getDeviceID(0));
     }
   }
 

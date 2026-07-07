@@ -76,7 +76,7 @@ public class InsertTablets extends WrappedInsertStatement {
     for (InsertTabletStatement insertTabletStatement :
         getInnerTreeStatement().getInsertTabletStatementList()) {
       final String database = AnalyzeUtils.getDatabaseName(insertTabletStatement, context);
-      super.validateTableSchema(metadata, context, insertTabletStatement, database, false);
+      super.validateTableSchema(metadata, context, insertTabletStatement, database, true);
     }
   }
 
