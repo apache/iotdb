@@ -401,6 +401,8 @@ public final class DataNodePipeMessages {
       "Error occurred when closing CombineHandler(id = {})";
   public static final String ERROR_OCCURS_WHEN_RECEIVING_REQUEST =
       "Error occurs when receiving request: {}.";
+  public static final String LOGIN_FAILED_OR_SESSION_TIMED_OUT =
+      "Log in failed. Either you are not authorized or the session has timed out.";
   public static final String FAILED_TO_CLOSE_IOTDBSYNCCLIENT = "Failed to close IoTDBSyncClient";
   public static final String FAILED_TO_CLOSE_OLD_IOTDBSYNCCLIENT =
       "Failed to close old IoTDBSyncClient";

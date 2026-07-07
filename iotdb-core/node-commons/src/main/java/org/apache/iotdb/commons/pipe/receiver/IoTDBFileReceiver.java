@@ -83,6 +83,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
   protected IAuditEntity userEntity;
+  protected boolean hasPipeHandshakeCredential = false;
 
   protected long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
@@ -107,6 +108,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   protected TPipeTransferResp handleTransferHandshakeV1(final PipeTransferHandshakeV1Req req) {
+    hasPipeHandshakeCredential = false;
+
     if (!CommonDescriptor.getInstance()
         .getConfig()
         .getTimestampPrecision()
@@ -227,6 +230,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected TPipeTransferResp handleTransferHandshakeV2(final PipeTransferHandshakeV2Req req)
       throws IOException {
+    hasPipeHandshakeCredential = false;
+
     // Reject to handshake if the receiver can not take clusterId from config node.
     final String clusterIdFromConfigNode = getClusterId();
     if (clusterIdFromConfigNode == null) {
@@ -281,30 +286,41 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (userIdString != null) {
       userId = Long.parseLong(userIdString);
     }
-    final String usernameString =
-        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME);
-    if (usernameString != null) {
-      username = usernameString;
-    }
     final String cliHostnameString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME);
     if (cliHostnameString != null) {
       cliHostname = cliHostnameString;
     }
 
-    userEntity = new UserEntity(userId, username, cliHostname);
-
+    final String usernameString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME);
     final String passwordString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD);
-    if (passwordString != null) {
-      password = passwordString;
+    if (usernameString == null || passwordString == null) {
+      return new TPipeTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.NOT_LOGIN, "Pipe handshake missing username or password."));
     }
-    final TSStatus status = loginIfNecessary();
+
+    username = usernameString;
+    password = passwordString;
+    userEntity = new UserEntity(userId, username, cliHostname);
+    hasPipeHandshakeCredential = true;
+
+    final TSStatus status;
+    try {
+      status = login();
+    } catch (final Exception e) {
+      hasPipeHandshakeCredential = false;
+      throw e;
+    }
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      hasPipeHandshakeCredential = false;
       PipeLogger.log(
           LOGGER::warn, PipeMessages.RECEIVER_HANDSHAKE_FAILED_LOGIN, receiverId.get(), status);
       return new TPipeTransferResp(status);
     } else {
+      lastSuccessfulLoginTime = System.currentTimeMillis();
       LOGGER.info(PipeMessages.RECEIVER_USER_LOGIN_SUCCESS, receiverId.get(), username);
     }
 
@@ -344,13 +360,17 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
     // it may not require the actual type of the v1 request.
-    return handleTransferHandshakeV1(
-        new PipeTransferHandshakeV1Req() {
-          @Override
-          protected PipeRequestType getPlanType() {
-            return PipeRequestType.HANDSHAKE_DATANODE_V1;
-          }
-        }.convertToTPipeTransferReq(timestampPrecision));
+    final TPipeTransferResp handshakeResp =
+        handleTransferHandshakeV1(
+            new PipeTransferHandshakeV1Req() {
+              @Override
+              protected PipeRequestType getPlanType() {
+                return PipeRequestType.HANDSHAKE_DATANODE_V1;
+              }
+            }.convertToTPipeTransferReq(timestampPrecision));
+    hasPipeHandshakeCredential =
+        handshakeResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    return handshakeResp;
   }
 
   protected abstract String getClusterId();
@@ -379,6 +399,18 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       }
     }
     return StatusUtils.OK;
+  }
+
+  protected TSStatus getNotLoggedInStatus() {
+    return RpcUtils.getStatus(
+        TSStatusCode.NOT_LOGIN,
+        "Log in failed. Either you are not authorized or the session has timed out.");
+  }
+
+  protected TSStatus getUnsupportedHandshakeV1Status() {
+    return RpcUtils.getStatus(
+        TSStatusCode.PIPE_HANDSHAKE_ERROR,
+        "Pipe handshake V1 is no longer supported. Please use handshake V2 with username and password.");
   }
 
   protected abstract TSStatus login();

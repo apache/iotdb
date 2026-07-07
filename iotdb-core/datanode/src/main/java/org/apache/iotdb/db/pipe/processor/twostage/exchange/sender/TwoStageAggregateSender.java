@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.pipe.processor.twostage.exchange.sender;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
@@ -32,14 +34,18 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -55,8 +61,12 @@ public class TwoStageAggregateSender implements AutoCloseable {
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
+  private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
+
   private final String pipeName;
   private final long creationTime;
+  private final UserEntity sourceUserEntity;
+  private final String sourcePassword;
 
   private static final AtomicLong DATANODE_ID_2_END_POINTS_LAST_UPDATE_TIME = new AtomicLong(0);
   private static final AtomicReference<Map<Integer, TEndPoint>> DATANODE_ID_2_END_POINTS =
@@ -67,8 +77,15 @@ public class TwoStageAggregateSender implements AutoCloseable {
       new ConcurrentHashMap<>();
 
   public TwoStageAggregateSender(String pipeName, long creationTime) {
+    this(pipeName, creationTime, null, null);
+  }
+
+  public TwoStageAggregateSender(
+      String pipeName, long creationTime, UserEntity sourceUserEntity, String sourcePassword) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
+    this.sourceUserEntity = sourceUserEntity;
+    this.sourcePassword = sourcePassword;
   }
 
   public synchronized TPipeTransferResp request(long watermark, TPipeTransferReq req)
@@ -178,7 +195,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
 
       try {
         endPointIoTDBSyncClientMap.put(endPoint, constructIoTDBSyncClient(endPoint));
-      } catch (TTransportException e) {
+      } catch (TException e) {
         LOGGER.warn(DataNodePipeMessages.FAILED_TO_CONSTRUCT_IOTDBSYNCCLIENT, e);
       }
     }
@@ -194,8 +211,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
     }
   }
 
-  private IoTDBSyncClient reconstructIoTDBSyncClient(TEndPoint endPoint)
-      throws TTransportException {
+  private IoTDBSyncClient reconstructIoTDBSyncClient(TEndPoint endPoint) throws TException {
     final IoTDBSyncClient oldClient = endPointIoTDBSyncClientMap.remove(endPoint);
     if (oldClient != null) {
       try {
@@ -209,17 +225,46 @@ public class TwoStageAggregateSender implements AutoCloseable {
     return newClient;
   }
 
-  private IoTDBSyncClient constructIoTDBSyncClient(TEndPoint endPoint) throws TTransportException {
-    return new IoTDBSyncClient(
-        new ThriftClientProperty.Builder()
-            .setConnectionTimeoutMs(PIPE_CONFIG.getPipeSinkHandshakeTimeoutMs())
-            .setRpcThriftCompressionEnabled(PIPE_CONFIG.isPipeSinkRPCThriftCompressionEnabled())
-            .build(),
-        endPoint.getIp(),
-        endPoint.getPort(),
-        false,
-        null,
-        null);
+  private IoTDBSyncClient constructIoTDBSyncClient(TEndPoint endPoint) throws TException {
+    final IoTDBSyncClient client =
+        new IoTDBSyncClient(
+            new ThriftClientProperty.Builder()
+                .setConnectionTimeoutMs(PIPE_CONFIG.getPipeSinkHandshakeTimeoutMs())
+                .setRpcThriftCompressionEnabled(PIPE_CONFIG.isPipeSinkRPCThriftCompressionEnabled())
+                .build(),
+            endPoint.getIp(),
+            endPoint.getPort(),
+            false,
+            null,
+            null);
+    openSession(client);
+    return client;
+  }
+
+  private void openSession(final IoTDBSyncClient client) throws TException {
+    if (Objects.isNull(sourceUserEntity) || Objects.isNull(sourcePassword)) {
+      throw new PipeException(
+          String.format(
+              "Missing source credentials for two-stage aggregate pipe %s-%s.",
+              pipeName, creationTime));
+    }
+
+    final TSOpenSessionReq openSessionReq = new TSOpenSessionReq();
+    openSessionReq.setUsername(sourceUserEntity.getUsername());
+    openSessionReq.setPassword(sourcePassword);
+    openSessionReq.setZoneId(ZoneId.systemDefault().toString());
+    openSessionReq.setClient_protocol(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+    openSessionReq.putToConfiguration("version", IoTDBConstant.ClientVersion.V_1_0.toString());
+    openSessionReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
+
+    final TSOpenSessionResp openSessionResp = client.openSession(openSessionReq);
+    if (openSessionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format(
+              "Failed to login for two-stage aggregate pipe %s-%s, status: %s.",
+              pipeName, creationTime, openSessionResp.getStatus()));
+    }
+    client.setTimeout(PIPE_CONFIG.getPipeSinkTransferTimeoutMs());
   }
 
   @Override

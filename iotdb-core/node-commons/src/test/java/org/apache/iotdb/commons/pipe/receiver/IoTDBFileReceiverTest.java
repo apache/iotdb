@@ -23,11 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -44,7 +46,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class IoTDBFileReceiverTest {
 
@@ -119,6 +123,64 @@ public class IoTDBFileReceiverTest {
   }
 
   @Test
+  public void testHandshakeV1ClearsPipeCredential() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.setHasPipeHandshakeCredential(true);
+
+      receiver.handshake();
+
+      Assert.assertFalse(receiver.hasPipeHandshakeCredential());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testHandshakeV2RequiresCredentials() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      final TPipeTransferResp response = receiver.handshakeV2(buildHandshakeV2Params(false));
+
+      Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), response.getStatus().getCode());
+      Assert.assertEquals(0, receiver.getLoginCallCount());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testHandshakeV2AuthenticatesImmediately() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      final TPipeTransferResp response = receiver.handshakeV2(buildHandshakeV2Params(true));
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+      Assert.assertEquals(1, receiver.getLoginCallCount());
+      Assert.assertTrue(receiver.hasPipeHandshakeCredential());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  private Map<String, String> buildHandshakeV2Params(final boolean includeCredentials) {
+    final Map<String, String> params = new HashMap<>();
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, "sender-cluster");
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    if (includeCredentials) {
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, "root");
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, "root");
+    }
+    return params;
+  }
+
+  @Test
   public void testSealFileV1FailureDeletesTransferredFile() throws Exception {
     final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
     final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
@@ -188,6 +250,7 @@ public class IoTDBFileReceiverTest {
 
     private final File receiverFileBaseDir;
     private TSStatus loadFileV1Status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    private int loginCallCount = 0;
     private boolean failFilePieceMemoryAllocation = false;
     private int filePieceMemoryCloseCount = 0;
 
@@ -206,12 +269,28 @@ public class IoTDBFileReceiverTest {
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
     }
 
+    TPipeTransferResp handshakeV2(final Map<String, String> params) throws IOException {
+      return handleTransferHandshakeV2(DummyHandshakeV2Req.toTPipeTransferReq(params));
+    }
+
     void writeToCurrentWritingFile(final byte[] bytes) throws Exception {
       getCurrentWritingFileWriter().write(bytes);
     }
 
     void setLoadFileV1Status(final TSStatus status) {
       loadFileV1Status = status;
+    }
+
+    void setHasPipeHandshakeCredential(final boolean hasPipeHandshakeCredential) {
+      this.hasPipeHandshakeCredential = hasPipeHandshakeCredential;
+    }
+
+    boolean hasPipeHandshakeCredential() {
+      return hasPipeHandshakeCredential;
+    }
+
+    int getLoginCallCount() {
+      return loginCallCount;
     }
 
     void setFailFilePieceMemoryAllocation(final boolean failFilePieceMemoryAllocation) {
@@ -290,7 +369,8 @@ public class IoTDBFileReceiverTest {
 
     @Override
     protected TSStatus login() {
-      return new TSStatus(200);
+      loginCallCount++;
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
 
     @Override
@@ -352,6 +432,19 @@ public class IoTDBFileReceiverTest {
     @Override
     protected PipeRequestType getPlanType() {
       return PipeRequestType.HANDSHAKE_DATANODE_V1;
+    }
+  }
+
+  private static class DummyHandshakeV2Req extends PipeTransferHandshakeV2Req {
+
+    static DummyHandshakeV2Req toTPipeTransferReq(final Map<String, String> params)
+        throws IOException {
+      return (DummyHandshakeV2Req) new DummyHandshakeV2Req().convertToTPipeTransferReq(params);
+    }
+
+    @Override
+    protected PipeRequestType getPlanType() {
+      return PipeRequestType.HANDSHAKE_DATANODE_V2;
     }
   }
 

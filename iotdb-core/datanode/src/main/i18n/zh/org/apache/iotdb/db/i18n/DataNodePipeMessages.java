@@ -384,7 +384,8 @@ public final class DataNodePipeMessages {
       "两阶段聚合 pipe（pipeName={}, creationTime={}）的 endpoints 已更新为 {}";
   public static final String ERROR_OCCURRED_WHEN_CLOSING_COMBINEHANDLER_ID =
       "关闭 CombineHandler（id = {}）时发生错误";
-  public static final String ERROR_OCCURS_WHEN_RECEIVING_REQUEST = "接收请求时发生错误：{}";
+  public static final String ERROR_OCCURS_WHEN_RECEIVING_REQUEST = "接收请求时发生错误：{}。";
+  public static final String LOGIN_FAILED_OR_SESSION_TIMED_OUT = "登录失败。您未被授权或会话已超时。";
   public static final String FAILED_TO_CLOSE_IOTDBSYNCCLIENT = "关闭 IoTDBSyncClient 失败";
   public static final String FAILED_TO_CLOSE_OLD_IOTDBSYNCCLIENT = "关闭 old IoTDBSyncClient 失败";
   public static final String FAILED_TO_COMBINE_COUNT = "合并 count 失败：";
