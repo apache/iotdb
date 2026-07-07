@@ -1172,6 +1172,9 @@ public final class DataNodePipeMessages {
   public static final String RECEIVER_ID_UNSUPPORTED_STATEMENT_TYPE_FOR_REDIRECTION =
       "Receiver id = {}：不支持的 statement type {} 用于 redirection。";
   public static final String RECEIVER_IS_READY = "Receiver-{} 已就绪";
+  public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
+      "执行 %s 时暂时内存不足。请求内存：%d bytes，已用内存：%d bytes，可用内存：%d bytes，"
+          + "总非浮动内存：%d bytes";
   public static final String REGISTER_WITH_INTERVAL_IN_SECONDS_SUCCESSFULLY =
       "成功注册 {}，间隔时间（秒）{}。";
   public static final String SOCKET_CLOSED_WHEN_EXECUTING_READTILLFULL =

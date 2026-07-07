@@ -1243,6 +1243,9 @@ public final class DataNodePipeMessages {
   public static final String RECEIVER_ID_UNSUPPORTED_STATEMENT_TYPE_FOR_REDIRECTION =
       "Receiver id = {}: Unsupported statement type {} for redirection.";
   public static final String RECEIVER_IS_READY = "Receiver-{} is ready";
+  public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
+      "Temporarily out of memory when %s. Requested memory: %d bytes, used memory: %d bytes, "
+          + "free memory: %d bytes, total non-floating memory: %d bytes";
   public static final String REGISTER_WITH_INTERVAL_IN_SECONDS_SUCCESSFULLY =
       "Register {} with interval in seconds {} successfully.";
   public static final String SOCKET_CLOSED_WHEN_EXECUTING_READTILLFULL =

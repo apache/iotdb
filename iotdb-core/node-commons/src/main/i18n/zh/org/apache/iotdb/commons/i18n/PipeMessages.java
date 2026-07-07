@@ -577,6 +577,8 @@ public final class PipeMessages {
       "接收器 id = %s：握手失败，响应状态 = %s。";
   public static final String RECEIVER_HANDSHAKE_FAILED_LOGIN =
       "接收器 id = %s：因登录失败导致握手失败，响应状态 = %s。";
+  public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
+      "执行 %s 时暂时内存不足。请求内存：%d bytes。根因：%s";
   public static final String RECEIVER_USER_LOGIN_SUCCESS =
       "接收器 id = {}：用户 {} 登录成功。";
   public static final String RECEIVER_EXITED =

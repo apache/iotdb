@@ -113,6 +113,27 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     return decompressedReq;
   }
 
+  /** Get the largest intermediate decompressed body size without consuming the request body. */
+  public static int getMaxDecompressedLengthInBytes(final TPipeTransferReq transferReq) {
+    final ByteBuffer compressedBuffer = transferReq.body.duplicate();
+
+    int maxDecompressedLength = compressedBuffer.remaining();
+    final int compressorsSize = ReadWriteIOUtils.readByte(compressedBuffer);
+    for (int i = 0; i < compressorsSize; ++i) {
+      ReadWriteIOUtils.readByte(compressedBuffer);
+      final int decompressedLength = ReadWriteIOUtils.readInt(compressedBuffer);
+      checkDecompressedLength(decompressedLength);
+      maxDecompressedLength = Math.max(maxDecompressedLength, decompressedLength);
+    }
+    return maxDecompressedLength;
+  }
+
+  /** Get the largest additional decompressed body size beyond the current transfer frame. */
+  public static int getMaxAdditionalDecompressedLengthInBytes(final TPipeTransferReq transferReq) {
+    final int transferFrameBodySize = transferReq.body.duplicate().remaining();
+    return Math.max(0, getMaxDecompressedLengthInBytes(transferReq) - transferFrameBodySize);
+  }
+
   /** This method is used to prevent decompression bomb attacks. */
   private static void checkDecompressedLength(final int decompressedLength)
       throws IllegalArgumentException {

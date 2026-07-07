@@ -595,6 +595,8 @@ public final class PipeMessages {
       "Receiver id = %s: Handshake failed, response status = %s.";
   public static final String RECEIVER_HANDSHAKE_FAILED_LOGIN =
       "Receiver id = %s: Handshake failed because login failed, response status = %s.";
+  public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
+      "Temporarily out of memory when %s. Requested memory: %d bytes. Root cause: %s";
   public static final String RECEIVER_USER_LOGIN_SUCCESS =
       "Receiver id = {}: User {} login successfully.";
   public static final String RECEIVER_EXITED =
