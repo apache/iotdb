@@ -65,6 +65,7 @@ import org.apache.iotdb.session.util.ThreadUtils;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -166,9 +167,12 @@ public class Session implements ISession {
   protected boolean enableRedirection;
   protected boolean enableRecordsAutoConvertTablet =
       SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
+  protected boolean enableMergeTablets = SessionConfig.DEFAULT_ENABLE_MERGE_TABLETS;
   private static final double CONVERT_THRESHOLD = 0.5;
   private static final double SAMPLE_PROPORTION = 0.05;
   private static final int MIN_RECORDS_SIZE = 40;
+  private static final int MAX_CONSECUTIVE_RELATIONAL_TABLET_MERGE_MISS_COUNT = 10;
+  private int consecutiveRelationalTabletMergeMissCount = 0;
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
@@ -465,6 +469,7 @@ public class Session implements ISession {
     this.columnEncodersMap = builder.columnEncodersMap;
     this.enableRedirection = builder.enableRedirection;
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
+    this.enableMergeTablets = builder.enableMergeTablets;
     this.username = builder.username;
     this.password = builder.pw;
     this.useEncryptedPassword = builder.useEncryptedPassword;
@@ -2858,13 +2863,15 @@ public class Session implements ISession {
   }
 
   /**
-   * insert relational Tablets. Note: This method is for internal use only, we do not guarantee
-   * compatibility with subsequent versions.
+   * insert relational Tablets.
    *
    * @param tablets data batches
    */
   public void insertRelationalTablets(List<Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (enableMergeTablets) {
+      tablets = mergeRelationalTablets(tablets);
+    }
     TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, false, false);
     request.setWriteToTable(true);
     for (Tablet tablet : tablets) {
@@ -2873,6 +2880,214 @@ public class Session implements ISession {
     try {
       getDefaultSessionConnection().insertTablets(request);
     } catch (RedirectException ignored) {
+    }
+  }
+
+  private List<Tablet> mergeRelationalTablets(final List<Tablet> tablets) {
+    if (consecutiveRelationalTabletMergeMissCount
+        >= MAX_CONSECUTIVE_RELATIONAL_TABLET_MERGE_MISS_COUNT) {
+      return tablets;
+    }
+    final List<Tablet> sortedTablets = new ArrayList<>(tablets);
+    sortedTablets.sort(
+        Comparator.comparing(
+            Tablet::getTableName, Comparator.nullsFirst(Comparator.naturalOrder())));
+    final List<RelationalTabletWithColumnIndexMap> mergedTablets = new ArrayList<>(tablets.size());
+    boolean anyMerged = false;
+    for (final Tablet tablet : sortedTablets) {
+      boolean merged = false;
+      for (int i = 0; i < mergedTablets.size(); i++) {
+        final RelationalTabletWithColumnIndexMap candidate = mergedTablets.get(i);
+        if (canMergeRelationalTablets(candidate.tablet, candidate.columnIndexMap, tablet)) {
+          mergedTablets.set(i, mergeRelationalTablets(candidate, tablet));
+          merged = true;
+          anyMerged = true;
+          break;
+        }
+      }
+      if (!merged) {
+        mergedTablets.add(
+            new RelationalTabletWithColumnIndexMap(tablet, getColumnIndexMap(tablet)));
+      }
+    }
+    if (anyMerged) {
+      consecutiveRelationalTabletMergeMissCount = 0;
+    } else {
+      consecutiveRelationalTabletMergeMissCount++;
+    }
+    return mergedTablets.stream()
+        .map(relationalTablet -> relationalTablet.tablet)
+        .collect(Collectors.toList());
+  }
+
+  private boolean canMergeRelationalTablets(
+      final Tablet left, final Map<String, Integer> leftColumnIndexMap, final Tablet right) {
+    if (!Objects.equals(left.getTableName(), right.getTableName())) {
+      return false;
+    }
+    final List<IMeasurementSchema> rightSchemas = right.getSchemas();
+    int duplicatedColumnCount = 0;
+    for (int rightIndex = 0; rightIndex < rightSchemas.size(); rightIndex++) {
+      final IMeasurementSchema rightSchema = rightSchemas.get(rightIndex);
+      final Integer leftIndex = leftColumnIndexMap.get(rightSchema.getMeasurementName());
+      if (leftIndex == null) {
+        continue;
+      }
+      if (left.getSchemas().get(leftIndex).getType() != rightSchema.getType()
+          || left.getColumnTypes().get(leftIndex) != right.getColumnTypes().get(rightIndex)) {
+        return false;
+      }
+      duplicatedColumnCount++;
+    }
+    return (double) duplicatedColumnCount / Math.max(left.getSchemas().size(), rightSchemas.size())
+        > 0.5;
+  }
+
+  private Map<String, Integer> getColumnIndexMap(final Tablet tablet) {
+    final Map<String, Integer> columnIndexMap = new HashMap<>(tablet.getSchemas().size());
+    for (int i = 0; i < tablet.getSchemas().size(); i++) {
+      columnIndexMap.put(tablet.getSchemas().get(i).getMeasurementName(), i);
+    }
+    return columnIndexMap;
+  }
+
+  private Map<String, Integer> getColumnIndexMap(final List<String> measurements) {
+    final Map<String, Integer> columnIndexMap = new HashMap<>(measurements.size());
+    for (int i = 0; i < measurements.size(); i++) {
+      columnIndexMap.put(measurements.get(i), i);
+    }
+    return columnIndexMap;
+  }
+
+  private RelationalTabletWithColumnIndexMap mergeRelationalTablets(
+      final RelationalTabletWithColumnIndexMap left, final Tablet right) {
+    final List<String> measurements =
+        new ArrayList<>(left.tablet.getSchemas().size() + right.getSchemas().size());
+    final List<TSDataType> dataTypes =
+        new ArrayList<>(left.tablet.getSchemas().size() + right.getSchemas().size());
+    final List<ColumnCategory> columnTypes =
+        new ArrayList<>(left.tablet.getSchemas().size() + right.getSchemas().size());
+    for (int i = 0; i < left.tablet.getSchemas().size(); i++) {
+      measurements.add(left.tablet.getSchemas().get(i).getMeasurementName());
+      dataTypes.add(left.tablet.getSchemas().get(i).getType());
+      columnTypes.add(left.tablet.getColumnTypes().get(i));
+    }
+    for (int i = 0; i < right.getSchemas().size(); i++) {
+      final IMeasurementSchema rightSchema = right.getSchemas().get(i);
+      if (!left.columnIndexMap.containsKey(rightSchema.getMeasurementName())) {
+        measurements.add(rightSchema.getMeasurementName());
+        dataTypes.add(rightSchema.getType());
+        columnTypes.add(right.getColumnTypes().get(i));
+      }
+    }
+
+    final int rowCount = left.tablet.getRowSize() + right.getRowSize();
+    final Tablet merged =
+        new Tablet(left.tablet.getTableName(), measurements, dataTypes, columnTypes, rowCount);
+    final long[] timestamps = new long[rowCount];
+    final Object[] values = new Object[measurements.size()];
+    final BitMap[] bitMaps = new BitMap[measurements.size()];
+    for (int i = 0; i < measurements.size(); i++) {
+      values[i] = createValueColumn(dataTypes.get(i), rowCount);
+    }
+
+    copyTabletColumns(left.tablet, 0, measurements, values, bitMaps, timestamps);
+    copyTabletColumns(right, left.tablet.getRowSize(), measurements, values, bitMaps, timestamps);
+    merged.setTimestamps(timestamps);
+    merged.setValues(values);
+    merged.setBitMaps(bitMaps);
+    merged.setRowSize(rowCount);
+    return new RelationalTabletWithColumnIndexMap(merged, getColumnIndexMap(measurements));
+  }
+
+  private void copyTabletColumns(
+      final Tablet source,
+      final int targetRowOffset,
+      final List<String> targetMeasurements,
+      final Object[] targetValues,
+      final BitMap[] targetBitMaps,
+      final long[] targetTimestamps) {
+    final int rowSize = source.getRowSize();
+    System.arraycopy(source.getTimestamps(), 0, targetTimestamps, targetRowOffset, rowSize);
+    final Object[] sourceValues = source.getValues();
+    final BitMap[] sourceBitMaps = source.getBitMaps();
+    final Map<String, Integer> sourceColumnIndexMap = getColumnIndexMap(source);
+    for (int column = 0; column < targetMeasurements.size(); column++) {
+      final Integer sourceColumn = sourceColumnIndexMap.get(targetMeasurements.get(column));
+      if (sourceColumn == null) {
+        markNulls(targetBitMaps, column, targetTimestamps.length, targetRowOffset, rowSize);
+        continue;
+      }
+      System.arraycopy(
+          sourceValues[sourceColumn], 0, targetValues[column], targetRowOffset, rowSize);
+      if (sourceBitMaps != null && sourceBitMaps[sourceColumn] != null) {
+        for (int row = 0; row < rowSize; row++) {
+          if (sourceBitMaps[sourceColumn].isMarked(row)) {
+            markNull(targetBitMaps, column, targetTimestamps.length, targetRowOffset + row);
+          }
+        }
+      }
+    }
+  }
+
+  private void markNulls(
+      final BitMap[] targetBitMaps,
+      final int column,
+      final int rowCount,
+      final int targetRowOffset,
+      final int nullCount) {
+    if (targetBitMaps[column] == null) {
+      targetBitMaps[column] = new BitMap(rowCount);
+    }
+    for (int row = 0; row < nullCount; row++) {
+      targetBitMaps[column].mark(targetRowOffset + row);
+    }
+  }
+
+  private void markNull(
+      final BitMap[] targetBitMaps, final int column, final int rowCount, final int targetRow) {
+    if (targetBitMaps[column] == null) {
+      targetBitMaps[column] = new BitMap(rowCount);
+    }
+    targetBitMaps[column].mark(targetRow);
+  }
+
+  private Object createValueColumn(final TSDataType dataType, final int rowCount) {
+    switch (dataType) {
+      case BOOLEAN:
+        return new boolean[rowCount];
+      case INT32:
+        return new int[rowCount];
+      case INT64:
+      case TIMESTAMP:
+        return new long[rowCount];
+      case FLOAT:
+        return new float[rowCount];
+      case DOUBLE:
+        return new double[rowCount];
+      case DATE:
+        return new LocalDate[rowCount];
+      case TEXT:
+      case STRING:
+      case BLOB:
+      case OBJECT:
+        return new Binary[rowCount];
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(
+                SessionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
+    }
+  }
+
+  private static class RelationalTabletWithColumnIndexMap {
+
+    private final Tablet tablet;
+    private final Map<String, Integer> columnIndexMap;
+
+    private RelationalTabletWithColumnIndexMap(
+        final Tablet tablet, final Map<String, Integer> columnIndexMap) {
+      this.tablet = tablet;
+      this.columnIndexMap = columnIndexMap;
     }
   }
 
@@ -4411,6 +4626,11 @@ public class Session implements ISession {
 
     public Builder enableRecordsAutoConvertTablet(boolean enableRecordsAutoConvertTablet) {
       this.enableRecordsAutoConvertTablet = enableRecordsAutoConvertTablet;
+      return this;
+    }
+
+    public Builder enableMergeTablets(boolean enableMergeTablets) {
+      this.enableMergeTablets = enableMergeTablets;
       return this;
     }
 

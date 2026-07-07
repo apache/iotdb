@@ -134,6 +134,7 @@ public class SessionPool implements ISessionPool {
   // datanode while encountering retriable errors in current DataNode
   private boolean enableRedirection;
   private boolean enableRecordsAutoConvertTablet;
+  private boolean enableMergeTablets;
   private boolean enableQueryRedirection = false;
 
   private Map<String, TEndPoint> deviceIdToEndpoint;
@@ -536,6 +537,7 @@ public class SessionPool implements ISessionPool {
       tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
     }
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
+    this.enableMergeTablets = builder.enableMergeTablets;
     this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.version = builder.version;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
@@ -600,6 +602,7 @@ public class SessionPool implements ISessionPool {
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
               .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
+              .enableMergeTablets(enableMergeTablets)
               .version(version)
               .useSSL(useSSL)
               .trustStore(trustStore)
@@ -628,6 +631,7 @@ public class SessionPool implements ISessionPool {
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
               .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
+              .enableMergeTablets(enableMergeTablets)
               .version(version)
               .useSSL(useSSL)
               .trustStore(trustStore)
@@ -3753,6 +3757,11 @@ public class SessionPool implements ISessionPool {
 
     public Builder enableRecordsAutoConvertTablet(boolean enableRecordsAutoConvertTablet) {
       this.enableRecordsAutoConvertTablet = enableRecordsAutoConvertTablet;
+      return this;
+    }
+
+    public Builder enableMergeTablets(boolean enableMergeTablets) {
+      this.enableMergeTablets = enableMergeTablets;
       return this;
     }
 
