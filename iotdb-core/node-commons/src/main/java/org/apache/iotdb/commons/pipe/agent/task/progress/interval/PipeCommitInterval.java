@@ -24,11 +24,17 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.interval.Interval;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 public class PipeCommitInterval extends Interval<PipeCommitInterval> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeCommitInterval.class);
+  private static final String PIPE_DATA_LOSS_DEBUG_PREFIX = "[PipeDataLossDebug]";
 
   private ProgressIndex currentIndex;
   private List<Runnable> onCommittedHooks;
@@ -64,6 +70,16 @@ public class PipeCommitInterval extends Interval<PipeCommitInterval> {
 
   @Override
   public void onRemoved() {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} commit interval removed, range=[{},{}], progressIndex={}, hookCount={}, willReportProgress={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          start,
+          end,
+          currentIndex,
+          onCommittedHooks.size(),
+          Objects.nonNull(pipeTaskMeta));
+    }
     if (Objects.nonNull(pipeTaskMeta)) {
       pipeTaskMeta.updateProgressIndex(currentIndex);
     }

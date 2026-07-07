@@ -35,6 +35,7 @@ import java.util.function.BiConsumer;
 public class PipeEventCommitManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitManager.class);
+  private static final String PIPE_DATA_LOSS_DEBUG_PREFIX = "[PipeDataLossDebug]";
 
   private volatile PipeTaskAgent taskAgent;
   private final Map<CommitterKey, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
@@ -94,9 +95,23 @@ public class PipeEventCommitManager {
       return;
     }
     event.setCommitterKeyAndCommitId(committerKey, committer.generateCommitId());
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} commit manager enriched event, committerKey={}, event={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          committerKey,
+          event.coreReportMessage());
+    }
   }
 
   public void commit(final EnrichedEvent event, final CommitterKey committerKey) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} commit manager commit invoked, committerKey={}, event={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          committerKey,
+          event == null ? null : event.coreReportMessage());
+    }
     if (event == null
         || !event.needToCommit()
         || Objects.isNull(event.getPipeName())
@@ -118,6 +133,12 @@ public class PipeEventCommitManager {
       }
     }
     if (committerKey == null) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} commit manager skip commit because committerKey is null, event={}",
+            PIPE_DATA_LOSS_DEBUG_PREFIX,
+            event.coreReportMessage());
+      }
       return;
     }
     if (event.hasMultipleCommitIds()) {
@@ -138,6 +159,14 @@ public class PipeEventCommitManager {
   private boolean commitSingleId(
       final CommitterKey committerKey, final long commitId, final EnrichedEvent event) {
     if (commitId <= EnrichedEvent.NO_COMMIT_ID) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} commit manager skip commit because commitId is invalid, committerKey={}, commitId={}, event={}",
+            PIPE_DATA_LOSS_DEBUG_PREFIX,
+            committerKey,
+            commitId,
+            event.coreReportMessage());
+      }
       return false;
     }
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
@@ -164,6 +193,14 @@ public class PipeEventCommitManager {
       return false;
     }
 
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} commit manager submitting event to committer, committerKey={}, commitId={}, event={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          committerKey,
+          commitId,
+          event.coreReportMessage());
+    }
     committer.commit(event);
     return true;
   }

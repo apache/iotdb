@@ -147,8 +147,8 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     }
 
     if (!useLeaderCache) {
-      defaultBatch.onEvent(event);
-      logOnEvent(event, "default", null, defaultBatch);
+      final boolean shouldEmit = defaultBatch.onEvent(event);
+      logOnEvent(event, "default", null, defaultBatch, shouldEmit);
       return;
     }
 
@@ -160,16 +160,16 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     }
 
     if (Objects.isNull(deviceId)) {
-      defaultBatch.onEvent(event);
-      logOnEvent(event, "default-no-device", null, defaultBatch);
+      final boolean shouldEmit = defaultBatch.onEvent(event);
+      logOnEvent(event, "default-no-device", null, defaultBatch, shouldEmit);
       return;
     }
 
     final TEndPoint endPoint =
         IoTDBDataNodeCacheLeaderClientManager.LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
     if (Objects.isNull(endPoint)) {
-      defaultBatch.onEvent(event);
-      logOnEvent(event, "default-no-leader", null, defaultBatch);
+      final boolean shouldEmit = defaultBatch.onEvent(event);
+      logOnEvent(event, "default-no-leader", null, defaultBatch, shouldEmit);
       return;
     }
     final PipeTabletEventPlainBatch batch =
@@ -178,41 +178,34 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
             k ->
                 new PipeTabletEventPlainBatch(
                     requestMaxDelayInMs, requestMaxBatchSizeInBytes, this::recordTabletMetric));
-    batch.onEvent(event);
-    logOnEvent(event, "leader-cache", endPoint, batch);
+    final boolean shouldEmit = batch.onEvent(event);
+    logOnEvent(event, "leader-cache", endPoint, batch, shouldEmit);
   }
 
   private void logOnEvent(
       final TabletInsertionEvent event,
       final String route,
       final TEndPoint endPoint,
-      final PipeTabletEventBatch batch) {
+      final PipeTabletEventBatch batch,
+      final boolean shouldEmit) {
     if (!LOGGER.isDebugEnabled() || !(event instanceof EnrichedEvent)) {
       return;
     }
 
     final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
     LOGGER.debug(
-        "{} sink batch accepted tablet, {}, regionId={}, route={}, endPoint={}, batchEventCount={}, batchBufferSize={}, event={}",
+        "{} sink batch accepted tablet, {}, regionId={}, route={}, endPoint={}, shouldEmit={}, batchEventCount={}, batchBufferSize={}, event={}, batchEvents={}",
         PipeDataLossDebugUtil.PREFIX,
         PipeDataLossDebugUtil.formatPipe(
             enrichedEvent.getPipeName(), enrichedEvent.getCreationTime()),
         enrichedEvent.getRegionId(),
         route,
         endPoint,
+        shouldEmit,
         batch.getEventCount(),
         batch.getTotalBufferSize(),
-        formatTabletInsertionEvent(event));
-  }
-
-  private String formatTabletInsertionEvent(final TabletInsertionEvent event) {
-    if (event instanceof PipeRawTabletInsertionEvent) {
-      return ((PipeRawTabletInsertionEvent) event).getTabletDebugString();
-    }
-    if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-      return "device=" + ((PipeInsertNodeTabletInsertionEvent) event).getDeviceId();
-    }
-    return String.valueOf(event);
+        PipeDataLossDebugUtil.formatTabletInsertionEvent(event),
+        PipeDataLossDebugUtil.formatEvents(batch.deepCopyEvents()));
   }
 
   /** Get all batches that have at least 1 event. */

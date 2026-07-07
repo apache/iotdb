@@ -295,6 +295,14 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
           batch.getClass());
     }
 
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async sink marking emitted batch as locally successful and clearing builder batch, endPoint={}, batchType={}, events={}",
+          PipeDataLossDebugUtil.PREFIX,
+          endPointAndBatch.getLeft(),
+          batch.getClass().getSimpleName(),
+          PipeDataLossDebugUtil.formatEvents(batch.deepCopyEvents()));
+    }
     endPointAndBatch.getRight().onSuccess();
   }
 
@@ -304,19 +312,14 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     }
 
     final List<EnrichedEvent> events = batch.deepCopyEvents();
-    final EnrichedEvent firstEvent = events.isEmpty() ? null : events.get(0);
     LOGGER.debug(
-        "{} async sink emitting tablet batch, firstEventPipe={}, firstEventRegionId={}, endPoint={}, batchType={}, eventCount={}, batchBufferSize={}",
+        "{} async sink emitting tablet batch, endPoint={}, batchType={}, eventCount={}, batchBufferSize={}, events={}",
         PipeDataLossDebugUtil.PREFIX,
-        firstEvent == null
-            ? "null"
-            : PipeDataLossDebugUtil.formatPipe(
-                firstEvent.getPipeName(), firstEvent.getCreationTime()),
-        firstEvent == null ? "null" : String.valueOf(firstEvent.getRegionId()),
         endPoint,
         batch.getClass().getSimpleName(),
         batch.getEventCount(),
-        batch.getTotalBufferSize());
+        batch.getTotalBufferSize(),
+        PipeDataLossDebugUtil.formatEvents(events));
   }
 
   private boolean transferInEventWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
@@ -379,8 +382,24 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     try {
       client = clientManager.borrowClient(endPoint);
       markHandshakeSucceeded();
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} async sink borrowed client for tablet batch, requestedEndPoint={}, actualEndPoint={}, pendingHandlers={}",
+            PipeDataLossDebugUtil.PREFIX,
+            endPoint,
+            client.getEndPoint(),
+            getPendingHandlersSize());
+      }
       pipeTransferTabletBatchEventHandler.transfer(client);
     } catch (final Exception ex) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} async sink failed before/during tablet batch transfer, requestedEndPoint={}, actualEndPoint={}, exception={}",
+            PipeDataLossDebugUtil.PREFIX,
+            endPoint,
+            client == null ? null : client.getEndPoint(),
+            PipeDataLossDebugUtil.formatException(ex));
+      }
       markSchedulingDelayIfHandshakeFailed(client);
       logOnClientException(client, ex);
       pipeTransferTabletBatchEventHandler.onError(ex);
@@ -629,6 +648,17 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
    * @see PipeConnector#transfer(TsFileInsertionEvent) for more details.
    */
   private void transferQueuedEventsIfNecessary(final boolean forced) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async sink checking retry queues, forced={}, {}",
+          PipeDataLossDebugUtil.PREFIX,
+          forced,
+          PipeDataLossDebugUtil.formatQueueState(
+              retryEventQueue.size(),
+              retryTsFileQueue.size(),
+              retryEventQueueEventCounter.getTabletInsertionEventCount(),
+              retryEventQueueEventCounter.getTsFileInsertionEventCount()));
+    }
     if ((retryEventQueue.isEmpty() && retryTsFileQueue.isEmpty())
         || (!forced
             && retryEventQueueEventCounter.getTabletInsertionEventCount()
@@ -655,6 +685,17 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
         final Event polledEvent;
         if (!retryEventQueue.isEmpty()) {
           peekedEvent = retryEventQueue.peek();
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "{} async sink retrying tablet event from retry queue, event={}, {}",
+                PipeDataLossDebugUtil.PREFIX,
+                PipeDataLossDebugUtil.formatEvent(peekedEvent),
+                PipeDataLossDebugUtil.formatQueueState(
+                    retryEventQueue.size(),
+                    retryTsFileQueue.size(),
+                    retryEventQueueEventCounter.getTabletInsertionEventCount(),
+                    retryEventQueueEventCounter.getTsFileInsertionEventCount()));
+          }
 
           if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
             retryTransfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
@@ -674,6 +715,17 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
             return;
           }
           peekedEvent = retryTsFileQueue.peek();
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "{} async sink retrying tsfile event from retry queue, event={}, {}",
+                PipeDataLossDebugUtil.PREFIX,
+                PipeDataLossDebugUtil.formatEvent(peekedEvent),
+                PipeDataLossDebugUtil.formatQueueState(
+                    retryEventQueue.size(),
+                    retryTsFileQueue.size(),
+                    retryEventQueueEventCounter.getTabletInsertionEventCount(),
+                    retryEventQueueEventCounter.getTsFileInsertionEventCount()));
+          }
           retryTransfer((PipeTsFileInsertionEvent) peekedEvent);
           polledEvent = retryTsFileQueue.poll();
         }
@@ -685,6 +737,15 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
         }
         if (polledEvent != null && LOGGER.isDebugEnabled()) {
           LOGGER.debug(DataNodePipeMessages.POLLED_EVENT_FROM_RETRY_QUEUE, polledEvent);
+          LOGGER.debug(
+              "{} async sink polled event from retry queue after retry attempt, polledEvent={}, {}",
+              PipeDataLossDebugUtil.PREFIX,
+              PipeDataLossDebugUtil.formatEvent(polledEvent),
+              PipeDataLossDebugUtil.formatQueueState(
+                  retryEventQueue.size(),
+                  retryTsFileQueue.size(),
+                  retryEventQueueEventCounter.getTabletInsertionEventCount(),
+                  retryEventQueueEventCounter.getTsFileInsertionEventCount()));
         }
       }
 
@@ -718,11 +779,24 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   }
 
   private void retryTransfer(final TabletInsertionEvent tabletInsertionEvent) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async sink retryTransfer tablet start, batchMode={}, event={}",
+          PipeDataLossDebugUtil.PREFIX,
+          isTabletBatchModeEnabled,
+          PipeDataLossDebugUtil.formatEvent((Event) tabletInsertionEvent));
+    }
     if (isTabletBatchModeEnabled) {
       try {
         tabletBatchBuilder.onEvent(tabletInsertionEvent);
         transferBatchedEventsIfNecessary();
         if (tabletInsertionEvent instanceof EnrichedEvent) {
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "{} async sink retryTransfer tablet batched successfully, decrease retry holder reference, event={}",
+                PipeDataLossDebugUtil.PREFIX,
+                PipeDataLossDebugUtil.formatEvent((Event) tabletInsertionEvent));
+          }
           ((EnrichedEvent) tabletInsertionEvent)
               .decreaseReferenceCount(IoTDBDataRegionAsyncSink.class.getName(), false);
         }
@@ -752,6 +826,12 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   }
 
   private void retryTransfer(final PipeTsFileInsertionEvent tsFileInsertionEvent) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async sink retryTransfer tsfile start, event={}",
+          PipeDataLossDebugUtil.PREFIX,
+          PipeDataLossDebugUtil.formatEvent(tsFileInsertionEvent));
+    }
     try {
       if (transferWithoutCheck(tsFileInsertionEvent)) {
         tsFileInsertionEvent.decreaseReferenceCount(
@@ -773,18 +853,49 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   public void addFailureEventToRetryQueue(final Event event, final Exception e) {
     isConnectionException =
         e instanceof PipeConnectionException || ThriftClient.isConnectionBroken(e);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async sink addFailureEventToRetryQueue invoked, event={}, exception={}, isConnectionException={}, {}",
+          PipeDataLossDebugUtil.PREFIX,
+          PipeDataLossDebugUtil.formatEvent(event),
+          PipeDataLossDebugUtil.formatException(e),
+          isConnectionException,
+          PipeDataLossDebugUtil.formatQueueState(
+              retryEventQueue.size(),
+              retryTsFileQueue.size(),
+              retryEventQueueEventCounter.getTabletInsertionEventCount(),
+              retryEventQueueEventCounter.getTsFileInsertionEventCount()));
+    }
     if (event instanceof EnrichedEvent) {
       final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
       if (enrichedEvent.isReleased()) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "{} async sink skip adding released event to retry queue, event={}",
+              PipeDataLossDebugUtil.PREFIX,
+              PipeDataLossDebugUtil.formatEvent(event));
+        }
         return;
       }
       if (isDroppedPipe(enrichedEvent)) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "{} async sink skip adding dropped-pipe event to retry queue and clear reference, event={}",
+              PipeDataLossDebugUtil.PREFIX,
+              PipeDataLossDebugUtil.formatEvent(event));
+        }
         enrichedEvent.clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
         return;
       }
     }
 
     if (isClosed.get()) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} async sink skip adding event to retry queue because sink is closed, event={}",
+            PipeDataLossDebugUtil.PREFIX,
+            PipeDataLossDebugUtil.formatEvent(event));
+      }
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
       }
@@ -801,9 +912,24 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(DataNodePipeMessages.ADDED_EVENT_TO_RETRY_QUEUE, event);
+      LOGGER.debug(
+          "{} async sink added event to retry queue, event={}, {}",
+          PipeDataLossDebugUtil.PREFIX,
+          PipeDataLossDebugUtil.formatEvent(event),
+          PipeDataLossDebugUtil.formatQueueState(
+              retryEventQueue.size(),
+              retryTsFileQueue.size(),
+              retryEventQueueEventCounter.getTabletInsertionEventCount(),
+              retryEventQueueEventCounter.getTsFileInsertionEventCount()));
     }
 
     if (isClosed.get()) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} async sink became closed after adding event to retry queue, clear reference, event={}",
+            PipeDataLossDebugUtil.PREFIX,
+            PipeDataLossDebugUtil.formatEvent(event));
+      }
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
       }
@@ -817,6 +943,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
    */
   public void addFailureEventsToRetryQueue(
       final Iterable<EnrichedEvent> events, final Exception e) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async sink addFailureEventsToRetryQueue invoked, events={}, exception={}",
+          PipeDataLossDebugUtil.PREFIX,
+          PipeDataLossDebugUtil.formatEvents(events),
+          PipeDataLossDebugUtil.formatException(e));
+    }
     events.forEach(event -> addFailureEventToRetryQueue(event, e));
   }
 
@@ -842,6 +975,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       }
 
       try {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "{} async sink throttling because receiver is temporarily unavailable, endPoint={}, waitTimeInMs={}",
+              PipeDataLossDebugUtil.PREFIX,
+              endPoint,
+              waitTimeInMs);
+        }
         Thread.sleep(waitTimeInMs);
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -851,6 +991,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   }
 
   public void recordReceiverStatus(final TEndPoint endPoint, final TSStatus status) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async sink recording receiver status, endPoint={}, status={}",
+          PipeDataLossDebugUtil.PREFIX,
+          endPoint,
+          PipeDataLossDebugUtil.formatStatus(status));
+    }
     final String endPointKey = format(endPoint);
     if (Objects.isNull(endPointKey) || Objects.isNull(status)) {
       return;
@@ -1014,6 +1161,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
   public void trackHandler(final PipeTransferTrackableHandler handler) {
     pendingHandlers.put(handler, handler);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async sink tracked handler, handler={}, pendingHandlers={}",
+          PipeDataLossDebugUtil.PREFIX,
+          handler.getClass().getSimpleName() + "@" + System.identityHashCode(handler),
+          pendingHandlers.size());
+    }
   }
 
   public void eliminateHandler(
@@ -1023,6 +1177,14 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     }
     handler.close();
     pendingHandlers.remove(handler);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async sink eliminated handler, handler={}, closeClient={}, pendingHandlers={}",
+          PipeDataLossDebugUtil.PREFIX,
+          handler.getClass().getSimpleName() + "@" + System.identityHashCode(handler),
+          closeClient,
+          pendingHandlers.size());
+    }
   }
 
   public boolean hasPendingHandlers() {

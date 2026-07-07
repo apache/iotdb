@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.util.PipeDataLossDebugUtil;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -51,11 +52,26 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void onComplete(final TPipeTransferResp response) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async handler onComplete, handler={}, endpoint={}, responseStatus={}",
+          PipeDataLossDebugUtil.PREFIX,
+          getDebugHandlerInfo(),
+          client == null ? null : client.getEndPoint(),
+          response == null ? null : PipeDataLossDebugUtil.formatStatus(response.getStatus()));
+    }
+
     if (Objects.nonNull(client) && Objects.nonNull(response)) {
       sink.recordReceiverStatus(client.getEndPoint(), response.getStatus());
     }
 
     if (sink.isClosed()) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} async handler onComplete found closed sink, clearing references, handler={}",
+            PipeDataLossDebugUtil.PREFIX,
+            getDebugHandlerInfo());
+      }
       clearEventsReferenceCount();
       sink.eliminateHandler(this, true);
       return;
@@ -72,12 +88,27 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void onError(final Exception exception) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async handler onError, handler={}, endpoint={}, exception={}",
+          PipeDataLossDebugUtil.PREFIX,
+          getDebugHandlerInfo(),
+          client == null ? null : client.getEndPoint(),
+          PipeDataLossDebugUtil.formatException(exception));
+    }
+
     if (client != null) {
       ThriftClient.resolveException(exception, client);
       client.setPrintLogWhenEncounterException(false);
     }
 
     if (sink.isClosed()) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} async handler onComplete found closed sink, clearing references, handler={}",
+            PipeDataLossDebugUtil.PREFIX,
+            getDebugHandlerInfo());
+      }
       clearEventsReferenceCount();
       sink.eliminateHandler(this, true);
       return;
@@ -104,12 +135,36 @@ public abstract class PipeTransferTrackableHandler
     }
     // track handler before checking if connector is closed
     sink.trackHandler(this);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async handler tracked before transfer, handler={}, endpoint={}, req={}, pendingHandlers={}",
+          PipeDataLossDebugUtil.PREFIX,
+          getDebugHandlerInfo(),
+          client.getEndPoint(),
+          PipeDataLossDebugUtil.formatReq(req),
+          sink.getPendingHandlersSize());
+    }
     if (returnFalseIfSinkIsClosed(client)) {
       return false;
+    }
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async handler waiting for receiver availability if needed, handler={}, endpoint={}",
+          PipeDataLossDebugUtil.PREFIX,
+          getDebugHandlerInfo(),
+          client.getEndPoint());
     }
     sink.waitIfReceiverTemporarilyUnavailable(client.getEndPoint());
     if (returnFalseIfSinkIsClosed(client)) {
       return false;
+    }
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async handler doing transfer, handler={}, endpoint={}, req={}",
+          PipeDataLossDebugUtil.PREFIX,
+          getDebugHandlerInfo(),
+          client.getEndPoint(),
+          PipeDataLossDebugUtil.formatReq(req));
     }
     doTransfer(client, req);
     return true;
@@ -120,6 +175,13 @@ public abstract class PipeTransferTrackableHandler
       return false;
     }
 
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async handler found closed sink before transfer, clearing references, handler={}, endpoint={}",
+          PipeDataLossDebugUtil.PREFIX,
+          getDebugHandlerInfo(),
+          client.getEndPoint());
+    }
     clearEventsReferenceCount();
     sink.eliminateHandler(this, true);
     client.setShouldReturnSelf(true);
@@ -155,6 +217,15 @@ public abstract class PipeTransferTrackableHandler
       throws TException {
     final int bodySizeLimit = PipeTransferSliceReqBuilder.getBodySizeLimit();
     if (!PipeTransferSliceReqBuilder.shouldSlice(req, bodySizeLimit)) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} async handler transferring whole request, handler={}, endpoint={}, req={}, bodySizeLimit={}",
+            PipeDataLossDebugUtil.PREFIX,
+            getDebugHandlerInfo(),
+            client.getEndPoint(),
+            PipeDataLossDebugUtil.formatReq(req),
+            bodySizeLimit);
+      }
       client.pipeTransfer(req, this);
       return;
     }
@@ -168,6 +239,16 @@ public abstract class PipeTransferTrackableHandler
         bodySizeLimit);
 
     final int sliceCount = PipeTransferSliceReqBuilder.getSliceCount(req, bodySizeLimit);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async handler transferring sliced request, handler={}, endpoint={}, req={}, sliceCount={}, bodySizeLimit={}",
+          PipeDataLossDebugUtil.PREFIX,
+          getDebugHandlerInfo(),
+          client.getEndPoint(),
+          PipeDataLossDebugUtil.formatReq(req),
+          sliceCount,
+          bodySizeLimit);
+    }
     final boolean shouldReturnSelf = client.shouldReturnSelf();
     try {
       transferSlicedRequest(
@@ -181,6 +262,13 @@ public abstract class PipeTransferTrackableHandler
     } catch (final Exception e) {
       fallbackToWholeRequest(client, req, shouldReturnSelf, e);
     }
+  }
+
+  protected String getDebugHandlerInfo() {
+    return "handlerClass="
+        + getClass().getSimpleName()
+        + ", identity="
+        + System.identityHashCode(this);
   }
 
   public abstract void clearEventsReferenceCount();
@@ -207,6 +295,16 @@ public abstract class PipeTransferTrackableHandler
             }
 
             if (Objects.nonNull(response)) {
+              if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(
+                    "{} async handler slice callback, handler={}, endpoint={}, sliceIndex={}, sliceCount={}, status={}",
+                    PipeDataLossDebugUtil.PREFIX,
+                    getDebugHandlerInfo(),
+                    client.getEndPoint(),
+                    sliceIndex,
+                    sliceCount,
+                    PipeDataLossDebugUtil.formatStatus(response.getStatus()));
+              }
               sink.recordReceiverStatus(client.getEndPoint(), response.getStatus());
             }
 
@@ -257,6 +355,16 @@ public abstract class PipeTransferTrackableHandler
               PipeTransferTrackableHandler.this.onError(exception);
               return;
             }
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  "{} async handler slice onError, handler={}, endpoint={}, sliceIndex={}, sliceCount={}, exception={}",
+                  PipeDataLossDebugUtil.PREFIX,
+                  getDebugHandlerInfo(),
+                  client.getEndPoint(),
+                  sliceIndex,
+                  sliceCount,
+                  PipeDataLossDebugUtil.formatException(exception));
+            }
             fallbackToWholeRequest(client, originalReq, shouldReturnSelf, exception);
           }
         });
@@ -267,6 +375,15 @@ public abstract class PipeTransferTrackableHandler
       final TPipeTransferReq originalReq,
       final boolean shouldReturnSelf,
       final Exception exception) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} async handler falling back to whole request, handler={}, endpoint={}, req={}, exception={}",
+          PipeDataLossDebugUtil.PREFIX,
+          getDebugHandlerInfo(),
+          client.getEndPoint(),
+          PipeDataLossDebugUtil.formatReq(originalReq),
+          PipeDataLossDebugUtil.formatException(exception));
+    }
     PipeLogger.log(
         LOGGER::warn,
         exception,

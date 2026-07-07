@@ -23,11 +23,25 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeCommitQueue {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeCommitQueue.class);
+  private static final String PIPE_DATA_LOSS_DEBUG_PREFIX = "[PipeDataLossDebug]";
+
   private final IntervalManager<PipeCommitInterval> intervalManager = new IntervalManager<>();
   private long lastCommitted = 0;
 
   public void offer(final EnrichedEvent event) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} commit queue offer start, lastCommitted={}, queueSizeBefore={}, event={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          lastCommitted,
+          intervalManager.size(),
+          event.coreReportMessage());
+    }
     final PipeCommitInterval interval =
         new PipeCommitInterval(
             event.getCommitId(),
@@ -39,8 +53,24 @@ public class PipeCommitQueue {
             event.getPipeTaskMeta());
     intervalManager.addInterval(interval);
     if (interval.start == lastCommitted + 1) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} commit queue interval is contiguous and will be removed, lastCommittedBefore={}, interval={}, event={}",
+            PIPE_DATA_LOSS_DEBUG_PREFIX,
+            lastCommitted,
+            interval,
+            event.coreReportMessage());
+      }
       intervalManager.remove(interval);
       lastCommitted = interval.end;
+    }
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} commit queue offer end, lastCommitted={}, queueSizeAfter={}, event={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          lastCommitted,
+          intervalManager.size(),
+          event.coreReportMessage());
     }
   }
 

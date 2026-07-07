@@ -48,6 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class EnrichedEvent implements Event {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EnrichedEvent.class);
+  private static final String PIPE_DATA_LOSS_DEBUG_PREFIX = "[PipeDataLossDebug]";
 
   protected final AtomicInteger referenceCount;
   // This variable is used to indicate whether the event's reference count has ever been decreased
@@ -133,6 +134,7 @@ public abstract class EnrichedEvent implements Event {
    */
   public synchronized boolean increaseReferenceCount(final String holderMessage) {
     boolean isSuccessful = true;
+    final int oldReferenceCount = referenceCount.get();
 
     if (isReleased.get()) {
       LOGGER.warn(
@@ -149,7 +151,17 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (isSuccessful) {
-      if (referenceCount.incrementAndGet() == 1
+      final int newReferenceCount = referenceCount.incrementAndGet();
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} enriched event increaseReferenceCount, holder={}, oldReferenceCount={}, newReferenceCount={}, event={}",
+            PIPE_DATA_LOSS_DEBUG_PREFIX,
+            holderMessage,
+            oldReferenceCount,
+            newReferenceCount,
+            coreReportMessage());
+      }
+      if (newReferenceCount == 1
           && PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
         trackResource();
       }
@@ -190,6 +202,7 @@ public abstract class EnrichedEvent implements Event {
   public synchronized boolean decreaseReferenceCount(
       final String holderMessage, final boolean shouldReport) {
     boolean isSuccessful = true;
+    final int oldReferenceCount = referenceCount.get();
 
     if (isReleased.get()) {
       LOGGER.warn(
@@ -205,6 +218,19 @@ public abstract class EnrichedEvent implements Event {
       if (!shouldReport) {
         shouldReportOnCommit = false;
       }
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} enriched event reference will reach zero, holder={}, shouldReportArg={}, shouldReportOnCommit={}, committerKey={}, commitId={}, commitIds={}, progressIndex={}, event={}",
+            PIPE_DATA_LOSS_DEBUG_PREFIX,
+            holderMessage,
+            shouldReport,
+            shouldReportOnCommit,
+            committerKey,
+            commitId,
+            getCommitIds(),
+            getProgressIndex(),
+            coreReportMessage());
+      }
       // We assume that this function will not throw any exceptions.
       if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
         LOGGER.warn(
@@ -218,6 +244,16 @@ public abstract class EnrichedEvent implements Event {
 
     // No matter whether the resource is released, we should decrease the reference count.
     final int newReferenceCount = referenceCount.decrementAndGet();
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} enriched event decreaseReferenceCount, holder={}, shouldReportArg={}, oldReferenceCount={}, newReferenceCount={}, event={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          holderMessage,
+          shouldReport,
+          oldReferenceCount,
+          newReferenceCount,
+          coreReportMessage());
+    }
     if (newReferenceCount <= 0) {
       isReleased.set(true);
       isSuccessful = newReferenceCount == 0;
@@ -253,7 +289,23 @@ public abstract class EnrichedEvent implements Event {
    */
   public synchronized boolean clearReferenceCount(final String holderMessage) {
     if (isReleased.get()) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} enriched event clearReferenceCount ignored because already released, holder={}, event={}",
+            PIPE_DATA_LOSS_DEBUG_PREFIX,
+            holderMessage,
+            coreReportMessage());
+      }
       return false;
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} enriched event clearReferenceCount, holder={}, oldReferenceCount={}, event={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          holderMessage,
+          referenceCount.get(),
+          coreReportMessage());
     }
 
     if (referenceCount.get() >= 1) {
@@ -445,6 +497,14 @@ public abstract class EnrichedEvent implements Event {
   public void setCommitterKeyAndCommitId(final CommitterKey committerKey, final long commitId) {
     this.committerKey = committerKey;
     this.commitId = commitId;
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} enriched event bound committer key and commit id, committerKey={}, commitId={}, event={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          committerKey,
+          commitId,
+          coreReportMessage());
+    }
   }
 
   public void setRebootTimes(final int rebootTimes) {

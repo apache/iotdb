@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.util.PipeDataLossDebugUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
@@ -81,6 +82,13 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   public synchronized boolean onEvent(final TabletInsertionEvent event)
       throws WALPipeException, IOException {
     if (isClosed || !(event instanceof EnrichedEvent)) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} tablet batch ignored event, isClosed={}, event={}",
+            PipeDataLossDebugUtil.PREFIX,
+            isClosed,
+            String.valueOf(event));
+      }
       return false;
     }
 
@@ -92,10 +100,28 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
           .increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName())) {
 
         try {
-          if (constructBatch(event)) {
+          final boolean constructed = constructBatch(event);
+          if (constructed) {
             events.add((EnrichedEvent) event);
           }
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "{} tablet batch construct result, constructed={}, event={}, batchEvents={}, totalBufferSize={}",
+                PipeDataLossDebugUtil.PREFIX,
+                constructed,
+                PipeDataLossDebugUtil.formatEvent((EnrichedEvent) event),
+                PipeDataLossDebugUtil.formatEvents(events),
+                totalBufferSize);
+          }
         } catch (final Exception e) {
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "{} tablet batch construct failed, event={}, batchEvents={}, exception={}",
+                PipeDataLossDebugUtil.PREFIX,
+                PipeDataLossDebugUtil.formatEvent((EnrichedEvent) event),
+                PipeDataLossDebugUtil.formatEvents(events),
+                PipeDataLossDebugUtil.formatException(e));
+          }
           if (events.isEmpty()) {
             clearBatchData();
             resetMemoryUsage();
@@ -159,6 +185,13 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   }
 
   public synchronized void onSuccess() {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} tablet batch onSuccess clearing batch data, events={}, totalBufferSize={}",
+          PipeDataLossDebugUtil.PREFIX,
+          PipeDataLossDebugUtil.formatEvents(events),
+          totalBufferSize);
+    }
     events.clear();
 
     resetMemoryUsage();
@@ -171,6 +204,13 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     }
     isClosed = true;
 
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} tablet batch closing, events={}, totalBufferSize={}",
+          PipeDataLossDebugUtil.PREFIX,
+          PipeDataLossDebugUtil.formatEvents(events),
+          totalBufferSize);
+    }
     clearEventsReferenceCount(PipeTabletEventBatch.class.getName());
     events.clear();
     clearBatchData();
@@ -188,6 +228,13 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   }
 
   public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} tablet batch discarding events of pipe, committerKey={}, beforeEvents={}",
+          PipeDataLossDebugUtil.PREFIX,
+          committerKey,
+          PipeDataLossDebugUtil.formatEvents(events));
+    }
     final boolean hasDiscardedEvents =
         events.removeIf(
             event -> {
@@ -197,6 +244,14 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
               }
               return false;
             });
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} tablet batch discarded events of pipe, committerKey={}, hasDiscardedEvents={}, afterEvents={}",
+          PipeDataLossDebugUtil.PREFIX,
+          committerKey,
+          hasDiscardedEvents,
+          PipeDataLossDebugUtil.formatEvents(events));
+    }
     if (hasDiscardedEvents && events.isEmpty()) {
       clearBatchData();
       resetMemoryUsage();
@@ -221,10 +276,25 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   public synchronized void decreaseEventsReferenceCount(
       final String holderMessage, final boolean shouldReport) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} tablet batch decreasing event references, holder={}, shouldReport={}, events={}",
+          PipeDataLossDebugUtil.PREFIX,
+          holderMessage,
+          shouldReport,
+          PipeDataLossDebugUtil.formatEvents(events));
+    }
     events.forEach(event -> event.decreaseReferenceCount(holderMessage, shouldReport));
   }
 
   private void clearEventsReferenceCount(final String holderMessage) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} tablet batch clearing event references, holder={}, events={}",
+          PipeDataLossDebugUtil.PREFIX,
+          holderMessage,
+          PipeDataLossDebugUtil.formatEvents(events));
+    }
     events.forEach(event -> event.clearReferenceCount(holderMessage));
   }
 

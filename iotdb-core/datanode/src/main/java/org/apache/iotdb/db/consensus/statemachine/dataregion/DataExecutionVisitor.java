@@ -32,6 +32,7 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.util.PipeDataLossDebugUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
@@ -54,6 +55,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
 
 public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
@@ -120,6 +122,13 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
           node.getTimes()[0],
           node.getMeasurements(),
           e.getFailingStatus());
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} data execution batch failure for InsertTabletNode, node={}, failingStatus={}",
+            PipeDataLossDebugUtil.PREFIX,
+            PipeDataLossDebugUtil.formatInsertTabletNode(node),
+            PipeDataLossDebugUtil.formatStatuses(Arrays.asList(e.getFailingStatus())));
+      }
       // For each error
       TSStatus firstStatus = null;
       for (final TSStatus status : e.getFailingStatus()) {
@@ -146,10 +155,26 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (BatchProcessException e) {
       LOGGER.warn(DataNodeMiscMessages.BATCH_FAILURE_INSERT_ROWS);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} data execution batch failure for InsertRowsNode, node={}, failingStatus={}",
+            PipeDataLossDebugUtil.PREFIX,
+            PipeDataLossDebugUtil.formatInsertRowsNode(node),
+            PipeDataLossDebugUtil.formatStatuses(node.getResults().values()));
+      }
       TSStatus firstStatus = null;
       // for each error
       for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
         InsertRowNode insertRowNode = node.getInsertRowNodeList().get(failedEntry.getKey());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "{} data execution failed InsertRowsNode entry, failedIndex={}, failedStatus={}, insertRowNode={}, parentNode={}",
+              PipeDataLossDebugUtil.PREFIX,
+              failedEntry.getKey(),
+              PipeDataLossDebugUtil.formatStatus(failedEntry.getValue()),
+              PipeDataLossDebugUtil.formatInsertRowNode(insertRowNode),
+              PipeDataLossDebugUtil.formatInsertRowsNode(node));
+        }
         if (firstStatus == null) {
           firstStatus = failedEntry.getValue();
         }
@@ -162,6 +187,14 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
             failedEntry.getValue());
         // Return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "{} data execution returning WRITE_PROCESS_REJECT for InsertRowsNode and clearing results, failedIndex={}, failedStatus={}, nodeBeforeClear={}",
+                PipeDataLossDebugUtil.PREFIX,
+                failedEntry.getKey(),
+                PipeDataLossDebugUtil.formatStatus(failedEntry.getValue()),
+                PipeDataLossDebugUtil.formatInsertRowsNode(node));
+          }
           node.clearResults();
           return failedEntry.getValue();
         }
@@ -184,10 +217,29 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (BatchProcessException e) {
       LOGGER.warn(DataNodeMiscMessages.BATCH_FAILURE_INSERT_MULTI_TABLETS);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} data execution batch failure for InsertMultiTabletsNode, node={}, failingStatus={}",
+            PipeDataLossDebugUtil.PREFIX,
+            PipeDataLossDebugUtil.formatInsertMultiTabletsNode(node),
+            PipeDataLossDebugUtil.formatStatuses(node.getResults().values()));
+      }
       TSStatus firstStatus = null;
       for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
         InsertTabletNode insertTabletNode =
             node.getInsertTabletNodeList().get(failedEntry.getKey());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "{} data execution failed InsertMultiTabletsNode entry, failedIndex={}, parentIndex={}, failedStatus={}, insertTabletNode={}, parentNode={}",
+              PipeDataLossDebugUtil.PREFIX,
+              failedEntry.getKey(),
+              failedEntry.getKey() < node.getParentInsertTabletNodeIndexList().size()
+                  ? node.getParentInsertTabletNodeIndexList().get(failedEntry.getKey())
+                  : null,
+              PipeDataLossDebugUtil.formatStatus(failedEntry.getValue()),
+              PipeDataLossDebugUtil.formatInsertTabletNode(insertTabletNode),
+              PipeDataLossDebugUtil.formatInsertMultiTabletsNode(node));
+        }
         if (firstStatus == null) {
           firstStatus = failedEntry.getValue();
         }
@@ -200,6 +252,14 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
             failedEntry.getValue());
         // Return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "{} data execution returning WRITE_PROCESS_REJECT for InsertMultiTabletsNode and clearing results, failedIndex={}, failedStatus={}, nodeBeforeClear={}",
+                PipeDataLossDebugUtil.PREFIX,
+                failedEntry.getKey(),
+                PipeDataLossDebugUtil.formatStatus(failedEntry.getValue()),
+                PipeDataLossDebugUtil.formatInsertMultiTabletsNode(node));
+          }
           node.clearResults();
           return failedEntry.getValue();
         }
@@ -223,9 +283,25 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (BatchProcessException e) {
       LOGGER.warn(DataNodeMiscMessages.BATCH_FAILURE_INSERT_ROWS_ONE_DEVICE);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} data execution batch failure for InsertRowsOfOneDeviceNode, node={}, failingStatus={}",
+            PipeDataLossDebugUtil.PREFIX,
+            PipeDataLossDebugUtil.formatInsertRowsOfOneDeviceNode(node),
+            PipeDataLossDebugUtil.formatStatuses(node.getResults().values()));
+      }
       TSStatus firstStatus = null;
       for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
         InsertRowNode insertRowNode = node.getInsertRowNodeList().get(failedEntry.getKey());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "{} data execution failed InsertRowsOfOneDeviceNode entry, failedIndex={}, failedStatus={}, insertRowNode={}, parentNode={}",
+              PipeDataLossDebugUtil.PREFIX,
+              failedEntry.getKey(),
+              PipeDataLossDebugUtil.formatStatus(failedEntry.getValue()),
+              PipeDataLossDebugUtil.formatInsertRowNode(insertRowNode),
+              PipeDataLossDebugUtil.formatInsertRowsOfOneDeviceNode(node));
+        }
         if (firstStatus == null) {
           firstStatus = failedEntry.getValue();
         }
@@ -238,6 +314,14 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
             failedEntry.getValue());
         // Return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "{} data execution returning WRITE_PROCESS_REJECT for InsertRowsOfOneDeviceNode and clearing results, failedIndex={}, failedStatus={}, nodeBeforeClear={}",
+                PipeDataLossDebugUtil.PREFIX,
+                failedEntry.getKey(),
+                PipeDataLossDebugUtil.formatStatus(failedEntry.getValue()),
+                PipeDataLossDebugUtil.formatInsertRowsOfOneDeviceNode(node));
+          }
           node.clearResults();
           return failedEntry.getValue();
         }

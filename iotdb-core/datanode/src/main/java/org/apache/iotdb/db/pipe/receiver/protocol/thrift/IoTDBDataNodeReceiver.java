@@ -220,6 +220,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "{} receiver received request, receiverId={}, requestType={}, req={}",
+              PipeDataLossDebugUtil.PREFIX,
+              receiverId.get(),
+              requestType,
+              PipeDataLossDebugUtil.formatReq(req));
+        }
         if (requestType != PipeRequestType.TRANSFER_SLICE) {
           clearSliceReqHandler();
         }
@@ -523,11 +531,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     LOGGER.debug(
-        "{} receiver executed tablet {}, statement={}, status={}",
+        "{} receiver executed tablet {}, statement={}, status={}, mapping={}",
         PipeDataLossDebugUtil.PREFIX,
         requestType,
         PipeDataLossDebugUtil.formatStatement(statement),
-        PipeDataLossDebugUtil.formatStatus(status));
+        PipeDataLossDebugUtil.formatStatus(status),
+        PipeDataLossDebugUtil.formatStatementStatusMapping(statement, status));
   }
 
   private TPipeTransferResp handleTransferTabletBatch(final PipeTransferTabletBatchReq req) {
@@ -545,12 +554,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final TSStatus priorStatus = PipeReceiverStatusHandler.getPriorStatus(statusList);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "{} receiver executed tablet batch, statements={}, statuses={}, priorStatus={}",
+          "{} receiver executed tablet batch, statements={}, statuses={}, priorStatus={}, rowMapping={}, tabletMapping={}",
           PipeDataLossDebugUtil.PREFIX,
           PipeDataLossDebugUtil.formatStatements(
               Arrays.asList(statementPair.getLeft(), statementPair.getRight())),
           PipeDataLossDebugUtil.formatStatuses(statusList),
-          PipeDataLossDebugUtil.formatStatus(priorStatus));
+          PipeDataLossDebugUtil.formatStatus(priorStatus),
+          PipeDataLossDebugUtil.formatStatementStatusMapping(
+              statementPair.getLeft(), statusList.get(0)),
+          PipeDataLossDebugUtil.formatStatementStatusMapping(
+              statementPair.getRight(), statusList.get(1)));
     }
     return new TPipeTransferResp(priorStatus);
   }
@@ -570,6 +583,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           PipeDataLossDebugUtil.formatStatements(statementSet),
           PipeDataLossDebugUtil.formatStatuses(statusList),
           PipeDataLossDebugUtil.formatStatus(priorStatus));
+      for (int i = 0; i < statementSet.size() && i < statusList.size(); ++i) {
+        LOGGER.debug(
+            "{} receiver tablet batch V2 statement result, index={}, statement={}, status={}, mapping={}",
+            PipeDataLossDebugUtil.PREFIX,
+            i,
+            PipeDataLossDebugUtil.formatStatement(statementSet.get(i)),
+            PipeDataLossDebugUtil.formatStatus(statusList.get(i)),
+            PipeDataLossDebugUtil.formatStatementStatusMapping(
+                statementSet.get(i), statusList.get(i)));
+      }
     }
     return new TPipeTransferResp(priorStatus);
   }
@@ -975,7 +998,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
    * message field.
    */
   private TSStatus executeBatchStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} receiver executing batch statement, receiverId={}, statement={}",
+          PipeDataLossDebugUtil.PREFIX,
+          receiverId.get(),
+          PipeDataLossDebugUtil.formatStatement(statement));
+    }
     final TSStatus result = executeStatementAndClassifyExceptions(statement, 5);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} receiver executed batch statement before redirection decoration, receiverId={}, status={}, mapping={}, statement={}",
+          PipeDataLossDebugUtil.PREFIX,
+          receiverId.get(),
+          PipeDataLossDebugUtil.formatStatus(result),
+          PipeDataLossDebugUtil.formatStatementStatusMapping(statement, result),
+          PipeDataLossDebugUtil.formatStatement(statement));
+    }
 
     if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && result.getSubStatusSize() > 0) {
@@ -1007,6 +1046,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       }
     }
 
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} receiver finalized batch statement status, receiverId={}, status={}, mapping={}, statement={}",
+          PipeDataLossDebugUtil.PREFIX,
+          receiverId.get(),
+          PipeDataLossDebugUtil.formatStatus(result),
+          PipeDataLossDebugUtil.formatStatementStatusMapping(statement, result),
+          PipeDataLossDebugUtil.formatStatement(statement));
+    }
     return result;
   }
 
@@ -1020,8 +1068,26 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final double pipeReceiverActualToEstimatedMemoryRatio =
         PIPE_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
     try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} receiver executeStatement start, receiverId={}, tryCount={}, statement={}",
+            PipeDataLossDebugUtil.PREFIX,
+            receiverId.get(),
+            tryCount,
+            PipeDataLossDebugUtil.formatStatement(statement));
+      }
       if (statement instanceof InsertBaseStatement) {
         estimatedMemory = ((InsertBaseStatement) statement).ramBytesUsed();
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "{} receiver estimated statement memory, receiverId={}, estimatedMemory={}, actualToEstimatedRatio={}, requestedMemory={}, statement={}",
+              PipeDataLossDebugUtil.PREFIX,
+              receiverId.get(),
+              estimatedMemory,
+              pipeReceiverActualToEstimatedMemoryRatio,
+              estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio,
+              PipeDataLossDebugUtil.formatStatement(statement));
+        }
         for (int i = 0; i < tryCount; ++i) {
           try {
             allocatedMemoryBlock =
@@ -1056,6 +1122,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final TSStatus result =
           executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(statement);
       final int code = result.getCode();
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} receiver executeStatement raw result, receiverId={}, status={}, mapping={}, statement={}",
+            PipeDataLossDebugUtil.PREFIX,
+            receiverId.get(),
+            PipeDataLossDebugUtil.formatStatus(result),
+            PipeDataLossDebugUtil.formatStatementStatusMapping(statement, result),
+            PipeDataLossDebugUtil.formatStatement(statement));
+      }
       if (code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
           || code == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return result;
@@ -1068,11 +1143,38 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               statement.getPipeLoggingString(),
               result);
         }
-        return STATEMENT_STATUS_VISITOR.process(statement, result);
+        final TSStatus classifiedStatus = STATEMENT_STATUS_VISITOR.process(statement, result);
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "{} receiver executeStatement classified failure status, receiverId={}, rawStatus={}, classifiedStatus={}, statement={}",
+              PipeDataLossDebugUtil.PREFIX,
+              receiverId.get(),
+              PipeDataLossDebugUtil.formatStatus(result),
+              PipeDataLossDebugUtil.formatStatus(classifiedStatus),
+              PipeDataLossDebugUtil.formatStatement(statement));
+        }
+        return classifiedStatus;
       }
     } catch (final Exception e) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} receiver executeStatement exception, receiverId={}, exception={}, statement={}",
+            PipeDataLossDebugUtil.PREFIX,
+            receiverId.get(),
+            PipeDataLossDebugUtil.formatException(e),
+            PipeDataLossDebugUtil.formatStatement(statement));
+      }
       logStatementExceptionIfNecessary(statement, e);
-      return STATEMENT_EXCEPTION_VISITOR.process(statement, e);
+      final TSStatus classifiedStatus = STATEMENT_EXCEPTION_VISITOR.process(statement, e);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "{} receiver executeStatement classified exception status, receiverId={}, status={}, statement={}",
+            PipeDataLossDebugUtil.PREFIX,
+            receiverId.get(),
+            PipeDataLossDebugUtil.formatStatus(classifiedStatus),
+            PipeDataLossDebugUtil.formatStatement(statement));
+      }
+      return classifiedStatus;
     } finally {
       if (Objects.nonNull(allocatedMemoryBlock)) {
         allocatedMemoryBlock.close();

@@ -23,10 +23,16 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.interval.PipeCommitQueu
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 /** Used to queue {@link Event}s for one pipe of one region to commit in order. */
 public class PipeEventCommitter {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitter.class);
+  private static final String PIPE_DATA_LOSS_DEBUG_PREFIX = "[PipeDataLossDebug]";
 
   private final CommitterKey committerKey;
 
@@ -40,17 +46,42 @@ public class PipeEventCommitter {
   }
 
   public synchronized long generateCommitId() {
-    return commitIdGenerator.incrementAndGet();
+    final long commitId = commitIdGenerator.incrementAndGet();
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} committer generated commit id, committerKey={}, commitId={}, queueSize={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          committerKey,
+          commitId,
+          commitQueue.size());
+    }
+    return commitId;
   }
 
   @SuppressWarnings("java:S899")
   public synchronized void commit(final EnrichedEvent event) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} committer commit start, committerKey={}, queueSizeBefore={}, event={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          committerKey,
+          commitQueue.size(),
+          event.coreReportMessage());
+    }
     if (event.hasMultipleCommitIds()) {
       for (final EnrichedEvent dummyEvent : event.getDummyEventsForCommitIds()) {
         commitQueue.offer(dummyEvent);
       }
     }
     commitQueue.offer(event);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "{} committer commit end, committerKey={}, queueSizeAfter={}, event={}",
+          PIPE_DATA_LOSS_DEBUG_PREFIX,
+          committerKey,
+          commitQueue.size(),
+          event.coreReportMessage());
+    }
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
