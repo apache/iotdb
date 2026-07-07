@@ -58,13 +58,14 @@ import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentC
 public class FFTTableFunction implements TableFunction {
 
   public static final String DATA_PARAMETER_NAME = "DATA";
+  public static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
   public static final String SAMPLE_INTERVAL_PARAMETER_NAME = "SAMPLE_INTERVAL";
   public static final String N_PARAMETER_NAME = "N";
   public static final String NORM_PARAMETER_NAME = "NORM";
   public static final String SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME =
       "__FFT_SAMPLE_INTERVAL_SPECIFIED";
 
-  private static final String TIME_COLUMN_NAME = "time";
+  private static final String DEFAULT_TIME_COLUMN_NAME = "time";
   private static final String OUTPUT_FREQUENCY_INDEX_COLUMN = "frequency_index";
   private static final String OUTPUT_FREQUENCY_COLUMN = "frequency";
   private static final String PARTITION_TYPES_PROPERTY = "__FFT_PARTITION_TYPES";
@@ -98,6 +99,11 @@ public class FFTTableFunction implements TableFunction {
     return Arrays.asList(
         TableParameterSpecification.builder().name(DATA_PARAMETER_NAME).setSemantics().build(),
         ScalarParameterSpecification.builder()
+            .name(TIMECOL_PARAMETER_NAME)
+            .type(Type.STRING)
+            .defaultValue(DEFAULT_TIME_COLUMN_NAME)
+            .build(),
+        ScalarParameterSpecification.builder()
             .name(SAMPLE_INTERVAL_PARAMETER_NAME)
             .type(Type.INT64)
             .defaultValue(UNSPECIFIED_SAMPLE_INTERVAL)
@@ -123,9 +129,11 @@ public class FFTTableFunction implements TableFunction {
       throw new SemanticException("Table argument with set semantics requires an ORDER BY clause.");
     }
 
+    String timeColumn =
+        (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
     int timeColumnIndex =
-        findColumnIndex(tableArgument, TIME_COLUMN_NAME, Collections.singleton(Type.TIMESTAMP));
-    validateOrderBy(tableArgument);
+        findColumnIndex(tableArgument, timeColumn, Collections.singleton(Type.TIMESTAMP));
+    validateOrderBy(tableArgument, timeColumn);
 
     List<Integer> partitionIndexes = getPartitionIndexes(tableArgument);
     Set<Integer> excludedIndexes = new HashSet<>(partitionIndexes);
@@ -240,11 +248,11 @@ public class FFTTableFunction implements TableFunction {
     };
   }
 
-  private static void validateOrderBy(TableArgument tableArgument) {
+  private static void validateOrderBy(TableArgument tableArgument, String timeColumn) {
     if (tableArgument.getOrderBy().size() != 1
-        || !tableArgument.getOrderBy().get(0).equalsIgnoreCase(TIME_COLUMN_NAME)) {
+        || !tableArgument.getOrderBy().get(0).equalsIgnoreCase(timeColumn)) {
       throw new SemanticException(
-          "The ORDER BY clause of the DATA argument must contain exactly the time column.");
+          "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.");
     }
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
@@ -212,6 +213,34 @@ public class FFTTableFunctionTest {
         "FFT transform length N must not exceed 65536.");
   }
 
+  @Test
+  public void testAnalyzeUsesSpecifiedTimeColumn() throws UDFException {
+    Map<String, Argument> arguments = createArguments("event_time", "event_time");
+
+    TableFunctionAnalysis analysis = function.analyze(arguments);
+
+    assertEquals(
+        Arrays.asList(0, 1),
+        analysis.getRequiredColumns().get(FFTTableFunction.DATA_PARAMETER_NAME));
+    assertEquals(
+        "value_real", analysis.getProperColumnSchema().get().getFields().get(2).getName().get());
+    assertEquals(
+        "value_imag", analysis.getProperColumnSchema().get().getFields().get(3).getName().get());
+  }
+
+  @Test
+  public void testAnalyzeRejectsOrderByDifferentFromSpecifiedTimeColumn() {
+    assertSemanticException(
+        () -> {
+          try {
+            function.analyze(createArguments("event_time", "time"));
+          } catch (UDFException e) {
+            throw new AssertionError(e);
+          }
+        },
+        "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.");
+  }
+
   private TableFunctionDataProcessor createProcessor(boolean sampleIntervalSpecified)
       throws UDFException {
     return createProcessor(sampleIntervalSpecified, -1L);
@@ -233,6 +262,7 @@ public class FFTTableFunctionTest {
             Collections.emptyList(),
             Collections.singletonList("time"),
             false));
+    arguments.put(FFTTableFunction.TIMECOL_PARAMETER_NAME, new ScalarArgument(Type.STRING, "time"));
     arguments.put(
         FFTTableFunction.SAMPLE_INTERVAL_PARAMETER_NAME,
         new ScalarArgument(Type.INT64, sampleIntervalSpecified ? 1L : Long.MIN_VALUE));
@@ -247,6 +277,29 @@ public class FFTTableFunctionTest {
     return function
         .getProcessorProvider(function.analyze(arguments).getTableFunctionHandle())
         .getDataProcessor();
+  }
+
+  private Map<String, Argument> createArguments(String timeColumn, String orderByColumn) {
+    Map<String, Argument> arguments = new HashMap<>();
+    arguments.put(
+        FFTTableFunction.DATA_PARAMETER_NAME,
+        new TableArgument(
+            Arrays.asList(Optional.of(timeColumn), Optional.of("value")),
+            Arrays.asList(Type.TIMESTAMP, Type.DOUBLE),
+            Collections.emptyList(),
+            Collections.singletonList(orderByColumn),
+            false));
+    arguments.put(
+        FFTTableFunction.TIMECOL_PARAMETER_NAME, new ScalarArgument(Type.STRING, timeColumn));
+    arguments.put(
+        FFTTableFunction.SAMPLE_INTERVAL_PARAMETER_NAME, new ScalarArgument(Type.INT64, 1L));
+    arguments.put(
+        FFTTableFunction.SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME,
+        new ScalarArgument(Type.BOOLEAN, true));
+    arguments.put(FFTTableFunction.N_PARAMETER_NAME, new ScalarArgument(Type.INT64, -1L));
+    arguments.put(
+        FFTTableFunction.NORM_PARAMETER_NAME, new ScalarArgument(Type.STRING, "backward"));
+    return arguments;
   }
 
   private Record record(long time, double value) {

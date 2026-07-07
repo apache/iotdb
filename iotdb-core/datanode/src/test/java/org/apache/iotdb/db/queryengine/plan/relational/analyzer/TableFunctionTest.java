@@ -590,6 +590,20 @@ public class TableFunctionTest {
   }
 
   @Test
+  public void testFFTWithSpecifiedTimeColumn() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM FFT("
+            + "DATA => (SELECT time AS event_time, tag1, s1 FROM table1) "
+            + "PARTITION BY tag1 ORDER BY event_time, "
+            + "TIMECOL => 'event_time', "
+            + "SAMPLE_INTERVAL => 1s, "
+            + "N => 4)";
+
+    planTester.createPlan(sql);
+  }
+
+  @Test
   public void testFFTRejectsInvalidArguments() {
     assertAnalyzeFails(
         "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1, SAMPLE_INTERVAL => 1ms)",
@@ -599,7 +613,7 @@ public class TableFunctionTest {
         "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
     assertAnalyzeFails(
         "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY s1, SAMPLE_INTERVAL => 1ms)",
-        "The ORDER BY clause of the DATA argument must contain exactly the time column.");
+        "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.");
     assertAnalyzeFails(
         "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time, SAMPLE_INTERVAL => 1)",
         "The SAMPLE_INTERVAL argument of FFT must be a duration literal.");

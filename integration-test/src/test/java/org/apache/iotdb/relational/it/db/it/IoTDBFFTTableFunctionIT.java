@@ -71,6 +71,11 @@ public class IoTDBFFTTableFunctionIT {
         "INSERT INTO irregular(time, device_id, value) VALUES (0, 'd1', 1.0)",
         "INSERT INTO irregular(time, device_id, value) VALUES (1000, 'd1', 2.0)",
         "INSERT INTO irregular(time, device_id, value) VALUES (2500, 'd1', 3.0)",
+        "CREATE TABLE custom_time_signal(event_time TIMESTAMP TIME, value DOUBLE FIELD)",
+        "INSERT INTO custom_time_signal(event_time, value) VALUES (0, 1.0)",
+        "INSERT INTO custom_time_signal(event_time, value) VALUES (1000, 0.0)",
+        "INSERT INTO custom_time_signal(event_time, value) VALUES (2000, 0.0)",
+        "INSERT INTO custom_time_signal(event_time, value) VALUES (3000, 0.0)",
         "FLUSH"
       };
 
@@ -139,6 +144,18 @@ public class IoTDBFFTTableFunctionIT {
             + "ORDER BY time) ORDER BY frequency_index",
         expectedHeader,
         retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testFFTWithSpecifiedTimeColumn() {
+    tableResultSetEqualTest(
+        "SELECT frequency_index, frequency, value_real, value_imag "
+            + "FROM FFT(DATA => custom_time_signal ORDER BY event_time, "
+            + "TIMECOL => 'event_time', SAMPLE_INTERVAL => 1s, N => 4) "
+            + "ORDER BY frequency_index",
+        new String[] {"frequency_index", "frequency", "value_real", "value_imag"},
+        new String[] {"0,0.0,1.0,0.0,", "1,0.25,1.0,0.0,", "2,-0.5,1.0,0.0,", "3,-0.25,1.0,0.0,"},
         DATABASE_NAME);
   }
 
