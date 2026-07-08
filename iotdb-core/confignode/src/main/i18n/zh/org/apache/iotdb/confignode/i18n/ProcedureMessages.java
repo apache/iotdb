@@ -473,6 +473,8 @@ public final class ProcedureMessages {
       "在 DataNode 上回滚 pipe plugin [%s] 失败";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_FOR_TABLE_INFO_TO_DATANODE =
       "回滚对表 {}.{} 在 DataNode 上预释放 {} 的信息失败，失败结果：{}";
+  public static final String FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED =
+      "不能认定一个不可达的datanode处于隔离状态";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET =
       "回滚 DataNode {} 上路径 {} 处模板 {} 的预释放模板信息失败";
   public static final String FAILED_TO_ROLLBACK_PRE_SET_TEMPLATE_ON_PATH_DUE_TO =

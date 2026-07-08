@@ -2424,6 +2424,7 @@ public class ProcedureManager {
       if (procedure.isFinished()) {
         continue;
       }
+      // the table with pre-delete status will be collected by getAllPreDeleteTables()
       if (procedure instanceof DropTableProcedure) {
         continue;
       }

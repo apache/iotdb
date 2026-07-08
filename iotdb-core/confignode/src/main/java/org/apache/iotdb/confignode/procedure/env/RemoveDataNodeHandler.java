@@ -456,8 +456,7 @@ public class RemoveDataNodeHandler {
       PartitionMetrics.unbindDataNodePartitionMetricsWhenUpdate(
           MetricService.getInstance(),
           NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));
-      // Drop the removed DataNode's metadata-lease contact/capability state so it is not retained,
-      // and a future DataNode reusing the id cannot inherit stale fencing history.
+      // Drop the removed DataNode's metadata-lease contact/capability state
       DataNodeContactTracker.getInstance().removeDataNode(dataNodeLocation.getDataNodeId());
     }
   }

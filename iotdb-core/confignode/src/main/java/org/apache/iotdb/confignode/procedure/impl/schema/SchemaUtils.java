@@ -245,7 +245,7 @@ public class SchemaUtils {
   }
 
   /** Build the PRE_UPDATE_TABLE request used to pre-release a table change to DataNodes. */
-  public static TUpdateTableReq BuildPreUpdateTableReq(
+  public static TUpdateTableReq buildPreUpdateTableReq(
       final String database, final TsTable table, final String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());

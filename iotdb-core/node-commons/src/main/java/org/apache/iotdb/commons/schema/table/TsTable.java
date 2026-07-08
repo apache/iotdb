@@ -96,6 +96,23 @@ public class TsTable {
   // Initiated during creation and never changed the reference
   private transient TsTableColumnSchema timeColumnSchema;
 
+  public enum TsTableMarker {
+
+    // do not use the -2 as the marker, reserve for writable view
+    NON_COMMIT_TABLE_MARKER(-1),
+    PRE_DELETE_TABLE_MARKER(-3);
+
+    private final int type;
+
+    TsTableMarker(int type) {
+      this.type = type;
+    }
+
+    public int getType() {
+      return type;
+    }
+  }
+
   public TsTable(final String tableName) {
     this.tableName = tableName;
   }
@@ -391,10 +408,10 @@ public class TsTable {
   public static TsTable deserialize(final InputStream inputStream) throws IOException {
     final String name = ReadWriteIOUtils.readString(inputStream);
     final int columnNum = ReadWriteIOUtils.readInt(inputStream);
-    if (columnNum == NonCommittableTsTable.NON_COMMITTABLE_MARKER) {
+    if (columnNum == TsTableMarker.NON_COMMIT_TABLE_MARKER.getType()) {
       return new NonCommittableTsTable(name);
     }
-    if (columnNum == PreDeleteTsTable.PRE_DELETE_MARKER) {
+    if (columnNum == TsTableMarker.PRE_DELETE_TABLE_MARKER.getType()) {
       return new PreDeleteTsTable(name);
     }
     final TsTable table = new TsTable(name);
@@ -408,10 +425,10 @@ public class TsTable {
   public static TsTable deserialize(final ByteBuffer buffer) {
     final String name = ReadWriteIOUtils.readString(buffer);
     final int columnNum = ReadWriteIOUtils.readInt(buffer);
-    if (columnNum == NonCommittableTsTable.NON_COMMITTABLE_MARKER) {
+    if (columnNum == TsTableMarker.NON_COMMIT_TABLE_MARKER.getType()) {
       return new NonCommittableTsTable(name);
     }
-    if (columnNum == PreDeleteTsTable.PRE_DELETE_MARKER) {
+    if (columnNum == TsTableMarker.PRE_DELETE_TABLE_MARKER.getType()) {
       return new PreDeleteTsTable(name);
     }
     final TsTable table = new TsTable(name);

@@ -24,8 +24,9 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import static org.apache.iotdb.commons.schema.table.TsTable.TsTableMarker.PRE_DELETE_TABLE_MARKER;
+
 public class PreDeleteTsTable extends TsTable {
-  public static final int PRE_DELETE_MARKER = -2;
 
   public PreDeleteTsTable(final String tableName) {
     super(tableName);
@@ -34,6 +35,6 @@ public class PreDeleteTsTable extends TsTable {
   @Override
   public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tableName, stream);
-    ReadWriteIOUtils.write(PRE_DELETE_MARKER, stream);
+    ReadWriteIOUtils.write(PRE_DELETE_TABLE_MARKER.getType(), stream);
   }
 }

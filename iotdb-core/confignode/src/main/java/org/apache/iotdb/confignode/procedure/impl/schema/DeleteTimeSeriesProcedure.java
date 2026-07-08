@@ -201,7 +201,7 @@ public class DeleteTimeSeriesProcedure
     if (!SchemaUtils.invalidateMatchedSchemaCache(
         env.getConfigManager(), patternTreeBytes, needLock)) {
       // All dataNodes must clear the related schemaEngine cache
-      LOGGER.error(
+      LOGGER.warn(
           ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES, requestMessage);
       setFailure.accept(
           new ProcedureException(

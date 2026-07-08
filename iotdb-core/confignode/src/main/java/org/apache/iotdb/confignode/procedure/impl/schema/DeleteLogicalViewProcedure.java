@@ -167,7 +167,7 @@ public class DeleteLogicalViewProcedure
     if (!SchemaUtils.invalidateMatchedSchemaCache(
         env.getConfigManager(), patternTreeBytes, false)) {
       // all dataNodes must clear the related schemaengine cache
-      LOGGER.error(
+      LOGGER.warn(
           ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW, requestMessage);
       setFailure(
           new ProcedureException(

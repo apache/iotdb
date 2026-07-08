@@ -122,8 +122,8 @@ public class AlterLogicalViewProcedure
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
     if (!SchemaUtils.invalidateMatchedSchemaCache(
         env.getConfigManager(), patternTreeBytes, false)) {
-      // all dataNodes must clear the related schemaengine cache
-      LOGGER.error(
+      // all dataNodes must clear the related schema engine cache
+      LOGGER.warn(
           ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW,
           viewPathToSourceMap.keySet());
       setFailure(

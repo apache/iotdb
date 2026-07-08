@@ -97,7 +97,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     // DDL: a fenced DataNode fails closed on its now-stale table cache and resyncs on lease
     // recovery, so it cannot serve dirty schema. Only fail if an unacked DataNode is not provably
     // fenced (it may still be serving clients).
-    final TUpdateTableReq req = SchemaUtils.BuildPreUpdateTableReq(database, table, oldName);
+    final TUpdateTableReq req = SchemaUtils.buildPreUpdateTableReq(database, table, oldName);
     final boolean proceeded =
         new ClusterCachePropagator(env.getConfigManager())
             .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
@@ -161,7 +161,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
           getActionMessage(),
           database,
           table.getTableName(),
-          "an unreachable DataNode is not provably fenced");
+          ProcedureMessages.FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED);
       setFailure(
           new ProcedureException(
               new MetadataException(

@@ -487,6 +487,7 @@ public final class ProcedureMessages {
       "Failed to rollback pipe plugin [%s] on data nodes";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_FOR_TABLE_INFO_TO_DATANODE =
       "Failed to rollback pre-release {} for table {}.{} info to DataNode, failure results: {}";
+  public static final String FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED = "Failed to prove an unreachable DataNode is fenced";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET =
       "Failed to rollback pre release template info of template {} set on path {} on DataNode {}";
   public static final String FAILED_TO_ROLLBACK_PRE_SET_TEMPLATE_ON_PATH_DUE_TO =
