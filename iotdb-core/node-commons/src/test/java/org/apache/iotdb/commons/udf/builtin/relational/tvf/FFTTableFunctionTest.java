@@ -230,6 +230,13 @@ public class FFTTableFunctionTest {
   }
 
   @Test
+  public void testRejectsDefaultSpectrumBufferAboveLimit() {
+    assertSemanticException(
+        () -> FFTTableFunction.validateTransformLength(65_536L, 129),
+        "FFT spectrum buffer is too large. Reduce N or the number of numeric columns.");
+  }
+
+  @Test
   public void testAnalyzeUsesSpecifiedTimeColumn() throws UDFException {
     Map<String, Argument> arguments = createArguments("event_time", "event_time");
 

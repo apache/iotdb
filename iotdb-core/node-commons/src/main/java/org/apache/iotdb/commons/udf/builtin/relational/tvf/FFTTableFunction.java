@@ -642,9 +642,8 @@ public class FFTTableFunction implements TableFunction {
       }
       previousTime = currentTime;
 
-      if (specifiedTransformLength == UNSPECIFIED_N && inputRowCount >= MAX_TRANSFORM_LENGTH) {
-        throw new SemanticException(
-            String.format("FFT transform length N must not exceed %d.", MAX_TRANSFORM_LENGTH));
+      if (specifiedTransformLength == UNSPECIFIED_N) {
+        validateTransformLength(inputRowCount + 1, valueColumns.length);
       }
 
       boolean shouldCacheRow =
