@@ -147,6 +147,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde.DeserializedParam;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseType;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseVersion;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -3476,17 +3478,51 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req) {
-    return SubscriptionAgent.receiver().handle(req);
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return getNotLoggedInPipeSubscribeResp();
+      }
+
+      return SubscriptionAgent.receiver().handle(req);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSBackupConfigurationResp getBackupConfiguration() {
-    return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TSBackupConfigurationResp(getNotLoggedInStatus());
+      }
+
+      return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSConnectionInfoResp fetchAllConnectionsInfo() {
-    return SESSION_MANAGER.getAllConnectionInfo();
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TSConnectionInfoResp(Collections.emptyList());
+      }
+
+      return SESSION_MANAGER.getAllConnectionInfo();
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private TPipeSubscribeResp getNotLoggedInPipeSubscribeResp() {
+    return new TPipeSubscribeResp(
+        getNotLoggedInStatus(),
+        PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+        PipeSubscribeResponseType.ACK.getType());
   }
 
   @Override

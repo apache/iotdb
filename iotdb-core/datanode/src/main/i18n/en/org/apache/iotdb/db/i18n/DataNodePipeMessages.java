@@ -293,8 +293,11 @@ public final class DataNodePipeMessages {
           + "PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. "
           + "Returning true to ensure data integrity.";
   public static final String FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE =
-      "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count "
-          + "is {}, will keep retrying.";
+      "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, "
+          + "will release parser memory and retry the TsFile event later.";
+  public static final String FAILED_TO_CONSUME_PARSED_TABLET_FROM_TSFILE_KEEP_PARSER =
+      "{}: failed to consume parsed tablet from TsFile {}, tablet event no. {}, retry count is {}, "
+          + "will keep parser and retry locally for a short time.";
   public static final String FAILED_TO_BUILD_TABLET = "Failed to build tablet";
   public static final String FAILED_TO_CHECK_NEXT = "Failed to check next";
   public static final String FAILED_TO_CLOSE_TSFILEREADER = "Failed to close TsFileReader";
@@ -401,6 +404,8 @@ public final class DataNodePipeMessages {
       "Error occurred when closing CombineHandler(id = {})";
   public static final String ERROR_OCCURS_WHEN_RECEIVING_REQUEST =
       "Error occurs when receiving request: {}.";
+  public static final String LOGIN_FAILED_OR_SESSION_TIMED_OUT =
+      "Log in failed. Either you are not authorized or the session has timed out.";
   public static final String FAILED_TO_CLOSE_IOTDBSYNCCLIENT = "Failed to close IoTDBSyncClient";
   public static final String FAILED_TO_CLOSE_OLD_IOTDBSYNCCLIENT =
       "Failed to close old IoTDBSyncClient";
@@ -1243,6 +1248,9 @@ public final class DataNodePipeMessages {
   public static final String RECEIVER_ID_UNSUPPORTED_STATEMENT_TYPE_FOR_REDIRECTION =
       "Receiver id = {}: Unsupported statement type {} for redirection.";
   public static final String RECEIVER_IS_READY = "Receiver-{} is ready";
+  public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
+      "Temporarily out of memory when %s. Requested memory: %d bytes, used memory: %d bytes, "
+          + "free memory: %d bytes, total non-floating memory: %d bytes";
   public static final String REGISTER_WITH_INTERVAL_IN_SECONDS_SUCCESSFULLY =
       "Register {} with interval in seconds {} successfully.";
   public static final String SOCKET_CLOSED_WHEN_EXECUTING_READTILLFULL =
@@ -2473,5 +2481,11 @@ public final class DataNodePipeMessages {
       "Invalid aligned value chunk index %d, while there are %d time chunks.";
   public static final String MESSAGE_FAILED_TO_ROLLBACK_CREATED_REALTIME_PIPE_ARG_STATUS_ARG_CE14334A =
       "Failed to rollback created realtime pipe {}. Status: {}";
+  public static final String LOG_REPORTING_PIPE_META_ARG_ISCOMPLETED_ARG_REMAININGEVENTCOUNT_ARG_8F996DF3 =
+      "Reporting pipe meta: %s, isCompleted: %s, remainingEventCount: %s";
+  public static final String LOG_REPORTED_ARG_PIPE_METAS_12068FC6 =
+      "Reported %s pipe metas.";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
+      "Transfer file %s error, result status %s.";
 
 }
