@@ -646,6 +646,15 @@ public class ClusterSchemaManager {
                   fieldName, isSchemaRegion ? "Schema" : "Data", minRegionGroupNum));
     }
 
+    final int currentMaxRegionGroupNum = getMaxRegionGroupNum(database, consensusGroupType);
+    if (maxRegionGroupNum < currentMaxRegionGroupNum) {
+      return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "%s should be greater than or equal to current max %sRegionGroupNum: %d.",
+                  fieldName, isSchemaRegion ? "Schema" : "Data", currentMaxRegionGroupNum));
+    }
+
     final int allocatedRegionGroupCount;
     try {
       allocatedRegionGroupCount =
