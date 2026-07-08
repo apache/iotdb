@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.util;
 
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -61,7 +62,8 @@ public class ModsOperationUtil {
           .forEach(
               modification -> modifications.append(modification.keyOfPatternTree(), modification));
     } catch (Exception e) {
-      throw new PipeException("Failed to load modifications from TsFile: " + tsFile.getPath(), e);
+      throw new PipeException(
+          DataNodePipeMessages.FAILED_TO_LOAD_MODIFICATIONS_FROM_TSFILE + tsFile.getPath(), e);
     }
 
     return modifications;

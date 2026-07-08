@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -346,7 +347,8 @@ public class PartitionMetrics implements IMetricSet {
           try {
             return manager.getRegionGroupCount(database, TConsensusGroupType.SchemaRegion);
           } catch (DatabaseNotExistsException e) {
-            LOGGER.info("Error when counting SchemaRegionGroups in Database: {}", database, e);
+            LOGGER.info(
+                ManagerMessages.ERROR_WHEN_COUNTING_SCHEMAREGIONGROUPS_IN_DATABASE, database, e);
             return 0;
           }
         },
@@ -362,7 +364,8 @@ public class PartitionMetrics implements IMetricSet {
           try {
             return manager.getRegionGroupCount(database, TConsensusGroupType.DataRegion);
           } catch (DatabaseNotExistsException e) {
-            LOGGER.info("Error when counting DataRegionGroups in Database: {}", database, e);
+            LOGGER.info(
+                ManagerMessages.ERROR_WHEN_COUNTING_DATAREGIONGROUPS_IN_DATABASE, database, e);
             return 0;
           }
         },

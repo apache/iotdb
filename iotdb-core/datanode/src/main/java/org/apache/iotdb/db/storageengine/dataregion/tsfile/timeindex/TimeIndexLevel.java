@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 public enum TimeIndexLevel {
   /** v0.12 file to time index (small memory foot print) */
   V012_FILE_TIME_INDEX,
@@ -35,7 +37,8 @@ public enum TimeIndexLevel {
   public ITimeIndex getTimeIndex() {
     switch (this) {
       case V012_FILE_TIME_INDEX:
-        throw new IllegalStateException("V012_FILE_TIME_INDEX should never appear");
+        throw new IllegalStateException(
+            StorageEngineMessages.V012_FILE_TIME_INDEX_SHOULD_NEVER_APPEAR);
       case PLAIN_DEVICE_TIME_INDEX:
         return new PlainDeviceTimeIndex();
       case FILE_TIME_INDEX:
@@ -48,7 +51,7 @@ public enum TimeIndexLevel {
 
   public static TimeIndexLevel valueOf(int ordinal) {
     if (ordinal < 0 || ordinal >= values().length) {
-      throw new IndexOutOfBoundsException("Invalid ordinal");
+      throw new IndexOutOfBoundsException(StorageEngineMessages.INVALID_ORDINAL);
     }
     return values()[ordinal];
   }

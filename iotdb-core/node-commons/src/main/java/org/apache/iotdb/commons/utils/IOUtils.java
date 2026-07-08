@@ -22,17 +22,20 @@ import org.apache.iotdb.commons.auth.entity.DatabasePrivilege;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.TablePrivilege;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import com.google.common.base.Supplier;
 import com.google.common.util.concurrent.RateLimiter;
 
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -124,6 +127,26 @@ public class IOUtils {
     outputStream.write(encodingBuffer.array(), 0, Long.BYTES);
   }
 
+  public static void readFully(FileChannel fileChannel, ByteBuffer buffer) throws IOException {
+    while (buffer.hasRemaining()) {
+      if (fileChannel.read(buffer) <= 0) {
+        throw new EOFException();
+      }
+    }
+  }
+
+  public static void readFully(FileChannel fileChannel, ByteBuffer buffer, long position)
+      throws IOException {
+    long currentPosition = position;
+    while (buffer.hasRemaining()) {
+      final int readBytes = fileChannel.read(buffer, currentPosition);
+      if (readBytes <= 0) {
+        throw new EOFException();
+      }
+      currentPosition += readBytes;
+    }
+  }
+
   /**
    * Read a string from the given stream.
    *
@@ -156,7 +179,7 @@ public class IOUtils {
         strBuffer = new byte[length];
       }
 
-      inputStream.read(strBuffer, 0, length);
+      inputStream.readFully(strBuffer, 0, length);
       return new String(strBuffer, 0, length, encoding);
     }
     return null;
@@ -245,11 +268,12 @@ public class IOUtils {
     if (!newFile.renameTo(oldFile)) {
       // some OSs need to delete the old file before renaming to it
       if (!oldFile.delete()) {
-        throw new IOException(String.format("Cannot delete old user file : %s", oldFile.getPath()));
+        throw new IOException(
+            String.format(UtilMessages.CANNOT_DELETE_OLD_USER_FILE, oldFile.getPath()));
       }
       if (!newFile.renameTo(oldFile)) {
         throw new IOException(
-            String.format("Cannot replace old user file with new one : %s", newFile.getPath()));
+            String.format(UtilMessages.CANNOT_REPLACE_OLD_USER_FILE, newFile.getPath()));
       }
     }
   }

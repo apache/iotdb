@@ -74,7 +74,7 @@ public interface NativeStatementRequest extends Supplier<String> {
    * @param clientSession the client session
    * @return the parsed Table model Statement, or null if not supported
    */
-  org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement getTableStatement(
+  org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement getTableStatement(
       SqlParser parser, ZoneId zoneId, IClientSession clientSession);
 
   /**

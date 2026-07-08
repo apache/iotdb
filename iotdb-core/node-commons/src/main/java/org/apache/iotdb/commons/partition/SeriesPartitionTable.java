@@ -51,14 +51,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class SeriesPartitionTable {
-
-  // should only be used in CN scope, in DN scope should directly use
-  // TimePartitionUtils.getTimePartitionInterval()
-  private static final long TIME_PARTITION_INTERVAL =
-      CommonDateTimeUtils.convertMilliTimeWithPrecision(
-          TimePartitionUtils.getTimePartitionInterval(),
-          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-
   private final ConcurrentSkipListMap<TTimePartitionSlot, List<TConsensusGroupId>>
       seriesPartitionMap;
 
@@ -263,13 +255,17 @@ public class SeriesPartitionTable {
    */
   public List<TTimePartitionSlot> autoCleanPartitionTable(
       long TTL, TTimePartitionSlot currentTimeSlot) {
+    final long timePartitionInterval =
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            TimePartitionUtils.getTimePartitionInterval(),
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
     Iterator<Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
         seriesPartitionMap.entrySet().iterator();
     while (iterator.hasNext()) {
       Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
       TTimePartitionSlot timePartitionSlot = entry.getKey();
-      if (timePartitionSlot.getStartTime() + TIME_PARTITION_INTERVAL + TTL
+      if (timePartitionSlot.getStartTime() + timePartitionInterval + TTL
           <= currentTimeSlot.getStartTime()) {
         removedTimePartitions.add(timePartitionSlot);
         iterator.remove();

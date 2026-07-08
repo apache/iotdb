@@ -26,10 +26,12 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
@@ -73,7 +75,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -406,10 +407,11 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public void link(TsFileResource target) throws IOException {
-    Files.createLink(target.getTsFile().toPath(), this.getTsFile().toPath());
-    Files.createLink(
+    FileUtils.createLink(target.getTsFile().toPath(), this.getTsFile().toPath(), true);
+    FileUtils.createLink(
         new File(target.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-        new File(this.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+        new File(this.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
+        true);
     linkModFile(target);
   }
 
@@ -421,8 +423,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
     try {
       if (sourceModFile.exists()) {
         // inherit modifications from the source file
-        Files.createLink(
-            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
+        FileUtils.createLink(
+            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath(), true);
       }
       // ensure that new modifications will be written into the target file
       targetModsFileObject = new ModificationFile(targetModsFile, true);
@@ -470,7 +472,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
         serializedSharedModFile();
       }
     } catch (IOException e) {
-      LOGGER.warn("Failed to serialize shared mod file", e);
+      LOGGER.warn(StorageEngineMessages.FAILED_TO_SERIALIZE_SHARED_MOD_FILE, e);
     }
   }
 
@@ -514,7 +516,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       } catch (ExecutionException | IOException e) {
-        LOGGER.error("Failed to get shared mod file", e);
+        LOGGER.error(StorageEngineMessages.FAILED_TO_GET_SHARED_MOD_FILE, e);
       }
     }
     return sharedModFile;
@@ -533,10 +535,10 @@ public class TsFileResource implements PersistentResource, Cloneable {
             exclusiveModFile = exclusiveModFileFuture.get();
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOGGER.warn("Upgrading mod file interrupted", e);
+            LOGGER.warn(StorageEngineMessages.UPGRADING_MOD_FILE_INTERRUPTED, e);
             exclusiveModFile = ModificationFile.getExclusiveMods(this);
           } catch (ExecutionException e) {
-            LOGGER.warn("Cannot upgrade mod file", e);
+            LOGGER.warn(StorageEngineMessages.CANNOT_UPGRADE_MOD_FILE, e);
             exclusiveModFile = ModificationFile.getExclusiveMods(this);
           }
         } else {
@@ -616,9 +618,12 @@ public class TsFileResource implements PersistentResource, Cloneable {
       return deviceId == null ? Optional.of(getFileStartTime()) : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
-          "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
+          StorageEngineMessages.STORAGE_LOG_MEET_ERROR_WHEN_GETSTARTTIME_OF_IN_FILE_D7F27B92,
+          deviceId,
+          file.getAbsolutePath(),
+          e);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("TimeIndex = {}", timeIndex);
+        LOGGER.debug(StorageEngineMessages.TIME_INDEX_VALUE, timeIndex);
       }
       throw e;
     }
@@ -630,9 +635,12 @@ public class TsFileResource implements PersistentResource, Cloneable {
       return deviceId == null ? Optional.of(getFileEndTime()) : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
-          "meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
+          StorageEngineMessages.STORAGE_LOG_MEET_ERROR_WHEN_GETENDTIME_OF_IN_FILE_350DA42F,
+          deviceId,
+          file.getAbsolutePath(),
+          e);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("TimeIndex = {}", timeIndex);
+        LOGGER.debug(StorageEngineMessages.TIME_INDEX_VALUE, timeIndex);
       }
       throw e;
     }
@@ -687,7 +695,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     readLock();
     try {
       if (!resourceFileExists()) {
-        throw new IOException("resource file not found");
+        throw new IOException(StorageEngineMessages.RESOURCE_FILE_NOT_FOUND);
       }
       try (InputStream inputStream =
           FSFactoryProducer.getFSFactory()
@@ -696,12 +704,17 @@ public class TsFileResource implements PersistentResource, Cloneable {
         ITimeIndex timeIndexFromResourceFile =
             ITimeIndex.createTimeIndex(inputStream, deserializer);
         if (!(timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex)) {
-          throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+          throw new IOException(
+              StorageEngineMessages.CANNOT_BUILD_DEVICE_TIME_INDEX + file.getPath());
         }
         return (ArrayDeviceTimeIndex) timeIndexFromResourceFile;
       } catch (Exception e) {
         throw new IOException(
-            "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
+            String.format(
+                StorageEngineMessages.STORAGE_EXCEPTION_CAN_T_READ_FILE_S_S_FROM_DISK_9D5066C0,
+                file.getPath(),
+                RESOURCE_SUFFIX),
+            e);
       }
     } finally {
       readUnlock();
@@ -859,7 +872,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       fsFactory.deleteIfExists(
           new File(file.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX));
     } catch (IOException e) {
-      LOGGER.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error(StorageEngineMessages.TSFILE_CANNOT_BE_DELETED, file, e.getMessage());
       return false;
     }
     if (!removeResourceFile()) {
@@ -868,7 +881,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     try {
       removeModFile();
     } catch (IOException e) {
-      LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error(StorageEngineMessages.MODIFICATION_FILE_CANNOT_BE_DELETED, file, e.getMessage());
       return false;
     }
     return true;
@@ -879,7 +892,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX + TEMP_SUFFIX));
     } catch (IOException e) {
-      LOGGER.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error(StorageEngineMessages.TSFILE_RESOURCE_CANNOT_BE_DELETED, file, e.getMessage());
       return false;
     }
     return true;
@@ -1019,7 +1032,10 @@ public class TsFileResource implements PersistentResource, Cloneable {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
+            StorageEngineMessages
+                .STORAGE_LOG_PATH_FILE_IS_NOT_SATISFIED_BECAUSE_OF_NO_DEVICE_8BB15136,
+            deviceId,
+            file);
       }
       return false;
     }
@@ -1033,7 +1049,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
         // false
         // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
         LOGGER.warn(
-            "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+            StorageEngineMessages
+                .STORAGE_LOG_STARTTIME_OF_TSFILERESOURCE_IS_GREATER_THAN_ITS_ENDTIME_BC6CC591,
             startTime,
             this,
             endTime);
@@ -1044,7 +1061,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of time filter!",
+            StorageEngineMessages
+                .STORAGE_LOG_PATH_FILE_IS_NOT_SATISFIED_BECAUSE_OF_TIME_FILTER_71121709,
             deviceId != null ? deviceId : "",
             fsFactory);
       }
@@ -1184,7 +1202,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
           serialize();
         } catch (IOException e) {
           LOGGER.error(
-              "Cannot serialize TsFileResource {} when updating plan index {}-{}",
+              StorageEngineMessages
+                  .STORAGE_LOG_CANNOT_SERIALIZE_TSFILERESOURCE_WHEN_UPDATING_PLAN_INDEX_69665DD5,
               this,
               maxPlanIndex,
               planIndex);
@@ -1326,7 +1345,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       }
       return 0;
     } catch (IOException e) {
-      LOGGER.error("File name may not meet the standard naming specifications.", e);
+      LOGGER.error(StorageEngineMessages.FILE_NAME_NOT_STANDARD, e);
       throw new RuntimeException(e.getMessage());
     }
   }
@@ -1436,7 +1455,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
   public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
     if (getStatus().equals(TsFileResourceStatus.UNCLOSED)) {
       throw new IllegalStateException(
-          "Should not get progress index from a unclosing TsFileResource.");
+          StorageEngineMessages
+              .STORAGE_EXCEPTION_SHOULD_NOT_GET_PROGRESS_INDEX_FROM_A_UNCLOSING_TSFILERESOURCE_129FD925);
     }
     return getMaxProgressIndex();
   }
@@ -1492,7 +1512,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return entries;
   }
 
-  public class ModIterator implements Iterator<ModEntry> {
+  public class ModIterator implements Iterator<ModEntry>, AutoCloseable {
 
     private final Iterator<ModEntry> sharedModIterator;
     private final Iterator<ModEntry> exclusiveModIterator;
@@ -1503,7 +1523,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
         ModificationFile newMFile = getExclusiveModFile();
         exclusiveIterator = newMFile != null ? newMFile.getModIterator(0) : null;
       } catch (IOException e) {
-        LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
+        LOGGER.warn(StorageEngineMessages.FAILED_TO_READ_MODS, exclusiveModFile, this, e);
       }
 
       this.exclusiveModIterator = exclusiveIterator;
@@ -1513,7 +1533,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
         sharedIterator =
             getSharedModFile() != null ? sharedModFile.getModIterator(sharedModFileOffset) : null;
       } catch (IOException e) {
-        LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
+        LOGGER.warn(StorageEngineMessages.FAILED_TO_READ_MODS, exclusiveModFile, this, e);
       }
 
       this.sharedModIterator = sharedIterator;
@@ -1534,6 +1554,22 @@ public class TsFileResource implements PersistentResource, Cloneable {
         return sharedModIterator.next();
       }
       throw new NoSuchElementException();
+    }
+
+    @Override
+    public void close() {
+      closeModIterator(exclusiveModIterator);
+      closeModIterator(sharedModIterator);
+    }
+
+    private void closeModIterator(Iterator<ModEntry> modIterator) {
+      if (modIterator instanceof AutoCloseable) {
+        try {
+          ((AutoCloseable) modIterator).close();
+        } catch (Exception e) {
+          LOGGER.info(StorageEngineMessages.CANNOT_CLOSE_MOD_FILE_INPUT_STREAM, getTsFile(), e);
+        }
+      }
     }
   }
 

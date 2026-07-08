@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -35,8 +37,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.Des
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -140,6 +140,9 @@ public class AlignedSeriesScanOperatorTest {
       int count = 0;
       while (seriesScanOperator.hasNext()) {
         TsBlock tsBlock = seriesScanOperator.next();
+        if (tsBlock == null || tsBlock.isEmpty()) {
+          continue;
+        }
         assertEquals(6, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BooleanColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
@@ -420,6 +423,9 @@ public class AlignedSeriesScanOperatorTest {
       int count = 0;
       while (timeJoinOperator.isBlocked().isDone() && timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
+        if (tsBlock == null || tsBlock.isEmpty()) {
+          continue;
+        }
         assertEquals(18, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BooleanColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
@@ -727,6 +733,9 @@ public class AlignedSeriesScanOperatorTest {
       int count = 499;
       while (timeJoinOperator.isBlocked().isDone() && timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
+        if (tsBlock == null || tsBlock.isEmpty()) {
+          continue;
+        }
         assertEquals(18, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BooleanColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);

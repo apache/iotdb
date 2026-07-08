@@ -20,15 +20,16 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
@@ -124,7 +125,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   @Override
   public PlanNode visitNode(StatementNode node, MPPQueryContext context) {
     throw new UnsupportedOperationException(
-        "Unsupported statement type: " + node.getClass().getName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            node.getClass().getName()));
   }
 
   @Override
@@ -658,8 +661,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       planBuilder =
           planBuilder
               .planDeviceRegionScan(analysis.getDevicePathToContextMap(), false)
-              .planLimit(showDevicesStatement.getLimit())
-              .planOffset(showDevicesStatement.getOffset());
+              .planOffset(showDevicesStatement.getOffset())
+              .planLimit(showDevicesStatement.getLimit());
       return planBuilder.getRoot();
     }
 
@@ -733,7 +736,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             countTimeSeriesStatement.isPrefixPath(),
             countTimeSeriesStatement.getSchemaFilter(),
             analysis.getRelatedTemplateInfo(),
-            countTimeSeriesStatement.getAuthorityScope())
+            countTimeSeriesStatement.getAuthorityScope(),
+            countTimeSeriesStatement.isCanSeeSystemDB(),
+            countTimeSeriesStatement.isCanSeeAuditDB())
         .planCountMerge()
         .getRoot();
   }
@@ -749,7 +754,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             countLevelTimeSeriesStatement.getLevel(),
             countLevelTimeSeriesStatement.getSchemaFilter(),
             analysis.getRelatedTemplateInfo(),
-            countLevelTimeSeriesStatement.getAuthorityScope())
+            countLevelTimeSeriesStatement.getAuthorityScope(),
+            countLevelTimeSeriesStatement.isCanSeeSystemDB(),
+            countLevelTimeSeriesStatement.isCanSeeAuditDB())
         .planCountMerge()
         .getRoot();
   }

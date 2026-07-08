@@ -22,6 +22,7 @@ package org.apache.iotdb.session.util;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.UrlUtils;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encoding.encoder.Encoder;
@@ -147,7 +148,8 @@ public class SessionUtils {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+            String.format(
+                SessionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
     }
     return valueOccupation;
   }
@@ -268,7 +270,10 @@ public class SessionUtils {
         }
       } catch (Throwable e) {
         LOGGER.error(
-            "Cannot put values for measurement {}, type={}", measurements.get(i), types.get(i), e);
+            SessionMessages.LOG_CANNOT_PUT_VALUES_MEASUREMENT_ARG_TYPE_ARG_27AFC67B,
+            measurements.get(i),
+            types.get(i),
+            e);
         throw e;
       }
     }
@@ -362,7 +367,8 @@ public class SessionUtils {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+            String.format(
+                SessionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
     }
   }
 
@@ -451,7 +457,8 @@ public class SessionUtils {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+            String.format(
+                SessionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
     }
     try {
       encoder.flush(outputStream);
@@ -476,7 +483,7 @@ public class SessionUtils {
 
   public static List<TEndPoint> parseSeedNodeUrls(List<String> nodeUrls) {
     if (nodeUrls == null) {
-      throw new NumberFormatException("nodeUrls is null");
+      throw new NumberFormatException(SessionMessages.NODE_URLS_IS_NULL);
     }
     List<TEndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {

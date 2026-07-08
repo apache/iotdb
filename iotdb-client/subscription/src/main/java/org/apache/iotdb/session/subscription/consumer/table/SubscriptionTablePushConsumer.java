@@ -38,8 +38,11 @@ public class SubscriptionTablePushConsumer extends AbstractSubscriptionPushConsu
       final TEndPoint endPoint,
       final String username,
       final String password,
+      final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
+      final String ownerId,
+      final Long ownerEpoch,
       final int thriftMaxFrameSize,
       final long heartbeatIntervalMs,
       final int connectionTimeoutInMs) {
@@ -47,8 +50,11 @@ public class SubscriptionTablePushConsumer extends AbstractSubscriptionPushConsu
         endPoint,
         username,
         password,
+        encryptedPassword,
         consumerId,
         consumerGroupId,
+        ownerId,
+        ownerEpoch,
         thriftMaxFrameSize,
         heartbeatIntervalMs,
         connectionTimeoutInMs);

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.consensus.deletion.recover;
 
+import org.apache.iotdb.commons.utils.IOUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 
@@ -59,17 +61,17 @@ public class DeletionReader implements Closeable {
     try {
       // Read magic string
       ByteBuffer magicStringBuffer = ByteBuffer.allocate(MAGIC_STRING_BYTES_SIZE);
-      fileChannel.read(magicStringBuffer);
+      IOUtils.readFully(fileChannel, magicStringBuffer);
       magicStringBuffer.flip();
       String magicVersion = new String(magicStringBuffer.array(), StandardCharsets.UTF_8);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Read deletion file-{} magic version: {}", logFile, magicVersion);
+        LOGGER.debug(DataNodePipeMessages.READ_DELETION_FILE_MAGIC_VERSION, logFile, magicVersion);
       }
 
       // Read deletions
       long remainingBytes = fileChannel.size() - fileChannel.position();
       ByteBuffer byteBuffer = ByteBuffer.allocate((int) remainingBytes);
-      fileChannel.read(byteBuffer);
+      IOUtils.readFully(fileChannel, byteBuffer);
       byteBuffer.flip();
 
       List<DeletionResource> deletions = new ArrayList<>();
@@ -79,16 +81,13 @@ public class DeletionReader implements Closeable {
             DeletionResource.deserialize(byteBuffer, regionId, removeHook);
         deletions.add(deletionResource);
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Read deletion: {} from file {}", deletionResource, logFile);
+          LOGGER.debug(DataNodePipeMessages.READ_DELETION_FROM_FILE, deletionResource, logFile);
         }
       }
       return deletions;
     } catch (IOException e) {
       // if file is corrupted, throw an exception and skip subsequence DAL.
-      LOGGER.warn(
-          "Failed to read deletion file {}, may because this file corrupted when writing it.",
-          logFile,
-          e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_READ_DELETION_FILE_MAY_BECAUSE, logFile, e);
       throw e;
     }
   }

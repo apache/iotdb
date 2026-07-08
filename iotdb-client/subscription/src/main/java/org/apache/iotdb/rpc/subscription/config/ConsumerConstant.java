@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc.subscription.config;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 import java.nio.file.Paths;
 
 public class ConsumerConstant {
@@ -34,9 +36,12 @@ public class ConsumerConstant {
 
   public static final String USERNAME_KEY = "username";
   public static final String PASSWORD_KEY = "password";
+  public static final String ENCRYPTED_PASSWORD_KEY = "encrypted-password";
 
   public static final String CONSUMER_ID_KEY = "consumer-id";
   public static final String CONSUMER_GROUP_ID_KEY = "group-id";
+  public static final String OWNER_ID_KEY = "owner-id";
+  public static final String OWNER_EPOCH_KEY = "owner-epoch";
 
   public static final String HEARTBEAT_INTERVAL_MS_KEY = "heartbeat-interval-ms";
   public static final long HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE = 30_000L;
@@ -83,6 +88,6 @@ public class ConsumerConstant {
   public static final long AUTO_POLL_TIMEOUT_MS_MIN_VALUE = 1_000L;
 
   private ConsumerConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(SubscriptionMessages.UTILITY_CLASS);
   }
 }

@@ -25,8 +25,10 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 
 import org.junit.Assert;
@@ -202,8 +204,33 @@ public class PipeTaskInfoConsensusPipeTest {
               .getStatus()
               .get());
     } finally {
-      new File(snapshotDir, "pipe_task_info.bin").delete();
-      snapshotDir.delete();
+      FileUtils.deleteFileOrDirectory(snapshotDir, true);
     }
+  }
+
+  @Test
+  public void testSetPipeStatusWithStoppedByRuntimeExceptionDisablesAutoRestart() {
+    final String pipeName = "userPipe";
+    createPipe(pipeName, PipeStatus.STOPPED);
+
+    pipeTaskInfo
+        .getPipeMetaByPipeName(pipeName)
+        .getRuntimeMeta()
+        .setIsStoppedByRuntimeException(true);
+
+    Assert.assertTrue(pipeTaskInfo.autoRestart());
+    Assert.assertEquals(
+        PipeStatus.RUNNING,
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta().getStatus().get());
+
+    pipeTaskInfo.setPipeStatusWithStoppedByRuntimeException(
+        new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(pipeName, PipeStatus.STOPPED, false));
+
+    Assert.assertFalse(pipeTaskInfo.isStoppedByRuntimeException(pipeName));
+    Assert.assertTrue(pipeTaskInfo.isPipeStoppedByUser(pipeName));
+    Assert.assertFalse(pipeTaskInfo.autoRestart());
+    Assert.assertEquals(
+        PipeStatus.STOPPED,
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta().getStatus().get());
   }
 }

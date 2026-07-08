@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,18 +98,19 @@ public class Disruptor<T> {
 
   public RingBuffer<T> start() {
     if (started) {
-      throw new IllegalStateException("Disruptor already started");
+      throw new IllegalStateException(DataNodePipeMessages.DISRUPTOR_ALREADY_STARTED);
     }
 
     if (processor == null) {
-      throw new IllegalStateException("No event handler configured");
+      throw new IllegalStateException(DataNodePipeMessages.NO_EVENT_HANDLER_CONFIGURED);
     }
 
     processorThread = threadFactory.newThread(processor);
     processorThread.start();
     started = true;
 
-    LOGGER.info("Disruptor started with buffer size: {}", ringBuffer.getBufferSize());
+    LOGGER.info(
+        DataNodePipeMessages.DISRUPTOR_STARTED_WITH_BUFFER_SIZE, ringBuffer.getBufferSize());
     return ringBuffer;
   }
 
@@ -122,14 +125,18 @@ public class Disruptor<T> {
 
     if (processorThread != null) {
       try {
+        processorThread.interrupt();
         processorThread.join(5000);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupted waiting for processor to stop");
+        LOGGER.warn(DataNodePipeMessages.INTERRUPTED_WAITING_FOR_PROCESSOR_TO_STOP);
+      }
+      if (processorThread.isAlive()) {
+        LOGGER.warn(DataNodePipeMessages.TIMED_OUT_WAITING_FOR_PROCESSOR_TO_STOP);
       }
     }
 
     started = false;
-    LOGGER.info("Disruptor shutdown completed");
+    LOGGER.info(DataNodePipeMessages.DISRUPTOR_SHUTDOWN_COMPLETED);
   }
 }

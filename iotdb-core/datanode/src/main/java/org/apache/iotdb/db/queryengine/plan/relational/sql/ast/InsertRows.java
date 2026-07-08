@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
@@ -47,8 +48,8 @@ public class InsertRows extends WrappedInsertStatement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitInsertRows(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitInsertRows(this, context);
   }
 
   @Override
@@ -139,9 +140,17 @@ public class InsertRows extends WrappedInsertStatement {
       @Override
       public List<Object[]> getAttributeValueList() {
         List<Object> attributeValueList = new ArrayList<>();
-        for (int i = 0; i < insertRowStatement.getColumnCategories().length; i++) {
-          if (insertRowStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
-            attributeValueList.add(insertRowStatement.getValues()[i]);
+        final TsTableColumnCategory[] columnCategories = insertRowStatement.getColumnCategories();
+        final String[] measurements = insertRowStatement.getMeasurements();
+        final Object[] values = insertRowStatement.getValues();
+        for (int i = 0; columnCategories != null && i < columnCategories.length; i++) {
+          if (columnCategories[i] == TsTableColumnCategory.ATTRIBUTE
+              && measurements != null
+              && i < measurements.length
+              && measurements[i] != null
+              && values != null
+              && i < values.length) {
+            attributeValueList.add(values[i]);
           }
         }
         return Collections.singletonList(attributeValueList.toArray());

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -91,6 +92,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
     // init fields of PipeTsFileInsertionEvent
     flushPointCount = bindFlushPointCount(originalEvents);
     overridingProgressIndex = bindOverridingProgressIndex(originalEvents);
+    bindTsFileDedupScopeID(anyOfOriginalEvents.getTsFileDedupScopeID());
   }
 
   private static boolean bindIsWithMod(Set<PipeTsFileInsertionEvent> originalEvents) {
@@ -143,7 +145,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
   @Override
   public int getRebootTimes() {
     throw new UnsupportedOperationException(
-        "PipeCompactedTsFileInsertionEvent does not support getRebootTimes.");
+        DataNodePipeMessages.PIPECOMPACTEDTSFILEINSERTIONEVENT_DOES_NOT_SUPPORT_GETREBOOTTIMES);
   }
 
   @Override
@@ -159,7 +161,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         .orElseThrow(
             () ->
                 new IllegalStateException(
-                    "No commit IDs found in PipeCompactedTsFileInsertionEvent."));
+                    DataNodePipeMessages.NO_COMMIT_IDS_FOUND_IN_PIPECOMPACTEDTSFILEINSERTIONEVENT));
   }
 
   // return dummy events for each commit ID (except the max one)
@@ -179,15 +181,16 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
   @Override
   public boolean equalsInIoTConsensusV2(final Object o) {
     throw new UnsupportedOperationException(
-        "PipeCompactedTsFileInsertionEvent does not support equalsInIoTConsensusV2.");
+        DataNodePipeMessages
+            .PIPECOMPACTEDTSFILEINSERTIONEVENT_DOES_NOT_SUPPORT_EQUALSINIOTCONSENSUSV2);
   }
 
   @Override
   public void eliminateProgressIndex() {
-    if (Objects.isNull(overridingProgressIndex)) {
+    if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(getTsFileDedupScopeID())) {
       for (final String originFilePath : originFilePaths) {
         PipeTsFileEpochProgressIndexKeeper.getInstance()
-            .eliminateProgressIndex(dataRegionId, pipeName, originFilePath);
+            .eliminateProgressIndex(dataRegionId, getTsFileDedupScopeID(), originFilePath);
       }
     }
   }

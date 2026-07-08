@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -97,10 +99,10 @@ public class SingleSequenceFileTask implements Callable<SequenceFileTaskSummary>
       summary.totalChunkGroups = chunkGroupStatisticsList.size();
     } catch (IOException e) {
       if (e instanceof NoSuchFileException) {
-        LOGGER.warn("{} doesn't exist.", seqFile);
+        LOGGER.warn(StorageEngineMessages.DOES_NOT_EXIST, seqFile);
         return new SequenceFileTaskSummary();
       }
-      LOGGER.error("check {} failed.", seqFile, e);
+      LOGGER.error(StorageEngineMessages.CHECK_FAILED, seqFile, e);
       return new SequenceFileTaskSummary();
     }
     return summary;

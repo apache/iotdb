@@ -20,9 +20,14 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -215,8 +220,8 @@ public class RelationalAuthorStatement extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitRelationalAuthorPlan(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitRelationalAuthorPlan(this, context);
   }
 
   @Override
@@ -261,14 +266,15 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_USER_ROLE:
       case RENAME_USER:
       case ACCOUNT_UNLOCK:
-        return QueryType.WRITE;
+        return QueryType.OTHER;
       case LIST_ROLE:
       case LIST_USER:
       case LIST_ROLE_PRIV:
       case LIST_USER_PRIV:
         return QueryType.READ;
       default:
-        throw new IllegalArgumentException("Unknown authorType:" + this.authorType);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.UNKNOWN_AUTHORTYPE_2 + this.authorType);
     }
   }
 

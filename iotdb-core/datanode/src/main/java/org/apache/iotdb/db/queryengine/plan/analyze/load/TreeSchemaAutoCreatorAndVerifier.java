@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -34,10 +36,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -52,7 +55,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -108,7 +110,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
   public void autoCreateAndVerify(
       TsFileSequenceReader reader,
       Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
-      throws IOException, AuthException, LoadAnalyzeTypeMismatchException {
+      throws IOException, AuthException, LoadAnalyzeException {
     for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         device2TimeseriesMetadataList.entrySet()) {
       final IDeviceID device = entry.getKey();
@@ -119,7 +121,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
         }
       } catch (IllegalPathException e) {
         LOGGER.warn(
-            "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
+            DataNodeQueryMessages
+                .FAILED_TO_CHECK_IF_DEVICE_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT_DELETED,
             device,
             e);
       }
@@ -134,7 +137,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // IllegalPathException.
           if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
             LOGGER.warn(
-                "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                DataNodeQueryMessages
+                    .FAILED_TO_CHECK_IF_DEVICE_ARG_TIMESERIES_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT,
                 device,
                 timeseriesMetadata.getMeasurementId(),
                 e);
@@ -197,14 +201,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
     schemaCache.clearDeviceIsAlignedCacheIfNecessary();
   }
 
-  public void flush() throws AuthException, LoadAnalyzeTypeMismatchException {
+  public void flush() throws AuthException, LoadAnalyzeException {
     doAutoCreateAndVerify();
 
     schemaCache.clearTimeSeries();
   }
 
   private void doAutoCreateAndVerify()
-      throws SemanticException, AuthException, LoadAnalyzeTypeMismatchException {
+      throws SemanticException, AuthException, LoadAnalyzeException {
     if (schemaCache.getDevice2TimeSeries().isEmpty()) {
       return;
     }
@@ -234,6 +238,11 @@ public class TreeSchemaAutoCreatorAndVerifier {
       } else {
         handleException(e, loadTsFileAnalyzer.getStatementString());
       }
+    } catch (LoadAnalyzeMissingSchemaException e) {
+      if (loadTsFileAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
+        throw e;
+      }
+      handleException(e, loadTsFileAnalyzer.getStatementString());
     } catch (Exception e) {
       if (e.getCause() instanceof LoadAnalyzeTypeMismatchException
           && loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
@@ -244,11 +253,13 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   private void handleException(Exception e, String statementString) throws SemanticException {
-    LOGGER.warn("Auto create or verify schema error.", e);
+    LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
     throw new SemanticException(
         String.format(
-            "Auto create or verify schema error when executing statement %s.  Detail: %s.",
-            statementString, e.getMessage()));
+            DataNodeQueryMessages
+                .AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT_S_DETAIL_S,
+            statementString,
+            e.getMessage()));
   }
 
   private void makeSureNoDuplicatedMeasurementsInDevices() throws LoadAnalyzeException {
@@ -268,7 +279,11 @@ public class TreeSchemaAutoCreatorAndVerifier {
         if (existingSchema != null) {
           if (existingSchema.getType() != timeseriesSchema.getType()) {
             throw new LoadAnalyzeException(
-                String.format("Duplicated measurements %s in device %s.", measurement, device));
+                String.format(
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_DUPLICATED_MEASUREMENTS_S_IN_DEVICE_S_438713CD,
+                    measurement,
+                    device));
           }
           deviceHasDuplicates = true;
           hasDuplicates = true;
@@ -303,7 +318,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
       if (devicePrefixNodes.length < databasePrefixNodesLength) {
         throw new LoadAnalyzeException(
             String.format(
-                "Database level %d is longer than device %s.", databasePrefixNodesLength, device));
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DATABASE_LEVEL_D_IS_LONGER_THAN_DEVICE_S_9B34DD2F,
+                databasePrefixNodesLength,
+                device));
       }
 
       final String[] databasePrefixNodes = new String[databasePrefixNodesLength];
@@ -383,11 +401,15 @@ public class TreeSchemaAutoCreatorAndVerifier {
         // root.db.ss.a) conflicts with the created database. just do not throw exception here.
         && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
       LOGGER.warn(
-          "Create database error, statement: {}, result status is: {}", statement, result.status);
+          DataNodeQueryMessages.CREATE_DATABASE_ERROR_STATEMENT_ARG_RESULT_STATUS_IS_ARG,
+          statement,
+          result.status);
       throw new LoadFileException(
           String.format(
-              "Create database error, statement: %s, result status is: %s",
-              statement, result.status));
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_CREATE_DATABASE_ERROR_STATEMENT_S_RESULT_STATUS_IS_S_5C4AFD58,
+              statement,
+              result.status));
     }
   }
 
@@ -448,10 +470,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
                   .collect(Collectors.toList()));
 
       if (iotdbDeviceSchemaInfo == null) {
-        throw new LoadAnalyzeException(
+        throw new LoadAnalyzeMissingSchemaException(
             String.format(
-                "Device %s does not exist in IoTDB and can not be created. "
-                    + "Please check weather auto-create-schema is enabled.",
+                DataNodeQueryMessages.LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED,
                 device));
       }
 
@@ -461,10 +482,15 @@ public class TreeSchemaAutoCreatorAndVerifier {
       if (isAlignedInTsFile != isAlignedInIoTDB) {
         throw new LoadAnalyzeTypeMismatchException(
             String.format(
-                "Device %s in TsFile is %s, but in IoTDB is %s.",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DEVICE_S_IN_TSFILE_IS_S_BUT_IN_IOTDB_IS_S_350D5903,
                 device,
-                isAlignedInTsFile ? "aligned" : "not aligned",
-                isAlignedInIoTDB ? "aligned" : "not aligned"));
+                isAlignedInTsFile
+                    ? DataNodeQueryMessages.ALIGNMENT_ALIGNED
+                    : DataNodeQueryMessages.ALIGNMENT_NOT_ALIGNED,
+                isAlignedInIoTDB
+                    ? DataNodeQueryMessages.ALIGNMENT_ALIGNED
+                    : DataNodeQueryMessages.ALIGNMENT_NOT_ALIGNED));
       }
 
       // check timeseries schema
@@ -474,22 +500,23 @@ public class TreeSchemaAutoCreatorAndVerifier {
         final IMeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
         final IMeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
         if (iotdbSchema == null) {
-          throw new LoadAnalyzeException(
+          throw new LoadAnalyzeMissingSchemaException(
               String.format(
-                  "Measurement %s does not exist in IoTDB and can not be created. "
-                      + "Please check weather auto-create-schema is enabled.",
+                  DataNodeQueryMessages.LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED,
                   device + TsFileConstant.PATH_SEPARATOR + tsfileTimeseriesSchemas.get(i)));
         }
 
         // check datatype
-        if (LOGGER.isDebugEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
-          LOGGER.debug(
-              "Measurement {}{}{} datatype not match, TsFile: {}, IoTDB: {}",
-              device,
-              TsFileConstant.PATH_SEPARATOR,
-              iotdbSchema.getMeasurementName(),
-              tsFileSchema.getType(),
-              iotdbSchema.getType());
+        if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
+          throw new LoadAnalyzeTypeMismatchException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD,
+                  device,
+                  TsFileConstant.PATH_SEPARATOR,
+                  iotdbSchema.getMeasurementName(),
+                  tsFileSchema.getType(),
+                  iotdbSchema.getType()));
         }
 
         // check encoding
@@ -497,8 +524,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
             && !tsFileSchema.getEncodingType().equals(iotdbSchema.getEncodingType())) {
           // we allow a measurement to have different encodings in different chunks
           LOGGER.debug(
-              "Encoding type not match, measurement: {}{}{}, "
-                  + "TsFile encoding: {}, IoTDB encoding: {}",
+              DataNodeQueryMessages.ENCODING_TYPE_NOT_MATCH_MEASUREMENT_ARGARGARG
+                  + DataNodeQueryMessages.TSFILE_ENCODING_ARG_IOTDB_ENCODING_ARG,
               device,
               TsFileConstant.PATH_SEPARATOR,
               iotdbSchema.getMeasurementName(),
@@ -511,8 +538,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
             && !tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
           // we allow a measurement to have different compressors in different chunks
           LOGGER.debug(
-              "Compressor not match, measurement: {}{}{}, "
-                  + "TsFile compressor: {}, IoTDB compressor: {}",
+              DataNodeQueryMessages.COMPRESSOR_NOT_MATCH_MEASUREMENT_ARGARGARG
+                  + DataNodeQueryMessages.TSFILE_COMPRESSOR_ARG_IOTDB_COMPRESSOR_ARG,
               device,
               TsFileConstant.PATH_SEPARATOR,
               iotdbSchema.getMeasurementName(),

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.it.env.EnvFactory;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -35,8 +35,8 @@ import static org.junit.Assert.assertEquals;
 
 public class IoTDBAlignedMemQueryIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
     EnvFactory.getEnv()
         .getConfig()
@@ -46,8 +46,8 @@ public class IoTDBAlignedMemQueryIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

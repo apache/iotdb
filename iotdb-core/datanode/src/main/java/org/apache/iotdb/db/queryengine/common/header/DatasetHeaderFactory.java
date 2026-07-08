@@ -169,6 +169,11 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showPipeColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowRepairDataPartitionTableProgressHeader() {
+    return new DatasetHeader(
+        ColumnHeaderConstant.showRepairDataPartitionTableProgressColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowTopicHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showTopicColumnHeaders, true);
   }
@@ -261,6 +266,18 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowCreateTableColumnHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showCreateTableColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowCreatePipeColumnHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showCreatePipeColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowCreateTopicColumnHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showCreateTopicColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowCreateDatabaseColumnHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showCreateDatabaseColumnHeaders, true);
   }
 
   public static DatasetHeader getShowTablesHeader() {

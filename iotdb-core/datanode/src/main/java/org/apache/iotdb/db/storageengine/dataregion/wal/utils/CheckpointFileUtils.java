@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -52,7 +54,7 @@ public class CheckpointFileUtils {
     if (matcher.find()) {
       return Integer.parseInt(matcher.group(WAL_VERSION_ID));
     }
-    throw new RuntimeException("Invalid checkpoint file name: " + filename);
+    throw new RuntimeException(StorageEngineMessages.INVALID_CHECKPOINT_FILE_NAME + filename);
   }
 
   /** Sort checkpoint files by version id with descending order. */

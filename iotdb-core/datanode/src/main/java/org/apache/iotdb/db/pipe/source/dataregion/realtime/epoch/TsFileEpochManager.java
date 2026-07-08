@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -56,13 +57,13 @@ public class TsFileEpochManager {
     filePath2Epoch.computeIfAbsent(
         filePath,
         path -> {
-          LOGGER.info("TsFileEpoch not found for TsFile {}, creating a new one", path);
+          LOGGER.info(DataNodePipeMessages.TSFILEEPOCH_NOT_FOUND_FOR_TSFILE_CREATING_A, path);
           return new TsFileEpoch(resource);
         });
 
     final TsFileEpoch epoch = filePath2Epoch.remove(filePath);
 
-    LOGGER.info("All data in TsFileEpoch {} was extracted", epoch);
+    LOGGER.info(DataNodePipeMessages.ALL_DATA_IN_TSFILEEPOCH_WAS_EXTRACTED, epoch);
     return new PipeRealtimeEvent(
         event,
         epoch,

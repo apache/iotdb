@@ -22,7 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.optimization;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -31,13 +36,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
@@ -82,11 +83,11 @@ public class PredicatePushDown implements PlanOptimizer {
         new Rewriter(), new RewriterContext(analysis, context, queryStatement.isAlignByDevice()));
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+  private static class Rewriter implements PlanVisitor<PlanNode, RewriterContext> {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
-      throw new IllegalArgumentException("Unexpected plan node: " + node);
+      throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_PLAN_NODE + node);
     }
 
     @Override
@@ -210,7 +211,8 @@ public class PredicatePushDown implements PlanOptimizer {
       // find the push down predicate for each child
       for (PlanNode child : children) {
         checkArgument(
-            child instanceof SeriesScanSourceNode, "Unexpected node type: " + child.getClass());
+            child instanceof SeriesScanSourceNode,
+            DataNodeQueryMessages.EXCEPTION_UNEXPECTED_NODE_TYPE_COLON_41FBCBF3 + child.getClass());
         PartialPath sourcePath = ((SeriesScanSourceNode) child).getPartitionPath();
         if (sourcePath instanceof MeasurementPath) {
           pushDownConjunctsForEachChild.add(
@@ -220,7 +222,8 @@ public class PredicatePushDown implements PlanOptimizer {
               pushDownConjunctsMap.getOrDefault(
                   sourcePath.getDevicePath(), Collections.emptyList()));
         } else {
-          throw new IllegalArgumentException("sourcePath must be MeasurementPath or AlignedPath");
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.SOURCEPATH_MUST_BE_MEASUREMENTPATH_OR_ALIGNEDPATH);
         }
       }
     }
@@ -284,7 +287,9 @@ public class PredicatePushDown implements PlanOptimizer {
         return visitSeriesScanSource(node, context);
       }
       TemplatedInfo templatedInfo = context.getTemplatedInfo();
-      checkState(templatedInfo != null, "TemplatedInfo should not be null");
+      checkState(
+          templatedInfo != null,
+          DataNodeQueryMessages.EXCEPTION_TEMPLATEDINFO_SHOULD_NOT_BE_NULL_B5898568);
 
       Expression inheritedPredicate = context.getInheritedPredicate();
       if (context.enablePushDownUseTemplate()

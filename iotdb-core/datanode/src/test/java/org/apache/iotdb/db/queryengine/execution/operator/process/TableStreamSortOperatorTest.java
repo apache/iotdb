@@ -19,7 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.TableStreamSortOperator;
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -27,12 +34,8 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -53,9 +56,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
+import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.cleanDir;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -240,10 +242,10 @@ public class TableStreamSortOperatorTest {
   @Test
   public void someInDiskTest() {
 
-    long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
+    long sortBufferSize = CommonDescriptor.getInstance().getConfig().getSortBufferSize();
     int maxTsBlockSizeInBytes =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(510);
+    CommonDescriptor.getInstance().getConfig().setSortBufferSize(510);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(50);
     try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(1000)) {
       int count = 0;
@@ -281,18 +283,20 @@ public class TableStreamSortOperatorTest {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
+      CommonDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
       TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxTsBlockSizeInBytes);
     }
   }
 
   @Test
   public void someInDiskTest2() {
-    long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
+    // load properties
+    IoTDBDescriptor.getInstance();
+    long sortBufferSize = CommonDescriptor.getInstance().getConfig().getSortBufferSize();
     int maxTsBlockSizeInBytes =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     int maxTsBlockLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(1000);
+    CommonDescriptor.getInstance().getConfig().setSortBufferSize(1000);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(100);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(2);
     try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(2)) {
@@ -332,7 +336,7 @@ public class TableStreamSortOperatorTest {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
+      CommonDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
       TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxTsBlockSizeInBytes);
       TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
     }
@@ -520,7 +524,8 @@ public class TableStreamSortOperatorTest {
             builder.declarePositions(timeArray[index].length);
             index++;
             return builder.build(
-                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
+                new RunLengthEncodedColumn(
+                    CommonOperatorUtils.TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
           }
 
           @Override

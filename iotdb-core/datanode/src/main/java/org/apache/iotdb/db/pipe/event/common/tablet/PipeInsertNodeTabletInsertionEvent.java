@@ -32,7 +32,9 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
@@ -51,7 +53,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -192,7 +193,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
-          String.format("Increase reference count error. Holder Message: %s", holderMessage), e);
+          String.format(
+              DataNodePipeMessages.INCREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT, holderMessage),
+          e);
       return false;
     }
   }
@@ -209,7 +212,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
-          String.format("Decrease reference count error. Holder Message: %s", holderMessage), e);
+          String.format(
+              DataNodePipeMessages.DECREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT, holderMessage),
+          e);
       return false;
     } finally {
       if (Objects.nonNull(pipeName)) {
@@ -250,7 +255,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final long endTime) {
     final InsertNode node = insertNode;
     if (Objects.isNull(node)) {
-      throw new PipeException("InsertNode has been released");
+      throw new PipeException(DataNodePipeMessages.INSERTNODE_HAS_BEEN_RELEASED);
     }
     return new PipeInsertNodeTabletInsertionEvent(
         getRawIsTableModelEvent(),
@@ -273,7 +278,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public boolean isGeneratedByPipe() {
     final InsertNode node = insertNode;
     if (Objects.isNull(node)) {
-      throw new PipeException("InsertNode has been released");
+      throw new PipeException(DataNodePipeMessages.INSERTNODE_HAS_BEEN_RELEASED);
     }
     return node.isGeneratedByPipe();
   }
@@ -315,8 +320,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       } else {
         throw new AccessDeniedException(
             String.format(
-                "No privilege for SELECT for user %s at table %s.%s",
-                userName, tableModelDatabaseName, tableName));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
+                userName,
+                tableModelDatabaseName,
+                tableName));
       }
     }
   }
@@ -325,6 +333,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       throws IllegalPathException {
     final List<MeasurementPath> measurementList = new ArrayList<>();
     for (final String measurement : measurements) {
+      // Ignore failed measurements in partial inserts, consistent with downstream matching/parsing.
+      if (measurement == null) {
+        continue;
+      }
       if (treePattern.matchesMeasurement(deviceID, measurement)) {
         measurementList.add(new MeasurementPath(deviceID, measurement));
       }
@@ -358,12 +370,14 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       }
 
       if (insertNode instanceof InsertTabletNode) {
-        final long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
-        if (Objects.isNull(timestamps) || timestamps.length == 0) {
+        final InsertTabletNode insertTabletNode = (InsertTabletNode) insertNode;
+        final long[] timestamps = insertTabletNode.getTimes();
+        final int rowCount = insertTabletNode.getRowCount();
+        if (Objects.isNull(timestamps) || rowCount <= 0) {
           return false;
         }
         // We assume that `timestamps` is ordered.
-        return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
+        return startTime <= timestamps[rowCount - 1] && timestamps[0] <= endTime;
       }
 
       if (insertNode instanceof InsertRowsNode) {
@@ -379,7 +393,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
-          "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. Returning true to ensure data integrity.",
+          DataNodePipeMessages.EXCEPTION_OCCURRED_WHEN_DETERMINING_THE_EVENT_TIME,
           this,
           startTime,
           endTime,
@@ -418,7 +432,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
-          "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. Returning true to ensure data integrity.",
+          DataNodePipeMessages.EXCEPTION_OCCURRED_WHEN_DETERMINING_THE_EVENT_TIME,
           this,
           startTime,
           endTime,
@@ -494,7 +508,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       eventParsers = new ArrayList<>();
       final InsertNode node = getInsertNode();
       if (Objects.isNull(node)) {
-        throw new PipeException("InsertNode has been released");
+        throw new PipeException(DataNodePipeMessages.INSERTNODE_HAS_BEEN_RELEASED);
       }
       switch (node.getType()) {
         case INSERT_ROW:
@@ -536,7 +550,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           }
           break;
         default:
-          throw new UnSupportedDataTypeException("Unsupported node type " + node.getType());
+          throw new UnSupportedDataTypeException(
+              DataNodePipeMessages.UNSUPPORTED_NODE_TYPE + node.getType());
       }
 
       final int size = eventParsers.size();
@@ -546,7 +561,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
       return eventParsers;
     } catch (final Exception e) {
-      throw new PipeException("Initialize data container error.", e);
+      throw new PipeException(DataNodePipeMessages.INITIALIZE_DATA_CONTAINER_ERROR, e);
     }
   }
 
@@ -669,7 +684,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
               return null;
             });
       } catch (final Exception e) {
-        LOGGER.warn("Decrease reference count error.", e);
+        LOGGER.warn(DataNodePipeMessages.DECREASE_REFERENCE_COUNT_ERROR, e);
       }
     }
   }

@@ -21,9 +21,11 @@ package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferReq;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferResp;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
@@ -70,7 +72,7 @@ public class IoTConsensusV2DeleteEventHandler
   public void onComplete(TIoTConsensusV2TransferResp response) {
     // Just in case
     if (response == null) {
-      onError(new PipeException("TIoTConsensusV2TransferResp is null"));
+      onError(new PipeException(DataNodePipeMessages.TIOTCONSENSUSV2TRANSFERRESP_IS_NULL));
       return;
     }
 
@@ -85,7 +87,7 @@ public class IoTConsensusV2DeleteEventHandler
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
-            "DeleteNodeTransfer: no.{} event successfully processed!",
+            DataNodePipeMessages.DELETENODETRANSFER_NO_EVENT_SUCCESSFULLY_PROCESSED,
             event.getReplicateIndexForIoTV2());
       }
       // if code flow reach here, meaning the file will not be resent and will be ignored.
@@ -101,12 +103,19 @@ public class IoTConsensusV2DeleteEventHandler
 
   @Override
   public void onError(Exception e) {
-    LOGGER.warn(
-        "Failed to transfer PipeDeleteNodeEvent {} (committer key={}, replicate index={}).",
+    PipeLogger.log(
+        ignored ->
+            LOGGER.warn(
+                DataNodePipeMessages.FAILED_TO_TRANSFER_PIPEDELETENODEEVENT_COMMITTER_KEY_REPLICATE,
+                event.coreReportMessage(),
+                event.getCommitterKey(),
+                event.getReplicateIndexForIoTV2(),
+                e),
+        e,
+        "Failed to transfer PipeDeleteNodeEvent %s (committer key=%s, replicate index=%s).",
         event.coreReportMessage(),
         event.getCommitterKey(),
-        event.getReplicateIndexForIoTV2(),
-        e);
+        event.getReplicateIndexForIoTV2());
 
     if (RetryUtils.needRetryWithIncreasingInterval(e)) {
       // just in case for overflow

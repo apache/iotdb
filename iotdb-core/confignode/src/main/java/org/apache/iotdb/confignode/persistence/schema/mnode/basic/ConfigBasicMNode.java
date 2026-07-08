@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.container.ConfigMNodeContainer;
 import org.apache.iotdb.confignode.persistence.schema.mnode.info.ConfigMNodeInfo;
@@ -167,7 +168,7 @@ public abstract class ConfigBasicMNode implements IConfigMNode {
 
   @Override
   public IDatabaseMNode<IConfigMNode> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(ConfigNodeMessages.WRONG_MNODE_TYPE);
   }
 
   @Override

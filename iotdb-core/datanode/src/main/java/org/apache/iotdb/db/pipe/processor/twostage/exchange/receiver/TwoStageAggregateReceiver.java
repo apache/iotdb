@@ -21,10 +21,13 @@ package org.apache.iotdb.db.pipe.processor.twostage.exchange.receiver;
 
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiver;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.twostage.combiner.PipeCombineHandlerManager;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.RequestType;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -36,6 +39,7 @@ import org.slf4j.LoggerFactory;
 public class TwoStageAggregateReceiver implements IoTDBReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageAggregateReceiver.class);
+  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   @Override
   public IoTDBSinkRequestVersion getVersion() {
@@ -45,6 +49,13 @@ public class TwoStageAggregateReceiver implements IoTDBReceiver {
   @Override
   public TPipeTransferResp receive(TPipeTransferReq req) {
     try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NOT_LOGIN, DataNodePipeMessages.LOGIN_FAILED_OR_SESSION_TIMED_OUT));
+      }
+
       final short rawRequestType = req.getType();
       if (RequestType.isValidatedRequestType(rawRequestType)) {
         switch (RequestType.valueOf(rawRequestType)) {
@@ -59,13 +70,13 @@ public class TwoStageAggregateReceiver implements IoTDBReceiver {
         }
       }
 
-      LOGGER.warn("Unknown request type {}: {}.", rawRequestType, req);
+      LOGGER.warn(DataNodePipeMessages.UNKNOWN_REQUEST_TYPE, rawRequestType, req);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TYPE_ERROR,
               String.format("Unknown request type %s.", rawRequestType)));
     } catch (Exception e) {
-      LOGGER.warn("Error occurs when receiving request: {}.", req, e);
+      LOGGER.warn(DataNodePipeMessages.ERROR_OCCURS_WHEN_RECEIVING_REQUEST, req, e);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_ERROR,
@@ -76,7 +87,7 @@ public class TwoStageAggregateReceiver implements IoTDBReceiver {
   @Override
   public void handleExit() {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Two stage aggregate receiver is exiting.");
+      LOGGER.debug(DataNodePipeMessages.TWO_STAGE_AGGREGATE_RECEIVER_IS_EXITING);
     }
   }
 }

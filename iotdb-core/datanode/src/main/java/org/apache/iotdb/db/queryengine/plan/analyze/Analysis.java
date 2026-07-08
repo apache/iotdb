@@ -29,10 +29,11 @@ import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
@@ -475,7 +476,10 @@ public class Analysis implements IAnalysis {
     }
 
     final TSDataType type = expressionTypes.get(NodeRef.of(expression));
-    checkArgument(type != null, "Expression is not analyzed: %s", expression);
+    checkArgument(
+        type != null,
+        DataNodeQueryMessages.EXCEPTION_EXPRESSION_IS_NOT_ANALYZED_COLON_ARG_7D34C49A,
+        expression);
     return type;
   }
 
@@ -511,7 +515,7 @@ public class Analysis implements IAnalysis {
   public boolean needSetHighestPriority() {
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
     // that the sub-tasks of the ShowQueries instances could be executed first.
-    return StatementType.SHOW_QUERIES.equals(statement.getType());
+    return statement != null && StatementType.SHOW_QUERIES.equals(statement.getType());
   }
 
   @Override

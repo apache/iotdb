@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
@@ -105,7 +106,7 @@ public abstract class PipePluginAgent {
       try {
         temporarySource.close();
       } catch (final Exception e) {
-        LOGGER.warn("Failed to close temporary source: {}", e.getMessage(), e);
+        LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_TEMPORARY_SOURCE, e.getMessage(), e);
       }
     }
     return temporarySource;
@@ -121,7 +122,7 @@ public abstract class PipePluginAgent {
       try {
         temporaryProcessor.close();
       } catch (final Exception e) {
-        LOGGER.warn("Failed to close temporary processor: {}", e.getMessage(), e);
+        LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_TEMPORARY_PROCESSOR, e.getMessage(), e);
       }
     }
     return temporaryProcessor;
@@ -141,7 +142,7 @@ public abstract class PipePluginAgent {
       try {
         temporarySink.close();
       } catch (final Exception e) {
-        LOGGER.warn("Failed to close temporary connector: {}", e.getMessage(), e);
+        LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_TEMPORARY_CONNECTOR, e.getMessage(), e);
       }
     }
     return temporarySink;
@@ -206,10 +207,7 @@ public abstract class PipePluginAgent {
       try {
         processor.close();
       } catch (Exception closeException) {
-        LOGGER.warn(
-            "Failed to close processor after failed to initialize processor. "
-                + "Ignore this exception.",
-            closeException);
+        LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_PROCESSOR_AFTER_INIT, closeException);
       }
       throw new PipeException(e.getMessage(), e);
     }

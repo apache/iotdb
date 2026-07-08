@@ -21,9 +21,11 @@ package org.apache.iotdb.db.pipe.metric.schema;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -56,6 +58,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
 
   private void createMetrics(final String taskID) {
     createRate(taskID);
+    createHistogram(taskID);
   }
 
   private void createRate(final String taskID) {
@@ -72,17 +75,49 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
             String.valueOf(connector.getCreationTime())));
   }
 
+  private void createHistogram(final String taskID) {
+    final PipeSinkSubtask connector = connectorMap.get(taskID);
+
+    final Histogram schemaBatchSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_SCHEMA_BATCH_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            connector.getAttributeSortedString(),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(connector.getCreationTime()));
+    connector.setSchemaBatchSizeHistogram(schemaBatchSizeHistogram);
+
+    final Histogram schemaBatchTimeIntervalHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            connector.getAttributeSortedString(),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(connector.getCreationTime()));
+    connector.setSchemaBatchTimeIntervalHistogram(schemaBatchTimeIntervalHistogram);
+
+    final Histogram schemaBatchEventSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            connector.getAttributeSortedString());
+    connector.setEventSizeHistogram(schemaBatchEventSizeHistogram);
+  }
+
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
     ImmutableSet.copyOf(connectorMap.keySet()).forEach(this::deregister);
     if (!connectorMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe schema region connector metrics, connector map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION);
     }
   }
 
   private void removeMetrics(final String taskID) {
     removeRate(taskID);
+    removeHistogram(taskID);
   }
 
   private void removeRate(final String taskID) {
@@ -98,6 +133,29 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
     schemaRateMap.remove(taskID);
   }
 
+  private void removeHistogram(final String taskID) {
+    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_SCHEMA_BATCH_SIZE.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString());
+  }
+
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
   public void register(final PipeSinkSubtask pipeSinkSubtask) {
@@ -111,8 +169,8 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!connectorMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe schema region connector metrics, PipeConnectorSubtask({}) does not exist",
-          taskID);
+          DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_CONNECTOR,
+          getDisplayTaskID(taskID));
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -128,11 +186,15 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
     final Rate rate = schemaRateMap.get(taskID);
     if (rate == null) {
       LOGGER.info(
-          "Failed to mark pipe schema region write plan event, PipeConnectorSubtask({}) does not exist",
-          taskID);
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_SCHEMA_REGION_WRITE, getDisplayTaskID(taskID));
       return;
     }
     rate.mark();
+  }
+
+  private String getDisplayTaskID(final String taskID) {
+    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    return Objects.nonNull(connector) ? connector.getDisplayTaskID() : "unknown";
   }
 
   //////////////////////////// singleton ////////////////////////////

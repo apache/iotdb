@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.utils;
 
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +49,7 @@ public class FileStoreUtils {
       } catch (NoSuchFileException e) {
         path = path.getParent();
       } catch (IOException e) {
-        logger.warn("Failed to get storage path of {}, because", dir, e);
+        logger.warn(MetricsMessages.STORAGE_PATH_FAILED, dir, e);
         break;
       }
     }
@@ -57,7 +59,7 @@ public class FileStoreUtils {
       try {
         fileStore = Files.getFileStore(path);
       } catch (IOException innerException) {
-        logger.warn("Failed to get storage path of {}, because", dir, innerException);
+        logger.warn(MetricsMessages.STORAGE_PATH_FAILED, dir, innerException);
       }
     }
     return fileStore;

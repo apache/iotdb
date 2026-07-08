@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 
 import org.slf4j.Logger;
@@ -87,7 +89,11 @@ final class AbstractSubscriptionProviders {
         defaultProvider = consumer.constructProviderAndHandshake(endPoint);
       } catch (final Exception e) {
         LOGGER.warn(
-            "{} failed to create connection with {} because of {}", consumer, endPoint, e, e);
+            SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
+            consumer,
+            endPoint,
+            e,
+            e);
         continue; // try next endpoint
       }
       defaultDataNodeId = defaultProvider.getDataNodeId();
@@ -98,7 +104,11 @@ final class AbstractSubscriptionProviders {
         allEndPoints = defaultProvider.heartbeat().getEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
-            "{} failed to fetch all endpoints from {} because of {}", consumer, endPoint, e, e);
+            SubscriptionMessages.LOG_ARG_FAILED_FETCH_ALL_ENDPOINTS_ARG_BECAUSE_ARG_2C9E11D4,
+            consumer,
+            endPoint,
+            e,
+            e);
         break;
       }
 
@@ -112,7 +122,7 @@ final class AbstractSubscriptionProviders {
           provider = consumer.constructProviderAndHandshake(entry.getValue());
         } catch (final Exception e) {
           LOGGER.warn(
-              "{} failed to create connection with {} because of {}",
+              SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
               consumer,
               entry.getValue(),
               e,
@@ -128,7 +138,8 @@ final class AbstractSubscriptionProviders {
     if (hasNoAvailableProviders()) {
       throw new SubscriptionConnectionException(
           String.format(
-              "Cluster has no available subscription providers to connect with initial endpoints %s",
+              SubscriptionMessages
+                  .EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_5DB83198,
               initialEndpoints));
     }
 
@@ -141,7 +152,7 @@ final class AbstractSubscriptionProviders {
       try {
         provider.close();
       } catch (final Exception e) {
-        LOGGER.warn("Failed to close subscription provider {} because of {}", provider, e, e);
+        LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
       }
     }
     subscriptionProviders.clear();
@@ -150,7 +161,7 @@ final class AbstractSubscriptionProviders {
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
   void addProvider(final int dataNodeId, final AbstractSubscriptionProvider provider) {
     // the subscription provider is opened
-    LOGGER.info("add new subscription provider {}", provider);
+    LOGGER.info(SubscriptionMessages.ADD_NEW_PROVIDER, provider);
     subscriptionProviders.put(dataNodeId, provider);
   }
 
@@ -164,7 +175,7 @@ final class AbstractSubscriptionProviders {
     try {
       provider.close();
     } finally {
-      LOGGER.info("close and remove stale subscription provider {}", provider);
+      LOGGER.info(SubscriptionMessages.CLOSE_STALE_PROVIDER, provider);
       subscriptionProviders.remove(dataNodeId);
     }
   }
@@ -245,13 +256,16 @@ final class AbstractSubscriptionProviders {
   private void heartbeatInternal(final AbstractSubscriptionConsumer consumer) {
     for (final AbstractSubscriptionProvider provider : getAllProviders()) {
       try {
-        final PipeSubscribeHeartbeatResp resp = provider.heartbeat();
+        final List<SubscriptionCommitContext> processorBufferedCommitContexts =
+            consumer.getProcessorBufferedCommitContexts(provider.getDataNodeId());
+        final PipeSubscribeHeartbeatResp resp = provider.heartbeat(processorBufferedCommitContexts);
         // update subscribed topics
         consumer.subscribedTopics = resp.getTopics();
         // unsubscribe completed topics
         for (final String topicName : resp.getTopicNamesToUnsubscribe()) {
           LOGGER.info(
-              "Termination occurred when SubscriptionConsumer {} polling topics, unsubscribe topic {} automatically",
+              SubscriptionMessages
+                  .LOG_TERMINATION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_UNSUBSCRIBE_TOPIC_ARG_AUTOMATICALLY_E9B695FA,
               consumer.coreReportMessage(),
               topicName);
           consumer.unsubscribe(topicName);
@@ -259,7 +273,8 @@ final class AbstractSubscriptionProviders {
         provider.setAvailable();
       } catch (final Exception e) {
         LOGGER.warn(
-            "{} failed to sending heartbeat to subscription provider {} because of {}, set subscription provider unavailable",
+            SubscriptionMessages
+                .LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F,
             consumer,
             provider,
             e,
@@ -289,7 +304,7 @@ final class AbstractSubscriptionProviders {
       try {
         openProviders(consumer);
       } catch (final Exception e) {
-        LOGGER.warn("Failed to open providers for consumer {} because of {}", consumer, e, e);
+        LOGGER.warn(SubscriptionMessages.OPEN_PROVIDERS_FAILED, consumer, e, e);
         return;
       }
     }
@@ -298,7 +313,7 @@ final class AbstractSubscriptionProviders {
     try {
       allEndPoints = consumer.fetchAllEndPointsWithRedirection();
     } catch (final Exception e) {
-      LOGGER.warn("Failed to fetch all endpoints for consumer {} because of {}", consumer, e, e);
+      LOGGER.warn(SubscriptionMessages.FETCH_ENDPOINTS_FAILED, consumer, e, e);
       return;
     }
 
@@ -313,7 +328,11 @@ final class AbstractSubscriptionProviders {
           newProvider = consumer.constructProviderAndHandshake(endPoint);
         } catch (final Exception e) {
           LOGGER.warn(
-              "{} failed to create connection with {} because of {}", consumer, endPoint, e, e);
+              SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
+              consumer,
+              endPoint,
+              e,
+              e);
           continue;
         }
         addProvider(entry.getKey(), newProvider);
@@ -324,7 +343,8 @@ final class AbstractSubscriptionProviders {
           provider.setAvailable();
         } catch (final Exception e) {
           LOGGER.warn(
-              "{} failed to sending heartbeat to subscription provider {} because of {}, set subscription provider unavailable",
+              SubscriptionMessages
+                  .LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F,
               consumer,
               provider,
               e,
@@ -337,7 +357,8 @@ final class AbstractSubscriptionProviders {
             closeAndRemoveProvider(entry.getKey());
           } catch (final Exception e) {
             LOGGER.warn(
-                "Exception occurred when {} closing and removing subscription provider {} because of {}",
+                SubscriptionMessages
+                    .LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739,
                 consumer,
                 provider,
                 e,
@@ -355,7 +376,8 @@ final class AbstractSubscriptionProviders {
           closeAndRemoveProvider(dataNodeId);
         } catch (final Exception e) {
           LOGGER.warn(
-              "Exception occurred when {} closing and removing subscription provider {} because of {}",
+              SubscriptionMessages
+                  .LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739,
               consumer,
               provider,
               e,

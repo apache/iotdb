@@ -20,8 +20,10 @@
 package org.apache.iotdb.commons.client.request;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.commons.utils.function.CheckedTriConsumer;
 
 import com.google.common.collect.ImmutableMap;
@@ -53,15 +55,15 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
 
   private static final int MAX_RETRY_NUM = 6;
 
-  protected AsyncRequestManager() {
-    initClientManager();
+  protected AsyncRequestManager(int selectorNumOfAsyncClientManager) {
+    initClientManager(selectorNumOfAsyncClientManager);
     actionMapBuilder = ImmutableMap.builder();
     initActionMapBuilder();
     this.actionMap = this.actionMapBuilder.build();
     checkActionMapCompleteness();
   }
 
-  protected abstract void initClientManager();
+  protected abstract void initClientManager(int selectorNumOfAsyncClientManager);
 
   protected abstract void initActionMapBuilder();
 
@@ -149,11 +151,11 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           requestContext.getCountDownLatch().await();
         } else {
           if (!requestContext.getCountDownLatch().await(timeoutInMs, TimeUnit.MILLISECONDS)) {
-            LOGGER.warn("Timeout during {}. Retry: {}/{}", requestType, retry, retryNum);
+            LOGGER.warn(ClientMessages.ASYNC_REQUEST_TIMEOUT, requestType, retry, retryNum);
           }
         }
       } catch (final InterruptedException e) {
-        LOGGER.error("Interrupted during {}. Retry: {}/{}", requestType, retry, retryNum);
+        LOGGER.error(ClientMessages.ASYNC_REQUEST_INTERRUPTED, requestType, retry, retryNum);
         Thread.currentThread().interrupt();
       }
 
@@ -165,7 +167,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
 
     if (!requestContext.getRequestIndices().isEmpty() && !keepSilent) {
       LOGGER.warn(
-          "Failed to {} after {} retries, requestIndices: {}",
+          ClientMessages.ASYNC_REQUEST_FAILED_AFTER_RETRIES,
           requestType,
           retryNum,
           requestContext.getRequestIndices());
@@ -177,27 +179,55 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
       int requestId,
       NodeLocation targetNode,
       int retryCount) {
+    final TEndPoint endPoint = nodeLocationToEndPoint(targetNode);
+    Client client = null;
+    boolean dispatched = false;
+    AsyncRequestRPCHandler<?, RequestType, NodeLocation> handler = null;
     try {
       if (!actionMap.containsKey(requestContext.getRequestType())) {
         throw new UnsupportedOperationException(
-            "unsupported request type "
+            ClientMessages.EXCEPTION_UNSUPPORTED_REQUEST_TYPE_2030CDC7
                 + requestContext.getRequestType()
-                + ", please set it in AsyncRequestManager::initActionMapBuilder()");
+                + ClientMessages
+                    .EXCEPTION_PLEASE_SET_IT_ASYNCREQUESTMANAGER_INITACTIONMAPBUILDER_0F039A93);
       }
-      Client client = clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
+      handler = buildHandler(requestContext, requestId, targetNode);
+      client = clientManager.borrowClient(endPoint);
       adjustClientTimeoutIfNecessary(requestContext.getRequestType(), client);
       Object req = requestContext.getRequest(requestId);
-      AsyncRequestRPCHandler<?, RequestType, NodeLocation> handler =
-          buildHandler(requestContext, requestId, targetNode);
       Objects.requireNonNull(actionMap.get(requestContext.getRequestType()))
           .accept(req, client, handler);
+      // After accept() returns, the async callback (onComplete/onError) takes over the
+      // responsibility of returning the client to the pool. Before this point, if any exception
+      // is thrown, the client must be returned/invalidated here to prevent pool leakage.
+      dispatched = true;
     } catch (Exception e) {
       LOGGER.warn(
-          "{} failed on Node {}, because {}, retrying {}...",
+          ClientMessages.ASYNC_REQUEST_FAILED_ON_NODE,
           requestContext.getRequestType(),
-          nodeLocationToEndPoint(targetNode),
+          endPoint,
           e.getMessage(),
           retryCount);
+      if (handler != null) {
+        try {
+          handler.onError(e);
+        } catch (final Exception handlerException) {
+          LOGGER.warn(
+              ClientMessages
+                  .MESSAGE_FAILED_TO_HANDLE_ASYNC_REQUEST_ERROR_FOR_REQUEST_TYPE_ARG_ON_NODE_ARG_ARG_3AE293F7,
+              requestContext.getRequestType(),
+              endPoint,
+              handlerException.getMessage(),
+              handlerException);
+          requestContext.getCountDownLatch().countDown();
+        }
+      } else {
+        requestContext.getCountDownLatch().countDown();
+      }
+    } finally {
+      if (!dispatched && client != null && clientManager instanceof ClientManager) {
+        ((ClientManager<TEndPoint, Client>) clientManager).returnClient(endPoint, client);
+      }
     }
   }
 

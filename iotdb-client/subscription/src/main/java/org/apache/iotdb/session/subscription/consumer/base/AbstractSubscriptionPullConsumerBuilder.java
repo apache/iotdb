@@ -59,6 +59,12 @@ public class AbstractSubscriptionPullConsumerBuilder extends AbstractSubscriptio
   }
 
   @Override
+  public AbstractSubscriptionPullConsumerBuilder encryptedPassword(final String encryptedPassword) {
+    super.encryptedPassword(encryptedPassword);
+    return this;
+  }
+
+  @Override
   public AbstractSubscriptionPullConsumerBuilder consumerId(final String consumerId) {
     super.consumerId(consumerId);
     return this;

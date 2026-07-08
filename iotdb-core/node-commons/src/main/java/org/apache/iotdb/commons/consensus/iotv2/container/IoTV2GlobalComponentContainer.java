@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 
 import org.slf4j.Logger;
@@ -90,10 +91,10 @@ public class IoTV2GlobalComponentContainer {
     backgroundTaskService.shutdownNow();
     try {
       if (!backgroundTaskService.awaitTermination(30, TimeUnit.SECONDS)) {
-        LOGGER.warn("IoTV2 background service did not terminate within {}s", 30);
+        LOGGER.warn(CommonMessages.IOTV2_BG_NOT_TERMINATED, 30);
       }
     } catch (InterruptedException e) {
-      LOGGER.warn("IoTV2 background Thread still doesn't exit after 30s");
+      LOGGER.warn(CommonMessages.IOTV2_BG_STILL_RUNNING);
       Thread.currentThread().interrupt();
     }
   }

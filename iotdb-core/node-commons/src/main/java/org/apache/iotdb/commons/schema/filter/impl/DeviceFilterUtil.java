@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.filter.impl;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -69,7 +70,8 @@ public class DeviceFilterUtil {
                         childFilter.accept(StringValueFilterVisitor.getInstance(), node)));
           }
         } else {
-          throw new IllegalStateException("Input single filter must be DeviceIdFilter");
+          throw new IllegalStateException(
+              SchemaMessages.INPUT_SINGLE_FILTER_MUST_BE_DEVICE_ID_FILTER);
         }
       }
       pathList.add(partialPath);

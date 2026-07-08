@@ -22,11 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
@@ -109,7 +111,8 @@ public class ShowDiskUsageNode extends VirtualSourceNode {
 
   @Override
   public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("no child is allowed for ShowDiskUsageNode");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.NO_CHILD_IS_ALLOWED_FOR_SHOWDISKUSAGENODE);
   }
 
   @Override
@@ -139,8 +142,8 @@ public class ShowDiskUsageNode extends VirtualSourceNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitShowDiskUsage(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitShowDiskUsage(this, context);
   }
 
   // We only use DataNodeLocation when do distributionPlan, so DataNodeLocation is no need to

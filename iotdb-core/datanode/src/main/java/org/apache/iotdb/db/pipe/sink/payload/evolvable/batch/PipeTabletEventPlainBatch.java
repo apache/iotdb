@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -47,14 +48,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Objects;
 
 public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
   private final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
-  private static final String TREE_MODEL_DATABASE_PLACEHOLDER = null;
   private final List<String> insertNodeDataBases = new ArrayList<>();
   private final List<String> tabletDataBases = new ArrayList<>();
 
@@ -75,7 +75,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   @Override
   protected boolean constructBatch(final TabletInsertionEvent event) throws IOException {
     final long bufferSize = buildTabletInsertionBuffer(event);
-    totalBufferSize += bufferSize;
     pipe2BytesAccumulated.compute(
         new Pair<>(
             ((EnrichedEvent) event).getPipeName(), ((EnrichedEvent) event).getCreationTime()),
@@ -86,8 +85,13 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   @Override
   public synchronized void onSuccess() {
-    super.onSuccess();
+    clearBatchData();
 
+    super.onSuccess();
+  }
+
+  @Override
+  protected void clearBatchData() {
     insertNodeBuffers.clear();
     tabletBuffers.clear();
 
@@ -106,14 +110,18 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           insertTablets.getValue().entrySet()) {
         // needCopyFlag and tablet
         final List<Pair<Boolean, Tablet>> batchTablets = new ArrayList<>();
+        final int totalRowSize = tabletEntry.getValue().getLeft();
         for (final Tablet tablet : tabletEntry.getValue().getRight()) {
           boolean success = false;
           for (final Pair<Boolean, Tablet> tabletPair : batchTablets) {
+            if (!mayAppendTablet(tabletPair.getRight(), tablet)) {
+              continue;
+            }
             if (tabletPair.getLeft()) {
               tabletPair.setRight(copyTablet(tabletPair.getRight()));
               tabletPair.setLeft(Boolean.FALSE);
             }
-            if (tabletPair.getRight().append(tablet, tabletEntry.getValue().getLeft())) {
+            if (tabletPair.getRight().append(tablet, totalRowSize)) {
               success = true;
               break;
             }
@@ -158,23 +166,21 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       if (!(insertNode instanceof RelationalInsertTabletNode)) {
         buffer = insertNode.serializeToByteBuffer();
+        final String databaseName =
+            pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName();
+        estimateSize = RamUsageEstimator.sizeOf(databaseName) + buffer.limit();
+        increaseTotalBufferSizeAndUpdateMemoryBlock(estimateSize);
         insertNodeBuffers.add(buffer);
-        if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
-          estimateSize =
-              RamUsageEstimator.sizeOf(
-                  pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
-          insertNodeDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
-        } else {
-          estimateSize = 4;
-          insertNodeDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
-        }
-        estimateSize += buffer.limit();
+        insertNodeDataBases.add(databaseName);
       } else {
-        for (final Tablet tablet :
-            ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets()) {
-          estimateSize +=
-              constructTabletBatch(
-                  tablet, pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
+        final List<Tablet> tablets = pipeInsertNodeTabletInsertionEvent.convertToTablets();
+        estimateSize = calculateTabletsSizeInBytes(tablets);
+        increaseTotalBufferSizeAndUpdateMemoryBlock(estimateSize);
+        for (final Tablet tablet : tablets) {
+          constructTabletBatchWithoutMemoryReservation(
+              tablet, pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
         }
       }
     } else {
@@ -192,9 +198,11 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           ReadWriteIOUtils.write(pipeRawTabletInsertionEvent.isAligned(), outputStream);
           buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
         }
-        estimateSize = 4 + buffer.limit();
+        final String databaseName = pipeRawTabletInsertionEvent.getTreeModelDatabaseName();
+        estimateSize = RamUsageEstimator.sizeOf(databaseName) + buffer.limit();
+        increaseTotalBufferSizeAndUpdateMemoryBlock(estimateSize);
         tabletBuffers.add(buffer);
-        tabletDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
+        tabletDataBases.add(databaseName);
       }
     }
 
@@ -202,19 +210,34 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   private long constructTabletBatch(final Tablet tablet, final String databaseName) {
-    final AtomicLong size = new AtomicLong(0);
+    final long estimateSize = calculateTabletSizeInBytes(tablet);
+    increaseTotalBufferSizeAndUpdateMemoryBlock(estimateSize);
+    constructTabletBatchWithoutMemoryReservation(tablet, databaseName);
+    return estimateSize;
+  }
+
+  private void constructTabletBatchWithoutMemoryReservation(
+      final Tablet tablet, final String databaseName) {
     final Pair<Integer, List<Tablet>> currentBatch =
         tableModelTabletMap
-            .computeIfAbsent(
-                databaseName,
-                k -> {
-                  size.addAndGet(RamUsageEstimator.sizeOf(databaseName));
-                  return new HashMap<>();
-                })
+            .computeIfAbsent(databaseName, k -> new HashMap<>())
             .computeIfAbsent(tablet.getTableName(), k -> new Pair<>(0, new ArrayList<>()));
     currentBatch.setLeft(currentBatch.getLeft() + tablet.getRowSize());
     currentBatch.getRight().add(tablet);
+  }
+
+  private long calculateTabletsSizeInBytes(final List<Tablet> tablets) {
+    return tablets.stream().mapToLong(PipeTabletEventPlainBatch::calculateTabletSizeInBytes).sum();
+  }
+
+  private static long calculateTabletSizeInBytes(final Tablet tablet) {
     return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + 4;
+  }
+
+  static boolean mayAppendTablet(final Tablet target, final Tablet source) {
+    // Tablet.append already checks schemas and column categories. Avoid repeating those potentially
+    // expensive comparisons here because wide-table pipe transfer can have many columns.
+    return Objects.equals(target.getDeviceId(), source.getDeviceId());
   }
 
   public static Tablet copyTablet(final Tablet tablet) {
@@ -298,7 +321,9 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         return copiedBinaryValues;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                dataType));
     }
   }
 }

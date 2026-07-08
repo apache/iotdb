@@ -202,6 +202,7 @@ struct TPipeHeartbeatResp {
   2: optional list<bool> pipeCompletedList
   3: optional list<i64> pipeRemainingEventCountList
   4: optional list<double> pipeRemainingTimeList
+  5: optional list<i32> pipeDegradedStatusList
 }
 
 struct TLicense {
@@ -310,6 +311,14 @@ enum TAggregationType {
   APPROX_COUNT_DISTINCT,
   APPROX_MOST_FREQUENT,
   APPROX_PERCENTILE,
+  CORR,
+  COVAR_POP,
+  COVAR_SAMP,
+  REGR_SLOPE,
+  REGR_INTERCEPT,
+  SKEWNESS,
+  KURTOSIS
+  PERCENTILE,
 }
 
 struct TShowConfigurationTemplateResp {

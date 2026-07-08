@@ -19,8 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.calc.execution.aggregation.BinaryModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.BooleanModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.CentralMomentAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.CorrelationAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.CovarianceAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.DoubleModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.FloatModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.IntModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.LongModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.RegressionAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -69,6 +82,11 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case MAX_BY:
       case MIN_BY:
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
         return true;
       default:
         return false;
@@ -79,13 +97,52 @@ public class AccumulatorFactory {
       TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
     switch (aggregationType) {
       case MAX_BY:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
         return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case MIN_BY:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
         return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case CORR:
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
+        return new CorrelationAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)});
+      case COVAR_POP:
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
+        return new CovarianceAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CovarianceAccumulator.CovarianceType.COVAR_POP);
+      case COVAR_SAMP:
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
+        return new CovarianceAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CovarianceAccumulator.CovarianceType.COVAR_SAMP);
+      case REGR_SLOPE:
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
+        return new RegressionAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            RegressionAccumulator.RegressionType.REGR_SLOPE);
+      case REGR_INTERCEPT:
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
+        return new RegressionAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            RegressionAccumulator.RegressionType.REGR_INTERCEPT);
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
     }
   }
 
@@ -140,8 +197,15 @@ public class AccumulatorFactory {
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_SAMP);
       case VAR_POP:
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_POP);
+      case SKEWNESS:
+        return new CentralMomentAccumulator(
+            tsDataType, CentralMomentAccumulator.MomentType.SKEWNESS);
+      case KURTOSIS:
+        return new CentralMomentAccumulator(
+            tsDataType, CentralMomentAccumulator.MomentType.KURTOSIS);
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
     }
   }
 
@@ -165,7 +229,7 @@ public class AccumulatorFactory {
         return new DoubleModeAccumulator();
       case OBJECT:
       default:
-        throw new IllegalArgumentException("Unknown data type: " + tsDataType);
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_DATA_TYPE + tsDataType);
     }
   }
 
@@ -216,7 +280,9 @@ public class AccumulatorFactory {
           return keep -> keep != constant;
         default:
           throw new IllegalArgumentException(
-              "unsupported expression type: " + keepExpression.getExpressionType());
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_FD6F5B7C,
+                  keepExpression.getExpressionType()));
       }
     }
   }

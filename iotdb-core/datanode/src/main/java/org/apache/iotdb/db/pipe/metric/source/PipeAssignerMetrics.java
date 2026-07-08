@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.source;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -90,7 +91,7 @@ public class PipeAssignerMetrics implements IMetricSet {
       deregister(dataRegionId);
     }
     if (!assignerMap.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe assigner metrics, assigner map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_ASSIGNER_METRICS);
     }
   }
 
@@ -132,7 +133,7 @@ public class PipeAssignerMetrics implements IMetricSet {
     synchronized (this) {
       if (!assignerMap.containsKey(dataRegionId)) {
         LOGGER.warn(
-            "Failed to deregister pipe assigner metrics, PipeDataRegionAssigner({}) does not exist",
+            DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_ASSIGNER_METRICS_PIPEDATAREGIONASSIGNER,
             dataRegionId);
         return;
       }

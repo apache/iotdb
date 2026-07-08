@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
@@ -34,8 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -56,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -120,6 +121,20 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class StatementGeneratorTest {
+
+  @Test
+  public void testAlterTopicStatement() {
+    final Statement statement =
+        StatementGenerator.createStatement(
+            "ALTER TOPIC topic1 WITH ('owner-id'='owner2','owner-epoch'='6')",
+            ZonedDateTime.now().getOffset());
+
+    Assert.assertTrue(statement instanceof AlterTopicStatement);
+    final AlterTopicStatement alterTopicStatement = (AlterTopicStatement) statement;
+    Assert.assertEquals("topic1", alterTopicStatement.getTopicName());
+    Assert.assertEquals("owner2", alterTopicStatement.getTopicAttributes().get("owner-id"));
+    Assert.assertEquals("6", alterTopicStatement.getTopicAttributes().get("owner-epoch"));
+  }
 
   @Test
   public void testShowDiskUsage() {
@@ -1038,6 +1053,27 @@ public class StatementGeneratorTest {
     path2.add(new PartialPath("root.sg.d2"));
     assertEquals(path2, stmt.getSourcePaths().fullPathList);
     assertEquals(null, stmt.getQueryStatement());
+  }
+
+  @Test
+  public void testShowRepairDataPartitionTableProgress() {
+    Statement statement =
+        StatementGenerator.createStatement(
+            "SHOW REPAIR DATA PARTITION TABLE PROGRESS;", ZonedDateTime.now().getOffset());
+    assertEquals(StatementType.SHOW_REPAIR_DATA_PARTITION_TABLE_PROGRESS, statement.getType());
+
+    QueryStatement queryStatement =
+        (QueryStatement)
+            StatementGenerator.createStatement(
+                "SELECT progress FROM root.sg.d1;", ZonedDateTime.now().getOffset());
+    assertEquals(
+        "progress",
+        queryStatement
+            .getSelectComponent()
+            .getResultColumns()
+            .get(0)
+            .getExpression()
+            .getExpressionString());
   }
 
   // TODO: add more tests

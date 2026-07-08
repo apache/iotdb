@@ -19,35 +19,36 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.math.DoubleMath;
@@ -76,12 +77,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
+import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
+import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.getLongValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.tsfile.enums.TSDataType.INT32;
 import static org.apache.tsfile.enums.TSDataType.INT64;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
@@ -103,7 +104,7 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @Override
-  protected Filter visitInPredicate(InPredicate node, Context context) {
+  public Filter visitInPredicate(InPredicate node, Context context) {
     Expression operand = node.getValue();
     if (isTimeColumn(operand, timeColumnName)) {
       return timeFilterVisitor.process(node, null);
@@ -157,7 +158,10 @@ public class ConvertPredicateToFilterVisitor
 
     if (!context.isMeasurementColumn(symbolReference)) {
       throw new IllegalStateException(
-          String.format("Only support measurement column in filter: %s", symbolReference));
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ONLY_SUPPORT_MEASUREMENT_COLUMN_IN_FILTER_S_140800D9,
+              symbolReference));
     }
 
     int measurementIndex = context.getMeasurementIndex(symbolReference.getName());
@@ -236,7 +240,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -253,7 +259,9 @@ public class ConvertPredicateToFilterVisitor
         return new ValueIsNotNullOperator(measurementIndex);
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -272,7 +280,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -296,7 +306,9 @@ public class ConvertPredicateToFilterVisitor
         return ValueFilterApi.ltEq(measurementIndex, value, dataType);
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -309,7 +321,10 @@ public class ConvertPredicateToFilterVisitor
 
     if (!context.isMeasurementColumn(symbolReference)) {
       throw new IllegalStateException(
-          String.format("Only support measurement column in filter: %s", symbolReference));
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ONLY_SUPPORT_MEASUREMENT_COLUMN_IN_FILTER_S_140800D9,
+              symbolReference));
     }
 
     int measurementIndex = context.getMeasurementIndex(symbolReference.getName());
@@ -338,7 +353,10 @@ public class ConvertPredicateToFilterVisitor
             measurementIndex, value, field1, zoneId, currPrecision);
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported extract comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNSUPPORTED_EXTRACT_COMPARISON_OPERATOR_S_38A9CDFA,
+                operator));
     }
   }
 
@@ -367,21 +385,26 @@ public class ConvertPredicateToFilterVisitor
           return (T) new Binary(getBlobValue(value));
         default:
           throw new UnsupportedOperationException(
-              String.format("Unsupported data type %s", dataType));
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_S_4CB21D47,
+                  dataType));
       }
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException(
-          String.format("\"%s\" cannot be cast to [%s]", value, dataType));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_S_CANNOT_BE_CAST_TO_S_DABC2DA0,
+              value,
+              dataType));
     }
   }
 
   @Override
-  protected Filter visitIsNullPredicate(IsNullPredicate node, Context context) {
-    throw new IllegalArgumentException("IS NULL cannot be pushed down");
+  public Filter visitIsNullPredicate(IsNullPredicate node, Context context) {
+    throw new IllegalArgumentException(DataNodeQueryMessages.IS_NULL_CANNOT_BE_PUSHED_DOWN);
   }
 
   @Override
-  protected Filter visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
+  public Filter visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
     checkArgument(isSymbolReference(node.getValue()));
     SymbolReference operand = (SymbolReference) node.getValue();
     checkArgument(context.isMeasurementColumn(operand));
@@ -390,7 +413,7 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @Override
-  protected Filter visitLikePredicate(LikePredicate node, Context context) {
+  public Filter visitLikePredicate(LikePredicate node, Context context) {
     checkArgument(isSymbolReference(node.getValue()));
     SymbolReference operand = (SymbolReference) node.getValue();
     checkArgument(context.isMeasurementColumn(operand));
@@ -408,7 +431,7 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @Override
-  protected Filter visitLogicalExpression(LogicalExpression node, Context context) {
+  public Filter visitLogicalExpression(LogicalExpression node, Context context) {
     switch (node.getOperator()) {
       case OR:
         return FilterFactory.or(
@@ -418,17 +441,19 @@ public class ConvertPredicateToFilterVisitor
             node.getTerms().stream().map(n -> process(n, context)).collect(Collectors.toList()));
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported logical operator %s", node.getOperator()));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_LOGICAL_OPERATOR_S_FDC60986,
+                node.getOperator()));
     }
   }
 
   @Override
-  protected Filter visitNotExpression(NotExpression node, Context context) {
+  public Filter visitNotExpression(NotExpression node, Context context) {
     return FilterFactory.not(process(node.getValue(), context));
   }
 
   @Override
-  protected Filter visitComparisonExpression(ComparisonExpression node, Context context) {
+  public Filter visitComparisonExpression(ComparisonExpression node, Context context) {
     if (isTimeColumn(node.getLeft(), timeColumnName)
         || isTimeColumn(node.getRight(), timeColumnName)) {
       return timeFilterVisitor.process(node, null);
@@ -465,32 +490,38 @@ public class ConvertPredicateToFilterVisitor
           context);
     } else {
       throw new IllegalStateException(
-          String.format("%s is not supported in value push down", node));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_S_IS_NOT_SUPPORTED_IN_VALUE_PUSH_DOWN_DD54E38A,
+              node));
     }
   }
 
   @Override
-  protected Filter visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
-    throw new UnsupportedOperationException("Filter push down does not support CASE WHEN");
+  public Filter visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN);
   }
 
   @Override
-  protected Filter visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
-    throw new UnsupportedOperationException("Filter push down does not support CASE WHEN");
+  public Filter visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN);
   }
 
   @Override
-  protected Filter visitIfExpression(IfExpression node, Context context) {
-    throw new UnsupportedOperationException("Filter push down does not support IF");
+  public Filter visitIfExpression(IfExpression node, Context context) {
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_IF);
   }
 
   @Override
-  protected Filter visitNullIfExpression(NullIfExpression node, Context context) {
-    throw new UnsupportedOperationException("Filter push down does not support NULLIF");
+  public Filter visitNullIfExpression(NullIfExpression node, Context context) {
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_NULLIF);
   }
 
   @Override
-  protected Filter visitBetweenPredicate(BetweenPredicate node, Context context) {
+  public Filter visitBetweenPredicate(BetweenPredicate node, Context context) {
     Expression firstExpression = node.getValue();
     Expression secondExpression = node.getMin();
     Expression thirdExpression = node.getMax();
@@ -547,13 +578,17 @@ public class ConvertPredicateToFilterVisitor
                   measurementIndex, maxValue, field, zoneId, currPrecision)));
     } else if (context.isExtractMeasurementColumn(secondExpression)) {
       throw new IllegalStateException(
-          "Should not reach here before PredicateCombineIntoTableScanChecker support Extract push-down in third child");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SHOULD_NOT_REACH_HERE_BEFORE_PREDICATECOMBINEINTOTABLESCANCHECKER_C591ED7D);
     } else if (context.isExtractMeasurementColumn(thirdExpression)) {
       throw new IllegalStateException(
-          "Should not reach here before PredicateCombineIntoTableScanChecker support Extract push-down in third child");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SHOULD_NOT_REACH_HERE_BEFORE_PREDICATECOMBINEINTOTABLESCANCHECKER_C591ED7D);
     } else {
       throw new IllegalStateException(
-          String.format("%s is not supported in value push down", node));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_S_IS_NOT_SUPPORTED_IN_VALUE_PUSH_DOWN_DD54E38A,
+              node));
     }
   }
 
@@ -584,7 +619,8 @@ public class ConvertPredicateToFilterVisitor
     } else if (expression instanceof FloatLiteral) {
       return ((FloatLiteral) expression).getValue();
     } else {
-      throw new IllegalArgumentException("expression should be numeric, actual is " + expression);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXPRESSION_SHOULD_BE_NUMERIC_ACTUAL_IS + expression);
     }
   }
 
@@ -613,7 +649,8 @@ public class ConvertPredicateToFilterVisitor
       return Long.valueOf(((GenericLiteral) expression).getValue());
     } else {
       throw new SemanticException(
-          "InList Literal for TIMESTAMP can only be LongLiteral, DoubleLiteral and GenericLiteral, current is "
+          DataNodeQueryMessages
+                  .INLIST_LITERAL_FOR_TIMESTAMP_CAN_ONLY_BE_LONGLITERAL_DOUBLELITERAL_AND_GENERICLITERAL
               + expression.getClass().getSimpleName());
     }
   }
@@ -633,7 +670,9 @@ public class ConvertPredicateToFilterVisitor
       Integer index = measuremrntsMap.get(measurement);
       if (index == null) {
         throw new IllegalArgumentException(
-            String.format("Measurement %s does not exist", measurement));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_MEASUREMENT_S_DOES_NOT_EXIST_23D2B5BE,
+                measurement));
       }
       return index;
     }
@@ -642,7 +681,10 @@ public class ConvertPredicateToFilterVisitor
       Type type = schemaMap.get(symbol).getType();
       if (type == null) {
         throw new IllegalArgumentException(
-            String.format("ColumnSchema of Symbol %s isn't saved in schemaMap", symbol));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_COLUMNSCHEMA_OF_SYMBOL_S_ISN_T_SAVED_IN_SCHEMAMAP_3A172EBC,
+                symbol));
       }
       return type;
     }

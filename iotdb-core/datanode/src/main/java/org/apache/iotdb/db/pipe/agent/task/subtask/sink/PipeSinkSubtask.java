@@ -21,20 +21,25 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeSinkWithSchedulingDelay;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
+import org.apache.iotdb.db.pipe.sink.protocol.airgap.IoTDBDataRegionAirGapSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -56,6 +61,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
+  private final String attributeDisplayString;
   private final int sinkIndex;
 
   // Now parallel connectors run the same time, thus the heartbeat events are not sure
@@ -71,8 +77,27 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final int sinkIndex,
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
       final PipeConnector outputPipeConnector) {
+    this(
+        taskID,
+        creationTime,
+        attributeSortedString,
+        attributeSortedString,
+        sinkIndex,
+        inputPendingQueue,
+        outputPipeConnector);
+  }
+
+  public PipeSinkSubtask(
+      final String taskID,
+      final long creationTime,
+      final String attributeSortedString,
+      final String attributeDisplayString,
+      final int sinkIndex,
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
+      final PipeConnector outputPipeConnector) {
     super(taskID, creationTime, outputPipeConnector);
     this.attributeSortedString = attributeSortedString;
+    this.attributeDisplayString = attributeDisplayString;
     this.sinkIndex = sinkIndex;
     this.inputPendingQueue = inputPendingQueue;
 
@@ -138,6 +163,37 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     return true;
   }
 
+  @Override
+  protected long peekSchedulingDelayInMs() {
+    if (!(outputPipeSink instanceof PipeSinkWithSchedulingDelay)) {
+      return 0;
+    }
+
+    return ((PipeSinkWithSchedulingDelay) outputPipeSink).peekSchedulingDelayMs();
+  }
+
+  @Override
+  protected long consumeSchedulingDelayInMs() {
+    if (!(outputPipeSink instanceof PipeSinkWithSchedulingDelay)) {
+      return 0;
+    }
+
+    final long remainingSchedulingDelayMs =
+        ((PipeSinkWithSchedulingDelay) outputPipeSink).consumeSchedulingDelayMs();
+    if (remainingSchedulingDelayMs <= 0) {
+      return 0;
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          DataNodePipeMessages.PIPE_SINK_SUBTASK_DELAYED_TO_AVOID_FREQUENT_HANDSHAKES,
+          getDisplayTaskID(),
+          remainingSchedulingDelayMs);
+    }
+
+    return remainingSchedulingDelayMs;
+  }
+
   private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
     // DO NOT call heartbeat or transfer after closed, or will cause connection leak
     if (isClosed.get()) {
@@ -149,13 +205,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       outputPipeSink.transfer(event);
     } catch (final Exception e) {
       throw new PipeConnectionException(
-          "PipeConnector: "
-              + outputPipeSink.getClass().getName()
-              + "(id: "
-              + taskID
-              + ")"
-              + " heartbeat failed, or encountered failure when transferring generic event. Failure: "
-              + e.getMessage(),
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_PIPECONNECTOR_ARG_ID_ARG_HEARTBEAT_FAILED_OR_ENCOUNTERED_FAILURE_WHEN_TRANSFERRING_GENERIC_EVENT_FAILURE_ARG_679A4A49,
+              outputPipeSink.getClass().getName(),
+              getDisplayTaskID(),
+              e.getMessage()),
           e);
     }
 
@@ -176,14 +231,14 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final long startTime = System.currentTimeMillis();
       outputPipeSink.close();
       LOGGER.info(
-          "Pipe: connector subtask {} ({}) was closed within {} ms",
-          taskID,
+          DataNodePipeMessages.PIPE_CONNECTOR_SUBTASK_WAS_CLOSED_WITHIN_MS,
+          getDisplayTaskID(),
           outputPipeSink,
           System.currentTimeMillis() - startTime);
     } catch (final Exception e) {
       LOGGER.info(
-          "Exception occurred when closing pipe connector subtask {}, root cause: {}",
-          taskID,
+          DataNodePipeMessages.EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_CONNECTOR_SUBTASK,
+          getDisplayTaskID(),
           ErrorHandlingCommonUtils.getRootCause(e).getMessage(),
           e);
     } finally {
@@ -198,9 +253,9 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public void discardEventsOfPipe(final String pipeNameToDrop, int regionId) {
+  public void discardEventsOfPipe(final CommitterKey committerKey) {
     // Try to remove the events as much as possible
-    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, regionId);
+    inputPendingQueue.discardEventsOfPipe(committerKey);
 
     try {
       increaseHighPriorityTaskCount();
@@ -213,8 +268,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         // use a new thread to stop all the pipes, we will not encounter deadlock here. Or else we
         // will.
         if (lastEvent instanceof EnrichedEvent
-            && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())
-            && regionId == ((EnrichedEvent) lastEvent).getRegionId()) {
+            && isEventFromPipe((EnrichedEvent) lastEvent, committerKey)) {
           // Do not clear the last event's reference counts because it may be on transferring
           lastEvent = null;
           // Submit self to avoid that the lastEvent has been retried "max times" times and has
@@ -236,8 +290,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         // clear the lastExceptionEvent. It's safe to potentially clear it twice because we have the
         // "nonnull" detection.
         if (lastExceptionEvent instanceof EnrichedEvent
-            && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())
-            && regionId == ((EnrichedEvent) lastExceptionEvent).getRegionId()) {
+            && isEventFromPipe((EnrichedEvent) lastExceptionEvent, committerKey)) {
           clearReferenceCountAndReleaseLastExceptionEvent();
         }
       }
@@ -245,9 +298,17 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       decreaseHighPriorityTaskCount();
     }
 
-    if (outputPipeSink instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeSink).discardEventsOfPipe(pipeNameToDrop, regionId);
+    if (outputPipeSink instanceof PipeConnectorWithEventDiscard) {
+      ((PipeConnectorWithEventDiscard) outputPipeSink).discardEventsOfPipe(committerKey);
     }
+  }
+
+  private static boolean isEventFromPipe(
+      final EnrichedEvent event, final CommitterKey committerKey) {
+    return committerKey.getPipeName().equals(event.getPipeName())
+        && committerKey.getCreationTime() == event.getCreationTime()
+        && committerKey.getRegionId() == event.getRegionId()
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
@@ -294,6 +355,9 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     if (outputPipeSink instanceof IoTDBDataRegionSyncSink) {
       return ((IoTDBDataRegionSyncSink) outputPipeSink).getBatchSize();
     }
+    if (outputPipeSink instanceof IoTDBDataRegionAirGapSink) {
+      return ((IoTDBDataRegionAirGapSink) outputPipeSink).getBatchSize();
+    }
     return 0;
   }
 
@@ -315,6 +379,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
   }
 
+  public void setSchemaBatchSizeHistogram(Histogram schemaBatchSizeHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).setSchemaBatchSizeHistogram(schemaBatchSizeHistogram);
+    }
+  }
+
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
     if (outputPipeSink instanceof IoTDBSink) {
       ((IoTDBSink) outputPipeSink).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
@@ -325,6 +395,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     if (outputPipeSink instanceof IoTDBSink) {
       ((IoTDBSink) outputPipeSink)
           .setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
+    }
+  }
+
+  public void setSchemaBatchTimeIntervalHistogram(Histogram schemaBatchTimeIntervalHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink)
+          .setSchemaBatchTimeIntervalHistogram(schemaBatchTimeIntervalHistogram);
     }
   }
 
@@ -352,5 +429,15 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     lastExceptionTime = Long.MAX_VALUE;
     PipeDataNodeAgent.runtime().report(event, exception);
+  }
+
+  @Override
+  public String getDisplayTaskID() {
+    return generateDisplayTaskID(attributeDisplayString, creationTime, sinkIndex);
+  }
+
+  static String generateDisplayTaskID(
+      final String attributeDisplayString, final long creationTime, final int sinkIndex) {
+    return String.format("%s_%s_%s", attributeDisplayString, creationTime, sinkIndex);
   }
 }

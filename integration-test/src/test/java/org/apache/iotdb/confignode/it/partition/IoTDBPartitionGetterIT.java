@@ -33,6 +33,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -516,6 +518,84 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(2, getSeriesSlotListResp.getSeriesSlotListSize());
+    }
+  }
+
+  @Test
+  public void testGetRegionGroupsByTime() throws Exception {
+    final String sg0 = "root.sg0";
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+
+      // Get all region groups covering the full time range
+      TGetRegionGroupsByTimeReq req = new TGetRegionGroupsByTimeReq(sg0, 0L, Long.MAX_VALUE);
+      TGetRegionGroupsByTimeResp resp = client.getRegionGroupsByTime(req);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
+      Assert.assertNotNull(resp.getRegionReplicaSets());
+      Assert.assertFalse(resp.getRegionReplicaSets().isEmpty());
+      int allRegionGroupCount = resp.getRegionReplicaSetsSize();
+
+      // Each replica set should have testReplicationFactor replicas
+      resp.getRegionReplicaSets()
+          .forEach(
+              replicaSet -> {
+                Assert.assertEquals(testReplicationFactor, replicaSet.getDataNodeLocationsSize());
+                Assert.assertEquals(
+                    TConsensusGroupType.DataRegion, replicaSet.getRegionId().getType());
+              });
+
+      // Query with a single time slot range should return a subset
+      TGetRegionGroupsByTimeReq singleSlotReq =
+          new TGetRegionGroupsByTimeReq(sg0, 0L, testTimePartitionInterval - 1);
+      TGetRegionGroupsByTimeResp singleSlotResp = client.getRegionGroupsByTime(singleSlotReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), singleSlotResp.getStatus().getCode());
+      Assert.assertNotNull(singleSlotResp.getRegionReplicaSets());
+      Assert.assertFalse(singleSlotResp.getRegionReplicaSets().isEmpty());
+      Assert.assertTrue(singleSlotResp.getRegionReplicaSetsSize() <= allRegionGroupCount);
+
+      // Query with a disjoint time range should return empty result
+      TGetRegionGroupsByTimeReq disjointReq =
+          new TGetRegionGroupsByTimeReq(
+              sg0,
+              testTimePartitionSlotsNum * testTimePartitionInterval * 2,
+              testTimePartitionSlotsNum * testTimePartitionInterval * 3);
+      TGetRegionGroupsByTimeResp disjointResp = client.getRegionGroupsByTime(disjointReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), disjointResp.getStatus().getCode());
+      Assert.assertTrue(
+          disjointResp.getRegionReplicaSets() == null
+              || disjointResp.getRegionReplicaSets().isEmpty());
+
+      // Query non-existent database should return empty result
+      TGetRegionGroupsByTimeReq nonExistReq =
+          new TGetRegionGroupsByTimeReq("root.nonexistent", 0L, Long.MAX_VALUE);
+      TGetRegionGroupsByTimeResp nonExistResp = client.getRegionGroupsByTime(nonExistReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), nonExistResp.getStatus().getCode());
+      Assert.assertTrue(
+          nonExistResp.getRegionReplicaSets() == null
+              || nonExistResp.getRegionReplicaSets().isEmpty());
+
+      // Verify consistency: union of per-slot queries should equal full-range query
+      Set<TConsensusGroupId> unionRegionIds = new HashSet<>();
+      for (long t = 0; t < testTimePartitionSlotsNum; t++) {
+        TGetRegionGroupsByTimeReq perSlotReq =
+            new TGetRegionGroupsByTimeReq(
+                sg0, t * testTimePartitionInterval, t * testTimePartitionInterval);
+        TGetRegionGroupsByTimeResp perSlotResp = client.getRegionGroupsByTime(perSlotReq);
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), perSlotResp.getStatus().getCode());
+        if (perSlotResp.getRegionReplicaSets() != null) {
+          perSlotResp
+              .getRegionReplicaSets()
+              .forEach(replicaSet -> unionRegionIds.add(replicaSet.getRegionId()));
+        }
+      }
+      Set<TConsensusGroupId> allRegionIds = new HashSet<>();
+      resp.getRegionReplicaSets().forEach(replicaSet -> allRegionIds.add(replicaSet.getRegionId()));
+      Assert.assertEquals(allRegionIds, unionRegionIds);
     }
   }
 

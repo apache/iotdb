@@ -19,47 +19,47 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnMetadata;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.function.Exclude;
 import org.apache.iotdb.db.queryengine.plan.function.Repeat;
 import org.apache.iotdb.db.queryengine.plan.function.Split;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
-import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
-import org.apache.iotdb.db.queryengine.plan.udf.BuiltinAggregationFunction;
-import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -83,6 +83,9 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isOneNumericType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isTwoNumericType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1_ATTRIBUTES;
@@ -97,9 +100,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTable
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_6;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_6_ATTRIBUTES;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.getFunctionType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isOneNumericType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoNumericType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
@@ -112,6 +112,7 @@ public class TestMetadata implements Metadata {
   public static final String DB1 = "testdb";
   public static final String TREE_DB1 = "root.test";
   public static final String TABLE1 = "table1";
+  public static final String TABLE_WITH_X = "table_with_x";
   public static final String TIME = "time";
   private static final String TAG1 = "tag1";
   private static final String TAG2 = "tag2";
@@ -121,6 +122,7 @@ public class TestMetadata implements Metadata {
   private static final String S1 = "s1";
   private static final String S2 = "s2";
   private static final String S3 = "s3";
+  private static final String X = "x";
   private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, TIMESTAMP);
   private static final ColumnMetadata TAG1_CM = new ColumnMetadata(TAG1, StringType.STRING);
   private static final ColumnMetadata TAG2_CM = new ColumnMetadata(TAG2, StringType.STRING);
@@ -130,6 +132,7 @@ public class TestMetadata implements Metadata {
   private static final ColumnMetadata S1_CM = new ColumnMetadata(S1, INT64);
   private static final ColumnMetadata S2_CM = new ColumnMetadata(S2, INT64);
   private static final ColumnMetadata S3_CM = new ColumnMetadata(S3, DOUBLE);
+  private static final ColumnMetadata X_CM = new ColumnMetadata(X, INT64);
 
   public static final String DB2 = "db2";
   public static final String TABLE2 = "table2";
@@ -144,6 +147,7 @@ public class TestMetadata implements Metadata {
   public boolean tableExists(final QualifiedObjectName name) {
     return name.getDatabaseName().equalsIgnoreCase(DB1)
         && (name.getObjectName().equalsIgnoreCase(TABLE1)
+            || name.getObjectName().equalsIgnoreCase(TABLE_WITH_X)
             || name.getObjectName().equalsIgnoreCase(TABLE2)
             || name.getObjectName().equalsIgnoreCase(TABLE3));
   }
@@ -214,6 +218,15 @@ public class TestMetadata implements Metadata {
               ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
 
       return Optional.of(new TableSchema(TABLE1, columnSchemas));
+    } else if (name.getObjectName().equalsIgnoreCase(TABLE_WITH_X)) {
+      final List<ColumnSchema> columnSchemas =
+          Arrays.asList(
+              ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
+              ColumnSchema.builder(X_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S1_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S2_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
+
+      return Optional.of(new TableSchema(TABLE_WITH_X, columnSchemas));
     } else {
       List<ColumnSchema> columnSchemas =
           Arrays.asList(
@@ -316,11 +329,6 @@ public class TestMetadata implements Metadata {
   @Override
   public boolean canCoerce(final Type from, final Type to) {
     return true;
-  }
-
-  @Override
-  public IPartitionFetcher getPartitionFetcher() {
-    return getFakePartitionFetcher();
   }
 
   @Override

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
@@ -59,8 +61,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
     // limit in buffer size
     this.maxBatchSizeInBytes = requestMaxBatchSizeInBytes;
-    this.allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory().forceAllocate(requestMaxBatchSizeInBytes);
+    this.allocatedMemoryBlock = PipeDataNodeResourceManager.memory().forceAllocate(0);
     if (recordMetric != null) {
       this.recordMetric = recordMetric;
     } else {
@@ -95,6 +96,10 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
             events.add((EnrichedEvent) event);
           }
         } catch (final Exception e) {
+          if (events.isEmpty()) {
+            clearBatchData();
+            resetMemoryUsage();
+          }
           // If the event is not added to the batch, we need to decrease the reference count.
           ((EnrichedEvent) event)
               .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false);
@@ -106,7 +111,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
           firstEventProcessingTime = System.currentTimeMillis();
         }
       } else {
-        LOGGER.warn("Cannot increase reference count for event: {}, ignore it in batch.", event);
+        LOGGER.warn(DataNodePipeMessages.CANNOT_INCREASE_REFERENCE_COUNT_FOR_EVENT_IGNORE, event);
       }
     }
 
@@ -124,7 +129,27 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   protected abstract boolean constructBatch(final TabletInsertionEvent event)
       throws WALPipeException, IOException;
 
+  protected void increaseTotalBufferSizeAndUpdateMemoryBlock(final long bufferSize) {
+    if (bufferSize <= 0) {
+      return;
+    }
+
+    final long newTotalBufferSize = Math.min(totalBufferSize + bufferSize, maxBatchSizeInBytes);
+    PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlock, newTotalBufferSize);
+    totalBufferSize = newTotalBufferSize;
+  }
+
+  protected void releaseAllocatedMemoryBlock() {
+    PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlock, 0);
+  }
+
+  protected void clearBatchData() {}
+
   public boolean shouldEmit() {
+    if (events.isEmpty()) {
+      return false;
+    }
+
     final long diff = System.currentTimeMillis() - firstEventProcessingTime;
     if (totalBufferSize >= maxBatchSizeInBytes || diff >= maxDelayInMs) {
       recordMetric.accept(diff, totalBufferSize, events.size());
@@ -136,33 +161,62 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   public synchronized void onSuccess() {
     events.clear();
 
-    totalBufferSize = 0;
-
-    firstEventProcessingTime = Long.MIN_VALUE;
+    resetMemoryUsage();
   }
 
   @Override
   public synchronized void close() {
+    if (isClosed) {
+      return;
+    }
     isClosed = true;
 
     clearEventsReferenceCount(PipeTabletEventBatch.class.getName());
     events.clear();
+    clearBatchData();
+    resetMemoryUsage();
     allocatedMemoryBlock.close();
   }
 
   /**
-   * Discard all events of the given pipe. This method only clears the reference count of the events
-   * and discard them, but do not modify other objects (such as buffers) for simplicity.
+   * Discard all events of the given pipe. This method only clears the reference count of the
+   * events. If some events remain, cached batch data is kept unchanged for simplicity.
    */
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
-    events.removeIf(
-        event -> {
-          if (pipeNameToDrop.equals(event.getPipeName()) && regionId == event.getRegionId()) {
-            event.clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
-            return true;
-          }
-          return false;
-        });
+  public synchronized void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
+    final boolean hasDiscardedEvents =
+        events.removeIf(
+            event -> {
+              if (isEventFromPipe(event, committerKey)) {
+                event.clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
+                return true;
+              }
+              return false;
+            });
+    if (hasDiscardedEvents && events.isEmpty()) {
+      clearBatchData();
+      resetMemoryUsage();
+    }
+  }
+
+  private void resetMemoryUsage() {
+    totalBufferSize = 0;
+
+    releaseAllocatedMemoryBlock();
+
+    firstEventProcessingTime = Long.MIN_VALUE;
+  }
+
+  private static boolean isEventFromPipe(
+      final EnrichedEvent event, final CommitterKey committerKey) {
+    return committerKey.getPipeName().equals(event.getPipeName())
+        && committerKey.getCreationTime() == event.getCreationTime()
+        && committerKey.getRegionId() == event.getRegionId()
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
   }
 
   public synchronized void decreaseEventsReferenceCount(

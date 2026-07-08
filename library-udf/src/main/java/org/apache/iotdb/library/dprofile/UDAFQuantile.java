@@ -65,59 +65,65 @@ public class UDAFQuantile implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    double res = Util.getValueAsDouble(row);
-    sketch.update(dataToLong(res));
+    final long encoded;
+    switch (dataType) {
+      case INT32:
+        encoded = row.getInt(0);
+        break;
+      case INT64:
+        encoded = row.getLong(0);
+        break;
+      default:
+        encoded = dataToLong(Util.getValueAsDouble(row));
+        break;
+    }
+    sketch.update(encoded);
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    long result = sketch.findMinValueWithRank((long) (rank * sketch.getN()));
-    double res = longToResult(result);
+    long n = sketch.getN();
+    // Nearest-rank: k-th smallest uses getApproxRank (strictly-less-than count) in [0, n-1];
+    // rank=1 must map to k=n-1, not k=n which is unreachable and can overshoot the max sample.
+    long k = 0;
+    if (n > 0) {
+      k = (long) Math.ceil(rank * n) - 1;
+      if (k < 0) {
+        k = 0;
+      } else if (k >= n) {
+        k = n - 1;
+      }
+    }
+    long result = sketch.findMinValueWithRank(k);
     switch (dataType) {
       case INT32:
-        collector.putInt(0, (int) res);
+        collector.putInt(0, (int) result);
         break;
       case INT64:
-        collector.putLong(0, (long) res);
+        collector.putLong(0, result);
         break;
       case FLOAT:
-        collector.putFloat(0, (float) res);
+        collector.putFloat(0, (float) longToResult(result));
         break;
       case DOUBLE:
-        collector.putDouble(0, res);
+        collector.putDouble(0, longToResult(result));
         break;
-      case TIMESTAMP:
-      case DATE:
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case BOOLEAN:
       default:
         break;
     }
   }
 
-  private long dataToLong(Object data) {
-    long result;
+  private long dataToLong(double res) {
     switch (dataType) {
-      case INT32:
-        return (int) data;
       case FLOAT:
-        result = Float.floatToIntBits((float) data);
-        return (float) data >= 0f ? result : result ^ Long.MAX_VALUE;
-      case INT64:
-        return (long) data;
+        float f = (float) res;
+        long flBits = Float.floatToIntBits(f);
+        return f >= 0f ? flBits : flBits ^ Long.MAX_VALUE;
       case DOUBLE:
-        result = Double.doubleToLongBits((double) data);
-        return (double) data >= 0d ? result : result ^ Long.MAX_VALUE;
-      case BLOB:
-      case BOOLEAN:
-      case STRING:
-      case TEXT:
-      case DATE:
-      case TIMESTAMP:
+        long d = Double.doubleToLongBits(res);
+        return res >= 0d ? d : d ^ Long.MAX_VALUE;
       default:
-        return (long) data;
+        return (long) res;
     }
   }
 
@@ -129,16 +135,8 @@ public class UDAFQuantile implements UDTF {
       case DOUBLE:
         result = (result >>> 63) == 0 ? result : result ^ Long.MAX_VALUE;
         return Double.longBitsToDouble(result);
-      case INT64:
-      case INT32:
-      case DATE:
-      case TEXT:
-      case STRING:
-      case BOOLEAN:
-      case BLOB:
-      case TIMESTAMP:
       default:
-        return (result);
+        return (double) result;
     }
   }
 }

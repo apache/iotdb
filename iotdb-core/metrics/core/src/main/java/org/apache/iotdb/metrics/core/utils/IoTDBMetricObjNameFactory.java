@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.core.utils;
 
+import org.apache.iotdb.metrics.core.i18n.MetricsCoreMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +69,7 @@ public class IoTDBMetricObjNameFactory implements ObjectNameFactory {
       try {
         return new ObjectName(domain, "name", ObjectName.quote(name));
       } catch (MalformedObjectNameException e1) {
-        LOGGER.warn("IoTDB Metric: Unable to register {} {}", type, name, e1);
+        LOGGER.warn(MetricsCoreMessages.JMX_UNABLE_TO_REGISTER, type, name, e1);
         throw new RuntimeException(e1);
       }
     }

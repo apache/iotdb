@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 
 import org.slf4j.Logger;
@@ -32,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(CompletedProcedureRecycler.class);
   private static final int DEFAULT_BATCH_SIZE = 8;
-  private final long evictTTL;
+  private final long evictTTLInMs;
   private final Map<Long, CompletedProcedureContainer<Env>> completed;
   private final IProcedureStore<Env> store;
 
@@ -44,14 +46,21 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
     super(TimeUnit.SECONDS.toMillis(cleanTimeInterval));
     this.completed = completedMap;
     this.store = store;
-    this.evictTTL = evictTTL;
+    // evictTTL is configured in seconds, but isExpired compares it against a
+    // System.currentTimeMillis() delta, so it must be converted to milliseconds here.
+    this.evictTTLInMs = TimeUnit.SECONDS.toMillis(evictTTL);
+  }
+
+  @TestOnly
+  long getEvictTTLInMs() {
+    return evictTTLInMs;
   }
 
   @Override
   protected void periodicExecute(final Env env) {
     if (completed.isEmpty()) {
       if (LOG.isTraceEnabled()) {
-        LOG.trace("No completed procedures to cleanup.");
+        LOG.trace(ProcedureMessages.LOG_NO_COMPLETED_PROCEDURES_CLEANUP_50434D91);
       }
       return;
     }
@@ -66,14 +75,15 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
       final Map.Entry<Long, CompletedProcedureContainer<Env>> entry = it.next();
       final CompletedProcedureContainer<Env> retainer = entry.getValue();
       final Procedure<?> proc = retainer.getProcedure();
-      if (retainer.isExpired(now, evictTTL)) {
+      if (retainer.isExpired(now, evictTTLInMs)) {
         // Failed procedures aren't persisted in WAL.
         batchIds[batchCount++] = entry.getKey();
         if (batchCount == batchIds.length) {
           try {
             store.delete(batchIds, 0, batchCount);
           } catch (Exception e) {
-            LOG.error("Error deleting completed procedures {}.", proc, e);
+            LOG.error(
+                ProcedureMessages.LOG_ERROR_DELETING_COMPLETED_PROCEDURES_ARG_1A3A185E, proc, e);
             // Do not remove from the completed map. Even this procedure may be restored
             // unexpectedly in another new CN leader, we do not need to do anything else since
             // procedures are idempotent.
@@ -83,7 +93,7 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
           }
         }
         it.remove();
-        LOG.trace("Evict completed {}", proc);
+        LOG.trace(ProcedureMessages.LOG_EVICT_COMPLETED_ARG_A968A070, proc);
       }
     }
     if (batchCount > 0) {
@@ -92,7 +102,8 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
       } catch (Exception e) {
         // Even this procedure may be restored unexpectedly in another new CN leader, we do not need
         // to do anything else since procedures are idempotent.
-        LOG.error("Error deleting completed procedures {}.", batchIds, e);
+        LOG.error(
+            ProcedureMessages.LOG_ERROR_DELETING_COMPLETED_PROCEDURES_ARG_1A3A185E, batchIds, e);
       }
     }
   }

@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -64,14 +67,18 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
   // partialResult should be like: | PartialExtremeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of ExtremeValue should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_EXTREMEVALUE_SHOULD_BE_1_A7713D8A);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -97,7 +104,9 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
@@ -132,7 +141,9 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
@@ -164,14 +175,18 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
   // columnBuilder should be single in ExtremeAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of ExtremeValue should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_EXTREMEVALUE_SHOULD_BE_1_A7713D8A);
     if (!initResult) {
       columnBuilders[0].appendNull();
       return;
@@ -198,7 +213,9 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
@@ -230,7 +247,9 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
@@ -268,13 +287,9 @@ public class ExtremeAccumulator implements Accumulator {
   }
 
   private void updateIntResult(int extVal) {
-    int absExtVal = Math.abs(extVal);
     int candidateResult = extremeResult.getInt();
-    int absCandidateResult = Math.abs(extremeResult.getInt());
 
-    if (!initResult
-        || (absExtVal > absCandidateResult)
-        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+    if (!initResult || compareExtreme(extVal, candidateResult) > 0) {
       initResult = true;
       extremeResult.setInt(extVal);
     }
@@ -293,13 +308,9 @@ public class ExtremeAccumulator implements Accumulator {
   }
 
   private void updateLongResult(long extVal) {
-    long absExtVal = Math.abs(extVal);
     long candidateResult = extremeResult.getLong();
-    long absCandidateResult = Math.abs(extremeResult.getLong());
 
-    if (!initResult
-        || (absExtVal > absCandidateResult)
-        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+    if (!initResult || compareExtreme(extVal, candidateResult) > 0) {
       initResult = true;
       extremeResult.setLong(extVal);
     }
@@ -353,5 +364,25 @@ public class ExtremeAccumulator implements Accumulator {
       initResult = true;
       extremeResult.setDouble(extVal);
     }
+  }
+
+  private int compareExtreme(int left, int right) {
+    int absComparison = Long.compare(Math.abs((long) left), Math.abs((long) right));
+    return absComparison == 0 ? Integer.compare(left, right) : absComparison;
+  }
+
+  private int compareExtreme(long left, long right) {
+    int absComparison = compareAbs(left, right);
+    return absComparison == 0 ? Long.compare(left, right) : absComparison;
+  }
+
+  private int compareAbs(long left, long right) {
+    if (left == Long.MIN_VALUE) {
+      return right == Long.MIN_VALUE ? 0 : 1;
+    }
+    if (right == Long.MIN_VALUE) {
+      return -1;
+    }
+    return Long.compare(Math.abs(left), Math.abs(right));
   }
 }

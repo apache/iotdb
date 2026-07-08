@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
 import org.apache.tsfile.block.column.Column;
@@ -90,7 +91,8 @@ public class InTransformer extends UnaryTransformer {
       case BLOB:
       case OBJECT:
       default:
-        throw new UnsupportedOperationException("unsupported data type: " + layerReaderDataType);
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_3 + layerReaderDataType);
     }
   }
 
@@ -127,7 +129,8 @@ public class InTransformer extends UnaryTransformer {
       case BLOB:
       case OBJECT:
       default:
-        throw new QueryProcessException("unsupported data type: " + layerReaderDataType);
+        throw new QueryProcessException(
+            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_3 + layerReaderDataType);
     }
   }
 

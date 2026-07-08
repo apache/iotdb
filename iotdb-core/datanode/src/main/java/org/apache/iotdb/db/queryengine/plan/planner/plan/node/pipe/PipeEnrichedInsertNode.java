@@ -22,13 +22,14 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -132,8 +133,8 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitPipeEnrichedInsertNode(this, context);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C context) {
+    return ((PlanVisitor<R, C>) visitor).visitPipeEnrichedInsertNode(this, context);
   }
 
   @Override
@@ -230,6 +231,50 @@ public class PipeEnrichedInsertNode extends InsertNode {
   @Override
   public SearchNode setSearchIndex(final long searchIndex) {
     insertNode.setSearchIndex(searchIndex);
+    return this;
+  }
+
+  @Override
+  public long getRoutingEpoch() {
+    return insertNode.getRoutingEpoch();
+  }
+
+  @Override
+  public SearchNode setRoutingEpoch(final long routingEpoch) {
+    insertNode.setRoutingEpoch(routingEpoch);
+    return this;
+  }
+
+  @Override
+  public long getPhysicalTime() {
+    return insertNode.getPhysicalTime();
+  }
+
+  @Override
+  public SearchNode setPhysicalTime(final long physicalTime) {
+    insertNode.setPhysicalTime(physicalTime);
+    return this;
+  }
+
+  @Override
+  public int getNodeId() {
+    return insertNode.getNodeId();
+  }
+
+  @Override
+  public SearchNode setNodeId(final int nodeId) {
+    insertNode.setNodeId(nodeId);
+    return this;
+  }
+
+  @Override
+  public long getSyncIndex() {
+    return insertNode.getSyncIndex();
+  }
+
+  @Override
+  public SearchNode setSyncIndex(final long syncIndex) {
+    insertNode.setSyncIndex(syncIndex);
     return this;
   }
 

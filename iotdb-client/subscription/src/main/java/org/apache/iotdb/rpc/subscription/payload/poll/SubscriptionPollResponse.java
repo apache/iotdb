@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc.subscription.payload.poll;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -100,12 +102,15 @@ public class SubscriptionPollResponse {
         case TERMINATION:
           payload = new TerminationPayload().deserialize(buffer);
           break;
+        case WATERMARK:
+          payload = new WatermarkPayload().deserialize(buffer);
+          break;
         default:
-          LOGGER.warn("unexpected response type: {}, payload will be null", responseType);
+          LOGGER.warn(SubscriptionMessages.UNEXPECTED_RESPONSE_TYPE, responseType);
           break;
       }
     } else {
-      LOGGER.warn("unexpected response type: {}, payload will be null", responseType);
+      LOGGER.warn(SubscriptionMessages.UNEXPECTED_RESPONSE_TYPE, responseType);
     }
 
     final SubscriptionCommitContext commitContext = SubscriptionCommitContext.deserialize(buffer);
@@ -121,9 +126,10 @@ public class SubscriptionPollResponse {
 
   protected Map<String, String> coreReportMessage() {
     final Map<String, String> result = new HashMap<>();
-    result.put("responseType", SubscriptionPollResponseType.valueOf(responseType).toString());
-    result.put("payload", payload.toString());
-    result.put("commitContext", commitContext.toString());
+    final SubscriptionPollResponseType type = SubscriptionPollResponseType.valueOf(responseType);
+    result.put("responseType", type != null ? type.toString() : "UNKNOWN(" + responseType + ")");
+    result.put("payload", payload != null ? payload.toString() : "null");
+    result.put("commitContext", commitContext != null ? commitContext.toString() : "null");
     return result;
   }
 }

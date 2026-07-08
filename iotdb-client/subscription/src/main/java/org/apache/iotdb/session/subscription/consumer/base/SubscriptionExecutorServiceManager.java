@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.session.subscription.consumer.base;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -190,7 +192,7 @@ public final class SubscriptionExecutorServiceManager {
       }
 
       LOGGER.warn(
-          "{} has been launched, set core pool size to {} will be ignored",
+          SubscriptionMessages.LOG_ARG_HAS_BEEN_LAUNCHED_SET_CORE_POOL_SIZE_ARG_WILL_0FDECBE3,
           this.name,
           corePoolSize);
     }
@@ -199,7 +201,7 @@ public final class SubscriptionExecutorServiceManager {
       if (isShutdown()) {
         synchronized (this) {
           if (isShutdown()) {
-            LOGGER.info("Launching {} with core pool size {}...", this.name, this.corePoolSize);
+            LOGGER.info(SubscriptionMessages.EXECUTOR_LAUNCHING, this.name, this.corePoolSize);
 
             this.executor =
                 Executors.newFixedThreadPool(
@@ -224,7 +226,7 @@ public final class SubscriptionExecutorServiceManager {
       if (!isShutdown()) {
         synchronized (this) {
           if (!isShutdown()) {
-            LOGGER.info("Shutting down {}...", this.name);
+            LOGGER.info(SubscriptionMessages.EXECUTOR_SHUTTING_DOWN, this.name);
 
             this.executor.shutdown();
             try {
@@ -232,17 +234,20 @@ public final class SubscriptionExecutorServiceManager {
                   AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
                 this.executor.shutdownNow();
                 LOGGER.warn(
-                    "Interrupt the worker, which may cause some task inconsistent. Please check the biz logs.");
+                    SubscriptionMessages
+                        .LOG_INTERRUPT_WORKER_WHICH_MAY_CAUSE_SOME_TASK_INCONSISTENT_PLEASE_CHECK_04926D9F);
                 if (!this.executor.awaitTermination(
                     AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
                   LOGGER.error(
-                      "Thread pool can't be shutdown even with interrupting worker threads, which may cause some task inconsistent. Please check the biz logs.");
+                      SubscriptionMessages
+                          .LOG_THREAD_POOL_CAN_T_SHUTDOWN_EVEN_INTERRUPTING_WORKER_THREADS_WHICH_A49166F9);
                 }
               }
             } catch (final InterruptedException e) {
               this.executor.shutdownNow();
               LOGGER.error(
-                  "The current thread is interrupted when it is trying to stop the worker threads. This may leave an inconsistent state. Please check the biz logs.");
+                  SubscriptionMessages
+                      .LOG_CURRENT_THREAD_INTERRUPTED_IT_TRYING_STOP_WORKER_THREADS_MAY_LEAVE_CF07ABA0);
               Thread.currentThread().interrupt();
             }
 
@@ -261,7 +266,7 @@ public final class SubscriptionExecutorServiceManager {
         }
       }
 
-      LOGGER.warn("{} has not been launched, ignore submit task", this.name);
+      LOGGER.warn(SubscriptionMessages.EXECUTOR_NOT_LAUNCHED_SUBMIT, this.name);
       return null;
     }
 
@@ -276,7 +281,7 @@ public final class SubscriptionExecutorServiceManager {
         }
       }
 
-      LOGGER.warn("{} has not been launched, ignore invoke all tasks", this.name);
+      LOGGER.warn(SubscriptionMessages.EXECUTOR_NOT_LAUNCHED_INVOKE, this.name);
       return null;
     }
 
@@ -294,7 +299,7 @@ public final class SubscriptionExecutorServiceManager {
         }
       }
 
-      LOGGER.warn("{} has not been launched, return zero", this.name);
+      LOGGER.warn(SubscriptionMessages.EXECUTOR_NOT_LAUNCHED_ZERO, this.name);
       return 0;
     }
   }
@@ -310,7 +315,7 @@ public final class SubscriptionExecutorServiceManager {
       if (isShutdown()) {
         synchronized (this) {
           if (isShutdown()) {
-            LOGGER.info("Launching {} with core pool size {}...", this.name, this.corePoolSize);
+            LOGGER.info(SubscriptionMessages.EXECUTOR_LAUNCHING, this.name, this.corePoolSize);
 
             this.executor =
                 Executors.newScheduledThreadPool(
@@ -343,7 +348,7 @@ public final class SubscriptionExecutorServiceManager {
         }
       }
 
-      LOGGER.warn("{} has not been launched, ignore scheduleWithFixedDelay for task", this.name);
+      LOGGER.warn(SubscriptionMessages.EXECUTOR_NOT_LAUNCHED_SCHEDULE, this.name);
       return null;
     }
   }

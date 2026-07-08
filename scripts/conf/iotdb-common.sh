@@ -18,6 +18,12 @@
 # under the License.
 #
 
+# JVM option for selecting tsfile's runtime locale (log/exception messages).
+# Filtered by Maven at package time:
+#   - Default build: empty (English).
+#   - `with-zh-locale` profile: "-Dtsfile.locale=zh".
+TSFILE_LOCALE_JVM_OPT="@tsfile.locale.opt@"
+
 
 # this function is for parsing the variables like "A=B" in  `start-server.sh -D A=B`
 # The command just parse IOTDB-prefixed variables and ignore all other variables

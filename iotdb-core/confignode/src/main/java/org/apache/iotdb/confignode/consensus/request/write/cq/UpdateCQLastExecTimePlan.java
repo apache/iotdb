@@ -37,20 +37,19 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
 
   private long executionTime;
 
-  // may be null in user call of drop CQ
-  private String md5;
+  private String cqToken;
 
   public UpdateCQLastExecTimePlan() {
     super(UPDATE_CQ_LAST_EXEC_TIME);
   }
 
-  public UpdateCQLastExecTimePlan(String cqId, long executionTime, String md5) {
+  public UpdateCQLastExecTimePlan(String cqId, long executionTime, String cqToken) {
     super(UPDATE_CQ_LAST_EXEC_TIME);
     Validate.notNull(cqId);
-    Validate.notNull(md5);
+    Validate.notNull(cqToken);
     this.cqId = cqId;
     this.executionTime = executionTime;
-    this.md5 = md5;
+    this.cqToken = cqToken;
   }
 
   public String getCqId() {
@@ -61,8 +60,8 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
     return executionTime;
   }
 
-  public String getMd5() {
-    return md5;
+  public String getCqToken() {
+    return cqToken;
   }
 
   @Override
@@ -70,14 +69,14 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(cqId, stream);
     ReadWriteIOUtils.write(executionTime, stream);
-    ReadWriteIOUtils.write(md5, stream);
+    ReadWriteIOUtils.write(cqToken, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     cqId = ReadWriteIOUtils.readString(buffer);
     executionTime = ReadWriteIOUtils.readLong(buffer);
-    md5 = ReadWriteIOUtils.readString(buffer);
+    cqToken = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -92,11 +91,13 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
       return false;
     }
     UpdateCQLastExecTimePlan that = (UpdateCQLastExecTimePlan) o;
-    return executionTime == that.executionTime && cqId.equals(that.cqId) && md5.equals(that.md5);
+    return executionTime == that.executionTime
+        && cqId.equals(that.cqId)
+        && cqToken.equals(that.cqToken);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), cqId, executionTime, md5);
+    return Objects.hash(super.hashCode(), cqId, executionTime, cqToken);
   }
 }

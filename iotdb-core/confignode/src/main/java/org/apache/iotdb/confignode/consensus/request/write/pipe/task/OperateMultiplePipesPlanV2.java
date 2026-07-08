@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.write.pipe.task;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -64,7 +65,8 @@ public class OperateMultiplePipesPlanV2 extends ConfigPhysicalPlan {
         } else if (subPlan instanceof SetPipeStatusPlanV2) {
           ((SetPipeStatusPlanV2) subPlan).serializeImpl(stream);
         } else {
-          throw new IOException("Unsupported sub plan type: " + subPlan.getClass().getName());
+          throw new IOException(
+              ConfigNodeMessages.UNSUPPORTED_SUB_PLAN_TYPE + subPlan.getClass().getName());
         }
       }
     } else {
@@ -78,6 +80,7 @@ public class OperateMultiplePipesPlanV2 extends ConfigPhysicalPlan {
       subPlans = new ArrayList<>();
       int size = ReadWriteIOUtils.readInt(buffer);
       for (int i = 0; i < size; i++) {
+        final boolean isLastSubPlan = i == size - 1;
         short type = ReadWriteIOUtils.readShort(buffer);
         if (type == ConfigPhysicalPlanType.CreatePipeV2.getPlanType()) {
           CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2();
@@ -85,21 +88,35 @@ public class OperateMultiplePipesPlanV2 extends ConfigPhysicalPlan {
           subPlans.add(createPipePlanV2);
         } else if (type == ConfigPhysicalPlanType.DropPipeV2.getPlanType()) {
           DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2();
-          dropPipePlanV2.deserializeImpl(buffer);
+          dropPipePlanV2.deserializeImpl(buffer, isLastSubPlan);
           subPlans.add(dropPipePlanV2);
         } else if (type == ConfigPhysicalPlanType.AlterPipeV2.getPlanType()) {
           AlterPipePlanV2 alterPipePlanV2 = new AlterPipePlanV2();
-          alterPipePlanV2.deserializeImpl(buffer);
+          alterPipePlanV2.deserializeImpl(buffer, isLastSubPlan);
           subPlans.add(alterPipePlanV2);
         } else if (type == ConfigPhysicalPlanType.SetPipeStatusV2.getPlanType()) {
           SetPipeStatusPlanV2 setPipeStatusPlanV2 = new SetPipeStatusPlanV2();
-          setPipeStatusPlanV2.deserializeImpl(buffer);
+          setPipeStatusPlanV2.deserializeImpl(buffer, isLastSubPlan);
           subPlans.add(setPipeStatusPlanV2);
         } else {
-          throw new IOException("Unsupported sub plan type: " + type);
+          throw new IOException(ConfigNodeMessages.UNSUPPORTED_SUB_PLAN_TYPE + type);
         }
       }
     }
+  }
+
+  static boolean hasTrailingFieldInSubPlan(final ByteBuffer buffer, final boolean isLastSubPlan) {
+    if (!buffer.hasRemaining()) {
+      return false;
+    }
+    if (isLastSubPlan) {
+      return true;
+    }
+    final short nextPlanType = buffer.getShort(buffer.position());
+    return nextPlanType != ConfigPhysicalPlanType.CreatePipeV2.getPlanType()
+        && nextPlanType != ConfigPhysicalPlanType.DropPipeV2.getPlanType()
+        && nextPlanType != ConfigPhysicalPlanType.AlterPipeV2.getPlanType()
+        && nextPlanType != ConfigPhysicalPlanType.SetPipeStatusV2.getPlanType();
   }
 
   @Override

@@ -20,6 +20,7 @@ package org.apache.iotdb.commons;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 
 import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.server.TThreadPoolServer.Args;
@@ -108,6 +109,21 @@ public class IoTDBThreadPoolFactoryTest {
     } catch (InterruptedException E) {
       fail();
     }
+  }
+
+  @Test
+  public void testNewFixedThreadPoolWithIdleThreadTimeout() throws Exception {
+    ExecutorService exec =
+        IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
+            1, 1, TimeUnit.MILLISECONDS, POOL_NAME);
+
+    exec.submit(() -> {}).get();
+    assertEquals(1, ((WrappedThreadPoolExecutor) exec).getLargestPoolSize());
+
+    Thread.sleep(100);
+    assertEquals(0, ((WrappedThreadPoolExecutor) exec).getPoolSize());
+
+    exec.shutdown();
   }
 
   @Test

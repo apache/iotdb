@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -102,7 +103,7 @@ public class TabletDecoder {
       return output;
     } catch (IOException e) {
       throw new IoTDBRuntimeException(
-          "Failed to decompress compressedBuffer",
+          DataNodeMiscMessages.MISC_EXCEPTION_FAILED_TO_DECOMPRESS_COMPRESSEDBUFFER_56398D3E,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -208,7 +209,7 @@ public class TabletDecoder {
       case UNKNOWN:
       case VECTOR:
       default:
-        throw new IllegalArgumentException("Unsupported data type: " + dataType);
+        throw new IllegalArgumentException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
     }
     return column;
   }

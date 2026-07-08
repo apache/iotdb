@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.copyto;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.TsFileFormatCopyToWriter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -117,13 +118,14 @@ public class TableCopyToOperator implements ProcessOperator {
     }
     File parent = file.getParentFile();
     if (parent != null && !parent.exists() && !parent.mkdirs()) {
-      throw new IOException("Failed to create directories: " + parent);
+      throw new IOException(DataNodeQueryMessages.FAILED_TO_CREATE_DIRECTORIES + parent);
     }
     if (file.exists()) {
-      throw new IOException("Target file already exists: " + file.getAbsolutePath());
+      throw new IOException(
+          DataNodeQueryMessages.TARGET_FILE_ALREADY_EXISTS + file.getAbsolutePath());
     }
     if (!file.createNewFile()) {
-      throw new IOException("Failed to create file: " + file.getAbsolutePath());
+      throw new IOException(DataNodeQueryMessages.FAILED_TO_CREATE_FILE + file.getAbsolutePath());
     }
 
     return file;

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.sink.util.sorter;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -106,7 +108,7 @@ public class PipeInsertEventSorter {
     }
 
     if (bitMapsModified) {
-      dataAdapter.setBitMaps(bitMaps);
+      dataAdapter.setBitMaps(PipeTabletUtils.compactBitMaps(bitMaps, deDuplicatedSize));
     }
   }
 
@@ -196,7 +198,9 @@ public class PipeInsertEventSorter {
         return deDuplicatedBinaryValues;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                dataType));
     }
   }
 

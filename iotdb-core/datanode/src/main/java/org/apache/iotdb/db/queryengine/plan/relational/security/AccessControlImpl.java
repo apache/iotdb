@@ -27,10 +27,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -48,6 +49,7 @@ import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.getReservedDatabaseNameErrorMsg;
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
@@ -77,6 +79,18 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanCreateDatabase(
       String userName, String databaseName, IAuditEntity auditEntity) {
+    if (!AuthorityChecker.INTERNAL_AUDIT_USER.equals(userName)
+        && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(
+              auditEntity
+                  .setAuditLogOperation(AuditLogOperation.DDL)
+                  .setDatabase(databaseName)
+                  .setPrivilegeType(PrivilegeType.CREATE)
+                  .setResult(false),
+              () -> databaseName);
+      throw new AccessDeniedException(getReservedDatabaseNameErrorMsg(TABLE_MODEL_AUDIT_DATABASE));
+    }
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(
         userName, databaseName, TableModelPrivilege.CREATE, auditEntity.setDatabase(databaseName));
@@ -189,7 +203,7 @@ public class AccessControlImpl implements AccessControl {
   public void checkCanSelectFromDatabase4Pipe(
       final String userName, final String databaseName, IAuditEntity auditEntity) {
     if (Objects.isNull(userName)) {
-      throw new AccessDeniedException("User not exists");
+      throw new AccessDeniedException(DataNodeQueryMessages.USER_NOT_EXISTS);
     }
     authChecker.checkDatabasePrivilege(
         userName, databaseName, TableModelPrivilege.SELECT, auditEntity);
@@ -283,7 +297,8 @@ public class AccessControlImpl implements AccessControl {
           DNAuditLogger.getInstance()
               .recordObjectAuthenticationAuditLog(
                   auditEntity.setResult(false), statement::getUserName);
-          throw new AccessDeniedException("Only the superuser can alter him/herself.");
+          throw new AccessDeniedException(
+              DataNodeQueryMessages.ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF);
         }
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           // the superuser can alter anyone

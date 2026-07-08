@@ -360,3 +360,13 @@ Project page: https://github.com/SalesforceAIResearch/uni2ts
 License: https://github.com/SalesforceAIResearch/uni2ts/blob/main/LICENSE.txt
 
 --------------------------------------------------------------------------------
+
+The following files include code modified from MOMENT project.
+
+./iotdb-core/ainode/iotdb/ainode/core/model/moment/*
+
+The MOMENT is open source software licensed under the MIT License
+Project page: https://github.com/moment-timeseries-foundation-model/moment
+License: https://github.com/moment-timeseries-foundation-model/moment/blob/main/LICENSE
+
+--------------------------------------------------------------------------------

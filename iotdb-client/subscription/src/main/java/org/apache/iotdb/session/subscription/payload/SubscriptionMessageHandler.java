@@ -19,4 +19,7 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-public interface SubscriptionMessageHandler {}
+public interface SubscriptionMessageHandler {
+
+  default void removeUserData() {}
+}

@@ -66,14 +66,11 @@ class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
             .reduce(Long::sum)
             .orElse(0L);
 
-    configRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            lastConfigRegionCommitSmoothingValue =
-                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
-          }
-          return meter;
-        });
+    final Meter configRegionMeter = configRegionCommitMeter.get();
+    if (Objects.nonNull(configRegionMeter)) {
+      lastConfigRegionCommitSmoothingValue =
+          pipeRemainingTimeCommitRateAverageTime.getMeterRate(configRegionMeter);
+    }
 
     final double configRegionRemainingTime;
     if (totalConfigRegionWriteEventCount <= 0) {
@@ -101,13 +98,10 @@ class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
   //////////////////////////// Rate ////////////////////////////
 
   void markConfigRegionCommit() {
-    configRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
+    final Meter meter = configRegionCommitMeter.get();
+    if (Objects.nonNull(meter)) {
+      meter.mark();
+    }
   }
 
   //////////////////////////// Switch ////////////////////////////

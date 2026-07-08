@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.sync.SyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
@@ -38,7 +39,6 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -49,6 +49,8 @@ import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+import org.apache.iotdb.consensus.i18n.IoTConsensusV2Messages;
 import org.apache.iotdb.consensus.pipe.service.IoTConsensusV2RPCService;
 import org.apache.iotdb.consensus.pipe.service.IoTConsensusV2RPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -125,12 +127,12 @@ public class IoTConsensusV2 implements IConsensus {
     try {
       recoverFuture.get();
     } catch (CancellationException ce) {
-      LOGGER.info("IoTV2 Recover Task is cancelled", ce);
+      LOGGER.info(IoTConsensusV2Messages.RECOVER_TASK_CANCELLED, ce);
     } catch (ExecutionException ee) {
-      LOGGER.error("Exception while waiting for recover future completion", ee);
+      LOGGER.error(IoTConsensusV2Messages.RECOVER_FUTURE_EXCEPTION, ee);
     } catch (InterruptedException ie) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("IoTV2 Recover Task is interrupted", ie);
+      LOGGER.warn(IoTConsensusV2Messages.RECOVER_TASK_INTERRUPTED, ie);
     }
   }
 
@@ -138,8 +140,9 @@ public class IoTConsensusV2 implements IConsensus {
     if (!storageDir.exists()) {
       // init
       if (!storageDir.mkdirs()) {
-        LOGGER.warn("Unable to create consensus dir at {}", storageDir);
-        throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
+        LOGGER.warn(ConsensusMessages.UNABLE_TO_CREATE_CONSENSUS_DIR, storageDir);
+        throw new IOException(
+            String.format(ConsensusMessages.UNABLE_TO_CREATE_CONSENSUS_DIR_FMT, storageDir));
       }
       return CompletableFuture.completedFuture(null);
     } else {
@@ -162,7 +165,7 @@ public class IoTConsensusV2 implements IConsensus {
                       checkPeerListAndStartIfEligible(consensusGroupId, consensus);
                     } catch (Exception e) {
                       LOGGER.error(
-                          "Failed to recover consensus from {} for {}, ignore it and continue recover other group, async backend checker thread will automatically deregister related pipe side effects for this failed consensus group.",
+                          IoTConsensusV2Messages.FAILED_RECOVER_CONSENSUS,
                           storageDir,
                           consensusGroupId,
                           e);
@@ -170,12 +173,12 @@ public class IoTConsensusV2 implements IConsensus {
                   }
                 } catch (IOException e) {
                   LOGGER.error(
-                      "Failed to recover consensus from {} because read dir failed", storageDir, e);
+                      IoTConsensusV2Messages.FAILED_RECOVER_CONSENSUS_READ_DIR, storageDir, e);
                 }
               })
           .exceptionally(
               e -> {
-                LOGGER.error("Failed to recover consensus from {}", storageDir, e);
+                LOGGER.error(IoTConsensusV2Messages.FAILED_RECOVER_CONSENSUS_SHORT, storageDir, e);
                 return null;
               });
     }
@@ -190,7 +193,7 @@ public class IoTConsensusV2 implements IConsensus {
           } catch (ConsensusGroupNotExistException ignore) {
 
           } catch (Exception e) {
-            LOGGER.warn("Failed to reset peer list while start", e);
+            LOGGER.warn(ConsensusMessages.FAILED_TO_RESET_PEER_LIST_WHILE_START, e);
           }
         };
 
@@ -229,8 +232,7 @@ public class IoTConsensusV2 implements IConsensus {
       return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
     } else if (!impl.isActive()) {
       return RpcUtils.getStatus(
-          TSStatusCode.WRITE_PROCESS_REJECT,
-          "current node is not active and is not ready to receive user write.");
+          TSStatusCode.WRITE_PROCESS_REJECT, ConsensusMessages.NODE_NOT_ACTIVE_REJECT_WRITE);
     } else {
       return impl.write(request);
     }
@@ -277,9 +279,10 @@ public class IoTConsensusV2 implements IConsensus {
         final String path = getPeerDir(groupId);
         File consensusDir = new File(path);
         if (!consensusDir.exists() && !consensusDir.mkdirs()) {
-          LOGGER.warn("Unable to create consensus dir for group {} at {}", groupId, path);
+          LOGGER.warn(ConsensusMessages.UNABLE_TO_CREATE_CONSENSUS_DIR_FOR_GROUP, groupId, path);
           throw new ConsensusException(
-              String.format("Unable to create consensus dir for group %s", groupId));
+              String.format(
+                  ConsensusMessages.UNABLE_TO_CREATE_CONSENSUS_DIR_FOR_GROUP_FMT, groupId));
         }
 
         IoTConsensusV2ServerImpl consensus =
@@ -293,7 +296,7 @@ public class IoTConsensusV2 implements IConsensus {
         consensus.start();
         KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
       } catch (IOException e) {
-        LOGGER.warn("Cannot create local peer for group {} with peers {}", groupId, peers, e);
+        LOGGER.warn(ConsensusMessages.CANNOT_CREATE_LOCAL_PEER, groupId, peers, e);
         throw new ConsensusException(e);
       } finally {
         stateMachineMapLock.readLock().unlock();
@@ -315,14 +318,14 @@ public class IoTConsensusV2 implements IConsensus {
         if (!stateMachineMap.containsKey(groupId)) {
           throw new ConsensusGroupNotExistException(groupId);
         }
-        LOGGER.info("[{}] start to delete local peer for group {}", CLASS_NAME, groupId);
+        LOGGER.info(IoTConsensusV2Messages.START_DELETE_LOCAL_PEER, CLASS_NAME, groupId);
         final IoTConsensusV2ServerImpl consensus = stateMachineMap.get(groupId);
         consensus.clear();
         stateMachineMap.remove(groupId);
 
         FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
         KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
-        LOGGER.info("[{}] finish deleting local peer for group {}", CLASS_NAME, groupId);
+        LOGGER.info(IoTConsensusV2Messages.FINISH_DELETE_LOCAL_PEER, CLASS_NAME, groupId);
       } finally {
         stateMachineMapLock.readLock().unlock();
       }
@@ -342,34 +345,32 @@ public class IoTConsensusV2 implements IConsensus {
     }
     try {
       // step 1: inactive new Peer to prepare for following steps
-      LOGGER.info("[{}] inactivate new peer: {}", CLASS_NAME, peer);
+      LOGGER.info(IoTConsensusV2Messages.INACTIVATE_NEW_PEER, CLASS_NAME, peer);
       impl.setRemotePeerActive(peer, false, false);
 
       // step 2: notify all the other Peers to create consensus pipes to newPeer
       // NOTE: For this step, all the other peers will try to transfer its user write data to target
-      LOGGER.info("[{}] notify current peers to create consensus pipes...", CLASS_NAME);
+      LOGGER.info(IoTConsensusV2Messages.NOTIFY_CREATE_CONSENSUS_PIPES, CLASS_NAME);
       impl.notifyPeersToCreateConsensusPipes(peer);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
       // step 3: wait until all other Peers finish transferring
-      LOGGER.info("[{}] wait until all the other peers finish transferring...", CLASS_NAME);
+      LOGGER.info(IoTConsensusV2Messages.WAIT_PEERS_FINISH_TRANSFER, CLASS_NAME);
       impl.waitPeersToTargetPeerTransmissionCompleted(peer);
 
       // step 4: active new Peer to let new Peer receive client requests
-      LOGGER.info("[{}] activate new peer...", CLASS_NAME);
+      LOGGER.info(IoTConsensusV2Messages.ACTIVATE_NEW_PEER, CLASS_NAME);
       impl.setRemotePeerActive(peer, true, false);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
     } catch (ConsensusGroupModifyPeerException e) {
       try {
-        LOGGER.warn(
-            "[{}] add remote peer failed, automatic cleanup side effects...", CLASS_NAME, e);
+        LOGGER.warn(IoTConsensusV2Messages.ADD_REMOTE_PEER_FAILED_CLEANUP, CLASS_NAME, e);
 
         // roll back
         impl.notifyPeersToDropConsensusPipe(peer);
 
       } catch (ConsensusGroupModifyPeerException mpe) {
-        LOGGER.error(
-            "[{}] failed to cleanup side effects after failed to add remote peer", CLASS_NAME, mpe);
+        LOGGER.error(IoTConsensusV2Messages.FAILED_CLEANUP_SIDE_EFFECTS, CLASS_NAME, mpe);
       }
       throw new ConsensusException(e);
     }
@@ -387,23 +388,23 @@ public class IoTConsensusV2 implements IConsensus {
 
     try {
       // let other peers to drop consensus pipes to target
-      LOGGER.info("[{}] notify other peers to drop consensus pipes...", CLASS_NAME);
+      LOGGER.info(IoTConsensusV2Messages.NOTIFY_DROP_CONSENSUS_PIPES, CLASS_NAME);
       impl.notifyPeersToDropConsensusPipe(peer);
       KillPoint.setKillPoint(
           IoTConsensusRemovePeerCoordinatorKillPoints
               .AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
 
       // let target peer reject new write
-      LOGGER.info("[{}] inactivate peer {}", CLASS_NAME, peer);
+      LOGGER.info(IoTConsensusV2Messages.INACTIVATE_PEER, CLASS_NAME, peer);
       impl.setRemotePeerActive(peer, false, true);
       KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
 
       // wait its consensus pipes to complete
-      LOGGER.info("[{}] wait target peer{} complete transfer...", CLASS_NAME, peer);
+      LOGGER.info(IoTConsensusV2Messages.WAIT_TARGET_PEER_COMPLETE_TRANSFER, CLASS_NAME, peer);
       impl.waitTargetPeerToPeersTransmissionCompleted(peer);
 
       // wait target peer to release all resource
-      LOGGER.info("[{}] wait {} to release all resource...", CLASS_NAME, peer);
+      LOGGER.info(IoTConsensusV2Messages.WAIT_PEER_RELEASE_RESOURCE, CLASS_NAME, peer);
       impl.waitReleaseAllRegionRelatedResource(peer);
     } catch (ConsensusGroupModifyPeerException e) {
       throw new ConsensusException(e);
@@ -414,7 +415,7 @@ public class IoTConsensusV2 implements IConsensus {
   @Override
   public void recordCorrectPeerListBeforeStarting(
       Map<ConsensusGroupId, List<Peer>> correctPeerList) {
-    LOGGER.info("Record correct peer list: {}", correctPeerList);
+    LOGGER.info(ConsensusMessages.RECORD_CORRECT_PEER_LIST, correctPeerList);
     this.correctPeerListBeforeStart = correctPeerList;
   }
 
@@ -426,9 +427,7 @@ public class IoTConsensusV2 implements IConsensus {
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
 
     if (!correctPeers.contains(new Peer(groupId, thisNodeId, thisNode))) {
-      LOGGER.warn(
-          "[RESET PEER LIST] {} Local peer is not in the correct configuration, delete it.",
-          groupId);
+      LOGGER.warn(ConsensusMessages.RESET_PEER_LIST_NOT_IN_CORRECT, groupId);
       deleteLocalPeer(groupId);
       return;
     }
@@ -440,10 +439,10 @@ public class IoTConsensusV2 implements IConsensus {
       if (!correctPeers.contains(peer)) {
         try {
           impl.dropConsensusPipeToTargetPeer(peer);
-          LOGGER.info("[RESET PEER LIST] {} Remove sync channel with: {}", groupId, peer);
+          LOGGER.info(ConsensusMessages.RESET_PEER_LIST_REMOVE_SYNC_CHANNEL, groupId, peer);
         } catch (ConsensusGroupModifyPeerException e) {
           LOGGER.error(
-              "[RESET PEER LIST] {} Failed to remove sync channel with: {}", groupId, peer, e);
+              ConsensusMessages.RESET_PEER_LIST_FAILED_TO_REMOVE_SYNC_CHANNEL, groupId, peer, e);
         }
       }
     }
@@ -452,10 +451,10 @@ public class IoTConsensusV2 implements IConsensus {
       if (!impl.containsPeer(peer) && peer.getNodeId() != this.thisNodeId) {
         try {
           impl.createConsensusPipeToTargetPeer(peer);
-          LOGGER.info("[RESET PEER LIST] {} Build sync channel with: {}", groupId, peer);
+          LOGGER.info(ConsensusMessages.RESET_PEER_LIST_BUILD_SYNC_CHANNEL, groupId, peer);
         } catch (ConsensusGroupModifyPeerException e) {
           LOGGER.warn(
-              "[RESET PEER LIST] {} Failed to build sync channel with: {}", groupId, peer, e);
+              ConsensusMessages.RESET_PEER_LIST_FAILED_TO_BUILD_SYNC_CHANNEL, groupId, peer, e);
         }
       }
     }
@@ -463,21 +462,19 @@ public class IoTConsensusV2 implements IConsensus {
     String currentPeerListStr = impl.getPeers().toString();
     if (!previousPeerListStr.equals(currentPeerListStr)) {
       LOGGER.info(
-          "[RESET PEER LIST] {} Local peer list has been reset: {} -> {}",
+          ConsensusMessages.RESET_PEER_LIST_RESET_RESULT,
           groupId,
           previousPeerListStr,
           impl.getPeers());
     } else {
-      LOGGER.info(
-          "[RESET PEER LIST] {} The current peer list is correct, nothing need to be reset: {}",
-          groupId,
-          previousPeerListStr);
+      LOGGER.info(ConsensusMessages.RESET_PEER_LIST_NOTHING_TO_RESET, groupId, previousPeerListStr);
     }
   }
 
   @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
-    throw new ConsensusException(String.format("%s does not support leader transfer", CLASS_NAME));
+    throw new ConsensusException(
+        String.format(IoTConsensusV2Messages.NOT_SUPPORT_LEADER_TRANSFER, CLASS_NAME));
   }
 
   @Override

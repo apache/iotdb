@@ -20,6 +20,25 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
@@ -28,24 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -152,6 +154,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
               LocalExecutionPlanner.getInstance().metadata,
               context.getCteQueries(),
               ExplainType.NONE,
+              ExplainOutputFormat.GRAPHVIZ,
               context.getTimeOut(),
               false,
               q.isDebug(),
@@ -174,30 +177,38 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
           tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
         } catch (final IoTDBException e) {
           t = e;
-          throw new RuntimeException("Failed to Fetch Subquery Result.", e);
+          throw new RuntimeException(DataNodeQueryMessages.FAILED_TO_FETCH_SUBQUERY_RESULT, e);
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           continue;
         }
         final Column[] columns = tsBlock.get().getValueColumns();
         // check column count
-        checkArgument(columns.length == 1, "Scalar Subquery result should only have one column.");
+        checkArgument(
+            columns.length == 1,
+            DataNodeQueryMessages
+                .EXCEPTION_SCALAR_SUBQUERY_RESULT_SHOULD_ONLY_HAVE_ONE_COLUMN_DOT_893F76CB);
         // check row count
         rowCount += tsBlock.get().getPositionCount();
         checkArgument(
             rowCount == 1 && !columns[0].isNull(0),
-            "Scalar Subquery result should only have one row.");
+            DataNodeQueryMessages
+                .EXCEPTION_SCALAR_SUBQUERY_RESULT_SHOULD_ONLY_HAVE_ONE_ROW_DOT_F9007BBC);
         column = columns[0];
 
         // column type
         DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
         List<TSDataType> dataTypes = datasetHeader.getRespDataTypes();
-        checkArgument(dataTypes.size() == 1, "Scalar Subquery result should only have one column.");
+        checkArgument(
+            dataTypes.size() == 1,
+            DataNodeQueryMessages
+                .EXCEPTION_SCALAR_SUBQUERY_RESULT_SHOULD_ONLY_HAVE_ONE_COLUMN_DOT_893F76CB);
         dataType = dataTypes.get(0);
       }
       checkArgument(
           dataType != null && column != null,
-          "Scalar Subquery result should not get null dataType or null column.");
+          DataNodeQueryMessages
+              .EXCEPTION_SCALAR_SUBQUERY_RESULT_SHOULD_NOT_GET_NULL_DATATYPE_OR_NULL_COLUMN_DOT_616056F4);
       switch (dataType) {
         case INT32:
         case DATE:
@@ -219,7 +230,9 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
         default:
           throw new IllegalArgumentException(
               String.format(
-                  "Unsupported data type for scalar subquery result: %s", column.getDataType()));
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_FOR_SCALAR_SUBQUERY_RESULT_S_4381E489,
+                  column.getDataType()));
       }
     } catch (final Throwable throwable) {
       t = throwable;

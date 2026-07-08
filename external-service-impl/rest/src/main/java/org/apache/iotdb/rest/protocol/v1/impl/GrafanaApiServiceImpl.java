@@ -21,6 +21,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
@@ -47,8 +48,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.google.common.base.Joiner;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
 import java.util.List;
@@ -91,8 +92,9 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
 
-      Statement statement =
-          StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+      Statement statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
       if (!(statement instanceof ShowStatement) && !(statement instanceof QueryStatement)) {
         return Response.ok()
             .entity(
@@ -170,7 +172,9 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         sql += " " + expressionRequest.getControl();
       }
 
-      Statement statement = StatementGenerator.createStatement(sql, ZoneId.systemDefault());
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+      Statement statement = StatementGenerator.createStatement(sql, zoneId);
 
       Response response = authorizationHandler.checkAuthority(securityContext, statement);
       if (response != null) {
@@ -236,7 +240,9 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         // TODO: necessary to create a partial path?
         PartialPath path = new PartialPath(Joiner.on(".").join(requestBody));
         String sql = "show child paths " + path;
-        Statement statement = StatementGenerator.createStatement(sql, ZoneId.systemDefault());
+        IClientSession session = SESSION_MANAGER.getCurrSession();
+        ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+        Statement statement = StatementGenerator.createStatement(sql, zoneId);
 
         Response response = authorizationHandler.checkAuthority(securityContext, statement);
         if (response != null) {

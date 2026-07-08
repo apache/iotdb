@@ -21,11 +21,12 @@ package org.apache.iotdb.mqtt;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.MqttClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -42,7 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.mqtt.i18n.MqttMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
@@ -94,7 +95,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   public void onConnect(InterceptConnectMessage msg) {
     if (msg.getClientID() == null || msg.getClientID().trim().isEmpty()) {
       LOG.error(
-          "Connection refused: client_id is missing or empty. A valid client_id is required to establish a connection.");
+          MqttMessages
+              .LOG_CONNECTION_REFUSED_CLIENT_ID_MISSING_EMPTY_VALID_CLIENT_ID_REQUIRED_A566DC15);
     }
     if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
       MqttClientSession session = new MqttClientSession(msg.getClientID());
@@ -105,7 +107,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           ZoneId.systemDefault().toString(),
           TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
           ClientVersion.V_1_0,
-          useTableInsert ? IClientSession.SqlDialect.TABLE : IClientSession.SqlDialect.TREE);
+          useTableInsert ? SqlDialect.TABLE : SqlDialect.TREE);
       sessionManager.registerSessionForMqtt(session);
       clientIdToSessionMap.put(msg.getClientID(), session);
     }
@@ -135,7 +137,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         String username = msg.getUsername();
         MqttQoS qos = msg.getQos();
         LOG.debug(
-            "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
+            MqttMessages
+                .LOG_RECEIVE_PUBLISH_MESSAGE_CLIENTID_ARG_USERNAME_ARG_QOS_ARG_TOPIC_7E60C3A6,
             clientId,
             username,
             qos,
@@ -159,7 +162,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         }
       }
     } catch (Throwable t) {
-      LOG.warn("onPublish execution exception, msg is [{}], error is ", msg, t);
+      LOG.warn(MqttMessages.ON_PUBLISH_EXCEPTION, msg, t);
     } finally {
       // release the payload of the message
       super.onPublish(msg);
@@ -173,7 +176,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       TimestampPrecisionUtils.checkTimestampPrecision(message.getTimestamp());
       InsertTabletStatement insertTabletStatement = constructInsertTabletStatement(message);
       session.setDatabaseName(message.getDatabase().toLowerCase());
-      session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+      session.setSqlDialect(SqlDialect.TABLE);
       long queryId = sessionManager.requestQueryId();
       SqlParser relationSqlParser = new SqlParser();
       Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
@@ -191,18 +194,18 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
       tsStatus = result.status;
       if (LOG.isDebugEnabled()) {
-        LOG.debug("process result: {}", tsStatus);
+        LOG.debug(MqttMessages.PROCESS_RESULT, tsStatus);
       }
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && tsStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         LOG.warn(
-            "mqtt json insert error, code={}, message={}",
+            MqttMessages.LOG_MQTT_JSON_INSERT_ERROR_CODE_ARG_MESSAGE_ARG_B1A78FBD,
             tsStatus.getCode(),
             tsStatus.getMessage());
       }
     } catch (Exception e) {
       LOG.warn(
-          "meet error when inserting database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because ",
+          MqttMessages.LOG_MEET_ERROR_INSERTING_DATABASE_ARG_TABLE_ARG_TAGS_ARG_ATTRIBUTES_173457D5,
           message.getDatabase(),
           message.getTable(),
           message.getTagKeys(),
@@ -310,19 +313,19 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
                     false);
         tsStatus = result.status;
         if (LOG.isDebugEnabled()) {
-          LOG.debug("process result: {}", tsStatus);
+          LOG.debug(MqttMessages.PROCESS_RESULT, tsStatus);
         }
         if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && tsStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           LOG.warn(
-              "mqtt json insert error, code={}, message={}",
+              MqttMessages.LOG_MQTT_JSON_INSERT_ERROR_CODE_ARG_MESSAGE_ARG_B1A78FBD,
               tsStatus.getCode(),
               tsStatus.getMessage());
         }
       }
     } catch (Exception e) {
       LOG.warn(
-          "meet error when inserting device {}, measurements {}, at time {}, because ",
+          MqttMessages.LOG_MEET_ERROR_INSERTING_DEVICE_ARG_MEASUREMENTS_ARG_AT_TIME_ARG_680D67D2,
           message.getDevice(),
           message.getMeasurements(),
           message.getTimestamp(),

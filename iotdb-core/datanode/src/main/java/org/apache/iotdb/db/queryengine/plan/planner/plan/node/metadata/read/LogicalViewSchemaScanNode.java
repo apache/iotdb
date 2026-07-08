@@ -22,12 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -83,7 +84,8 @@ public class LogicalViewSchemaScanNode extends SchemaQueryScanNode {
     try {
       path = new PartialPath(fullPath);
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize TimeSeriesSchemaScanNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_TIMESERIESSCHEMASCANNODE, e);
     }
     PathPatternTree scope = PathPatternTree.deserialize(byteBuffer);
     SchemaFilter schemaFilter = SchemaFilter.deserialize(byteBuffer);

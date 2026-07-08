@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 
@@ -177,7 +178,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
                   + TEMP_SUFFIX);
       if (newProfile.exists() && newProfile.isFile()) {
         if (!newProfile.renameTo(userProfile)) {
-          LOGGER.error("New profile renaming not succeed.");
+          LOGGER.error(AuthMessages.NEW_PROFILE_RENAME_FAILED);
         }
         userProfile = newProfile;
       } else {
@@ -266,7 +267,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
                 + TEMP_SUFFIX);
     File roleDir = new File(entityDirPath);
     if (!roleDir.exists() && !roleDir.mkdirs()) {
-      LOGGER.error("Failed to create role dir {}", entityDirPath);
+      LOGGER.error(AuthMessages.FAILED_TO_CREATE_ROLE_DIR, entityDirPath);
     }
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(roleProfile);
@@ -278,7 +279,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
       outputStream.flush();
       fileOutputStream.getFD().sync();
     } catch (Exception e) {
-      LOGGER.warn("meet error when save role: {}", entity.getName());
+      LOGGER.warn(AuthMessages.SAVE_ROLE_ERROR, entity.getName());
       throw new IOException(e);
     } finally {
       encodingBufferLocal.remove();
@@ -308,7 +309,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
     }
     if ((roleProfile.exists() && !roleProfile.delete())
         || (backFile.exists() && !backFile.delete())) {
-      throw new IOException(String.format("Cannot delete role file of %s", entityName));
+      throw new IOException(String.format(AuthMessages.CANNOT_DELETE_ROLE_FILE, entityName));
     }
     return true;
   }
@@ -369,7 +370,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
       try {
         org.apache.tsfile.external.commons.io.FileUtils.moveDirectory(roleFolder, roleTmpFolder);
         if (!FileUtils.copyDir(roleSnapshotDir, roleFolder)) {
-          LOGGER.error("Failed to load role folder snapshot and rollback.");
+          LOGGER.error(AuthMessages.FAILED_TO_LOAD_ROLE_SNAPSHOT);
           // rollback if failed to copy
           FileUtils.deleteFileOrDirectory(roleFolder);
           org.apache.tsfile.external.commons.io.FileUtils.moveDirectory(roleTmpFolder, roleFolder);
@@ -378,7 +379,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
         FileUtils.deleteFileOrDirectory(roleTmpFolder);
       }
     } else {
-      LOGGER.info("There are no roles to load.");
+      LOGGER.info(AuthMessages.NO_ROLES_TO_LOAD);
     }
   }
 
@@ -386,9 +387,9 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
   public void reset() {
     checkOldEntityDir(SystemFileFactory.INSTANCE.getFile(entityDirPath));
     if (SystemFileFactory.INSTANCE.getFile(entityDirPath).mkdirs()) {
-      LOGGER.info("role info dir {} is created", entityDirPath);
+      LOGGER.info(AuthMessages.ROLE_INFO_DIR_CREATED, entityDirPath);
     } else if (!SystemFileFactory.INSTANCE.getFile(entityDirPath).exists()) {
-      LOGGER.error("role info dir {} can not be created", entityDirPath);
+      LOGGER.error(AuthMessages.ROLE_INFO_DIR_CREATE_FAILED, entityDirPath);
     }
   }
 
@@ -396,7 +397,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
     File oldDir = new File(CommonDescriptor.getInstance().getConfig().getOldRoleFolder());
     if (oldDir.exists()) {
       if (!FileUtils.moveFileSafe(oldDir, newDir)) {
-        LOGGER.error("move old role dir fail: {}", oldDir.getAbsolutePath());
+        LOGGER.error(AuthMessages.MOVE_OLD_ROLE_DIR_FAILED, oldDir.getAbsolutePath());
       }
     }
   }
@@ -409,7 +410,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
         FileUtils.deleteFileIfExist(file);
       }
     } else {
-      LOGGER.warn("Role folder not exists");
+      LOGGER.warn(AuthMessages.ROLE_FOLDER_NOT_EXISTS);
     }
   }
 
@@ -424,7 +425,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
                 + TEMP_SUFFIX);
     File userDir = new File(entityDirPath);
     if (!userDir.exists() && !userDir.mkdirs()) {
-      LOGGER.error("Failed to create user dir {}", entityDirPath);
+      LOGGER.error(AuthMessages.FAILED_TO_CREATE_USER_DIR, entityDirPath);
     }
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(userInfoProfile);
@@ -434,7 +435,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
       outputStream.flush();
       fileOutputStream.getFD().sync();
     } catch (Exception e) {
-      LOGGER.warn("meet error when save userId: {}", nextUserId);
+      LOGGER.warn(AuthMessages.SAVE_USER_ID_ERROR, nextUserId);
       throw new IOException(e);
     } finally {
       encodingBufferLocal.remove();

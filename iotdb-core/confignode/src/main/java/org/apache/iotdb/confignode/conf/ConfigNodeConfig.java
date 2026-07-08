@@ -24,7 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
@@ -93,7 +95,7 @@ public class ConfigNodeConfig {
   private String dataPartitionAllocationStrategy = "INHERIT";
 
   /** The policy of extension SchemaRegionGroup for each Database. */
-  private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
+  private volatile RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
 
   /**
@@ -101,13 +103,13 @@ public class ConfigNodeConfig {
    * SchemaRegionGroups for each Database. When set schema_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of SchemaRegionGroups for each Database.
    */
-  private int defaultSchemaRegionGroupNumPerDatabase = 1;
+  private volatile int defaultSchemaRegionGroupNumPerDatabase = 1;
 
   /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
-  private int schemaRegionPerDataNode = 1;
+  private volatile int schemaRegionPerDataNode = 1;
 
   /** The policy of extension DataRegionGroup for each Database. */
-  private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
+  private volatile RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
 
   /**
@@ -115,13 +117,13 @@ public class ConfigNodeConfig {
    * DataRegionGroups for each Database. When set data_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of DataRegionGroups for each Database.
    */
-  private int defaultDataRegionGroupNumPerDatabase = 2;
+  private volatile int defaultDataRegionGroupNumPerDatabase = 2;
 
   /**
    * The maximum number of DataRegions expected to be managed by each DataNode. Set to 0 means that
    * each dataNode automatically has the number of CPU cores / 2 regions.
    */
-  private int dataRegionPerDataNode = 0;
+  private volatile int dataRegionPerDataNode = 0;
 
   /** each dataNode automatically has the number of CPU cores / 2 regions. */
   private final double dataRegionPerDataNodeProportion = 0.5;
@@ -143,6 +145,17 @@ public class ConfigNodeConfig {
    * no clients after the block time.
    */
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
+  private int maxIdleClientNumForEachNode = DefaultProperty.MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE;
+
+  /**
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private int selectorNumOfClientManager =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
 
   /** System directory, including version file for each database and metadata. */
   private String systemDir =
@@ -189,7 +202,10 @@ public class ConfigNodeConfig {
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
   /** The heartbeat interval in milliseconds. */
-  private long heartbeatIntervalInMs = 1000;
+  private volatile long heartbeatIntervalInMs = 1000;
+
+  /** Startup heartbeat interval used to initialize failure detectors. */
+  private long failureDetectorHeartbeatIntervalInMs = heartbeatIntervalInMs;
 
   /** Failure detector implementation */
   private String failureDetector = IFailureDetector.PHI_ACCRUAL_DETECTOR;
@@ -203,19 +219,25 @@ public class ConfigNodeConfig {
   /** Acceptable pause duration for Phi accrual failure detector */
   private long failureDetectorPhiAcceptablePauseInMs = 10000;
 
+  /** Whether to enable topology probing between DataNodes. Supports hot-reload. */
+  private volatile boolean enableTopologyProbing = false;
+
+  /** Base interval in ms for topology probing. */
+  private long topologyProbingBaseIntervalInMs = 5000;
+
+  /** Ratio of probing timeout to probing interval (must be less than 1.0). */
+  private double topologyProbingTimeoutRatio = 0.5;
+
   /** The policy of cluster RegionGroups' leader distribution. */
-  private String leaderDistributionPolicy = AbstractLeaderBalancer.CFD_POLICY;
+  private String leaderDistributionPolicy = AbstractLeaderBalancer.CFS_POLICY;
 
   /** Whether to enable auto leader balance for Ratis consensus protocol. */
   private boolean enableAutoLeaderBalanceForRatisConsensus = true;
 
-  /** Whether to enable auto leader balance for IoTConsensus protocol. */
-  private boolean enableAutoLeaderBalanceForIoTConsensus = true;
-
   /** The route priority policy of cluster read/write requests. */
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
 
-  private String readConsistencyLevel = "strong";
+  private volatile String readConsistencyLevel = "strong";
 
   /** RatisConsensus protocol, Max size for a single log append request from leader. */
   private long dataRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
@@ -274,7 +296,7 @@ public class ConfigNodeConfig {
   /** CQ related. */
   private int cqSubmitThread = 2;
 
-  private long cqMinEveryIntervalInMs = 1_000;
+  private volatile long cqMinEveryIntervalInMs = 1_000;
 
   /** RatisConsensus protocol, request timeout for ratis client. */
   private long dataRegionRatisRequestTimeoutMs = 10000L;
@@ -295,6 +317,16 @@ public class ConfigNodeConfig {
   private int schemaRegionRatisMaxRetryAttempts = 10;
   private long schemaRegionRatisInitialSleepTimeMs = 100;
   private long schemaRegionRatisMaxSleepTimeMs = 10000;
+
+  /**
+   * RatisConsensus protocol, max retry attempts for a configuration change (add/remove peer). Uses
+   * a fixed 2s retry interval; bounding the attempts stops a killed ADDING peer from blocking the
+   * reconfiguration -- and hence a region migration -- forever.
+   */
+  private int configNodeRatisReconfigurationMaxRetryAttempts = 15;
+
+  private int dataRegionRatisReconfigurationMaxRetryAttempts = 15;
+  private int schemaRegionRatisReconfigurationMaxRetryAttempts = 15;
 
   private long configNodeRatisPreserveLogsWhenPurge = 1000;
   private long schemaRegionRatisPreserveLogsWhenPurge = 1000;
@@ -318,8 +350,6 @@ public class ConfigNodeConfig {
   private boolean isEnablePrintingNewlyCreatedPartition = false;
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
-
-  private long partitionTableRecoverWaitAllDnUpTimeoutInMs = 60000;
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -377,6 +407,7 @@ public class ConfigNodeConfig {
 
   public void setConfigNodeId(int configNodeId) {
     this.configNodeId = configNodeId;
+    CommonDescriptor.getInstance().getConfig().setNodeId(configNodeId);
   }
 
   public String getInternalAddress() {
@@ -458,6 +489,23 @@ public class ConfigNodeConfig {
   public ConfigNodeConfig setMaxClientNumForEachNode(int maxClientNumForEachNode) {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
     return this;
+  }
+
+  public int getMaxIdleClientNumForEachNode() {
+    return maxIdleClientNumForEachNode;
+  }
+
+  public ConfigNodeConfig setMaxIdleClientNumForEachNode(int maxIdleClientNumForEachNode) {
+    this.maxIdleClientNumForEachNode = maxIdleClientNumForEachNode;
+    return this;
+  }
+
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
   public String getConsensusDir() {
@@ -687,6 +735,14 @@ public class ConfigNodeConfig {
     this.heartbeatIntervalInMs = heartbeatIntervalInMs;
   }
 
+  public long getFailureDetectorHeartbeatIntervalInMs() {
+    return failureDetectorHeartbeatIntervalInMs;
+  }
+
+  public void setFailureDetectorHeartbeatIntervalInMs(long failureDetectorHeartbeatIntervalInMs) {
+    this.failureDetectorHeartbeatIntervalInMs = failureDetectorHeartbeatIntervalInMs;
+  }
+
   public String getLeaderDistributionPolicy() {
     return leaderDistributionPolicy;
   }
@@ -702,15 +758,6 @@ public class ConfigNodeConfig {
   public void setEnableAutoLeaderBalanceForRatisConsensus(
       boolean enableAutoLeaderBalanceForRatisConsensus) {
     this.enableAutoLeaderBalanceForRatisConsensus = enableAutoLeaderBalanceForRatisConsensus;
-  }
-
-  public boolean isEnableAutoLeaderBalanceForIoTConsensus() {
-    return enableAutoLeaderBalanceForIoTConsensus;
-  }
-
-  public void setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    this.enableAutoLeaderBalanceForIoTConsensus = enableAutoLeaderBalanceForIoTConsensus;
   }
 
   public String getRoutePriorityPolicy() {
@@ -1079,6 +1126,36 @@ public class ConfigNodeConfig {
     this.schemaRegionRatisMaxRetryAttempts = schemaRegionRatisMaxRetryAttempts;
   }
 
+  public int getConfigNodeRatisReconfigurationMaxRetryAttempts() {
+    return configNodeRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public void setConfigNodeRatisReconfigurationMaxRetryAttempts(
+      int configNodeRatisReconfigurationMaxRetryAttempts) {
+    this.configNodeRatisReconfigurationMaxRetryAttempts =
+        configNodeRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public int getDataRegionRatisReconfigurationMaxRetryAttempts() {
+    return dataRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public void setDataRegionRatisReconfigurationMaxRetryAttempts(
+      int dataRegionRatisReconfigurationMaxRetryAttempts) {
+    this.dataRegionRatisReconfigurationMaxRetryAttempts =
+        dataRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public int getSchemaRegionRatisReconfigurationMaxRetryAttempts() {
+    return schemaRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public void setSchemaRegionRatisReconfigurationMaxRetryAttempts(
+      int schemaRegionRatisReconfigurationMaxRetryAttempts) {
+    this.schemaRegionRatisReconfigurationMaxRetryAttempts =
+        schemaRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
   public long getSchemaRegionRatisInitialSleepTimeMs() {
     return schemaRegionRatisInitialSleepTimeMs;
   }
@@ -1203,7 +1280,7 @@ public class ConfigNodeConfig {
             .append(configContent)
             .append(";");
       } catch (Exception e) {
-        LOGGER.warn("Failed to get field {}", configField, e);
+        LOGGER.warn(ConfigNodeMessages.FAILED_TO_GET_FIELD, configField, e);
       }
     }
     return configMessage.toString();
@@ -1289,12 +1366,27 @@ public class ConfigNodeConfig {
     this.failureDetectorPhiAcceptablePauseInMs = failureDetectorPhiAcceptablePauseInMs;
   }
 
-  public long getPartitionTableRecoverWaitAllDnUpTimeoutInMs() {
-    return partitionTableRecoverWaitAllDnUpTimeoutInMs;
+  public boolean isEnableTopologyProbing() {
+    return enableTopologyProbing;
   }
 
-  public void setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
-      long partitionTableRecoverWaitAllDnUpTimeoutInMs) {
-    this.partitionTableRecoverWaitAllDnUpTimeoutInMs = partitionTableRecoverWaitAllDnUpTimeoutInMs;
+  public void setEnableTopologyProbing(boolean enableTopologyProbing) {
+    this.enableTopologyProbing = enableTopologyProbing;
+  }
+
+  public long getTopologyProbingBaseIntervalInMs() {
+    return topologyProbingBaseIntervalInMs;
+  }
+
+  public void setTopologyProbingBaseIntervalInMs(long topologyProbingBaseIntervalInMs) {
+    this.topologyProbingBaseIntervalInMs = topologyProbingBaseIntervalInMs;
+  }
+
+  public double getTopologyProbingTimeoutRatio() {
+    return topologyProbingTimeoutRatio;
+  }
+
+  public void setTopologyProbingTimeoutRatio(double topologyProbingTimeoutRatio) {
+    this.topologyProbingTimeoutRatio = topologyProbingTimeoutRatio;
   }
 }

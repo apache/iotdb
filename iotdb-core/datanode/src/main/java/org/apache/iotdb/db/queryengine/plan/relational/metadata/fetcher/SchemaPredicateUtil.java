@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
@@ -31,10 +35,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -51,8 +51,8 @@ public class SchemaPredicateUtil {
 
   private SchemaPredicateUtil() {}
 
-  // pair.left is Expressions only contain ID columns
-  // pair.right is Expressions contain at least one ATTRIBUTE column
+  // pair.left is expressions that only contain tag columns
+  // pair.right is expressions that contain at least one attribute column
   static Pair<List<Expression>, List<Expression>> separateTagDeterminedPredicate(
       final List<Expression> expressionList,
       final TsTable table,
@@ -71,7 +71,7 @@ public class SchemaPredicateUtil {
         final BetweenPredicate predicate = (BetweenPredicate) expression;
 
         // Separate the between predicate to simplify the logic and to handle cases like '2' between
-        // id1 and attr2 / id1 between '2' and attr1
+        // tag1 and attr2 / tag1 between '2' and attr1
         separateExpression(
             new ComparisonExpression(
                 ComparisonExpression.Operator.LESS_THAN_OR_EQUAL,
@@ -114,7 +114,7 @@ public class SchemaPredicateUtil {
   // return or concat filter list, inner which all filter is and concat
   // e.g. (a OR b) AND (c OR d) -> (a AND c) OR (a AND d) OR (b AND c) OR (b AND d)
   // if input is empty, then return [[]]
-  static List<Map<Integer, List<SchemaFilter>>> convertDeviceIdPredicateToOrConcatList(
+  static List<Map<Integer, List<SchemaFilter>>> convertTagPredicateToOrConcatList(
       final List<Expression> schemaFilterList,
       final TsTable table,
       final AtomicBoolean mayContainDuplicateDevice) {
@@ -181,7 +181,7 @@ public class SchemaPredicateUtil {
     final int index = ((TagFilter) currentFilter).getIndex();
     final SchemaFilter childFilter = currentFilter.getChild();
 
-    // Compress the not filters and put them after idFilter,
+    // Compress the not filters and put them after the tag filter,
     // to simplify the logics in schema regions
     if (isNotFilter) {
       currentFilter.setChild(new NotFilter(childFilter));
@@ -223,10 +223,10 @@ public class SchemaPredicateUtil {
       final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList,
       final TsTable tableInstance) {
     final List<Integer> selectedExpressionCases = new ArrayList<>();
-    final int idCount = tableInstance.getTagNum();
+    final int tagCount = tableInstance.getTagNum();
     for (int i = 0; i < index2FilterMapList.size(); i++) {
       final Map<Integer, List<SchemaFilter>> filterMap = index2FilterMapList.get(i);
-      if (filterMap.size() == idCount
+      if (filterMap.size() == tagCount
           && filterMap.values().stream()
               .allMatch(
                   filterList ->
@@ -242,7 +242,7 @@ public class SchemaPredicateUtil {
   }
 
   // compact and-concat expression list to one expression
-  static Expression compactDeviceIdFuzzyPredicate(final List<Expression> expressionList) {
+  static Expression compactTagFuzzyPredicate(final List<Expression> expressionList) {
     if (expressionList.isEmpty()) {
       return null;
     }

@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.DiffFunctionTransformer;
 
@@ -40,7 +41,8 @@ public class DiffFunctionHelper implements BuiltInScalarFunctionHelper {
       return;
     }
     throw new SemanticException(
-        "Input series of Scalar function [DIFF] only supports numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+        DataNodeQueryMessages
+            .INPUT_SERIES_OF_SCALAR_FUNCTION_DIFF_ONLY_SUPPORTS_NUMERIC_DATA_TYPES_INT32_INT64_FLOAT);
   }
 
   @Override

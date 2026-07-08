@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -41,8 +44,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.Convert
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicatePushIntoScanChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicateSimplifier;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -284,7 +285,7 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToTimeFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression predicate,
       ZoneId zoneId,
       TimeUnit currPrecision) {
     if (predicate == null) {
@@ -312,7 +313,7 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression predicate,
       Map<String, Integer> measurementColumnsIndexMap,
       Map<Symbol, ColumnSchema> schemaMap,
       String timeColumnName,
@@ -341,7 +342,8 @@ public class PredicateUtils {
 
     if (conjuncts.size() > 1000) {
       throw new SemanticException(
-          "There are too many conjuncts (more than 1000) in predicate after rewriting, this may be caused by too many devices in query, try to use ALIGN BY DEVICE");
+          DataNodeQueryMessages
+              .THERE_ARE_TOO_MANY_CONJUNCTS_MORE_THAN_1000_IN_PREDICATE_AFTER_REWRITING_THIS_MAY_BE);
     }
 
     return constructRightDeepTreeWithAnd(conjuncts);
@@ -442,7 +444,7 @@ public class PredicateUtils {
   }
 
   public static boolean predicateCanPushIntoScan(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate) {
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression predicate) {
     return new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
             .PredicatePushIntoScanChecker()
         .process(predicate, null);

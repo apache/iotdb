@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -84,7 +85,8 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
         && (((IoTDBTreePatternOperations) pattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
-              "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
+              PipeMessages
+                  .EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8,
               pattern.getPattern()));
     }
     treePattern = (IoTDBTreePatternOperations) pattern;
@@ -118,7 +120,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
         triggerSnapshot();
         nextIndex = findSnapshot(false);
         if (nextIndex == Long.MIN_VALUE) {
-          throw new PipeException("Cannot get the newest snapshot after triggering one.");
+          throw new PipeException(PipeMessages.CANNOT_GET_NEWEST_SNAPSHOT);
         }
       }
     } else {

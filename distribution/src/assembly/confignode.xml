@@ -49,10 +49,19 @@
             <directory>${project.basedir}/../scripts/conf</directory>
             <outputDirectory>conf</outputDirectory>
             <includes>
-                <include>iotdb-common.*</include>
                 <include>confignode-env.*</include>
                 <include>**/confignode-env.*</include>
             </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../scripts/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+            <includes>
+                <include>iotdb-common.sh</include>
+                <include>windows/iotdb-common.bat</include>
+            </includes>
+            <filtered>true</filtered>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>

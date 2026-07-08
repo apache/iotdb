@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
@@ -77,14 +78,13 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
     try {
       if (Objects.isNull(databaseName)) {
         LOGGER.warn(
-            "Database name is unexpectedly null for statement: {}. Skip data type conversion.",
-            statement);
+            DataNodePipeMessages.DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_STATEMENT, statement);
         return Optional.empty();
       }
 
       return Optional.of(statementExecutor.execute(statement, databaseName));
     } catch (final Exception e) {
-      LOGGER.warn("Failed to execute statement after data type conversion.", e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE, e);
       return Optional.empty();
     }
   }
@@ -104,7 +104,7 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
 
     if (Objects.isNull(databaseName)) {
       LOGGER.warn(
-          "Database name is unexpectedly null for LoadTsFileStatement: {}. Skip data type conversion.",
+          DataNodePipeMessages.DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_LOADTSFILESTATEMENT,
           loadTsFileStatement);
       return Optional.empty();
     }
@@ -120,7 +120,7 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
     }
 
     LOGGER.warn(
-        "Data type mismatch detected (TSStatus: {}) for LoadTsFileStatement: {}. Start data type conversion.",
+        DataNodePipeMessages.DATA_TYPE_MISMATCH_DETECTED_TSSTATUS_FOR_LOADTSFILESTATEMENT,
         status,
         loadTsFileStatement);
 
@@ -185,7 +185,9 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+            DataNodePipeMessages.FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT,
+            loadTsFileStatement,
+            e);
         return Optional.empty();
       }
     }
@@ -195,7 +197,8 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
     }
 
     LOGGER.warn(
-        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+        DataNodePipeMessages.DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL,
+        loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }

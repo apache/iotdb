@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
@@ -41,8 +42,8 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnse
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 
 import org.apache.tsfile.utils.Pair;
@@ -230,9 +231,7 @@ public class PipeConfigTreePatternParseVisitor
           ? Optional.of(new PipeDeleteTimeSeriesPlan(intersectedTree.serialize()))
           : Optional.empty();
     } catch (final IOException e) {
-      LOGGER.warn(
-          "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
-          e);
+      LOGGER.warn(ManagerMessages.SERIALIZATION_FAILED_FOR_THE_DELETE_TIME_SERIES_PLAN_IN_PIPE, e);
       return Optional.empty();
     }
   }
@@ -249,9 +248,7 @@ public class PipeConfigTreePatternParseVisitor
           ? Optional.of(new PipeDeleteLogicalViewPlan(intersectedTree.serialize()))
           : Optional.empty();
     } catch (final IOException e) {
-      LOGGER.warn(
-          "Serialization failed for the delete logical view plan in pipe transmission, skip transfer",
-          e);
+      LOGGER.warn(ManagerMessages.SERIALIZATION_FAILED_FOR_THE_DELETE_LOGICAL_VIEW_PLAN_IN_PIPE, e);
       return Optional.empty();
     }
   }
@@ -274,8 +271,7 @@ public class PipeConfigTreePatternParseVisitor
           : Optional.empty();
     } catch (final IOException e) {
       LOGGER.warn(
-          "Serialization failed for the alter encoding time series plan in pipe transmission, skip transfer",
-          e);
+          ManagerMessages.SERIALIZATION_FAILED_FOR_THE_ALTER_ENCODING_TIME_SERIES_PLAN_IN, e);
       return Optional.empty();
     }
   }

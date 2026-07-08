@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.sink.compressor;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,10 +55,10 @@ public class PipeCompressorFactory {
 
   public static PipeCompressor getCompressor(PipeCompressorConfig config) {
     if (config == null) {
-      throw new IllegalArgumentException("PipeCompressorConfig is null");
+      throw new IllegalArgumentException(PipeMessages.COMPRESSOR_CONFIG_NULL);
     }
     if (config.getName() == null) {
-      throw new IllegalArgumentException("PipeCompressorConfig.getName() is null");
+      throw new IllegalArgumentException(PipeMessages.COMPRESSOR_CONFIG_NAME_NULL);
     }
 
     final String compressorName = config.getName();
@@ -67,7 +69,7 @@ public class PipeCompressorFactory {
       return COMPRESSOR_NAME_TO_INSTANCE.computeIfAbsent(
           CONNECTOR_COMPRESSOR_ZSTD + "_" + zstdCompressionLevel,
           key -> {
-            LOGGER.info("Create new PipeZSTDCompressor with level: {}", zstdCompressionLevel);
+            LOGGER.info(PipeMessages.CREATE_ZSTD_COMPRESSOR, zstdCompressionLevel);
             return new PipeZSTDCompressor(zstdCompressionLevel);
           });
     }
@@ -78,7 +80,8 @@ public class PipeCompressorFactory {
       return compressor;
     }
 
-    throw new UnsupportedOperationException("PipeCompressor not found for name: " + compressorName);
+    throw new UnsupportedOperationException(
+        String.format(PipeMessages.COMPRESSOR_NOT_FOUND_BY_NAME, compressorName));
   }
 
   private static Map<Byte, PipeCompressor> COMPRESSOR_INDEX_TO_INSTANCE = new HashMap<>();
@@ -105,7 +108,8 @@ public class PipeCompressorFactory {
   public static PipeCompressor getCompressor(byte index) {
     final PipeCompressor compressor = COMPRESSOR_INDEX_TO_INSTANCE.get(index);
     if (compressor == null) {
-      throw new UnsupportedOperationException("PipeCompressor not found for index: " + index);
+      throw new UnsupportedOperationException(
+          String.format(PipeMessages.COMPRESSOR_NOT_FOUND_BY_INDEX, index));
     }
     return compressor;
   }

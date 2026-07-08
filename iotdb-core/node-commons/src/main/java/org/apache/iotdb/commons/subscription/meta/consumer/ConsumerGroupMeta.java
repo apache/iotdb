@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.subscription.meta.consumer;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.thrift.annotation.Nullable;
@@ -72,8 +73,11 @@ public class ConsumerGroupMeta {
     final ConsumerGroupMeta copied = new ConsumerGroupMeta();
     copied.consumerGroupId = consumerGroupId;
     copied.creationTime = creationTime;
-    copied.topicNameToSubscribedConsumerIdSet =
-        new ConcurrentHashMap<>(topicNameToSubscribedConsumerIdSet);
+    copied.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
+    topicNameToSubscribedConsumerIdSet.forEach(
+        (topicName, subscribedConsumerIds) ->
+            copied.topicNameToSubscribedConsumerIdSet.put(
+                topicName, new HashSet<>(subscribedConsumerIds)));
     copied.consumerIdToConsumerMeta = new ConcurrentHashMap<>(consumerIdToConsumerMeta);
     copied.topicNameToSubscriptionCreationTime =
         new ConcurrentHashMap<>(topicNameToSubscriptionCreationTime);
@@ -114,6 +118,26 @@ public class ConsumerGroupMeta {
               }
             });
     return unsubscribedTopicNames;
+  }
+
+  public static Set<String> getTopicsNewlySubByGroup(
+      final ConsumerGroupMeta currentMeta, final ConsumerGroupMeta updatedMeta) {
+    if (!Objects.equals(currentMeta.consumerGroupId, updatedMeta.consumerGroupId)
+        || !Objects.equals(currentMeta.creationTime, updatedMeta.creationTime)) {
+      return Collections.emptySet();
+    }
+
+    final Set<String> newlySubscribedTopicNames = new HashSet<>();
+    updatedMeta
+        .topicNameToSubscribedConsumerIdSet
+        .keySet()
+        .forEach(
+            topicName -> {
+              if (!currentMeta.topicNameToSubscribedConsumerIdSet.containsKey(topicName)) {
+                newlySubscribedTopicNames.add(topicName);
+              }
+            });
+    return newlySubscribedTopicNames;
   }
 
   /////////////////////////////// consumer ///////////////////////////////
@@ -174,6 +198,11 @@ public class ConsumerGroupMeta {
 
   ////////////////////////// subscription //////////////////////////
 
+  /** Get all topic names subscribed by this consumer group. */
+  public Set<String> getSubscribedTopicNames() {
+    return Collections.unmodifiableSet(topicNameToSubscribedConsumerIdSet.keySet());
+  }
+
   /**
    * Get the consumers subscribing the given topic in this group.
    *
@@ -231,8 +260,10 @@ public class ConsumerGroupMeta {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(
-              "Failed to add subscription to consumer group meta: consumer %s does not exist in consumer group %s",
-              consumerId, consumerGroupId));
+              PipeMessages
+                  .EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87,
+              consumerId,
+              consumerGroupId));
     }
 
     for (final String topic : topics) {
@@ -269,8 +300,10 @@ public class ConsumerGroupMeta {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(
-              "Failed to remove subscription from consumer group meta: consumer %s does not exist in consumer group %s",
-              consumerId, consumerGroupId));
+              PipeMessages
+                  .EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3,
+              consumerId,
+              consumerGroupId));
     }
 
     final Set<String> noSubscriptionTopicAfterRemoval = new HashSet<>();

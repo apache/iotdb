@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.session.subscription.util;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 public class PollTimer {
 
   private long startMs;
@@ -49,7 +51,7 @@ public class PollTimer {
 
   public void reset(final long timeoutMs) {
     if (timeoutMs < 0L) {
-      throw new IllegalArgumentException("Invalid negative timeout " + timeoutMs);
+      throw new IllegalArgumentException(SubscriptionMessages.INVALID_NEGATIVE_TIMEOUT + timeoutMs);
     } else {
       this.timeoutMs = timeoutMs;
       this.startMs = this.currentTimeMs;

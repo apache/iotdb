@@ -19,8 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
@@ -67,8 +73,22 @@ public class LoadTsFile extends Statement {
   private boolean needDecode4TimeColumn;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    this(location, filePath, loadAttributes, true);
+  }
+
+  public static LoadTsFile createUnchecked(
+      NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    return new LoadTsFile(location, filePath, loadAttributes, false);
+  }
+
+  private LoadTsFile(
+      NodeLocation location,
+      String filePath,
+      Map<String, String> loadAttributes,
+      boolean validateSourcePath) {
     super(location);
-    this.filePath = requireNonNull(filePath, "filePath is null");
+    this.filePath =
+        requireNonNull(filePath, DataNodeQueryMessages.EXCEPTION_FILEPATH_IS_NULL_84CE8A66);
 
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.deleteAfterLoad = false;
@@ -84,7 +104,7 @@ public class LoadTsFile extends Statement {
     try {
       this.tsFiles =
           org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement.processTsFile(
-              new File(filePath));
+              new File(filePath), validateSourcePath);
       this.resources = new ArrayList<>();
       this.writePointCountList = new ArrayList<>();
       this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), true));
@@ -278,7 +298,7 @@ public class LoadTsFile extends Statement {
       final Map<String, String> properties = this.loadAttributes;
 
       final LoadTsFile subStatement =
-          new LoadTsFile(getLocation().orElse(null), filePath, properties);
+          LoadTsFile.createUnchecked(getLocation().orElse(null), filePath, properties);
 
       // Copy all configuration properties
       subStatement.databaseLevel = this.databaseLevel;
@@ -307,8 +327,8 @@ public class LoadTsFile extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitLoadTsFile(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitLoadTsFile(this, context);
   }
 
   @Override

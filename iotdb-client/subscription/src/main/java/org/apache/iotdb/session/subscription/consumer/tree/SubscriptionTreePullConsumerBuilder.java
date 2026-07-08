@@ -57,6 +57,12 @@ public class SubscriptionTreePullConsumerBuilder extends AbstractSubscriptionPul
   }
 
   @Override
+  public SubscriptionTreePullConsumerBuilder encryptedPassword(final String encryptedPassword) {
+    super.encryptedPassword(encryptedPassword);
+    return this;
+  }
+
+  @Override
   public SubscriptionTreePullConsumerBuilder consumerId(final String consumerId) {
     super.consumerId(consumerId);
     return this;
@@ -65,6 +71,24 @@ public class SubscriptionTreePullConsumerBuilder extends AbstractSubscriptionPul
   @Override
   public SubscriptionTreePullConsumerBuilder consumerGroupId(final String consumerGroupId) {
     super.consumerGroupId(consumerGroupId);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTreePullConsumerBuilder ownerId(final String ownerId) {
+    super.ownerId(ownerId);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTreePullConsumerBuilder ownerEpoch(final long ownerEpoch) {
+    super.ownerEpoch(ownerEpoch);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTreePullConsumerBuilder ownerEpoch(final Long ownerEpoch) {
+    super.ownerEpoch(ownerEpoch);
     return this;
   }
 

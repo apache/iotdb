@@ -20,6 +20,7 @@ package org.apache.iotdb.rest.protocol.v1.impl;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -50,8 +51,8 @@ import org.apache.iotdb.rest.protocol.v1.model.InsertTabletRequest;
 import org.apache.iotdb.rest.protocol.v1.model.SQL;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
 import java.util.Optional;
@@ -87,7 +88,9 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     try {
       RequestValidationHandler.validateSQL(sql);
-      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+      statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
       if (statement == null) {
         return Response.ok()
             .entity(
@@ -179,7 +182,9 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     try {
       RequestValidationHandler.validateSQL(sql);
-      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+      statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
       if (statement == null) {
         return Response.ok()
             .entity(

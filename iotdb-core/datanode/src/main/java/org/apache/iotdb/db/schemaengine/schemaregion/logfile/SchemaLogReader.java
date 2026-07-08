@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.BufferedInputStream;
 import java.io.EOFException;
@@ -48,8 +49,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaLogReader.class);
 
-  private static final String FILE_CORRUPTED_MSG_TEMPLATE =
-      "File {} is corrupted. The uncorrupted size is {}.";
+  private static final String FILE_CORRUPTED_MSG_TEMPLATE = DataNodeSchemaMessages.FILE_CORRUPTED;
 
   private final File logFile;
 
@@ -147,9 +147,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
         FileChannel channel = outputStream.getChannel()) {
       if (currentIndex != channel.size()) {
         LOGGER.warn(
-            "The end of log file {} is corrupted. "
-                + "Start truncate it. "
-                + "The unbroken size is {}. The file size is {}.",
+            DataNodeSchemaMessages.LOG_FILE_END_CORRUPTED_TRUNCATE,
             logFile.getName(),
             currentIndex,
             channel.size());
@@ -159,7 +157,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
       isFileCorrupted = false;
     } catch (IOException e) {
       isFileCorrupted = true;
-      LOGGER.error("Fail to truncate log file to size {}", currentIndex, e);
+      LOGGER.error(DataNodeSchemaMessages.FAIL_TO_TRUNCATE_LOG_FILE, currentIndex, e);
     }
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -54,6 +55,11 @@ public class PipeTsFileResourceManager {
   private final Map<String, Map<String, PipeTsFileResource>>
       hardlinkOrCopiedFileToPipeTsFileResourceMap = new ConcurrentHashMap<>();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
+
+  public static String getPipeTsFileResourcePipeName(
+      final @Nullable String pipeName, final long creationTime) {
+    return Objects.isNull(pipeName) ? null : pipeName + "_" + creationTime;
+  }
 
   public File increaseFileReference(
       final File file, final boolean isTsFile, final @Nullable String pipeName) throws IOException {
@@ -169,8 +175,8 @@ public class PipeTsFileResourceManager {
     } catch (final Exception e) {
       throw new IOException(
           String.format(
-              "failed to get hardlink or copied file in pipe dir "
-                  + "for file %s, it is not a tsfile, mod file or resource file",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_GET_HARDLINK_OR_COPIED_FILE_IN_PIPE_DIR_FOR_FILE_F009D86E,
               file.getPath()),
           e);
     }
@@ -386,7 +392,7 @@ public class PipeTsFileResourceManager {
               try {
                 return resource.getFileSize();
               } catch (Exception e) {
-                LOGGER.warn("failed to get file size of linked TsFile {}: ", resource, e);
+                LOGGER.warn(DataNodePipeMessages.FAILED_TO_GET_FILE_SIZE_OF_LINKED, resource, e);
                 return 0;
               }
             })

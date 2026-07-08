@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -46,7 +47,8 @@ public class ObjectWriter implements AutoCloseable {
     try {
       FileUtils.forceMkdir(filePath.getParentFile());
     } catch (final IOException e) {
-      throw new FileNotFoundException("Error occurred during creating directory " + filePath);
+      throw new FileNotFoundException(
+          DataNodeMiscMessages.ERROR_OCCURRED_DURING_CREATING_DIR + filePath);
     }
     if (!Files.exists(filePath.toPath())) {
       try {
@@ -66,11 +68,15 @@ public class ObjectWriter implements AutoCloseable {
         fos.getChannel().truncate(offset);
       } else {
         throw new IOException(
-            "The file length " + file.length() + " is not equal to the offset " + offset);
+            String.format(
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_THE_FILE_LENGTH_S_IS_NOT_EQUAL_TO_THE_OFFSET_S_73905F07,
+                file.length(),
+                offset));
       }
     }
     if (file.length() + content.length > config.getMaxObjectSizeInByte()) {
-      throw new IOException("The file length is larger than max_object_file_size_in_bytes");
+      throw new IOException(DataNodeMiscMessages.FILE_LENGTH_LARGER_THAN_MAX);
     }
     fos.write(content);
   }

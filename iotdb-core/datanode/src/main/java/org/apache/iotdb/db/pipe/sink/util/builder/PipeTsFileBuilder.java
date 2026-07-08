@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.pipe.sink.util.builder;
 
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -64,7 +65,9 @@ public abstract class PipeTsFileBuilder {
       this.batchFileBaseDir = getNextBaseDir();
     } catch (final Exception e) {
       throw new PipeException(
-          String.format("Failed to create file dir for batch: %s", e.getMessage()));
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_FAILED_TO_CREATE_FILE_DIR_FOR_BATCH_S_8FCD9125,
+              e.getMessage()));
     }
   }
 
@@ -91,13 +94,13 @@ public abstract class PipeTsFileBuilder {
                     FileUtils.deleteQuietly(dir);
                     if (dir.mkdirs()) {
                       LOGGER.info(
-                          "Batch id = {}: Create batch dir successfully, batch file dir = {}.",
+                          DataNodePipeMessages.BATCH_ID_CREATE_BATCH_DIR_SUCCESSFULLY_BATCH,
                           currentBatchId.get(),
                           dir.getPath());
                       return dir;
                     }
                     LOGGER.warn(
-                        "Batch id = {}: Failed to create batch file dir {}.",
+                        DataNodePipeMessages.BATCH_ID_FAILED_TO_CREATE_BATCH_FILE,
                         currentBatchId.get(),
                         dir.getPath());
                     return null;
@@ -106,7 +109,10 @@ public abstract class PipeTsFileBuilder {
         return baseDir;
       }
       throw new PipeException(
-          String.format("Failed to create batch file dir. (Batch id = %s)", currentBatchId.get()));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_CREATE_BATCH_FILE_DIR_BATCH_ID_S_EA8BE86C,
+              currentBatchId.get()));
     }
   }
 
@@ -129,7 +135,7 @@ public abstract class PipeTsFileBuilder {
         fileWriter.close();
       } catch (final Exception e) {
         LOGGER.info(
-            "Batch id = {}: Failed to close the tsfile {} when trying to close batch, because {}",
+            DataNodePipeMessages.BATCH_ID_FAILED_TO_CLOSE_THE_TSFILE_1,
             currentBatchId.get(),
             fileWriter.getIOWriter().getFile().getPath(),
             e.getMessage(),
@@ -140,7 +146,7 @@ public abstract class PipeTsFileBuilder {
         FileUtils.delete(fileWriter.getIOWriter().getFile());
       } catch (final Exception e) {
         LOGGER.info(
-            "Batch id = {}: Failed to delete the tsfile {} when trying to close batch, because {}",
+            DataNodePipeMessages.BATCH_ID_FAILED_TO_DELETE_THE_TSFILE,
             currentBatchId.get(),
             fileWriter.getIOWriter().getFile().getPath(),
             e.getMessage(),

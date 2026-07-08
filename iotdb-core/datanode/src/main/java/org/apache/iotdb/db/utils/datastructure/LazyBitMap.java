@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import org.apache.tsfile.utils.BitMap;
 
 import java.util.ArrayList;
@@ -31,10 +33,10 @@ public class LazyBitMap {
 
   public LazyBitMap(int startIndex, int appendSize, int endIndex) {
     if (endIndex < startIndex) {
-      throw new IllegalArgumentException("endIndex must be >= startIndex");
+      throw new IllegalArgumentException(DataNodeMiscMessages.END_INDEX_MUST_BE_GE_START_INDEX);
     }
     if (appendSize <= 0) {
-      throw new IllegalArgumentException("appendSize must be positive");
+      throw new IllegalArgumentException(DataNodeMiscMessages.APPEND_SIZE_MUST_BE_POSITIVE);
     }
     this.startPosition = startIndex;
     this.endPosition = endIndex;
@@ -44,10 +46,10 @@ public class LazyBitMap {
 
   public void mark(int index) {
     if (index < startPosition) {
-      throw new IndexOutOfBoundsException("Index below startPosition: " + index);
+      throw new IndexOutOfBoundsException(DataNodeMiscMessages.INDEX_BELOW_START_POSITION + index);
     }
     if (index > endPosition) {
-      throw new IndexOutOfBoundsException("Index exceeds endPosition: " + index);
+      throw new IndexOutOfBoundsException(DataNodeMiscMessages.INDEX_EXCEEDS_END_POSITION + index);
     }
     int blockIndex = getBlockIndex(index);
     ensureCapacity(blockIndex);
@@ -70,7 +72,7 @@ public class LazyBitMap {
       return false;
     }
     if (index > endPosition) {
-      throw new IndexOutOfBoundsException("Index exceeds endPosition: " + index);
+      throw new IndexOutOfBoundsException(DataNodeMiscMessages.INDEX_EXCEEDS_END_POSITION + index);
     }
     int blockIndex = getBlockIndex(index);
     if (blockIndex >= blocks.size()) {

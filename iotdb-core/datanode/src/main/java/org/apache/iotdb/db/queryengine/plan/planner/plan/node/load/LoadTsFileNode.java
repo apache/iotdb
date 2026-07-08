@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
@@ -78,7 +79,8 @@ public class LoadTsFileNode extends WritePlanNode {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of load TsFile is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CLONE_OF_LOAD_TSFILE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -153,7 +155,8 @@ public class LoadTsFileNode extends WritePlanNode {
                 statement.getWritePointCount(i),
                 needDecode4TimeColumn));
       } else {
-        throw new IllegalStateException("LoadTsFile statement is null during table model split.");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.LOADTSFILE_STATEMENT_IS_NULL_DURING_TABLE_MODEL_SPLIT);
       }
     }
     return res;

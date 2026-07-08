@@ -23,9 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTConsensusV2RequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTConsensusV2RequestVersion;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferReq;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -71,7 +72,7 @@ public class IoTConsensusV2TabletInsertNodeReq extends TIoTConsensusV2TransferRe
       req.progressIndex =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
-      LOGGER.warn("Failed to serialize progress index {}", progressIndex, e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_SERIALIZE_PROGRESS_INDEX, progressIndex, e);
     }
 
     return req;
@@ -102,7 +103,7 @@ public class IoTConsensusV2TabletInsertNodeReq extends TIoTConsensusV2TransferRe
       req.progressIndex =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
-      LOGGER.warn("Failed to serialize progress index {}", progressIndex, e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_SERIALIZE_PROGRESS_INDEX, progressIndex, e);
     }
 
     return req;

@@ -654,6 +654,142 @@ public class IoTDBFillTableIT {
   }
 
   @Test
+  public void nextFillTest() {
+    String[] expectedHeader =
+        new String[] {
+          "time", "device_id", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"
+        };
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,1,11,1.1,11.1,true,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
+          "1970-01-01T00:00:00.002Z,d1,2,22,2.2,22.2,false,text3,string3,0xcafebabe03,1970-01-01T00:00:00.003Z,2024-10-03,",
+          "1970-01-01T00:00:00.003Z,d1,5,55,5.5,55.5,false,text3,string3,0xcafebabe03,1970-01-01T00:00:00.003Z,2024-10-03,",
+          "1970-01-01T00:00:00.004Z,d1,5,55,5.5,55.5,false,text4,string4,0xcafebabe04,1970-01-01T00:00:00.004Z,2024-10-04,",
+          "1970-01-01T00:00:00.005Z,d1,5,55,5.5,55.5,false,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
+          "1970-01-01T00:00:00.007Z,d1,7,77,7.7,77.7,true,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
+          "1970-01-01T00:00:00.008Z,d1,null,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
+        };
+    tableResultSetEqualTest(
+        "select * from table1 FILL METHOD NEXT", expectedHeader, retArray, DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,1,11,1.1,11.1,true,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
+          "1970-01-01T00:00:00.002Z,d1,2,22,2.2,22.2,false,text3,string3,0xcafebabe03,1970-01-01T00:00:00.003Z,2024-10-03,",
+          "1970-01-01T00:00:00.003Z,d1,5,55,5.5,55.5,false,text3,string3,0xcafebabe03,1970-01-01T00:00:00.003Z,2024-10-03,",
+          "1970-01-01T00:00:00.004Z,d1,5,55,5.5,55.5,false,text4,string4,0xcafebabe04,1970-01-01T00:00:00.004Z,2024-10-04,",
+          "1970-01-01T00:00:00.005Z,d1,5,55,5.5,55.5,false,null,null,null,null,null,",
+          "1970-01-01T00:00:00.007Z,d1,7,77,7.7,77.7,true,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
+          "1970-01-01T00:00:00.008Z,d1,null,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
+        };
+    tableResultSetEqualTest(
+        "select * from table1 FILL METHOD NEXT TIME_BOUND 2ms TIME_COLUMN 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,1,11,1.1,11.1,true,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
+          "1970-01-01T00:00:00.002Z,d1,2,22,2.2,22.2,false,null,null,null,null,null,",
+          "1970-01-01T00:00:00.003Z,d1,null,null,null,null,null,text3,string3,0xcafebabe03,1970-01-01T00:00:00.003Z,2024-10-03,",
+          "1970-01-01T00:00:00.004Z,d1,null,null,null,null,null,text4,string4,0xcafebabe04,1970-01-01T00:00:00.004Z,2024-10-04,",
+          "1970-01-01T00:00:00.005Z,d1,5,55,5.5,55.5,false,null,null,null,null,null,",
+          "1970-01-01T00:00:00.007Z,d1,7,77,7.7,77.7,true,null,null,null,null,null,",
+          "1970-01-01T00:00:00.008Z,d1,null,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
+        };
+    tableResultSetEqualTest(
+        "select * from table1 FILL METHOD NEXT TIME_BOUND 2ms TIME_COLUMN 11",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"s1", "s6"};
+    retArray =
+        new String[] {
+          "1,text1,", "2,text3,", "5,text3,", "5,text4,", "5,text8,", "7,text8,", "null,text8,",
+        };
+    tableResultSetEqualTest(
+        "select s1,s6 from table1 FILL METHOD NEXT", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "s1", "s6"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.008Z,null,text8,",
+          "1970-01-01T00:00:00.007Z,7,text8,",
+          "1970-01-01T00:00:00.005Z,5,text8,",
+          "1970-01-01T00:00:00.004Z,5,text4,",
+          "1970-01-01T00:00:00.003Z,5,text3,",
+          "1970-01-01T00:00:00.002Z,2,text3,",
+          "1970-01-01T00:00:00.001Z,1,text1,",
+        };
+    tableResultSetEqualTest(
+        "select time,s1,s6 from table1 FILL METHOD NEXT order by time desc",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1,text1,",
+          "1970-01-01T00:00:00.002Z,2,text1,",
+          "1970-01-01T00:00:00.003Z,2,text3,",
+          "1970-01-01T00:00:00.004Z,2,text4,",
+          "1970-01-01T00:00:00.005Z,5,text4,",
+          "1970-01-01T00:00:00.007Z,7,text4,",
+          "1970-01-01T00:00:00.008Z,7,text8,",
+        };
+    tableResultSetEqualTest(
+        "select * from (select time,s1,s6 from table1 order by time desc) FILL METHOD NEXT order by time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "s1"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.002Z,2,",
+          "1970-01-01T00:00:00.003Z,5,",
+        };
+    tableResultSetEqualTest(
+        "select time,s1 from table1 FILL METHOD NEXT limit 3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "city", "device_id", "s1", "s2"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,beijing,d1,102,1011,",
+          "1970-01-01T00:00:00.002Z,beijing,d1,102,null,",
+          "1970-01-01T00:00:00.003Z,beijing,d1,103,null,",
+          "1970-01-01T00:00:00.004Z,beijing,d1,104,null,",
+          "1970-01-01T00:00:00.001Z,beijing,d2,101,1022,",
+          "1970-01-01T00:00:00.002Z,beijing,d2,null,1022,",
+          "1970-01-01T00:00:00.003Z,beijing,d2,null,1033,",
+          "1970-01-01T00:00:00.004Z,beijing,d2,null,1044,",
+          "1970-01-01T00:00:00.001Z,shanghai,d1,212,2111,",
+          "1970-01-01T00:00:00.002Z,shanghai,d1,212,null,",
+        };
+    tableResultSetEqualTest(
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD NEXT FILL_GROUP 2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD NEXT TIME_COLUMN 1 FILL_GROUP 2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select time,city,device_id,s1,s2 from table2 FILL METHOD NEXT TIME_BOUND 2ms TIME_COLUMN 1 FILL_GROUP 2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void abNormalFillTest() {
 
     // --------------------------------- PREVIOUS FILL ---------------------------------
@@ -703,6 +839,25 @@ public class IoTDBFillTableIT {
         "select s1, time from table1 FILL METHOD PREVIOUS FILL_GROUP 3",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": PREVIOUS FILL FILL_GROUP position 3 is not in select list",
+        DATABASE_NAME);
+
+    // --------------------------------- NEXT FILL ---------------------------------
+    tableAssertTestFail(
+        "select s1 from table1 FILL METHOD NEXT TIME_COLUMN 1",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Don't need to specify TIME_COLUMN while either TIME_BOUND or FILL_GROUP parameter is not specified",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select s1 from table1 FILL METHOD NEXT TIME_BOUND 2ms",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Cannot infer TIME_COLUMN for NEXT FILL, there exists no column whose type is TIMESTAMP",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select s1 from table1 FILL METHOD NEXT FILL_GROUP 1",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Cannot infer TIME_COLUMN for NEXT FILL, there exists no column whose type is TIMESTAMP",
         DATABASE_NAME);
 
     // --------------------------------- LINEAR FILL ---------------------------------

@@ -25,6 +25,7 @@ import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -45,8 +46,12 @@ public class FileUtilsTest {
 
   @After
   public void tearDown() throws Exception {
-    tmpDir.delete();
-    targetDir.delete();
+    if (tmpDir != null) {
+      FileUtils.deleteFileOrDirectory(tmpDir, true);
+    }
+    if (targetDir != null) {
+      FileUtils.deleteFileOrDirectory(targetDir, true);
+    }
   }
 
   @Test
@@ -58,6 +63,13 @@ public class FileUtilsTest {
     FileUtils.moveFileWithMD5Check(tstFile, targetDir);
     tstFile2.renameTo(tstFile);
     FileUtils.moveFileWithMD5Check(tstFile, targetDir);
+  }
+
+  @Test
+  public void testGetIllegalError4DirectoryRejectsEmptyPath() {
+    Assert.assertNotNull(FileUtils.getIllegalError4Directory(null));
+    Assert.assertNotNull(FileUtils.getIllegalError4Directory(""));
+    Assert.assertNull(FileUtils.getIllegalError4Directory("valid_dir"));
   }
 
   private void generateFile(File tsfile) throws WriteProcessException, IOException {

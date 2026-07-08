@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
 /** Helper for prepared statement registration/unregistration. */
 public class PreparedStatementHelper {
@@ -34,7 +35,7 @@ public class PreparedStatementHelper {
       IClientSession session, String statementName, Statement sql) {
     if (session.getPreparedStatement(statementName) != null) {
       throw new SemanticException(
-          String.format("Prepared statement '%s' already exists", statementName));
+          String.format(DataNodeQueryMessages.PREPARED_STATEMENT_S_ALREADY_EXISTS, statementName));
     }
 
     long memorySizeInBytes = sql == null ? 0L : sql.ramBytesUsed();
@@ -52,7 +53,7 @@ public class PreparedStatementHelper {
     PreparedStatementInfo removedInfo = session.removePreparedStatement(statementName);
     if (removedInfo == null) {
       throw new SemanticException(
-          String.format("Prepared statement '%s' does not exist", statementName));
+          String.format(DataNodeQueryMessages.PREPARED_STATEMENT_S_DOES_NOT_EXIST, statementName));
     }
 
     PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemorySizeInBytes());

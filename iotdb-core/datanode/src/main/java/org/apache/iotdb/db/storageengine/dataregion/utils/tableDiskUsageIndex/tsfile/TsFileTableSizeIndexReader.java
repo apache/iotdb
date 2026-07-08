@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -99,7 +100,7 @@ public class TsFileTableSizeIndexReader {
         lastCompleteKeyOffsets.add(lastCompleteEntryEndOffsetInKeyFile);
       }
     } catch (Exception e) {
-      logger.warn("Failed to read table tsfile size index file {}", keyFile, e);
+      logger.warn(StorageEngineMessages.FAILED_TO_READ_TABLE_SIZE_INDEX, keyFile, e);
     } finally {
       closeCurrentFile();
     }
@@ -128,7 +129,8 @@ public class TsFileTableSizeIndexReader {
       }
     } catch (Exception e) {
       logger.warn(
-          "Failed to read table tsfile size index {} after position: {} and {} after position: {}",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_READ_TABLE_TSFILE_SIZE_INDEX_AFTER_POSITION_AND_74251AF3,
           keyFile,
           valueFile,
           keyFileTruncateSize,
@@ -194,7 +196,11 @@ public class TsFileTableSizeIndexReader {
       keyFileEntry = new KeyFileEntry(tsFileID, originTsFileID);
     } else {
       throw new IoTDBRuntimeException(
-          "Unsupported record type in file: " + keyFile.getPath() + ", type: " + type,
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_UNSUPPORTED_RECORD_TYPE_IN_FILE_S_TYPE_S_DADEE641,
+              keyFile.getPath(),
+              type),
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return keyFileEntry;
@@ -231,7 +237,7 @@ public class TsFileTableSizeIndexReader {
     inputStream.seek(offset);
     int tableNum = ReadWriteForEncodingUtils.readVarInt(inputStream);
     if (tableNum <= 0) {
-      throw new IllegalArgumentException("tableNum should be greater than 0");
+      throw new IllegalArgumentException(StorageEngineMessages.TABLE_NUM_SHOULD_BE_POSITIVE);
     }
     Map<String, Long> tableSizeMap = needResult ? new HashMap<>(tableNum) : null;
     for (int i = 0; i < tableNum; i++) {
@@ -294,7 +300,7 @@ public class TsFileTableSizeIndexReader {
     /** Only support forward seek: newPos >= position */
     public void seek(long newPos) throws IOException {
       if (newPos < position) {
-        throw new UnsupportedOperationException("Backward seek is not supported");
+        throw new UnsupportedOperationException(StorageEngineMessages.BACKWARD_SEEK_NOT_SUPPORTED);
       }
 
       // Fast path 0: no-op

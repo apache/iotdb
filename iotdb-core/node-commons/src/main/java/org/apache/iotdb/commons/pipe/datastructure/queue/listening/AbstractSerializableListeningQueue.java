@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.queue.listening;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.PlainQueueSerializer;
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializer;
@@ -109,7 +110,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.warn(
-          "Failed to serialize to file, because file {} is already exist.",
+          PipeMessages.LOG_FAILED_SERIALIZE_FILE_BECAUSE_FILE_ARG_ALREADY_EXIST_FACC5C4C,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -124,7 +125,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
             .writeQueueToFile(fileOutputStream, queue, this::serializeToByteBuffer);
       } else {
         throw new UnsupportedOperationException(
-            "Unknown serializer type: " + serializerType.getType());
+            PipeMessages.UNKNOWN_SERIALIZER_TYPE + serializerType.getType());
       }
     }
   }
@@ -133,7 +134,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.warn(
-          "Failed to deserialize from file, file {} does not exist.",
+          PipeMessages.LOG_FAILED_DESERIALIZE_FILE_FILE_ARG_DOES_NOT_EXIST_2356708C,
           snapshotFile.getAbsolutePath());
       return;
     }
@@ -149,7 +150,8 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
             .get()
             .loadQueueFromFile(inputStream, queue, this::deserializeFromByteBuffer);
       } else {
-        throw new UnsupportedOperationException("Unknown serializer type: " + type.getType());
+        throw new UnsupportedOperationException(
+            PipeMessages.UNKNOWN_SERIALIZER_TYPE + type.getType());
       }
     }
   }

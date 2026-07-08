@@ -18,6 +18,8 @@
 package org.apache.iotdb.rest.protocol.table.v1.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
@@ -31,8 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -48,10 +50,9 @@ import org.apache.iotdb.rest.protocol.table.v1.model.InsertTabletRequest;
 import org.apache.iotdb.rest.protocol.table.v1.model.SQL;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -143,7 +144,7 @@ public class RestApiServiceImpl extends RestApiService {
           .ifPresent(
               s ->
                   CommonUtils.addStatementExecutionLatency(
-                      OperationType.EXECUTE_QUERY_STATEMENT, s.toString(), costTime));
+                      OperationType.EXECUTE_QUERY_STATEMENT, StatementType.QUERY.name(), costTime));
     }
   }
 
@@ -160,7 +161,7 @@ public class RestApiServiceImpl extends RestApiService {
           StatementConstructionHandler.constructInsertTabletStatement(insertTabletRequest);
       IClientSession clientSession = SESSION_MANAGER.getCurrSession();
       clientSession.setDatabaseName(insertTabletRequest.getDatabase());
-      clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
+      clientSession.setSqlDialect(SqlDialect.TABLE);
       queryId = SESSION_MANAGER.requestQueryId();
       Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
@@ -200,7 +201,6 @@ public class RestApiServiceImpl extends RestApiService {
     SqlParser relationSqlParser = new SqlParser();
     Long queryId = null;
     Statement statement = null;
-    long startTime = System.nanoTime();
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSession();
       statement = createStatement(sql, clientSession, relationSqlParser);
@@ -241,12 +241,6 @@ public class RestApiServiceImpl extends RestApiService {
           .entity(ExceptionHandler.tryCatchException(e))
           .build();
     } finally {
-      long costTime = System.nanoTime() - startTime;
-      Optional.ofNullable(statement)
-          .ifPresent(
-              s ->
-                  CommonUtils.addStatementExecutionLatency(
-                      OperationType.EXECUTE_NON_QUERY_PLAN, s.toString(), costTime));
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
       }
@@ -294,8 +288,9 @@ public class RestApiServiceImpl extends RestApiService {
       clientSession.setDatabaseName(sql.getDatabase());
     }
 
-    clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
-    return relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault(), clientSession);
+    clientSession.setSqlDialect(SqlDialect.TABLE);
+    return relationSqlParser.createStatement(
+        sql.getSql(), clientSession.getZoneId(), clientSession);
   }
 
   private Response validateStatement(Statement statement, boolean userQuery) {

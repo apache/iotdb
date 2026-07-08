@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -69,8 +72,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.TabletDecoder;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
@@ -176,7 +177,7 @@ public class StatementGenerator {
     return queryStatement;
   }
 
-  public static Statement createStatement(TSLastDataQueryReq lastDataQueryReq)
+  public static QueryStatement createStatement(TSLastDataQueryReq lastDataQueryReq)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
     // construct query statement
@@ -294,7 +295,8 @@ public class StatementGenerator {
       if (!insertRecordReq.isSetColumnCategoryies()
           || insertRecordReq.getColumnCategoryiesSize() != insertRecordReq.getMeasurementsSize()) {
         throw new IllegalArgumentException(
-            "Missing or invalid column categories for table " + "insertion");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
       }
       TsTableColumnCategory[] columnCategories =
           new TsTableColumnCategory[insertRecordReq.getColumnCategoryies().size()];
@@ -374,7 +376,8 @@ public class StatementGenerator {
       if (!insertTabletReq.isSetColumnCategories()
           || insertTabletReq.getColumnCategoriesSize() != insertTabletReq.getMeasurementsSize()) {
         throw new IllegalArgumentException(
-            "Missing or invalid column categories for table " + "insertion");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
       }
       TsTableColumnCategory[] columnCategories =
           new TsTableColumnCategory[insertTabletReq.columnCategories.size()];
@@ -695,11 +698,12 @@ public class StatementGenerator {
 
       if (measurementName == null) {
         throw new MetadataException(
-            "The name of a measurement in schema template shall not be null.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THE_NAME_OF_A_MEASUREMENT_IN_SCHEMA_TEMPLATE_SHALL_NOT_BE_937264BD);
       }
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
-        throw new MetadataException("Align designation incorrect at: " + prefix);
+        throw new MetadataException(DataNodeQueryMessages.ALIGN_DESIGNATION_INCORRECT_AT + prefix);
       }
 
       if (isAlign && !alignedPrefix.containsKey(prefix)) {

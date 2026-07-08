@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -89,10 +90,10 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         result = AuthUtils.generateEmptyPermissionInfoResp();
       }
     } catch (AuthException e) {
-      LOGGER.error("meet error while logging in.", e);
       loginMessage = e.getMessage();
       tsStatus.setCode(e.getCode().getStatusCode());
-      tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
+      tsStatus.setMessage(
+          loginMessage != null ? loginMessage : ConfigNodeMessages.AUTHENTICATION_FAILED);
       result.setStatus(tsStatus);
     }
     return result;
@@ -122,6 +123,9 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           break;
         case RenameUser:
           authorizer.renameUser(userName, newUsername);
+          break;
+        case AccountUnlock:
+          checkUserExistsForAccountUnlock(userName);
           break;
         case CreateUser:
           authorizer.createUser(userName, password);
@@ -198,7 +202,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         default:
           throw new AuthException(
               TSStatusCode.UNSUPPORTED_AUTH_OPERATION,
-              "unknown type: " + authorPlan.getAuthorType());
+              ConfigNodeMessages.EXCEPTION_UNKNOWN_TYPE_7618F8F4 + authorPlan.getAuthorType());
       }
     } catch (AuthException e) {
       return RpcUtils.getStatus(e.getCode(), e.getMessage());
@@ -240,6 +244,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           authorizer.renameUser(userName, newUsername);
           break;
         case RAccountUnlock:
+          checkUserExistsForAccountUnlock(userName);
           break;
         case RDropRole:
           authorizer.deleteRole(roleName);
@@ -439,12 +444,20 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           }
           break;
         default:
-          throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");
+          throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, ConfigNodeMessages.NOT_SUPPORT);
       }
     } catch (AuthException e) {
       return RpcUtils.getStatus(e.getCode(), e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  private void checkUserExistsForAccountUnlock(final String userName) throws AuthException {
+    // Account unlock has no persistent ConfigNode auth state change, but the write path needs this
+    // validation before broadcasting DataNode unlocks and propagating through pipe.
+    if (authorizer.getUser(userName) == null) {
+      throw new AuthException(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + userName);
+    }
   }
 
   @Override
@@ -700,7 +713,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     User user = authorizer.getUser(username);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
+          TSStatusCode.USER_NOT_EXIST,
+          String.format(ConfigNodeMessages.EXCEPTION_NO_SUCH_USER_ARG_D11B1046, username));
     }
     result = getUserPermissionInfo(username, ModelType.ALL);
     if (user.getRoleSet().contains(roleName)) {
@@ -717,7 +731,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     User user = authorizer.getUser(username);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
+          TSStatusCode.USER_NOT_EXIST,
+          String.format(ConfigNodeMessages.EXCEPTION_NO_SUCH_USER_ARG_D11B1046, username));
     }
     result = getUserPermissionInfo(username, ModelType.ALL);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -729,7 +744,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     User user = authorizer.getUser(userId);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("No such user id: " + userId));
+          TSStatusCode.USER_NOT_EXIST,
+          String.format(ConfigNodeMessages.EXCEPTION_NO_SUCH_USER_ID_99CA691B + userId));
     }
     return user.getName();
   }

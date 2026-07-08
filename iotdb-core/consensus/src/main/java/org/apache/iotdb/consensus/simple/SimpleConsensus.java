@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -31,13 +32,13 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.IStateMachine.Registry;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -88,7 +89,8 @@ class SimpleConsensus implements IConsensus {
   private void initAndRecover() throws IOException {
     if (!storageDir.exists()) {
       if (!storageDir.mkdirs()) {
-        throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
+        throw new IOException(
+            String.format(ConsensusMessages.UNABLE_TO_CREATE_CONSENSUS_DIR_FMT, storageDir));
       }
     } else {
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
@@ -165,7 +167,8 @@ class SimpleConsensus implements IConsensus {
                   String path = buildPeerDir(groupId);
                   File file = new File(path);
                   if (!file.mkdirs()) {
-                    logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
+                    logger.warn(
+                        ConsensusMessages.UNABLE_TO_CREATE_CONSENSUS_DIR_FOR_GROUP, groupId, path);
                     return null;
                   }
 
@@ -179,7 +182,8 @@ class SimpleConsensus implements IConsensus {
         .orElseThrow(
             () ->
                 new ConsensusException(
-                    String.format("Unable to create consensus dir for group %s", groupId)));
+                    String.format(
+                        ConsensusMessages.UNABLE_TO_CREATE_CONSENSUS_DIR_FOR_GROUP_FMT, groupId)));
     if (exist.get()) {
       throw new ConsensusGroupAlreadyExistException(groupId);
     }
@@ -203,28 +207,28 @@ class SimpleConsensus implements IConsensus {
 
   @Override
   public void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
-    throw new ConsensusException("SimpleConsensus does not support membership changes");
+    throw new ConsensusException(ConsensusMessages.SIMPLE_CONSENSUS_NOT_SUPPORT_MEMBERSHIP_CHANGES);
   }
 
   @Override
   public void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
-    throw new ConsensusException("SimpleConsensus does not support membership changes");
+    throw new ConsensusException(ConsensusMessages.SIMPLE_CONSENSUS_NOT_SUPPORT_MEMBERSHIP_CHANGES);
   }
 
   @Override
   public void recordCorrectPeerListBeforeStarting(
       Map<ConsensusGroupId, List<Peer>> correctPeerList) {
-    logger.info("SimpleConsensus will do nothing when calling recordCorrectPeerListBeforeStarting");
+    logger.info(ConsensusMessages.SIMPLE_CONSENSUS_NOOP_RECORD_PEER_LIST);
   }
 
   @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
-    throw new ConsensusException("SimpleConsensus does not support leader transfer");
+    throw new ConsensusException(ConsensusMessages.SIMPLE_CONSENSUS_NOT_SUPPORT_LEADER_TRANSFER);
   }
 
   @Override
   public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
-    throw new ConsensusException("SimpleConsensus does not support snapshot trigger currently");
+    throw new ConsensusException(ConsensusMessages.SIMPLE_CONSENSUS_NOT_SUPPORT_SNAPSHOT_TRIGGER);
   }
 
   @Override
@@ -273,7 +277,7 @@ class SimpleConsensus implements IConsensus {
   @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
-    throw new ConsensusException("SimpleConsensus does not support reset peer list");
+    throw new ConsensusException(ConsensusMessages.SIMPLE_CONSENSUS_NOT_SUPPORT_RESET_PEER_LIST);
   }
 
   private String buildPeerDir(ConsensusGroupId groupId) {

@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -55,7 +56,10 @@ public class TypeUtils {
         return new BinaryColumnBuilder(null, count);
       default:
         throw new UnSupportedDataTypeException(
-            "Do not support create ColumnBuilder with data type " + type);
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DO_NOT_SUPPORT_CREATE_COLUMNBUILDER_WITH_DATA_TYPE_S_1672578A,
+                type));
     }
   }
 
@@ -78,7 +82,7 @@ public class TypeUtils {
       case STRING:
       case TEXT:
       default:
-        throw new QueryProcessException("Unsupported data type: " + type);
+        throw new QueryProcessException(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type);
     }
   }
 }

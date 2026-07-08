@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.slf4j.Logger;
 
@@ -41,35 +42,47 @@ public class SchemaRegionUtils {
     File[] sgFiles = schemaRegionDir.listFiles();
     if (sgFiles == null) {
       throw new MetadataException(
-          String.format("Can't get files in schema region dir %s", schemaRegionDirPath));
+          String.format(
+              DataNodeSchemaMessages.CANNOT_GET_FILES_IN_SCHEMA_REGION_DIR, schemaRegionDirPath));
     }
     for (File file : sgFiles) {
       try {
         Files.delete(file.toPath());
-        logger.info("Delete schema region file {}", file.getAbsolutePath());
+        logger.info(DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FILE, file.getAbsolutePath());
       } catch (IOException e) {
-        logger.warn("Delete schema region file {} failed.", file.getAbsolutePath());
+        logger.warn(
+            DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FILE_FAILED, file.getAbsolutePath());
         throw new MetadataException(
-            String.format("Failed to delete schema region file %s", file.getAbsolutePath()));
+            String.format(
+                DataNodeSchemaMessages.FAILED_TO_DELETE_SCHEMA_REGION_FILE,
+                file.getAbsolutePath()));
       }
     }
 
     try {
       Files.delete(schemaRegionDir.toPath());
-      logger.info("Delete schema region folder {}", schemaRegionDir.getAbsolutePath());
+      logger.info(
+          DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FOLDER, schemaRegionDir.getAbsolutePath());
     } catch (IOException e) {
-      logger.warn("Delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
+      logger.warn(
+          DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FOLDER_FAILED,
+          schemaRegionDir.getAbsolutePath());
       throw new MetadataException(
           String.format(
-              "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
+              DataNodeSchemaMessages.FAILED_TO_DELETE_SCHEMA_REGION_FOLDER,
+              schemaRegionDir.getAbsolutePath()));
     }
     final File storageGroupDir = schemaRegionDir.getParentFile();
     if (Objects.requireNonNull(storageGroupDir.listFiles()).length == 0) {
       try {
         Files.delete(storageGroupDir.toPath());
-        logger.info("Delete database schema folder {}", storageGroupDir.getAbsolutePath());
+        logger.info(
+            DataNodeSchemaMessages.DELETE_DATABASE_SCHEMA_FOLDER,
+            storageGroupDir.getAbsolutePath());
       } catch (IOException e) {
-        logger.warn("Delete database schema folder {} failed", storageGroupDir.getAbsolutePath());
+        logger.warn(
+            DataNodeSchemaMessages.DELETE_DATABASE_SCHEMA_FOLDER_FAILED,
+            storageGroupDir.getAbsolutePath());
       }
     }
   }

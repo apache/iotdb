@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.commons.client.request.ConfigNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.commons.client.request.TestConnectionUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,10 @@ public class DnToCnInternalServiceAsyncRequestManager
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DnToCnInternalServiceAsyncRequestManager.class);
+
+  public DnToCnInternalServiceAsyncRequestManager() {
+    super(IoTDBDescriptor.getInstance().getConfig().getSelectorNumOfClientManager());
+  }
 
   @Override
   protected void initActionMapBuilder() {

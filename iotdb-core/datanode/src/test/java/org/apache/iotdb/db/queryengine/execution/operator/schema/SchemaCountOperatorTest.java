@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaSource;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -115,6 +115,82 @@ public class SchemaCountOperatorTest {
   }
 
   @Test
+  public void testSchemaCountOperatorSkipSchemaRegion() throws Exception {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+      PlanNodeId planNodeId = queryId.genPlanNodeId();
+      ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
+      OperatorContext operatorContext =
+          driverContext.addOperatorContext(
+              1, planNodeId, SchemaCountOperator.class.getSimpleName());
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
+      ISchemaSource<ISchemaInfo> schemaSource = Mockito.mock(ISchemaSource.class);
+      Mockito.when(schemaSource.shouldSkipSchemaRegion(schemaRegion)).thenReturn(true);
+
+      SchemaCountOperator<?> schemaCountOperator =
+          new SchemaCountOperator<>(
+              planNodeId, driverContext.getOperatorContexts().get(0), schemaSource);
+
+      assertTrue(schemaCountOperator.hasNext());
+      TsBlock tsBlock = schemaCountOperator.next();
+      assertEquals(0, tsBlock.getColumn(0).getLong(0));
+      assertTrue(schemaCountOperator.isFinished());
+      Mockito.verify(schemaSource, Mockito.never()).getSchemaReader(schemaRegion);
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testSchemaCountOperatorUseSchemaStatistic() throws Exception {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+      PlanNodeId planNodeId = queryId.genPlanNodeId();
+      ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
+      OperatorContext operatorContext =
+          driverContext.addOperatorContext(
+              1, planNodeId, SchemaCountOperator.class.getSimpleName());
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
+      ISchemaSource<ISchemaInfo> schemaSource = Mockito.mock(ISchemaSource.class);
+      Mockito.when(schemaSource.hasSchemaStatistic(schemaRegion)).thenReturn(true);
+      Mockito.when(schemaSource.getSchemaStatistic(schemaRegion)).thenReturn(7L);
+      Mockito.when(schemaSource.checkRegionDatabaseIncluded(schemaRegion)).thenReturn(true);
+
+      SchemaCountOperator<?> schemaCountOperator =
+          new SchemaCountOperator<>(
+              planNodeId, driverContext.getOperatorContexts().get(0), schemaSource);
+
+      assertTrue(schemaCountOperator.hasNext());
+      TsBlock tsBlock = schemaCountOperator.next();
+      assertEquals(7, tsBlock.getColumn(0).getLong(0));
+      Mockito.verify(schemaSource).getSchemaStatistic(schemaRegion);
+      Mockito.verify(schemaSource, Mockito.never()).getSchemaReader(schemaRegion);
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
   public void testLevelTimeSeriesCountOperator() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
@@ -177,6 +253,43 @@ public class SchemaCountOperatorTest {
       } catch (RuntimeException e) {
         Assert.assertTrue(e.getMessage().contains(EXCEPTION_MESSAGE));
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testLevelTimeSeriesCountOperatorSkipSchemaRegion() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+      PlanNodeId planNodeId = queryId.genPlanNodeId();
+      OperatorContext operatorContext =
+          driverContext.addOperatorContext(
+              1, planNodeId, CountGroupByLevelScanOperator.class.getSimpleName());
+      ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
+      ISchemaSource<ITimeSeriesSchemaInfo> schemaSource = Mockito.mock(ISchemaSource.class);
+      Mockito.when(schemaSource.shouldSkipSchemaRegion(schemaRegion)).thenReturn(true);
+
+      CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator =
+          new CountGroupByLevelScanOperator<>(
+              planNodeId, driverContext.getOperatorContexts().get(0), 1, schemaSource);
+
+      assertTrue(collectResult(timeSeriesCountOperator).isEmpty());
+      Mockito.verify(schemaSource, Mockito.never()).getSchemaReader(schemaRegion);
     } catch (Exception e) {
       e.printStackTrace();
       fail();

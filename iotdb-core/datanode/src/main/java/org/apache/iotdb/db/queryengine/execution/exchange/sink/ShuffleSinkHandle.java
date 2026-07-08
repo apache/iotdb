@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -82,12 +83,21 @@ public class ShuffleSinkHandle implements ISinkHandle {
       ShuffleStrategyEnum shuffleStrategyEnum,
       MPPDataExchangeManager.SinkListener sinkListener) {
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
     this.downStreamChannelList =
-        Validate.notNull(downStreamChannelList, "downStreamChannelList can not be null.");
+        Validate.notNull(
+            downStreamChannelList,
+            DataNodeQueryMessages.EXCEPTION_DOWNSTREAMCHANNELLIST_CAN_NOT_BE_NULL_DOT_417AD5A3);
     this.downStreamChannelIndex =
-        Validate.notNull(downStreamChannelIndex, "downStreamChannelIndex can not be null.");
-    this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
+        Validate.notNull(
+            downStreamChannelIndex,
+            DataNodeQueryMessages.EXCEPTION_DOWNSTREAMCHANNELINDEX_CAN_NOT_BE_NULL_DOT_A1D5A266);
+    this.sinkListener =
+        Validate.notNull(
+            sinkListener,
+            DataNodeQueryMessages.EXCEPTION_SINKLISTENER_CAN_NOT_BE_NULL_DOT_32C9E7C0);
     this.channelNum = downStreamChannelList.size();
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
@@ -195,7 +205,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return false;
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartAbortShuffleSinkHandle]");
+      LOGGER.debug(DataNodeQueryMessages.START_ABORT_SHUFFLE_SINK_HANDLE);
     }
     boolean meetError = false;
     Exception firstException = null;
@@ -211,13 +221,13 @@ public class ShuffleSinkHandle implements ISinkHandle {
       }
     }
     if (meetError) {
-      LOGGER.warn("Error occurred when try to abort channel.", firstException);
+      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_ABORT_CHANNEL, firstException);
     }
     if (selfAborted) {
       sinkListener.onAborted(this);
       aborted = true;
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndAbortShuffleSinkHandle]");
+        LOGGER.debug(DataNodeQueryMessages.END_ABORT_SHUFFLE_SINK_HANDLE);
       }
       return true;
     } else {
@@ -235,7 +245,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return false;
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartCloseShuffleSinkHandle]");
+      LOGGER.debug(DataNodeQueryMessages.START_CLOSE_SHUFFLE_SINK_HANDLE);
     }
     boolean meetError = false;
     Exception firstException = null;
@@ -251,13 +261,13 @@ public class ShuffleSinkHandle implements ISinkHandle {
       }
     }
     if (meetError) {
-      LOGGER.warn("Error occurred when try to close channel.", firstException);
+      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_CLOSE_CHANNEL, firstException);
     }
     if (selfClosed) {
       sinkListener.onFinish(this);
       closed = true;
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndCloseShuffleSinkHandle]");
+        LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SHUFFLE_SINK_HANDLE);
       }
       return true;
     } else {
@@ -285,7 +295,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       for (ISinkChannel channel : downStreamChannelList) {
         channel.checkState();
       }
-      throw new IllegalStateException("ShuffleSinkHandle is aborted.");
+      throw new IllegalStateException(DataNodeQueryMessages.SHUFFLESINKHANDLE_IS_ABORTED);
     }
   }
 
@@ -327,7 +337,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
       // do nothing
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "PlainShuffleStrategy needs to do nothing, current channel index is {}",
+            DataNodeQueryMessages
+                .PLAINSHUFFLESTRATEGY_NEEDS_TO_DO_NOTHING_CURRENT_CHANNEL_INDEX_IS_ARG,
             downStreamChannelIndex.getCurrentIndex());
       }
     }
@@ -367,7 +378,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
       case SIMPLE_ROUND_ROBIN:
         return new SimpleRoundRobinStrategy();
       default:
-        throw new UnsupportedOperationException("Unsupported type of shuffle strategy");
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_TYPE_OF_SHUFFLE_STRATEGY);
     }
   }
 

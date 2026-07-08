@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.Frame;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.FrameInfo;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.GroupsFrame;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.RangeFrame;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.RowsFrame;
+import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
+import org.apache.iotdb.calc.execution.operator.process.window.utils.Range;
+import org.apache.iotdb.calc.execution.operator.process.window.utils.RowComparator;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;

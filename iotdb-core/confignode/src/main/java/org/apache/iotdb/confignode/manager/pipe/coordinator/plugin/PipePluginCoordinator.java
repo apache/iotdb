@@ -25,6 +25,8 @@ import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePlu
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipePluginInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
@@ -105,7 +107,7 @@ public class PipePluginCoordinator {
               configManager.getConsensusManager().read(new GetPipePluginTablePlan()))
           .convertToThriftResponse();
     } catch (IOException | ConsensusException e) {
-      LOGGER.error("Fail to get PipePluginTable", e);
+      LOGGER.error(ManagerMessages.FAIL_TO_GET_PIPEPLUGINTABLE, e);
       return new TGetPipePluginTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
@@ -120,7 +122,7 @@ public class PipePluginCoordinator {
           .filter(req.isTableModel)
           .convertToThriftResponse();
     } catch (IOException | ConsensusException e) {
-      LOGGER.error("Fail to get PipePluginTable", e);
+      LOGGER.error(ManagerMessages.FAIL_TO_GET_PIPEPLUGINTABLE, e);
       return new TGetPipePluginTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
@@ -136,7 +138,7 @@ public class PipePluginCoordinator {
                   .read(new GetPipePluginJarPlan(req.getJarNameList())))
           .convertToThriftResponse();
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new JarResp(res, Collections.emptyList()).convertToThriftResponse();

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools.settle;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -66,7 +67,7 @@ public class TsFileSettleByCompactionTool {
     try {
       commandLine = parser.parse(commandLineOptions, args);
     } catch (ParseException e) {
-      logger.info("Parse command line args failed: {}", e.getMessage());
+      logger.info(DataNodeMiscMessages.PARSE_COMMAND_LINE_FAILED, e.getMessage());
       return;
     }
 
@@ -86,9 +87,9 @@ public class TsFileSettleByCompactionTool {
       settleReq.setPaths(Arrays.asList(filePaths));
       TSStatus result = client.settle(settleReq);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        logger.info("Add Settle Compaction Task Successfully");
+        logger.info(DataNodeMiscMessages.ADD_SETTLE_COMPACTION_TASK_SUCCESS);
       } else {
-        logger.info("Add settle compaction task failed with status code: {}", result);
+        logger.info(DataNodeMiscMessages.ADD_SETTLE_COMPACTION_TASK_FAILED, result);
       }
     }
   }

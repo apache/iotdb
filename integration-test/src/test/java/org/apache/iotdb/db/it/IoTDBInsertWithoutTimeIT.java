@@ -24,8 +24,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -51,18 +51,26 @@ public class IoTDBInsertWithoutTimeIT {
           "CREATE TIMESERIES root.sg1.d1.s2 FLOAT",
           "CREATE TIMESERIES root.sg1.d1.s3 TEXT");
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     createTimeseries();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private void createTimeseries() {
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // ignore: cleanup may fail if target does not exist
+    }
+  }
+
+  private static void createTimeseries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
@@ -78,24 +86,30 @@ public class IoTDBInsertWithoutTimeIT {
   public void testInsertWithoutTime() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg1.d1(s1, s2, s3) values (1, 1, '1')");
-      Thread.sleep(1);
-      statement.execute("insert into root.sg1.d1(s2, s1, s3) values (2, 2, '2')");
-      Thread.sleep(1);
-      statement.execute("insert into root.sg1.d1(s3, s2, s1) values ('3', 3, 3)");
-      Thread.sleep(1);
-      statement.execute("insert into root.sg1.d1(s1) values (1)");
-      statement.execute("insert into root.sg1.d1(s2) values (2)");
-      statement.execute("insert into root.sg1.d1(s3) values ('3')");
+      try {
+        statement.execute("insert into root.sg1.d1(s1, s2, s3) values (1, 1, '1')");
+        Thread.sleep(1);
+        statement.execute("insert into root.sg1.d1(s2, s1, s3) values (2, 2, '2')");
+        Thread.sleep(1);
+        statement.execute("insert into root.sg1.d1(s3, s2, s1) values ('3', 3, 3)");
+        Thread.sleep(1);
+        statement.execute("insert into root.sg1.d1(s1) values (1)");
+        statement.execute("insert into root.sg1.d1(s2) values (2)");
+        statement.execute("insert into root.sg1.d1(s3) values ('3')");
+
+        String expectedHeader =
+            "count(root.sg1.d1.s1),count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
+        String[] retArray = new String[] {"4,4,4,"};
+        resultSetEqualTest(
+            "select count(s1), count(s2), count(s3) from root.sg1.d1", expectedHeader, retArray);
+      } finally {
+        // remove the data inserted by this test, but keep the timeseries created in @BeforeClass
+        executeQuietly(statement, "DELETE FROM root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d1.s3");
+      }
     } catch (SQLException | InterruptedException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-
-    String expectedHeader = "count(root.sg1.d1.s1),count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
-    String[] retArray = new String[] {"4,4,4,"};
-    resultSetEqualTest(
-        "select count(s1), count(s2), count(s3) from root.sg1.d1", expectedHeader, retArray);
   }
 
   @Test

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -109,7 +110,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     this.valueStatisticsList = new ArrayList<>();
     this.alignedTvListQueryMap = alignedTvListQueryMap;
     this.columnIndexList = columnIndexList;
-    this.context.addTVListToSet(alignedTvListQueryMap);
+    this.context.addTVListToSet(alignedTvListQueryMap.keySet());
   }
 
   @Override
@@ -127,7 +128,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         // We must update queryRowCount here, otherwise, it may be used later to build
         // BitMaps, causing bitmap array size mismatch and possible out of bound.
         entry.setValue(alignedTvList.sort());
-        long alignedTvListRamSize = alignedTvList.calculateRamSize();
+        long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
         alignedTvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery =
@@ -257,7 +258,9 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataTypes.get(column)));
+                String.format(
+                    StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    dataTypes.get(column)));
         }
         pageValueStatistics[column] = pageValueStats.isEmpty() ? null : pageValueStats;
       }
@@ -384,7 +387,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       int queryLength = entry.getValue();
       if (!alignedTvList.isSorted() && queryLength > alignedTvList.seqRowCount()) {
         entry.setValue(alignedTvList.sort());
-        long alignedTvListRamSize = alignedTvList.calculateRamSize();
+        long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
         alignedTvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery =

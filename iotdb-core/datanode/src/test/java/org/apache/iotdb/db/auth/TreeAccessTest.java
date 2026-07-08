@@ -21,9 +21,12 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -32,6 +35,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.util.Collections;
 
 public class TreeAccessTest {
 
@@ -80,5 +85,133 @@ public class TreeAccessTest {
         treeAccessCheckVisitor
             .visitAuthor(authorStatement, new TreeAccessCheckContext(10000L, "user1", ""))
             .getCode());
+  }
+
+  @Test
+  public void testCountTimeSeriesInternalDatabasePermission() throws Exception {
+    User user = new User("user1", "password");
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().putUserCache(user.getName(), user);
+    TreeAccessCheckVisitor treeAccessCheckVisitor = new TreeAccessCheckVisitor();
+
+    CountTimeSeriesStatement systemStatement =
+        new CountTimeSeriesStatement(new PartialPath("root.__system.**"));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        treeAccessCheckVisitor
+            .visitCountTimeSeries(systemStatement, new TreeAccessCheckContext(10000L, "user1", ""))
+            .getCode());
+
+    user.grantSysPrivilege(PrivilegeType.SYSTEM, false);
+    systemStatement = new CountTimeSeriesStatement(new PartialPath("root.__system.**"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        treeAccessCheckVisitor
+            .visitCountTimeSeries(systemStatement, new TreeAccessCheckContext(10000L, "user1", ""))
+            .getCode());
+    Assert.assertEquals(
+        Collections.singletonList(new PartialPath("root.__system.**")),
+        systemStatement.getAuthorityScope().getAllPathPatterns());
+    Assert.assertTrue(systemStatement.isCanSeeSystemDB());
+    Assert.assertFalse(systemStatement.isCanSeeAuditDB());
+
+    CountLevelTimeSeriesStatement systemLevelStatement =
+        new CountLevelTimeSeriesStatement(new PartialPath("root.__system.**"), 1);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        treeAccessCheckVisitor
+            .visitCountLevelTimeSeries(
+                systemLevelStatement, new TreeAccessCheckContext(10000L, "user1", ""))
+            .getCode());
+    Assert.assertEquals(
+        Collections.singletonList(new PartialPath("root.__system.**")),
+        systemLevelStatement.getAuthorityScope().getAllPathPatterns());
+    Assert.assertTrue(systemLevelStatement.isCanSeeSystemDB());
+    Assert.assertFalse(systemLevelStatement.isCanSeeAuditDB());
+
+    CountTimeSeriesStatement auditStatement =
+        new CountTimeSeriesStatement(new PartialPath("root.__audit.**"));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        treeAccessCheckVisitor
+            .visitCountTimeSeries(auditStatement, new TreeAccessCheckContext(10000L, "user1", ""))
+            .getCode());
+
+    user.grantSysPrivilege(PrivilegeType.AUDIT, false);
+    auditStatement = new CountTimeSeriesStatement(new PartialPath("root.__audit.**"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        treeAccessCheckVisitor
+            .visitCountTimeSeries(auditStatement, new TreeAccessCheckContext(10000L, "user1", ""))
+            .getCode());
+    Assert.assertTrue(auditStatement.isCanSeeAuditDB());
+    Assert.assertFalse(auditStatement.isCanSeeSystemDB());
+    Assert.assertEquals(
+        Collections.singletonList(new PartialPath("root.__audit.**")),
+        auditStatement.getAuthorityScope().getAllPathPatterns());
+
+    CountLevelTimeSeriesStatement auditLevelStatement =
+        new CountLevelTimeSeriesStatement(new PartialPath("root.__audit.**"), 1);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        treeAccessCheckVisitor
+            .visitCountLevelTimeSeries(
+                auditLevelStatement, new TreeAccessCheckContext(10000L, "user1", ""))
+            .getCode());
+    Assert.assertTrue(auditLevelStatement.isCanSeeAuditDB());
+    Assert.assertFalse(auditLevelStatement.isCanSeeSystemDB());
+    Assert.assertEquals(
+        Collections.singletonList(new PartialPath("root.__audit.**")),
+        auditLevelStatement.getAuthorityScope().getAllPathPatterns());
+  }
+
+  @Test
+  public void testCountTimeSeriesImplicitInternalDatabasePermission() throws Exception {
+    User user = new User("user2", "password");
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().putUserCache(user.getName(), user);
+    TreeAccessCheckVisitor treeAccessCheckVisitor = new TreeAccessCheckVisitor();
+
+    CountTimeSeriesStatement statement = new CountTimeSeriesStatement(new PartialPath("root.**"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        treeAccessCheckVisitor
+            .visitCountTimeSeries(statement, new TreeAccessCheckContext(10000L, "user2", ""))
+            .getCode());
+    Assert.assertFalse(statement.isCanSeeSystemDB());
+    Assert.assertFalse(statement.isCanSeeAuditDB());
+
+    user.grantSysPrivilege(PrivilegeType.SYSTEM, false);
+    statement = new CountTimeSeriesStatement(new PartialPath("root.**"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        treeAccessCheckVisitor
+            .visitCountTimeSeries(statement, new TreeAccessCheckContext(10000L, "user2", ""))
+            .getCode());
+    Assert.assertTrue(statement.isCanSeeSystemDB());
+    Assert.assertFalse(statement.isCanSeeAuditDB());
+    Assert.assertTrue(
+        statement
+            .getAuthorityScope()
+            .getAllPathPatterns()
+            .contains(new PartialPath("root.__system.**")));
+
+    user.grantSysPrivilege(PrivilegeType.AUDIT, false);
+    statement = new CountTimeSeriesStatement(new PartialPath("root.**"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        treeAccessCheckVisitor
+            .visitCountTimeSeries(statement, new TreeAccessCheckContext(10000L, "user2", ""))
+            .getCode());
+    Assert.assertTrue(statement.isCanSeeSystemDB());
+    Assert.assertTrue(statement.isCanSeeAuditDB());
+    Assert.assertTrue(
+        statement
+            .getAuthorityScope()
+            .getAllPathPatterns()
+            .contains(new PartialPath("root.__system.**")));
+    Assert.assertTrue(
+        statement
+            .getAuthorityScope()
+            .getAllPathPatterns()
+            .contains(new PartialPath("root.__audit.**")));
   }
 }

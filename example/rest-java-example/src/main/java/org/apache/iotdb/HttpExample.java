@@ -53,6 +53,7 @@ public class HttpExample {
     httpExample.ping();
     httpExample.insertTablet();
     httpExample.query();
+    httpExample.queryWithTimeZone();
   }
 
   public void ping() {
@@ -128,6 +129,32 @@ public class HttpExample {
       LOGGER.info("message  = {}", mapper.readValue(message, Map.class));
     } catch (IOException e) {
       LOGGER.error("The query rest api failed", e);
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        LOGGER.error("Response close error", e);
+      }
+    }
+  }
+
+  public void queryWithTimeZone() {
+    CloseableHttpClient httpClient = SSLClient.getInstance().getHttpClient();
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
+      httpPost.setHeader("Time-Zone", "Asia/Shanghai");
+      String sql = "{\"sql\":\"select * from root.sg25 where time <= 2026-03-28T00:00:00\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, UTF8);
+      ObjectMapper mapper = new ObjectMapper();
+      LOGGER.info("message with time zone = {}", mapper.readValue(message, Map.class));
+    } catch (IOException e) {
+      LOGGER.error("The query with time zone rest api failed", e);
     } finally {
       try {
         if (response != null) {

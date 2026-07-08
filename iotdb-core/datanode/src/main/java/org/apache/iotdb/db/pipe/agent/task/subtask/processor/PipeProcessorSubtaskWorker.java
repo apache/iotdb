@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,7 +74,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         subtask.onSuccess(hasAtLeastOneEventProcessed);
       } catch (final Exception e) {
         if (subtask.isClosed()) {
-          LOGGER.warn("subtask {} is closed, ignore exception", subtask, e);
+          LOGGER.warn(DataNodePipeMessages.SUBTASK_IS_CLOSED_IGNORE_EXCEPTION, subtask, e);
         } else {
           subtask.onFailure(e);
         }
@@ -88,7 +89,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
       try {
         Thread.sleep(sleepingTimeInMilliSecond);
       } catch (final InterruptedException e) {
-        LOGGER.warn("subtask worker is interrupted", e);
+        LOGGER.warn(DataNodePipeMessages.SUBTASK_WORKER_IS_INTERRUPTED, e);
         Thread.currentThread().interrupt();
       }
     } else {

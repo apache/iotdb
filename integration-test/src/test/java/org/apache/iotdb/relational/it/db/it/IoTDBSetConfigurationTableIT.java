@@ -109,6 +109,9 @@ public class IoTDBSetConfigurationTableIT {
         statement.execute(
             "set configuration inner_compaction_candidate_file_num='1',max_cross_compaction_candidate_file_num='1' on "
                 + dnId);
+        if (dnId == 5) {
+          statement.execute("set configuration compaction_schedule_thread_num='2' on 5");
+        }
       }
     } catch (Exception e) {
       Assert.fail(e.getMessage());
@@ -131,6 +134,17 @@ public class IoTDBSetConfigurationTableIT {
               "enable_cross_space_compaction=false",
               "inner_compaction_candidate_file_num=1",
               "max_cross_compaction_candidate_file_num=1"));
+      boolean scheduleThreadNumChanged =
+          checkConfigFileContains(
+              dnId,
+              EnvFactory.getEnv().getDataNodeWrapperList().get(i),
+              "compaction_schedule_thread_num=2");
+      if (scheduleThreadNumChanged && dnId != 5) {
+        Assert.fail();
+      }
+      if (!scheduleThreadNumChanged && dnId == 5) {
+        Assert.fail();
+      }
     }
   }
 

@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Objects;
@@ -33,7 +37,9 @@ public class StartPipe extends PipeStatement {
   private final String pipeName;
 
   public StartPipe(final String pipeName) {
-    this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
+    this.pipeName =
+        requireNonNull(
+            pipeName, DataNodeQueryMessages.EXCEPTION_PIPE_NAME_CAN_NOT_BE_NULL_14570979);
   }
 
   public String getPipeName() {
@@ -41,8 +47,8 @@ public class StartPipe extends PipeStatement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitStartPipe(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitStartPipe(this, context);
   }
 
   @Override

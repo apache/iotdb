@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
@@ -368,17 +369,19 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean isGeneratedByPipe() {
-    throw new UnsupportedOperationException("isGeneratedByPipe() is not supported!");
+    throw new UnsupportedOperationException(
+        DataNodePipeMessages.ISGENERATEDBYPIPE_IS_NOT_SUPPORTED);
   }
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     final long[] timestamps = tablet.getTimestamps();
-    if (Objects.isNull(timestamps) || timestamps.length == 0) {
+    final int rowSize = tablet.getRowSize();
+    if (Objects.isNull(timestamps) || rowSize <= 0) {
       return false;
     }
     // We assume that `timestamps` is ordered.
-    return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
+    return startTime <= timestamps[rowSize - 1] && timestamps[0] <= endTime;
   }
 
   @Override
@@ -453,6 +456,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public Tablet convertToTablet() {
     if (!shouldParseTimeOrPattern()) {
+      PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
     }
     return initEventParser().convertToTablet();

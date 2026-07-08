@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -94,7 +95,8 @@ public class DeleteLogicalViewProcedure
     try {
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
-          LOGGER.info("Construct view schemaengine black list of view {}", requestMessage);
+          LOGGER.info(
+              ProcedureMessages.CONSTRUCT_VIEW_SCHEMAENGINE_BLACK_LIST_OF_VIEW, requestMessage);
           if (constructBlackList(env) > 0) {
             setNextState(DeleteLogicalViewState.CLEAN_DATANODE_SCHEMA_CACHE);
             break;
@@ -108,22 +110,24 @@ public class DeleteLogicalViewProcedure
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of view {}", requestMessage);
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_VIEW, requestMessage);
           invalidateCache(env);
           break;
         case DELETE_VIEW_SCHEMA:
-          LOGGER.info("Delete view schemaengine of {}", requestMessage);
+          LOGGER.info(ProcedureMessages.DELETE_VIEW_SCHEMAENGINE_OF, requestMessage);
           deleteViewSchema(env);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DeleteLogicalView-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.DELETELOGICALVIEW_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -175,10 +179,12 @@ public class DeleteLogicalViewProcedure
     for (final TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schemaengine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaengine cache of view {}", requestMessage);
+        LOGGER.error(
+            ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW, requestMessage);
         setFailure(
             new ProcedureException(
-                new MetadataException("Invalidate view schemaengine cache failed")));
+                new MetadataException(
+                    ProcedureMessages.INVALIDATE_VIEW_SCHEMAENGINE_CACHE_FAILED)));
         return;
       }
     }
@@ -307,7 +313,7 @@ public class DeleteLogicalViewProcedure
     }
     final DeleteLogicalViewProcedure that = (DeleteLogicalViewProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(this.getCurrentState(), that.getCurrentState())
         && this.getCycles() == that.getCycles()
         && isGeneratedByPipe == that.isGeneratedByPipe
         && patternTree.equals(that.patternTree);
@@ -341,8 +347,11 @@ public class DeleteLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failures: %s",
-                      requestMessage, taskName, consensusGroupId.id, printFailureMap()))));
+                      ProcedureMessages.DELETE_VIEW_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN_ALL,
+                      requestMessage,
+                      taskName,
+                      consensusGroupId.id,
+                      printFailureMap()))));
       interruptTask();
     }
   }

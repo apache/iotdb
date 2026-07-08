@@ -48,8 +48,11 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
       final TEndPoint endPoint,
       final String username,
       final String password,
+      final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
+      final String ownerId,
+      final Long ownerEpoch,
       final int thriftMaxFrameSize,
       final long heartbeatIntervalMs,
       final int connectionTimeoutInMs) {
@@ -57,8 +60,11 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
         endPoint,
         username,
         password,
+        encryptedPassword,
         consumerId,
         consumerGroupId,
+        ownerId,
+        ownerEpoch,
         thriftMaxFrameSize,
         heartbeatIntervalMs,
         connectionTimeoutInMs);
@@ -79,8 +85,11 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
             .nodeUrls(builder.nodeUrls)
             .username(builder.username)
             .password(builder.password)
+            .encryptedPassword(builder.encryptedPassword)
             .consumerId(builder.consumerId)
             .consumerGroupId(builder.consumerGroupId)
+            .ownerId(builder.ownerId)
+            .ownerEpoch(builder.ownerEpoch)
             .heartbeatIntervalMs(builder.heartbeatIntervalMs)
             .endpointsSyncIntervalMs(builder.endpointsSyncIntervalMs)
             .fileSaveDir(builder.fileSaveDir)
@@ -185,9 +194,12 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
 
     private String username = SessionConfig.DEFAULT_USER;
     private String password = SessionConfig.DEFAULT_PASSWORD;
+    private String encryptedPassword;
 
     private String consumerId;
     private String consumerGroupId;
+    private String ownerId;
+    private Long ownerEpoch;
 
     private long heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
     private long endpointsSyncIntervalMs =
@@ -231,6 +243,11 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
       return this;
     }
 
+    public Builder encryptedPassword(final String encryptedPassword) {
+      this.encryptedPassword = encryptedPassword;
+      return this;
+    }
+
     public Builder consumerId(@Nullable final String consumerId) {
       if (Objects.isNull(consumerId)) {
         return this;
@@ -244,6 +261,19 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
         return this;
       }
       this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
+      return this;
+    }
+
+    public Builder ownerId(@Nullable final String ownerId) {
+      if (Objects.isNull(ownerId)) {
+        return this;
+      }
+      this.ownerId = ownerId;
+      return this;
+    }
+
+    public Builder ownerEpoch(final long ownerEpoch) {
+      this.ownerEpoch = ownerEpoch;
       return this;
     }
 

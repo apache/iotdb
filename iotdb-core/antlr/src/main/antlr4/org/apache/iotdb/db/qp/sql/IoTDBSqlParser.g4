@@ -59,7 +59,7 @@ ddlStatement
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
-    | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
+    | createTopic | alterTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -76,6 +76,8 @@ ddlStatement
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
     // Table View
     | createTableView
+    // for calculation point
+    | createCalcPoint | alterCalcPoint | dropCalcPoint | showCalcPoint
     ;
 
 dmlStatement
@@ -94,6 +96,7 @@ utilityStatement
     | showQueries | showDiskUsage | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
+    | repairDataPartitionTable | showRepairDataPartitionTableProgress
     ;
 
 /**
@@ -118,8 +121,8 @@ databaseAttributeClause
 databaseAttributeKey
     : TTL
     | TIME_PARTITION_INTERVAL
-    | SCHEMA_REGION_GROUP_NUM
-    | DATA_REGION_GROUP_NUM
+    | MAX_SCHEMA_REGION_GROUP_NUM
+    | MAX_DATA_REGION_GROUP_NUM
     ;
 
 // ---- Drop Database
@@ -574,7 +577,7 @@ getSeriesSlotList
 
 // ---- Migrate Region
 migrateRegion
-    : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
+    : MIGRATE REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
 reconstructRegion
@@ -595,7 +598,7 @@ verifyConnection
 
 // ---- Remove DataNode
 removeDataNode
-    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL
+    : REMOVE DATANODE dataNodeIds+=INTEGER_LITERAL (COMMA dataNodeIds+=INTEGER_LITERAL)*
     ;
 
 // ---- Remove ConfigNode
@@ -715,6 +718,10 @@ showPipePlugins
 // Subscription =========================================================================================
 createTopic
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
+    ;
+
+alterTopic
+    : ALTER TOPIC topicName=identifier topicAttributesClause
     ;
 
 topicAttributesClause
@@ -852,6 +859,39 @@ createTableView
         (RESTRICT)?
         (WITH properties)?
         AS prefixPath
+    ;
+
+createCalcPoint
+    : CREATE CALCULATION POINT fullPath
+        AS expression
+        STRING_LITERAL
+        comment?
+    ;
+
+alterCalcPoint
+    : ALTER CALCULATION POINT fullPath
+       (AS expression)?
+       (STRING_LITERAL)?
+       comment?
+       (DROP COMMENT)?
+    ;
+
+dropCalcPoint
+    : DROP CALCULATION POINTS prefixPath
+    ;
+
+showCalcPoint
+    : SHOW CALCULATION POINTS prefixPath
+      calcPointWhereClause?
+      rowPaginationClause?
+    ;
+
+calcPointWhereClause
+    : WHERE calcPointContainsExpression
+    ;
+
+calcPointContainsExpression
+    : filterKey=identifier operator_contains value=STRING_LITERAL
     ;
 
 viewColumnDefinition
@@ -1238,6 +1278,16 @@ stopRepairData
     : STOP REPAIR DATA (ON (LOCAL | CLUSTER))?
     ;
 
+// Repair Data Partition Table
+repairDataPartitionTable
+    : REPAIR DATA PARTITION TABLE
+    ;
+
+// Show Repair Data Partition Table Progress
+showRepairDataPartitionTableProgress
+    : SHOW REPAIR DATA PARTITION TABLE PROGRESS
+    ;
+
 // Explain
 explain
     : EXPLAIN (ANALYZE VERBOSE?)? selectStatement?
@@ -1477,6 +1527,7 @@ expression
     | leftExpression=expression operator_and rightExpression=expression
     | leftExpression=expression operator_or rightExpression=expression
     ;
+
 
 caseWhenThenExpression
     : CASE caseExpression=expression? whenThenExpression+ (ELSE elseExpression=expression)? END

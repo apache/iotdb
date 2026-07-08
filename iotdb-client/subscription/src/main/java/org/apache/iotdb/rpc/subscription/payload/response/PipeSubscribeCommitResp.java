@@ -20,11 +20,36 @@
 package org.apache.iotdb.rpc.subscription.payload.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class PipeSubscribeCommitResp extends TPipeSubscribeResp {
+
+  private transient List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
+
+  private transient Map<String, TopicProgress> committedProgressByTopic = new LinkedHashMap<>();
+
+  public List<SubscriptionCommitContext> getAcceptedCommitContexts() {
+    return acceptedCommitContexts;
+  }
+
+  public Map<String, TopicProgress> getCommittedProgressByTopic() {
+    return committedProgressByTopic;
+  }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -42,10 +67,63 @@ public class PipeSubscribeCommitResp extends TPipeSubscribeResp {
     return resp;
   }
 
+  /**
+   * Serialize the incoming parameters into `PipeSubscribeCommitResp`, called by the subscription
+   * server.
+   */
+  public static PipeSubscribeCommitResp toTPipeSubscribeResp(
+      final TSStatus status,
+      final List<SubscriptionCommitContext> acceptedCommitContexts,
+      final Map<String, TopicProgress> committedProgressByTopic)
+      throws IOException {
+    final PipeSubscribeCommitResp resp = toTPipeSubscribeResp(status);
+    resp.acceptedCommitContexts = acceptedCommitContexts;
+    resp.committedProgressByTopic = committedProgressByTopic;
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(acceptedCommitContexts.size(), outputStream);
+      for (final SubscriptionCommitContext commitContext : acceptedCommitContexts) {
+        commitContext.serialize(outputStream);
+      }
+      ReadWriteIOUtils.write(committedProgressByTopic.size(), outputStream);
+      for (final Map.Entry<String, TopicProgress> entry : committedProgressByTopic.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        entry.getValue().serialize(outputStream);
+      }
+      resp.body =
+          Collections.singletonList(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+    }
+
+    return resp;
+  }
+
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
   public static PipeSubscribeCommitResp fromTPipeSubscribeResp(
       final TPipeSubscribeResp commitResp) {
     final PipeSubscribeCommitResp resp = new PipeSubscribeCommitResp();
+
+    if (Objects.nonNull(commitResp.body)) {
+      for (final ByteBuffer byteBuffer : commitResp.body) {
+        if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
+          final int acceptedSize = ReadWriteIOUtils.readInt(byteBuffer);
+          final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
+          for (int i = 0; i < acceptedSize; i++) {
+            acceptedCommitContexts.add(SubscriptionCommitContext.deserialize(byteBuffer));
+          }
+          final int committedProgressSize = ReadWriteIOUtils.readInt(byteBuffer);
+          final Map<String, TopicProgress> committedProgressByTopic = new LinkedHashMap<>();
+          for (int i = 0; i < committedProgressSize; i++) {
+            committedProgressByTopic.put(
+                ReadWriteIOUtils.readString(byteBuffer), TopicProgress.deserialize(byteBuffer));
+          }
+          resp.acceptedCommitContexts = acceptedCommitContexts;
+          resp.committedProgressByTopic = committedProgressByTopic;
+          break;
+        }
+      }
+    }
 
     resp.status = commitResp.status;
     resp.version = commitResp.version;
@@ -66,7 +144,9 @@ public class PipeSubscribeCommitResp extends TPipeSubscribeResp {
       return false;
     }
     final PipeSubscribeCommitResp that = (PipeSubscribeCommitResp) obj;
-    return Objects.equals(this.status, that.status)
+    return Objects.equals(this.acceptedCommitContexts, that.acceptedCommitContexts)
+        && Objects.equals(this.committedProgressByTopic, that.committedProgressByTopic)
+        && Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
@@ -74,6 +154,7 @@ public class PipeSubscribeCommitResp extends TPipeSubscribeResp {
 
   @Override
   public int hashCode() {
-    return Objects.hash(status, version, type, body);
+    return Objects.hash(
+        acceptedCommitContexts, committedProgressByTopic, status, version, type, body);
   }
 }

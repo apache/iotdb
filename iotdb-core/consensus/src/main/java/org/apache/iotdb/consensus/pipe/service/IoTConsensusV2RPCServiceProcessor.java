@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
+import org.apache.iotdb.consensus.i18n.IoTConsensusV2Messages;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.IoTConsensusV2IService;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCheckConsensusPipeCompletedReq;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCheckConsensusPipeCompletedResp;
@@ -86,7 +87,7 @@ public class IoTConsensusV2RPCServiceProcessor implements IoTConsensusV2IService
     IoTConsensusV2ServerImpl impl = iotConsensusV2.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("unexpected consensusGroupId %s for set active request %s", groupId, req);
+          String.format(IoTConsensusV2Messages.UNEXPECTED_GROUP_SET_ACTIVE, groupId, req);
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -110,8 +111,7 @@ public class IoTConsensusV2RPCServiceProcessor implements IoTConsensusV2IService
     IoTConsensusV2ServerImpl impl = iotConsensusV2.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format(
-              "unexpected consensusGroupId %s for create consensus pipe request %s", groupId, req);
+          String.format(IoTConsensusV2Messages.UNEXPECTED_GROUP_CREATE_PIPE, groupId, req);
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -130,7 +130,7 @@ public class IoTConsensusV2RPCServiceProcessor implements IoTConsensusV2IService
     } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
-      LOGGER.warn("Failed to create consensus pipe to target peer with req {}", req, e);
+      LOGGER.warn(IoTConsensusV2Messages.FAILED_CREATE_CONSENSUS_PIPE, req, e);
     }
     return new TNotifyPeerToCreateConsensusPipeResp(responseStatus);
   }
@@ -143,8 +143,7 @@ public class IoTConsensusV2RPCServiceProcessor implements IoTConsensusV2IService
     IoTConsensusV2ServerImpl impl = iotConsensusV2.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format(
-              "unexpected consensusGroupId %s for drop consensus pipe request %s", groupId, req);
+          String.format(IoTConsensusV2Messages.UNEXPECTED_GROUP_DROP_PIPE, groupId, req);
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -161,7 +160,7 @@ public class IoTConsensusV2RPCServiceProcessor implements IoTConsensusV2IService
     } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
-      LOGGER.warn("Failed to drop consensus pipe to target peer with req {}", req, e);
+      LOGGER.warn(IoTConsensusV2Messages.FAILED_DROP_CONSENSUS_PIPE, req, e);
     }
     return new TNotifyPeerToDropConsensusPipeResp(responseStatus);
   }
@@ -174,9 +173,7 @@ public class IoTConsensusV2RPCServiceProcessor implements IoTConsensusV2IService
     IoTConsensusV2ServerImpl impl = iotConsensusV2.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format(
-              "unexpected consensusGroupId %s for check transfer completed request %s",
-              groupId, req);
+          String.format(IoTConsensusV2Messages.UNEXPECTED_GROUP_CHECK_TRANSFER, groupId, req);
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -193,11 +190,7 @@ public class IoTConsensusV2RPCServiceProcessor implements IoTConsensusV2IService
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
       isCompleted = true;
-      LOGGER.warn(
-          "Failed to check consensus pipe completed with req {}, set is completed to {}",
-          req,
-          true,
-          e);
+      LOGGER.warn(IoTConsensusV2Messages.FAILED_CHECK_CONSENSUS_PIPE, req, true, e);
     }
     return new TCheckConsensusPipeCompletedResp(responseStatus, isCompleted);
   }
@@ -209,10 +202,7 @@ public class IoTConsensusV2RPCServiceProcessor implements IoTConsensusV2IService
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusV2ServerImpl impl = iotConsensusV2.getImpl(groupId);
     if (impl == null) {
-      String message =
-          String.format(
-              "unexpected consensusGroupId %s for TWaitReleaseAllRegionRelatedResourceRes request",
-              groupId);
+      String message = String.format(IoTConsensusV2Messages.UNEXPECTED_GROUP_WAIT_RELEASE, groupId);
       LOGGER.error(message);
       return new TWaitReleaseAllRegionRelatedResourceResp(true);
     }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.control;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -134,24 +135,28 @@ public class QueryFileManager {
   }
 
   public void writeQueryFileInfo() {
-    DEBUG_LOGGER.info("[Query Sealed File Info]\n");
+    DEBUG_LOGGER.info(StorageEngineMessages.QUERY_SEALED_FILE_INFO);
     for (Map.Entry<Long, Map<TsFileResource, TsFileResource>> entry :
         sealedFilePathsMap.entrySet()) {
       long queryId = entry.getKey();
       Set<TsFileResource> tsFileResources = entry.getValue().keySet();
-      DEBUG_LOGGER.info("\t[queryId: {}]\n", queryId);
+      DEBUG_LOGGER.info(StorageEngineMessages.QUERY_ID_FORMAT, queryId);
       for (TsFileResource tsFileResource : tsFileResources) {
-        DEBUG_LOGGER.info("\t\t{}\n", tsFileResource.getTsFile().getAbsolutePath());
+        DEBUG_LOGGER.info(
+            StorageEngineMessages.QUERY_FILE_PATH_FORMAT,
+            tsFileResource.getTsFile().getAbsolutePath());
       }
     }
-    DEBUG_LOGGER.info("[Query Unsealed File Info]\n");
+    DEBUG_LOGGER.info(StorageEngineMessages.QUERY_UNSEALED_FILE_INFO);
     for (Map.Entry<Long, Map<TsFileResource, TsFileResource>> entry :
         unsealedFilePathsMap.entrySet()) {
       long queryId = entry.getKey();
       Set<TsFileResource> tsFileResources = entry.getValue().keySet();
-      DEBUG_LOGGER.info("\t[queryId: {}]\n", queryId);
+      DEBUG_LOGGER.info(StorageEngineMessages.QUERY_ID_FORMAT, queryId);
       for (TsFileResource tsFileResource : tsFileResources) {
-        DEBUG_LOGGER.info("\t\t{}\n", tsFileResource.getTsFile().getAbsolutePath());
+        DEBUG_LOGGER.info(
+            StorageEngineMessages.QUERY_FILE_PATH_FORMAT,
+            tsFileResource.getTsFile().getAbsolutePath());
       }
     }
   }

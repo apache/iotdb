@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner;
 import org.apache.iotdb.commons.concurrent.IoTDBDaemonThreadFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -35,13 +36,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
 
-import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_EXTRACTOR_DISRUPTOR;
+import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_SOURCE_DISRUPTOR;
 
 public class DisruptorQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DisruptorQueue.class);
   private static final IoTDBDaemonThreadFactory THREAD_FACTORY =
-      new IoTDBDaemonThreadFactory(PIPE_EXTRACTOR_DISRUPTOR.getName());
+      new IoTDBDaemonThreadFactory(PIPE_SOURCE_DISRUPTOR.getName());
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   private final Disruptor<EventContainer> disruptor;
@@ -87,16 +88,29 @@ public class DisruptorQueue {
   }
 
   public void publish(final PipeRealtimeEvent event) {
+    publishOrDrop(event);
+  }
+
+  public boolean publishOrDrop(final PipeRealtimeEvent event) {
     final EnrichedEvent innerEvent = event.getEvent();
     if (innerEvent instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) innerEvent).recordDisruptorSize(ringBuffer);
     }
-    ringBuffer.publishEvent((container, sequence, o) -> container.setEvent(event), event);
-    mayPrintExceedingLog();
+    final boolean published =
+        ringBuffer.publishEvent(
+            (container, sequence, o) -> container.setEvent(event), event, this::isClosed);
+    if (published) {
+      mayPrintExceedingLog();
+    }
+    return published;
+  }
+
+  public void closeInput() {
+    isClosed = true;
   }
 
   public void shutdown() {
-    isClosed = true;
+    closeInput();
     // use shutdown instead of halt to ensure all published events have been handled
     disruptor.shutdown();
     allocatedMemoryBlock.close();
@@ -114,7 +128,7 @@ public class DisruptorQueue {
                 - PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds() * 1000L
             >= lastLogTime) {
       LOGGER.warn(
-          "The assigner queue content has exceeded half, it may be stuck and may block insertion. regionId: {}, capacity: {}, bufferSize: {}",
+          DataNodePipeMessages.THE_ASSIGNER_QUEUE_CONTENT_HAS_EXCEEDED_HALF,
           dataRegionId,
           remainingCapacity,
           bufferSize);

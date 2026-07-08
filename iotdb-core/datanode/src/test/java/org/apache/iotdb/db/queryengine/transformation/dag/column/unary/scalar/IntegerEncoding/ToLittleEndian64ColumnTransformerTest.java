@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.IntegerEncoding;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LongToBytesColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.LongToBytesColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.LongColumn;

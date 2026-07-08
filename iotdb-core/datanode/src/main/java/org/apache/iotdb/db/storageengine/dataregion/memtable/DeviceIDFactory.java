@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -86,7 +87,7 @@ public class DeviceIDFactory {
 
   public static Object[] truncateTailingNull(final Object[] device) {
     if (device == null) {
-      throw new IllegalArgumentException("DeviceID's length should be larger than 0.");
+      throw new IllegalArgumentException(StorageEngineMessages.DEVICE_ID_LENGTH_SHOULD_BE_POSITIVE);
     }
     int lastNonNullIndex = -1;
     for (int i = device.length - 1; i >= 0; i--) {

@@ -59,7 +59,6 @@ public class TreeModelPlanner implements IPlanner {
   private final Statement statement;
 
   private final ExecutorService executor;
-  private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
 
   private final IPartitionFetcher partitionFetcher;
@@ -75,7 +74,6 @@ public class TreeModelPlanner implements IPlanner {
   public TreeModelPlanner(
       Statement statement,
       ExecutorService executor,
-      ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
@@ -84,7 +82,6 @@ public class TreeModelPlanner implements IPlanner {
           asyncInternalServiceClientManager) {
     this.statement = statement;
     this.executor = executor;
-    this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;

@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -172,7 +173,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             maxFileVersion = fileName.getVersion();
           }
         } catch (IOException e) {
-          LOGGER.warn("Fail to get the tsfile name of {}", resource.getTsFile(), e);
+          LOGGER.warn(StorageEngineMessages.FAIL_TO_GET_TSFILE_NAME, resource.getTsFile(), e);
         }
       }
     }
@@ -236,8 +237,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // get resource of target file
     recoverMemoryStatus = true;
     LOGGER.info(
-        "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, "
-            + "total file size is {} MB, estimated memory cost is {} MB",
+        StorageEngineMessages
+            .STORAGE_LOG_COMPACTION_INNERSPACECOMPACTION_TASK_STARTS_WITH_FILES_TOTAL_934B562F,
         storageGroupName,
         dataRegionId,
         filesView.sequence ? "Sequence" : "Unsequence",
@@ -254,7 +255,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         compactionLogger.logTargetFiles(filesView.targetFilesInLog);
         compactionLogger.force();
         LOGGER.info(
-            "{}-{} [Compaction] compaction with selected files {}, skipped files {}",
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTION_COMPACTION_WITH_SELECTED_FILES_SKIPPED_FILES_ACC66872,
             storageGroupName,
             dataRegionId,
             filesView.sourceFilesInCompactionPerformer,
@@ -262,10 +264,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         compact(compactionLogger);
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
         LOGGER.info(
-            "{}-{} [Compaction] {} InnerSpaceCompaction task finishes successfully, "
-                + "target files are {},"
-                + "time cost is {} s, "
-                + "compaction speed is {} MB/s, {}",
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTION_INNERSPACECOMPACTION_TASK_FINISHES_SUCCESSFULLY_08475DE4,
             storageGroupName,
             dataRegionId,
             filesView.sequence ? "Sequence" : "Unsequence",
@@ -396,7 +396,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
     if (Thread.currentThread().isInterrupted() || summary.isCancel()) {
       throw new InterruptedException(
-          String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_S_S_COMPACTION_ABORT_7D0CB1E5,
+              storageGroupName,
+              dataRegionId));
     }
 
     validateCompactionResult(
@@ -560,7 +563,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     for (TsFileResource targetTsFileResource : targetFiles) {
       if (targetTsFileResource != null && !deleteTsFileOnDisk(targetTsFileResource)) {
         throw new CompactionRecoverException(
-            String.format("failed to delete target file %s", targetTsFileResource));
+            String.format(
+                StorageEngineMessages.FAILED_TO_DELETE_TARGET_FILE, targetTsFileResource));
       }
     }
   }
@@ -571,7 +575,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         // it means the target file is empty after compaction
         if (!targetTsFileResource.remove()) {
           throw new CompactionRecoverException(
-              String.format("failed to delete empty target file %s", targetTsFileResource));
+              String.format(
+                  StorageEngineMessages
+                      .STORAGE_EXCEPTION_FAILED_TO_DELETE_EMPTY_TARGET_FILE_S_324EF900,
+                  targetTsFileResource));
         }
       } else {
         File targetFile = targetTsFileResource.getTsFile();
@@ -579,7 +586,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             || !targetFile.exists()
             || !TsFileUtils.isTsFileComplete(targetTsFileResource.getTsFile())) {
           throw new CompactionRecoverException(
-              String.format("Target file is not completed. %s", targetFile));
+              String.format(
+                  StorageEngineMessages.STORAGE_EXCEPTION_TARGET_FILE_IS_NOT_COMPLETED_S_E65150DB,
+                  targetFile));
         }
         if (recoverMemoryStatus) {
           targetTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
@@ -587,7 +596,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     }
     if (!deleteTsFilesOnDisk(filesView.sourceFilesInLog)) {
-      throw new CompactionRecoverException("source files cannot be deleted successfully");
+      throw new CompactionRecoverException(StorageEngineMessages.SOURCE_FILES_CANNOT_BE_DELETED);
     }
     if (recoverMemoryStatus) {
       FileMetrics.getInstance().deleteTsFile(filesView.sequence, filesView.sourceFilesInLog);
@@ -717,7 +726,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         if (!tsFileManager.isAllowCompaction()) {
           return -1;
         }
-        LOGGER.error("Meet error when estimate inner compaction memory", e);
+        LOGGER.error(StorageEngineMessages.ERROR_ESTIMATE_INNER_COMPACTION_MEMORY, e);
         return -1;
       }
     }

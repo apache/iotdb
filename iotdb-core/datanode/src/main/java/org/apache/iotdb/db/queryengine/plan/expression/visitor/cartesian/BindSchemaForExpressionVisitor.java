@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
@@ -33,7 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CompleteMeasurementSchemaVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -44,10 +45,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressionsWithMemoryCheck;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForBuiltinAggregationNonSeriesInputExpressions;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class BindSchemaForExpressionVisitor
     extends CartesianProductVisitor<BindSchemaForExpressionVisitor.Context> {
@@ -147,7 +148,8 @@ public class BindSchemaForExpressionVisitor
     IMeasurementSchema measurementSchema = measurementPath.getMeasurementSchema();
     if (!measurementSchema.isLogicalView()) {
       throw new IllegalArgumentException(
-          "Can not construct expression using non view path in transformViewPath!");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_CAN_NOT_CONSTRUCT_EXPRESSION_USING_NON_VIEW_PATH_IN_TRANSFORMVIEWPATH_A9CCB5B1);
     }
 
     ViewExpression viewExpression = ((LogicalViewSchema) measurementSchema).getExpression();
@@ -163,7 +165,7 @@ public class BindSchemaForExpressionVisitor
 
     public Context(final ISchemaTree schemaTree, final MPPQueryContext queryContext) {
       this.schemaTree = schemaTree;
-      Validate.notNull(queryContext, "QueryContext is null");
+      Validate.notNull(queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_IS_NULL_C2344379);
       this.queryContext = queryContext;
     }
 

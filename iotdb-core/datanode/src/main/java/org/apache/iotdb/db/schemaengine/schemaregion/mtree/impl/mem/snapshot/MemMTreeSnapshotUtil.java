@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -68,9 +69,9 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 public class MemMTreeSnapshotUtil {
 
   private static final Logger logger = LoggerFactory.getLogger(MemMTreeSnapshotUtil.class);
-  private static final String SERIALIZE_ERROR_INFO = "Error occurred during serializing MemMTree.";
+  private static final String SERIALIZE_ERROR_INFO = DataNodeSchemaMessages.SERIALIZE_ERROR_INFO;
   private static final String DESERIALIZE_ERROR_INFO =
-      "Error occurred during deserializing MemMTree.";
+      DataNodeSchemaMessages.DESERIALIZE_ERROR_INFO;
 
   private static final byte VERSION = 0;
   private static final IMNodeFactory<IMemMNode> nodeFactory =
@@ -94,12 +95,12 @@ public class MemMTreeSnapshotUtil {
       }
       if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(
-            "Failed to delete old snapshot {} while creating mTree snapshot.", snapshot.getName());
+            DataNodeSchemaMessages.FAILED_TO_DELETE_OLD_MTREE_SNAPSHOT, snapshot.getName());
         return false;
       }
       if (!snapshotTmp.renameTo(snapshot)) {
         logger.error(
-            "Failed to rename {} to {} while creating mTree snapshot.",
+            DataNodeSchemaMessages.FAILED_TO_RENAME_MTREE_SNAPSHOT,
             snapshotTmp.getName(),
             snapshot.getName());
         FileUtils.deleteFileIfExist(snapshot);
@@ -108,7 +109,7 @@ public class MemMTreeSnapshotUtil {
 
       return true;
     } catch (final IOException e) {
-      logger.error("Failed to create mTree snapshot due to {}", e.getMessage(), e);
+      logger.error(DataNodeSchemaMessages.FAILED_TO_CREATE_MTREE_SNAPSHOT, e.getMessage(), e);
       FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {
@@ -283,7 +284,7 @@ public class MemMTreeSnapshotUtil {
         tableDeviceProcess.accept(node.getAsDeviceMNode(), currentTableName.get());
         break;
       default:
-        throw new IOException("Unrecognized MNode type " + type);
+        throw new IOException(DataNodeSchemaMessages.UNRECOGNIZED_MNODE_TYPE + type);
     }
 
     regionStatistics.requestMemory(node.estimateSize());

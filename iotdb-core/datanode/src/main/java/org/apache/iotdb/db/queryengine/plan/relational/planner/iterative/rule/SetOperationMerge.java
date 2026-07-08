@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ExceptNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.IntersectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SetOperationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SetOperationNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.Iterables;
@@ -57,7 +58,7 @@ public class SetOperationMerge {
 
     checkState(
         node instanceof UnionNode || node instanceof IntersectNode,
-        "unexpected node type: %s",
+        DataNodeQueryMessages.EXCEPTION_UNEXPECTED_NODE_TYPE_COLON_ARG_B1C0328F,
         node.getClass().getSimpleName());
     Lookup lookup = context.getLookup();
     // Pre-check
@@ -122,7 +123,9 @@ public class SetOperationMerge {
   public Optional<SetOperationNode> mergeFirstSource() {
 
     checkState(
-        node instanceof ExceptNode, "unexpected node type: %s", node.getClass().getSimpleName());
+        node instanceof ExceptNode,
+        DataNodeQueryMessages.EXCEPTION_UNEXPECTED_NODE_TYPE_COLON_ARG_B1C0328F,
+        node.getClass().getSimpleName());
 
     Lookup lookup = context.getLookup();
 
@@ -216,7 +219,9 @@ public class SetOperationMerge {
 
     // never should reach here
     throw new IllegalStateException(
-        "unexpected setOperation node type: " + node.getClass().getSimpleName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_SETOPERATION_NODE_TYPE_S_3AE3EECA,
+            node.getClass().getSimpleName()));
   }
 
   /**

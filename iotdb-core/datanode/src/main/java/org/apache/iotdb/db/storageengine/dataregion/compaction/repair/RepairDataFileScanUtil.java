@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionStatisticsCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -100,7 +101,8 @@ public class RepairDataFileScanUtil {
       timeIndex = checkTsFileResource ? getDeviceTimeIndex(resource) : null;
     } catch (IOException e) {
       logger.warn(
-          "Meet error when read tsfile resource file {}, it may be repaired after reboot",
+          StorageEngineMessages
+              .STORAGE_LOG_MEET_ERROR_WHEN_READ_TSFILE_RESOURCE_FILE_IT_MAY_BE_REPAIRED_A8A514C6,
           tsfile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX,
           e);
       isBrokenFile = true;
@@ -122,7 +124,9 @@ public class RepairDataFileScanUtil {
         if (checkTsFileResource) {
           if (!deviceIdsInTimeIndex.contains(deviceInfile)) {
             throw new CompactionStatisticsCheckFailedException(
-                deviceInfile + " does not exist in the resource file");
+                String.format(
+                    StorageEngineMessages.DEVICE_DOES_NOT_EXIST_IN_RESOURCE_FILE_FMT,
+                    deviceInfile));
           }
           deviceIdsInTimeIndex.remove(deviceInfile);
         }
@@ -155,13 +159,16 @@ public class RepairDataFileScanUtil {
       }
       if (!deviceIdsInTimeIndex.isEmpty()) {
         throw new CompactionStatisticsCheckFailedException(
-            "These devices (" + deviceIdsInTimeIndex + ") do not exist in the tsfile");
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_THESE_DEVICES_S_DO_NOT_EXIST_IN_THE_TSFILE_5A03F30D,
+                deviceIdsInTimeIndex));
       }
     } catch (CompactionLastTimeCheckFailedException lastTimeCheckFailedException) {
       this.hasUnsortedDataOrWrongStatistics = true;
       if (printLog) {
         logger.error(
-            "File {} has unsorted data: ",
+            StorageEngineMessages.STORAGE_LOG_FILE_HAS_UNSORTED_DATA_1B118A14,
             resource.getTsFile().getPath(),
             lastTimeCheckFailedException);
       }
@@ -169,7 +176,7 @@ public class RepairDataFileScanUtil {
       this.hasUnsortedDataOrWrongStatistics = true;
       if (printLog) {
         logger.error(
-            "File {} has wrong time statistics: ",
+            StorageEngineMessages.STORAGE_LOG_FILE_HAS_WRONG_TIME_STATISTICS_4E63345E,
             resource.getTsFile().getPath(),
             compactionStatisticsCheckFailedException);
       }
@@ -182,7 +189,7 @@ public class RepairDataFileScanUtil {
       if (!resource.tsFileExists()) {
         return;
       }
-      logger.warn("Meet error when read tsfile {}", tsfile.getAbsolutePath(), e);
+      logger.warn(StorageEngineMessages.MEET_ERROR_WHEN_READ_TSFILE, tsfile.getAbsolutePath(), e);
       isBrokenFile = true;
     }
   }
@@ -481,7 +488,8 @@ public class RepairDataFileScanUtil {
         if (deviceStartTimeInCurrentFile <= deviceEndTimeInPreviousFile) {
           if (printOverlappedDevices) {
             logger.error(
-                "Device {} has overlapped data, start time in current file {} is {}, end time in previous file {} is {}",
+                StorageEngineMessages
+                    .STORAGE_LOG_DEVICE_HAS_OVERLAPPED_DATA_START_TIME_IN_CURRENT_FILE_IS_F4F29A22,
                 device,
                 resource.getTsFile(),
                 deviceStartTimeInCurrentFile,

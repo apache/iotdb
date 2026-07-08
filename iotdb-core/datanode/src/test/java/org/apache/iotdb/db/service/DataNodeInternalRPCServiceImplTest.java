@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -45,11 +46,11 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -68,6 +69,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -80,6 +82,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import static org.mockito.Mockito.when;
+
 public class DataNodeInternalRPCServiceImplTest {
 
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
@@ -88,6 +92,12 @@ public class DataNodeInternalRPCServiceImplTest {
   private static final int dataNodeId = 0;
   private static final File storageDir = new File("target" + java.io.File.separator + "impl");
   private static DataRegion dataRegion;
+
+  // Each parallel surefire fork binds its own consensus port. Reuses
+  // EnvironmentUtils.FORK_PORT_OFFSET so this binding and examinePorts() are
+  // guaranteed to look at the same port — fork-local leaks still fail, sibling
+  // forks no longer cause cross-fork false positives.
+  private static final int CONSENSUS_PORT = 6667 + EnvironmentUtils.FORK_PORT_OFFSET;
 
   @BeforeClass
   public static void setUpBeforeClass() throws IOException, MetadataException, ConsensusException {
@@ -105,7 +115,7 @@ public class DataNodeInternalRPCServiceImplTest {
                 ConsensusFactory.IOT_CONSENSUS,
                 ConsensusConfig.newBuilder()
                     .setThisNodeId(1)
-                    .setThisNode(new TEndPoint("0.0.0.0", 6667))
+                    .setThisNode(new TEndPoint("0.0.0.0", CONSENSUS_PORT))
                     .setStorageDir(storageDir.getAbsolutePath())
                     .setConsensusGroupType(TConsensusGroupType.DataRegion)
                     .build(),
@@ -120,7 +130,8 @@ public class DataNodeInternalRPCServiceImplTest {
         ((IoTConsensus) DataRegionConsensusImpl.getInstance()).getImpl(new DataRegionId(1)))) {
       DataRegionConsensusImpl.getInstance()
           .createLocalPeer(
-              id, Collections.singletonList(new Peer(id, 1, new TEndPoint("0.0.0.0", 6667))));
+              id,
+              Collections.singletonList(new Peer(id, 1, new TEndPoint("0.0.0.0", CONSENSUS_PORT))));
     }
     DataRegionConsensusImpl.getInstance().start();
     SchemaRegionConsensusImpl.getInstance().start();
@@ -134,7 +145,9 @@ public class DataNodeInternalRPCServiceImplTest {
         .createLocalPeer(
             ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()),
             genSchemaRegionPeerList(regionReplicaSet));
-    dataNodeInternalRPCServiceImpl = new DataNodeInternalRPCServiceImpl();
+    DataNodeContext context = Mockito.mock(DataNodeContext.class);
+    when(context.isAllConsensusStarted()).thenReturn(true);
+    dataNodeInternalRPCServiceImpl = new DataNodeInternalRPCServiceImpl(context);
   }
 
   @After
