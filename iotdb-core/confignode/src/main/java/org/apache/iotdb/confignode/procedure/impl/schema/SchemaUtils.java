@@ -298,7 +298,9 @@ public class SchemaUtils {
     final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithTimeoutInMs(
+            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     return clientHandler.getResponseMap().entrySet().stream()
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));

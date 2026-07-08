@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchema
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -406,7 +407,9 @@ public class SetTemplateProcedure
     final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithTimeoutInMs(
+            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -518,7 +521,9 @@ public class SetTemplateProcedure
             CnToDnAsyncRequestType.UPDATE_TEMPLATE,
             invalidateTemplateSetInfoReq,
             dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithTimeoutInMs(
+            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       // all dataNodes must clear the related template cache

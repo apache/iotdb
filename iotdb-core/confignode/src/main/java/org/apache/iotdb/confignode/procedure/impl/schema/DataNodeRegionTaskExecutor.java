@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -92,7 +93,8 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
       final DataNodeAsyncRequestContext<Q, R> clientHandler =
           prepareRequestHandler(dataNodeConsensusGroupIdMap);
       CnToDnInternalServiceAsyncRequestManager.getInstance()
-          .sendAsyncRequestWithRetry(clientHandler);
+          .sendAsyncRequestWithTimeoutInMs(
+              clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
       final Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
           checkDataNodeExecutionResult(clientHandler.getResponseMap(), dataNodeConsensusGroupIdMap);
 
