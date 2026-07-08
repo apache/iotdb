@@ -1115,7 +1115,7 @@ public final class DataNodeMiscMessages {
           + "dn_max_client_count_for_each_node_in_client_manager。";
   public static final String MISC_LOG_PARTITION_TABLE_RECOVER_WORKER_NUM_SHOULD_BE_GREATER_THAN_74A2512B =
       "partition_table_recover_worker_num 应大于 0，但当前值为 {}，忽略该值并使用默认值 {}";
-  public static final String MISC_LOG_PARTITION_TABLE_RECOVER_MAX_READ_MEGABYTES_PER_SECOND_SHOULD_42BCDFBC =
+  public static final String MISC_LOG_PARTITION_TABLE_RECOVER_MAX_READ_MB_PER_SEC_SHOULD_42BCDFBC =
       "partition_table_recover_max_read_megabytes_per_second 应大于 0，但当前值为 {}，忽略该值并使用默认值 {}";
   public static final String MISC_LOG_THE_THROTTLE_THRESHOLD_PARAMS_IS_DEPRECATED_PLEASE_USE_AA0E8EC7 =
       "throttle threshold 参数 {} 已废弃，请使用 {}";
