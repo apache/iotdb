@@ -80,6 +80,8 @@ class InferenceManager:
         )
         self._result_handler_thread.start()
         self._pool_controller = PoolController(self._result_queue)
+        self._cpu_model_inference_locks: dict[str, threading.RLock] = {}
+        self._cpu_model_inference_locks_guard = threading.Lock()
 
     def load_model(
         self, existing_model_id: str, device_id_list: list[torch.device]
@@ -180,6 +182,12 @@ class InferenceManager:
             with self._result_wrapper_lock:
                 del self._result_wrapper_map[req_id]
 
+    def _get_cpu_model_inference_lock(self, model_id: str) -> threading.RLock:
+        with self._cpu_model_inference_locks_guard:
+            if model_id not in self._cpu_model_inference_locks:
+                self._cpu_model_inference_locks[model_id] = threading.RLock()
+            return self._cpu_model_inference_locks[model_id]
+
     def _do_inference_and_construct_resp(
         self,
         model_id: str,
@@ -211,6 +219,19 @@ class InferenceManager:
         return resp_list
 
     def _run_inference_without_pool(
+        self,
+        model_id: str,
+        model_inputs,
+        inference_attrs: dict,
+    ) -> list[torch.Tensor]:
+        # CPU fallback builds the pipeline for every request. Loading the same
+        # Transformers model concurrently can leave parameters on meta tensors.
+        with self._get_cpu_model_inference_lock(model_id):
+            return self._run_inference_without_pool_serially(
+                model_id, model_inputs, inference_attrs
+            )
+
+    def _run_inference_without_pool_serially(
         self,
         model_id: str,
         model_inputs,
