@@ -198,7 +198,9 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       report(
           (EnrichedEvent) lastEvent,
           new PipeRuntimeSinkCriticalException(
-              throwable.getMessage() + ", root cause: " + getRootCause(throwable)));
+              throwable.getMessage()
+                  + PipeMessages.EXCEPTION_ROOT_CAUSE_A22E94DE
+                  + getRootCause(throwable)));
       LOGGER.warn(
           PipeMessages.HANDSHAKE_FAILED_STOPPING,
           outputPipeSink.getClass().getName(),

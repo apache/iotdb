@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.component;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -75,7 +76,9 @@ public class OrderByComponent extends StatementNode {
         break;
       default:
         throw new IllegalArgumentException(
-            String.format("Unknown sort key %s", sortItem.getSortKey()));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNKNOWN_SORT_KEY_S_37965711,
+                sortItem.getSortKey()));
     }
   }
 
@@ -112,7 +115,9 @@ public class OrderByComponent extends StatementNode {
   }
 
   public Ordering getTimeOrder() {
-    checkState(timeOrderPriority != -1, "The time order is not specified.");
+    checkState(
+        timeOrderPriority != -1,
+        DataNodeQueryMessages.EXCEPTION_THE_TIME_ORDER_IS_NOT_SPECIFIED_DOT_624A7526);
     return sortItemList.get(timeOrderPriority).getOrdering();
   }
 
@@ -121,7 +126,9 @@ public class OrderByComponent extends StatementNode {
   }
 
   public Ordering getTimeseriesOrder() {
-    checkState(timeseriesOrderPriority != -1, "The timeseries order is not specified.");
+    checkState(
+        timeseriesOrderPriority != -1,
+        DataNodeQueryMessages.EXCEPTION_THE_TIMESERIES_ORDER_IS_NOT_SPECIFIED_DOT_68EE3875);
     return sortItemList.get(timeseriesOrderPriority).getOrdering();
   }
 
@@ -130,7 +137,9 @@ public class OrderByComponent extends StatementNode {
   }
 
   public Ordering getDeviceOrder() {
-    checkState(deviceOrderPriority != -1, "The device order is not specified.");
+    checkState(
+        deviceOrderPriority != -1,
+        DataNodeQueryMessages.EXCEPTION_THE_DEVICE_ORDER_IS_NOT_SPECIFIED_DOT_D3FB9559);
     return sortItemList.get(deviceOrderPriority).getOrdering();
   }
 

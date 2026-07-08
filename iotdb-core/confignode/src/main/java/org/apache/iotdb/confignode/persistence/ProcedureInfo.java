@@ -170,8 +170,11 @@ public class ProcedureInfo implements SnapshotProcessor {
         if (fileSize > PROCEDURE_LOAD_BUFFER_SIZE) {
           throw new IOException(
               String.format(
-                  "Procedure file %s exceeds the load buffer limit %s, actual size %s",
-                  procedureFilePath, PROCEDURE_LOAD_BUFFER_SIZE, fileSize));
+                  ConfigNodeMessages
+                      .EXCEPTION_PROCEDURE_FILE_ARG_EXCEEDS_THE_LOAD_BUFFER_LIMIT_ARG_ACTUAL_SIZE_ARG_62375B4C,
+                  procedureFilePath,
+                  PROCEDURE_LOAD_BUFFER_SIZE,
+                  fileSize));
         }
         ByteBuffer byteBuffer = ByteBuffer.allocate((int) fileSize);
         if (fileSize > 0) {

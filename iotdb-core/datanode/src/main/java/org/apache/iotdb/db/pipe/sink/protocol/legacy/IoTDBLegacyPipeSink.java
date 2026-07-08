@@ -37,6 +37,8 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -301,8 +303,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
       doTransferWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     } else {
       throw new NotImplementedException(
-          "IoTDBLegacyPipeConnector only support "
-              + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+          DataNodePipeMessages
+              .IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPEINSERTNODEINSERTIONEVENT_AND_PIPETABLE);
     }
   }
 
@@ -325,7 +327,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     } catch (final TException e) {
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tsFile insertion event: %s.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TSFILE_INSERTION_EVENT_S_703A2E9E,
               ((PipeTsFileInsertionEvent) tsFileInsertionEvent).coreReportMessage()),
           e);
     }
@@ -420,8 +423,12 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     long position = 0;
 
     // Try small piece to rebase the file position.
-    final byte[] buffer = new byte[PipeConfig.getInstance().getPipeSinkReadFileBufferSize()];
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
+    final int readFileBufferSize = getReadFileBufferSize(file);
+    try (final PipeTsFileMemoryBlock ignored =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+        final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
+      final byte[] buffer = new byte[readFileBufferSize];
       while (true) {
         final int dataLength = randomAccessFile.read(buffer);
         if (dataLength == -1) {
@@ -453,10 +460,20 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     } catch (final TException e) {
       throw new PipeConnectionException(
           String.format(
-              "Cannot send pipe data to receiver %s:%s, because: %s.",
-              ipAddress, port, e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_CANNOT_SEND_PIPE_DATA_TO_RECEIVER_S_S_BECAUSE_S_25143D54,
+              ipAddress,
+              port,
+              e.getMessage()),
           e);
     }
+  }
+
+  private int getReadFileBufferSize(final File file) {
+    return (int)
+        Math.min(
+            (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+            Math.max(file.length(), 1L));
   }
 
   @Override

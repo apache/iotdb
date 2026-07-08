@@ -175,8 +175,8 @@ public class PipeTsFileResourceManager {
     } catch (final Exception e) {
       throw new IOException(
           String.format(
-              "failed to get hardlink or copied file in pipe dir "
-                  + "for file %s, it is not a tsfile, mod file or resource file",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_GET_HARDLINK_OR_COPIED_FILE_IN_PIPE_DIR_FOR_FILE_F009D86E,
               file.getPath()),
           e);
     }

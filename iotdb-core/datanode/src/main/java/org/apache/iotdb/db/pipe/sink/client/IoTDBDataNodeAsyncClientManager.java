@@ -253,7 +253,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
               exception.set(
                   new PipeConnectionException(
                       String.format(
-                          "Handshake error with receiver %s:%s, code: %d, message: %s.",
+                          DataNodePipeMessages
+                              .PIPE_EXCEPTION_HANDSHAKE_ERROR_WITH_RECEIVER_S_S_CODE_D_MESSAGE_S_4ED82649,
                           targetNodeUrl.getIp(),
                           targetNodeUrl.getPort(),
                           response.getStatus().getCode(),

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.task.execution;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.task.subtask.ConsensusPrefetchSubtask;
 
 import org.slf4j.Logger;
@@ -78,11 +79,15 @@ public class ConsensusSubscriptionPrefetchExecutor {
   public synchronized boolean register(final ConsensusPrefetchSubtask subtask) {
     if (shutdown.get()) {
       LOGGER.warn(
-          "Consensus prefetch executor is shutdown, skip registering {}", subtask.getTaskId());
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUS_PREFETCH_EXECUTOR_IS_SHUTDOWN_SKIP_REGISTERING_83E36171,
+          subtask.getTaskId());
       return false;
     }
     if (taskIdToSubtask.putIfAbsent(subtask.getTaskId(), subtask) != null) {
-      LOGGER.warn("Consensus prefetch subtask {} is already registered", subtask.getTaskId());
+      LOGGER.warn(
+          DataNodePipeMessages.PIPE_LOG_CONSENSUS_PREFETCH_SUBTASK_IS_ALREADY_REGISTERED_419FE7AD,
+          subtask.getTaskId());
       return false;
     }
     subtask.bindExecutor(this);
@@ -154,7 +159,9 @@ public class ConsensusSubscriptionPrefetchExecutor {
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
     } catch (final Throwable t) {
-      LOGGER.error("Consensus prefetch worker loop exits abnormally", t);
+      LOGGER.error(
+          DataNodePipeMessages.PIPE_LOG_CONSENSUS_PREFETCH_WORKER_LOOP_EXITS_ABNORMALLY_531EE564,
+          t);
     }
   }
 }

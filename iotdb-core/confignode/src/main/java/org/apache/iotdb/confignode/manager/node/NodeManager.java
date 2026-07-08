@@ -924,7 +924,8 @@ public class NodeManager {
       if (getRegisteredConfigNodes().size() <= 1) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
-                "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
+                ManagerMessages
+                    .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_ONLY_ONE_CONFIGNODE_CURRENT_CLUSTER_D1273758);
       }
 
       // Check OnlineConfigNodes number
@@ -936,7 +937,8 @@ public class NodeManager {
         if (System.nanoTime() > deadline) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
               .setMessage(
-                  "Remove ConfigNode failed because there is no other ConfigNode in Running status in current Cluster.");
+                  ManagerMessages
+                      .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_NO_OTHER_CONFIGNODE_RUNNING_STATUS_C9C43315);
         }
         try {
           Thread.sleep(1000);
@@ -960,7 +962,8 @@ public class NodeManager {
       if (leader == null) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
-                "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.");
+                ManagerMessages
+                    .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CONFIGNODEGROUP_LEADER_ELECTION_PLEASE_RETRY_3EE602F6);
       }
 
       if (leader
@@ -990,7 +993,8 @@ public class NodeManager {
     } else {
       return new TSStatus(TSStatusCode.TRANSFER_LEADER_ERROR.getStatusCode())
           .setMessage(
-              "Transfer ConfigNode leader failed because can not find any running ConfigNode.");
+              ManagerMessages
+                  .MESSAGE_TRANSFER_CONFIGNODE_LEADER_FAILED_BECAUSE_CAN_NOT_FIND_ANY_RUNNING_1FE4F96D);
     }
     try {
       getConsensusManager()
@@ -1006,9 +1010,9 @@ public class NodeManager {
     return new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
         .setRedirectNode(newLeader.getInternalEndPoint())
         .setMessage(
-            "The ConfigNode to be removed is leader, already transfer Leader to "
+            ManagerMessages.MESSAGE_CONFIGNODE_REMOVED_LEADER_ALREADY_TRANSFER_LEADER_FA6D1603
                 + newLeader
-                + ".");
+                + ConfigNodeMessages.EXCEPTION_DOT_9D9B854A);
   }
 
   public List<TSStatus> merge() {
@@ -1244,7 +1248,8 @@ public class NodeManager {
     if (dataNodeLocation == null) {
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
           .setMessage(
-              "The target DataNode is not existed, please ensure your input <queryId> is correct");
+              ManagerMessages
+                  .MESSAGE_TARGET_DATANODE_NOT_EXISTED_PLEASE_ENSURE_YOUR_INPUT_QUERYID_CORRECT_AB84CCDF);
     } else {
       TKillQueryInstanceReq req = new TKillQueryInstanceReq();
       req.setQueryId(queryId);

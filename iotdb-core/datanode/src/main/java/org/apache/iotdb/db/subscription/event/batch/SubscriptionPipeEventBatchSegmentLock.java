@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 
 import org.slf4j.Logger;
@@ -46,7 +47,7 @@ public class SubscriptionPipeEventBatchSegmentLock {
             lockSegmentSize = StorageEngine.getInstance().getAllDataRegionIds().size();
           } catch (final Exception e) {
             LOGGER.warn(
-                "Cannot get data region ids, use default lock segment size: {}", lockSegmentSize);
+                DataNodePipeMessages.CANNOT_GET_DATA_REGION_IDS_USE_DEFAULT, lockSegmentSize);
           }
           lockSegmentSize = Math.min(SEGMENT_LOCK_MAX_SIZE, lockSegmentSize);
           lockSegmentSize = Math.max(SEGMENT_LOCK_MIN_SIZE, lockSegmentSize);

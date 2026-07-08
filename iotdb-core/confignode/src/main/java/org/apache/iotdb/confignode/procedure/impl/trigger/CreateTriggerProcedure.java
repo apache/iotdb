@@ -93,7 +93,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           ConfigManager configManager = env.getConfigManager();
 
           LOG.info(
-              "Start to add trigger [{}] in TriggerTable on Config Nodes, needToSaveJar[{}]",
+              ProcedureMessages
+                  .LOG_START_ADD_TRIGGER_ARG_TRIGGERTABLE_CONFIG_NODES_NEEDTOSAVEJAR_ARG_0C23D81E,
               triggerInformation.getTriggerName(),
               jarFile != null);
 
@@ -113,7 +114,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
         case CONFIG_NODE_INACTIVE:
           LOG.info(
-              "Start to create triggerInstance [{}] on Data Nodes",
+              ProcedureMessages.LOG_START_CREATE_TRIGGERINSTANCE_ARG_DATA_NODES_917C3313,
               triggerInformation.getTriggerName());
 
           if (RpcUtils.squashResponseStatusList(
@@ -131,7 +132,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
         case DATA_NODE_INACTIVE:
           LOG.info(
-              "Start to active trigger [{}] on Data Nodes", triggerInformation.getTriggerName());
+              ProcedureMessages.LOG_START_ACTIVE_TRIGGER_ARG_DATA_NODES_A4AB8131,
+              triggerInformation.getTriggerName());
 
           if (RpcUtils.squashResponseStatusList(
                       env.activeTriggerOnDataNodes(triggerInformation.getTriggerName()))
@@ -148,7 +150,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
         case DATA_NODE_ACTIVE:
           LOG.info(
-              "Start to active trigger [{}] on Config Nodes", triggerInformation.getTriggerName());
+              ProcedureMessages.LOG_START_ACTIVE_TRIGGER_ARG_CONFIG_NODES_153A5D40,
+              triggerInformation.getTriggerName());
           env.getConfigManager()
               .getConsensusManager()
               .write(
@@ -174,7 +177,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
         setFailure(new ProcedureException(e));
       } else {
         LOG.error(
-            "Retrievable error trying to create trigger [{}], state [{}]",
+            ProcedureMessages.LOG_RETRIEVABLE_ERROR_TRYING_CREATE_TRIGGER_ARG_STATE_ARG_44976C4E,
             triggerInformation.getTriggerName(),
             state,
             e);
@@ -222,7 +225,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
       case CONFIG_NODE_INACTIVE:
         LOG.info(
-            "Start to [CONFIG_NODE_INACTIVE] rollback of trigger [{}]",
+            ProcedureMessages.LOG_START_CONFIG_NODE_INACTIVE_ROLLBACK_TRIGGER_ARG_536929E5,
             triggerInformation.getTriggerName());
 
         if (RpcUtils.squashResponseStatusList(
@@ -238,7 +241,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
       case DATA_NODE_INACTIVE:
         LOG.info(
-            "Start to [DATA_NODE_INACTIVE] rollback of trigger [{}]",
+            ProcedureMessages.LOG_START_DATA_NODE_INACTIVE_ROLLBACK_TRIGGER_ARG_38C93D64,
             triggerInformation.getTriggerName());
 
         if (RpcUtils.squashResponseStatusList(

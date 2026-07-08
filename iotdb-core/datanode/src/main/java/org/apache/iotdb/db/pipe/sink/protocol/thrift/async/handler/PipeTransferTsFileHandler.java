@@ -124,11 +124,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     // the memory of the TsFile event is not released, so the memory is not enough for slicing. This
     // will cause a deadlock.
     waitForResourceEnough4Slicing((long) ((1 + Math.random()) * 20 * 1000)); // 20 - 40 seconds
+    final long maxFileLength =
+        transferMod && Objects.nonNull(modFile)
+            ? Math.max(tsFile.length(), modFile.length())
+            : tsFile.length();
     readFileBufferSize =
         (int)
             Math.min(
-                PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
-                transferMod ? Math.max(tsFile.length(), modFile.length()) : tsFile.length());
+                (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+                Math.max(maxFileLength, 1L));
     position = 0;
 
     isSealSignalSent = new AtomicBoolean(false);
@@ -142,21 +146,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final IoTDBDataNodeAsyncClientManager clientManager,
       final AsyncPipeDataTransferServiceClient client)
       throws TException, IOException {
-    // Delay creation of resources to avoid OOM or too many open files
-    if (readBuffer == null) {
-      memoryBlock =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTsFileWithRetry(
-                  PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()
-                      ? readFileBufferSize
-                      : 0);
-      readBuffer = new byte[readFileBufferSize];
-    }
-
-    if (reader == null) {
-      reader = transferMod ? new RandomAccessFile(modFile, "r") : new RandomAccessFile(tsFile, "r");
-    }
-
     this.clientManager = clientManager;
     this.client = client;
 
@@ -171,6 +160,17 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;
+    }
+
+    // Delay creation of resources to avoid OOM or too many open files
+    if (readBuffer == null) {
+      memoryBlock =
+          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
+      readBuffer = new byte[readFileBufferSize];
+    }
+
+    if (reader == null) {
+      reader = transferMod ? new RandomAccessFile(modFile, "r") : new RandomAccessFile(tsFile, "r");
     }
 
     client.setShouldReturnSelf(false);
@@ -256,6 +256,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       super.onComplete(response);
     } finally {
       if (sink.isClosed()) {
+        releaseReadBufferMemoryBlock();
         returnClientIfNecessary();
       }
     }
@@ -319,6 +320,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
               referenceCount);
         }
 
+        releaseReadBufferMemoryBlock();
         returnClientIfNecessary();
       }
 
@@ -361,6 +363,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     try {
       super.onError(exception);
     } finally {
+      releaseReadBufferMemoryBlock();
       returnClientIfNecessary();
     }
   }
@@ -412,6 +415,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE, e);
     } finally {
       try {
+        releaseReadBufferMemoryBlock();
         returnClientIfNecessary();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
@@ -473,10 +477,14 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void close() {
     super.close();
+    releaseReadBufferMemoryBlock();
+  }
 
+  private void releaseReadBufferMemoryBlock() {
     if (memoryBlock != null) {
       memoryBlock.close();
       memoryBlock = null;
+      readBuffer = null;
     }
   }
 
@@ -520,7 +528,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       if (waitTimeSeconds * 1000 > timeoutMs) {
         // should contain 'TimeoutException' in exception message
         throw new PipeException(
-            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_TIMEOUTEXCEPTION_WAITED_S_SECONDS_8B31A3A5,
+                waitTimeSeconds));
       }
     }
 

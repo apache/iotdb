@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.disk.strategy;
 
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -68,7 +69,8 @@ public class SequenceStrategy extends DirectoryStrategy {
         long freeSpace = dirFile.getFreeSpace();
         long totalSpace = dirFile.getTotalSpace();
         LOGGER.warn(
-            "{} is above the warning threshold, or not accessible, free space {}, total space {}",
+            UtilMessages
+                .LOG_ARG_ABOVE_WARNING_THRESHOLD_NOT_ACCESSIBLE_FREE_SPACE_ARG_TOTAL_87DAD16A,
             dir,
             freeSpace,
             totalSpace);

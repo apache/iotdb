@@ -243,7 +243,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitNode(StatementNode node, MPPQueryContext context) {
     throw new UnsupportedOperationException(
-        "Unsupported statement type: " + node.getClass().getName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            node.getClass().getName()));
   }
 
   @Override
@@ -281,6 +283,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // check for semantic errors
       queryStatement.semanticCheck();
 
+      context.initResultSetColumnMemoryTracking(
+          queryStatement.getSeriesLimit(),
+          queryStatement.getSeriesOffset(),
+          queryStatement.isAlignByDevice());
       // fetch model inference information and check
       analyzeModelInference(analysis, queryStatement);
 
@@ -415,7 +421,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     } catch (StatementAnalyzeException e) {
       throw new StatementAnalyzeException(
-          "Meet error when analyzing the query statement: " + e.getMessage());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_MEET_ERROR_WHEN_ANALYZING_THE_QUERY_STATEMENT_S_AD732908,
+              e.getMessage()));
     }
     return analysis;
   }
@@ -717,6 +726,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             groupByLevelHelper.applyLevels(
                 isCountStar, resultExpression, resultColumn.getAlias(), analysis);
         Expression normalizedOutputExpression = normalizeExpression(outputExpression);
+        queryContext.recordGeneratedResultSetColumn(normalizedOutputExpression.ramBytesUsed());
         analyzeExpressionType(analysis, normalizedOutputExpression);
         outputExpressionSet.add(
             new Pair<>(
@@ -781,6 +791,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           checkAliasUniqueness(resultColumn.getAlias(), aliasSet);
 
           Expression normalizedExpression = normalizeExpression(resultExpression);
+          queryContext.recordGeneratedResultSetColumn(normalizedExpression.ramBytesUsed());
           analyzeExpressionType(analysis, normalizedExpression);
           outputExpressions.add(
               new Pair<>(
@@ -880,6 +891,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           Expression lowerCaseMeasurementExpression = toLowerCaseExpression(measurementExpression);
           analyzeExpressionType(analysis, lowerCaseMeasurementExpression);
 
+          queryContext.recordGeneratedResultSetColumn(
+              lowerCaseMeasurementExpression.ramBytesUsed());
           outputExpressions.add(
               new Pair<>(
                   lowerCaseMeasurementExpression,
@@ -1006,7 +1019,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(
           String.format(
-              "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: %s.",
+              DataNodeQueryMessages
+                  .THE_OUTPUT_TYPE_OF_THE_EXPRESSION_IN_HAVING_CLAUSE_SHOULD_BE_BOOLEAN_ACTUAL_DATA_TYPE_S,
               outputType));
     }
 
@@ -1110,7 +1124,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(
           String.format(
-              "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: %s.",
+              DataNodeQueryMessages
+                  .THE_OUTPUT_TYPE_OF_THE_EXPRESSION_IN_HAVING_CLAUSE_SHOULD_BE_BOOLEAN_ACTUAL_DATA_TYPE_S,
               outputType));
     }
     analysis.setDeviceToAggregationExpressions(deviceToAggregationExpressions);
@@ -1129,7 +1144,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (analysis.getType(rawAggregationExpression) != checkedDataType) {
           throw new SemanticException(
               String.format(
-                  "GROUP BY LEVEL: the data types of the same output column[%s] should be the same.",
+                  DataNodeQueryMessages
+                      .GROUP_BY_LEVEL_THE_DATA_TYPES_OF_THE_SAME_OUTPUT_COLUMN_S_SHOULD_BE_THE_SAME,
                   groupedAggregationExpression));
         }
       }
@@ -1458,7 +1474,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
       if (queriedDevices.size() > 1) {
         throw new SemanticException(
-            "Cross-device queries are not supported in ALIGN BY DEVICE queries.");
+            DataNodeQueryMessages
+                .CROSS_DEVICE_QUERIES_ARE_NOT_SUPPORTED_IN_ALIGN_BY_DEVICE_QUERIES);
       }
       outputDeviceToQueriedDevicesMap.put(deviceName, queriedDevices.iterator().next());
     }
@@ -1656,7 +1673,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       for (String output : outputsUnderDevice) {
         int index = deviceViewOutputColumns.indexOf(output);
         checkState(
-            index >= 1, "output column '%s' is not stored in %s", output, deviceViewOutputColumns);
+            index >= 1,
+            DataNodeQueryMessages
+                .EXCEPTION_OUTPUT_COLUMN_QUOTE_ARG_QUOTE_IS_NOT_STORED_IN_ARG_2DE3176D,
+            output,
+            deviceViewOutputColumns);
         indexes.add(index);
       }
       deviceViewInputIndexesMap.put(deviceID, indexes);
@@ -1671,8 +1692,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             .collect(Collectors.toSet());
     if (normalizedOutputExpressionsUnderDevice.size() < outputExpressionsUnderDevice.size()) {
       throw new SemanticException(
-          "Views or measurement aliases representing the same data source "
-              + "cannot be queried concurrently in ALIGN BY DEVICE queries.");
+          DataNodeQueryMessages.VIEWS_OR_MEASUREMENT_ALIASES_REPRESENTING_THE_SAME_DATA_SOURCE
+              + DataNodeQueryMessages.CANNOT_BE_QUERIED_CONCURRENTLY_IN_ALIGN_BY_DEVICE_QUERIES);
     }
   }
 
@@ -1723,8 +1744,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (!inputDataType.isNumeric()) {
         throw new SemanticException(
             String.format(
-                "The type of SQL result column [%s in %d] should be numeric when inference",
-                inputDataType, i));
+                DataNodeQueryMessages
+                    .THE_TYPE_OF_SQL_RESULT_COLUMN_S_IN_D_SHOULD_BE_NUMERIC_WHEN_INFERENCE,
+                inputDataType,
+                i));
       }
     }
   }
@@ -1745,7 +1768,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (!lastQueryColumnNames.contains(sortKey.toUpperCase())) {
         throw new SemanticException(
             String.format(
-                "%s in order by clause doesn't exist in the result of last query.", sortKey));
+                DataNodeQueryMessages
+                    .S_IN_ORDER_BY_CLAUSE_DOESN_T_EXIST_IN_THE_RESULT_OF_LAST_QUERY,
+                sortKey));
       }
     }
   }
@@ -1764,14 +1789,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (expressions.isEmpty()) {
         throw new SemanticException(
             String.format(
-                "%s in order by clause doesn't exist.", expressionForItem.getExpressionString()));
+                DataNodeQueryMessages.S_IN_ORDER_BY_CLAUSE_DOESN_T_EXIST,
+                expressionForItem.getExpressionString()));
       }
 
       expressions = orderByExpressionAnalyzer.apply(expressions);
       if (expressions.size() > 1) {
         throw new SemanticException(
             String.format(
-                "%s in order by clause shouldn't refer to more than one timeseries.",
+                DataNodeQueryMessages
+                    .S_IN_ORDER_BY_CLAUSE_SHOULDN_T_REFER_TO_MORE_THAN_ONE_TIMESERIES,
                 expressionForItem.getExpressionString()));
       }
 
@@ -1779,7 +1806,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       TSDataType dataType = analyzeExpressionType(analysis, orderByExpression);
       if (!dataType.isComparable()) {
         throw new SemanticException(
-            String.format("The data type of %s is not comparable", dataType));
+            String.format(DataNodeQueryMessages.THE_DATA_TYPE_OF_S_IS_NOT_COMPARABLE, dataType));
       }
       orderByExpressions.add(orderByExpression);
     }
@@ -1853,12 +1880,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         if (groupByExpressionsOfOneDevice.isEmpty()) {
           throw new SemanticException(
-              String.format("%s in group by clause doesn't exist.", expression));
+              String.format(DataNodeQueryMessages.S_IN_GROUP_BY_CLAUSE_DOESN_T_EXIST, expression));
         }
         if (groupByExpressionsOfOneDevice.size() > 1) {
           throw new SemanticException(
               String.format(
-                  "%s in group by clause shouldn't refer to more than one timeseries.",
+                  DataNodeQueryMessages
+                      .S_IN_GROUP_BY_CLAUSE_SHOULDN_T_REFER_TO_MORE_THAN_ONE_TIMESERIES,
                   expression));
         }
         deviceToGroupByExpression.put(
@@ -1928,19 +1956,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (expressions.isEmpty()) {
           throw new SemanticException(
               String.format(
-                  "%s in order by clause doesn't exist.", expressionForItem.getExpressionString()));
+                  DataNodeQueryMessages.S_IN_ORDER_BY_CLAUSE_DOESN_T_EXIST,
+                  expressionForItem.getExpressionString()));
         }
         if (expressions.size() > 1) {
           throw new SemanticException(
               String.format(
-                  "%s in order by clause shouldn't refer to more than one timeseries.",
+                  DataNodeQueryMessages
+                      .S_IN_ORDER_BY_CLAUSE_SHOULDN_T_REFER_TO_MORE_THAN_ONE_TIMESERIES,
                   expressionForItem.getExpressionString()));
         }
         expressionForItem = expressions.get(0);
         TSDataType dataType = analyzeExpressionType(analysis, expressionForItem);
         if (!dataType.isComparable()) {
           throw new SemanticException(
-              String.format("The data type of %s is not comparable", dataType));
+              String.format(DataNodeQueryMessages.THE_DATA_TYPE_OF_S_IS_NOT_COMPARABLE, dataType));
         }
 
         Expression deviceViewExpression = getMeasurementExpression(expressionForItem, analysis);
@@ -1983,12 +2013,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (expressions.isEmpty()) {
         throw new SemanticException(
             String.format(
-                "%s in group by clause doesn't exist.", groupByExpression.getExpressionString()));
+                DataNodeQueryMessages.S_IN_GROUP_BY_CLAUSE_DOESN_T_EXIST,
+                groupByExpression.getExpressionString()));
       }
       if (expressions.size() > 1) {
         throw new SemanticException(
             String.format(
-                "%s in group by clause shouldn't refer to more than one timeseries.",
+                DataNodeQueryMessages
+                    .S_IN_GROUP_BY_CLAUSE_SHOULDN_T_REFER_TO_MORE_THAN_ONE_TIMESERIES,
                 groupByExpression.getExpressionString()));
       }
       // Aggregation expression shouldn't exist in group by clause.
@@ -2057,8 +2089,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           && rightExpression instanceof ConstantOperand)) {
         throw new SemanticException(
             String.format(
-                "Please check the keep condition ([%s]), "
-                    + "it need to be a constant or a compare expression constructed by 'keep' and a long number.",
+                DataNodeQueryMessages.PLEASE_CHECK_THE_KEEP_CONDITION_S
+                    + DataNodeQueryMessages
+                        .IT_NEED_TO_BE_A_CONSTANT_OR_A_COMPARE_EXPRESSION_CONSTRUCTED_BY_KEEP_AND_A_LONG_NUMBER,
                 keepExpression.getExpressionString()));
       }
       return;
@@ -2066,8 +2099,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!(keepExpression instanceof ConstantOperand)) {
       throw new SemanticException(
           String.format(
-              "Please check the keep condition ([%s]), "
-                  + "it need to be a constant or a compare expression constructed by 'keep' and a long number.",
+              DataNodeQueryMessages.PLEASE_CHECK_THE_KEEP_CONDITION_S
+                  + DataNodeQueryMessages
+                      .IT_NEED_TO_BE_A_CONSTANT_OR_A_COMPARE_EXPRESSION_CONSTRUCTED_BY_KEEP_AND_A_LONG_NUMBER,
               keepExpression.getExpressionString()));
     }
   }
@@ -2090,7 +2124,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.isCqQueryBody()
         && (groupByTimeComponent.getStartTime() == 0 && groupByTimeComponent.getEndTime() == 0)) {
       throw new SemanticException(
-          "The query time range should be specified in the GROUP BY TIME clause.");
+          DataNodeQueryMessages
+              .THE_QUERY_TIME_RANGE_SHOULD_BE_SPECIFIED_IN_THE_GROUP_BY_TIME_CLAUSE);
     }
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(groupByTimeComponent);
     analysis.setGroupByTimeParameter(groupByTimeParameter);
@@ -2376,7 +2411,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           } catch (IllegalPathException e) {
             throw new SemanticException(
                 String.format(
-                    "View path %s of source column %s is illegal path", viewPath, sourceColumn));
+                    DataNodeQueryMessages.VIEW_PATH_S_OF_SOURCE_COLUMN_S_IS_ILLEGAL_PATH,
+                    viewPath,
+                    sourceColumn));
           }
         } else {
           sourcePath = ((TimeSeriesOperand) sourceExpression).getPath();
@@ -2412,7 +2449,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (Expression expression : expressions) {
       if (analysis.getType(expression) != checkedDataType) {
         throw new SemanticException(
-            "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
+            DataNodeQueryMessages
+                .ALIGN_BY_DEVICE_THE_DATA_TYPES_OF_THE_SAME_MEASUREMENT_COLUMN_SHOULD_BE_THE_SAME_ACROSS);
       }
     }
   }
@@ -2421,7 +2459,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (alias != null) {
       if (aliasSet.contains(alias)) {
         throw new SemanticException(
-            String.format("alias '%s' can only be matched with one time series", alias));
+            String.format(
+                DataNodeQueryMessages.ALIAS_S_CAN_ONLY_BE_MATCHED_WITH_ONE_TIME_SERIES, alias));
       }
       aliasSet.add(alias);
     }
@@ -2432,7 +2471,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Map<Expression, Map<IDeviceID, Expression>> measurementToDeviceSelectExpressions) {
     if (alias != null && measurementToDeviceSelectExpressions.keySet().size() > 1) {
       throw new SemanticException(
-          String.format("alias '%s' can only be matched with one time series", alias));
+          String.format(
+              DataNodeQueryMessages.ALIAS_S_CAN_ONLY_BE_MATCHED_WITH_ONE_TIME_SERIES, alias));
     }
   }
 
@@ -2516,7 +2556,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       for (String tagKey : createTimeSeriesStatement.getTags().keySet()) {
         if (createTimeSeriesStatement.getAttributes().containsKey(tagKey)) {
           throw new SemanticException(
-              String.format("Tag and attribute shouldn't have the same property key [%s]", tagKey));
+              String.format(
+                  DataNodeQueryMessages.TAG_AND_ATTRIBUTE_SHOULDN_T_HAVE_THE_SAME_PROPERTY_KEY_S,
+                  tagKey));
         }
       }
     }
@@ -2584,7 +2626,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (!ALLOWED_SCHEMA_PROPS.contains(lowerCaseKey)) {
         throw new SemanticException(
             new MetadataException(
-                String.format("%s is not a legal prop.", caseChangeEntry.getValue())));
+                String.format(
+                    DataNodeQueryMessages.S_IS_NOT_A_LEGAL_PROP, caseChangeEntry.getValue())));
       }
       props.put(lowerCaseKey, props.remove(caseChangeEntry.getValue()));
     }
@@ -2614,7 +2657,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<String> measurementsSet = new HashSet<>(measurements);
     if (measurementsSet.size() < measurements.size()) {
       throw new SemanticException(
-          "Measurement under an aligned device is not allowed to have the same measurement name");
+          DataNodeQueryMessages
+              .MEASUREMENT_UNDER_AN_ALIGNED_DEVICE_IS_NOT_ALLOWED_TO_HAVE_THE_SAME_MEASUREMENT_NAME);
     }
 
     Analysis analysis = new Analysis();
@@ -2735,7 +2779,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throw new RuntimeException(
           new TemplateIncompatibleException(
               String.format(
-                  "Cannot alter template timeseries [%s] since device template [%s] already set on path [%s].",
+                  DataNodeQueryMessages.CANNOT_ALTER_TEMPLATE_TIMESERIES_TEMPLATE_ALREADY_SET_FMT,
                   alterTimeSeriesStatement.getPath().getFullPath(),
                   templateInfo.left.getName(),
                   templateInfo.right)));
@@ -3228,11 +3272,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
     if (resultPair.right) {
       throw new SemanticException(
-          "Value Filter can't exist in the condition of SHOW/COUNT clause, only time condition supported");
+          DataNodeQueryMessages
+              .VALUE_FILTER_CAN_T_EXIST_IN_THE_CONDITION_OF_SHOW_COUNT_CLAUSE_ONLY_TIME_CONDITION);
     }
     if (resultPair.left == null) {
       throw new SemanticException(
-          "Time condition can't be empty in the condition of SHOW/COUNT clause");
+          DataNodeQueryMessages
+              .TIME_CONDITION_CAN_T_BE_EMPTY_IN_THE_CONDITION_OF_SHOW_COUNT_CLAUSE);
     }
     Expression globalTimePredicate = resultPair.left;
     globalTimePredicate = PredicateUtils.predicateRemoveNot(globalTimePredicate);
@@ -3633,7 +3679,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<String> measurementsSet = new HashSet<>(measurements);
     if (measurementsSet.size() < measurements.size()) {
       throw new SemanticException(
-          "Measurement under template is not allowed to have the same measurement name");
+          DataNodeQueryMessages
+              .MEASUREMENT_UNDER_TEMPLATE_IS_NOT_ALLOWED_TO_HAVE_THE_SAME_MEASUREMENT_NAME);
     }
     Analysis analysis = new Analysis();
     analysis.setRealStatement(createTemplateStatement);
@@ -3663,7 +3710,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throw new StatementAnalyzeException(
           new MetadataException(
               String.format(
-                  "Path [%s] has not been set any template.", activatePath.getFullPath())));
+                  DataNodeQueryMessages.PATH_HAS_NOT_BEEN_SET_ANY_TEMPLATE_FMT,
+                  activatePath.getFullPath())));
     }
     analysis.setTemplateSetInfo(
         new Pair<>(templateSetInfo.left, Collections.singletonList(templateSetInfo.right)));
@@ -3694,7 +3742,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new StatementAnalyzeException(
             new MetadataException(
                 String.format(
-                    "Path [%s] has not been set any template.", devicePath.getFullPath())));
+                    DataNodeQueryMessages.PATH_HAS_NOT_BEEN_SET_ANY_TEMPLATE_FMT,
+                    devicePath.getFullPath())));
       }
       deviceTemplateSetInfoMap.put(devicePath, templateSetInfo);
     }

@@ -184,23 +184,31 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
         }
         final Column[] columns = tsBlock.get().getValueColumns();
         // check column count
-        checkArgument(columns.length == 1, "Scalar Subquery result should only have one column.");
+        checkArgument(
+            columns.length == 1,
+            DataNodeQueryMessages
+                .EXCEPTION_SCALAR_SUBQUERY_RESULT_SHOULD_ONLY_HAVE_ONE_COLUMN_DOT_893F76CB);
         // check row count
         rowCount += tsBlock.get().getPositionCount();
         checkArgument(
             rowCount == 1 && !columns[0].isNull(0),
-            "Scalar Subquery result should only have one row.");
+            DataNodeQueryMessages
+                .EXCEPTION_SCALAR_SUBQUERY_RESULT_SHOULD_ONLY_HAVE_ONE_ROW_DOT_F9007BBC);
         column = columns[0];
 
         // column type
         DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
         List<TSDataType> dataTypes = datasetHeader.getRespDataTypes();
-        checkArgument(dataTypes.size() == 1, "Scalar Subquery result should only have one column.");
+        checkArgument(
+            dataTypes.size() == 1,
+            DataNodeQueryMessages
+                .EXCEPTION_SCALAR_SUBQUERY_RESULT_SHOULD_ONLY_HAVE_ONE_COLUMN_DOT_893F76CB);
         dataType = dataTypes.get(0);
       }
       checkArgument(
           dataType != null && column != null,
-          "Scalar Subquery result should not get null dataType or null column.");
+          DataNodeQueryMessages
+              .EXCEPTION_SCALAR_SUBQUERY_RESULT_SHOULD_NOT_GET_NULL_DATATYPE_OR_NULL_COLUMN_DOT_616056F4);
       switch (dataType) {
         case INT32:
         case DATE:
@@ -222,7 +230,9 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
         default:
           throw new IllegalArgumentException(
               String.format(
-                  "Unsupported data type for scalar subquery result: %s", column.getDataType()));
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_FOR_SCALAR_SUBQUERY_RESULT_S_4381E489,
+                  column.getDataType()));
       }
     } catch (final Throwable throwable) {
       t = throwable;

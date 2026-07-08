@@ -39,6 +39,8 @@ import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.builder.IoTConsensusV2SyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2DeleteNodeReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletInsertNodeReq;
@@ -148,8 +150,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     } catch (final Exception e) {
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
-              "Failed to transfer tablet insertion event %s, because %s.",
-              tabletInsertionEvent, e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_TRANSFER_TABLET_INSERTION_EVENT_S_BECAUSE_S_9710318F,
+              tabletInsertionEvent,
+              e.getMessage()),
           Integer.MAX_VALUE);
     }
   }
@@ -171,8 +175,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     } catch (Exception e) {
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
-              "Failed to transfer tsfile insertion event %s, because %s.",
-              tsFileInsertionEvent, e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_TRANSFER_TSFILE_INSERTION_EVENT_S_BECAUSE_S_21AD3263,
+              tsFileInsertionEvent,
+              e.getMessage()),
           Integer.MAX_VALUE);
     }
   }
@@ -435,10 +441,13 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       final TCommitId tCommitId,
       final TConsensusGroupId tConsensusGroupId)
       throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+    final int readFileBufferSize = getReadFileBufferSize(file);
+    try (final PipeTsFileMemoryBlock ignored =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+        final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      final byte[] readBuffer = new byte[readFileBufferSize];
+      long position = 0;
       while (true) {
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
@@ -472,7 +481,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
         } catch (Exception e) {
           throw new PipeRuntimeSinkRetryTimesConfigurableException(
               String.format(
-                  "Network error when transfer file %s, because %s.", file, e.getMessage()),
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_FILE_S_BECAUSE_S_3C673B7A,
+                  file,
+                  e.getMessage()),
               Integer.MAX_VALUE);
         }
 
@@ -499,6 +511,13 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
         }
       }
     }
+  }
+
+  private int getReadFileBufferSize(final File file) {
+    return (int)
+        Math.min(
+            (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+            Math.max(file.length(), 1L));
   }
 
   private TEndPoint getFollowerUrl() {

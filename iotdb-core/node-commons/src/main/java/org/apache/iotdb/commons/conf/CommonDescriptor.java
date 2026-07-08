@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
@@ -598,7 +599,7 @@ public class CommonDescriptor {
                 String.valueOf(config.getDiskSpaceWarningThreshold())));
     if (diskSpaceWarningThreshold < 0 || diskSpaceWarningThreshold >= 1) {
       throw new IOException(
-          "disk_space_warning_threshold must be in [0, 1), but was "
+          CommonMessages.EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766
               + diskSpaceWarningThreshold
               + ".");
     }

@@ -87,7 +87,7 @@ public final class UtilMessages {
       "已将文件 {} 复制为 {}，因为目标目录 {} 中已存在同名文件";
   public static final String ILLEGAL_EMPTY_PATH = "路径不能为空。 ";
   public static final String ILLEGAL_PATH_DOTS_OR_SEPARATORS =
-      "路径不能为 '.'、'..'、'./' 或 '.\\\\'. ";
+      "路径不能为 '.'、'..'、'./' 或 '.\\'. ";
 
   // ======================== IOUtils ========================
 
@@ -110,6 +110,8 @@ public final class UtilMessages {
 
   public static final String ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY =
       "所有文件夹空间均已耗尽，系统切换为只读模式。";
+  public static final String CANNOT_SELECT_FOLDER_BUT_DISK_HAS_SPACE =
+      "无法选择文件夹但磁盘仍有可用空间，不切换为只读模式。";
   public static final String FAILED_TO_PROCESS_FOLDER = "处理文件夹 {} 失败";
   public static final String FAILED_TO_READ_FILE_STORE_PATH =
       "读取文件存储路径 '{}' 失败";
@@ -196,4 +198,64 @@ public final class UtilMessages {
   public static final String READ_T_PIPE_SINK_INFO_FAILED = "读取 TPipeSinkInfo 失败：";
 
   private UtilMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_INTERNAL_USER_NAMES_EXCEPT_DEFAULT_SUPERUSER_SEPARATION_DUTIES_ADMINS_MUST_3F045FC1 = "内部用户名（默认 superuser 和职责分离管理员除外）必须";
+  public static final String EXCEPTION_START_01CCD2EF = "以 \" 开头";
+  public static final String EXCEPTION_USER_NAMES_STARTING_8FDC637E = "以 \" 开头的用户名";
+  public static final String EXCEPTION_RESERVED_SYSTEM_USE_CANNOT_USED_NEW_USERS_AS_RENAME_CEB73835 = "\" 保留供系统使用，不能用于新用户或重命名 ";
+  public static final String EXCEPTION_TARGET_42AEFBAE = "target";
+  public static final String EXCEPTION_LENGTH_NAME_MUST_GREATER_THAN_EQUAL_0387C3A5 = "name 长度必须大于等于 ";
+  public static final String EXCEPTION_LENGTH_NAME_MUST_LESS_THAN_EQUAL_B7B31C94 = "name 长度必须小于等于 ";
+  public static final String EXCEPTION_NAME_CAN_ONLY_CONTAIN_LETTERS_NUMBERS_A313856E = "name 只能包含字母、数字或 !@#$%^*()_+-=";
+  public static final String EXCEPTION_LENGTH_PASSWORD_MUST_GREATER_THAN_EQUAL_F95F3E8F = "密码长度必须大于等于 ";
+  public static final String EXCEPTION_LENGTH_PASSWORD_MUST_LESS_THAN_EQUAL_C822ECBE = "密码长度必须小于等于 ";
+  public static final String EXCEPTION_PASSWORD_CAN_ONLY_CONTAIN_LETTERS_NUMBERS_D84EE152 = "密码只能包含字母、数字或 !@#$%^*()_+-=";
+  public static final String EXCEPTION_ILLEGAL_SERIESPATH_ARG_SERIESPATH_SHOULD_START_ARG_FB9E3C07 = "非法 seriesPath %s，seriesPath 应以 \"%s\" 开头";
+  public static final String EXCEPTION_ILLEGAL_PATTERN_PATH_ARG_ONLY_PATTERN_PATH_END_SUPPORTED_16CBB77D = "非法 pattern path：%s，仅支持以 ** 结尾的 pattern path。";
+  public static final String EXCEPTION_ILLEGAL_PATTERN_PATH_ARG_ONLY_PATTERN_PATH_END_WILDCARDS_SUPPORTED_7183A896 = "非法 pattern path：%s，仅支持以通配符结尾的 pattern path。";
+  public static final String EXCEPTION_NO_SUCH_PRIVILEGE_62644205 = "无此权限 ";
+  public static final String MESSAGE_EXECUTED_SUCCESSFULLY_1EAF1169 = "执行成功。";
+  public static final String MESSAGE_REQUEST_TIMED_OUT_FD587FC4 = "请求超时。";
+  public static final String MESSAGE_INCOMPATIBLE_VERSION_0C5CB2AF = "版本不兼容。";
+  public static final String MESSAGE_FAILED_REMOVING_DATANODE_B4B7F050 = "移除 DataNode 失败。";
+  public static final String MESSAGE_ALIAS_ALREADY_EXISTS_C05A2E5A = "别名已存在。";
+  public static final String MESSAGE_PATH_ALREADY_EXIST_56F8BFF9 = "路径 已存在.";
+  public static final String MESSAGE_PATH_DOES_NOT_EXIST_93310498 = "路径 不存在.";
+  public static final String MESSAGE_MEET_ERROR_DEALING_METADATA_1C4A38B9 = "处理元数据时发生错误。";
+  public static final String MESSAGE_INSERTION_TIME_LESS_THAN_TTL_TIME_BOUND_0F1BB861 = "插入时间小于 TTL 时间边界。";
+  public static final String MESSAGE_MEET_ERROR_MERGING_28424A77 = "合并时发生错误。";
+  public static final String MESSAGE_MEET_ERROR_DISPATCHING_73E4FD5E = "分发时发生错误。";
+  public static final String MESSAGE_DATABASE_PROCESSOR_RELATED_ERROR_C58690B1 = "数据库处理器相关错误。";
+  public static final String MESSAGE_STORAGE_ENGINE_RELATED_ERROR_94DEBBCF = "存储引擎相关错误。";
+  public static final String MESSAGE_TSFILE_PROCESSOR_RELATED_ERROR_B6C57C3E = "TsFile 处理器相关错误。";
+  public static final String MESSAGE_ILLEGAL_PATH_020B26BC = "非法路径。";
+  public static final String MESSAGE_MEET_ERROR_LOADING_FILE_A90EBC21 = "加载文件时发生错误。";
+  public static final String MESSAGE_EXECUTE_STATEMENT_ERROR_54E4A395 = "执行语句错误。";
+  public static final String MESSAGE_MEET_ERROR_PARSING_SQL_3C5A3B80 = "解析 SQL 时发生错误。";
+  public static final String MESSAGE_MEET_ERROR_GENERATING_TIME_ZONE_94E03CA3 = "生成时区时发生错误。";
+  public static final String MESSAGE_MEET_ERROR_SETTING_TIME_ZONE_CBE88DCF = "设置时区时发生错误。";
+  public static final String MESSAGE_QUERY_STATEMENTS_NOT_ALLOWED_ERROR_58D30C99 = "不允许执行查询语句。";
+  public static final String MESSAGE_LOGICAL_OPERATOR_RELATED_ERROR_D94D5972 = "逻辑运算符相关错误。";
+  public static final String MESSAGE_LOGICAL_OPTIMIZE_RELATED_ERROR_36D63CB3 = "逻辑优化相关错误。";
+  public static final String MESSAGE_UNSUPPORTED_FILL_TYPE_RELATED_ERROR_67BE2CF2 = "不支持的填充类型相关错误。";
+  public static final String MESSAGE_QUERY_PROCESS_RELATED_ERROR_93FA1016 = "查询处理相关错误。";
+  public static final String MESSAGE_WRITING_DATA_RELATED_ERROR_0CA06C4D = "写入数据相关错误。";
+  public static final String MESSAGE_INTERNAL_SERVER_ERROR_12F61DF7 = "内部服务器错误。";
+  public static final String MESSAGE_MEET_ERROR_CLOSE_OPERATION_1C7D0589 = "关闭操作中发生错误。";
+  public static final String MESSAGE_FAIL_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_READ_ONLY_10CA1ED2 = "系统只读，无法执行非查询操作。";
+  public static final String MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0 = "磁盘空间不足。";
+  public static final String MESSAGE_MEET_ERROR_STARTING_UP_22A4CBFE = "启动时发生错误。";
+  public static final String MESSAGE_USERNAME_PASSWORD_WRONG_C44C4AF0 = "用户名或密码错误。";
+  public static final String MESSAGE_HAS_NOT_LOGGED_A2BA0267 = "尚未登录。";
+  public static final String MESSAGE_NO_PERMISSIONS_OPERATION_PLEASE_ADD_PRIVILEGE_64047D1E = "没有此操作的权限，请添加权限。";
+  public static final String MESSAGE_FAILED_INIT_AUTHORIZER_1E2B017E = "初始化授权器失败。";
+  public static final String MESSAGE_UNSUPPORTED_OPERATION_295CDB21 = "不支持的操作。";
+  public static final String MESSAGE_NODE_CANNOT_REACHED_D3FD04A8 = "节点无法访问。";
+  public static final String LOG_ARG_ABOVE_WARNING_THRESHOLD_NOT_ACCESSIBLE_FREE_SPACE_ARG_TOTAL_87DAD16A = "{} 超过警告阈值或不可访问，可用空间 {}，总空间 {}";
+  public static final String EXCEPTION_VALUE_IS_NULL_192F6BFF = "value 不能为空";
+  public static final String LOG_ARG_COLON_ARG_DCE519A1 = "{}: {}";
+  public static final String EMPTY_MESSAGE = "";
+
 }

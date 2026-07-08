@@ -112,8 +112,9 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
         if (isConsensusBasedTopic) {
           LOGGER.info(
-              "DropSubscriptionProcedure: topic [{}] uses consensus subscription mode "
-                  + "(mode={}), skipping pipe removal",
+              ProcedureMessages
+                      .LOG_DROPSUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_6962D13C
+                  + ProcedureMessages.LOG_MODE_ARG_SKIPPING_PIPE_REMOVAL_133B0CD6,
               topic,
               topicMode);
           continue;

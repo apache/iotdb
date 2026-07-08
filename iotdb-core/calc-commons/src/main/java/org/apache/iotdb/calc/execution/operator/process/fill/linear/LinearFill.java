@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.process.fill.linear;
 
 import org.apache.iotdb.calc.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
@@ -183,7 +184,8 @@ public abstract class LinearFill implements ILinearFill {
       long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn) {
     checkArgument(
         nextTimeColumn.getPositionCount() > 0 && endRowIndex < startRowIndex,
-        "nextColumn's time should be greater than current time");
+        CalcMessages
+            .EXCEPTION_NEXTCOLUMN_QUOTE_S_TIME_SHOULD_BE_GREATER_THAN_CURRENT_TIME_334CB115);
     if (endRowIndex <= nextRowIndex) {
       return true;
     }

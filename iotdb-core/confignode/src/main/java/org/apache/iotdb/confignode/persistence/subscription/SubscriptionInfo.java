@@ -449,8 +449,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
       if (parsedValue == 0 || parsedValue < -1) {
         throw new SubscriptionException(
             String.format(
-                "Failed to create or alter topic, illegal %s=%s, expected -1 or a positive long value",
-                key, rawValue));
+                ConfigNodeMessages
+                    .EXCEPTION_FAILED_CREATE_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_1_POSITIVE_A33070FB,
+                key,
+                rawValue));
       }
     } catch (final NumberFormatException e) {
       final String exceptionMessage =
@@ -884,7 +886,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus handleCommitProgressChanges(CommitProgressHandleMetaChangePlan plan) {
     acquireWriteLock();
     try {
-      LOGGER.info("Handling commit progress meta changes ...");
+      LOGGER.info(ConfigNodeMessages.LOG_HANDLING_COMMIT_PROGRESS_META_CHANGES_FA21A080);
       commitProgressKeeper.replaceAll(plan.getRegionProgressMap());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {

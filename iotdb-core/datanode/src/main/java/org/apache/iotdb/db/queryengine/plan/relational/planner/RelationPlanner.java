@@ -213,15 +213,18 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
       final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
       PredicateWithUncorrelatedScalarSubqueryReconstructor
           predicateWithUncorrelatedScalarSubqueryReconstructor) {
-    requireNonNull(analysis, "analysis is null");
-    requireNonNull(symbolAllocator, "symbolAllocator is null");
-    requireNonNull(queryContext, "queryContext is null");
-    requireNonNull(outerContext, "outerContext is null");
-    requireNonNull(sessionInfo, "session is null");
-    requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
+    requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
+    requireNonNull(
+        symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+    requireNonNull(queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_IS_NULL_761DB539);
+    requireNonNull(outerContext, DataNodeQueryMessages.EXCEPTION_OUTERCONTEXT_IS_NULL_031CD366);
+    requireNonNull(sessionInfo, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
+    requireNonNull(
+        recursiveSubqueries, DataNodeQueryMessages.EXCEPTION_RECURSIVESUBQUERIES_IS_NULL_6AD8A180);
     requireNonNull(
         predicateWithUncorrelatedScalarSubqueryReconstructor,
-        "predicateWithUncorrelatedScalarSubqueryReconstructor is null");
+        DataNodeQueryMessages
+            .EXCEPTION_PREDICATEWITHUNCORRELATEDSCALARSUBQUERYRECONSTRUCTOR_IS_NULL_B264FEBC);
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -408,7 +411,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   public static QualifiedObjectName getQualifiedObjectName(Table table, Analysis analysis) {
     final QualifiedName qualifiedName = analysis.getRelationName(table);
     if (!qualifiedName.getPrefix().isPresent()) {
-      throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
+      throw new IllegalStateException(
+          String.format(DataNodeQueryMessages.TABLE_HAS_NO_PREFIX_FMT, table.getName()));
     }
 
     final QualifiedObjectName qualifiedObjectName =
@@ -662,7 +666,9 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
           // the case when we mix symbols from both left and right join side on either side of
           // condition.
           throw new SemanticException(
-              format("Complex ASOF main join expression [%s] is not supported", asofCriteria));
+              format(
+                  DataNodeQueryMessages.COMPLEX_ASOF_MAIN_JOIN_EXPRESSION_S_IS_NOT_SUPPORTED,
+                  asofCriteria));
         }
       }
 
@@ -1179,7 +1185,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
                 matchNumberSymbol);
       } else {
         throw new SemanticException(
-            "Unexpected descriptor type: " + accessor.getDescriptor().getClass().getName());
+            DataNodeQueryMessages.UNEXPECTED_DESCRIPTOR_TYPE
+                + accessor.getDescriptor().getClass().getName());
       }
 
       Symbol symbol = symbolAllocator.newSymbol(name, analysis.getType(accessor.getExpression()));
@@ -1230,7 +1237,9 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
 
   @Override
   public RelationPlan visitUnion(Union node, Void context) {
-    Preconditions.checkArgument(!node.getRelations().isEmpty(), "No relations specified for UNION");
+    Preconditions.checkArgument(
+        !node.getRelations().isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_NO_RELATIONS_SPECIFIED_FOR_UNION_70CE42C4);
 
     SetOperationPlan setOperationPlan = process(node);
 
@@ -1250,7 +1259,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   @Override
   public RelationPlan visitIntersect(Intersect node, Void context) {
     Preconditions.checkArgument(
-        !node.getRelations().isEmpty(), "No relations specified for intersect");
+        !node.getRelations().isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_NO_RELATIONS_SPECIFIED_FOR_INTERSECT_76B0ED3B);
     SetOperationPlan setOperationPlan = process(node);
 
     PlanNode intersectNode =
@@ -1268,7 +1278,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   @Override
   public RelationPlan visitExcept(Except node, Void context) {
     Preconditions.checkArgument(
-        !node.getRelations().isEmpty(), "No relations specified for except");
+        !node.getRelations().isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_NO_RELATIONS_SPECIFIED_FOR_EXCEPT_C8E4B4AA);
     SetOperationPlan setOperationPlan = process(node);
 
     PlanNode exceptNode =
@@ -1644,7 +1655,10 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
             assignments,
             tagAndAttributeIndexMap,
             queryContext.createExternalTsFileQueryResource(
-                handle.getTableName(), handle.getTsFilePaths(), assignments));
+                handle.getTableName(),
+                handle.getTsFilePaths(),
+                assignments,
+                handle.getDeviceMetadataInfoSwapThreshold()));
 
     return new RelationPlan(scanNode, scope, outputSymbols, outerContext);
   }
@@ -1703,12 +1717,21 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
         SkipToPosition skipToPosition,
         IrRowPattern pattern,
         Map<IrLabel, ExpressionAndValuePointers> variableDefinitions) {
-      this.measures = requireNonNull(measures, "measures is null");
-      this.measureOutputs = requireNonNull(measureOutputs, "measureOutputs is null");
+      this.measures =
+          requireNonNull(measures, DataNodeQueryMessages.EXCEPTION_MEASURES_IS_NULL_EC9D2431);
+      this.measureOutputs =
+          requireNonNull(
+              measureOutputs, DataNodeQueryMessages.EXCEPTION_MEASUREOUTPUTS_IS_NULL_923F7C4B);
       this.skipToLabels = ImmutableSet.copyOf(skipToLabels);
-      this.skipToPosition = requireNonNull(skipToPosition, "skipToPosition is null");
-      this.pattern = requireNonNull(pattern, "pattern is null");
-      this.variableDefinitions = requireNonNull(variableDefinitions, "variableDefinitions is null");
+      this.skipToPosition =
+          requireNonNull(
+              skipToPosition, DataNodeQueryMessages.EXCEPTION_SKIPTOPOSITION_IS_NULL_EFBA10CA);
+      this.pattern =
+          requireNonNull(pattern, DataNodeQueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
+      this.variableDefinitions =
+          requireNonNull(
+              variableDefinitions,
+              DataNodeQueryMessages.EXCEPTION_VARIABLEDEFINITIONS_IS_NULL_5F7B8ED4);
     }
 
     public Map<Symbol, Measure> getMeasures() {

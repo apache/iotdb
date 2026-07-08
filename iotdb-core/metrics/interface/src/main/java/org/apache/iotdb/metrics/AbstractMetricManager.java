@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
@@ -435,7 +436,7 @@ public abstract class AbstractMetricManager {
         removeMetric(type, metricInfo);
       } else {
         throw new IllegalArgumentException(
-            metricInfo + " failed to remove because the mismatch of type. ");
+            metricInfo + MetricsMessages.EXCEPTION_FAILED_REMOVE_BECAUSE_MISMATCH_TYPE_044E55F6);
       }
     }
   }
