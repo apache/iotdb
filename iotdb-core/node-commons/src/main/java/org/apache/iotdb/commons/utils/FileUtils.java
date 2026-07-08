@@ -54,6 +54,8 @@ public class FileUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
 
   private static final int BUFFER_SIZE = 1024;
+  private static final long FILE_REMOVE_COST_IN_BYTES = 64 * 1024L;
+  private static final long DIRECTORY_REMOVE_COST_IN_BYTES = 4 * 1024L;
 
   private FileUtils() {}
 
@@ -134,10 +136,9 @@ public class FileUtils {
           deleteFileOrDirectory(subfile, quietForNoSuchFile, deleteRateLimiter);
         }
       }
-    } else if (deleteRateLimiter != null && file.isFile()) {
-      deleteRateLimiter.accept(file.length());
     }
     try {
+      acquireRemovePermit(file, deleteRateLimiter);
       Files.delete(file.toPath());
     } catch (NoSuchFileException e) {
       if (!quietForNoSuchFile) {
@@ -190,11 +191,25 @@ public class FileUtils {
   private static void deleteDirectoryAndEmptyParent(File folder, LongConsumer deleteRateLimiter) {
     deleteFileOrDirectory(folder, false, deleteRateLimiter);
     final File parentFolder = folder.getParentFile();
+    if (parentFolder == null) {
+      return;
+    }
     File[] files = parentFolder.listFiles();
     if (parentFolder.isDirectory() && (files == null || files.length == 0)) {
+      acquireRemovePermit(parentFolder, deleteRateLimiter);
       if (!parentFolder.delete()) {
         LOGGER.warn(UtilMessages.DELETE_FOLDER_FAILED, parentFolder.getAbsolutePath());
       }
+    }
+  }
+
+  public static long estimateFileOrDirectoryRemoveCost(File file) {
+    return file.isDirectory() ? DIRECTORY_REMOVE_COST_IN_BYTES : FILE_REMOVE_COST_IN_BYTES;
+  }
+
+  private static void acquireRemovePermit(File file, LongConsumer deleteRateLimiter) {
+    if (deleteRateLimiter != null && file.exists()) {
+      deleteRateLimiter.accept(estimateFileOrDirectoryRemoveCost(file));
     }
   }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.slf4j.Logger;
@@ -54,8 +55,8 @@ public class SchemaRegionUtils {
     }
     for (File file : sgFiles) {
       try {
-        if (deleteRateLimiter != null && file.isFile()) {
-          deleteRateLimiter.accept(file.length());
+        if (deleteRateLimiter != null) {
+          deleteRateLimiter.accept(FileUtils.estimateFileOrDirectoryRemoveCost(file));
         }
         Files.delete(file.toPath());
         logger.info(DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FILE, file.getAbsolutePath());
@@ -70,6 +71,9 @@ public class SchemaRegionUtils {
     }
 
     try {
+      if (deleteRateLimiter != null) {
+        deleteRateLimiter.accept(FileUtils.estimateFileOrDirectoryRemoveCost(schemaRegionDir));
+      }
       Files.delete(schemaRegionDir.toPath());
       logger.info(
           DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FOLDER, schemaRegionDir.getAbsolutePath());

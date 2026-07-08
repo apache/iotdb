@@ -1730,11 +1730,18 @@ data_region_iot_max_pending_batches_num = 5
 # Datatype: double
 data_region_iot_max_memory_ratio_for_queue = 0.6
 
-# The maximum size in byte per second for region migration transfer and region file deletion
+# The maximum size in byte per second for region migration transfer.
 # values less than or equal to 0 means no limit
 # effectiveMode: hot_reload
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
+
+# The maximum estimated remove cost in byte per second for region migration file cleanup.
+# Each regular file remove costs 64 KiB, and each directory remove costs 4 KiB.
+# values less than or equal to 0 means no limit
+# effectiveMode: hot_reload
+# Datatype: long
+region_migration_file_remove_speed_limit_bytes_per_second = 50331648
 
 # The minimum interval (in ms) between two per-file progress logs while transmitting a snapshot in
 # IoTConsensus. A snapshot may contain a huge number of files, so logging one line per file is

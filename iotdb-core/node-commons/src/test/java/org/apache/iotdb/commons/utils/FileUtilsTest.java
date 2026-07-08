@@ -87,14 +87,17 @@ public class FileUtilsTest {
     AtomicInteger acquiredFiles = new AtomicInteger();
     FileUtils.deleteFileOrDirectoryWithRateLimiter(
         deleteDir,
-        fileSize -> {
+        removeCost -> {
           acquiredFiles.incrementAndGet();
-          acquiredBytes.addAndGet(fileSize);
+          acquiredBytes.addAndGet(removeCost);
         });
 
     Assert.assertFalse(deleteDir.exists());
-    Assert.assertEquals(3, acquiredFiles.get());
-    Assert.assertEquals(10, acquiredBytes.get());
+    Assert.assertEquals(5, acquiredFiles.get());
+    Assert.assertEquals(
+        3 * FileUtils.estimateFileOrDirectoryRemoveCost(new File("file"))
+            + 2 * FileUtils.estimateFileOrDirectoryRemoveCost(tmpDir),
+        acquiredBytes.get());
   }
 
   @Test
@@ -110,7 +113,27 @@ public class FileUtilsTest {
     Assert.assertFalse(deleteDir.exists());
     Assert.assertFalse(parentDir.exists());
     Assert.assertTrue(tmpDir.exists());
-    Assert.assertEquals(5, acquiredBytes.get());
+    Assert.assertEquals(
+        FileUtils.estimateFileOrDirectoryRemoveCost(new File("file"))
+            + 2 * FileUtils.estimateFileOrDirectoryRemoveCost(tmpDir),
+        acquiredBytes.get());
+  }
+
+  @Test
+  public void testDeleteDirectoryAndEmptyParentWithRateLimiterAndNoParent() throws IOException {
+    File deleteDir = new File("deleteDirWithoutParent-" + System.nanoTime());
+    try {
+      Assert.assertTrue(deleteDir.mkdirs());
+
+      AtomicLong acquiredBytes = new AtomicLong();
+      long directoryRemoveCost = FileUtils.estimateFileOrDirectoryRemoveCost(deleteDir);
+      FileUtils.deleteDirectoryAndEmptyParentWithRateLimiter(deleteDir, acquiredBytes::addAndGet);
+
+      Assert.assertFalse(deleteDir.exists());
+      Assert.assertEquals(directoryRemoveCost, acquiredBytes.get());
+    } finally {
+      FileUtils.deleteFileOrDirectory(deleteDir, true);
+    }
   }
 
   private void generateFile(File tsfile) throws WriteProcessException, IOException {

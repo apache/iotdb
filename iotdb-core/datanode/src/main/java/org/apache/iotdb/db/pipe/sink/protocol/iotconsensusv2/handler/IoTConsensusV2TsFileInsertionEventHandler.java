@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.response.IoTConsensusV2TransferFilePieceResp;
-import org.apache.iotdb.commons.utils.RegionMigrationRateLimiter;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferResp;
@@ -176,7 +175,6 @@ public class IoTConsensusV2TsFileInsertionEventHandler
         readLength == readFileBufferSize
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
-    RegionMigrationRateLimiter.getInstance().acquire(readLength);
     client.iotConsensusV2Transfer(
         transferMod
             ? IoTConsensusV2TsFilePieceWithModReq.toTIoTConsensusV2TransferReq(

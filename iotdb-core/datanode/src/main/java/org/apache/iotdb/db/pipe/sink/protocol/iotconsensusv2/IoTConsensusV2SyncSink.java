@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigur
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.response.IoTConsensusV2TransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
-import org.apache.iotdb.commons.utils.RegionMigrationRateLimiter;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2BatchTransferReq;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2BatchTransferResp;
@@ -201,7 +200,6 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       final TIoTConsensusV2BatchTransferResp resp;
       final TIoTConsensusV2BatchTransferReq req =
           tabletBatchBuilder.toTIoTConsensusV2BatchTransferReq();
-      IoTConsensusV2RateLimiter.acquire(req);
       resp = syncIoTConsensusV2ServiceClient.iotConsensusV2BatchTransfer(req);
 
       final List<TSStatus> statusList =
@@ -269,7 +267,6 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
               tConsensusGroupId,
               progressIndex,
               thisDataNodeId);
-      IoTConsensusV2RateLimiter.acquire(req);
       resp = syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(req);
     } catch (final Exception e) {
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
@@ -338,7 +335,6 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       final TIoTConsensusV2TransferReq req =
           IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
               insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
-      IoTConsensusV2RateLimiter.acquire(req);
       resp = syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(req);
     } catch (final Exception e) {
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
@@ -461,7 +457,6 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
         final IoTConsensusV2TransferFilePieceResp resp;
         try {
-          RegionMigrationRateLimiter.getInstance().acquire(readLength);
           resp =
               IoTConsensusV2TransferFilePieceResp.fromTIoTConsensusV2TransferResp(
                   syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(

@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferR
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
-import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2RateLimiter;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler.PipeTransferTabletInsertionEventHandler;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -69,7 +68,6 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
   }
 
   public void transfer(AsyncIoTConsensusV2ServiceClient client) throws TException {
-    IoTConsensusV2RateLimiter.acquire(req);
     doTransfer(client, req);
   }
 

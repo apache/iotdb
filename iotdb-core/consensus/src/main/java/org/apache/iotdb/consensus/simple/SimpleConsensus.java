@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.RegionMigrationRateLimiter;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -199,7 +199,8 @@ class SimpleConsensus implements IConsensus {
           exist.set(true);
           v.stop();
           FileUtils.deleteFileOrDirectoryWithRateLimiter(
-              new File(buildPeerDir(groupId)), RegionMigrationRateLimiter.getInstance()::acquire);
+              new File(buildPeerDir(groupId)),
+              RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
           return null;
         });
     if (!exist.get()) {
