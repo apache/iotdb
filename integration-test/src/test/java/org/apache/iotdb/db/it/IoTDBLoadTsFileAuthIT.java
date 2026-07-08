@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -46,6 +47,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
@@ -63,7 +65,12 @@ public class IoTDBLoadTsFileAuthIT {
   private static final String NO_WRITE_USER = "load_no_write_user";
   private static final String WRITE_USER = "load_write_user";
   private static final String OTHER_PATH_WRITE_USER = "load_other_path_write_user";
+  private static final String ASYNC_NO_WRITE_USER = "async_load_no_write_user";
+  private static final String ASYNC_WRITE_USER = "async_load_write_user";
+  private static final String DELETED_ASYNC_LOAD_USER = "deleted_async_load_user";
   private static final String PASSWORD = "test123123456";
+  private static final long UNALLOCATABLE_TABLET_CONVERSION_BATCH_MEMORY_SIZE_IN_BYTES =
+      Long.MAX_VALUE / 4;
 
   private static File tmpDir;
 
@@ -76,7 +83,11 @@ public class IoTDBLoadTsFileAuthIT {
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
-        .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(10 * 1024L);
+        .setMaxAllocateMemoryRatioForLoad(1.0)
+        .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(10 * 1024L)
+        .setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+            UNALLOCATABLE_TABLET_CONVERSION_BATCH_MEMORY_SIZE_IN_BYTES)
+        .setLoadActiveListeningCheckIntervalSeconds(1);
 
     EnvFactory.getEnv().initClusterEnvironment();
   }
@@ -141,16 +152,92 @@ public class IoTDBLoadTsFileAuthIT {
         PASSWORD);
   }
 
+  @Test
+  public void testAsyncLoadShouldCheckWriteDataPermissionWithStoredUser() throws Exception {
+    final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final File noWriteTsFile = new File(tmpDir, "4-0-0-0.tsfile");
+    final File writeTsFile = new File(tmpDir, "5-0-0-0.tsfile");
+    prepareSchemaAndTsFile(noWriteTsFile);
+    generateTsFile(writeTsFile);
+    createUser(ASYNC_NO_WRITE_USER, PASSWORD);
+    createUser(ASYNC_WRITE_USER, PASSWORD);
+    grantUserSeriesPrivilege(ASYNC_WRITE_USER, PrivilegeType.WRITE_DATA, DATABASE + ".**");
+
+    executeNonQuery(
+        String.format(
+            "load \"%s\" with ('database-level'='2', 'async'='true', 'on-success'='none', "
+                + "'verify'='false')",
+            noWriteTsFile.getAbsolutePath()),
+        ASYNC_NO_WRITE_USER,
+        PASSWORD);
+    executeNonQuery(
+        String.format(
+            "load \"%s\" with ('database-level'='2', 'async'='true', 'on-success'='none', "
+                + "'verify'='false')",
+            writeTsFile.getAbsolutePath()),
+        ASYNC_WRITE_USER,
+        PASSWORD);
+
+    Assert.assertNotNull(
+        "Async load without WRITE_DATA should be moved to fail dir",
+        waitForFile(
+            getActiveLoadFailDir(dataNodeWrapper),
+            noWriteTsFile.getName(),
+            TimeUnit.SECONDS.toMillis(60)));
+    assertCountEventually(10, TimeUnit.SECONDS.toMillis(60));
+  }
+
+  @Test
+  public void testAsyncLoadShouldMoveFileToFailDirWhenUserDoesNotExist() throws Exception {
+    final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final File tsFile = new File(tmpDir, "6-0-0-0.tsfile");
+    prepareSchema(TSDataType.INT64);
+    generateTsFile(tsFile);
+    createUser(DELETED_ASYNC_LOAD_USER, PASSWORD);
+    grantUserSeriesPrivilege(DELETED_ASYNC_LOAD_USER, PrivilegeType.WRITE_DATA, DATABASE + ".**");
+
+    executeNonQuery(
+        String.format(
+            "load \"%s\" with ('database-level'='2', 'async'='true', 'on-success'='none', "
+                + "'convert-on-type-mismatch'='true')",
+            tsFile.getAbsolutePath()),
+        DELETED_ASYNC_LOAD_USER,
+        PASSWORD);
+
+    Assert.assertNotNull(
+        "Async load should copy tsfile into active load directory",
+        waitForFileUnderPathContaining(
+            getActiveLoadDir(dataNodeWrapper), tsFile.getName(), "user-", 30_000L));
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("drop user " + DELETED_ASYNC_LOAD_USER);
+    }
+
+    Assert.assertNotNull(
+        "Async load should move tsfile to fail dir when user does not exist",
+        waitForFile(
+            getActiveLoadFailDir(dataNodeWrapper),
+            tsFile.getName(),
+            TimeUnit.SECONDS.toMillis(60)));
+  }
+
   private static void prepareSchemaAndTsFile(final File tsFile) throws Exception {
+    prepareSchema(MEASUREMENT.getType());
+    generateTsFile(tsFile);
+  }
+
+  private static void prepareSchema(final TSDataType dataType) throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("create database " + DATABASE);
       statement.execute(
           String.format(
-              "create timeseries %s.%s %s",
-              DEVICE, MEASUREMENT.getMeasurementName(), MEASUREMENT.getType()));
+              "create timeseries %s.%s %s", DEVICE, MEASUREMENT.getMeasurementName(), dataType));
     }
+  }
 
+  private static void generateTsFile(final File tsFile) throws Exception {
     try (final TsFileGenerator generator = new TsFileGenerator(tsFile)) {
       generator.registerTimeseries(DEVICE, Collections.singletonList(MEASUREMENT));
       generator.generateData(DEVICE, 10, PARTITION_INTERVAL / 10, false);
@@ -163,5 +250,98 @@ public class IoTDBLoadTsFileAuthIT {
       statement.execute("delete database " + DATABASE);
     } catch (final IoTDBSQLException ignored) {
     }
+  }
+
+  private File getActiveLoadDir(final DataNodeWrapper dataNodeWrapper) {
+    return new File(
+        dataNodeWrapper.getNodePath()
+            + File.separator
+            + "ext"
+            + File.separator
+            + "load"
+            + File.separator
+            + "pending");
+  }
+
+  private File getActiveLoadFailDir(final DataNodeWrapper dataNodeWrapper) {
+    return new File(
+        dataNodeWrapper.getNodePath()
+            + File.separator
+            + "ext"
+            + File.separator
+            + "load"
+            + File.separator
+            + "failed");
+  }
+
+  private File waitForFile(final File root, final String fileName, final long timeoutMs)
+      throws InterruptedException {
+    final long deadline = System.currentTimeMillis() + timeoutMs;
+    while (System.currentTimeMillis() < deadline) {
+      final File file = findFile(root, fileName);
+      if (file != null) {
+        return file;
+      }
+      Thread.sleep(500L);
+    }
+    return null;
+  }
+
+  private File waitForFileUnderPathContaining(
+      final File root, final String fileName, final String pathSegment, final long timeoutMs)
+      throws InterruptedException {
+    final long deadline = System.currentTimeMillis() + timeoutMs;
+    while (System.currentTimeMillis() < deadline) {
+      final File file = findFile(root, fileName);
+      if (file != null && file.getAbsolutePath().contains(pathSegment)) {
+        return file;
+      }
+      Thread.sleep(500L);
+    }
+    return null;
+  }
+
+  private void assertCountEventually(final long expected, final long timeoutMs) throws Exception {
+    final long deadline = System.currentTimeMillis() + timeoutMs;
+    AssertionError lastError = null;
+    while (System.currentTimeMillis() < deadline) {
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement();
+          final ResultSet resultSet =
+              statement.executeQuery(
+                  "select count(" + MEASUREMENT.getMeasurementName() + ") from " + DEVICE)) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(expected, resultSet.getLong(1));
+        return;
+      } catch (final AssertionError e) {
+        lastError = e;
+      }
+      Thread.sleep(500L);
+    }
+    if (lastError != null) {
+      throw lastError;
+    }
+    Assert.fail("Timed out waiting for count " + expected);
+  }
+
+  private File findFile(final File root, final String fileName) {
+    if (root == null || !root.exists()) {
+      return null;
+    }
+    if (root.isFile()) {
+      return root.getName().equals(fileName) ? root : null;
+    }
+
+    final File[] children = root.listFiles();
+    if (children == null) {
+      return null;
+    }
+    for (final File child : children) {
+      final File file = findFile(child, fileName);
+      if (file != null) {
+        return file;
+      }
+    }
+    return null;
   }
 }
