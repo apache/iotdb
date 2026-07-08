@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -517,6 +518,37 @@ public class PipeRealtimeExtractTest {
     }
   }
 
+  @Test
+  public void testProgressReportExtractionReleasesDroppedEvents() {
+    final TestRealtimeDataRegionSource source = new TestRealtimeDataRegionSource();
+
+    final PipeRealtimeEvent heartbeatEvent =
+        PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false);
+    heartbeatEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER);
+    source.extractHeartbeatForTest(heartbeatEvent);
+    Assert.assertEquals(1, heartbeatEvent.getEvent().getReferenceCount());
+
+    final PipeRealtimeEvent progressEvent = createProgressReportRealtimeEvent();
+    progressEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER);
+    source.extractProgressReportEventForTest(progressEvent);
+
+    Assert.assertEquals(0, heartbeatEvent.getEvent().getReferenceCount());
+    Assert.assertEquals(1, progressEvent.getEvent().getReferenceCount());
+    Assert.assertEquals(1, source.getEventCount());
+
+    final PipeRealtimeEvent mergedProgressEvent = createProgressReportRealtimeEvent();
+    mergedProgressEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER);
+    source.extractProgressReportEventForTest(mergedProgressEvent);
+
+    Assert.assertEquals(0, mergedProgressEvent.getEvent().getReferenceCount());
+    Assert.assertEquals(1, progressEvent.getEvent().getReferenceCount());
+    Assert.assertEquals(1, source.getEventCount());
+
+    final Event queuedEvent = source.pollForTest();
+    Assert.assertSame(progressEvent, queuedEvent);
+    ((EnrichedEvent) queuedEvent).clearReferenceCount(TEST_REFERENCE_HOLDER);
+  }
+
   private void removeTestPipeMeta() throws Exception {
     final PipeMetaKeeper pipeMetaKeeper = getPipeMetaKeeper();
     pipeMetaKeeper.acquireWriteLock();
@@ -542,6 +574,47 @@ public class PipeRealtimeExtractTest {
   private void releaseSuppliedEvent(final Event event) {
     if (event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).clearReferenceCount(TEST_REFERENCE_HOLDER);
+    }
+  }
+
+  private PipeRealtimeEvent createProgressReportRealtimeEvent() {
+    final ProgressReportEvent progressReportEvent = new ProgressReportEvent(null, 0, null);
+    progressReportEvent.bindProgressIndex(MinimumProgressIndex.INSTANCE);
+    return PipeRealtimeEventFactory.createRealtimeEvent(progressReportEvent);
+  }
+
+  private static class TestRealtimeDataRegionSource extends PipeRealtimeDataRegionSource {
+
+    private void extractHeartbeatForTest(final PipeRealtimeEvent event) {
+      extractHeartbeat(event);
+    }
+
+    private void extractProgressReportEventForTest(final PipeRealtimeEvent event) {
+      extractProgressReportEvent(event);
+    }
+
+    private Event pollForTest() {
+      return pendingQueue.directPoll();
+    }
+
+    @Override
+    protected void doExtract(final PipeRealtimeEvent event) {
+      // Not needed in this reference-counting unit test.
+    }
+
+    @Override
+    public Event supply() {
+      return pendingQueue.directPoll();
+    }
+
+    @Override
+    public boolean isNeedListenToTsFile() {
+      return false;
+    }
+
+    @Override
+    public boolean isNeedListenToInsertNode() {
+      return false;
     }
   }
 
