@@ -43,8 +43,10 @@ import org.apache.tsfile.utils.Binary;
 import org.jtransforms.fft.DoubleFFT_1D;
 import org.jtransforms.fft.FloatFFT_1D;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -200,7 +202,7 @@ public class FFTTableFunction implements TableFunction {
             .addProperty(NORM_PARAMETER_NAME, norm)
             .addProperty(PARTITION_TYPES_PROPERTY, joinTypes(partitionTypes))
             .addProperty(VALUE_TYPES_PROPERTY, joinTypes(valueTypes))
-            .addProperty(VALUE_NAMES_PROPERTY, joinStrings(valueNames))
+            .addProperty(VALUE_NAMES_PROPERTY, encodeStrings(valueNames))
             .build();
 
     List<Integer> requiredColumns = new ArrayList<>();
@@ -232,7 +234,7 @@ public class FFTTableFunction implements TableFunction {
     String norm = (String) handle.getProperty(NORM_PARAMETER_NAME);
     Type[] partitionTypes = parseTypes((String) handle.getProperty(PARTITION_TYPES_PROPERTY));
     Type[] valueTypes = parseTypes((String) handle.getProperty(VALUE_TYPES_PROPERTY));
-    String[] valueNames = splitStrings((String) handle.getProperty(VALUE_NAMES_PROPERTY));
+    String[] valueNames = decodeStrings((String) handle.getProperty(VALUE_NAMES_PROPERTY));
 
     return new TableFunctionProcessorProvider() {
       @Override
@@ -317,15 +319,29 @@ public class FFTTableFunction implements TableFunction {
     return types;
   }
 
-  private static String joinStrings(List<String> values) {
-    return String.join(",", values);
+  private static String encodeStrings(List<String> values) {
+    StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < values.size(); i++) {
+      if (i > 0) {
+        builder.append(',');
+      }
+      builder.append(
+          Base64.getEncoder().encodeToString(values.get(i).getBytes(StandardCharsets.UTF_8)));
+    }
+    return builder.toString();
   }
 
-  private static String[] splitStrings(String value) {
+  private static String[] decodeStrings(String value) {
     if (value.isEmpty()) {
       return new String[0];
     }
-    return value.split(",");
+    String[] encodedValues = value.split(",");
+    String[] decodedValues = new String[encodedValues.length];
+    for (int i = 0; i < encodedValues.length; i++) {
+      decodedValues[i] =
+          new String(Base64.getDecoder().decode(encodedValues[i]), StandardCharsets.UTF_8);
+    }
+    return decodedValues;
   }
 
   private static ValueColumn[] createColumns(Type[] types, int firstInputIndex) {

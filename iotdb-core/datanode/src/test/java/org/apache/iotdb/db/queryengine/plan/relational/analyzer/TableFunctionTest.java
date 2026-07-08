@@ -528,11 +528,19 @@ public class TableFunctionTest {
                         .addProperty(FFTTableFunction.NORM_PARAMETER_NAME, "ortho")
                         .addProperty("__FFT_PARTITION_TYPES", "STRING")
                         .addProperty("__FFT_VALUE_TYPES", "INT64,INT64,DOUBLE")
-                        .addProperty("__FFT_VALUE_NAMES", "s1,s2,s3")
+                        .addProperty("__FFT_VALUE_NAMES", "czE=,czI=,czM=")
                         .build());
 
     assertPlan(
         logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                tableFunctionMatcher, mergeSort(exchange(), exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan));
   }
 
   @Test
@@ -574,7 +582,7 @@ public class TableFunctionTest {
                         .addProperty(FFTTableFunction.NORM_PARAMETER_NAME, "backward")
                         .addProperty("__FFT_PARTITION_TYPES", "")
                         .addProperty("__FFT_VALUE_TYPES", "INT64,INT64,DOUBLE")
-                        .addProperty("__FFT_VALUE_NAMES", "s1,s2,s3")
+                        .addProperty("__FFT_VALUE_NAMES", "czE=,czI=,czM=")
                         .build());
 
     assertPlan(

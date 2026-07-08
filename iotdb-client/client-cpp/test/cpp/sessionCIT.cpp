@@ -497,6 +497,27 @@ TEST_CASE("C API - Tablet row count and reset", "[c_tabletReset]") {
   ts_tablet_destroy(tablet);
 }
 
+TEST_CASE("C API - Tablet index bounds", "[c_tabletBounds]") {
+  CaseReporter cr("c_tabletBounds");
+  const char* colNames[] = {"s1"};
+  TSDataType_C dts[] = {TS_TYPE_INT64};
+  CTablet* tablet = ts_tablet_new("root.ctest.d1", 1, colNames, dts, 10);
+  REQUIRE(tablet != nullptr);
+
+  REQUIRE(ts_tablet_add_timestamp(tablet, 0, 1) == TS_OK);
+  REQUIRE(ts_tablet_add_value_int64(tablet, 0, 0, 100) == TS_OK);
+  REQUIRE(ts_tablet_add_timestamp(tablet, 100, 2) != TS_OK);
+  REQUIRE(ts_tablet_add_value_int64(tablet, 1, 0, 100) != TS_OK);
+  REQUIRE(ts_tablet_add_value_int64(tablet, 0, 100, 100) != TS_OK);
+  REQUIRE(ts_tablet_set_row_count(tablet, -1) != TS_OK);
+  REQUIRE(ts_tablet_set_row_count(tablet, 11) != TS_OK);
+  REQUIRE(ts_tablet_set_row_count(tablet, 1000000) != TS_OK);
+  REQUIRE(ts_tablet_set_row_count(tablet, 5) == TS_OK);
+  REQUIRE(ts_tablet_get_row_count(tablet) == 5);
+
+  ts_tablet_destroy(tablet);
+}
+
 TEST_CASE("C API - Aligned timeseries and aligned writes", "[c_aligned]") {
   CaseReporter cr("c_aligned");
 

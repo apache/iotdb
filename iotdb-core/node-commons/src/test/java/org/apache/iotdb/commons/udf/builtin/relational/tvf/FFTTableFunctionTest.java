@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
@@ -252,6 +253,28 @@ public class FFTTableFunctionTest {
   }
 
   @Test
+  public void testAnalyzePreservesValueColumnNamesContainingComma() throws UDFException {
+    Map<String, Argument> arguments = createArguments("time", "time", "value,with,comma");
+
+    TableFunctionAnalysis analysis = function.analyze(arguments);
+
+    assertEquals(
+        "value,with,comma_real",
+        analysis.getProperColumnSchema().get().getFields().get(2).getName().get());
+    assertEquals(
+        "value,with,comma_imag",
+        analysis.getProperColumnSchema().get().getFields().get(3).getName().get());
+
+    TableFunctionHandle handle = function.createTableFunctionHandle();
+    handle.deserialize(analysis.getTableFunctionHandle().serialize());
+    TableFunctionDataProcessor processor = function.getProcessorProvider(handle).getDataProcessor();
+    processor.process(record(0L, 1.0), Collections.emptyList(), null);
+    assertSemanticException(
+        () -> processor.process(nullValueRecord(1L), Collections.emptyList(), null),
+        "FFT does not support null values in column [value,with,comma].");
+  }
+
+  @Test
   public void testAnalyzeRejectsOrderByDifferentFromSpecifiedTimeColumn() {
     assertSemanticException(
         () -> {
@@ -303,11 +326,16 @@ public class FFTTableFunctionTest {
   }
 
   private Map<String, Argument> createArguments(String timeColumn, String orderByColumn) {
+    return createArguments(timeColumn, orderByColumn, "value");
+  }
+
+  private Map<String, Argument> createArguments(
+      String timeColumn, String orderByColumn, String valueColumnName) {
     Map<String, Argument> arguments = new HashMap<>();
     arguments.put(
         FFTTableFunction.DATA_PARAMETER_NAME,
         new TableArgument(
-            Arrays.asList(Optional.of(timeColumn), Optional.of("value")),
+            Arrays.asList(Optional.of(timeColumn), Optional.of(valueColumnName)),
             Arrays.asList(Type.TIMESTAMP, Type.DOUBLE),
             Collections.emptyList(),
             Collections.singletonList(orderByColumn),
