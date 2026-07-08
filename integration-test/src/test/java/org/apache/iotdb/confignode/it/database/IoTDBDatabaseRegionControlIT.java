@@ -39,6 +39,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
@@ -165,6 +166,53 @@ public class IoTDBDatabaseRegionControlIT {
   }
 
   @Test
+  public void testRecreateWithPartialMaxRegionGroupNumUsesDefaultCounterpart() throws SQLException {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      final String database = "root.rg_tree_create_schema";
+      statement.execute(String.format("CREATE DATABASE %s;", database));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("SHOW DATABASES DETAILS " + database)) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(
+            testDefaultSchemaRegionGroupNumPerDatabase,
+            resultSet.getInt("MaxSchemaRegionGroupNum"));
+        Assert.assertEquals(
+            testDefaultDataRegionGroupNumPerDatabase, resultSet.getInt("MaxDataRegionGroupNum"));
+        Assert.assertFalse(resultSet.next());
+      }
+
+      statement.execute(String.format("DROP DATABASE %s;", database));
+      statement.execute(
+          String.format("CREATE DATABASE %s WITH MAX_SCHEMA_REGION_GROUP_NUM=3;", database));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("SHOW DATABASES DETAILS " + database)) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(3, resultSet.getInt("MaxSchemaRegionGroupNum"));
+        Assert.assertEquals(
+            testDefaultDataRegionGroupNumPerDatabase, resultSet.getInt("MaxDataRegionGroupNum"));
+        Assert.assertFalse(resultSet.next());
+      }
+
+      final String dataDatabase = "root.rg_tree_create_data";
+      statement.execute(
+          String.format("CREATE DATABASE %s WITH MAX_DATA_REGION_GROUP_NUM=4;", dataDatabase));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("SHOW DATABASES DETAILS " + dataDatabase)) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(
+            testDefaultSchemaRegionGroupNumPerDatabase,
+            resultSet.getInt("MaxSchemaRegionGroupNum"));
+        Assert.assertEquals(4, resultSet.getInt("MaxDataRegionGroupNum"));
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
   public void testRegionGroupNumControlThroughAlter()
       throws SQLException, ClientManagerException, IOException, InterruptedException, TException {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
@@ -233,6 +281,69 @@ public class IoTDBDatabaseRegionControlIT {
               });
       Assert.assertEquals(testSchemaRegionGroupNum, schemaRegionGroupNum.get());
       Assert.assertEquals(testDataRegionGroupNum, dataRegionGroupNum.get());
+    }
+  }
+
+  @Test
+  public void testAlterMaxDataRegionGroupNumCannotDecrease() throws SQLException {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      final String database = "root.rg_tree_decrease";
+      statement.execute(
+          String.format("CREATE DATABASE %s WITH MAX_DATA_REGION_GROUP_NUM=8;", database));
+      statement.execute(
+          String.format("ALTER DATABASE %s WITH MAX_DATA_REGION_GROUP_NUM=16;", database));
+
+      final SQLException exception =
+          Assert.assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      String.format(
+                          "ALTER DATABASE %s WITH MAX_DATA_REGION_GROUP_NUM=12;", database)));
+      Assert.assertTrue(
+          exception.getMessage(),
+          exception
+              .getMessage()
+              .contains(
+                  "MaxDataRegionGroupNum should be greater than or equal to current max "
+                      + "DataRegionGroupNum: 16."));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("SHOW DATABASES DETAILS " + database)) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(16, resultSet.getInt("MaxDataRegionGroupNum"));
+        Assert.assertFalse(resultSet.next());
+      }
+
+      final String schemaDatabase = "root.rg_tree_decrease_schema";
+      statement.execute(
+          String.format("CREATE DATABASE %s WITH MAX_SCHEMA_REGION_GROUP_NUM=4;", schemaDatabase));
+      statement.execute(
+          String.format("ALTER DATABASE %s WITH MAX_SCHEMA_REGION_GROUP_NUM=5;", schemaDatabase));
+
+      final SQLException schemaException =
+          Assert.assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      String.format(
+                          "ALTER DATABASE %s WITH MAX_SCHEMA_REGION_GROUP_NUM=3;",
+                          schemaDatabase)));
+      Assert.assertTrue(
+          schemaException.getMessage(),
+          schemaException
+              .getMessage()
+              .contains(
+                  "MaxSchemaRegionGroupNum should be greater than or equal to current max "
+                      + "SchemaRegionGroupNum: 5."));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("SHOW DATABASES DETAILS " + schemaDatabase)) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(5, resultSet.getInt("MaxSchemaRegionGroupNum"));
+        Assert.assertFalse(resultSet.next());
+      }
     }
   }
 

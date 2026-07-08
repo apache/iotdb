@@ -590,6 +590,9 @@ public final class ManagerMessages {
   public static final String MESSAGE_CURRENT_SCHEMAREGIONGROUPNUM_ARG_ALTER_SCHEMAREGIONGROUPNUM_ARG_F7495BC2 = "当前 SchemaRegionGroupNum：%d，待修改的 SchemaRegionGroupNum：%d";
   public static final String MESSAGE_FAILED_ALTER_DATABASE_DATAREGIONGROUPNUM_COULD_ONLY_INCREASED_84283EB5 = "修改数据库失败。DataRegionGroupNum 只能增加。";
   public static final String MESSAGE_CURRENT_DATAREGIONGROUPNUM_ARG_ALTER_DATAREGIONGROUPNUM_ARG_61C6E978 = "当前 DataRegionGroupNum：%d，待修改的 DataRegionGroupNum：%d";
+  public static final String MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MIN_ARG_REGIONGROUPNUM_ARG_B81D93DF = "%s 应大于等于当前最小 %sRegionGroupNum：%d。";
+  public static final String MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MAX_ARG_REGIONGROUPNUM_ARG_3D170323 = "%s 应大于等于当前最大 %sRegionGroupNum：%d。";
+  public static final String MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_ALLOCATED_ARG_REGIONGROUPNUM_ARG_994394A1 = "%s 应大于等于已分配的 %sRegionGroupNum：%d。";
   public static final String MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREPLICATIONFACTOR_SHOULD_POSITIVE_8847F33C = "创建数据库失败。schemaReplicationFactor 应为正数。";
   public static final String MESSAGE_FAILED_CREATE_DATABASE_DATAREPLICATIONFACTOR_SHOULD_POSITIVE_C2565B7E = "创建数据库失败。dataReplicationFactor 应为正数。";
   public static final String MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9 = "创建数据库失败。timePartitionOrigin 应为非负数。";

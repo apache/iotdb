@@ -598,6 +598,9 @@ public final class ManagerMessages {
   public static final String MESSAGE_CURRENT_SCHEMAREGIONGROUPNUM_ARG_ALTER_SCHEMAREGIONGROUPNUM_ARG_F7495BC2 = "Current SchemaRegionGroupNum: %d, Alter SchemaRegionGroupNum: %d";
   public static final String MESSAGE_FAILED_ALTER_DATABASE_DATAREGIONGROUPNUM_COULD_ONLY_INCREASED_84283EB5 = "Failed to alter database. The DataRegionGroupNum could only be increased. ";
   public static final String MESSAGE_CURRENT_DATAREGIONGROUPNUM_ARG_ALTER_DATAREGIONGROUPNUM_ARG_61C6E978 = "Current DataRegionGroupNum: %d, Alter DataRegionGroupNum: %d";
+  public static final String MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MIN_ARG_REGIONGROUPNUM_ARG_B81D93DF = "%s should be greater than or equal to current min %sRegionGroupNum: %d.";
+  public static final String MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MAX_ARG_REGIONGROUPNUM_ARG_3D170323 = "%s should be greater than or equal to current max %sRegionGroupNum: %d.";
+  public static final String MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_ALLOCATED_ARG_REGIONGROUPNUM_ARG_994394A1 = "%s should be greater than or equal to allocated %sRegionGroupNum: %d.";
   public static final String MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREPLICATIONFACTOR_SHOULD_POSITIVE_8847F33C = "Failed to create database. The schemaReplicationFactor should be positive.";
   public static final String MESSAGE_FAILED_CREATE_DATABASE_DATAREPLICATIONFACTOR_SHOULD_POSITIVE_C2565B7E = "Failed to create database. The dataReplicationFactor should be positive.";
   public static final String MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9 = "Failed to create database. The timePartitionOrigin should be non-negative.";
