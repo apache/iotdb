@@ -191,8 +191,10 @@ public class ConfigNodeProcedureEnv {
     final DataNodeAsyncRequestContext<TInvalidateCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(requestType, invalidateCacheReq, targets);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(
-            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     return clientHandler.getResponseMap();
   }
 

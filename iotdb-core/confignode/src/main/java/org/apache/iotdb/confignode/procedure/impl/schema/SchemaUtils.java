@@ -267,8 +267,10 @@ public class SchemaUtils {
     final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.UPDATE_TABLE, req, targets);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(
-            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     return clientHandler.getResponseMap();
   }
 
@@ -309,8 +311,10 @@ public class SchemaUtils {
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.UPDATE_TABLE, req, filterFencedDataNode(configManager));
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(
-            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     return clientHandler.getResponseMap().entrySet().stream()
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -370,8 +374,10 @@ public class SchemaUtils {
                               .setNeedLock(needLock),
                           targets);
               CnToDnInternalServiceAsyncRequestManager.getInstance()
-                  .sendAsyncRequestWithTimeoutInMs(
-                      clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+                  .sendAsyncRequest(
+                      clientHandler,
+                      ClusterCachePropagator.BROADCAST_RPC_RETRY,
+                      ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
               return clientHandler.getResponseMap();
             });
   }
@@ -395,8 +401,10 @@ public class SchemaUtils {
                   new DataNodeAsyncRequestContext<>(
                       CnToDnAsyncRequestType.UPDATE_TEMPLATE, requestSupplier.get(), targets);
               CnToDnInternalServiceAsyncRequestManager.getInstance()
-                  .sendAsyncRequestWithTimeoutInMs(
-                      clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+                  .sendAsyncRequest(
+                      clientHandler,
+                      ClusterCachePropagator.BROADCAST_RPC_RETRY,
+                      ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
               return clientHandler.getResponseMap();
             });
   }

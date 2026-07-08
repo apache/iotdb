@@ -169,8 +169,10 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     final DataNodeAsyncRequestContext<TInvalidateTableCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.PRE_DELETE_TABLE, req, targets);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(
-            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     return clientHandler.getResponseMap();
   }
 

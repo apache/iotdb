@@ -408,8 +408,10 @@ public class SetTemplateProcedure
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(
-            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -522,8 +524,10 @@ public class SetTemplateProcedure
             invalidateTemplateSetInfoReq,
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(
-            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       // all dataNodes must clear the related template cache

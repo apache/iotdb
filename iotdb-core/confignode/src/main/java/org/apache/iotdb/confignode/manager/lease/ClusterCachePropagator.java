@@ -49,7 +49,9 @@ public class ClusterCachePropagator {
   private static final long RETRY_INTERVAL_MS = 1_000L;
 
   /** Per-attempt timeout for cache-invalidation RPCs broadcast to DataNodes. */
-  public static final long BROADCAST_RPC_TIMEOUT_MS = 1_000L;
+  public static final long BROADCAST_RPC_TIMEOUT_MS = 5_000L;
+
+  public static final int BROADCAST_RPC_RETRY = 2;
 
   /** Broadcasts the cache invalidation to {@code targets} and returns the per-nodeId responses. */
   @FunctionalInterface

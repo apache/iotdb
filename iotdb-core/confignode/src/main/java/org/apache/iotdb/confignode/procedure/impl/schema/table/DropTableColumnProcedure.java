@@ -188,8 +188,10 @@ public class DropTableColumnProcedure
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.INVALIDATE_COLUMN_CACHE, req, targets);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(
-            clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     return clientHandler.getResponseMap();
   }
 
